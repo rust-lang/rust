@@ -183,7 +183,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     fcx.register_wf_obligation(ty, span, code.clone());
                 }
                 ty::AssociatedKind::Method => {
-                    reject_shadowing_type_parameters(fcx.tcx, span, item.def_id);
+                    reject_shadowing_type_parameters(fcx.tcx, item.def_id);
                     let method_ty = fcx.tcx.item_type(item.def_id);
                     let method_ty = fcx.instantiate_type_scheme(span, free_substs, &method_ty);
                     let predicates = fcx.instantiate_bounds(span, item.def_id, free_substs);
@@ -576,7 +576,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     }
 }
 
-fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
+fn reject_shadowing_type_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.item_generics(def_id);
     let parent = tcx.item_generics(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.types
@@ -587,17 +587,12 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
     for method_param in &generics.types {
         if impl_params.contains_key(&method_param.name) {
             // Tighten up the span to focus on only the shadowing type
-            let shadow_node_id = tcx.map.as_local_node_id(method_param.def_id).unwrap();
-            let type_span = match tcx.map.opt_span(shadow_node_id) {
-                Some(osp) => osp,
-                None => span
-            };
+            let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is
             // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params.get(&method_param.name).unwrap();
-            let trait_node_id = tcx.map.as_local_node_id(*trait_def_id).unwrap();
-            let trait_decl_span = tcx.map.opt_span(trait_node_id).unwrap();
+            let trait_def_id = impl_params[&method_param.name];
+            let trait_decl_span = tcx.def_span(trait_def_id);
             error_194(tcx, type_span, trait_decl_span, method_param.name);
         }
     }

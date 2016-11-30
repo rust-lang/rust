@@ -923,15 +923,6 @@
         window.register_implementors(window.pending_implementors);
     }
 
-    // See documentation in html/render.rs for what this is doing.
-    var query = getQueryStringParams();
-    if (query['gotosrc']) {
-        window.location = $('#src-' + query['gotosrc']).attr('href');
-    }
-    if (query['gotomacrosrc']) {
-        window.location = $('.srclink').attr('href');
-    }
-
     function labelForToggleButton(sectionIsCollapsed) {
         if (sectionIsCollapsed) {
             // button will expand the section

@@ -27,12 +27,11 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
-use rustc_trans::back::link;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
-use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
@@ -46,7 +45,6 @@ use std::rc::Rc;
 use std::slice;
 use std::sync::Arc;
 use std::u32;
-use std::env::current_dir;
 use std::mem;
 
 use core::DocContext;
@@ -111,19 +109,16 @@ pub struct Crate {
     pub name: String,
     pub src: PathBuf,
     pub module: Option<Item>,
-    pub externs: Vec<(def_id::CrateNum, ExternalCrate)>,
-    pub primitives: Vec<PrimitiveType>,
+    pub externs: Vec<(CrateNum, ExternalCrate)>,
+    pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: FxHashMap<DefId, Trait>,
 }
 
-struct CrateNum(def_id::CrateNum);
-
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
-        use rustc::session::config::Input;
         use ::visit_lib::LibEmbargoVisitor;
 
         {
@@ -134,19 +129,64 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         let mut externs = Vec::new();
         for cnum in cx.sess().cstore.crates() {
-            externs.push((cnum, CrateNum(cnum).clean(cx)));
+            externs.push((cnum, cnum.clean(cx)));
             // Analyze doc-reachability for extern items
             LibEmbargoVisitor::new(cx).visit_lib(cnum);
         }
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-        // Figure out the name of this crate
-        let input = &cx.input;
-        let name = link::find_crate_name(None, &self.attrs, input);
-
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
         let mut module = self.module.clean(cx);
+
+        let ExternalCrate { name, src, primitives, .. } = LOCAL_CRATE.clean(cx);
+        {
+            let m = match module.inner {
+                ModuleItem(ref mut m) => m,
+                _ => unreachable!(),
+            };
+            m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| {
+                Item {
+                    source: Span::empty(),
+                    name: Some(prim.to_url_str().to_string()),
+                    attrs: attrs.clone(),
+                    visibility: Some(Public),
+                    stability: None,
+                    deprecation: None,
+                    def_id: def_id,
+                    inner: PrimitiveItem(prim),
+                }
+            }));
+        }
+
+        let mut access_levels = cx.access_levels.borrow_mut();
+        let mut external_traits = cx.external_traits.borrow_mut();
+
+        Crate {
+            name: name,
+            src: src,
+            module: Some(module),
+            externs: externs,
+            primitives: primitives,
+            access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
+            external_traits: mem::replace(&mut external_traits, Default::default()),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct ExternalCrate {
+    pub name: String,
+    pub src: PathBuf,
+    pub attrs: Attributes,
+    pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
+}
+
+impl Clean<ExternalCrate> for CrateNum {
+    fn clean(&self, cx: &DocContext) -> ExternalCrate {
+        let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
+        let krate_span = cx.tcx.def_span(root);
+        let krate_src = cx.sess().codemap().span_to_filename(krate_span);
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.
@@ -165,80 +205,50 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         // Also note that this does not attempt to deal with modules tagged
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
-        let mut primitives = Vec::new();
-        {
-            let m = match module.inner {
-                ModuleItem(ref mut m) => m,
-                _ => unreachable!(),
-            };
-            let mut tmp = Vec::new();
-            for child in &mut m.items {
-                if !child.is_mod() {
-                    continue;
+        let as_primitive = |def: Def| {
+            if let Def::Mod(def_id) = def {
+                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
+                let mut prim = None;
+                for attr in attrs.lists("doc") {
+                    if let Some(v) = attr.value_str() {
+                        if attr.check_name("primitive") {
+                            prim = PrimitiveType::from_str(&v.as_str());
+                            if prim.is_some() {
+                                break;
+                            }
+                        }
+                    }
                 }
-                let prim = match PrimitiveType::find(&child.attrs) {
-                    Some(prim) => prim,
-                    None => continue,
-                };
-                primitives.push(prim);
-                tmp.push(Item {
-                    source: Span::empty(),
-                    name: Some(prim.to_url_str().to_string()),
-                    attrs: child.attrs.clone(),
-                    visibility: Some(Public),
-                    stability: None,
-                    deprecation: None,
-                    def_id: DefId::local(prim.to_def_index()),
-                    inner: PrimitiveItem(prim),
-                });
+                return prim.map(|p| (def_id, p, attrs));
             }
-            m.items.extend(tmp);
-        }
-
-        let src = match cx.input {
-            Input::File(ref path) => {
-                if path.is_absolute() {
-                    path.clone()
-                } else {
-                    current_dir().unwrap().join(path)
+            None
+        };
+        let primitives = if root.is_local() {
+            cx.tcx.map.krate().module.item_ids.iter().filter_map(|&id| {
+                let item = cx.tcx.map.expect_item(id.id);
+                match item.node {
+                    hir::ItemMod(_) => {
+                        as_primitive(Def::Mod(cx.tcx.map.local_def_id(id.id)))
+                    }
+                    hir::ItemUse(ref path, hir::UseKind::Single)
+                    if item.vis == hir::Visibility::Public => {
+                        as_primitive(path.def).map(|(_, prim, attrs)| {
+                            // Pretend the primitive is local.
+                            (cx.tcx.map.local_def_id(id.id), prim, attrs)
+                        })
+                    }
+                    _ => None
                 }
-            },
-            Input::Str { ref name, .. } => PathBuf::from(name.clone()),
+            }).collect()
+        } else {
+            cx.tcx.sess.cstore.item_children(root).iter().map(|item| item.def)
+              .filter_map(as_primitive).collect()
         };
 
-        let mut access_levels = cx.access_levels.borrow_mut();
-        let mut external_traits = cx.external_traits.borrow_mut();
-
-        Crate {
-            name: name.to_string(),
-            src: src,
-            module: Some(module),
-            externs: externs,
-            primitives: primitives,
-            access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
-            external_traits: mem::replace(&mut external_traits, Default::default()),
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ExternalCrate {
-    pub name: String,
-    pub attrs: Attributes,
-    pub primitives: Vec<PrimitiveType>,
-}
-
-impl Clean<ExternalCrate> for CrateNum {
-    fn clean(&self, cx: &DocContext) -> ExternalCrate {
-        let mut primitives = Vec::new();
-        let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
-        for item in cx.tcx.sess.cstore.item_children(root) {
-            let attrs = inline::load_attrs(cx, item.def.def_id());
-            PrimitiveType::find(&attrs).map(|prim| primitives.push(prim));
-        }
         ExternalCrate {
-            name: cx.sess().cstore.crate_name(self.0).to_string(),
-            attrs: cx.sess().cstore.item_attrs(root).clean(cx),
+            name: cx.tcx.crate_name(*self).to_string(),
+            src: PathBuf::from(krate_src),
+            attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives: primitives,
         }
     }
@@ -1438,7 +1448,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             deprecation: get_deprecation(cx, self.def_id),
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, self.def_id),
-            source: Span::empty(),
+            source: cx.tcx.def_span(self.def_id).clean(cx),
             inner: inner,
         }
     }
@@ -1596,19 +1606,6 @@ impl PrimitiveType {
         }
     }
 
-    fn find(attrs: &Attributes) -> Option<PrimitiveType> {
-        for attr in attrs.lists("doc") {
-            if let Some(v) = attr.value_str() {
-                if attr.check_name("primitive") {
-                    if let ret@Some(..) = PrimitiveType::from_str(&v.as_str()) {
-                        return ret;
-                    }
-                }
-            }
-        }
-        None
-    }
-
     pub fn as_str(&self) -> &'static str {
         match *self {
             PrimitiveType::Isize => "isize",
@@ -1635,14 +1632,6 @@ impl PrimitiveType {
 
     pub fn to_url_str(&self) -> &'static str {
         self.as_str()
-    }
-
-    /// Creates a rustdoc-specific node id for primitive types.
-    ///
-    /// These node ids are generally never used by the AST itself.
-    pub fn to_def_index(&self) -> DefIndex {
-        let x = u32::MAX - 1 - (*self as u32);
-        DefIndex::new(x as usize)
     }
 }
 
@@ -1943,7 +1932,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
         Item {
             name: Some(self.name).clean(cx),
             attrs: cx.tcx.get_attrs(self.did).clean(cx),
-            source: Span::empty(),
+            source: cx.tcx.def_span(self.did).clean(cx),
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
@@ -2110,7 +2099,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                     fields_stripped: false,
                     fields: self.fields.iter().map(|field| {
                         Item {
-                            source: Span::empty(),
+                            source: cx.tcx.def_span(field.did).clean(cx),
                             name: Some(field.name.clean(cx)),
                             attrs: cx.tcx.get_attrs(field.did).clean(cx),
                             visibility: field.vis.clean(cx),
@@ -2126,7 +2115,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
         Item {
             name: Some(self.name.clean(cx)),
             attrs: inline::load_attrs(cx, self.did),
-            source: Span::empty(),
+            source: cx.tcx.def_span(self.did).clean(cx),
             visibility: Some(Inherited),
             def_id: self.did,
             inner: VariantItem(Variant { kind: kind }),

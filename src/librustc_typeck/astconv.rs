@@ -1227,8 +1227,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.tcx().associated_items(b.def_id()).find(|item| {
                     item.kind == ty::AssociatedKind::Type && item.name == assoc_name
                 })
-                .and_then(|item| self.tcx().map.as_local_node_id(item.def_id))
-                .and_then(|node_id| self.tcx().map.opt_span(node_id))
+                .and_then(|item| self.tcx().map.span_if_local(item.def_id))
             });
 
             let mut err = struct_span_err!(

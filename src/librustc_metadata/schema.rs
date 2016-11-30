@@ -198,17 +198,10 @@ pub struct TraitImpls {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MacroDef {
-    pub name: ast::Name,
-    pub attrs: Vec<ast::Attribute>,
-    pub span: Span,
-    pub body: String,
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
 pub struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: ty::Visibility,
+    pub span: Lazy<Span>,
     pub def_key: Lazy<hir::map::DefKey>,
     pub attributes: LazySeq<ast::Attribute>,
     pub children: LazySeq<DefIndex>,
@@ -255,6 +248,11 @@ pub enum EntryKind<'tcx> {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {
     pub reexports: LazySeq<def::Export>,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct MacroDef {
+    pub body: String,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

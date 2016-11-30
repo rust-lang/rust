@@ -24,7 +24,7 @@ use rustc::util::nodemap::DefIdMap;
 use std::cell::Cell;
 
 use syntax::ast;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             }
             ResolvingClosure(did) |
             ResolvingAnonTy(did) => {
-                tcx.map.def_id_span(did, DUMMY_SP)
+                tcx.def_span(did)
             }
             ResolvingDeferredObligation(span) => span
         }

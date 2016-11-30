@@ -115,7 +115,7 @@ fn try_inline_def(cx: &DocContext, def: Def) -> Option<Vec<clean::Item>> {
     let did = def.def_id();
     cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
-        source: clean::Span::empty(),
+        source: tcx.def_span(did).clean(cx),
         name: Some(tcx.item_name(did).to_string()),
         attrs: load_attrs(cx, did),
         inner: inner,
@@ -321,7 +321,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                     clean::RegionBound(..) => unreachable!(),
                 },
             }),
-            source: clean::Span::empty(),
+            source: tcx.def_span(did).clean(cx),
             name: None,
             attrs: attrs,
             visibility: Some(clean::Inherited),
@@ -357,7 +357,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                         tcx.item_type(item.def_id).clean(cx),
                         default,
                     ),
-                    source: clean::Span::empty(),
+                    source: tcx.def_span(item.def_id).clean(cx),
                     attrs: clean::Attributes::default(),
                     visibility: None,
                     stability: tcx.lookup_stability(item.def_id).clean(cx),
@@ -404,7 +404,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                 Some(clean::Item {
                     name: Some(item.name.clean(cx)),
                     inner: clean::TypedefItem(typedef, true),
-                    source: clean::Span::empty(),
+                    source: tcx.def_span(item.def_id).clean(cx),
                     attrs: clean::Attributes::default(),
                     visibility: None,
                     stability: tcx.lookup_stability(item.def_id).clean(cx),
@@ -442,7 +442,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
             items: trait_items,
             polarity: Some(polarity.clean(cx)),
         }),
-        source: clean::Span::empty(),
+        source: tcx.def_span(did).clean(cx),
         name: None,
         attrs: attrs,
         visibility: Some(clean::Inherited),

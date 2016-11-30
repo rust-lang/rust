@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item = self.associated_item(trait_did, item_name).unwrap();
-                        let item_span = self.tcx.map.def_id_span(item.def_id, span);
+                        let item_span = self.tcx.def_span(item.def_id);
                         span_note!(err,
                                    item_span,
                                    "candidate #{} is defined in the trait `{}`",

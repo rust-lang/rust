@@ -55,7 +55,7 @@ use externalfiles::ExternalHtml;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::hir;
@@ -241,10 +241,10 @@ pub struct Cache {
     pub implementors: FxHashMap<DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
-    pub extern_locations: FxHashMap<CrateNum, (String, ExternalLocation)>,
+    pub extern_locations: FxHashMap<CrateNum, (String, PathBuf, ExternalLocation)>,
 
     /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: FxHashMap<clean::PrimitiveType, CrateNum>,
+    pub primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -523,8 +523,13 @@ pub fn run(mut krate: clean::Crate,
 
     // Cache where all our extern crates are located
     for &(n, ref e) in &krate.externs {
-        cache.extern_locations.insert(n, (e.name.clone(),
+        let src_root = match Path::new(&e.src).parent() {
+            Some(p) => p.to_path_buf(),
+            None => PathBuf::new(),
+        };
+        cache.extern_locations.insert(n, (e.name.clone(), src_root,
                                           extern_location(e, &cx.dst)));
+
         let did = DefId { krate: n, index: CRATE_DEF_INDEX };
         cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
@@ -533,13 +538,13 @@ pub fn run(mut krate: clean::Crate,
     //
     // Favor linking to as local extern as possible, so iterate all crates in
     // reverse topological order.
-    for &(n, ref e) in krate.externs.iter().rev() {
-        for &prim in &e.primitives {
-            cache.primitive_locations.insert(prim, n);
+    for &(_, ref e) in krate.externs.iter().rev() {
+        for &(def_id, prim, _) in &e.primitives {
+            cache.primitive_locations.insert(prim, def_id);
         }
     }
-    for &prim in &krate.primitives {
-        cache.primitive_locations.insert(prim, LOCAL_CRATE);
+    for &(def_id, prim, _) in &krate.primitives {
+        cache.primitive_locations.insert(prim, def_id);
     }
 
     cache.stack.push(krate.name.clone());
@@ -875,6 +880,8 @@ impl<'a> DocFolder for SourceCollector<'a> {
         if self.scx.include_sources
             // skip all invalid spans
             && item.source.filename != ""
+            // skip non-local items
+            && item.def_id.is_local()
             // Macros from other libraries get special filenames which we can
             // safely ignore.
             && !(item.source.filename.starts_with("<")
@@ -1127,13 +1134,15 @@ impl DocFolder for Cache {
                         true
                     }
                     ref t => {
-                        match t.primitive_type() {
-                            Some(prim) => {
-                                let did = DefId::local(prim.to_def_index());
+                        let prim_did = t.primitive_type().and_then(|t| {
+                            self.primitive_locations.get(&t).cloned()
+                        });
+                        match prim_did {
+                            Some(did) => {
                                 self.parent_stack.push(did);
                                 true
                             }
-                            _ => false,
+                            None => false,
                         }
                     }
                 }
@@ -1158,10 +1167,7 @@ impl DocFolder for Cache {
                         }
                         ref t => {
                             t.primitive_type().and_then(|t| {
-                                self.primitive_locations.get(&t).map(|n| {
-                                    let id = t.to_def_index();
-                                    DefId { krate: *n, index: id }
-                                })
+                                self.primitive_locations.get(&t).cloned()
                             })
                         }
                     }
@@ -1439,79 +1445,50 @@ impl<'a> Item<'a> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    fn href(&self) -> Option<String> {
-        let href = if self.item.source.loline == self.item.source.hiline {
+    fn src_href(&self) -> Option<String> {
+        let mut root = self.cx.root_path();
+
+        let cache = cache();
+        let mut path = String::new();
+        let (krate, path) = if self.item.def_id.is_local() {
+            let path = PathBuf::from(&self.item.source.filename);
+            if let Some(path) = self.cx.shared.local_sources.get(&path) {
+                (&self.cx.shared.layout.krate, path)
+            } else {
+                return None;
+            }
+        } else {
+            let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
+                Some(&(ref name, ref src, Local)) => (name, src),
+                Some(&(ref name, ref src, Remote(ref s))) => {
+                    root = s.to_string();
+                    (name, src)
+                }
+                Some(&(_, _, Unknown)) | None => return None,
+            };
+
+            let file = Path::new(&self.item.source.filename);
+            clean_srcpath(&src_root, file, false, |component| {
+                path.push_str(component);
+                path.push('/');
+            });
+            let mut fname = file.file_name().expect("source has no filename")
+                                .to_os_string();
+            fname.push(".html");
+            path.push_str(&fname.to_string_lossy());
+            (krate, &path)
+        };
+
+        let lines = if self.item.source.loline == self.item.source.hiline {
             format!("{}", self.item.source.loline)
         } else {
             format!("{}-{}", self.item.source.loline, self.item.source.hiline)
         };
-
-        // First check to see if this is an imported macro source. In this case
-        // we need to handle it specially as cross-crate inlined macros have...
-        // odd locations!
-        let imported_macro_from = match self.item.inner {
-            clean::MacroItem(ref m) => m.imported_from.as_ref(),
-            _ => None,
-        };
-        if let Some(krate) = imported_macro_from {
-            let cache = cache();
-            let root = cache.extern_locations.values().find(|&&(ref n, _)| {
-                *krate == *n
-            }).map(|l| &l.1);
-            let root = match root {
-                Some(&Remote(ref s)) => s.to_string(),
-                Some(&Local) => self.cx.root_path(),
-                None | Some(&Unknown) => return None,
-            };
-            Some(format!("{root}/{krate}/macro.{name}.html?gotomacrosrc=1",
-                         root = root,
-                         krate = krate,
-                         name = self.item.name.as_ref().unwrap()))
-
-        // If this item is part of the local crate, then we're guaranteed to
-        // know the span, so we plow forward and generate a proper url. The url
-        // has anchors for the line numbers that we're linking to.
-        } else if self.item.def_id.is_local() {
-            let path = PathBuf::from(&self.item.source.filename);
-            self.cx.shared.local_sources.get(&path).map(|path| {
-                format!("{root}src/{krate}/{path}#{href}",
-                        root = self.cx.root_path(),
-                        krate = self.cx.shared.layout.krate,
-                        path = path,
-                        href = href)
-            })
-        // If this item is not part of the local crate, then things get a little
-        // trickier. We don't actually know the span of the external item, but
-        // we know that the documentation on the other end knows the span!
-        //
-        // In this case, we generate a link to the *documentation* for this type
-        // in the original crate. There's an extra URL parameter which says that
-        // we want to go somewhere else, and the JS on the destination page will
-        // pick it up and instantly redirect the browser to the source code.
-        //
-        // If we don't know where the external documentation for this crate is
-        // located, then we return `None`.
-        } else {
-            let cache = cache();
-            let external_path = match cache.external_paths.get(&self.item.def_id) {
-                Some(&(ref path, _)) => path,
-                None => return None,
-            };
-            let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
-                Some(&(_, Remote(ref s))) => s.to_string(),
-                Some(&(_, Local)) => self.cx.root_path(),
-                Some(&(_, Unknown)) => return None,
-                None => return None,
-            };
-            for item in &external_path[..external_path.len() - 1] {
-                path.push_str(item);
-                path.push_str("/");
-            }
-            Some(format!("{path}{file}?gotosrc={goto}",
-                         path = path,
-                         file = item_path(self.item.type_(), external_path.last().unwrap()),
-                         goto = self.item.def_id.index.as_usize()))
-        }
+        Some(format!("{root}src/{krate}/{path}#{lines}",
+                     root = root,
+                     krate = krate,
+                     path = path,
+                     lines = lines))
     }
 }
 
@@ -1576,10 +1553,9 @@ impl<'a> fmt::Display for Item<'a> {
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
         if self.cx.shared.include_sources && !self.item.is_primitive() {
-            if let Some(l) = self.href() {
-                write!(fmt, "<a id='src-{}' class='srclink' \
-                              href='{}' title='{}'>[src]</a>",
-                       self.item.def_id.index.as_usize(), l, "goto source code")?;
+            if let Some(l) = self.src_href() {
+                write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                       l, "goto source code")?;
             }
         }
 
@@ -2781,8 +2757,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
         render_assoc_items(w, cx, container_item, did, what)
     } else {
         if let Some(prim) = target.primitive_type() {
-            if let Some(c) = cache().primitive_locations.get(&prim) {
-                let did = DefId { krate: *c, index: prim.to_def_index() };
+            if let Some(&did) = cache().primitive_locations.get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what)?;
             }
         }
@@ -2796,12 +2771,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
         write!(w, "</span><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
-        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).href() {
+        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
             write!(w, "<div class='ghost'></div>")?;
             render_stability_since_raw(w, since, outer_version)?;
-            write!(w, "<a id='src-{}' class='srclink' \
-                       href='{}' title='{}'>[src]</a>",
-                   i.impl_item.def_id.index.as_usize(), l, "goto source code")?;
+            write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                   l, "goto source code")?;
         } else {
             render_stability_since_raw(w, since, outer_version)?;
         }

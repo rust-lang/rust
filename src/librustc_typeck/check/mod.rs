@@ -1755,7 +1755,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let item_predicates = self.tcx.item_predicates(def_id);
                 let bounds = item_predicates.instantiate(self.tcx, substs);
 
-                let span = self.tcx.map.def_id_span(def_id, codemap::DUMMY_SP);
+                let span = self.tcx.def_span(def_id);
                 for predicate in bounds.predicates {
                     // Change the predicate to refer to the type variable,
                     // which will be the concrete type, instead of the TyAnon.
