@@ -253,7 +253,20 @@ impl<'a> Linker for GnuLinker<'a> {
         let mut arg = OsString::new();
         let path = tmpdir.join("list");
 
-        if self.sess.target.target.options.is_like_solaris {
+        if self.sess.target.target.options.is_like_osx {
+            // Write a plain, newline-separated list of symbols
+            let res = (|| -> io::Result<()> {
+                let mut f = BufWriter::new(File::create(&path)?);
+                for sym in self.info.exports[&crate_type].iter() {
+                    writeln!(f, "_{}", sym)?;
+                }
+                Ok(())
+            })();
+            if let Err(e) = res {
+                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            }
+        } else {
+            // Write an LD version script
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{\n  global:")?;
@@ -266,33 +279,17 @@ impl<'a> Linker for GnuLinker<'a> {
             if let Err(e) = res {
                 self.sess.fatal(&format!("failed to write version script: {}", e));
             }
-
-            arg.push("-Wl,-M,");
-            arg.push(&path);
-        } else {
-            let prefix = if self.sess.target.target.options.is_like_osx {
-                "_"
-            } else {
-                ""
-            };
-            let res = (|| -> io::Result<()> {
-                let mut f = BufWriter::new(File::create(&path)?);
-                for sym in self.info.exports[&crate_type].iter() {
-                    writeln!(f, "{}{}", prefix, sym)?;
-                }
-                Ok(())
-            })();
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
-            }
-            if self.sess.target.target.options.is_like_osx {
-                arg.push("-Wl,-exported_symbols_list,");
-            } else {
-                arg.push("-Wl,--retain-symbols-file=");
-            }
-            arg.push(&path);
         }
 
+        if self.sess.target.target.options.is_like_osx {
+            arg.push("-Wl,-exported_symbols_list,");
+        } else if self.sess.target.target.options.is_like_solaris {
+            arg.push("-Wl,-M,");
+        } else {
+            arg.push("-Wl,--version-script=");
+        }
+
+        arg.push(&path);
         self.cmd.arg(arg);
     }
 
