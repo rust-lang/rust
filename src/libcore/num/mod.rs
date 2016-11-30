@@ -688,13 +688,11 @@ macro_rules! int_impl {
         pub fn saturating_mul(self, other: Self) -> Self {
             // Result of exclusive or of two values has the same sign
             // as infinite precision multiplication.
-            let overflow_value = if (self ^ other).is_negative() {
+            self.checked_mul(other).unwrap_or_else(|| if (self ^ other).is_negative() {
                 Self::min_value()
             } else {
                 Self::max_value()
-            };
-
-            self.checked_mul(other).unwrap_or(overflow_value)
+            })
         }
 
         /// Wrapping (modular) addition. Computes `self + other`,
