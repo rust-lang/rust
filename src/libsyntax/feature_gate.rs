@@ -316,6 +316,9 @@ declare_features! (
 
     // Allows `break {expr}` with a value inside `loop`s.
     (active, loop_break_value, "1.14.0", Some(37339)),
+
+    // Allows #[target_feature(...)]
+    (active, target_feature, "1.15.0", None),
 );
 
 declare_features! (
@@ -664,6 +667,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "the `#[naked]` attribute \
                                   is an experimental feature",
                                  cfg_fn!(naked_functions))),
+    ("target_feature", Whitelisted, Gated(
+        Stability::Unstable, "target_feature",
+        "the `#[target_feature]` attribute is an experimental feature",
+        cfg_fn!(target_feature))),
     ("export_name", Whitelisted, Ungated),
     ("inline", Whitelisted, Ungated),
     ("link", Whitelisted, Ungated),
