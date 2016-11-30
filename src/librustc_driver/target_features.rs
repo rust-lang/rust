@@ -12,7 +12,6 @@ use syntax::ast;
 use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use libc::c_char;
 
