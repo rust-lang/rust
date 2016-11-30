@@ -428,6 +428,7 @@ pub fn derive_id(candidate: String) -> String {
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
+           playground_url: Option<String>,
            dst: PathBuf,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
@@ -452,12 +453,11 @@ pub fn run(mut krate: clean::Crate,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
-    markdown::PLAYGROUND.with(|slot| {
-        if slot.borrow().is_some() {
-            let url = slot.borrow().as_ref().unwrap().1.clone();
+    if let Some(url) = playground_url {
+        markdown::PLAYGROUND.with(|slot| {
             *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
-        }
-    });
+        });
+    }
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML

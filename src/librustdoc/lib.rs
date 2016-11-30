@@ -234,10 +234,6 @@ pub fn main_args(args: &[String]) -> isize {
         }
     };
 
-    if let Some(playground) = matches.opt_str("playground-url") {
-        html::markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
-    }
-
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
                                           .flat_map(|s| s.split_whitespace())
@@ -266,6 +262,7 @@ pub fn main_args(args: &[String]) -> isize {
         None => return 3
     };
     let crate_name = matches.opt_str("crate-name");
+    let playground_url = matches.opt_str("playground-url");
 
     match (should_test, markdown_input) {
         (true, true) => {
@@ -287,7 +284,7 @@ pub fn main_args(args: &[String]) -> isize {
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
-                html::render::run(krate, &external_html,
+                html::render::run(krate, &external_html, playground_url,
                                   output.unwrap_or(PathBuf::from("doc")),
                                   passes.into_iter().collect(),
                                   css_file_extension,
