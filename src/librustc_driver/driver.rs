@@ -37,7 +37,7 @@ use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
 use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues,
-                   static_recursion, hir_stats};
+                   static_recursion, hir_stats, mir_stats};
 use rustc_const_eval::check_match;
 use super::Compilation;
 
@@ -932,6 +932,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "MIR dump",
              || mir::mir_map::build_mir_for_crate(tcx));
 
+        if sess.opts.debugging_opts.mir_stats {
+            mir_stats::print_mir_stats(tcx, "PRE CLEANUP MIR STATS");
+        }
+
         time(time_passes, "MIR cleanup and validation", || {
             let mut passes = sess.mir_passes.borrow_mut();
             // Push all the built-in validation passes.
@@ -1000,6 +1004,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
 
+    if tcx.sess.opts.debugging_opts.mir_stats {
+        mir_stats::print_mir_stats(tcx, "PRE OPTIMISATION MIR STATS");
+    }
+
     // Run the passes that transform the MIR into a more suitable form for translation to LLVM
     // code.
     time(time_passes, "MIR optimisations", || {
@@ -1027,6 +1035,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         passes.run_passes(tcx);
     });
+
+    if tcx.sess.opts.debugging_opts.mir_stats {
+        mir_stats::print_mir_stats(tcx, "POST OPTIMISATION MIR STATS");
+    }
 
     let translation =
         time(time_passes,
