@@ -13,7 +13,8 @@ use eval;
 use rustc::lint;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
-use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
+use rustc::ty::{self, TyCtxt, AdtDef, Ty, TypeVariants, Region};
+use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -67,6 +68,7 @@ pub enum PatternKind<'tcx> {
     /// Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
     Variant {
         adt_def: &'tcx AdtDef,
+        substs: &'tcx Substs<'tcx>,
         variant_index: usize,
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
@@ -534,11 +536,15 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
     {
         match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
-                let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
-                let adt_def = self.tcx.lookup_adt_def(enum_id);
+                let ty = self.tcx.tables().node_id_to_type(pat.id);
+                let (adt_def, substs) = match ty.sty {
+                    TypeVariants::TyAdt(adt_def, substs) => (adt_def, substs),
+                    _ => span_bug!(pat.span, "inappropriate type for def"),
+                };
                 if adt_def.variants.len() > 1 {
                     PatternKind::Variant {
                         adt_def: adt_def,
+                        substs: substs,
                         variant_index: adt_def.variant_index_with_id(variant_id),
                         subpatterns: subpatterns,
                     }
@@ -776,8 +782,9 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal,
-    Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal, Region,
+    Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
@@ -828,10 +835,12 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             },
             PatternKind::Variant {
                 adt_def,
+                substs,
                 variant_index,
                 ref subpatterns,
             } => PatternKind::Variant {
                 adt_def: adt_def.fold_with(folder),
+                substs: substs.fold_with(folder),
                 variant_index: variant_index.fold_with(folder),
                 subpatterns: subpatterns.fold_with(folder)
             },

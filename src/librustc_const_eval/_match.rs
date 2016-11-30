@@ -24,7 +24,7 @@ use pattern::{FieldPattern, Pattern, PatternKind};
 use pattern::{PatternFoldable, PatternFolder};
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
@@ -153,9 +153,6 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// can not be seen to be empty outside it's module and should not
     /// be matchable with an empty match statement.
     pub node: NodeId,
-    /// A wild pattern with an error type - it exists to avoid having to normalize
-    /// associated types to get field types.
-    pub wild_pattern: &'a Pattern<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
     pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
@@ -167,25 +164,20 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
     {
-        let wild_pattern = Pattern {
-            ty: tcx.types.err,
-            span: DUMMY_SP,
-            kind: box PatternKind::Wild
-        };
-
         let pattern_arena = TypedArena::new();
 
         f(MatchCheckCtxt {
             tcx: tcx,
             node: node,
-            wild_pattern: &wild_pattern,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap(),
         })
     }
 
     // convert a byte-string pattern to a list of u8 patterns.
-    fn lower_byte_str_pattern(&mut self, pat: &'a Pattern<'tcx>) -> Vec<&'a Pattern<'tcx>> {
+    fn lower_byte_str_pattern<'p>(&mut self, pat: &'p Pattern<'tcx>) -> Vec<&'p Pattern<'tcx>>
+            where 'a: 'p
+    {
         let pattern_arena = &*self.pattern_arena;
         let tcx = self.tcx;
         self.byte_array_map.entry(pat).or_insert_with(|| {
@@ -401,6 +393,7 @@ fn missing_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   pcx: PatternContext<'tcx>) -> Vec<Constructor>
 {
+    debug!("all_constructors({:?})", pcx.ty);
     match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
@@ -421,7 +414,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
             def.variants.iter().filter_map(|v| {
                 let mut visited = FxHashSet::default();
-                if v.is_uninhabited_recurse(&mut visited, Some(cx.node), cx.tcx, substs, false) {
+                if v.is_uninhabited_recurse(&mut visited,
+                                            Some(cx.node),
+                                            cx.tcx, substs,
+                                            AdtKind::Enum) {
                     None
                 } else {
                     Some(Variant(v.did))
@@ -438,10 +434,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn max_slice_length<'a, 'tcx, I>(
+fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     _cx: &mut MatchCheckCtxt<'a, 'tcx>,
     patterns: I) -> usize
-    where I: Iterator<Item=&'a Pattern<'tcx>>
+    where I: Iterator<Item=&'p Pattern<'tcx>>
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -532,6 +528,12 @@ fn max_slice_length<'a, 'tcx, I>(
 }
 
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
+/// The algorithm from the paper has been modified to correctly handle empty
+/// types. The changes are:
+///   (0) We don't exit early if the pattern matrix has zero rows. We just
+///       continue to recurse over columns.
+///   (1) all_constructors will only return constructors that are statically
+///       possible. eg. it will only return Ok for Result<T, !>
 ///
 /// Whether a vector `v` of patterns is 'useful' in relation to a set of such
 /// vectors `m` is defined as there being a set of inputs that will match `v`
@@ -541,12 +543,9 @@ fn max_slice_length<'a, 'tcx, I>(
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-///
-/// Note: is_useful doesn't work on empty types, as the paper notes.
-/// So it assumes that v is non-empty.
-pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                           matrix: &Matrix<'a, 'tcx>,
-                           v: &[&'a Pattern<'tcx>],
+pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                           matrix: &Matrix<'p, 'tcx>,
+                           v: &[&'p Pattern<'tcx>],
                            witness: WitnessPreference)
                            -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
@@ -616,19 +615,27 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn is_useful_specialized<'a, 'tcx>(
+fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    &Matrix(ref m): &Matrix<'a, 'tcx>,
-    v: &[&'a Pattern<'tcx>],
+    &Matrix(ref m): &Matrix<'p, 'tcx>,
+    v: &[&'p Pattern<'tcx>],
     ctor: Constructor,
     lty: Ty<'tcx>,
     witness: WitnessPreference) -> Usefulness<'tcx>
 {
-    let arity = constructor_arity(cx, &ctor, lty);
+    let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
+    let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
+        Pattern {
+            ty: ty,
+            span: DUMMY_SP,
+            kind: box PatternKind::Wild,
+        }
+    }).collect();
+    let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
     let matrix = Matrix(m.iter().flat_map(|r| {
-        specialize(cx, &r[..], &ctor, 0, arity)
+        specialize(cx, &r[..], &ctor, &wild_patterns)
     }).collect());
-    match specialize(cx, v, &ctor, 0, arity) {
+    match specialize(cx, v, &ctor, &wild_patterns) {
         Some(v) => match is_useful(cx, &matrix, &v[..], witness) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses.into_iter()
@@ -703,6 +710,33 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize 
     }
 }
 
+/// This computes the types of the sub patterns that a constructor should be
+/// expanded to.
+///
+/// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
+fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
+                                             ctor: &Constructor,
+                                             ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
+{
+    debug!("constructor_sub_pattern_tys({:?}, {:?})", ctor, ty);
+    match ty.sty {
+        ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
+        ty::TyBox(ty) => vec![ty],
+        ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
+            Slice(length) => repeat(ty).take(length).collect(),
+            ConstantValue(_) => vec![],
+            _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
+        },
+        ty::TyRef(_, ref ty_and_mut) => vec![ty_and_mut.ty],
+        ty::TyAdt(adt, substs) => {
+            ctor.variant_for_adt(adt).fields.iter().map(|field| {
+                field.ty(cx.tcx, substs)
+            }).collect()
+        }
+        _ => vec![],
+    }
+}
+
 fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
                                     ctor: &Constructor,
                                     prefix: &[Pattern],
@@ -754,19 +788,18 @@ fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
     Ok(cmp_from != Ordering::Less && cmp_to != Ordering::Greater)
 }
 
-fn patterns_for_variant<'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    subpatterns: &'a [FieldPattern<'tcx>],
-    arity: usize)
-    -> Vec<&'a Pattern<'tcx>>
+fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
+    subpatterns: &'p [FieldPattern<'tcx>],
+    wild_patterns: &[&'p Pattern<'tcx>])
+    -> Vec<&'p Pattern<'tcx>>
 {
-    let mut result = vec![cx.wild_pattern; arity];
+    let mut result = wild_patterns.to_owned();
 
     for subpat in subpatterns {
         result[subpat.field.index()] = &subpat.pattern;
     }
 
-    debug!("patterns_for_variant({:?}, {:?}) = {:?}", subpatterns, arity, result);
+    debug!("patterns_for_variant({:?}, {:?}) = {:?}", subpatterns, wild_patterns, result);
     result
 }
 
@@ -778,35 +811,41 @@ fn patterns_for_variant<'a, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'a, 'tcx>(
+fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &[&'a Pattern<'tcx>],
-    constructor: &Constructor, col: usize, arity: usize)
-    -> Option<Vec<&'a Pattern<'tcx>>>
+    r: &[&'p Pattern<'tcx>],
+    constructor: &Constructor,
+    wild_patterns: &[&'p Pattern<'tcx>])
+    -> Option<Vec<&'p Pattern<'tcx>>>
 {
-    let pat = &r[col];
+    let pat = &r[0];
 
     let head: Option<Vec<&Pattern>> = match *pat.kind {
-        PatternKind::Binding { .. } | PatternKind::Wild =>
-            Some(vec![cx.wild_pattern; arity]),
+        PatternKind::Binding { .. } | PatternKind::Wild => {
+            Some(wild_patterns.to_owned())
+        },
 
-        PatternKind::Variant { adt_def, variant_index, ref subpatterns } => {
+        PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
             if *constructor == Variant(variant.did) {
-                Some(patterns_for_variant(cx, subpatterns, arity))
+                Some(patterns_for_variant(subpatterns, wild_patterns))
             } else {
                 None
             }
         }
 
-        PatternKind::Leaf { ref subpatterns } => Some(patterns_for_variant(cx, subpatterns, arity)),
-        PatternKind::Deref { ref subpattern } => Some(vec![subpattern]),
+        PatternKind::Leaf { ref subpatterns } => {
+            Some(patterns_for_variant(subpatterns, wild_patterns))
+        }
+        PatternKind::Deref { ref subpattern } => {
+            Some(vec![subpattern])
+        }
 
         PatternKind::Constant { ref value } => {
             match *constructor {
                 Slice(..) => match *value {
                     ConstVal::ByteStr(ref data) => {
-                        if arity == data.len() {
+                        if wild_patterns.len() == data.len() {
                             Some(cx.lower_byte_str_pattern(pat))
                         } else {
                             None
@@ -842,11 +881,14 @@ fn specialize<'a, 'tcx>(
             match *constructor {
                 Slice(..) => {
                     let pat_len = prefix.len() + suffix.len();
-                    if let Some(slice_count) = arity.checked_sub(pat_len) {
+                    if let Some(slice_count) = wild_patterns.len().checked_sub(pat_len) {
                         if slice_count == 0 || slice.is_some() {
                             Some(
                                 prefix.iter().chain(
-                                repeat(cx.wild_pattern).take(slice_count).chain(
+                                wild_patterns.iter().map(|p| *p)
+                                                    .skip(prefix.len())
+                                                    .take(slice_count)
+                                                    .chain(
                                 suffix.iter()
                             )).collect())
                         } else {
@@ -870,11 +912,10 @@ fn specialize<'a, 'tcx>(
             }
         }
     };
-    debug!("specialize({:?}, {:?}) = {:?}", r[col], arity, head);
+    debug!("specialize({:?}, {:?}) = {:?}", r[0], wild_patterns, head);
 
     head.map(|mut head| {
-        head.extend_from_slice(&r[..col]);
-        head.extend_from_slice(&r[col + 1..]);
+        head.extend_from_slice(&r[1 ..]);
         head
     })
 }
