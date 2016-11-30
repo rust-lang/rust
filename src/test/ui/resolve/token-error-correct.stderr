@@ -1,0 +1,56 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/token-error-correct.rs:23:1
+   |
+23 | }
+   | ^
+   |
+note: unclosed delimiter
+  --> $DIR/token-error-correct.rs:14:12
+   |
+14 |     foo(bar(;
+   |            ^
+
+error: incorrect close delimiter: `}`
+  --> $DIR/token-error-correct.rs:23:1
+   |
+23 | }
+   | ^
+   |
+note: unclosed delimiter
+  --> $DIR/token-error-correct.rs:14:8
+   |
+14 |     foo(bar(;
+   |        ^
+
+error: expected expression, found `;`
+  --> $DIR/token-error-correct.rs:14:13
+   |
+14 |     foo(bar(;
+   |             ^
+
+error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `true`, `unsafe`, `while`, or an operator, found `;`
+  --> $DIR/token-error-correct.rs:14:13
+   |
+14 |     foo(bar(;
+   |             ^
+
+error: expected expression, found `)`
+  --> $DIR/token-error-correct.rs:23:1
+   |
+23 | }
+   | ^
+
+error[E0425]: unresolved name `foo`
+  --> $DIR/token-error-correct.rs:14:5
+   |
+14 |     foo(bar(;
+   |     ^^^ unresolved name
+
+error[E0425]: unresolved name `bar`
+  --> $DIR/token-error-correct.rs:14:9
+   |
+14 |     foo(bar(;
+   |         ^^^ unresolved name
+
+error: aborting due to 7 previous errors
+

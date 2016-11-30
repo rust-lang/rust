@@ -1,0 +1,8 @@
+error[E0532]: expected struct, variant or union type, found enum `Result`
+  --> $DIR/issue-16058.rs:19:9
+   |
+19 |         Result {
+   |         ^^^^^^
+
+error: aborting due to previous error
+

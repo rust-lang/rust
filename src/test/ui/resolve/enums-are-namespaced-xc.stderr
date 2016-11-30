@@ -1,0 +1,20 @@
+error[E0425]: unresolved name `namespaced_enums::A`
+  --> $DIR/enums-are-namespaced-xc.rs:15:13
+   |
+15 |     let _ = namespaced_enums::A;
+   |             ^^^^^^^^^^^^^^^^^^^ unresolved name
+
+error[E0425]: unresolved name `namespaced_enums::B`
+  --> $DIR/enums-are-namespaced-xc.rs:18:13
+   |
+18 |     let _ = namespaced_enums::B(10);
+   |             ^^^^^^^^^^^^^^^^^^^ unresolved name
+
+error[E0531]: unresolved struct, variant or union type `namespaced_enums::C`
+  --> $DIR/enums-are-namespaced-xc.rs:21:13
+   |
+21 |     let _ = namespaced_enums::C { a: 10 };
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,10 @@
+error[E0425]: unresolved name `Bar`
+  --> $DIR/issue-33876.rs:20:22
+   |
+20 |     let any: &Any = &Bar; //~ ERROR expected value, found trait `Bar`
+   |                      ^^^ unresolved name
+   |
+   = help: trait `Bar` cannot be used as an expression
+
+error: aborting due to previous error
+

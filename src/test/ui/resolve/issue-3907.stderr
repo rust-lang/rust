@@ -1,0 +1,10 @@
+error[E0404]: `Foo` is not a trait
+  --> $DIR/issue-3907.rs:20:6
+   |
+20 | impl Foo for S { //~ ERROR expected trait, found type alias `Foo`
+   |      ^^^ expected trait, found type alias
+   |
+   = note: type aliases cannot be used for traits
+
+error: cannot continue compilation due to previous error
+

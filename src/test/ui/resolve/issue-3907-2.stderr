@@ -1,0 +1,10 @@
+error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
+  --> $DIR/issue-3907-2.rs:20:1
+   |
+20 | fn bar(_x: Foo) {}
+   | ^^^^^^^^^^^^^^^^^^ the trait `issue_3907::Foo` cannot be made into an object
+   |
+   = note: method `bar` has no receiver
+
+error: aborting due to previous error
+

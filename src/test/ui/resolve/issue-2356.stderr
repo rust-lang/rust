@@ -1,0 +1,112 @@
+error[E0425]: unresolved name `shave`
+  --> $DIR/issue-2356.rs:27:5
+   |
+27 |     shave();
+   |     ^^^^^ unresolved name
+
+error[E0425]: unresolved name `clone`
+  --> $DIR/issue-2356.rs:35:5
+   |
+35 |     clone();
+   |     ^^^^^ did you mean to call `self.clone`?
+
+error[E0425]: unresolved name `default`
+  --> $DIR/issue-2356.rs:43:5
+   |
+43 |     default();
+   |     ^^^^^^^ did you mean to call `self.default`?
+
+error[E0425]: unresolved name `whiskers`
+  --> $DIR/issue-2356.rs:52:5
+   |
+52 |     whiskers -= other;
+   |     ^^^^^^^^ unresolved name
+   |
+   = help: this is an associated function, you don't have access to this type's fields or methods
+
+error[E0425]: unresolved name `shave`
+  --> $DIR/issue-2356.rs:57:5
+   |
+57 |     shave(4);
+   |     ^^^^^ did you mean to call `Groom::shave`?
+
+error[E0425]: unresolved name `purr`
+  --> $DIR/issue-2356.rs:60:5
+   |
+60 |     purr();
+   |     ^^^^ unresolved name
+
+error[E0425]: unresolved name `static_method`
+  --> $DIR/issue-2356.rs:70:9
+   |
+70 |         static_method();
+   |         ^^^^^^^^^^^^^ unresolved name
+
+error[E0425]: unresolved name `purr`
+  --> $DIR/issue-2356.rs:73:9
+   |
+73 |         purr();
+   |         ^^^^ unresolved name
+
+error[E0425]: unresolved name `purr`
+  --> $DIR/issue-2356.rs:76:9
+   |
+76 |         purr();
+   |         ^^^^ unresolved name
+
+error[E0425]: unresolved name `purr`
+  --> $DIR/issue-2356.rs:79:9
+   |
+79 |         purr();
+   |         ^^^^ unresolved name
+
+error[E0424]: `self` is not available in a static method
+  --> $DIR/issue-2356.rs:87:8
+   |
+87 |     if self.whiskers > 3 {
+   |        ^^^^ not available in static method
+   |
+   = note: maybe a `self` argument is missing?
+
+error[E0425]: unresolved name `grow_older`
+  --> $DIR/issue-2356.rs:95:5
+   |
+95 |     grow_older();
+   |     ^^^^^^^^^^ unresolved name
+
+error[E0425]: unresolved name `shave`
+  --> $DIR/issue-2356.rs:98:5
+   |
+98 |     shave();
+   |     ^^^^^ unresolved name
+
+error[E0425]: unresolved name `whiskers`
+   --> $DIR/issue-2356.rs:104:5
+    |
+104 |     whiskers = 0;
+    |     ^^^^^^^^ did you mean `self.whiskers`?
+
+error[E0425]: unresolved name `whiskers`
+   --> $DIR/issue-2356.rs:110:5
+    |
+110 |     whiskers = 4;
+    |     ^^^^^^^^ unresolved name
+    |
+    = help: this is an associated function, you don't have access to this type's fields or methods
+
+error[E0425]: unresolved name `purr_louder`
+   --> $DIR/issue-2356.rs:115:5
+    |
+115 |     purr_louder();
+    |     ^^^^^^^^^^^ unresolved name
+
+error[E0425]: unresolved name `self`
+   --> $DIR/issue-2356.rs:122:5
+    |
+122 |     self += 1;
+    |     ^^^^ unresolved name
+    |
+    = help: module `self` cannot be used as an expression
+
+error: aborting due to 17 previous errors
+
