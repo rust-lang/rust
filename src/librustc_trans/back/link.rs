@@ -237,16 +237,7 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
-    let requested_features = sess.opts.cg.target_feature.split(',');
-    let found_negative = requested_features.clone().any(|r| r == "-crt-static");
-    let found_positive = requested_features.clone().any(|r| r == "+crt-static");
-    let crt_static = if sess.target.target.options.crt_static_default {
-        !found_negative
-    } else {
-        found_positive
-    };
-
-    match (sess.target.target.options.dynamic_linking && !crt_static,
+    match (sess.target.target.options.dynamic_linking && !sess.target_is_crt_static(),
            sess.target.target.options.executables, crate_type) {
         (false, _, config::CrateTypeCdylib) |
         (false, _, config::CrateTypeProcMacro) |
@@ -677,6 +668,9 @@ fn link_natively(sess: &Session,
     let (pname, mut cmd, extra) = get_linker(sess);
     cmd.env("PATH", command_path(sess, extra));
 
+    let musl = sess.target.target.llvm_target.contains("musl");
+    let crt_static = sess.target_is_crt_static();
+
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
 
@@ -685,8 +679,12 @@ fn link_natively(sess: &Session,
     } else {
         &sess.target.target.options.pre_link_objects_dll
     };
-    for obj in pre_link_objects {
-        cmd.arg(root.join(obj));
+    // When dynamically linking to MUSL we don't need to pass our startup
+    // objects as those will be provided by the MUSL toolchain
+    if !musl || crt_static {
+        for obj in pre_link_objects {
+            cmd.arg(root.join(obj));
+        }
     }
 
     {
@@ -695,8 +693,11 @@ fn link_natively(sess: &Session,
                   objects, out_filename, outputs, trans);
     }
     cmd.args(&sess.target.target.options.late_link_args);
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(root.join(obj));
+    // Same as above
+    if !musl || crt_static {
+        for obj in &sess.target.target.options.post_link_objects {
+            cmd.arg(root.join(obj));
+        }
     }
     cmd.args(&sess.target.target.options.post_link_args);
 
@@ -822,8 +823,9 @@ fn link_args(cmd: &mut Linker,
         let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
         let relocation_model = sess.opts.cg.relocation_model.as_ref()
                                    .unwrap_or(&empty_str);
+        let crt_static = sess.target_is_crt_static();
         if (t.options.relocation_model == "pic" || *relocation_model == "pic")
-            && !args.any(|x| *x == "-static") {
+               && !args.any(|x| *x == "-static") && !crt_static {
             cmd.position_independent_executable();
         }
     }

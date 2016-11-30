@@ -499,6 +499,18 @@ impl Session {
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
     }
+
+    /// Checks if the target is going to be statically linked to the C runtime
+    pub fn target_is_crt_static(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+        if self.target.target.options.crt_static_default {
+            !found_negative
+        } else {
+            found_positive
+        }
+    }
 }
 
 pub fn build_session(sopts: config::Options,

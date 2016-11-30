@@ -55,16 +55,19 @@ pub fn opts() -> TargetOptions {
     //
     // Each target directory for musl has these object files included in it so
     // they'll be included from there.
+    //
+    // Note that when linking dynamically, these won't be passed to the linker
     base.pre_link_objects_exe.push("crt1.o".to_string());
     base.pre_link_objects_exe.push("crti.o".to_string());
     base.post_link_objects.push("crtn.o".to_string());
 
-    // MUSL support doesn't currently include dynamic linking, so there's no
-    // need for dylibs or rpath business. Additionally `-pie` is incompatible
-    // with `-static`, so we can't pass `-pie`.
+    // Dynamically linking to MUSL is opt-in (via the -crt-static target
+    // feature). The `true`s here are not ultimate and depend on whether one is
+    // actually linking to MUSL dynamically.
     base.dynamic_linking = true;
     base.has_rpath = false;
-    base.position_independent_executables = false;
+    // actually only true if linking dynamically
+    base.position_independent_executables = true;
 
     // These targets statically link libc by default
     base.crt_static_default = true;
