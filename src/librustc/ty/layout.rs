@@ -1101,7 +1101,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     non_zero: false
                 }
             }
-            ty::TyDynamic(_) => {
+            ty::TyDynamic(..) => {
                 let mut unit = Struct::new(dl, &vec![], &[],
                   StructKind::AlwaysSizedUnivariant, ty)?;
                 unit.sized = false;
