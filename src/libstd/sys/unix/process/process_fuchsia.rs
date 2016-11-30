@@ -14,7 +14,7 @@ use mem;
 use ptr;
 
 use sys::mx_cvt;
-use sys::magenta::{launchpad_t, mx_handle_t};
+use sys::magenta::{Handle, launchpad_t, mx_handle_t};
 use sys::process::process_common::*;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ impl Command {
 
         let (launchpad, process_handle) = unsafe { self.do_exec(theirs)? };
 
-        Ok((Process { launchpad: launchpad, handle: process_handle, status: None }, ours))
+        Ok((Process { launchpad: launchpad, handle: Handle::new(process_handle) }, ours))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
@@ -116,7 +116,7 @@ impl Command {
 
         let process_handle = mx_cvt(launchpad_start(launchpad))?;
 
-        // Successfully started the launchpad, so launchpad_destroy shouldn't get called
+        // Successfully started the launchpad
         mem::forget(launchpad_destructor);
 
         Ok((launchpad, process_handle))
@@ -129,62 +129,49 @@ impl Command {
 
 pub struct Process {
     launchpad: *mut launchpad_t,
-    handle: mx_handle_t,
-    status: Option<ExitStatus>,
+    handle: Handle,
 }
 
 impl Process {
     pub fn id(&self) -> u32 {
-        self.handle as u32
+        self.handle.raw() as u32
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
         use sys::magenta::*;
 
-        // If we've already waited on this process then the pid can be recycled
-        // and used for another process, and we probably shouldn't be killing
-        // random processes, so just return an error.
-        if self.status.is_some() {
-            Err(io::Error::new(io::ErrorKind::InvalidInput,
-                           "invalid argument: can't kill an exited process"))
-        } else {
-            unsafe {
-                mx_cvt(mx_handle_close(self.handle))?;
-                launchpad_destroy(self.launchpad);
-            }
-            Ok(())
-        }
+        unsafe { mx_cvt(mx_task_kill(self.handle.raw()))?; }
+
+        Ok(())
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use default::Default;
         use sys::magenta::*;
 
-        if let Some(status) = self.status {
-            return Ok(status)
-        }
-
         let mut proc_info: mx_info_process_t = Default::default();
         let mut actual: mx_size_t = 0;
         let mut avail: mx_size_t = 0;
 
         unsafe {
-            mx_cvt(mx_handle_wait_one(self.handle, MX_TASK_TERMINATED,
+            mx_cvt(mx_handle_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
                                       MX_TIME_INFINITE, ptr::null_mut()))?;
-            mx_cvt(mx_object_get_info(self.handle, MX_INFO_PROCESS,
+            mx_cvt(mx_object_get_info(self.handle.raw(), MX_INFO_PROCESS,
                                       &mut proc_info as *mut _ as *mut libc::c_void,
                                       mem::size_of::<mx_info_process_t>(), &mut actual,
                                       &mut avail))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                  "Failed to get exit status of process"));
-        }
-        self.status = Some(ExitStatus::new(proc_info.rec.return_code));
-        unsafe {
-            mx_cvt(mx_handle_close(self.handle))?;
-            launchpad_destroy(self.launchpad);
+            return Err(io::Error::new(io::ErrorKind::InvalidData,
+                                      "Failed to get exit status of process"));
         }
         Ok(ExitStatus::new(proc_info.rec.return_code))
+    }
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        use sys::magenta::launchpad_destroy;
+        unsafe { launchpad_destroy(self.launchpad); }
     }
 }

@@ -42,6 +42,30 @@ pub const MX_INFO_PROCESS         : mx_object_info_topic_t = 3;
 
 pub const MX_HND_TYPE_JOB: u32 = 6;
 
+// Safe wrapper around mx_handle_t
+pub struct Handle {
+    raw: mx_handle_t,
+}
+
+impl Handle {
+    pub fn new(raw: mx_handle_t) -> Handle {
+        Handle {
+            raw: raw,
+        }
+    }
+
+    pub fn raw(&self) -> mx_handle_t {
+        self.raw
+    }
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+        use sys::mx_cvt;
+        unsafe { mx_cvt(mx_handle_close(self.raw)).expect("Failed to close mx_handle_t"); }
+    }
+}
+
 // Common MX_INFO header
 #[derive(Default)]
 #[repr(C)]
@@ -68,6 +92,8 @@ pub struct mx_info_process_t {
 }
 
 extern {
+    pub fn mx_task_kill(handle: mx_handle_t) -> mx_status_t;
+
     pub fn mx_handle_close(handle: mx_handle_t) -> mx_status_t;
 
     pub fn mx_handle_duplicate(handle: mx_handle_t, rights: mx_rights_t,
