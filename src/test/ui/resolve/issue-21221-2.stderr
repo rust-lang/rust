@@ -1,0 +1,12 @@
+error[E0405]: trait `T` is not in scope
+  --> $DIR/issue-21221-2.rs:28:6
+   |
+28 | impl T for Foo { }
+   |      ^ `T` is not in scope
+   |
+   = help: you can import it into scope: `use foo::bar::T;`.
+
+error: main function not found
+
+error: cannot continue compilation due to previous error
+

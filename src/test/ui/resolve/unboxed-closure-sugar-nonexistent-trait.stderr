@@ -1,0 +1,18 @@
+error[E0405]: trait `Nonexist` is not in scope
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:11:8
+   |
+11 | fn f<F:Nonexist(isize) -> isize>(x: F) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ `Nonexist` is not in scope
+   |
+   = help: no candidates by the name of `Nonexist` found in your project; maybe you misspelled the name or forgot to import an external crate?
+
+error[E0404]: `Typedef` is not a trait
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:17:8
+   |
+17 | fn g<F:Typedef(isize) -> isize>(x: F) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ expected trait, found type alias
+   |
+   = note: type aliases cannot be used for traits
+
+error: cannot continue compilation due to previous error
+

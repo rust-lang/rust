@@ -1,0 +1,8 @@
+error[E0425]: unresolved name `assert`
+  --> $DIR/resolve-hint-macro.rs:12:5
+   |
+12 |     assert(true);
+   |     ^^^^^^ did you mean the macro `assert!`?
+
+error: aborting due to previous error
+

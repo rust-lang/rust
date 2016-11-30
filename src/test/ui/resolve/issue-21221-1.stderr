@@ -1,0 +1,42 @@
+error[E0405]: trait `Mul` is not in scope
+  --> $DIR/issue-21221-1.rs:53:6
+   |
+53 | impl Mul for Foo {
+   |      ^^^ `Mul` is not in scope
+   |
+   = help: you can import several candidates into scope (`use ...;`):
+   = help:   `mul1::Mul`
+   = help:   `mul2::Mul`
+   = help:   `std::ops::Mul`
+
+error[E0412]: type name `Mul` is undefined or not in scope
+  --> $DIR/issue-21221-1.rs:72:16
+   |
+72 | fn getMul() -> Mul {
+   |                ^^^ undefined or not in scope
+   |
+   = help: you can import several candidates into scope (`use ...;`):
+   = help:   `mul1::Mul`
+   = help:   `mul2::Mul`
+   = help:   `mul3::Mul`
+   = help:   `mul4::Mul`
+   = help:   and 2 other candidates
+
+error[E0405]: trait `ThisTraitReallyDoesntExistInAnyModuleReally` is not in scope
+  --> $DIR/issue-21221-1.rs:83:6
+   |
+83 | impl ThisTraitReallyDoesntExistInAnyModuleReally for Foo {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ThisTraitReallyDoesntExistInAnyModuleReally` is not in scope
+   |
+   = help: no candidates by the name of `ThisTraitReallyDoesntExistInAnyModuleReally` found in your project; maybe you misspelled the name or forgot to import an external crate?
+
+error[E0405]: trait `Div` is not in scope
+  --> $DIR/issue-21221-1.rs:88:6
+   |
+88 | impl Div for Foo {
+   |      ^^^ `Div` is not in scope
+   |
+   = help: you can import it into scope: `use std::ops::Div;`.
+
+error: cannot continue compilation due to previous error
+

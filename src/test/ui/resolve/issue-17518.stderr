@@ -1,0 +1,8 @@
+error[E0531]: unresolved struct, variant or union type `E`
+  --> $DIR/issue-17518.rs:16:5
+   |
+16 |     E { name: "foobar" }; //~ ERROR unresolved struct, variant or union type `E`
+   |     ^
+
+error: aborting due to previous error
+

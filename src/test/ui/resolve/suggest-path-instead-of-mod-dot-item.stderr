@@ -1,0 +1,76 @@
+error[E0425]: unresolved name `a`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
+   |
+27 |     a.I
+   |     ^ unresolved name
+   |
+   = help: to reference an item from the `a` module, use `a::I`
+
+error[E0425]: unresolved name `a`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:33:5
+   |
+33 |     a.g()
+   |     ^ unresolved name
+   |
+   = help: to call a function from the `a` module, use `a::g(..)`
+
+error[E0425]: unresolved name `a`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:39:5
+   |
+39 |     a.b.J
+   |     ^ unresolved name
+   |
+   = help: to reference an item from the `a` module, use `a::b`
+
+error[E0425]: unresolved name `a::b`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:45:5
+   |
+45 |     a::b.J
+   |     ^^^^ unresolved name
+   |
+   = help: to reference an item from the `a::b` module, use `a::b::J`
+
+error[E0425]: unresolved name `a`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:51:5
+   |
+51 |     a.b.f();
+   |     ^ unresolved name
+   |
+   = help: to reference an item from the `a` module, use `a::b`
+
+error[E0425]: unresolved name `a::b`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:12
+   |
+55 |     v.push(a::b);
+   |            ^^^^ unresolved name
+   |
+   = help: module `a::b` cannot be used as an expression
+
+error[E0425]: unresolved name `a::b`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:61:5
+   |
+61 |     a::b.f()
+   |     ^^^^ unresolved name
+   |
+   = help: to call a function from the `a::b` module, use `a::b::f(..)`
+
+error[E0425]: unresolved name `a::b`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:67:5
+   |
+67 |     a::b
+   |     ^^^^ unresolved name
+   |
+   = help: module `a::b` cannot be used as an expression
+
+error[E0425]: unresolved name `a::b`
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:73:5
+   |
+73 |     a::b()
+   |     ^^^^ unresolved name
+   |
+   = help: module `a::b` cannot be used as an expression
+
+error: main function not found
+
+error: aborting due to 10 previous errors
+

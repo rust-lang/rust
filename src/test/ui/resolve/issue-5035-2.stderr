@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `I + 'static: std::marker::Sized` is not satisfied
+  --> $DIR/issue-5035-2.rs:14:8
+   |
+14 | fn foo(_x: K) {} //~ ERROR: `I + 'static: std::marker::Sized` is not satisfied
+   |        ^^ the trait `std::marker::Sized` is not implemented for `I + 'static`
+   |
+   = note: `I + 'static` does not have a constant size known at compile-time
+   = note: all local variables must have a statically known size
+
+error: aborting due to previous error
+
