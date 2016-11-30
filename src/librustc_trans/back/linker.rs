@@ -17,11 +17,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use context::SharedCrateContext;
-use monomorphize::Instance;
 
 use back::archive;
+use back::symbol_export::{self, ExportedSymbols};
 use middle::dependency_format::Linkage;
-use rustc::hir::def_id::CrateNum;
+use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use session::Session;
 use session::config::CrateType;
 use session::config;
@@ -34,7 +34,7 @@ pub struct LinkerInfo {
 
 impl<'a, 'tcx> LinkerInfo {
     pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               exports: &[String]) -> LinkerInfo {
+               exports: &ExportedSymbols) -> LinkerInfo {
         LinkerInfo {
             exports: scx.sess().crate_types.borrow().iter().map(|&c| {
                 (c, exported_symbols(scx, exports, c))
@@ -473,43 +473,29 @@ impl<'a> Linker for MsvcLinker<'a> {
 }
 
 fn exported_symbols(scx: &SharedCrateContext,
-                    exported_symbols: &[String],
+                    exported_symbols: &ExportedSymbols,
                     crate_type: CrateType)
                     -> Vec<String> {
-    // See explanation in GnuLinker::export_symbols, for
-    // why we don't ever need dylib symbols on non-MSVC.
-    if crate_type == CrateType::CrateTypeDylib ||
-       crate_type == CrateType::CrateTypeProcMacro {
-        if !scx.sess().target.target.options.is_like_msvc {
-            return vec![];
-        }
-    }
+    let export_threshold = symbol_export::crate_export_threshold(crate_type);
 
-    let mut symbols = exported_symbols.to_vec();
+    let mut symbols = Vec::new();
+    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, export_threshold, |name, _| {
+        symbols.push(name.to_owned());
+    });
 
-    // If we're producing anything other than a dylib then the `reachable` array
-    // above is the exhaustive set of symbols we should be exporting.
-    //
-    // For dylibs, however, we need to take a look at how all upstream crates
-    // are linked into this dynamic library. For all statically linked
-    // libraries we take all their reachable symbols and emit them as well.
-    if crate_type != CrateType::CrateTypeDylib {
-        return symbols
-    }
-
-    let cstore = &scx.sess().cstore;
     let formats = scx.sess().dependency_formats.borrow();
     let deps = formats[&crate_type].iter();
-    symbols.extend(deps.enumerate().filter_map(|(i, f)| {
-        if *f == Linkage::Static {
-            Some(CrateNum::new(i + 1))
-        } else {
-            None
+
+    for (index, dep_format) in deps.enumerate() {
+        let cnum = CrateNum::new(index + 1);
+        // For each dependency that we are linking to statically ...
+        if *dep_format == Linkage::Static {
+            // ... we add its symbol list to our export list.
+            exported_symbols.for_each_exported_symbol(cnum, export_threshold, |name, _| {
+                symbols.push(name.to_owned());
+            })
         }
-    }).flat_map(|cnum| {
-        cstore.exported_symbols(cnum)
-    }).map(|did| -> String {
-        Instance::mono(scx, did).symbol_name(scx)
-    }));
+    }
+
     symbols
 }

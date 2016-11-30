@@ -10,6 +10,7 @@
 
 use back::lto;
 use back::link::{get_linker, remove};
+use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses};
 use session::Session;
@@ -328,7 +329,7 @@ impl ModuleConfig {
 struct CodegenContext<'a> {
     // Extra resources used for LTO: (sess, reachable).  This will be `None`
     // when running in a worker thread.
-    lto_ctxt: Option<(&'a Session, &'a [String])>,
+    lto_ctxt: Option<(&'a Session, &'a ExportedSymbols)>,
     // Handler to use for diagnostics produced during codegen.
     handler: &'a Handler,
     // LLVM passes added by plugins.
@@ -343,7 +344,9 @@ struct CodegenContext<'a> {
 }
 
 impl<'a> CodegenContext<'a> {
-    fn new_with_session(sess: &'a Session, exported_symbols: &'a [String]) -> CodegenContext<'a> {
+    fn new_with_session(sess: &'a Session,
+                        exported_symbols: &'a ExportedSymbols)
+                        -> CodegenContext<'a> {
         CodegenContext {
             lto_ctxt: Some((sess, exported_symbols)),
             handler: sess.diagnostic(),
@@ -997,7 +1000,7 @@ fn execute_work_item(cgcx: &CodegenContext,
 }
 
 fn run_work_singlethreaded(sess: &Session,
-                           exported_symbols: &[String],
+                           exported_symbols: &ExportedSymbols,
                            work_items: Vec<WorkItem>) {
     let cgcx = CodegenContext::new_with_session(sess, exported_symbols);
 
