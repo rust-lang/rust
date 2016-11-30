@@ -14,7 +14,8 @@
 
 extern crate lint_stability;
 
-use lint_stability::UnstableStruct::{}; //~ ERROR use of unstable library feature 'test_feature'
+use lint_stability::UnstableStruct::{};
+//~^ ERROR use of unstable library feature 'test_feature'
 use lint_stability::StableStruct::{}; // OK
 
 fn main() {}
