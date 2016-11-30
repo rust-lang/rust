@@ -195,7 +195,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     tc_ty(tcx, typ, cache).owned_pointer()
                 }
 
-                ty::TyTrait(_) => {
+                ty::TyDynamic(..) => {
                     TC::All - TC::InteriorParam
                 }
 

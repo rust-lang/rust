@@ -515,7 +515,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
         }
 
         // these are always dtorck
-        ty::TyTrait(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
+        ty::TyDynamic(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
     }
 }
 
@@ -564,7 +564,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             let revised_ty = revise_self_ty(tcx, adt_def, impl_def_id, substs);
             return DropckKind::RevisedSelf(revised_ty);
         }
-        ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
+        ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
             return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
         },

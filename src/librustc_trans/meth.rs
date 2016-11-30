@@ -110,42 +110,48 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
 pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            trait_ref: ty::PolyTraitRef<'tcx>)
+                            ty: ty::Ty<'tcx>,
+                            trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
                             -> ValueRef
 {
     let tcx = ccx.tcx();
     let _icx = push_ctxt("meth::get_vtable");
 
-    debug!("get_vtable(trait_ref={:?})", trait_ref);
+    debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
-    if let Some(&val) = ccx.vtables().borrow().get(&trait_ref) {
+    if let Some(&val) = ccx.vtables().borrow().get(&(ty, trait_ref)) {
         return val;
     }
 
     // Not in the cache. Build it.
     let nullptr = C_null(Type::nil(ccx).ptr_to());
-    let methods = traits::get_vtable_methods(tcx, trait_ref).map(|opt_mth| {
-        opt_mth.map_or(nullptr, |(def_id, substs)| {
-            Callee::def(ccx, def_id, substs).reify(ccx)
-        })
-    });
 
-    let size_ty = sizing_type_of(ccx, trait_ref.self_ty());
+    let size_ty = sizing_type_of(ccx, ty);
     let size = machine::llsize_of_alloc(ccx, size_ty);
-    let align = align_of(ccx, trait_ref.self_ty());
+    let align = align_of(ccx, ty);
 
-    let components: Vec<_> = [
+    let mut components: Vec<_> = [
         // Generate a destructor for the vtable.
-        glue::get_drop_glue(ccx, trait_ref.self_ty()),
+        glue::get_drop_glue(ccx, ty),
         C_uint(ccx, size),
         C_uint(ccx, align)
-    ].iter().cloned().chain(methods).collect();
+    ].iter().cloned().collect();
+
+    if let Some(trait_ref) = trait_ref {
+        let trait_ref = trait_ref.with_self_ty(tcx, ty);
+        let methods = traits::get_vtable_methods(tcx, trait_ref).map(|opt_mth| {
+            opt_mth.map_or(nullptr, |(def_id, substs)| {
+                Callee::def(ccx, def_id, substs).reify(ccx)
+            })
+        });
+        components.extend(methods);
+    }
 
     let vtable_const = C_struct(ccx, &components, false);
     let align = machine::llalign_of_pref(ccx, val_ty(vtable_const));
     let vtable = consts::addr_of(ccx, vtable_const, align, "vtable");
 
-    ccx.vtables().borrow_mut().insert(trait_ref, vtable);
+    ccx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

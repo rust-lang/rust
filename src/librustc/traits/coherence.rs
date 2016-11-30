@@ -225,14 +225,12 @@ fn ty_is_local(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal) -> bool {
 
 fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     match ty.sty {
-        ty::TyBox(..) | ty::TyRef(..) =>
-            true,
-        ty::TyAdt(def, _) =>
-            def.is_fundamental(),
-        ty::TyTrait(ref data) =>
-            tcx.has_attr(data.principal.def_id(), "fundamental"),
-        _ =>
-            false
+        ty::TyBox(..) | ty::TyRef(..) => true,
+        ty::TyAdt(def, _) => def.is_fundamental(),
+        ty::TyDynamic(ref data, ..) => {
+            data.principal().map_or(false, |p| tcx.has_attr(p.def_id(), "fundamental"))
+        }
+        _ => false
     }
 }
 
@@ -272,8 +270,8 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
             krate == Some(LOCAL_CRATE)
         }
 
-        ty::TyTrait(ref tt) => {
-            tt.principal.def_id().is_local()
+        ty::TyDynamic(ref tt, ..) => {
+            tt.principal().map_or(false, |p| p.def_id().is_local())
         }
 
         ty::TyError => {

@@ -18,6 +18,7 @@ use middle::region::{CodeExtent};
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::middle::lang_items;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -117,14 +118,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
-                ccx.tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id);
-                match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
-                    Some(ty::BoundSend) | Some(ty::BoundSync) => {}
-                    Some(_) | None => {
-                        if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
-                            error_192(ccx, item.span);
-                        }
-                    }
+                if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
+                    error_192(ccx, item.span);
                 }
             }
             hir::ItemFn(.., body_id) => {
@@ -241,9 +236,9 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 // For DST, all intermediate types must be sized.
                 let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
-                    fcx.register_builtin_bound(
+                    fcx.register_bound(
                         field.ty,
-                        ty::BoundSized,
+                        fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
                         traits::ObligationCause::new(field.span,
                                                      fcx.body_id,
                                                      traits::FieldSized));

@@ -190,9 +190,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::VariableType(id) => Some(super::VariableType(id)),
             super::ReturnType => Some(super::ReturnType),
             super::RepeatVec => Some(super::RepeatVec),
-            super::ClosureCapture(node_id, span, bound) => {
-                Some(super::ClosureCapture(node_id, span, bound))
-            }
             super::FieldSized => Some(super::FieldSized),
             super::ConstSized => Some(super::ConstSized),
             super::SharedStatic => Some(super::SharedStatic),
@@ -507,7 +504,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType |
             super::RepeatVec |
-            super::ClosureCapture(..) |
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |
@@ -552,7 +548,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType |
             super::RepeatVec |
-            super::ClosureCapture(..) |
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |

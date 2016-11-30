@@ -140,7 +140,7 @@ DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
 DEPS_rustc_incremental := rustc syntax_pos serialize rustc_data_structures
 DEPS_rustc_save_analysis := rustc log syntax syntax_pos serialize
 DEPS_rustc_typeck := rustc syntax syntax_pos rustc_platform_intrinsics rustc_const_math \
-                     rustc_const_eval rustc_errors
+                     rustc_const_eval rustc_errors rustc_data_structures
 
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts test \
                 rustc_lint rustc_const_eval syntax_pos rustc_data_structures

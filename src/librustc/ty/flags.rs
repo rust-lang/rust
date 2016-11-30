@@ -121,16 +121,21 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::TyTrait(ref obj) => {
+            &ty::TyDynamic(ref obj, r) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(obj.principal.skip_binder().substs);
-                for projection_bound in &obj.projection_bounds {
-                    let mut proj_computation = FlagComputation::new();
-                    proj_computation.add_existential_projection(&projection_bound.0);
-                    self.add_bound_computation(&proj_computation);
+                for predicate in obj.skip_binder().iter() {
+                    match *predicate {
+                        ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
+                        ty::ExistentialPredicate::Projection(p) => {
+                            let mut proj_computation = FlagComputation::new();
+                            proj_computation.add_existential_projection(&p);
+                            self.add_bound_computation(&proj_computation);
+                        }
+                        ty::ExistentialPredicate::AutoTrait(_) => {}
+                    }
                 }
                 self.add_bound_computation(&computation);
-                self.add_region(obj.region_bound);
+                self.add_region(r);
             }
 
             &ty::TyBox(tt) | &ty::TyArray(tt, _) | &ty::TySlice(tt) => {

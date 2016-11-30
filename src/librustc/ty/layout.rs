@@ -924,7 +924,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         ty::TySlice(_) | ty::TyStr => {
                             Int(dl.ptr_sized_integer())
                         }
-                        ty::TyTrait(_) => Pointer,
+                        ty::TyDynamic(..) => Pointer,
                         _ => return Err(LayoutError::Unknown(unsized_part))
                     };
                     FatPointer { metadata: meta, non_zero: non_zero }
@@ -963,7 +963,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     non_zero: false
                 }
             }
-            ty::TyTrait(_) => {
+            ty::TyDynamic(..) => {
                 let mut unit = Struct::new(dl, false);
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }

@@ -24,6 +24,7 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
+use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::adjustment;
@@ -1492,11 +1493,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+
         // this can get called from typeck (by euv), and moves_by_default
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+        !traits::type_known_to_meet_bound(self, ty, copy_def_id, span)
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
