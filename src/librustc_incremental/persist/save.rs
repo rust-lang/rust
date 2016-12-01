@@ -159,6 +159,12 @@ pub fn encode_dep_graph(preds: &Predecessors,
         }
     }
 
+    if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+        for (dep_node, hash) in &preds.hashes {
+            println!("HIR hash for {:?} is {}", dep_node, hash);
+        }
+    }
+
     // Create the serialized dep-graph.
     let graph = SerializedDepGraph {
         edges: edges,
@@ -248,6 +254,15 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         let hash = state.finish();
 
         debug!("save: metadata hash for {:?} is {}", def_id, hash);
+
+        if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+            println!("metadata hash for {:?} is {}", def_id, hash);
+            for dep_node in sources {
+                println!("metadata hash for {:?} depends on {:?} with hash {}",
+                         def_id, dep_node, preds.hashes[dep_node]);
+            }
+        }
+
         serialized_hashes.hashes.push(SerializedMetadataHash {
             def_index: def_id.index,
             hash: hash,
