@@ -13,8 +13,7 @@ use libc;
 use mem;
 use ptr;
 
-use sys::mx_cvt;
-use sys::magenta::{Handle, launchpad_t, mx_handle_t};
+use sys::process::magenta::{Handle, launchpad_t, mx_handle_t};
 use sys::process::process_common::*;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +52,7 @@ impl Command {
 
     unsafe fn do_exec(&mut self, stdio: ChildPipes)
                       -> io::Result<(*mut launchpad_t, mx_handle_t)> {
-        use sys::magenta::*;
+        use sys::process::magenta::*;
 
         let job_handle = mxio_get_startup_handle(mx_hnd_info(MX_HND_TYPE_JOB, 0));
         let envp = match *self.get_envp() {
@@ -72,11 +71,9 @@ impl Command {
 
         // Duplicate the job handle
         let mut job_copy: mx_handle_t = MX_HANDLE_INVALID;
-        mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS,
-                                   &mut job_copy as *mut mx_handle_t))?;
+        mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS, &mut job_copy))?;
         // Create a launchpad
-        mx_cvt(launchpad_create(job_copy, self.get_argv()[0],
-                                &mut launchpad as *mut *mut launchpad_t))?;
+        mx_cvt(launchpad_create(job_copy, self.get_argv()[0], &mut launchpad))?;
         // Set the process argv
         mx_cvt(launchpad_arguments(launchpad, self.get_argv().len() as i32 - 1,
                                    self.get_argv().as_ptr()))?;
@@ -138,7 +135,7 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        use sys::magenta::*;
+        use sys::process::magenta::*;
 
         unsafe { mx_cvt(mx_task_kill(self.handle.raw()))?; }
 
@@ -147,7 +144,7 @@ impl Process {
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use default::Default;
-        use sys::magenta::*;
+        use sys::process::magenta::*;
 
         let mut proc_info: mx_info_process_t = Default::default();
         let mut actual: mx_size_t = 0;
@@ -171,7 +168,7 @@ impl Process {
 
 impl Drop for Process {
     fn drop(&mut self) {
-        use sys::magenta::launchpad_destroy;
+        use sys::process::magenta::launchpad_destroy;
         unsafe { launchpad_destroy(self.launchpad); }
     }
 }

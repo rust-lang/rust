@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use convert::TryInto;
+use io;
 use os::raw::c_char;
 use u64;
 
@@ -42,6 +44,18 @@ pub const MX_INFO_PROCESS         : mx_object_info_topic_t = 3;
 
 pub const MX_HND_TYPE_JOB: u32 = 6;
 
+pub fn mx_cvt<T>(t: T) -> io::Result<T> where T: TryInto<mx_status_t>+Copy {
+    if let Ok(status) = TryInto::try_into(t) {
+        if status < 0 {
+            Err(io::Error::from_raw_os_error(status))
+        } else {
+            Ok(t)
+        }
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
 // Safe wrapper around mx_handle_t
 pub struct Handle {
     raw: mx_handle_t,
@@ -61,7 +75,6 @@ impl Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        use sys::mx_cvt;
         unsafe { mx_cvt(mx_handle_close(self.raw)).expect("Failed to close mx_handle_t"); }
     }
 }
