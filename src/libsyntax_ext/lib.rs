@@ -50,8 +50,7 @@ pub mod deriving;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, IdentTT, MultiModifier, NamedSyntaxExtension};
-use syntax::ext::tt::macro_rules::MacroRulesExpander;
+use syntax::ext::base::{MacroExpanderFn, NormalTT, MultiModifier, NamedSyntaxExtension};
 use syntax::symbol::Symbol;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
@@ -60,8 +59,6 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     let mut register = |name, ext| {
         resolver.add_ext(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
     };
-
-    register(Symbol::intern("macro_rules"), IdentTT(Box::new(MacroRulesExpander), None, false));
 
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(

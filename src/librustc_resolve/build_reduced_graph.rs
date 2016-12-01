@@ -697,9 +697,13 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &'a Item) {
         let macro_use = match item.node {
-            ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => return, // Scope placeholder
-            ItemKind::Mac(..) => {
-                return self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
+            ItemKind::Mac(ref mac) => {
+                if mac.node.path.segments.is_empty() {
+                    self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
+                } else {
+                    self.resolver.define_macro(item, &mut self.legacy_scope);
+                }
+                return
             }
             ItemKind::Mod(..) => self.resolver.contains_macro_use(&item.attrs),
             _ => false,

@@ -23,8 +23,8 @@ use syntax::ast::{self, Name, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
-use syntax::ext::base::{NormalTT, SyntaxExtension};
-use syntax::ext::expand::Expansion;
+use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
+use syntax::ext::expand::{Expansion, mark_tts};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
@@ -137,34 +137,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         expansion.visit_with(&mut visitor);
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
         invocation.expansion.set(visitor.legacy_scope);
-    }
-
-    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
-        if def.ident.name == "macro_rules" {
-            self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
-        }
-
-        let invocation = self.invocations[&scope];
-        let binding = self.arenas.alloc_legacy_binding(LegacyBinding {
-            parent: Cell::new(invocation.legacy_scope.get()),
-            name: def.ident.name,
-            ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
-            span: def.span,
-        });
-        invocation.legacy_scope.set(LegacyScope::Binding(binding));
-        self.macro_names.insert(def.ident.name);
-
-        if attr::contains_name(&def.attrs, "macro_export") {
-            def.id = self.next_node_id();
-            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
-                collector.visit_macro_def(&def)
-            });
-            self.macro_exports.push(Export {
-                name: def.ident.name,
-                def: Def::Macro(self.definitions.local_def_id(def.id)),
-            });
-            self.exported_macros.push(def);
-        }
     }
 
     fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
@@ -443,5 +415,48 @@ impl<'a> Resolver<'a> {
             }
             expansion.visit_with(def_collector)
         });
+    }
+
+    pub fn define_macro(&mut self, item: &ast::Item, legacy_scope: &mut LegacyScope<'a>) {
+        let tts = match item.node {
+            ast::ItemKind::Mac(ref mac) => &mac.node.tts,
+            _ => unreachable!(),
+        };
+
+        if item.ident.name == "macro_rules" {
+            self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
+        }
+
+        let mark = Mark::from_placeholder_id(item.id);
+        let invocation = self.invocations[&mark];
+        invocation.module.set(self.current_module);
+
+        let mut def = ast::MacroDef {
+            ident: item.ident,
+            attrs: item.attrs.clone(),
+            id: ast::DUMMY_NODE_ID,
+            span: item.span,
+            body: mark_tts(tts, mark),
+        };
+
+        *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
+            parent: Cell::new(*legacy_scope),
+            name: def.ident.name,
+            ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
+            span: def.span,
+        }));
+        self.macro_names.insert(def.ident.name);
+
+        if attr::contains_name(&def.attrs, "macro_export") {
+            def.id = self.next_node_id();
+            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
+                collector.visit_macro_def(&def)
+            });
+            self.macro_exports.push(Export {
+                name: def.ident.name,
+                def: Def::Macro(self.definitions.local_def_id(def.id)),
+            });
+            self.exported_macros.push(def);
+        }
     }
 }

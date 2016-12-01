@@ -392,14 +392,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let Mac_ { path, tts, .. } = mac.node;
 
-        // Detect use of feature-gated or invalid attributes on macro invoations
-        // since they will not be detected after macro expansion.
-        for attr in attrs.iter() {
-            feature_gate::check_attribute(&attr, &self.cx.parse_sess,
-                                          &self.cx.parse_sess.codemap(),
-                                          &self.cx.ecfg.features.unwrap());
-        }
-
         let extname = path.segments.last().unwrap().identifier.name;
         let ident = ident.unwrap_or(keywords::Invalid.ident());
         let marked_tts = mark_tts(&tts, mark);
@@ -601,6 +593,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect_bang(
         &mut self, mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span, kind: ExpansionKind,
     ) -> Expansion {
+        self.check_attributes(&attrs);
         self.collect(kind, InvocationKind::Bang { attrs: attrs, mac: mac, ident: None, span: span })
     }
 
@@ -621,6 +614,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
+    }
+
+    // Detect use of feature-gated or invalid attributes on macro invocations
+    // since they will not be detected after macro expansion.
+    fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
+        let codemap = &self.cx.parse_sess.codemap();
+        let features = self.cx.ecfg.features.unwrap();
+        for attr in attrs.iter() {
+            feature_gate::check_attribute(&attr, &self.cx.parse_sess, codemap, features);
+        }
     }
 }
 
@@ -740,14 +743,18 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         match item.node {
             ast::ItemKind::Mac(..) => {
-                if match item.node {
-                    ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
-                    _ => unreachable!(),
-                } {
-                    return SmallVector::one(item);
-                }
+                self.check_attributes(&item.attrs);
+                let is_macro_def = if let ItemKind::Mac(ref mac) = item.node {
+                    mac.node.path.segments[0].identifier.name == "macro_rules"
+                } else {
+                    unreachable!()
+                };
 
-                item.and_then(|item| match item.node {
+                item.and_then(|mut item| match item.node {
+                    ItemKind::Mac(_) if is_macro_def => {
+                        item.id = ast::NodeId::from_u32(Mark::fresh().as_u32());
+                        SmallVector::one(P(item))
+                    }
                     ItemKind::Mac(mac) => {
                         self.collect(ExpansionKind::Items, InvocationKind::Bang {
                             mac: mac,
