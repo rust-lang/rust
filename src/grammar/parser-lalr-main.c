@@ -12,9 +12,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+// Forward declare strdup from <string.h> to avoid warning during compilation
+char *strdup(const char *s);
 
 extern int yylex();
 extern int rsparse();
+
 
 #define PUSHBACK_LEN 4
 
