@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def::Def;
 use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource};
 use utils::{in_macro, span_lint, snippet_opt, span_lint_and_then};
 use std::ops::Deref;
@@ -68,13 +68,17 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             }
         }
         Expr_::ExprCall(ref callee, ref args) => {
-            let def = cx.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
-            match def {
-                Some(Def::Struct(..)) |
-                Some(Def::Variant(..)) |
-                Some(Def::StructCtor(..)) |
-                Some(Def::VariantCtor(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
-                _ => false,
+            if let Expr_::ExprPath(ref qpath) = callee.node {
+                let def = cx.tcx.tables().qpath_def(qpath, callee.id);
+                match def {
+                    Def::Struct(..) |
+                    Def::Variant(..) |
+                    Def::StructCtor(..) |
+                    Def::VariantCtor(..) => args.iter().all(|arg| has_no_effect(cx, arg)),
+                    _ => false,
+                }
+            } else {
+                false
             }
         }
         Expr_::ExprBlock(ref block) => {
@@ -146,12 +150,17 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
             Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
         }
         Expr_::ExprCall(ref callee, ref args) => {
-            match cx.tcx.def_map.borrow().get(&callee.id).map(PathResolution::full_def) {
-                Some(Def::Struct(..)) |
-                Some(Def::Variant(..)) |
-                Some(Def::StructCtor(..)) |
-                Some(Def::VariantCtor(..)) => Some(args.iter().collect()),
-                _ => None,
+            if let Expr_::ExprPath(ref qpath) = callee.node {
+                let def = cx.tcx.tables().qpath_def(qpath, callee.id);
+                match def {
+                    Def::Struct(..) |
+                    Def::Variant(..) |
+                    Def::StructCtor(..) |
+                    Def::VariantCtor(..) => Some(args.iter().collect()),
+                    _ => None,
+                }
+            } else {
+                None
             }
         }
         Expr_::ExprBlock(ref block) => {

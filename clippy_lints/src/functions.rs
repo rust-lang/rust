@@ -138,9 +138,9 @@ impl Functions {
     }
 }
 
-fn raw_ptr_arg(cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
-    if let (&hir::PatKind::Binding(_, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
-        cx.tcx.def_map.borrow().get(&arg.pat.id).map(|pr| pr.full_def().def_id())
+fn raw_ptr_arg(_cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
+    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
+        Some(def_id)
     } else {
         None
     }
@@ -183,8 +183,9 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
-        if let Some(def) = self.cx.tcx.def_map.borrow().get(&ptr.id) {
-            if self.ptrs.contains(&def.full_def().def_id()) {
+        if let hir::ExprPath(ref qpath) = ptr.node {
+            let def = self.cx.tcx.tables().qpath_def(qpath, ptr.id);
+            if self.ptrs.contains(&def.def_id()) {
                 span_lint(self.cx,
                           NOT_UNSAFE_PTR_ARG_DEREF,
                           ptr.span,

@@ -1,6 +1,7 @@
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::hir::def::Def;
 use rustc::hir::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::session::Session;
@@ -202,7 +203,15 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// ```
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
-pub fn match_path(path: &Path, segments: &[&str]) -> bool {
+pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
+    if let QPath::Resolved(_, ref path) = *path {
+        match_path_old(path, segments)
+    } else {
+        false
+    }
+}
+
+pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.name == *b)
 }
 
@@ -283,8 +292,8 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
 }
 
 /// Resolve the definition of a node from its `NodeId`.
-pub fn resolve_node(cx: &LateContext, id: NodeId) -> Option<def::Def> {
-    cx.tcx.def_map.borrow().get(&id).map(|d| d.full_def())
+pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: NodeId) -> def::Def {
+    cx.tcx.tables().qpath_def(qpath, id)
 }
 
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
@@ -736,8 +745,8 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: Node
 
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
-    fn is_enum_variant(cx: &LateContext, did: NodeId) -> bool {
-        matches!(cx.tcx.def_map.borrow().get(&did).map(|d| d.full_def()), Some(def::Def::Variant(..)) | Some(def::Def::VariantCtor(..)))
+    fn is_enum_variant(cx: &LateContext, qpath: &QPath, did: NodeId) -> bool {
+        matches!(cx.tcx.tables().qpath_def(qpath, did), def::Def::Variant(..) | def::Def::VariantCtor(..))
     }
 
     fn are_refutable<'a, I: Iterator<Item=&'a Pat>>(cx: &LateContext, mut i: I) -> bool {
@@ -748,17 +757,17 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
         PatKind::Binding(..) | PatKind::Wild => false,
         PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
-        PatKind::Path(..) => is_enum_variant(cx, pat.id),
+        PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.id),
         PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
-        PatKind::Struct(_, ref fields, _) => {
-            if is_enum_variant(cx, pat.id) {
+        PatKind::Struct(ref qpath, ref fields, _) => {
+            if is_enum_variant(cx, qpath, pat.id) {
                 true
             } else {
                 are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
             }
         }
-        PatKind::TupleStruct(_, ref pats, _) => {
-            if is_enum_variant(cx, pat.id) {
+        PatKind::TupleStruct(ref qpath, ref pats, _) => {
+            if is_enum_variant(cx, qpath, pat.id) {
                 true
             } else {
                 are_refutable(cx, pats.iter().map(|pat| &**pat))
@@ -791,5 +800,22 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
         }
     } else {
         expr
+    }
+}
+
+pub fn opt_def_id(def: Def) -> Option<DefId> {
+    match def {
+        Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
+        Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
+        Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
+        Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
+        Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id) => {
+            Some(id)
+        }
+
+        Def::Label(..)  |
+        Def::PrimTy(..) |
+        Def::SelfTy(..) |
+        Def::Err => None,
     }
 }

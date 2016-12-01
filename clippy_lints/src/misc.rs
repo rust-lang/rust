@@ -173,7 +173,7 @@ impl LateLintPass for Pass {
             return;
         }
         for arg in &decl.inputs {
-            if let PatKind::Binding(BindByRef(_), _, _) = arg.pat.node {
+            if let PatKind::Binding(BindByRef(_), _, _, _) = arg.pat.node {
                 span_lint(cx,
                           TOPLEVEL_REF_ARG,
                           arg.pat.span,
@@ -186,7 +186,7 @@ impl LateLintPass for Pass {
         if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
-            let PatKind::Binding(BindByRef(mt), i, None) = l.pat.node,
+            let PatKind::Binding(BindByRef(mt), _, i, None) = l.pat.node,
             let Some(ref init) = l.init
         ], {
             let init = Sugg::hir(cx, init, "..");
@@ -220,10 +220,10 @@ impl LateLintPass for Pass {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             let op = cmp.node;
             if op.is_comparison() {
-                if let ExprPath(_, ref path) = left.node {
+                if let ExprPath(QPath::Resolved(_, ref path)) = left.node {
                     check_nan(cx, path, expr.span);
                 }
-                if let ExprPath(_, ref path) = right.node {
+                if let ExprPath(QPath::Resolved(_, ref path)) = right.node {
                     check_nan(cx, path, expr.span);
                 }
                 check_to_owned(cx, left, right, true, cmp.span);
@@ -262,19 +262,23 @@ impl LateLintPass for Pass {
             return;
         }
         let binding = match expr.node {
-            ExprPath(_, ref path) => {
-                let binding = path.segments
-                    .last()
-                    .expect("path should always have at least one segment")
-                    .name
-                    .as_str();
-                if binding.starts_with('_') &&
-                    !binding.starts_with("__") &&
-                    &*binding != "_result" && // FIXME: #944
-                    is_used(cx, expr) &&
-                    // don't lint if the declaration is in a macro
-                    non_macro_local(cx, &cx.tcx.expect_def(expr.id)) {
-                    Some(binding)
+            ExprPath(ref qpath) => {
+                if let QPath::Resolved(_, ref path) = *qpath {
+                    let binding = path.segments
+                        .last()
+                        .expect("path should always have at least one segment")
+                        .name
+                        .as_str();
+                    if binding.starts_with('_') &&
+                        !binding.starts_with("__") &&
+                        &*binding != "_result" && // FIXME: #944
+                        is_used(cx, expr) &&
+                        // don't lint if the declaration is in a macro
+                        non_macro_local(cx, &cx.tcx.tables().qpath_def(qpath, expr.id)) {
+                        Some(binding)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -299,7 +303,7 @@ impl LateLintPass for Pass {
     }
 
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
-        if let PatKind::Binding(_, ref ident, Some(ref right)) = pat.node {
+        if let PatKind::Binding(_, _, ref ident, Some(ref right)) = pat.node {
             if right.node == PatKind::Wild {
                 span_lint(cx,
                           REDUNDANT_PATTERN,
@@ -366,7 +370,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
             }
         }
         ExprCall(ref path, ref v) if v.len() == 1 => {
-            if let ExprPath(None, ref path) = path.node {
+            if let ExprPath(ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
                     (cx.tcx.tables().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {

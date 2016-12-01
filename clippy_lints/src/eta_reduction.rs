@@ -72,9 +72,9 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 _ => (),
             }
             for (a1, a2) in decl.inputs.iter().zip(args) {
-                if let PatKind::Binding(_, ident, _) = a1.pat.node {
+                if let PatKind::Binding(_, _, ident, _) = a1.pat.node {
                     // XXXManishearth Should I be checking the binding mode here?
-                    if let ExprPath(None, ref p) = a2.node {
+                    if let ExprPath(QPath::Resolved(None, ref p)) = a2.node {
                         if p.segments.len() != 1 {
                             // If it's a proper path, it can't be a local variable
                             return;

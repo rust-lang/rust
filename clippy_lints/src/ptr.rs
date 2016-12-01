@@ -77,7 +77,7 @@ impl LateLintPass for PointerPass {
             check_fn(cx, &sig.decl, item.id);
         }
     }
-    
+
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref op, ref l, ref r) = expr.node {
             if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
@@ -116,7 +116,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
 fn is_null_path(expr: &Expr) -> bool {
     if let ExprCall(ref pathexp, ref args) = expr.node {
         if args.is_empty() {
-            if let ExprPath(_, ref path) = pathexp.node {
+            if let ExprPath(ref path) = pathexp.node {
                 return match_path(path, &paths::PTR_NULL) || match_path(path, &paths::PTR_NULL_MUT)
             }
         }

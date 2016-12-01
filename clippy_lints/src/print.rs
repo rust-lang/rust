@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::hir::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
 use utils::paths;
-use utils::{is_expn_of, match_path, match_def_path, resolve_node, span_lint};
+use utils::{is_expn_of, match_def_path, resolve_node, span_lint, match_path_old};
 use format::get_argument_fmtstr_parts;
 
 /// **What it does:** This lint warns when you using `print!()` with a format string that
@@ -69,9 +69,9 @@ impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[
             let ExprCall(ref fun, ref args) = expr.node,
-            let ExprPath(..) = fun.node,
-            let Some(fun) = resolve_node(cx, fun.id),
+            let ExprPath(ref qpath) = fun.node,
         ], {
+            let fun = resolve_node(cx, qpath, fun.id);
             let fun_id = fun.def_id();
 
             // Search for `std::io::_print(..)` which is unique in a
@@ -93,9 +93,8 @@ impl LateLintPass for Pass {
                         // ensure we're calling Arguments::new_v1
                         args.len() == 1,
                         let ExprCall(ref args_fun, ref args_args) = args[0].node,
-                        let ExprPath(..) = args_fun.node,
-                        let Some(def) = resolve_node(cx, args_fun.id),
-                        match_def_path(cx, def.def_id(), &paths::FMT_ARGUMENTS_NEWV1),
+                        let ExprPath(ref qpath) = args_fun.node,
+                        match_def_path(cx, resolve_node(cx, qpath, args_fun.id).def_id(), &paths::FMT_ARGUMENTS_NEWV1),
                         args_args.len() == 2,
                         let ExprAddrOf(_, ref match_expr) = args_args[1].node,
                         let ExprMatch(ref args, _, _) = match_expr.node,
@@ -121,8 +120,8 @@ impl LateLintPass for Pass {
             // Search for something like
             // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
             else if args.len() == 2 && match_def_path(cx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
-                if let ExprPath(None, _) = args[1].node {
-                    let def_id = resolve_node(cx, args[1].id).unwrap().def_id();
+                if let ExprPath(ref qpath) = args[1].node {
+                    let def_id = cx.tcx.tables().qpath_def(qpath, args[1].id).def_id();
                     if match_def_path(cx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
                        is_expn_of(cx, expr.span, "panic").is_none() {
                         span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
@@ -141,7 +140,7 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
         // `Debug` impl
         if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) {
             if let ItemImpl(_, _, _, Some(ref tr), _, _) = item.node {
-                return match_path(&tr.path, &["Debug"]);
+                return match_path_old(&tr.path, &["Debug"]);
             }
         }
     }

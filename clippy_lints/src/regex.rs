@@ -115,10 +115,10 @@ impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
+            let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
-            let Some(def) = cx.tcx.def_map.borrow().get(&fun.id),
         ], {
-            let def_id = def.full_def().def_id();
+            let def_id = cx.tcx.tables().qpath_def(qpath, fun.id).def_id();
             if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);

@@ -64,7 +64,7 @@ impl LateLintPass for Pass {
                             }
                         }}
                     }
-                    ExprPath(_, ref path) => {
+                    ExprPath(ref path) => {
                         if match_path(path, &paths::CLONE) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
                             span_help_and_lint(cx,
@@ -85,7 +85,7 @@ impl LateLintPass for Pass {
 
 fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
     match expr.node {
-        ExprPath(None, ref path) => {
+        ExprPath(QPath::Resolved(None, ref path)) => {
             let arg_segment = [PathSegment {
                                    name: id,
                                    parameters: PathParameters::none(),
@@ -108,7 +108,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
 
 fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     match pat.node {
-        PatKind::Binding(_, name, None) => Some(name.node),
+        PatKind::Binding(_, _, name, None) => Some(name.node),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }

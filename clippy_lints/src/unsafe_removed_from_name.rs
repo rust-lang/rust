@@ -1,6 +1,5 @@
-use rustc::hir::*;
 use rustc::lint::*;
-use syntax::ast::Name;
+use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::symbol::InternedString;
 use utils::span_lint;
@@ -34,16 +33,16 @@ impl LintPass for UnsafeNameRemoval {
     }
 }
 
-impl LateLintPass for UnsafeNameRemoval {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if let ItemUse(ref item_use) = item.node {
+impl EarlyLintPass for UnsafeNameRemoval {
+    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+        if let ItemKind::Use(ref item_use) = item.node {
             match item_use.node {
                 ViewPath_::ViewPathSimple(ref name, ref path) => {
                     unsafe_to_safe_check(
                         path.segments
                             .last()
                             .expect("use paths cannot be empty")
-                            .name,
+                            .identifier,
                         *name,
                         cx, &item.span
                         );
@@ -62,9 +61,9 @@ impl LateLintPass for UnsafeNameRemoval {
     }
 }
 
-fn unsafe_to_safe_check(old_name: Name, new_name: Name, cx: &LateContext, span: &Span) {
-    let old_str = old_name.as_str();
-    let new_str = new_name.as_str();
+fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext, span: &Span) {
+    let old_str = old_name.name.as_str();
+    let new_str = new_name.name.as_str();
     if contains_unsafe(&old_str) && !contains_unsafe(&new_str) {
         span_lint(cx,
                   UNSAFE_REMOVED_FROM_NAME,

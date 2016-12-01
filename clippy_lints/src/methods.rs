@@ -701,7 +701,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         }
 
         if name == "unwrap_or" {
-            if let hir::ExprPath(_, ref path) = fun.node {
+            if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = fun.node {
                 let path: &str = &path.segments
                                       .last()
                                       .expect("A path must have at least one segment")
@@ -877,7 +877,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
     if_let_chain!{[
         let hir::ExprCall(ref fun, ref args) = new.node,
         args.len() == 1,
-        let hir::ExprPath(None, ref path) = fun.node,
+        let hir::ExprPath(ref path) = fun.node,
         match_path(path, &paths::CSTRING_NEW),
     ], {
         span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
@@ -1188,7 +1188,7 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
         let Some(args) = method_chain_args(chain, &["chars", "next"]),
         let hir::ExprCall(ref fun, ref arg_char) = other.node,
         arg_char.len() == 1,
-        let hir::ExprPath(None, ref path) = fun.node,
+        let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = fun.node,
         path.segments.len() == 1 && &*path.segments[0].name.as_str() == "Some"
     ], {
         let self_ty = walk_ptrs_ty(cx.tcx.tables().expr_ty_adjusted(&args[0][0]));
@@ -1408,7 +1408,7 @@ impl OutType {
 }
 
 fn is_bool(ty: &hir::Ty) -> bool {
-    if let hir::TyPath(None, ref p) = ty.node {
+    if let hir::TyPath(ref p) = ty.node {
         match_path(p, &["bool"])
     } else {
         false

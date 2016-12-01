@@ -66,7 +66,7 @@ impl<'v> Visitor<'v> for UnusedLabelVisitor {
         match expr.node {
             hir::ExprBreak(Some(label), _) |
             hir::ExprAgain(Some(label)) => {
-                self.labels.remove(&label.node.as_str());
+                self.labels.remove(&label.name.as_str());
             }
             hir::ExprLoop(_, Some(label), _) |
             hir::ExprWhile(_, _, Some(label)) => {

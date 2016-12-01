@@ -140,7 +140,7 @@ impl LateLintPass for LintWithoutLintPass {
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
     if let TyRptr(Some(_), MutTy { ty: ref inner, mutbl: MutImmutable }) = ty.node {
-        if let TyPath(None, ref path) = inner.node {
+        if let TyPath(ref path) = inner.node {
             return match_path(path, &paths::LINT);
         }
     }
@@ -149,7 +149,7 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
 
 
 fn is_lint_array_type(ty: &Ty) -> bool {
-    if let TyPath(None, ref path) = ty.node {
+    if let TyPath(ref path) = ty.node {
         match_path(path, &paths::LINT_ARRAY)
     } else {
         false

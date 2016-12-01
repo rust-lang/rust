@@ -239,12 +239,12 @@ impl<'v, 't> RefVisitor<'v, 't> {
         self.lts
     }
 
-    fn collect_anonymous_lifetimes(&mut self, path: &Path, ty: &Ty) {
-        let last_path_segment = path.segments.last().map(|s| &s.parameters);
-        if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
-            if params.lifetimes.is_empty() {
-                if let Some(def) = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def()) {
-                    match def {
+    fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
+        if let QPath::Resolved(_, ref path) = *qpath {
+            let last_path_segment = path.segments.last().map(|s| &s.parameters);
+            if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
+                if params.lifetimes.is_empty() {
+                    match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
                         Def::TyAlias(def_id) |
                         Def::Struct(def_id) => {
                             let generics = self.cx.tcx.item_generics(def_id);
@@ -277,7 +277,7 @@ impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
             TyRptr(None, _) => {
                 self.record(&None);
             }
-            TyPath(_, ref path) => {
+            TyPath(ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
             }
             _ => (),

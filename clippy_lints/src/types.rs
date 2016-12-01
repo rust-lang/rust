@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet,
-            span_help_and_lint, span_lint};
+            span_help_and_lint, span_lint, opt_def_id};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -74,17 +74,19 @@ impl LateLintPass for TypePass {
         if in_macro(cx, ast_ty.span) {
             return;
         }
-        if let Some(did) = cx.tcx.def_map.borrow().get(&ast_ty.id) {
-            if let def::Def::Struct(..) = did.full_def() {
-                if Some(did.full_def().def_id()) == cx.tcx.lang_items.owned_box() {
+        if let TyPath(ref qpath) = ast_ty.node {
+            let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
+            if let Some(def_id) = opt_def_id(def) {
+                if def_id == cx.tcx.lang_items.owned_box().unwrap() {
                     if_let_chain! {[
-                        let TyPath(_, ref path) = ast_ty.node,
+                        let QPath::Resolved(_, ref path) = *qpath,
                         let Some(ref last) = path.segments.last(),
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
                         let Some(ref vec) = ag.types.get(0),
-                        let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
-                        let def::Def::Struct(..) = did.full_def(),
-                        match_def_path(cx, did.full_def().def_id(), &paths::VEC),
+                        let TyPath(ref qpath) = vec.node,
+                        let def::Def::Struct(..) = cx.tcx.tables().qpath_def(qpath, vec.id),
+                        let Some(did) = opt_def_id(cx.tcx.tables().qpath_def(qpath, vec.id)),
+                        match_def_path(cx, did, &paths::VEC),
                     ], {
                         span_help_and_lint(cx,
                                            BOX_VEC,
@@ -92,12 +94,12 @@ impl LateLintPass for TypePass {
                                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                     }}
-                } else if match_def_path(cx, did.full_def().def_id(), &paths::LINKED_LIST) {
+                } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
-                                       LINKEDLIST,
-                                       ast_ty.span,
-                                       "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                                       "a VecDeque might work");
+                                        LINKEDLIST,
+                                        ast_ty.span,
+                                        "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                                        "a VecDeque might work");
                 }
             }
         }

@@ -275,11 +275,14 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}index expr:", ind);
             print_expr(cx, idx, indent + 1);
         },
-        hir::ExprPath(ref sel, ref path) => {
-            println!("{}Path, {}", ind, ty);
-            println!("{}self: {:?}", ind, sel);
+        hir::ExprPath(hir::QPath::Resolved(ref ty, ref path)) => {
+            println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
         },
+        hir::ExprPath(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+            println!("{}Relative Path, {:?}", ind, ty);
+            println!("{}seg: {:?}", ind, seg);
+        }
         hir::ExprAddrOf(ref muta, ref e) => {
             println!("{}AddrOf, {}", ind, ty);
             println!("mutability: {:?}", muta);
@@ -354,7 +357,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("weird extern crate without a crate id");
             }
         }
-        hir::ItemUse(ref path) => println!("{:?}", path.node),
+        hir::ItemUse(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
         hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemFn(..) => {
@@ -383,13 +386,11 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("trait has no default impl");
             }
         },
-        hir::ItemDefaultImpl(_, ref trait_ref) => {
-            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
-            println!("default impl for `{}`", cx.tcx.item_path_str(trait_did));
+        hir::ItemDefaultImpl(_, ref _trait_ref) => {
+            println!("default impl");
         },
-        hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
-            println!("impl of trait `{}`", cx.tcx.item_path_str(trait_did));
+        hir::ItemImpl(_, _, _, Some(ref _trait_ref), _, _) => {
+            println!("trait impl");
         },
         hir::ItemImpl(_, _, _, None, _, _) => {
             println!("impl");
@@ -402,7 +403,7 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
     println!("{}+", ind);
     match pat.node {
         hir::PatKind::Wild => println!("{}Wild", ind),
-        hir::PatKind::Binding(ref mode, ref name, ref inner) => {
+        hir::PatKind::Binding(ref mode, _, ref name, ref inner) => {
             println!("{}Binding", ind);
             println!("{}mode: {:?}", ind, mode);
             println!("{}name: {}", ind, name.node);
@@ -434,10 +435,13 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, field, indent + 1);
             }
         },
-        hir::PatKind::Path(ref sel, ref path) => {
-            println!("{}Path", ind);
-            println!("{}self: {:?}", ind, sel);
+        hir::PatKind::Path(hir::QPath::Resolved(ref ty, ref path)) => {
+            println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
+        },
+        hir::PatKind::Path(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+            println!("{}Relative Path, {:?}", ind, ty);
+            println!("{}seg: {:?}", ind, seg);
         },
         hir::PatKind::Tuple(ref pats, opt_dots_position) => {
             println!("{}Tuple", ind);

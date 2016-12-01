@@ -366,26 +366,28 @@ impl LateLintPass for Pass {
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
-            if let (&PatKind::TupleStruct(ref path, ref pat_args, _),
+            if let (&PatKind::TupleStruct(ref qpath, ref pat_args, _),
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
-                if let Some(lhs_constructor) = path.segments.last() {
-                    if &*method_name.node.as_str() == "next" &&
-                       match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                       &*lhs_constructor.name.as_str() == "Some" &&
-                       !is_refutable(cx, &pat_args[0]) &&
-                       !is_iterator_used_after_while_let(cx, iter_expr) {
-                        let iterator = snippet(cx, method_args[0].span, "_");
-                        let loop_var = snippet(cx, pat_args[0].span, "_");
-                        span_lint_and_then(cx,
-                                           WHILE_LET_ON_ITERATOR,
-                                           expr.span,
-                                           "this loop could be written as a `for` loop",
-                                           |db| {
-                        db.span_suggestion(expr.span,
-                                           "try",
-                                           format!("for {} in {} {{ .. }}", loop_var, iterator));
-                        });
+                if let QPath::Resolved(_, ref path) = *qpath {
+                    if let Some(lhs_constructor) = path.segments.last() {
+                        if &*method_name.node.as_str() == "next" &&
+                           match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                           &*lhs_constructor.name.as_str() == "Some" &&
+                           !is_refutable(cx, &pat_args[0]) &&
+                           !is_iterator_used_after_while_let(cx, iter_expr) {
+                            let iterator = snippet(cx, method_args[0].span, "_");
+                            let loop_var = snippet(cx, pat_args[0].span, "_");
+                            span_lint_and_then(cx,
+                                               WHILE_LET_ON_ITERATOR,
+                                               expr.span,
+                                               "this loop could be written as a `for` loop",
+                                               |db| {
+                            db.span_suggestion(expr.span,
+                                               "try",
+                                               format!("for {} in {} {{ .. }}", loop_var, iterator));
+                            });
+                        }
                     }
                 }
             }
@@ -421,10 +423,10 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let Some(higher::Range { start: Some(start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
-        if let PatKind::Binding(_, ref ident, _) = pat.node {
+        if let PatKind::Binding(_, def_id, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
-                var: cx.tcx.expect_def(pat.id).def_id(),
+                var: def_id,
                 indexed: HashMap::new(),
                 nonindex: false,
             };
@@ -510,7 +512,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
         let ExprMethodCall(method, _, ref len_args) = expr.node,
         len_args.len() == 1,
         &*method.node.as_str() == "len",
-        let ExprPath(_, ref path) = len_args[0].node,
+        let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node,
         path.segments.len() == 1,
         &path.segments[0].name == var
     ], {
@@ -732,7 +734,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(_, ident, None) if ident.node.as_str().starts_with('_') => {
+        PatKind::Binding(_, _, ident, None) if ident.node.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
@@ -751,7 +753,7 @@ struct UsedVisitor {
 
 impl<'a> Visitor<'a> for UsedVisitor {
     fn visit_expr(&mut self, expr: &Expr) {
-        if let ExprPath(None, ref path) = expr.node {
+        if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
             if path.segments.len() == 1 && path.segments[0].name == self.var {
                 self.used = true;
                 return;
@@ -771,20 +773,21 @@ struct VarVisitor<'v, 't: 'v> {
 
 impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
     fn visit_expr(&mut self, expr: &'v Expr) {
-        if let ExprPath(None, ref path) = expr.node {
-            if path.segments.len() == 1 && self.cx.tcx.expect_def(expr.id).def_id() == self.var {
-                // we are referencing our variable! now check if it's as an index
-                if_let_chain! {[
-                    let Some(parexpr) = get_parent_expr(self.cx, expr),
-                    let ExprIndex(ref seqexpr, _) = parexpr.node,
-                    let ExprPath(None, ref seqvar) = seqexpr.node,
-                    seqvar.segments.len() == 1
-                ], {
-                    let def_map = self.cx.tcx.def_map.borrow();
-                    if let Some(def) = def_map.get(&seqexpr.id) {
-                        match def.base_def {
+        if let ExprPath(ref qpath) = expr.node {
+            if let QPath::Resolved(None, ref path) = *qpath {
+                if path.segments.len() == 1 && self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id() == self.var {
+                    // we are referencing our variable! now check if it's as an index
+                    if_let_chain! {[
+                        let Some(parexpr) = get_parent_expr(self.cx, expr),
+                        let ExprIndex(ref seqexpr, _) = parexpr.node,
+                        let ExprPath(ref seqpath) = seqexpr.node,
+                        let QPath::Resolved(None, ref seqvar) = *seqpath,
+                        seqvar.segments.len() == 1
+                    ], {
+                        let def = self.cx.tcx.tables().qpath_def(seqpath, seqexpr.id);
+                        match def {
                             Def::Local(..) | Def::Upvar(..) => {
-                                let def_id = def.base_def.def_id();
+                                let def_id = def.def_id();
                                 let node_id = self.cx.tcx.map.as_local_node_id(def_id).unwrap();
 
                                 let extent = self.cx.tcx.region_maps.var_scope(node_id);
@@ -797,11 +800,11 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                             }
                             _ => (),
                         }
-                    }
-                }}
-                // we are not indexing anything, record that
-                self.nonindex = true;
-                return;
+                    }}
+                    // we are not indexing anything, record that
+                    self.nonindex = true;
+                    return;
+                }
             }
         }
         walk_expr(self, expr);
@@ -1002,7 +1005,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         // Look for declarations of the variable
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
-                if let PatKind::Binding(_, ref ident, _) = local.pat.node {
+                if let PatKind::Binding(_, _, ref ident, _) = local.pat.node {
                     self.name = Some(ident.node);
 
                     self.state = if let Some(ref init) = local.init {
@@ -1071,8 +1074,9 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
 }
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
-    if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
-        if let Def::Local(def_id) = path_res.base_def {
+    if let ExprPath(ref qpath) = expr.node {
+        let path_res = cx.tcx.tables().qpath_def(qpath, expr.id);
+        if let Def::Local(def_id) = path_res {
             let node_id = cx.tcx.map.as_local_node_id(def_id).expect("That DefId should be valid");
             return Some(node_id);
         }

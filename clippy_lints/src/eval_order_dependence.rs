@@ -61,16 +61,18 @@ impl LateLintPass for EvalOrderDependence {
         // Find a write to a local variable.
         match expr.node {
             ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => {
-                if let ExprPath(None, ref path) = lhs.node {
-                    if path.segments.len() == 1 {
-                        let var = cx.tcx.expect_def(lhs.id).def_id();
-                        let mut visitor = ReadVisitor {
-                            cx: cx,
-                            var: var,
-                            write_expr: expr,
-                            last_expr: expr,
-                        };
-                        check_for_unsequenced_reads(&mut visitor);
+                if let ExprPath(ref qpath) = lhs.node {
+                    if let QPath::Resolved(_, ref path) = *qpath {
+                        if path.segments.len() == 1 {
+                            let var = cx.tcx.tables().qpath_def(qpath, lhs.id).def_id();
+                            let mut visitor = ReadVisitor {
+                                cx: cx,
+                                var: var,
+                                write_expr: expr,
+                                last_expr: expr,
+                            };
+                            check_for_unsequenced_reads(&mut visitor);
+                        }
                     }
                 }
             }
@@ -293,19 +295,21 @@ impl<'v, 't> Visitor<'v> for ReadVisitor<'v, 't> {
         }
 
         match expr.node {
-            ExprPath(None, ref path) => {
-                if path.segments.len() == 1 && self.cx.tcx.expect_def(expr.id).def_id() == self.var {
-                    if is_in_assignment_position(self.cx, expr) {
-                        // This is a write, not a read.
-                    } else {
-                        span_note_and_lint(
-                            self.cx,
-                            EVAL_ORDER_DEPENDENCE,
-                            expr.span,
-                            "unsequenced read of a variable",
-                            self.write_expr.span,
-                            "whether read occurs before this write depends on evaluation order"
-                        );
+            ExprPath(ref qpath) => {
+                if let QPath::Resolved(None, ref path) = *qpath {
+                    if path.segments.len() == 1 && self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id() == self.var {
+                        if is_in_assignment_position(self.cx, expr) {
+                            // This is a write, not a read.
+                        } else {
+                            span_note_and_lint(
+                                self.cx,
+                                EVAL_ORDER_DEPENDENCE,
+                                expr.span,
+                                "unsequenced read of a variable",
+                                self.write_expr.span,
+                                "whether read occurs before this write depends on evaluation order"
+                            );
+                        }
                     }
                 }
             }

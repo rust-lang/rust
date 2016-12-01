@@ -57,7 +57,7 @@ impl LateLintPass for NeedlessBorrow {
         if in_macro(cx, pat.span) {
             return;
         }
-        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _) = pat.node {
+        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node {
             if let ty::TyRef(_, ref tam) = cx.tcx.tables().pat_ty(pat).sty {
                 if tam.mutbl == MutImmutable {
                     if let ty::TyRef(..) = tam.ty.sty {

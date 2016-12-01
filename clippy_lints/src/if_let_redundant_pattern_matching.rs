@@ -63,7 +63,7 @@ impl LateLintPass for Pass {
                         }
                     }
 
-                    PatKind::Path(_, ref path) if match_path(path, &paths::OPTION_NONE) => {
+                    PatKind::Path(ref path) if match_path(path, &paths::OPTION_NONE) => {
                         "is_none()"
                     }
 

@@ -40,7 +40,7 @@ impl LateLintPass for Pass {
         if_let_chain! {[
             let ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) = item.node,
             !is_automatically_derived(&*item.attrs),
-            cx.tcx.expect_def(trait_ref.ref_id).def_id() == cx.tcx.lang_items.eq_trait().unwrap(),
+            trait_ref.path.def.def_id() == cx.tcx.lang_items.eq_trait().unwrap(),
         ], {
             for impl_item in impl_items {
                 if &*impl_item.name.as_str() == "ne" {

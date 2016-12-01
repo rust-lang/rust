@@ -1,8 +1,8 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, FnKind};
+use rustc::ty;
 use std::ops::Deref;
 use syntax::codemap::Span;
 use utils::{higher, in_external_macro, snippet, span_lint_and_then};
@@ -92,7 +92,7 @@ impl LateLintPass for Pass {
 fn check_fn(cx: &LateContext, decl: &FnDecl, expr: &Expr) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
-        if let PatKind::Binding(_, ident, _) = arg.pat.node {
+        if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
             bindings.push((ident.node, ident.span))
         }
     }
@@ -135,10 +135,10 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     }
 }
 
-fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
-    match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-        Some(Def::Variant(..)) |
-        Some(Def::Struct(..)) => false,
+fn is_binding(cx: &LateContext, pat_id: NodeId) -> bool {
+    let var_ty = cx.tcx.tables().node_id_to_type(pat_id);
+    match var_ty.sty {
+        ty::TyAdt(..) => false,
         _ => true,
     }
 }
@@ -146,9 +146,9 @@ fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
 fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bindings: &mut Vec<(Name, Span)>) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatKind::Binding(_, ref ident, ref inner) => {
+        PatKind::Binding(_, _, ref ident, ref inner) => {
             let name = ident.node;
-            if is_binding(cx, pat) {
+            if is_binding(cx, pat.id) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
                     if tup.0 == name {
@@ -344,7 +344,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
         }
         ExprUnary(op, ref inner) => (UnDeref == op) && is_self_shadow(name, inner),
-        ExprPath(_, ref path) => path_eq_name(name, path),
+        ExprPath(QPath::Resolved(_, ref path)) => path_eq_name(name, path),
         _ => false,
     }
 }

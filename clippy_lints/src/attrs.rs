@@ -105,7 +105,7 @@ impl LateLintPass for AttrPass {
         }
         match item.node {
             ItemExternCrate(_) |
-            ItemUse(_) => {
+            ItemUse(_, _) => {
                 for attr in &item.attrs {
                     if let MetaItemKind::List(ref lint_list) = attr.value.node {
                         match &*attr.name().as_str() {
@@ -113,7 +113,7 @@ impl LateLintPass for AttrPass {
                                 // whitelist `unused_imports`
                                 for lint in lint_list {
                                     if is_word(lint, "unused_imports") {
-                                        if let ItemUse(_) = item.node {
+                                        if let ItemUse(_, _) = item.node {
                                             return;
                                         }
                                     }
@@ -193,8 +193,8 @@ fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
         ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
         ExprRet(None) | ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
-            if let ExprPath(..) = path_expr.node {
-                let fun_id = resolve_node(cx, path_expr.id).expect("function should be resolved").def_id();
+            if let ExprPath(ref qpath) = path_expr.node {
+                let fun_id = resolve_node(cx, qpath, path_expr.id).def_id();
                 !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
             } else {
                 true

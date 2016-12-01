@@ -46,7 +46,7 @@ impl LateLintPass for Pass {
             let ExprMatch(ref op, ref body, ref source) = expr.node, //test if expr is a match
             let MatchSource::IfLetDesugar { .. } = *source, //test if it is an If Let
             let ExprMethodCall(_, _, ref result_types) = op.node, //check is expr.ok() has type Result<T,E>.ok()
-            let PatKind::TupleStruct(ref x, ref y, _)  = body[0].pats[0].node, //get operation
+            let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pats[0].node, //get operation
             method_chain_args(op, &["ok"]).is_some() //test to see if using ok() methoduse std::marker::Sized;
 
         ], {

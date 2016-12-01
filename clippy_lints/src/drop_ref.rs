@@ -38,8 +38,8 @@ impl LintPass for Pass {
 impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprCall(ref path, ref args) = expr.node {
-            if let ExprPath(None, _) = path.node {
-                let def_id = cx.tcx.expect_def(path.id).def_id();
+            if let ExprPath(ref qpath) = path.node {
+                let def_id = cx.tcx.tables().qpath_def(qpath, path.id).def_id();
                 if match_def_path(cx, def_id, &paths::DROP) {
                     if args.len() != 1 {
                         return;
