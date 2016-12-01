@@ -484,13 +484,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if sess.opts.debugging_opts.parse_only ||
            sess.opts.debugging_opts.show_span.is_some() ||
-           sess.opts.debugging_opts.ast_noexpand ||
            sess.opts.debugging_opts.ast_json_noexpand {
             control.after_parse.stop = Compilation::Stop;
         }
 
         if sess.opts.debugging_opts.no_analysis ||
-           sess.opts.debugging_opts.ast ||
            sess.opts.debugging_opts.ast_json {
             control.after_hir_lowering.stop = Compilation::Stop;
         }
