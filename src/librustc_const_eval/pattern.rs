@@ -408,7 +408,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                                        pattern: self.lower_pattern(field),
                                    })
                                    .collect();
-                self.lower_variant_or_leaf(def, subpatterns)
+                self.lower_variant_or_leaf(def, ty, subpatterns)
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
@@ -441,7 +441,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, subpatterns)
+                self.lower_variant_or_leaf(def, ty, subpatterns)
             }
         };
 
@@ -531,15 +531,15 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
     fn lower_variant_or_leaf(
         &mut self,
         def: Def,
+        ty: Ty<'tcx>,
         subpatterns: Vec<FieldPattern<'tcx>>)
         -> PatternKind<'tcx>
     {
         match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
-                let ty = self.tcx.tables().node_id_to_type(pat.id);
                 let (adt_def, substs) = match ty.sty {
                     TypeVariants::TyAdt(adt_def, substs) => (adt_def, substs),
-                    _ => span_bug!(pat.span, "inappropriate type for def"),
+                    _ => bug!("inappropriate type for def"),
                 };
                 if adt_def.variants.len() > 1 {
                     PatternKind::Variant {
@@ -584,7 +584,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            _ => self.lower_variant_or_leaf(def, vec![])
+            _ => self.lower_variant_or_leaf(def, ty, vec![])
         };
 
         Pattern {
