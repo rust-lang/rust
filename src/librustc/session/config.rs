@@ -1240,8 +1240,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                            valid types are any of the types for `--pretty`, as well as:
                            `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
                            `everybody_loops` (all function bodies replaced with `loop {}`),
-                           `hir` (the HIR), `hir,identified`, or
-                           `hir,typed` (HIR with types for each node).",
+                           `hir` (the HIR), `hir,identified`,
+                           `hir,typed` (HIR with types for each node), or
+                           `ast` (pretty-printed internal AST).",
                           "TYPE"),
 
         // new options here should **not** use the `_ubnr` functions, all new
@@ -2407,10 +2408,6 @@ mod tests {
         opts.debugging_opts.print_link_args = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.print_llvm_passes = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.ast = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.ast_noexpand = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.ast_json = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

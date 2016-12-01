@@ -81,6 +81,7 @@ pub enum PpMode {
     PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
     PpmMirCFG,
+    PpmAST,
 }
 
 impl PpMode {
@@ -89,6 +90,8 @@ impl PpMode {
             PpmSource(PpmNormal) |
             PpmSource(PpmEveryBodyLoops) |
             PpmSource(PpmIdentified) => opt_uii.is_some(),
+
+            PpmAST => false,
 
             PpmSource(PpmExpanded) |
             PpmSource(PpmExpandedIdentified) |
@@ -130,6 +133,7 @@ pub fn parse_pretty(sess: &Session,
         ("mir-cfg", true) => PpmMirCFG,
         ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
         ("flowgraph,unlabelled", true) => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
+        ("ast", true) => PpmAST,
         _ => {
             if extended {
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
@@ -831,24 +835,26 @@ pub fn print_after_parsing(sess: &Session,
     let mut rdr = &*src;
     let mut out = Vec::new();
 
-    if let PpmSource(s) = ppm {
-        // Silently ignores an identified node.
-        let out: &mut Write = &mut out;
-        s.call_with_pp_support(sess, None, box out, |annotation, out| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                pprust::print_crate(sess.codemap(),
-                                    &sess.parse_sess,
-                                    krate,
-                                    src_name.to_string(),
-                                    &mut rdr,
-                                    out,
-                                    annotation.pp_ann(),
-                                    false)
-            })
-            .unwrap()
-    } else {
-        unreachable!();
+    match ppm {
+        PpmSource(s) => {
+            // Silently ignores an identified node.
+            let out: &mut Write = &mut out;
+            s.call_with_pp_support(sess, None, box out, |annotation, out| {
+                    debug!("pretty printing source code {:?}", s);
+                    let sess = annotation.sess();
+                    pprust::print_crate(sess.codemap(),
+                                        &sess.parse_sess,
+                                        krate,
+                                        src_name.to_string(),
+                                        &mut rdr,
+                                        out,
+                                        annotation.pp_ann(),
+                                        false)
+                })
+                .unwrap()
+        }
+        PpmAST => write!(out, "{:#?}", krate).unwrap(),
+        _ => unreachable!(),
     };
 
     write_output(out, ofile);
