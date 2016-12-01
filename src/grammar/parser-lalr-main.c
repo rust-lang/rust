@@ -73,7 +73,7 @@ int n_nodes;
 struct node *mk_node(char const *name, int n, ...) {
   va_list ap;
   int i = 0;
-  unsigned sz = sizeof(struct node) + (n * sizeof(struct node *));
+  unsigned int sz = sizeof(struct node) + (n * sizeof(struct node *));
   struct node *nn, *nd = (struct node *)malloc(sz);
 
   print("# New %d-ary node: %s = %p\n", n, name, nd);
@@ -114,7 +114,7 @@ struct node *mk_none() {
 struct node *ext_node(struct node *nd, int n, ...) {
   va_list ap;
   int i = 0, c = nd->n_elems + n;
-  unsigned sz = sizeof(struct node) + (c * sizeof(struct node *));
+  unsigned int sz = sizeof(struct node) + (c * sizeof(struct node *));
   struct node *nn;
 
   print("# Extending %d-ary node by %d nodes: %s = %p",
