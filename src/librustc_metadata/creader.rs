@@ -22,7 +22,7 @@ use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashSet;
 use rustc::middle::cstore::NativeLibrary;
 use rustc::hir::map::Definitions;
 
@@ -52,7 +52,6 @@ pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
-    foreign_item_map: FxHashMap<String, Vec<DefIndex>>,
     local_crate_name: Symbol,
 }
 
@@ -148,7 +147,6 @@ impl<'a> CrateLoader<'a> {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
-            foreign_item_map: FxHashMap(),
             local_crate_name: Symbol::intern(local_crate_name),
         }
     }
@@ -649,14 +647,6 @@ impl<'a> CrateLoader<'a> {
                 items.extend(&lib.foreign_items);
             }
         }
-        for (foreign_lib, list) in self.foreign_item_map.iter() {
-            let kind_matches = libs.borrow().iter().any(|lib| {
-                lib.name == &**foreign_lib && lib.kind == kind
-            });
-            if kind_matches {
-                items.extend(list)
-            }
-        }
         items
     }
 
@@ -942,17 +932,6 @@ impl<'a> CrateLoader<'a> {
                 foreign_items: foreign_items,
             };
             register_native_lib(self.sess, self.cstore, Some(m.span), lib);
-        }
-
-        // Finally, process the #[linked_from = "..."] attribute
-        for m in i.attrs.iter().filter(|a| a.check_name("linked_from")) {
-            let lib_name = match m.value_str() {
-                Some(name) => name,
-                None => continue,
-            };
-            let list = self.foreign_item_map.entry(lib_name.to_string())
-                                                    .or_insert(Vec::new());
-            list.extend(fm.items.iter().map(|it| definitions.opt_def_index(it.id).unwrap()));
         }
     }
 }
