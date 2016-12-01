@@ -126,11 +126,8 @@ impl Command {
     pub fn stderr(&mut self, stderr: Stdio) {
         self.stderr = Some(stderr);
     }
-    pub fn set_creation_flags(&mut self, flags: u32) {
+    pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
-    }
-    pub fn add_creation_flags(&mut self, flags: u32) {
-        self.flags = self.flags | flags;
     }
 
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
