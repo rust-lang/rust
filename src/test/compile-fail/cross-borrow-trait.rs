@@ -22,5 +22,4 @@ pub fn main() {
                         //~| expected type `&Trait`
                         //~| found type `Box<Trait>`
                         //~| expected &Trait, found box
-                        //~^^^^ ERROR E0277
 }

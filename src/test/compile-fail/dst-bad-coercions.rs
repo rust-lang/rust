@@ -23,13 +23,11 @@ pub fn main() {
     let x: *const S = &S;
     let y: &S = x; //~ ERROR mismatched types
     let y: &T = x; //~ ERROR mismatched types
-                   //~^ ERROR E0277
 
     // Test that we cannot convert from *-ptr to &S and &T (mut version)
     let x: *mut S = &mut S;
     let y: &S = x; //~ ERROR mismatched types
     let y: &T = x; //~ ERROR mismatched types
-                   //~^ ERROR E0277
 
     // Test that we cannot convert an immutable ptr to a mutable one using *-ptrs
     let x: &mut T = &S; //~ ERROR mismatched types
