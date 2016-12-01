@@ -1180,7 +1180,8 @@ mod tests {
 
         extern "system" {
             fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: DWORD) -> BOOL;
-            fn ContinueDebugEvent(dwProcessId: DWORD, dwThreadId: DWORD, dwContinueStatus: DWORD) -> BOOL;
+            fn ContinueDebugEvent(dwProcessId: DWORD, dwThreadId: DWORD,
+                                  dwContinueStatus: DWORD) -> BOOL;
         }
 
         const DEBUG_PROCESS: DWORD = 1;
@@ -1188,7 +1189,7 @@ mod tests {
         const DBG_EXCEPTION_NOT_HANDLED: DWORD = 0x80010001;
 
         let mut child = Command::new("cmd")
-            .add_creation_flags(DEBUG_PROCESS)
+            .creation_flags(DEBUG_PROCESS)
             .stdin(Stdio::piped()).spawn().unwrap();
         child.stdin.take().unwrap().write_all(b"exit\r\n").unwrap();
         let mut events = 0;

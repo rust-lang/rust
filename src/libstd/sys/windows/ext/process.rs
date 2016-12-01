@@ -106,23 +106,13 @@ pub trait CommandExt {
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
     /// [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
     #[unstable(feature = "windows_process_extensions", issue = "37827")]
-    fn set_creation_flags(&mut self, flags: u32) -> &mut process::Command;
-    /// Add `flags` to the the [process creation flags][1] to be passed to `CreateProcess`.
-    ///
-    /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
-    /// [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
-    #[unstable(feature = "windows_process_extensions", issue = "37827")]
-    fn add_creation_flags(&mut self, flags: u32) -> &mut process::Command;
+    fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 }
 
 #[unstable(feature = "windows_process_extensions", issue = "37827")]
 impl CommandExt for process::Command {
-    fn set_creation_flags(&mut self, flags: u32) -> &mut process::Command {
-        self.as_inner_mut().set_creation_flags(flags);
-        self
-    }
-    fn add_creation_flags(&mut self, flags: u32) -> &mut process::Command {
-        self.as_inner_mut().add_creation_flags(flags);
+    fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
+        self.as_inner_mut().creation_flags(flags);
         self
     }
 }
