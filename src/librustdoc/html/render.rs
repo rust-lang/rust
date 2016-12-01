@@ -40,7 +40,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::error;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Formatter, Write as FmtWrite};
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
@@ -718,10 +718,13 @@ fn write_shared(cx: &Context,
 
     // Update the search index
     let dst = cx.dst.join("search-index.js");
-    let all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let mut all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    all_indexes.push(search_index);
+    // Sort the indexes by crate so the file will be generated identically even
+    // with rustdoc running in parallel.
+    all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
     try_err!(writeln!(&mut w, "var searchIndex = {{}};"), &dst);
-    try_err!(writeln!(&mut w, "{}", search_index), &dst);
     for index in &all_indexes {
         try_err!(writeln!(&mut w, "{}", *index), &dst);
     }
@@ -729,7 +732,6 @@ fn write_shared(cx: &Context,
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
-    try_err!(mkdir(&dst), &dst);
     for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
@@ -746,37 +748,37 @@ fn write_shared(cx: &Context,
             }
         };
 
-        let mut mydst = dst.clone();
-        for part in &remote_path[..remote_path.len() - 1] {
-            mydst.push(part);
-            try_err!(mkdir(&mydst), &mydst);
-        }
-        mydst.push(&format!("{}.{}.js",
-                            remote_item_type.css_class(),
-                            remote_path[remote_path.len() - 1]));
-        let all_implementors = try_err!(collect(&mydst, &krate.name,
-                                                "implementors"),
-                                        &mydst);
-
-        try_err!(mkdir(mydst.parent().unwrap()),
-                 &mydst.parent().unwrap().to_path_buf());
-        let mut f = BufWriter::new(try_err!(File::create(&mydst), &mydst));
-        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
-
-        for implementor in &all_implementors {
-            try_err!(write!(&mut f, "{}", *implementor), &mydst);
-        }
-
-        try_err!(write!(&mut f, r#"implementors["{}"] = ["#, krate.name), &mydst);
+        let mut implementors = format!(r#"implementors["{}"] = ["#, krate.name);
         for imp in imps {
             // If the trait and implementation are in the same crate, then
             // there's no need to emit information about it (there's inlining
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try_err!(write!(&mut f, r#""{}","#, imp.impl_), &mydst);
+            write!(implementors, r#""{}","#, imp.impl_).unwrap();
         }
-        try_err!(writeln!(&mut f, r"];"), &mydst);
+        implementors.push_str("];");
+
+        let mut mydst = dst.clone();
+        for part in &remote_path[..remote_path.len() - 1] {
+            mydst.push(part);
+        }
+        try_err!(fs::create_dir_all(&mydst), &mydst);
+        mydst.push(&format!("{}.{}.js",
+                            remote_item_type.css_class(),
+                            remote_path[remote_path.len() - 1]));
+
+        let mut all_implementors = try_err!(collect(&mydst, &krate.name, "implementors"), &mydst);
+        all_implementors.push(implementors);
+        // Sort the implementors by crate so the file will be generated
+        // identically even with rustdoc running in parallel.
+        all_implementors.sort();
+
+        let mut f = try_err!(File::create(&mydst), &mydst);
+        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
+        for implementor in &all_implementors {
+            try_err!(writeln!(&mut f, "{}", *implementor), &mydst);
+        }
         try_err!(writeln!(&mut f, "{}", r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
