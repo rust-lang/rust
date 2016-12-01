@@ -253,11 +253,14 @@ impl<'a> Linker for GnuLinker<'a> {
         let mut arg = OsString::new();
         let path = tmpdir.join("list");
 
+        debug!("EXPORTED SYMBOLS:");
+
         if self.sess.target.target.options.is_like_osx {
             // Write a plain, newline-separated list of symbols
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 for sym in self.info.exports[&crate_type].iter() {
+                    debug!("  _{}", sym);
                     writeln!(f, "_{}", sym)?;
                 }
                 Ok(())
@@ -271,6 +274,7 @@ impl<'a> Linker for GnuLinker<'a> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{\n  global:")?;
                 for sym in self.info.exports[&crate_type].iter() {
+                    debug!("    {};", sym);
                     writeln!(f, "    {};", sym)?;
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
