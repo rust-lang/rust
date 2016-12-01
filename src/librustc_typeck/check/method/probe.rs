@@ -16,7 +16,6 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
-use rustc::infer::InferOk;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
@@ -162,7 +161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  return_type: Ty<'tcx>,
                                  self_ty: Ty<'tcx>,
                                  scope_expr_id: ast::NodeId)
-                                 -> Vec<ty::ImplOrTraitItem<'tcx>> {
+                                 -> Vec<ty::AssociatedItem> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
@@ -643,13 +642,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    pub fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
+    pub fn matches_return_type(&self, method: &ty::AssociatedItem,
                                expected: ty::Ty<'tcx>) -> bool {
-        match *method {
-            ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
+        match method.def() {
+            Def::Method(def_id) => {
+                let fty = self.tcx.item_type(def_id).fn_sig();
                 self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id());
-                    let output = x.fty.sig.output().subst(self.tcx, substs);
+                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                    let output = fty.output().subst(self.tcx, substs);
                     let (output, _) = self.replace_late_bound_regions_with_fresh_var(
                         self.span, infer::FnCall, &output);
                     self.can_sub_types(output, expected).is_ok()
@@ -906,12 +906,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn candidate_method_names(&self) -> Vec<ast::Name> {
-        let mut set = FnvHashSet();
+        let mut set = FxHashSet();
         let mut names: Vec<_> =
             self.inherent_candidates
                 .iter()
                 .chain(&self.extension_candidates)
-                .map(|candidate| candidate.item.name())
+                .map(|candidate| candidate.item.name)
                 .filter(|&name| set.insert(name))
                 .collect();
 
@@ -1353,19 +1353,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     /// Find item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
     fn associated_item(&self, def_id: DefId) -> Option<ty::AssociatedItem> {
-        self.fcx.associated_item(def_id, self.item_name)
+        match self.looking_for {
+            LookingFor::MethodName(item_name) => self.fcx.associated_item(def_id, item_name),
+            _ => None,
+        }
     }
 
-    fn impl_or_trait_item(&self, def_id: DefId) -> Option<ty::ImplOrTraitItem<'tcx>> {
+    fn impl_or_trait_item(&self, def_id: DefId) -> Option<ty::AssociatedItem> {
         match self.looking_for {
             LookingFor::MethodName(name) => {
-                self.fcx.impl_or_trait_item(def_id, name)
+                self.fcx.associated_item(def_id, name)
             }
             LookingFor::ReturnType(return_ty) => {
                 self.tcx
-                    .impl_or_trait_items(def_id)
-                    .iter()
-                    .map(|&did| self.tcx.impl_or_trait_item(did))
+                    .associated_items(def_id)
+                    .map(|did| self.tcx.associated_item(did.def_id))
                     .find(|m| self.matches_return_type(m, return_ty))
             }
         }

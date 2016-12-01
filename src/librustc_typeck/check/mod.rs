@@ -3697,7 +3697,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 match result {
                     Ok(ty) => ctxt.unified = ty,
                     Err(err) => {
-                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err);
+                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err).emit();
                     }
                 }
 
