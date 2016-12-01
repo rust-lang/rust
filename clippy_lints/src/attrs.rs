@@ -110,9 +110,9 @@ impl LateLintPass for AttrPass {
                     if let MetaItemKind::List(ref lint_list) = attr.value.node {
                         match &*attr.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports`
+                                // whitelist `unused_imports` and `deprecated`
                                 for lint in lint_list {
-                                    if is_word(lint, "unused_imports") {
+                                    if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
                                         if let ItemUse(_) = item.node {
                                             return;
                                         }
