@@ -203,15 +203,15 @@ impl Command {
         &self.argv
     }
 
-    #[cfg(not(target_os="fuchsia"))]
+    #[allow(dead_code)]
     pub fn get_cwd(&self) -> &Option<CString> {
         &self.cwd
     }
-    #[cfg(not(target_os="fuchsia"))]
+    #[allow(dead_code)]
     pub fn get_uid(&self) -> Option<uid_t> {
         self.uid
     }
-    #[cfg(not(target_os="fuchsia"))]
+    #[allow(dead_code)]
     pub fn get_gid(&self) -> Option<gid_t> {
         self.gid
     }

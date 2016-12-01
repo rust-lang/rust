@@ -18,3 +18,5 @@ mod process_inner;
 #[cfg(target_os = "fuchsia")]
 #[path = "process_fuchsia.rs"]
 mod process_inner;
+#[cfg(target_os = "fuchsia")]
+mod magenta;
