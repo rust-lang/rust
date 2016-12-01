@@ -253,6 +253,14 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     ///
+    /// If `program` is not an absolute path, the `PATH` will be searched in
+    /// an OS-defined way.
+    ///
+    /// The search path to be used may be controlled by setting the
+    /// `PATH` environment variable on the Command,
+    /// but this has some implementation limitations on Windows
+    /// (see https://github.com/rust-lang/rust/issues/37519).
+    ///
     /// # Examples
     ///
     /// Basic usage:
