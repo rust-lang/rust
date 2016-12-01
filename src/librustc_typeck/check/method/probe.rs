@@ -468,7 +468,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let item = match self.associated_item(impl_def_id) {
+        let item = match self.impl_or_trait_item(impl_def_id) {
             Some(m) => m,
             None => {
                 return;
@@ -598,7 +598,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let item = match self.associated_item(bound_trait_ref.def_id()) {
+            let item = match self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 Some(v) => v,
                 None => {
                     continue;
@@ -1350,15 +1350,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    /// Find item with name `item_name` defined in impl/trait `def_id`
-    /// and return it, or `None`, if no such item was defined there.
-    fn associated_item(&self, def_id: DefId) -> Option<ty::AssociatedItem> {
-        match self.looking_for {
-            LookingFor::MethodName(item_name) => self.fcx.associated_item(def_id, item_name),
-            _ => None,
-        }
-    }
-
+    /// Find the method with the appropriate name (or return type, as the case may be).
     fn impl_or_trait_item(&self, def_id: DefId) -> Option<ty::AssociatedItem> {
         match self.looking_for {
             LookingFor::MethodName(name) => {
