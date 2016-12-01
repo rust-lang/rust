@@ -275,7 +275,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             if expansions.len() < depth {
                 expansions.push(Vec::new());
             }
-            expansions[depth - 1].push((mark.as_u32(), expansion));
+            expansions[depth - 1].push((mark, expansion));
             if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
@@ -286,7 +286,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
-                placeholder_expander.add(ast::NodeId::from_u32(mark), expansion);
+                placeholder_expander.add(mark.as_placeholder_id(), expansion);
             }
         }
 
@@ -586,7 +586,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 ..self.cx.current_expansion.clone()
             },
         });
-        placeholder(expansion_kind, ast::NodeId::from_u32(mark.as_u32()))
+        placeholder(expansion_kind, mark.as_placeholder_id())
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {
@@ -748,7 +748,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 item.and_then(|mut item| match item.node {
                     ItemKind::Mac(_) if is_macro_def => {
-                        item.id = ast::NodeId::from_u32(Mark::fresh().as_u32());
+                        item.id = Mark::fresh().as_placeholder_id();
                         SmallVector::one(P(item))
                     }
                     ItemKind::Mac(mac) => {

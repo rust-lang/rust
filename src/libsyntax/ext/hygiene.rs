@@ -51,7 +51,11 @@ impl Mark {
         Mark(id.as_u32())
     }
 
-    pub fn as_u32(&self) -> u32 {
+    pub fn as_placeholder_id(self) -> NodeId {
+        NodeId::from_u32(self.0)
+    }
+
+    pub fn as_u32(self) -> u32 {
         self.0
     }
 }
