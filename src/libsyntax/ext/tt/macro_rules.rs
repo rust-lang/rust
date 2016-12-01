@@ -10,10 +10,9 @@
 
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
-use ext::base::{DummyResult, ExtCtxt, MacEager, MacResult, SyntaxExtension};
-use ext::base::{IdentMacroExpander, NormalTT, TTMacroExpander};
+use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
+use ext::base::{NormalTT, TTMacroExpander};
 use ext::expand::{Expansion, ExpansionKind};
-use ext::placeholders;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
@@ -149,35 +148,6 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
     cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
-}
-
-pub struct MacroRulesExpander;
-impl IdentMacroExpander for MacroRulesExpander {
-    fn expand(&self,
-              cx: &mut ExtCtxt,
-              span: Span,
-              ident: ast::Ident,
-              tts: Vec<tokenstream::TokenTree>,
-              attrs: Vec<ast::Attribute>)
-              -> Box<MacResult> {
-        let def = ast::MacroDef {
-            ident: ident,
-            id: ast::DUMMY_NODE_ID,
-            span: span,
-            body: tts,
-            attrs: attrs,
-        };
-
-        // If keep_macs is true, expands to a MacEager::items instead.
-        let result = if cx.ecfg.keep_macs {
-            MacEager::items(placeholders::reconstructed_macro_rules(&def).make_items())
-        } else {
-            MacEager::items(placeholders::macro_scope_placeholder().make_items())
-        };
-
-        cx.resolver.add_macro(cx.current_expansion.mark, def);
-        result
-    }
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
