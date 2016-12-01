@@ -69,6 +69,7 @@ fn main() {
         .read_dir()
         .unwrap()
         .map(|e| e.unwrap())
+        .filter(|e| &*e.file_name() != ".git")
         .collect::<Vec<_>>();
     while let Some(entry) = stack.pop() {
         let path = entry.path();
