@@ -359,25 +359,6 @@ impl<'tcx> Witness<'tcx> {
     }
 }
 
-/// Return the set of constructors from the same type as the first column of `matrix`,
-/// that are matched only by wildcard patterns from that first column.
-///
-/// Therefore, if there is some pattern that is unmatched by `matrix`, it will
-/// still be unmatched if the first constructor is replaced by any of the constructors
-/// in the return value.
-fn missing_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                      matrix: &Matrix,
-                                      pcx: PatternContext<'tcx>) -> Vec<Constructor> {
-    let used_constructors: Vec<Constructor> =
-        matrix.0.iter()
-        .flat_map(|row| pat_constructors(cx, row[0], pcx).unwrap_or(vec![]))
-        .collect();
-    debug!("used_constructors = {:?}", used_constructors);
-    all_constructors(cx, pcx).into_iter()
-        .filter(|c| !used_constructors.contains(c))
-        .collect()
-}
-
 /// This determines the set of all possible constructors of a pattern matching
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
 ///
@@ -586,10 +567,28 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
-        let constructors = missing_constructors(cx, matrix, pcx);
-        debug!("is_useful - missing_constructors = {:?}", constructors);
-        if constructors.is_empty() {
-            all_constructors(cx, pcx).into_iter().map(|c| {
+
+        let used_ctors: Vec<Constructor> = rows.iter().flat_map(|row| {
+            pat_constructors(cx, row[0], pcx).unwrap_or(vec![])
+        }).collect();
+        debug!("used_ctors = {:?}", used_ctors);
+        let all_ctors = all_constructors(cx, pcx);
+        debug!("all_ctors = {:?}", all_ctors);
+        let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
+            !used_ctors.contains(*c)
+        }).cloned().collect();
+        debug!("missing_ctors = {:?}", missing_ctors);
+
+        // `missing_ctors` is the set of constructors from the same type as the
+        // first column of `matrix` that are matched only by wildcard patterns
+        // from the first column.
+        //
+        // Therefore, if there is some pattern that is unmatched by `matrix`,
+        // it will still be unmatched if the first constructor is replaced by
+        // any of the constructors in `missing_ctors`
+
+        if missing_ctors.is_empty() {
+            all_ctors.into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
         } else {
@@ -603,11 +602,25 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
                     let cx = &*cx;
-                    UsefulWithWitness(pats.into_iter().flat_map(|witness| {
-                        constructors.iter().map(move |ctor| {
-                            witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                        })
-                    }).collect())
+                    let new_witnesses = if used_ctors.is_empty() {
+                        // All constructors are unused. Add wild patterns
+                        // rather than each individual constructor
+                        pats.into_iter().map(|mut witness| {
+                            witness.0.push(P(hir::Pat {
+                                id: DUMMY_NODE_ID,
+                                node: PatKind::Wild,
+                                span: DUMMY_SP,
+                            }));
+                            witness
+                        }).collect()
+                    } else {
+                        pats.into_iter().flat_map(|witness| {
+                            missing_ctors.iter().map(move |ctor| {
+                                witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
+                            })
+                        }).collect()
+                    };
+                    UsefulWithWitness(new_witnesses)
                 }
                 result => result
             }
