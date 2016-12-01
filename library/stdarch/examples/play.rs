@@ -1,3 +1,4 @@
+/*
 extern crate stdsimd;
 
 use std::env;
@@ -22,3 +23,5 @@ fn main() {
         println!("{:?}", s::u8x16::from(r));
     }
 }
+*/
+fn main(){}

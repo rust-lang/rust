@@ -206,7 +206,8 @@ pub unsafe fn _mm_mul_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// the low 16 bits of 64-bit elements returned.
 #[inline]
 pub unsafe fn _mm_sad_epu8(a: __m128i, b: __m128i) -> __m128i {
-    psadbw(u8x16::from(a), u8x16::from(b)).as_m128i()
+    x86_mm_sad_epu8(u8x16::from(a), u8x16::from(b)).as_m128i()
+    // psadbw(u8x16::from(a), u8x16::from(b)).as_m128i()
 }
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`,
@@ -412,25 +413,25 @@ unsafe fn _mm_set1_epi64(_a: __m64) -> __m128i {
 
 /// Broadcast 64-bit integer `a` to all elements.
 #[inline]
-unsafe fn _mm_set1_epi64x(a: i64) -> __m128i {
+pub unsafe fn _mm_set1_epi64x(a: i64) -> __m128i {
     i64x2::splat(a).as_m128i()
 }
 
 /// Broadcast 32-bit integer `a` to all elements.
 #[inline]
-unsafe fn _mm_set1_epi32(a: i32) -> __m128i {
+pub unsafe fn _mm_set1_epi32(a: i32) -> __m128i {
     i32x4::splat(a).as_m128i()
 }
 
 /// Broadcast 16-bit integer `a` to all elements.
 #[inline]
-unsafe fn _mm_set1_epi16(a: i16) -> __m128i {
+pub unsafe fn _mm_set1_epi16(a: i16) -> __m128i {
     i16x8::splat(a).as_m128i()
 }
 
 /// Broadcast 8-bit integer `a` to all elements.
 #[inline]
-unsafe fn _mm_set1_epi8(a: i8) -> __m128i {
+pub unsafe fn _mm_set1_epi8(a: i8) -> __m128i {
     i8x16::splat(a).as_m128i()
 }
 
@@ -525,6 +526,10 @@ pub unsafe fn _mm_load_pd(mem_addr: *const f64) -> __m128d {
 #[inline]
 pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: __m128d) {
     *(mem_addr as *mut __m128d) = a;
+}
+
+extern "platform-intrinsic" {
+    pub fn x86_mm_sad_epu8(a: u8x16, b: u8x16) -> u64x2;
 }
 
 #[allow(improper_ctypes)]
