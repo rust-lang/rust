@@ -250,11 +250,24 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    current_hash);
                 continue;
             }
+
+            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+                println!("node {:?} is dirty as hash is {:?} was {:?}",
+                         dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                         current_hash,
+                         hash.hash);
+            }
+
             debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
                    dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
                    current_hash,
                    hash.hash);
         } else {
+            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+                println!("node {:?} is dirty as it was removed",
+                         hash.dep_node);
+            }
+
             debug!("initial_dirty_nodes: {:?} is dirty as it was removed",
                    hash.dep_node);
         }
