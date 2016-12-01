@@ -543,8 +543,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
                 LeaveOutWitness => Useful,
             }
-        }
-        else {
+        } else {
             NotUseful
         }
     };
