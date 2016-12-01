@@ -144,10 +144,11 @@ pub fn env() -> Env {
         let mut string = String::new();
         if file.read_to_string(&mut string).is_ok() {
             for line in string.lines() {
-                if let Some(equal_sign) = line.chars().position(|c| c == '=') {
-                    let name = line.chars().take(equal_sign).collect::<String>();
-                    let value = line.chars().skip(equal_sign+1).collect::<String>();
-                    variables.push((OsString::from(name), OsString::from(value)));
+                let mut parts = line.splitn(2, '=');
+                if let Some(name) = parts.next() {
+                    let value = parts.next().unwrap_or("");
+                    variables.push((OsString::from(name.to_string()),
+                                    OsString::from(value.to_string())));
                 }
             }
         }
