@@ -1138,6 +1138,10 @@ mod opt {
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+    let mut print_opts = vec!["crate-name", "file-names", "sysroot", "cfg",
+                              "target-list", "target-cpus", "target-features",
+                              "relocation-models", "code-models"];
+
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
@@ -1157,9 +1161,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                               the compiler to emit",
                  "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
-                               print on stdout",
-                 "[crate-name|file-names|sysroot|cfg|target-list|target-cpus|\
-                   target-features|relocation-models|code-models]"),
+                               print on stdout", &print_opts.join("|")),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
