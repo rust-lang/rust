@@ -157,7 +157,16 @@ impl<'a> Read for &'a [u8] {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
         let (a, b) = self.split_at(amt);
-        buf[..amt].copy_from_slice(a);
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if amt == 1 {
+            buf[0] = a[0];
+        } else {
+            buf[..amt].copy_from_slice(a);
+        }
+
         *self = b;
         Ok(amt)
     }
@@ -169,7 +178,16 @@ impl<'a> Read for &'a [u8] {
                                   "failed to fill whole buffer"));
         }
         let (a, b) = self.split_at(buf.len());
-        buf.copy_from_slice(a);
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if buf.len() == 1 {
+            buf[0] = a[0];
+        } else {
+            buf.copy_from_slice(a);
+        }
+
         *self = b;
         Ok(())
     }
