@@ -52,6 +52,14 @@ macro_rules! bounds {
     }
 }
 
+// SNAP: remove this hack to work once stage0 ships with a fix
+// The code below is a workaround for an ICE (issue #37686).
+// It does its job without being used by any other code.
+// It was reasonably minified. Removing it will make the ICE surface.
+#[cfg(stage0)]
+#[allow(dead_code)]
+const PREVENT_ICE: (i8, i16, i32) = (::std::i8::MIN, ::std::i16::MIN, ::std::i32::MIN);
+
 mod ubounds {
     #![allow(dead_code)]
     use rustc_i128::{u128, i128};
