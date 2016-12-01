@@ -946,19 +946,51 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
 
         // Process libs passed on the command line
+        // First, check for errors
+        let mut renames = FxHashSet();
+        for &(ref name, ref new_name, _) in &self.sess.opts.libs {
+            if let &Some(ref new_name) = new_name {
+                if new_name.is_empty() {
+                    self.sess.err(
+                        &format!("an empty renaming target was specified for library `{}`",name));
+                } else if !self.cstore.get_used_libraries().borrow().iter()
+                                                           .any(|lib| lib.name == name as &str) {
+                    self.sess.err(&format!("renaming of the library `{}` was specified, \
+                                            however this crate contains no #[link(...)] \
+                                            attributes referencing this library.", name));
+                } else if renames.contains(name) {
+                    self.sess.err(&format!("multiple renamings were specified for library `{}` .",
+                                            name));
+                } else {
+                    renames.insert(name);
+                }
+            }
+        }
+        // Update kind and, optionally, the name of all native libaries
+        // (there may be more than one) with the specified name.
         for &(ref name, ref new_name, kind) in &self.sess.opts.libs {
-            // First, try to update existing lib(s) added via #[link(...)]
-            let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
-            if !self.cstore.update_used_library(name, new_name, kind) {
+            let mut found = false;
+            for lib in self.cstore.get_used_libraries().borrow_mut().iter_mut() {
+                if lib.name == name as &str {
+                    lib.kind = kind;
+                    if let &Some(ref new_name) = new_name {
+                        lib.name = Symbol::intern(new_name);
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
                 // Add if not found
+                let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
                 let lib = NativeLibrary {
-                    name: Symbol::intern(name),
+                    name: Symbol::intern(new_name.unwrap_or(name)),
                     kind: kind,
                     cfg: None,
                     foreign_items: Vec::new(),
                 };
                 register_native_lib(self.sess, self.cstore, None, lib);
-             }
+            }
         }
         self.register_statically_included_foreign_items();
         self.register_dllimport_foreign_items();
