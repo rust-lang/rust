@@ -224,18 +224,16 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-        //~^NOTE same as this
         if let Some(42) = None {}
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         if let Option::Some(42) = None {}
     }
 
     if true {
-        //~^NOTE same as this
         if let Some(42) = None::<u8> {}
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         if let Some(42) = None {}
     }
 
