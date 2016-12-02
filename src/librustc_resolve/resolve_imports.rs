@@ -708,10 +708,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Record the destination of this import
-        if let Some(did) = module.def_id() {
-            let resolution = PathResolution::new(Def::Mod(did));
-            self.def_map.insert(directive.id, resolution);
-        }
+        self.def_map.insert(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
     // Miscellaneous post-processing, including recording reexports, reporting conflicts,
