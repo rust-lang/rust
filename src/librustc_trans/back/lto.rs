@@ -56,7 +56,7 @@ pub fn run(sess: &session::Session,
     // Make sure we actually can run LTO
     for crate_type in sess.crate_types.borrow().iter() {
         if !crate_type_allows_lto(*crate_type) {
-            sess.fatal("lto can only be run for executables and \
+            sess.fatal("lto can only be run for executables, cdylibs and \
                             static library outputs");
         }
     }
