@@ -1066,7 +1066,9 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
     }
 }
 
-fn resolve_item_like<'a, 'tcx, F>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, id: ast::NodeId, walk: F)
+fn resolve_item_like<'a, 'tcx, F>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
+                                  id: ast::NodeId,
+                                  walk: F)
     where F: FnOnce(&mut RegionResolutionVisitor<'tcx, 'a>)
 {
     // Items create a new outer block scope as far as we're concerned.
