@@ -77,6 +77,7 @@ pub fn read2(p1: AnonPipe,
              v1: &mut Vec<u8>,
              p2: AnonPipe,
              v2: &mut Vec<u8>) -> io::Result<()> {
+
     // Set both pipes into nonblocking mode as we're gonna be reading from both
     // in the `select` loop below, and we wouldn't want one to block the other!
     let p1 = p1.into_fd();
