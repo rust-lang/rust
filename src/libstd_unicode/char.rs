@@ -529,6 +529,13 @@ impl char {
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
     ///
+    /// A `char` is alphabetic if it belongs to any of [the following
+    /// categories](http://unicode.org/reports/tr44/#Alphabetic):
+    ///
+    /// ```nocode
+    /// Lu | Ll | Lt | Lm | Lo | Nl | Other_Alphabetic
+    /// ```
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -547,6 +554,39 @@ impl char {
         match self {
             'a'...'z' | 'A'...'Z' => true,
             c if c > '\x7f' => derived_property::Alphabetic(c),
+            _ => false,
+        }
+    }
+
+    /// Returns true if this `char` is an a letter code point, and false if not.
+    ///
+    /// A `char` is a letter if it belongs to any of [the following
+    /// categories](http://unicode.org/reports/tr44/#General_Category_Values):
+    ///
+    /// ```nocode
+    /// Lu | Ll | Lt | Lm | Lo
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(unicode_is_letter)]
+    /// assert!('a'.is_letter());
+    /// assert!('京'.is_letter());
+    ///
+    /// let c = '💝';
+    /// // love is many things, but it is not a letter
+    /// assert!(!c.is_letter());
+    /// assert!(!'5'.is_letter());
+    /// ```
+    #[unstable(feature = "unicode_is_letter", issue = "38137")]
+    #[inline]
+    pub fn is_letter(self) -> bool {
+        match self {
+            'a'...'z' | 'A'...'Z' => true,
+            c if c > '\x7f' => general_category::L(c),
             _ => false,
         }
     }

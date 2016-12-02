@@ -535,7 +535,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # emit_bsearch_range_table(rf)
 
         # category tables
-        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
+        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc", "L"]), \
                                   ("derived_property", derived, want_derived), \
                                   ("property", props, ["White_Space", "Pattern_White_Space"]):
             emit_property_module(rf, name, cat, pfuns)
