@@ -1,7 +1,6 @@
 //! lint on `use`ing all variants of an enum
 
 use rustc::hir::*;
-use rustc::hir::def::Def;
 use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray};
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -50,7 +49,8 @@ impl EnumGlobUse {
         if let ItemUse(ref path, UseKind::Glob) = item.node {
             // FIXME: ask jseyfried why the qpath.def for `use std::cmp::Ordering::*;`
             // extracted through `ItemUse(ref qpath, UseKind::Glob)` is a `Mod` and not an `Enum`
-            if let Def::Enum(_) = path.def {
+            //if let Def::Enum(_) = path.def {
+            if path.segments.last().and_then(|seg| seg.name.as_str().chars().next()).map_or(false, char::is_uppercase) {
                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
             }
         }
