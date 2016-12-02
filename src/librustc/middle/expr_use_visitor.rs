@@ -701,7 +701,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // are properly handled.
         self.walk_expr(with_expr);
 
-        fn contains_field_named(field: ty::FieldDef,
+        fn contains_field_named(field: &ty::FieldDef,
                                 fields: &[hir::Field])
                                 -> bool
         {

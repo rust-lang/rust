@@ -1003,7 +1003,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 }
 
 /// Converts a list of named fields (i.e. for struct-like struct/enum ADTs) into FieldExprRef.
-fn field_refs<'tcx>(variant: VariantDef<'tcx>,
+fn field_refs<'tcx>(variant: &'tcx VariantDef,
                     fields: &'tcx [hir::Field])
                     -> Vec<FieldExprRef<'tcx>>
 {

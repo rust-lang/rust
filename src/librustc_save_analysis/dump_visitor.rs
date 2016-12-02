@@ -941,7 +941,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                           ex: &ast::Expr,
                           path: &ast::Path,
                           fields: &Vec<ast::Field>,
-                          variant: ty::VariantDef,
+                          variant: &ty::VariantDef,
                           base: &Option<P<ast::Expr>>) {
         self.write_sub_paths_truncated(path, false);
 

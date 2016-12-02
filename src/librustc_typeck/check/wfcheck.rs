@@ -285,12 +285,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 }
             });
 
-        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-
-        let has_ty_params =
-            trait_def.generics
-                      .types
-                      .len() > 1;
+        let has_ty_params = self.tcx().item_generics(trait_def_id).types.len() > 1;
 
         // We use an if-else here, since the generics will also trigger
         // an extraneous error message when we find predicates like

@@ -736,7 +736,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
                     has_default_impl: tcx.trait_has_default_impl(def_id),
-                    trait_ref: self.lazy(&trait_def.trait_ref),
                     super_predicates: self.lazy(&tcx.item_super_predicates(def_id)),
                 };
 

@@ -165,6 +165,14 @@ impl<'tcx> Decodable for Kind<'tcx> {
 pub type Substs<'tcx> = Slice<Kind<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
+    /// Creates a Substs that maps each generic parameter to itself.
+    pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
+                             -> &'tcx Substs<'tcx> {
+        Substs::for_item(tcx, def_id, |def, _| {
+            tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
+        }, |def, _| tcx.mk_param_from_def(def))
+    }
+
     /// Creates a Substs for generic parameter definitions,
     /// by calling closures to obtain each region and type.
     /// The closures get to observe the Substs as they're

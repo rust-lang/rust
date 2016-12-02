@@ -93,7 +93,6 @@ pub mod util;
 mod contents;
 mod context;
 mod flags;
-mod ivar;
 mod structural_impls;
 mod sty;
 
@@ -623,10 +622,6 @@ pub struct RegionParameterDef<'tcx> {
 }
 
 impl<'tcx> RegionParameterDef<'tcx> {
-    pub fn to_early_bound_region(&self) -> ty::Region {
-        ty::ReEarlyBound(self.to_early_bound_region_data())
-    }
-
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
             index: self.index,
@@ -1313,106 +1308,64 @@ bitflags! {
     }
 }
 
-pub type AdtDef<'tcx> = &'tcx AdtDefData<'tcx, 'static>;
-pub type VariantDef<'tcx> = &'tcx VariantDefData<'tcx, 'static>;
-pub type FieldDef<'tcx> = &'tcx FieldDefData<'tcx, 'static>;
-
-// See comment on AdtDefData for explanation
-pub type AdtDefMaster<'tcx> = &'tcx AdtDefData<'tcx, 'tcx>;
-pub type VariantDefMaster<'tcx> = &'tcx VariantDefData<'tcx, 'tcx>;
-pub type FieldDefMaster<'tcx> = &'tcx FieldDefData<'tcx, 'tcx>;
-
-pub struct VariantDefData<'tcx, 'container: 'tcx> {
+pub struct VariantDef {
     /// The variant's DefId. If this is a tuple-like struct,
     /// this is the DefId of the struct's ctor.
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
-    pub fields: Vec<FieldDefData<'tcx, 'container>>,
+    pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
 }
 
-pub struct FieldDefData<'tcx, 'container: 'tcx> {
+pub struct FieldDef {
     pub did: DefId,
     pub name: Name,
     pub vis: Visibility,
-    /// TyIVar is used here to allow for variance (see the doc at
-    /// AdtDefData).
-    ///
-    /// Note: direct accesses to `ty` must also add dep edges.
-    ty: ivar::TyIVar<'tcx, 'container>
 }
 
 /// The definition of an abstract data type - a struct or enum.
 ///
 /// These are all interned (by intern_adt_def) into the adt_defs
 /// table.
-///
-/// Because of the possibility of nested tcx-s, this type
-/// needs 2 lifetimes: the traditional variant lifetime ('tcx)
-/// bounding the lifetime of the inner types is of course necessary.
-/// However, it is not sufficient - types from a child tcx must
-/// not be leaked into the master tcx by being stored in an AdtDefData.
-///
-/// The 'container lifetime ensures that by outliving the container
-/// tcx and preventing shorter-lived types from being inserted. When
-/// write access is not needed, the 'container lifetime can be
-/// erased to 'static, which can be done by the AdtDef wrapper.
-pub struct AdtDefData<'tcx, 'container: 'tcx> {
+pub struct AdtDef {
     pub did: DefId,
-    pub variants: Vec<VariantDefData<'tcx, 'container>>,
+    pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
-    flags: Cell<AdtFlags>,
-    sized_constraint: ivar::TyIVar<'tcx, 'container>,
+    flags: Cell<AdtFlags>
 }
 
-impl<'tcx, 'container> PartialEq for AdtDefData<'tcx, 'container> {
-    // AdtDefData are always interned and this is part of TyS equality
+impl PartialEq for AdtDef {
+    // AdtDef are always interned and this is part of TyS equality
     #[inline]
     fn eq(&self, other: &Self) -> bool { self as *const _ == other as *const _ }
 }
 
-impl<'tcx, 'container> Eq for AdtDefData<'tcx, 'container> {}
+impl Eq for AdtDef {}
 
-impl<'tcx, 'container> Hash for AdtDefData<'tcx, 'container> {
+impl Hash for AdtDef {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const AdtDefData).hash(s)
+        (self as *const AdtDef).hash(s)
     }
 }
 
-impl<'tcx> serialize::UseSpecializedEncodable for AdtDef<'tcx> {
+impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.did.encode(s)
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
-
-impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
-    #[inline]
-    pub fn is_uninhabited_recurse(&'tcx self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  cx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        if !visited.insert((self.did, substs)) {
-            return false;
-        };
-        self.variants.iter().all(|v| {
-            v.is_uninhabited_recurse(visited, block, cx, substs, self.is_union())
-        })
-    }
-}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
-impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
+impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
-           variants: Vec<VariantDefData<'gcx, 'container>>) -> Self {
+           variants: Vec<VariantDef>) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
         if attr::contains_name(&attrs, "fundamental") {
@@ -1429,12 +1382,11 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
             AdtKind::Union => flags = flags | AdtFlags::IS_UNION,
             AdtKind::Struct => {}
         }
-        AdtDefData {
+        AdtDef {
             did: did,
             variants: variants,
             flags: Cell::new(flags),
             destructor: Cell::new(None),
-            sized_constraint: ivar::TyIVar::new(),
         }
     }
 
@@ -1443,6 +1395,20 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
             self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
         self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK_VALID)
+    }
+
+    #[inline]
+    pub fn is_uninhabited_recurse(&self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  substs: &'tcx Substs<'tcx>) -> bool {
+        if !visited.insert((self.did, substs)) {
+            return false;
+        };
+        self.variants.iter().all(|v| {
+            v.is_uninhabited_recurse(visited, block, tcx, substs, self.is_union())
+        })
     }
 
     #[inline]
@@ -1524,7 +1490,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
-    pub fn struct_variant(&self) -> &VariantDefData<'gcx, 'container> {
+    pub fn struct_variant(&self) -> &VariantDef {
         assert!(!self.is_enum());
         &self.variants[0]
     }
@@ -1537,14 +1503,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     /// Returns an iterator over all fields contained
     /// by this ADT.
     #[inline]
-    pub fn all_fields(&self) ->
-            iter::FlatMap<
-                slice::Iter<VariantDefData<'gcx, 'container>>,
-                slice::Iter<FieldDefData<'gcx, 'container>>,
-                for<'s> fn(&'s VariantDefData<'gcx, 'container>)
-                    -> slice::Iter<'s, FieldDefData<'gcx, 'container>>
-            > {
-        self.variants.iter().flat_map(VariantDefData::fields_iter)
+    pub fn all_fields<'s>(&'s self) -> impl Iterator<Item = &'s FieldDef> {
+        self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
     #[inline]
@@ -1557,7 +1517,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
-    pub fn variant_with_id(&self, vid: DefId) -> &VariantDefData<'gcx, 'container> {
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
         self.variants
             .iter()
             .find(|v| v.did == vid)
@@ -1571,7 +1531,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
             .expect("variant_index_with_id: unknown variant")
     }
 
-    pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
+    pub fn variant_of_def(&self, def: Def) -> &VariantDef {
         match def {
             Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
@@ -1594,9 +1554,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
             None => NoDtor,
         }
     }
-}
 
-impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Returns a simpler type such that `Self: Sized` if and only
     /// if that type is Sized, or `TyErr` if this type is recursive.
     ///
@@ -1615,19 +1573,9 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        match self.sized_constraint.get(DepNode::SizedConstraint(self.did)) {
-            None => {
-                let global_tcx = tcx.global_tcx();
-                let this = global_tcx.lookup_adt_def_master(self.did);
-                this.calculate_sized_constraint_inner(global_tcx, &mut Vec::new());
-                self.sized_constraint(tcx)
-            }
-            Some(ty) => ty
-        }
+        self.calculate_sized_constraint_inner(tcx.global_tcx(), &mut Vec::new())
     }
-}
 
-impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     /// Calculates the Sized-constraint.
     ///
     /// As the Sized-constraint of enums can be a *set* of types,
@@ -1643,42 +1591,41 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     ///       such.
     ///     - a TyError, if a type contained itself. The representability
     ///       check should catch this case.
-    fn calculate_sized_constraint_inner(&'tcx self,
+    fn calculate_sized_constraint_inner(&self,
                                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        stack: &mut Vec<AdtDefMaster<'tcx>>)
+                                        stack: &mut Vec<DefId>)
+                                        -> Ty<'tcx>
     {
-        let dep_node = || DepNode::SizedConstraint(self.did);
+        if let Some(ty) = tcx.adt_sized_constraint.borrow().get(&self.did) {
+            return ty;
+        }
 
         // Follow the memoization pattern: push the computation of
         // DepNode::SizedConstraint as our current task.
-        let _task = tcx.dep_graph.in_task(dep_node());
-        if self.sized_constraint.untracked_get().is_some() {
-            //                   ---------------
-            // can skip the dep-graph read since we just pushed the task
-            return;
-        }
+        let _task = tcx.dep_graph.in_task(DepNode::SizedConstraint(self.did));
 
-        if stack.contains(&self) {
+        if stack.contains(&self.did) {
             debug!("calculate_sized_constraint: {:?} is recursive", self);
             // This should be reported as an error by `check_representable`.
             //
             // Consider the type as Sized in the meanwhile to avoid
             // further errors.
-            self.sized_constraint.fulfill(dep_node(), tcx.types.err);
-            return;
+            tcx.adt_sized_constraint.borrow_mut().insert(self.did, tcx.types.err);
+            return tcx.types.err;
         }
 
-        stack.push(self);
+        stack.push(self.did);
 
         let tys : Vec<_> =
             self.variants.iter().flat_map(|v| {
                 v.fields.last()
             }).flat_map(|f| {
-                self.sized_constraint_for_ty(tcx, stack, f.unsubst_ty())
+                let ty = tcx.item_type(f.did);
+                self.sized_constraint_for_ty(tcx, stack, ty)
             }).collect();
 
         let self_ = stack.pop().unwrap();
-        assert_eq!(self_, self);
+        assert_eq!(self_, self.did);
 
         let ty = match tys.len() {
             _ if tys.references_error() => tcx.types.err,
@@ -1687,24 +1634,26 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             _ => tcx.intern_tup(&tys[..])
         };
 
-        match self.sized_constraint.get(dep_node()) {
+        let old = tcx.adt_sized_constraint.borrow().get(&self.did).cloned();
+        match old {
             Some(old_ty) => {
                 debug!("calculate_sized_constraint: {:?} recurred", self);
-                assert_eq!(old_ty, tcx.types.err)
+                assert_eq!(old_ty, tcx.types.err);
+                old_ty
             }
             None => {
                 debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
-                self.sized_constraint.fulfill(dep_node(), ty)
+                tcx.adt_sized_constraint.borrow_mut().insert(self.did, ty);
+                ty
             }
         }
     }
 
-    fn sized_constraint_for_ty(
-        &'tcx self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        stack: &mut Vec<AdtDefMaster<'tcx>>,
-        ty: Ty<'tcx>
-    ) -> Vec<Ty<'tcx>> {
+    fn sized_constraint_for_ty(&self,
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               stack: &mut Vec<DefId>,
+                               ty: Ty<'tcx>)
+                               -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
@@ -1726,12 +1675,9 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
 
             TyAdt(adt, substs) => {
                 // recursive case
-                let adt = tcx.lookup_adt_def_master(adt.did);
-                adt.calculate_sized_constraint_inner(tcx, stack);
                 let adt_ty =
-                    adt.sized_constraint
-                    .unwrap(DepNode::SizedConstraint(adt.did))
-                    .subst(tcx, substs);
+                    adt.calculate_sized_constraint_inner(tcx, stack)
+                       .subst(tcx, substs);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_ty);
                 if let ty::TyTuple(ref tys) = adt_ty.sty {
@@ -1780,16 +1726,11 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     }
 }
 
-impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
-    #[inline]
-    fn fields_iter(&self) -> slice::Iter<FieldDefData<'tcx, 'container>> {
-        self.fields.iter()
-    }
-
+impl<'a, 'gcx, 'tcx> VariantDef {
     #[inline]
     pub fn find_field_named(&self,
                             name: ast::Name)
-                            -> Option<&FieldDefData<'tcx, 'container>> {
+                            -> Option<&FieldDef> {
         self.fields.iter().find(|f| f.name == name)
     }
 
@@ -1801,55 +1742,32 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     }
 
     #[inline]
-    pub fn field_named(&self, name: ast::Name) -> &FieldDefData<'tcx, 'container> {
+    pub fn field_named(&self, name: ast::Name) -> &FieldDef {
         self.find_field_named(name).unwrap()
     }
-}
 
-impl<'a, 'gcx, 'tcx> VariantDefData<'tcx, 'static> {
     #[inline]
-    pub fn is_uninhabited_recurse(&'tcx self,
+    pub fn is_uninhabited_recurse(&self,
                                   visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
-                                  cx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>,
                                   is_union: bool) -> bool {
         if is_union {
-            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
+            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
         } else {
-            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
+            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
-    pub fn new(did: DefId,
-               name: Name,
-               vis: Visibility) -> Self {
-        FieldDefData {
-            did: did,
-            name: name,
-            vis: vis,
-            ty: ivar::TyIVar::new()
-        }
-    }
-
+impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
-        self.unsubst_ty().subst(tcx, subst)
+        tcx.item_type(self.did).subst(tcx, subst)
     }
 
-    pub fn unsubst_ty(&self) -> Ty<'tcx> {
-        self.ty.unwrap(DepNode::FieldTy(self.did))
-    }
-
-    pub fn fulfill_ty(&self, ty: Ty<'container>) {
-        self.ty.fulfill(DepNode::FieldTy(self.did), ty);
-    }
-}
-
-impl<'a, 'gcx, 'tcx> FieldDefData<'tcx, 'static> {
     #[inline]
-    pub fn is_uninhabited_recurse(&'tcx self,
+    pub fn is_uninhabited_recurse(&self,
                                   visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -2295,7 +2213,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     // Returns `ty::VariantDef` if `def` refers to a struct,
     // or variant or their constructors, panics otherwise.
-    pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
+    pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
             Def::Variant(did) | Def::VariantCtor(did, ..) => {
                 let enum_did = self.parent_def_id(did).unwrap();
@@ -2398,28 +2316,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
-    pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef<'gcx> {
+    pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef {
         lookup_locally_or_in_crate_store(
             "trait_defs", did, &self.trait_defs,
             || self.alloc_trait_def(self.sess.cstore.trait_def(self.global_tcx(), did))
         )
     }
 
-    /// Given the did of an ADT, return a master reference to its
-    /// definition. Unless you are planning on fulfilling the ADT's fields,
-    /// use lookup_adt_def instead.
-    pub fn lookup_adt_def_master(self, did: DefId) -> AdtDefMaster<'gcx> {
+    /// Given the did of an ADT, return a reference to its definition.
+    pub fn lookup_adt_def(self, did: DefId) -> &'gcx AdtDef {
         lookup_locally_or_in_crate_store(
             "adt_defs", did, &self.adt_defs,
-            || self.sess.cstore.adt_def(self.global_tcx(), did)
-        )
-    }
-
-    /// Given the did of an ADT, return a reference to its definition.
-    pub fn lookup_adt_def(self, did: DefId) -> AdtDef<'gcx> {
-        // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
-        // would be needed here.
-        self.lookup_adt_def_master(did)
+            || self.sess.cstore.adt_def(self.global_tcx(), did))
     }
 
     /// Given the did of an item, returns its generics.

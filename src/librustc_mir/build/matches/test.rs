@@ -615,7 +615,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn candidate_after_variant_switch<'pat>(&mut self,
                                             match_pair_index: usize,
-                                            adt_def: ty::AdtDef<'tcx>,
+                                            adt_def: &'tcx ty::AdtDef,
                                             variant_index: usize,
                                             subpatterns: &'pat [FieldPattern<'tcx>],
                                             candidate: &Candidate<'pat, 'tcx>)

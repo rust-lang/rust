@@ -276,7 +276,6 @@ pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_default_impl: bool,
-    pub trait_ref: Lazy<ty::TraitRef<'tcx>>,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 

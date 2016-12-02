@@ -151,14 +151,13 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
 }
 
 pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
-    let def = cx.tcx.lookup_trait_def(did);
     let trait_items = cx.tcx.associated_items(did).map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.item_predicates(did);
-    let generics = (def.generics, &predicates).clean(cx);
+    let generics = (cx.tcx.item_generics(did), &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
-        unsafety: def.unsafety,
+        unsafety: cx.tcx.lookup_trait_def(did).unsafety,
         generics: generics,
         items: trait_items,
         bounds: supertrait_bounds,

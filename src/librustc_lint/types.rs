@@ -396,7 +396,7 @@ enum FfiResult {
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  def: ty::AdtDef<'tcx>,
+                                  def: &'tcx ty::AdtDef,
                                   substs: &Substs<'tcx>)
                                   -> bool {
     if def.variants.len() == 2 {
