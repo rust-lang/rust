@@ -1,6 +1,7 @@
 use consts::constant;
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::hir::def::Def;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use syntax::ast::{Name, NodeId};
@@ -103,8 +104,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprLoop(ref lb, ref ll, ref lls), &ExprLoop(ref rb, ref rl, ref rls)) => {
                 self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str()) && lls == rls
             }
-            (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
-                ls == rs && self.eq_expr(le, re) &&
+            (&ExprMatch(ref le, ref la, _), &ExprMatch(ref re, ref ra, _)) => {
+                self.eq_expr(le, re) &&
                 over(la, ra, |l, r| {
                     self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
                     over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
@@ -118,9 +119,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             }
             (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => self.eq_expr(le, re) && self.eq_expr(ll, rl),
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
-            (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),
+            (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, left.id, r, right.id),
             (&ExprStruct(ref l_path, ref lf, ref lo), &ExprStruct(ref r_path, ref rf, ref ro)) => {
-                self.eq_qpath(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r)) &&
+                self.eq_qpath(l_path, left.id, r_path, right.id) &&
+                both(lo, ro, |l, r| self.eq_expr(l, r)) &&
                 over(lf, rf, |l, r| self.eq_field(l, r))
             }
             (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -142,21 +144,17 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         left.name.node == right.name.node && self.eq_expr(&left.expr, &right.expr)
     }
 
-    fn eq_lifetime(&self, left: &Lifetime, right: &Lifetime) -> bool {
-        left.name == right.name
-    }
-
     /// Check whether two patterns are the same.
     pub fn eq_pat(&self, left: &Pat, right: &Pat) -> bool {
         match (&left.node, &right.node) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
-                self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
+                self.eq_qpath(lp, left.id, rp, right.id) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             }
-            (&PatKind::Binding(ref lb, ref ld, ref li, ref lp), &PatKind::Binding(ref rb, ref rd, ref ri, ref rp)) => {
-                lb == rb && ld == rd && li.node.as_str() == ri.node.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
+            (&PatKind::Binding(ref lb, _, ref li, ref lp), &PatKind::Binding(ref rb, _, ref ri, ref rp)) => {
+                lb == rb && li.node.as_str() == ri.node.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
             }
-            (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_qpath(l, r),
+            (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_qpath(l, left.id, r, right.id),
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
             (&PatKind::Tuple(ref l, ls), &PatKind::Tuple(ref r, rs)) => {
                 ls == rs && over(l, r, |l, r| self.eq_pat(l, r))
@@ -174,46 +172,21 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_qpath(&self, left: &QPath, right: &QPath) -> bool {
-        match (left, right) {
-            (&QPath::Resolved(ref lty, ref lpath), &QPath::Resolved(ref rty, ref rpath)) => {
-                both(lty, rty, |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
-            },
-            (&QPath::TypeRelative(ref lty, ref lseg), &QPath::TypeRelative(ref rty, ref rseg)) => {
-                self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
-            },
-            _ => false,
+    fn eq_qpath(&self, left: &QPath, lid: NodeId, right: &QPath, rid: NodeId) -> bool {
+        let l = self.cx.tcx.tables().qpath_def(left, lid);
+        let r = self.cx.tcx.tables().qpath_def(right, rid);
+
+        if let (Def::Local(_), Def::Local(_)) = (l, r) {
+            if let (&QPath::Resolved(None, ref l), &QPath::Resolved(None, ref r)) = (left, right) {
+                assert_eq!(l.segments.len(), 1);
+                assert_eq!(r.segments.len(), 1);
+                l.segments[0].name == r.segments[0].name
+            } else {
+                unreachable!();
+            }
+        } else {
+            l == r
         }
-    }
-
-    fn eq_path(&self, left: &Path, right: &Path) -> bool {
-        left.global == right.global &&
-        over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
-    }
-
-    fn eq_path_parameters(&self, left: &PathParameters, right: &PathParameters) -> bool {
-        match (left, right) {
-            (&AngleBracketedParameters(ref left), &AngleBracketedParameters(ref right)) => {
-                over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r)) &&
-                over(&left.types, &right.types, |l, r| self.eq_ty(l, r)) &&
-                over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
-            }
-            (&ParenthesizedParameters(ref left), &ParenthesizedParameters(ref right)) => {
-                over(&left.inputs, &right.inputs, |l, r| self.eq_ty(l, r)) &&
-                both(&left.output, &right.output, |l, r| self.eq_ty(l, r))
-            }
-            (&AngleBracketedParameters(_), &ParenthesizedParameters(_)) |
-            (&ParenthesizedParameters(_), &AngleBracketedParameters(_)) => {
-                false
-            }
-        }
-    }
-
-    fn eq_path_segment(&self, left: &PathSegment, right: &PathSegment) -> bool {
-        // The == of idents doesn't work with different contexts,
-        // we have to be explicit about hygiene
-        left.name.as_str() == right.name.as_str() &&
-        self.eq_path_parameters(&left.parameters, &right.parameters)
     }
 
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
@@ -226,15 +199,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(&*l_rmut.ty, &*r_rmut.ty)
             }
-            (&TyPath(ref l), &TyPath(ref r)) => self.eq_qpath(l, r),
+            (&TyPath(ref l), &TyPath(ref r)) => self.eq_qpath(l, left.id, r, right.id),
             (&TyTup(ref l), &TyTup(ref r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyInfer, &TyInfer) => true,
             _ => false,
         }
-    }
-
-    fn eq_type_binding(&self, left: &TypeBinding, right: &TypeBinding) -> bool {
-        left.name == right.name && self.eq_ty(&left.ty, &right.ty)
     }
 }
 
@@ -420,7 +389,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 }
                 j.hash(&mut self.s);
             }
-            ExprMatch(ref e, ref arms, ref s) => {
+            ExprMatch(ref e, ref arms, _) => {
                 let c: fn(_, _, _) -> _ = ExprMatch;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
@@ -432,8 +401,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     }
                     self.hash_expr(&arm.body);
                 }
-
-                s.hash(&mut self.s);
             }
             ExprMethodCall(ref name, ref _tys, ref args) => {
                 let c: fn(_, _, _) -> _ = ExprMethodCall;
@@ -529,7 +496,19 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_qpath(&mut self, p: &QPath, id: NodeId) {
-        self.cx.tcx.tables().qpath_def(p, id).hash(&mut self.s);
+        let def = self.cx.tcx.tables().qpath_def(p, id);
+        if let Def::Local(_) = def {
+            true.hash(&mut self.s);
+            if let QPath::Resolved(None, ref seq) = *p {
+                assert_eq!(seq.segments.len(), 1);
+                self.hash_name(&seq.segments[0].name);
+            } else {
+                unreachable!();
+            }
+        } else {
+            false.hash(&mut self.s);
+            def.hash(&mut self.s);
+        }
     }
 
     pub fn hash_path(&mut self, p: &Path) {
