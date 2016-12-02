@@ -621,7 +621,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_field_ref_data(&self,
                               field_ref: &ast::Field,
-                              variant: ty::VariantDef,
+                              variant: &ty::VariantDef,
                               parent: NodeId)
                               -> Option<VariableRefData> {
         let f = variant.field_named(field_ref.ident.node.name);

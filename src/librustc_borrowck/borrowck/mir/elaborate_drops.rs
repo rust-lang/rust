@@ -442,7 +442,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn move_paths_for_fields(&self,
                              base_lv: &Lvalue<'tcx>,
                              variant_path: MovePathIndex,
-                             variant: ty::VariantDef<'tcx>,
+                             variant: &'tcx ty::VariantDef,
                              substs: &'tcx Substs<'tcx>)
                              -> Vec<(Lvalue<'tcx>, Option<MovePathIndex>)>
     {
@@ -619,7 +619,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn open_drop_for_variant<'a>(&mut self,
                                  c: &DropCtxt<'a, 'tcx>,
                                  drop_block: &mut Option<BasicBlock>,
-                                 adt: ty::AdtDef<'tcx>,
+                                 adt: &'tcx ty::AdtDef,
                                  substs: &'tcx Substs<'tcx>,
                                  variant_index: usize)
                                  -> BasicBlock
@@ -652,7 +652,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn open_drop_for_adt<'a>(&mut self, c: &DropCtxt<'a, 'tcx>,
-                             adt: ty::AdtDef<'tcx>, substs: &'tcx Substs<'tcx>)
+                             adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
                              -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", c, adt, substs);
 

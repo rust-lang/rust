@@ -405,7 +405,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a field is in scope.
-    fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
+    fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
         if !def.is_enum() && !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
                       field.name, def.variant_descr(), self.tcx.item_path_str(def.did))

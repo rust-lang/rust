@@ -21,7 +21,8 @@ use super::elaborate_predicates;
 
 use hir::def_id::DefId;
 use traits;
-use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::subst::Substs;
 use syntax::ast;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -126,9 +127,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn supertraits_reference_self(self, trait_def_id: DefId) -> bool {
-        let trait_def = self.lookup_trait_def(trait_def_id);
-        let trait_ref = trait_def.trait_ref.clone();
-        let trait_ref = trait_ref.to_poly_trait_ref();
+        let trait_ref = ty::Binder(ty::TraitRef {
+            def_id: trait_def_id,
+            substs: Substs::identity_for_item(self, trait_def_id)
+        });
         let predicates = self.item_super_predicates(trait_def_id);
         predicates
             .predicates
@@ -317,8 +319,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_def = self.lookup_trait_def(trait_def_id);
-                        let trait_ref = ty::Binder(trait_def.trait_ref.clone());
+                        let trait_ref = ty::Binder(ty::TraitRef {
+                            def_id: trait_def_id,
+                            substs: Substs::identity_for_item(self, trait_def_id)
+                        });
                         supertraits = Some(traits::supertraits(self, trait_ref).collect());
                     }
 

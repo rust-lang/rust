@@ -882,7 +882,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    variant: ty::VariantDef<'tcx>,
+    variant: &'tcx ty::VariantDef,
     substs: &'tcx Substs<'tcx>,
     is_simd: bool,
     span: Span,
@@ -1024,7 +1024,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 //=-----------------------------------------------------------------------------
 
 struct UnionMemberDescriptionFactory<'tcx> {
-    variant: ty::VariantDef<'tcx>,
+    variant: &'tcx ty::VariantDef,
     substs: &'tcx Substs<'tcx>,
     span: Span,
 }
@@ -1338,7 +1338,7 @@ enum EnumDiscriminantInfo {
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
                                    struct_def: &layout::Struct,
-                                   variant: ty::VariantDef<'tcx>,
+                                   variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
                                    span: Span)
@@ -1357,7 +1357,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ref l @ _ => bug!("This should be unreachable. Type is {:#?} layout is {:#?}", enum_type, l)
     };
 
-    let mut field_tys = variant.fields.iter().map(|f: ty::FieldDef<'tcx>| {
+    let mut field_tys = variant.fields.iter().map(|f| {
         monomorphize::field_ty(cx.tcx(), &substs, f)
     }).collect::<Vec<_>>();
 

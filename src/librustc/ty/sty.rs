@@ -113,7 +113,7 @@ pub enum TypeVariants<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyAdt` corresponds to an ADT
     /// definition and not a concrete use of it.
-    TyAdt(AdtDef<'tcx>, &'tcx Substs<'tcx>),
+    TyAdt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -1267,7 +1267,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
+    pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             TyAdt(adt, _) => Some(adt),
             _ => None

@@ -803,9 +803,10 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         }
         ty::TyAdt(adt_def, substs) => {
             for field in adt_def.all_fields() {
+                let field_type = scx.tcx().item_type(field.did);
                 let field_type = monomorphize::apply_param_substs(scx,
                                                                   substs,
-                                                                  &field.unsubst_ty());
+                                                                  &field_type);
                 let field_type = glue::get_drop_glue_type(scx.tcx(), field_type);
 
                 if glue::type_needs_drop(scx.tcx(), field_type) {

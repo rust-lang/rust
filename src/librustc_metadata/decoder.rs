@@ -422,8 +422,8 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::BareFnTy<'tcx>> for DecodeContext<'a
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<ty::AdtDef<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ty::AdtDef<'tcx>, Self::Error> {
+impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::AdtDef> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
         let def_id = DefId::decode(self)?;
         Ok(self.tcx().lookup_adt_def(def_id))
     }
@@ -557,23 +557,22 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_trait_def(&self,
                          item_id: DefIndex,
                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                         -> ty::TraitDef<'tcx> {
+                         -> ty::TraitDef {
         let data = match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self),
             _ => bug!(),
         };
 
-        ty::TraitDef::new(data.unsafety,
+        ty::TraitDef::new(self.local_def_id(item_id),
+                          data.unsafety,
                           data.paren_sugar,
-                          tcx.item_generics(self.local_def_id(item_id)),
-                          data.trait_ref.decode((self, tcx)),
                           self.def_path(item_id).unwrap().deterministic_hash(tcx))
     }
 
     fn get_variant(&self,
                    item: &Entry<'tcx>,
                    index: DefIndex)
-                   -> (ty::VariantDefData<'tcx, 'tcx>, Option<DefIndex>) {
+                   -> (ty::VariantDef, Option<DefIndex>) {
         let data = match item.kind {
             EntryKind::Variant(data) |
             EntryKind::Struct(data) |
@@ -581,28 +580,26 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        let fields = item.children
-            .decode(self)
-            .map(|index| {
+        (ty::VariantDef {
+            did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
+            name: self.item_name(item),
+            fields: item.children.decode(self).map(|index| {
                 let f = self.entry(index);
-                ty::FieldDefData::new(self.local_def_id(index), self.item_name(&f), f.visibility)
-            })
-            .collect();
-
-        (ty::VariantDefData {
-             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
-             name: self.item_name(item),
-             fields: fields,
-             disr_val: ConstInt::Infer(data.disr),
-             ctor_kind: data.ctor_kind,
-         },
-         data.struct_ctor)
+                ty::FieldDef {
+                    did: self.local_def_id(index),
+                    name: self.item_name(&f),
+                    vis: f.visibility
+                }
+            }).collect(),
+            disr_val: ConstInt::Infer(data.disr),
+            ctor_kind: data.ctor_kind,
+        }, data.struct_ctor)
     }
 
     pub fn get_adt_def(&self,
                        item_id: DefIndex,
                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                       -> ty::AdtDefMaster<'tcx> {
+                       -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
         let mut ctor_index = None;
@@ -627,26 +624,10 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.intern_adt_def(did, kind, variants);
+        let adt = tcx.alloc_adt_def(did, kind, variants);
         if let Some(ctor_index) = ctor_index {
             // Make adt definition available through constructor id as well.
-            tcx.insert_adt_def(self.local_def_id(ctor_index), adt);
-        }
-
-        // this needs to be done *after* the variant is interned,
-        // to support recursive structures
-        for variant in &adt.variants {
-            for field in &variant.fields {
-                debug!("evaluating the type of {:?}::{:?}",
-                       variant.name,
-                       field.name);
-                let ty = self.get_type(field.did.index, tcx);
-                field.fulfill_ty(ty);
-                debug!("evaluating the type of {:?}::{:?}: {:?}",
-                       variant.name,
-                       field.name,
-                       ty);
-            }
+            tcx.adt_defs.borrow_mut().insert(self.local_def_id(ctor_index), adt);
         }
 
         adt
