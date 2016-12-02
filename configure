@@ -848,7 +848,10 @@ then
 fi
 
 # For building LLVM
-probe_need CFG_CMAKE cmake
+if [ -z "$CFG_LLVM_ROOT" ]
+then
+  probe_need CFG_CMAKE cmake
+fi
 
 # On MacOS X, invoking `javac` pops up a dialog if the JDK is not
 # installed. Since `javac` is only used if `antlr4` is available,
