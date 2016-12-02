@@ -122,22 +122,22 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         //~^NOTE same as this
         for _ in &[42] {
-            let foo: &Option<_> = &Some::<u8>(42);
-            if true {
-                break;
-            } else {
-                continue;
-            }
+            // let foo: &Option<_> = &Some::<u8>(42);
+            // if true {
+            //     break;
+            // } else {
+            //     continue;
+            // }
         }
     }
     else { //~ERROR this `if` has identical blocks
         for _ in &[42] {
-            let foo: &Option<_> = &Some::<u8>(42);
-            if true {
-                break;
-            } else {
-                continue;
-            }
+            // let foo: &Option<_> = &Some::<u8>(42);
+            // if true {
+            //     break;
+            // } else {
+            //     continue;
+            // }
         }
     }
 
@@ -235,6 +235,13 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
     else {
         if let Some(42) = None {}
+    }
+
+    if true {
+        if let Some(42) = None::<u8> {}
+    }
+    else {
+        if let Some(42) = None::<u32> {}
     }
 
     if true {
