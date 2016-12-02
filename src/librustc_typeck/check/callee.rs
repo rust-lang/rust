@@ -193,9 +193,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let error_fn_sig;
 
-        let fn_sig = match callee_ty.sty {
-            ty::TyFnDef(.., &ty::BareFnTy {ref sig, ..}) |
-            ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => sig,
+        let (fn_sig, def_span) = match callee_ty.sty {
+            ty::TyFnDef(def_id, .., &ty::BareFnTy {ref sig, ..}) => {
+                (sig, self.tcx.map.span_if_local(def_id))
+            }
+            ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
                 if let &ty::TyAdt(adt_def, ..) = t {
@@ -241,7 +243,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     variadic: false,
                 });
 
-                &error_fn_sig
+                (&error_fn_sig, None)
             }
         };
 
@@ -266,7 +268,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   &expected_arg_tys[..],
                                   arg_exprs,
                                   fn_sig.variadic,
-                                  TupleArgumentsFlag::DontTupleArguments);
+                                  TupleArgumentsFlag::DontTupleArguments,
+                                  def_span);
 
         fn_sig.output
     }
@@ -292,7 +295,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   &expected_arg_tys,
                                   arg_exprs,
                                   fn_sig.variadic,
-                                  TupleArgumentsFlag::TupleArguments);
+                                  TupleArgumentsFlag::TupleArguments,
+                                  None);
 
         fn_sig.output
     }

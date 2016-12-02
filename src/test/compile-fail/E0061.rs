@@ -9,16 +9,17 @@
 // except according to those terms.
 
 fn f(a: u16, b: &str) {}
+//~^ NOTE defined here
 
 fn f2(a: u16) {}
+//~^ NOTE defined here
 
 fn main() {
     f(0);
     //~^ ERROR E0061
-    //~| NOTE the following parameter types were expected:
-    //~| NOTE u16, &str
+    //~| expected 2 parameters
 
     f2();
     //~^ ERROR E0061
-    //~| NOTE the following parameter type was expected: u16
+    //~| expected 1 parameter
 }
