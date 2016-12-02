@@ -738,6 +738,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_main", CrateLevel, Ungated),
     ("no_builtins", CrateLevel, Ungated),
     ("recursion_limit", CrateLevel, Ungated),
+    ("type_length_limit", CrateLevel, Ungated),
 ];
 
 // cfg(...)'s that are feature gated

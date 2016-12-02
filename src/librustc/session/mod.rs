@@ -100,6 +100,9 @@ pub struct Session {
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
+    /// The maximum length of types during monomorphization.
+    pub type_length_limit: Cell<usize>,
+
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
@@ -620,6 +623,7 @@ pub fn build_session_(sopts: config::Options,
         crate_disambiguator: RefCell::new(Symbol::intern("")),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
+        type_length_limit: Cell::new(1048576),
         next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),

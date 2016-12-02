@@ -566,7 +566,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     *sess.crate_disambiguator.borrow_mut() = Symbol::intern(&compute_crate_disambiguator(sess));
 
     time(time_passes, "recursion limit", || {
-        middle::recursion_limit::update_recursion_limit(sess, &krate);
+        middle::recursion_limit::update_limits(sess, &krate);
     });
 
     krate = time(time_passes, "crate injection", || {
