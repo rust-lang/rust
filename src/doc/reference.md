@@ -740,13 +740,14 @@ There are several kinds of item:
 * [`extern crate` declarations](#extern-crate-declarations)
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
-* [functions](#functions)
+* [function definitions](#functions)
+* [`extern` blocks](#external-blocks)
 * [type definitions](grammar.html#type-definitions)
-* [structs](#structs)
-* [enumerations](#enumerations)
+* [struct definitions](#structs)
+* [enumeration definitions](#enumerations)
 * [constant items](#constant-items)
 * [static items](#static-items)
-* [traits](#traits)
+* [trait definitions](#traits)
 * [implementations](#implementations)
 
 Some items form an implicit scope for the declaration of sub-items. In other
