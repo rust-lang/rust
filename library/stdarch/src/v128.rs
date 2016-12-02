@@ -23,21 +23,6 @@ macro_rules! define_ty_internal {
 macro_rules! define_impl {
     ($name:ident, $boolname:ident, $elemty:ident, $nelems:expr,
      $($elname:ident),+) => {
-        impl From<__m128> for $name {
-            #[inline]
-            fn from(v: __m128) -> $name { unsafe { transmute(v) } }
-        }
-
-        impl From<__m128i> for $name {
-            #[inline]
-            fn from(v: __m128i) -> $name { unsafe { transmute(v) } }
-        }
-
-        impl From<__m128d> for $name {
-            #[inline]
-            fn from(v: __m128d) -> $name { unsafe { transmute(v) } }
-        }
-
         impl $name {
             #[inline]
             pub fn new($($elname: $elemty),*) -> $name {
@@ -96,12 +81,6 @@ macro_rules! define_impl {
             }
 
             #[inline]
-            pub fn as_m128(self) -> __m128 { unsafe { transmute(self) } }
-            #[inline]
-            pub fn as_m128d(self) -> __m128d { unsafe { transmute(self) } }
-            #[inline]
-            pub fn as_m128i(self) -> __m128i { unsafe { transmute(self) } }
-            #[inline]
             pub fn as_f32x4(self) -> f32x4 { unsafe { transmute(self) } }
             #[inline]
             pub fn as_f64x2(self) -> f64x2 { unsafe { transmute(self) } }
@@ -111,9 +90,17 @@ macro_rules! define_impl {
     }
 }
 
-define_ty! { __m128, f32, f32, f32, f32 }
-define_ty! { __m128d, f64, f64 }
-define_ty! { __m128i, u64, u64 }
+macro_rules! define_from {
+    ($to:ident, $($from:ident),+) => {
+        $(
+            impl From<$from> for $to {
+                fn from(f: $from) -> $to {
+                    unsafe { transmute(f) }
+                }
+            }
+        )+
+    }
+}
 
 define_ty_internal! { boolu64x2, u64, u64 }
 define_ty_internal! { boolu32x4, u32, u32, u32, u32 }
@@ -161,3 +148,15 @@ define_impl! {
     i8x16, boolu8x16, i8, 16,
     x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15
 }
+
+define_from!(u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16);
+define_from!(i64x2, u64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16);
+define_from!(u32x4, u64x2, i64x2, i32x4, u16x8, i16x8, u8x16, i8x16);
+define_from!(i32x4, u64x2, i64x2, u32x4, u16x8, i16x8, u8x16, i8x16);
+define_from!(u16x8, u64x2, i64x2, u32x4, i32x4, i16x8, u8x16, i8x16);
+define_from!(i16x8, u64x2, i64x2, u32x4, i32x4, u16x8, u8x16, i8x16);
+define_from!(u8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, i8x16);
+define_from!(i8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16);
+
+#[allow(non_camel_case_types)]
+pub type __m128i = i8x16;

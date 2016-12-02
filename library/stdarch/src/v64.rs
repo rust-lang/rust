@@ -103,3 +103,6 @@ define_impl! { u64x1, boolu64x1, u64, 1, x0 }
 
 define_ty_internal! { u32x2, u32, u32 }
 define_impl! { u32x2, boolu32x2, u32, 2, x0, x1 }
+
+define_ty_internal! { i32x2, i32, i32 }
+define_impl! { i32x2, boolu32x2, i32, 2, x0, x1 }

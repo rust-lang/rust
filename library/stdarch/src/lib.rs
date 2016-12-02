@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![feature(
     const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
-    target_feature,
 )]
 
 // pub use v128::{__m128, __m128d, __m128i};
