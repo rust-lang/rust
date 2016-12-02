@@ -361,6 +361,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             recursion_depth_reset = Some(check_recursion_limit(scx.tcx(),
                                                                instance,
                                                                recursion_depths));
+            check_type_length_limit(scx.tcx(), instance);
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
@@ -430,6 +431,40 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     recursion_depths.insert(instance.def, recursion_depth + 1);
 
     (instance.def, recursion_depth)
+}
+
+fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     instance: Instance<'tcx>)
+{
+    let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
+    debug!(" => type length={}", type_length);
+
+    // Rust code can easily create exponentially-long types using only a
+    // polynomial recursion depth. Even with the default recursion
+    // depth, you can easily get cases that take >2^60 steps to run,
+    // which means that rustc basically hangs.
+    //
+    // Bail out in these cases to avoid that bad user experience.
+    let type_length_limit = tcx.sess.type_length_limit.get();
+    if type_length > type_length_limit {
+        // The instance name is already known to be too long for rustc. Use
+        // `{:.64}` to avoid blasting the user's terminal with thousands of
+        // lines of type-name.
+        let instance_name = instance.to_string();
+        let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
+                          instance_name);
+        let mut diag = if let Some(node_id) = tcx.map.as_local_node_id(instance.def) {
+            tcx.sess.struct_span_fatal(tcx.map.span(node_id), &msg)
+        } else {
+            tcx.sess.struct_fatal(&msg)
+        };
+
+        diag.note(&format!(
+            "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
+            type_length_limit*2));
+        diag.emit();
+        tcx.sess.abort_if_errors();
+    }
 }
 
 struct MirNeighborCollector<'a, 'tcx: 'a> {
