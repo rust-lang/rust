@@ -1,7 +1,7 @@
 - Feature Name: document_all_features
 - Start Date: 2016-06-03
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1636
+- Rust Issue: N/A
 
 
 # Summary
