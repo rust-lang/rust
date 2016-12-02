@@ -60,6 +60,14 @@ impl ExportedSymbols {
             local_crate.push(("main".to_string(), SymbolExportLevel::C));
         }
 
+        if let Some(id) = scx.sess().derive_registrar_fn.get() {
+            let svh = &scx.link_meta().crate_hash;
+            let def_id = scx.tcx().map.local_def_id(id);
+            let idx = def_id.index;
+            let registrar = scx.sess().generate_derive_registrar_symbol(svh, idx);
+            local_crate.push((registrar, SymbolExportLevel::C));
+        }
+
         if scx.sess().crate_types.borrow().contains(&config::CrateTypeDylib) {
             local_crate.push((scx.metadata_symbol_name(),
                               SymbolExportLevel::Rust));
@@ -135,8 +143,8 @@ pub fn crate_export_threshold(crate_type: config::CrateType)
     match crate_type {
         config::CrateTypeExecutable |
         config::CrateTypeStaticlib  |
-        config::CrateTypeCdylib     => SymbolExportLevel::C,
         config::CrateTypeProcMacro  |
+        config::CrateTypeCdylib     => SymbolExportLevel::C,
         config::CrateTypeRlib       |
         config::CrateTypeMetadata   |
         config::CrateTypeDylib      => SymbolExportLevel::Rust,
