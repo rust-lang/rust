@@ -5,7 +5,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
 use std::collections::{HashSet, HashMap};
 use syntax::codemap::Span;
-use utils::{in_external_macro, span_lint};
+use utils::{in_external_macro, span_lint, last_path_segment};
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
 /// relying on lifetime elision.
@@ -240,26 +240,24 @@ impl<'v, 't> RefVisitor<'v, 't> {
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
-        if let QPath::Resolved(_, ref path) = *qpath {
-            let last_path_segment = path.segments.last().map(|s| &s.parameters);
-            if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
-                if params.lifetimes.is_empty() {
-                    match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
-                        Def::TyAlias(def_id) |
-                        Def::Struct(def_id) => {
-                            let generics = self.cx.tcx.item_generics(def_id);
-                            for _ in generics.regions.as_slice() {
-                                self.record(&None);
-                            }
+        let last_path_segment = &last_path_segment(qpath).parameters;
+        if let &AngleBracketedParameters(ref params) = last_path_segment {
+            if params.lifetimes.is_empty() {
+                match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
+                    Def::TyAlias(def_id) |
+                    Def::Struct(def_id) => {
+                        let generics = self.cx.tcx.item_generics(def_id);
+                        for _ in generics.regions.as_slice() {
+                            self.record(&None);
                         }
-                        Def::Trait(def_id) => {
-                            let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
-                            for _ in &trait_def.generics.regions {
-                                self.record(&None);
-                            }
-                        }
-                        _ => (),
                     }
+                    Def::Trait(def_id) => {
+                        let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
+                        for _ in &trait_def.generics.regions {
+                            self.record(&None);
+                        }
+                    }
+                    _ => (),
                 }
             }
         }

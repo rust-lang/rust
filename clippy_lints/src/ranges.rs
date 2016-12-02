@@ -75,17 +75,13 @@ impl LateLintPass for StepByZero {
                     // .iter() and .len() called on same Path
                     let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node,
                     let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node,
-                    iter_path == len_path
+                    iter_path.segments == len_path.segments
                  ], {
-                     let Path { segments: ref iter_path, .. } = **iter_path;
-                     let Path { segments: ref len_path, .. } = **len_path;
-                     if iter_path == len_path {
-                         span_lint(cx,
-                                   RANGE_ZIP_WITH_LEN,
-                                   expr.span,
-                                   &format!("It is more idiomatic to use {}.iter().enumerate()",
-                                            snippet(cx, iter_args[0].span, "_")));
-                     }
+                     span_lint(cx,
+                               RANGE_ZIP_WITH_LEN,
+                               expr.span,
+                               &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                        snippet(cx, iter_args[0].span, "_")));
                 }}
             }
         }

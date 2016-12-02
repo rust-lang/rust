@@ -163,7 +163,7 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))
         }
-        else if match_path(path, &["into_vec"]) && args.len() == 1 {
+        else if match_def_path(cx, fun_def.def_id(), &paths::SLICE_INTO_VEC) && args.len() == 1 {
             // `vec![a, b, c]` case
             if_let_chain!{[
                 let hir::ExprBox(ref boxed) = args[0].node,

@@ -10,7 +10,7 @@ use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use utils::{
     get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
-    snippet, span_lint, span_lint_and_then, walk_ptrs_ty
+    snippet, span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment
 };
 use utils::sugg::Sugg;
 
@@ -263,22 +263,14 @@ impl LateLintPass for Pass {
         }
         let binding = match expr.node {
             ExprPath(ref qpath) => {
-                if let QPath::Resolved(_, ref path) = *qpath {
-                    let binding = path.segments
-                        .last()
-                        .expect("path should always have at least one segment")
-                        .name
-                        .as_str();
-                    if binding.starts_with('_') &&
-                        !binding.starts_with("__") &&
-                        &*binding != "_result" && // FIXME: #944
-                        is_used(cx, expr) &&
-                        // don't lint if the declaration is in a macro
-                        non_macro_local(cx, &cx.tcx.tables().qpath_def(qpath, expr.id)) {
-                        Some(binding)
-                    } else {
-                        None
-                    }
+                let binding = last_path_segment(qpath).name.as_str();
+                if binding.starts_with('_') &&
+                    !binding.starts_with("__") &&
+                    &*binding != "_result" && // FIXME: #944
+                    is_used(cx, expr) &&
+                    // don't lint if the declaration is in a macro
+                    non_macro_local(cx, &cx.tcx.tables().qpath_def(qpath, expr.id)) {
+                    Some(binding)
                 } else {
                     None
                 }

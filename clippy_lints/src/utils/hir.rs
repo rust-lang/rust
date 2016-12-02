@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-use syntax::ast::Name;
+use syntax::ast::{Name, NodeId};
 use syntax::ptr::P;
 use utils::differing_macro_contexts;
 
@@ -457,13 +457,13 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprPath(ref qpath) => {
                 let c: fn(_) -> _ = ExprPath;
                 c.hash(&mut self.s);
-                self.hash_qpath(qpath);
+                self.hash_qpath(qpath, e.id);
             }
             ExprStruct(ref path, ref fields, ref expr) => {
                 let c: fn(_, _, _) -> _ = ExprStruct;
                 c.hash(&mut self.s);
 
-                self.hash_qpath(path);
+                self.hash_qpath(path, e.id);
 
                 for f in fields {
                     self.hash_name(&f.name.node);
@@ -528,21 +528,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
         n.as_str().hash(&mut self.s);
     }
 
-    pub fn hash_qpath(&mut self, p: &QPath) {
-        match *p {
-            QPath::Resolved(ref _ty, ref path) => {
-                let c: fn(_, _) -> _ = QPath::Resolved;
-                c.hash(&mut self.s);
-                // self.hash_ty(ty); FIXME
-                self.hash_path(path);
-            },
-            QPath::TypeRelative(ref _ty, ref seg) => {
-                let c: fn(_, _) -> _ = QPath::TypeRelative;
-                c.hash(&mut self.s);
-                // self.hash_ty(ty); FIXME
-                self.hash_name(&seg.name);
-            },
-        }
+    pub fn hash_qpath(&mut self, p: &QPath, id: NodeId) {
+        self.cx.tcx.tables().qpath_def(p, id).hash(&mut self.s);
     }
 
     pub fn hash_path(&mut self, p: &Path) {

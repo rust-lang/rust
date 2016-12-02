@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet,
-            span_help_and_lint, span_lint, opt_def_id};
+            span_help_and_lint, span_lint, opt_def_id, last_path_segment};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -78,9 +78,8 @@ impl LateLintPass for TypePass {
             let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
             if let Some(def_id) = opt_def_id(def) {
                 if def_id == cx.tcx.lang_items.owned_box().unwrap() {
+                    let last = last_path_segment(qpath);
                     if_let_chain! {[
-                        let QPath::Resolved(_, ref path) = *qpath,
-                        let Some(ref last) = path.segments.last(),
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
                         let Some(ref vec) = ag.types.get(0),
                         let TyPath(ref qpath) = vec.node,

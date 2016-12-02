@@ -10,5 +10,5 @@ pub fn test(_: LinkedList<u8>) {  //~ ERROR I see you're using a LinkedList!
 }
 
 fn main(){
-    test(LinkedList::new());
+    test(LinkedList::new()); //~ ERROR I see you're using a LinkedList!
 }

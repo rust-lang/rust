@@ -21,6 +21,7 @@ fn run_mode(dir: &'static str, mode: &'static str) {
 
 fn prepare_env() {
     set_var("CLIPPY_DISABLE_WIKI_LINKS", "true");
+    set_var("RUST_BACKTRACE", "0"); // these are riddicously slow right now
 }
 
 #[test]

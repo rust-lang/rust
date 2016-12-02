@@ -95,7 +95,16 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 }
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
-    cx.sess().codemap().with_expn_info(span.expn_id, |info| info.is_some())
+    cx.sess().codemap().with_expn_info(span.expn_id, |info| match info {
+        Some(info) => {
+            match info.callee.format {
+                // don't treat range expressions desugared to structs as "in_macro"
+                ExpnFormat::CompilerDesugaring(name) => name != "...",
+                _ => true,
+            }
+        },
+        None => false,
+    })
 }
 
 /// Returns true if the macro that expanded the crate was outside of the current crate or was a
@@ -150,6 +159,9 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
     cx.tcx.push_item_path(&mut apb, def_id);
+    if path == paths::VEC_FROM_ELEM {
+        println!("{:#?} == {:#?}", apb.names, path);
+    }
 
     apb.names.len() == path.len() &&
     apb.names.iter().zip(path.iter()).all(|(a, &b)| &**a == b)
@@ -197,6 +209,23 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
     }
 }
 
+pub fn last_path_segment(path: &QPath) -> &PathSegment {
+    match *path {
+        QPath::Resolved(_, ref path) => path.segments
+                                            .last()
+                                            .expect("A path must have at least one segment"),
+        QPath::TypeRelative(_, ref seg) => &seg,
+    }
+}
+
+pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
+    match *path {
+        QPath::Resolved(_, ref path) if path.segments.len() == 1 => Some(&path.segments[0]),
+        QPath::Resolved(..) => None,
+        QPath::TypeRelative(_, ref seg) => Some(&seg),
+    }
+}
+
 /// Match a `Path` against a slice of segment string literals.
 ///
 /// # Examples
@@ -204,10 +233,16 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
-    if let QPath::Resolved(_, ref path) = *path {
-        match_path_old(path, segments)
-    } else {
-        false
+    match *path {
+        QPath::Resolved(_, ref path) => match_path_old(path, segments),
+        QPath::TypeRelative(ref ty, ref segment) => match ty.node {
+            TyPath(ref inner_path) => {
+                segments.len() > 0 &&
+                match_path(inner_path, &segments[..(segments.len() - 1)]) &&
+                segment.name == segments[segments.len() - 1]
+            },
+            _ => false,
+        },
     }
 }
 

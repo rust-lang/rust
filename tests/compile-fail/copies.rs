@@ -9,6 +9,7 @@
 #![allow(blacklisted_name)]
 #![allow(collapsible_if)]
 #![allow(zero_divided_by_zero, eq_op)]
+#![allow(path_statements)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }

@@ -3,6 +3,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::ty;
+use rustc::hir::def::Def;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use std::borrow::Cow;
@@ -10,7 +11,8 @@ use std::fmt;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path,
             match_trait_method, match_type, method_chain_args, return_ty, same_tys, snippet,
-            span_lint, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+            span_lint, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth,
+            last_path_segment, single_segment_path, match_def_path};
 use utils::paths;
 use utils::sugg;
 
@@ -701,12 +703,8 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         }
 
         if name == "unwrap_or" {
-            if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = fun.node {
-                let path: &str = &path.segments
-                                      .last()
-                                      .expect("A path must have at least one segment")
-                                      .name
-                                      .as_str();
+            if let hir::ExprPath(ref qpath) = fun.node {
+                let path: &str = &*last_path_segment(qpath).name.as_str();
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tcx.tables().expr_ty(arg);
@@ -878,7 +876,8 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
         let hir::ExprCall(ref fun, ref args) = new.node,
         args.len() == 1,
         let hir::ExprPath(ref path) = fun.node,
-        match_path(path, &paths::CSTRING_NEW),
+        let Def::Method(did) = cx.tcx.tables().qpath_def(path, fun.id),
+        match_def_path(cx, did, &paths::CSTRING_NEW)
     ], {
         span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
                            "you are getting the inner pointer of a temporary `CString`",
@@ -1188,8 +1187,9 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
         let Some(args) = method_chain_args(chain, &["chars", "next"]),
         let hir::ExprCall(ref fun, ref arg_char) = other.node,
         arg_char.len() == 1,
-        let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = fun.node,
-        path.segments.len() == 1 && &*path.segments[0].name.as_str() == "Some"
+        let hir::ExprPath(ref qpath) = fun.node,
+        let Some(segment) = single_segment_path(qpath),
+        &*segment.name.as_str() == "Some"
     ], {
         let self_ty = walk_ptrs_ty(cx.tcx.tables().expr_ty_adjusted(&args[0][0]));
 

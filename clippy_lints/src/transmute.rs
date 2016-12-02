@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet};
+use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet, last_path_segment};
 use utils::sugg;
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -191,9 +191,8 @@ impl LateLintPass for Transmute {
 /// the type's `ToString` implementation. In weird cases it could lead to types with invalid `'_`
 /// lifetime, but it should be rare.
 fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: ty::Ty) -> String {
+    let seg = last_path_segment(path);
     if_let_chain!{[
-        let QPath::Resolved(_, ref path) = *path,
-        let Some(seg) = path.segments.last(),
         let PathParameters::AngleBracketedParameters(ref ang) = seg.parameters,
         let Some(to_ty) = ang.types.get(1),
         let TyRptr(_, ref to_ty) = to_ty.node,

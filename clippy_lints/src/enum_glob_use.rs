@@ -48,6 +48,8 @@ impl EnumGlobUse {
             return; // re-exports are fine
         }
         if let ItemUse(ref path, UseKind::Glob) = item.node {
+            // FIXME: ask jseyfried why the qpath.def for `use std::cmp::Ordering::*;`
+            // extracted through `ItemUse(ref qpath, UseKind::Glob)` is a `Mod` and not an `Enum`
             if let Def::Enum(_) = path.def {
                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
             }

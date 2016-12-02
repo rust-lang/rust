@@ -16,7 +16,7 @@ use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg,
             in_external_macro, is_refutable, span_help_and_lint, is_integer_literal,
-            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty};
+            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty, last_path_segment};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -369,26 +369,23 @@ impl LateLintPass for Pass {
             if let (&PatKind::TupleStruct(ref qpath, ref pat_args, _),
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
-                if let QPath::Resolved(_, ref path) = *qpath {
-                    if let Some(lhs_constructor) = path.segments.last() {
-                        if &*method_name.node.as_str() == "next" &&
-                           match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                           &*lhs_constructor.name.as_str() == "Some" &&
-                           !is_refutable(cx, &pat_args[0]) &&
-                           !is_iterator_used_after_while_let(cx, iter_expr) {
-                            let iterator = snippet(cx, method_args[0].span, "_");
-                            let loop_var = snippet(cx, pat_args[0].span, "_");
-                            span_lint_and_then(cx,
-                                               WHILE_LET_ON_ITERATOR,
-                                               expr.span,
-                                               "this loop could be written as a `for` loop",
-                                               |db| {
-                            db.span_suggestion(expr.span,
-                                               "try",
-                                               format!("for {} in {} {{ .. }}", loop_var, iterator));
-                            });
-                        }
-                    }
+                let lhs_constructor = last_path_segment(qpath);
+                if &*method_name.node.as_str() == "next" &&
+                   match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                   &*lhs_constructor.name.as_str() == "Some" &&
+                   !is_refutable(cx, &pat_args[0]) &&
+                   !is_iterator_used_after_while_let(cx, iter_expr) {
+                    let iterator = snippet(cx, method_args[0].span, "_");
+                    let loop_var = snippet(cx, pat_args[0].span, "_");
+                    span_lint_and_then(cx,
+                                       WHILE_LET_ON_ITERATOR,
+                                       expr.span,
+                                       "this loop could be written as a `for` loop",
+                                       |db| {
+                    db.span_suggestion(expr.span,
+                                       "try",
+                                       format!("for {} in {} {{ .. }}", loop_var, iterator));
+                    });
                 }
             }
         }
