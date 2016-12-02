@@ -247,7 +247,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> where Self: Sized {
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         for x in self {
             if n == 0 { return Some(x) }
             n -= 1;
@@ -2179,4 +2179,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     type Item = I::Item;
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        (**self).nth(n)
+    }
 }
