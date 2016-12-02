@@ -241,7 +241,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
         let last_path_segment = &last_path_segment(qpath).parameters;
-        if let &AngleBracketedParameters(ref params) = last_path_segment {
+        if let AngleBracketedParameters(ref params) = *last_path_segment {
             if params.lifetimes.is_empty() {
                 match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
                     Def::TyAlias(def_id) |

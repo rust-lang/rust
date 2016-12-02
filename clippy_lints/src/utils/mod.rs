@@ -159,9 +159,6 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
     cx.tcx.push_item_path(&mut apb, def_id);
-    if path == paths::VEC_FROM_ELEM {
-        println!("{:#?} == {:#?}", apb.names, path);
-    }
 
     apb.names.len() == path.len() &&
     apb.names.iter().zip(path.iter()).all(|(a, &b)| &**a == b)
@@ -214,7 +211,7 @@ pub fn last_path_segment(path: &QPath) -> &PathSegment {
         QPath::Resolved(_, ref path) => path.segments
                                             .last()
                                             .expect("A path must have at least one segment"),
-        QPath::TypeRelative(_, ref seg) => &seg,
+        QPath::TypeRelative(_, ref seg) => seg,
     }
 }
 
@@ -222,7 +219,7 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
     match *path {
         QPath::Resolved(_, ref path) if path.segments.len() == 1 => Some(&path.segments[0]),
         QPath::Resolved(..) => None,
-        QPath::TypeRelative(_, ref seg) => Some(&seg),
+        QPath::TypeRelative(_, ref seg) => Some(seg),
     }
 }
 

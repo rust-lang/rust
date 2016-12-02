@@ -77,7 +77,7 @@ impl LateLintPass for TypePass {
         if let TyPath(ref qpath) = ast_ty.node {
             let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
             if let Some(def_id) = opt_def_id(def) {
-                if def_id == cx.tcx.lang_items.owned_box().unwrap() {
+                if Some(def_id) == cx.tcx.lang_items.owned_box() {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
