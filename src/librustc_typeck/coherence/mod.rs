@@ -16,7 +16,6 @@
 // mappings. That mapping code resides here.
 
 use hir::def_id::DefId;
-use rustc::traits::Reveal;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
@@ -25,7 +24,6 @@ use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
 use CrateCtxt;
-use rustc::infer::{InferCtxt};
 use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -37,16 +35,15 @@ mod orphan;
 mod overlap;
 mod unsafety;
 
-struct CoherenceChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    crate_context: &'a CrateCtxt<'a, 'gcx>,
-    inference_context: InferCtxt<'a, 'gcx, 'tcx>,
+struct CoherenceChecker<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-struct CoherenceCheckVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    cc: &'a CoherenceChecker<'a, 'gcx, 'tcx>,
+struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
+    cc: &'a CoherenceChecker<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.cc.check_implementation(item)
@@ -60,7 +57,7 @@ impl<'a, 'gcx, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'gcx,
     }
 }
 
-impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Returns the def ID of the base type, if there is one.
     fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
         match ty.sty {
@@ -68,7 +65,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             TyDynamic(ref t, ..) => t.principal().map(|p| p.def_id()),
 
-            TyBox(_) => self.inference_context.tcx.lang_items.owned_box(),
+            TyBox(_) => self.tcx.lang_items.owned_box(),
 
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) | TyStr | TyArray(..) |
             TySlice(..) | TyFnDef(..) | TyFnPtr(_) | TyTuple(..) | TyParam(..) | TyError |
@@ -88,21 +85,21 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        self.crate_context.tcx.visit_all_item_likes_in_krate(
+        self.tcx.visit_all_item_likes_in_krate(
             DepNode::CoherenceCheckImpl,
             &mut CoherenceCheckVisitor { cc: self });
-        builtin::check(self.crate_context.tcx);
+        builtin::check(self.tcx);
     }
 
     fn check_implementation(&self, item: &Item) {
-        let tcx = self.crate_context.tcx;
+        let tcx = self.tcx;
         let impl_did = tcx.map.local_def_id(item.id);
         let self_type = tcx.item_type(impl_did);
 
         // If there are no traits, then this implementation must have a
         // base type.
 
-        if let Some(trait_ref) = self.crate_context.tcx.impl_trait_ref(impl_did) {
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
             debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
                    trait_ref,
                    item.name);
@@ -113,9 +110,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 return;
             }
 
-            enforce_trait_manually_implementable(self.crate_context.tcx,
-                                                 item.span,
-                                                 trait_ref.def_id);
+            enforce_trait_manually_implementable(self.tcx, item.span, trait_ref.def_id);
             self.add_trait_impl(trait_ref, impl_did);
         } else {
             // Skip inherent impls where the self type is an error
@@ -134,16 +129,15 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        let tcx = self.crate_context.tcx;
-        tcx.inherent_impls.borrow_mut().push(base_def_id, impl_def_id);
+        self.tcx.inherent_impls.borrow_mut().push(base_def_id, impl_def_id);
     }
 
-    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'gcx>, impl_def_id: DefId) {
+    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'tcx>, impl_def_id: DefId) {
         debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
                impl_trait_ref,
                impl_def_id);
-        let trait_def = self.crate_context.tcx.lookup_trait_def(impl_trait_ref.def_id);
-        trait_def.record_local_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
+        let trait_def = self.tcx.lookup_trait_def(impl_trait_ref.def_id);
+        trait_def.record_local_impl(self.tcx, impl_def_id, impl_trait_ref);
     }
 }
 
@@ -176,13 +170,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
 
 pub fn check_coherence(ccx: &CrateCtxt) {
     let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
-    ccx.tcx.infer_ctxt(None, None, Reveal::ExactMatch).enter(|infcx| {
-        CoherenceChecker {
-                crate_context: ccx,
-                inference_context: infcx,
-            }
-            .check();
-    });
+    CoherenceChecker { tcx: ccx.tcx }.check();
     unsafety::check(ccx.tcx);
     orphan::check(ccx.tcx);
     overlap::check(ccx.tcx);
