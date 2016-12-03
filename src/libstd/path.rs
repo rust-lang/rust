@@ -457,7 +457,17 @@ pub enum Component<'a> {
 }
 
 impl<'a> Component<'a> {
-    /// Extracts the underlying `OsStr` slice
+    /// Extracts the underlying `OsStr` slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("./tmp/foo/bar.txt");
+    /// let components: Vec<_> = path.components().map(|comp| comp.as_os_str()).collect();
+    /// assert_eq!(&components, &[".", "tmp", "foo", "bar.txt"]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
