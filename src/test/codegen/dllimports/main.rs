@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This test is for Windows only.
+// This test is for *-windows-msvc only.
+// ignore-gnu
 // ignore-android
 // ignore-bitrig
 // ignore-macos
