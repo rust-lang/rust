@@ -1981,6 +1981,11 @@ fn trans_reuse_previous_work_products(tcx: TyCtxt,
                     debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
                     return Some(work_product);
                 } else {
+                    if tcx.sess.opts.debugging_opts.incremental_info {
+                        println!("incremental: CGU `{}` invalidated because of \
+                                  changed partitioning hash.",
+                                  cgu.name());
+                    }
                     debug!("trans_reuse_previous_work_products: \
                             not reusing {:?} because hash changed to {:?}",
                            work_product, hash);
