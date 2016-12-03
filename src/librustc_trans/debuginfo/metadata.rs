@@ -1258,7 +1258,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
             },
             layout::StructWrappedNullablePointer { nonnull: ref struct_def,
                                                 nndiscr,
-                                                ref discrfield, ..} => {
+                                                ref discrfield_source, ..} => {
                 // Create a description of the non-null variant
                 let (variant_type_metadata, variant_llvm_type, member_description_factory) =
                     describe_enum_variant(cx,
@@ -1281,12 +1281,12 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // member's name.
                 let null_variant_index = (1 - nndiscr) as usize;
                 let null_variant_name = adt.variants[null_variant_index].name;
-                let discrfield = discrfield.iter()
+                let discrfield_source = discrfield_source.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
                                            .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                discrfield,
+                                                discrfield_source,
                                                 null_variant_name);
 
                 // Create the (singleton) list of descriptions of union members.
