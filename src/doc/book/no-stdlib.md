@@ -37,9 +37,10 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```rust,ignore
-#![feature(lang_items)]
+#![feature(lang_items, core_intrinsics)]
 #![feature(start)]
 #![no_std]
+use core::intrinsics;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -69,7 +70,7 @@ pub extern fn rust_eh_unwind_resume() {
 pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
                                _file: &'static str,
                                _line: u32) -> ! {
-    loop {}
+    unsafe { intrinsics::abort() }
 }
 ```
 
@@ -79,10 +80,11 @@ correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
 ```rust,ignore
-#![feature(lang_items)]
+#![feature(lang_items, core_intrinsics)]
 #![feature(start)]
 #![no_std]
 #![no_main]
+use core::intrinsics;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -112,7 +114,7 @@ pub extern fn rust_eh_unwind_resume() {
 pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
                                _file: &'static str,
                                _line: u32) -> ! {
-    loop {}
+    unsafe { intrinsics::abort() }
 }
 ```
 
