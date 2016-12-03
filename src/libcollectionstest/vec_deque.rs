@@ -1007,3 +1007,24 @@ fn assert_covariance() {
         d
     }
 }
+
+#[test]
+fn test_is_empty() {
+    let mut v = VecDeque::<i32>::new();
+    assert!(v.is_empty());
+    assert!(v.iter().is_empty());
+    assert!(v.iter_mut().is_empty());
+    v.extend(&[2, 3, 4]);
+    assert!(!v.is_empty());
+    assert!(!v.iter().is_empty());
+    assert!(!v.iter_mut().is_empty());
+    while let Some(_) = v.pop_front() {
+        assert_eq!(v.is_empty(), v.len() == 0);
+        assert_eq!(v.iter().is_empty(), v.iter().len() == 0);
+        assert_eq!(v.iter_mut().is_empty(), v.iter_mut().len() == 0);
+    }
+    assert!(v.is_empty());
+    assert!(v.iter().is_empty());
+    assert!(v.iter_mut().is_empty());
+    assert!(v.into_iter().is_empty());
+}

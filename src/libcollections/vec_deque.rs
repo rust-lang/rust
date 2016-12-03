@@ -810,7 +810,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.tail == self.head
     }
 
     /// Create a draining iterator that removes the specified range in the
@@ -1916,7 +1916,11 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.head == self.tail
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
@@ -1980,7 +1984,11 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
+impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.head == self.tail
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
@@ -2017,7 +2025,11 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
