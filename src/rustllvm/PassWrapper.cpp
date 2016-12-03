@@ -146,6 +146,12 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
 #define SUBTARGET_MSP430
 #endif
 
+#ifdef LLVM_COMPONENT_SPARC
+#define SUBTARGET_SPARC SUBTARGET(Sparc)
+#else
+#define SUBTARGET_SPARC
+#endif
+
 #define GEN_SUBTARGETS    \
         SUBTARGET_X86     \
         SUBTARGET_ARM     \
@@ -153,7 +159,8 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
         SUBTARGET_MIPS    \
         SUBTARGET_PPC     \
         SUBTARGET_SYSTEMZ \
-        SUBTARGET_MSP430
+        SUBTARGET_MSP430  \
+        SUBTARGET_SPARC
 
 #define SUBTARGET(x) namespace llvm {                \
     extern const SubtargetFeatureKV x##FeatureKV[];  \
