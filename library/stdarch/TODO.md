@@ -39,15 +39,15 @@ sse2
 * [x] `_mm_bslli_si128`
 * [x] `_mm_bsrli_si128`
 * [x] `_mm_slli_epi16`
-* [ ] `_mm_sll_epi16`
-* [ ] `_mm_slli_epi32`
-* [ ] `_mm_sll_epi32`
-* [ ] `_mm_slli_epi64`
-* [ ] `_mm_sll_epi64`
-* [ ] `_mm_srai_epi16`
-* [ ] `_mm_sra_epi16`
-* [ ] `_mm_srai_epi32`
-* [ ] `_mm_sra_epi32`
+* [x] `_mm_sll_epi16`
+* [x] `_mm_slli_epi32`
+* [x] `_mm_sll_epi32`
+* [x] `_mm_slli_epi64`
+* [x] `_mm_sll_epi64`
+* [x] `_mm_srai_epi16`
+* [x] `_mm_sra_epi16`
+* [x] `_mm_srai_epi32`
+* [x] `_mm_sra_epi32`
 * [x] `_mm_srli_si128`
 * [ ] `_mm_srli_epi16`
 * [ ] `_mm_srl_epi16`
