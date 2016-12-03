@@ -1101,7 +1101,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     } else {
                          let mut err = struct_span_err!(tcx.sess, impl_item.span, E0323,
                                   "item `{}` is an associated const, \
-                                  which doesn't match its trait `{:?}`",
+                                  which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
@@ -1139,7 +1139,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
-                                  which doesn't match its trait `{:?}`",
+                                  which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
@@ -1157,7 +1157,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                                   "item `{}` is an associated type, \
-                                  which doesn't match its trait `{:?}`",
+                                  which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
