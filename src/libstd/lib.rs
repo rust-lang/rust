@@ -250,6 +250,7 @@
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
+#![feature(exact_size_is_empty)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
