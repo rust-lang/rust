@@ -1870,7 +1870,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         match **layout {
             Layout::StructWrappedNullablePointer { nonnull: ref variant_layout,
                                                    nndiscr,
-                                                   discrfield: _ } => {
+                                                   discrfield: _,
+                                                   discrfield_source: _ } => {
                 debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
                        ty, nndiscr, variant_layout);
                 let variant_def = &adt_def.variants[nndiscr as usize];

@@ -717,16 +717,18 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
+    /// The tuple is `(path, source_path)1,
+    /// where `path` is in memory order and `source_path` in source order.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
     fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                   ty: Ty<'gcx>)
-                                  -> Result<Option<FieldPath>, LayoutError<'gcx>> {
+                                  -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
             (&Scalar { non_zero: true, .. }, _) |
-            (&CEnum { non_zero: true, .. }, _) => Ok(Some(vec![])),
+            (&CEnum { non_zero: true, .. }, _) => Ok(Some((vec![], vec![]))),
             (&FatPointer { non_zero: true, .. }, _) => {
-                Ok(Some(vec![FAT_PTR_ADDR as u32]))
+                Ok(Some((vec![FAT_PTR_ADDR as u32], vec![FAT_PTR_ADDR as u32])))
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
@@ -737,10 +739,11 @@ impl<'a, 'gcx, 'tcx> Struct {
                     // FIXME(eddyb) also allow floating-point types here.
                     Scalar { value: Int(_), non_zero: false } |
                     Scalar { value: Pointer, non_zero: false } => {
-                        Ok(Some(vec![0]))
+                        Ok(Some((vec![0], vec![0])))
                     }
                     FatPointer { non_zero: false, .. } => {
-                        Ok(Some(vec![FAT_PTR_ADDR as u32, 0]))
+                        let tmp = vec![FAT_PTR_ADDR as u32, 0];
+                        Ok(Some((tmp.clone(), tmp)))
                     }
                     _ => Ok(None)
                 }
@@ -749,7 +752,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
             (&Univariant { ref variant, .. }, &ty::TyAdt(def, substs)) if def.is_struct() => {
-                Struct::non_zero_field_path(infcx, def.struct_variant().fields
+                Struct::non_zero_field_paths(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
                 }),
@@ -759,19 +762,19 @@ impl<'a, 'gcx, 'tcx> Struct {
             // Perhaps one of the upvars of this closure is non-zero
             (&Univariant { ref variant, .. }, &ty::TyClosure(def, substs)) => {
                 let upvar_tys = substs.upvar_tys(def, tcx);
-                Struct::non_zero_field_path(infcx, upvar_tys,
+                Struct::non_zero_field_paths(infcx, upvar_tys,
                     Some(&variant.memory_index[..]))
             }
             // Can we use one of the fields in this tuple?
             (&Univariant { ref variant, .. }, &ty::TyTuple(tys)) => {
-                Struct::non_zero_field_path(infcx, tys.iter().cloned(),
+                Struct::non_zero_field_paths(infcx, tys.iter().cloned(),
                     Some(&variant.memory_index[..]))
             }
 
             // Is this a fixed-size array of something non-zero
             // with at least one element?
             (_, &ty::TyArray(ety, d)) if d > 0 => {
-                Struct::non_zero_field_path(infcx, Some(ety).into_iter(), None)
+                Struct::non_zero_field_paths(infcx, Some(ety).into_iter(), None)
             }
 
             (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
@@ -789,20 +792,23 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    // / Returns Some((path, source_path)) on success.
+    /// `path` is translated to memory order. `source_path` is not.
+    fn non_zero_field_paths<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                   fields: I,
                                   permutation: Option<&[u32]>)
-                                  -> Result<Option<FieldPath>, LayoutError<'gcx>>
+                                  -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>>
     where I: Iterator<Item=Ty<'gcx>> {
         for (i, ty) in fields.enumerate() {
-            if let Some(mut path) = Struct::non_zero_field_in_type(infcx, ty)? {
+            if let Some((mut path, mut source_path)) = Struct::non_zero_field_in_type(infcx, ty)? {
+                source_path.push(i as u32);
                 let index = if let Some(p) = permutation {
                     p[i] as usize
                 } else {
                     i
                 };
                 path.push(index as u32);
-                return Ok(Some(path));
+                return Ok(Some((path, source_path)));
             }
         }
         Ok(None)
@@ -965,7 +971,9 @@ pub enum Layout {
         nndiscr: u64,
         nonnull: Struct,
         // N.B. There is a 0 at the start, for LLVM GEP through a pointer.
-        discrfield: FieldPath
+        discrfield: FieldPath,
+        // Like discrfield, but in source order. For debuginfo.
+        discrfield_source: FieldPath
     }
 }
 
@@ -1242,10 +1250,11 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if !Struct::would_be_zero_sized(dl, other_fields)? {
                             continue;
                         }
-                        let path = Struct::non_zero_field_path(infcx,
+                        let paths = Struct::non_zero_field_paths(infcx,
                             variants[discr].iter().cloned(),
                             None)?;
-                        let mut path = if let Some(p) = path { p } else { continue };
+                        let (mut path, mut path_source) = if let Some(p) = paths { p }
+                          else { continue };
 
                         // FIXME(eddyb) should take advantage of a newtype.
                         if path == &[0] && variants[discr].len() == 1 {
@@ -1273,11 +1282,14 @@ impl<'a, 'gcx, 'tcx> Layout {
                         *path.last_mut().unwrap() = i;
                         path.push(0); // For GEP through a pointer.
                         path.reverse();
+                        path_source.push(0);
+                        path_source.reverse();
 
                         return success(StructWrappedNullablePointer {
                             nndiscr: discr as u64,
                             nonnull: st,
-                            discrfield: path
+                            discrfield: path,
+                            discrfield_source: path_source
                         });
                     }
                 }
