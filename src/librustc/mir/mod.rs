@@ -888,7 +888,7 @@ impl<'tcx> Lvalue<'tcx> {
         self.elem(ProjectionElem::Deref)
     }
 
-    pub fn downcast(self, adt_def: AdtDef<'tcx>, variant_index: usize) -> Lvalue<'tcx> {
+    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
