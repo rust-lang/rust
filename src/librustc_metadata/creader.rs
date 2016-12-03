@@ -977,7 +977,6 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                         lib.name = Symbol::intern(new_name);
                     }
                     found = true;
-                    break;
                 }
             }
             if !found {
