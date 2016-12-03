@@ -48,8 +48,18 @@ pub struct UdpSocket(net_imp::UdpSocket);
 impl UdpSocket {
     /// Creates a UDP socket from the given address.
     ///
-    /// The address type can be any implementor of `ToSocketAddr` trait. See
+    /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
@@ -57,6 +67,17 @@ impl UdpSocket {
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let mut buf = [0; 10];
+    /// let (number_of_bytes, src_addr) = socket.recv_from(&mut buf)
+    ///                                         .expect("Didn't receive data");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.recv_from(buf)
@@ -65,11 +86,24 @@ impl UdpSocket {
     /// Sends data on the socket to the given address. On success, returns the
     /// number of bytes written.
     ///
-    /// Address type can be any implementor of `ToSocketAddrs` trait. See its
+    /// Address type can be any implementor of [`ToSocketAddrs`] trait. See its
     /// documentation for concrete examples.
+    ///
     /// This will return an error when the IP version of the local socket
-    /// does not match that returned from `ToSocketAddrs`
+    /// does not match that returned from [`ToSocketAddrs`].
+    ///
     /// See https://github.com/rust-lang/rust/issues/34202 for more details.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.send_to(&[0; 10], "127.0.0.1:4242").expect("couldn't send data");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A)
                                      -> io::Result<usize> {
@@ -81,6 +115,16 @@ impl UdpSocket {
     }
 
     /// Returns the socket address that this socket was created from.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// assert_eq!(socket.local_addr().unwrap(),
+    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 34254)));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
@@ -91,6 +135,15 @@ impl UdpSocket {
     /// The returned `UdpSocket` is a reference to the same socket that this
     /// object references. Both handles will read and write the same port, and
     /// options set on one socket will be propagated to the other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let socket_clone = socket.try_clone().expect("couldn't clone the socket");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<UdpSocket> {
         self.0.duplicate().map(UdpSocket)
@@ -98,15 +151,30 @@ impl UdpSocket {
 
     /// Sets the read timeout to the timeout specified.
     ///
-    /// If the value specified is `None`, then `read` calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// If the value specified is [`None`], then [`read()`] calls will block
+    /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// # Note
     ///
     /// Platforms may return a different error code whenever a read times out as
     /// a result of setting this option. For example Unix typically returns an
-    /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_read_timeout(dur)
@@ -114,15 +182,30 @@ impl UdpSocket {
 
     /// Sets the write timeout to the timeout specified.
     ///
-    /// If the value specified is `None`, then `write` calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// If the value specified is [`None`], then [`write()`] calls will block
+    /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// # Note
     ///
     /// Platforms may return a different error code whenever a write times out
     /// as a result of setting this option. For example Unix typically returns
-    /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_write_timeout(dur)
@@ -130,7 +213,20 @@ impl UdpSocket {
 
     /// Returns the read timeout of this socket.
     ///
-    /// If the timeout is `None`, then `read` calls will block indefinitely.
+    /// If the timeout is [`None`], then [`read()`] calls will block indefinitely.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// assert_eq!(socket.read_timeout().unwrap(), None);
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.read_timeout()
@@ -138,7 +234,20 @@ impl UdpSocket {
 
     /// Returns the write timeout of this socket.
     ///
-    /// If the timeout is `None`, then `write` calls will block indefinitely.
+    /// If the timeout is [`None`], then [`write()`] calls will block indefinitely.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// assert_eq!(socket.write_timeout().unwrap(), None);
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.write_timeout()
@@ -148,6 +257,15 @@ impl UdpSocket {
     ///
     /// When enabled, this socket is allowed to send packets to a broadcast
     /// address.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_broadcast(false).expect("set_broadcast call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
         self.0.set_broadcast(broadcast)
@@ -159,6 +277,16 @@ impl UdpSocket {
     /// [`set_broadcast`][link].
     ///
     /// [link]: #method.set_broadcast
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_broadcast(false).expect("set_broadcast call failed");
+    /// assert_eq!(socket.broadcast().unwrap(), false);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn broadcast(&self) -> io::Result<bool> {
         self.0.broadcast()
@@ -168,6 +296,15 @@ impl UdpSocket {
     ///
     /// If enabled, multicast packets will be looped back to the local socket.
     /// Note that this may not have any affect on IPv6 sockets.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_loop_v4(false).expect("set_multicast_loop_v4 call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
         self.0.set_multicast_loop_v4(multicast_loop_v4)
@@ -179,6 +316,16 @@ impl UdpSocket {
     /// [`set_multicast_loop_v4`][link].
     ///
     /// [link]: #method.set_multicast_loop_v4
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_loop_v4(false).expect("set_multicast_loop_v4 call failed");
+    /// assert_eq!(socket.multicast_loop_v4().unwrap(), false);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
         self.0.multicast_loop_v4()
@@ -191,6 +338,15 @@ impl UdpSocket {
     /// don't leave the local network unless explicitly requested.
     ///
     /// Note that this may not have any affect on IPv6 sockets.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_ttl_v4(42).expect("set_multicast_ttl_v4 call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
         self.0.set_multicast_ttl_v4(multicast_ttl_v4)
@@ -202,6 +358,16 @@ impl UdpSocket {
     /// [`set_multicast_ttl_v4`][link].
     ///
     /// [link]: #method.set_multicast_ttl_v4
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_ttl_v4(42).expect("set_multicast_ttl_v4 call failed");
+    /// assert_eq!(socket.multicast_ttl_v4().unwrap(), 42);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
         self.0.multicast_ttl_v4()
@@ -211,6 +377,15 @@ impl UdpSocket {
     ///
     /// Controls whether this socket sees the multicast packets it sends itself.
     /// Note that this may not have any affect on IPv4 sockets.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_loop_v6(false).expect("set_multicast_loop_v6 call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
         self.0.set_multicast_loop_v6(multicast_loop_v6)
@@ -222,6 +397,16 @@ impl UdpSocket {
     /// [`set_multicast_loop_v6`][link].
     ///
     /// [link]: #method.set_multicast_loop_v6
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_multicast_loop_v6(false).expect("set_multicast_loop_v6 call failed");
+    /// assert_eq!(socket.multicast_loop_v6().unwrap(), false);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
         self.0.multicast_loop_v6()
@@ -231,6 +416,15 @@ impl UdpSocket {
     ///
     /// This value sets the time-to-live field that is used in every packet sent
     /// from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_ttl(42).expect("set_ttl call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         self.0.set_ttl(ttl)
@@ -241,6 +435,16 @@ impl UdpSocket {
     /// For more information about this option, see [`set_ttl`][link].
     ///
     /// [link]: #method.set_ttl
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_ttl(42).expect("set_ttl call failed");
+    /// assert_eq!(socket.ttl().unwrap(), 42);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
