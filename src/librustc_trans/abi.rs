@@ -25,6 +25,7 @@ use cabi_mips64;
 use cabi_asmjs;
 use cabi_msp430;
 use cabi_sparc;
+use cabi_sparc64;
 use machine::{llalign_of_min, llsize_of, llsize_of_alloc};
 use type_::Type;
 use type_of;
@@ -608,6 +609,7 @@ impl FnType {
             "wasm32" => cabi_asmjs::compute_abi_info(ccx, self),
             "msp430" => cabi_msp430::compute_abi_info(ccx, self),
             "sparc" => cabi_sparc::compute_abi_info(ccx, self),
+            "sparc64" => cabi_sparc64::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 
