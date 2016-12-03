@@ -552,7 +552,14 @@ pub trait ExactSizeIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {}
+impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+    fn is_empty(&self) -> bool {
+        (**self).is_empty()
+    }
+}
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
