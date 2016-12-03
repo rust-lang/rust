@@ -66,13 +66,13 @@ impl LLVMRustResult {
 
 pub fn AddFunctionAttrStringValue(llfn: ValueRef,
                                   idx: AttributePlace,
-                                  attr: &'static str,
-                                  value: &'static str) {
+                                  attr: &CStr,
+                                  value: &CStr) {
     unsafe {
         LLVMRustAddFunctionAttrStringValue(llfn,
                                            idx.as_uint(),
-                                           attr.as_ptr() as *const _,
-                                           value.as_ptr() as *const _)
+                                           attr.as_ptr(),
+                                           value.as_ptr())
     }
 }
 
