@@ -156,7 +156,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             let hashes_file_path = metadata_hash_import_path(&session_dir);
 
-            match file_format::read_file(&hashes_file_path)
+            match file_format::read_file(self.tcx.sess, &hashes_file_path)
             {
                 Ok(Some(data)) => {
                     match self.load_from_data(cnum, &data, svh) {

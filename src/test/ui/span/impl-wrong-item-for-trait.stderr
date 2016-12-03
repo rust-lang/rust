@@ -1,4 +1,4 @@
-error[E0323]: item `bar` is an associated const, which doesn't match its trait `<FooConstForMethod as Foo>`
+error[E0323]: item `bar` is an associated const, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:25:5
    |
 16 |     fn bar(&self);
@@ -24,7 +24,7 @@ error[E0046]: not all trait items implemented, missing: `bar`
 29 | | }
    | |_^ ...ending here: missing `bar` in implementation
 
-error[E0324]: item `MY_CONST` is an associated method, which doesn't match its trait `<FooMethodForConst as Foo>`
+error[E0324]: item `MY_CONST` is an associated method, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:37:5
    |
 17 |     const MY_CONST: u32;
@@ -50,7 +50,7 @@ error[E0046]: not all trait items implemented, missing: `MY_CONST`
 40 | | }
    | |_^ ...ending here: missing `MY_CONST` in implementation
 
-error[E0325]: item `bar` is an associated type, which doesn't match its trait `<FooTypeForMethod as Foo>`
+error[E0325]: item `bar` is an associated type, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:47:5
    |
 16 |     fn bar(&self);
