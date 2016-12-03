@@ -1079,7 +1079,7 @@ pub enum StrStyle {
     /// A raw string, like `r##"foo"##`
     ///
     /// The uint is the number of `#` symbols used
-    Raw(usize)
+    Raw(u16)
 }
 
 /// A literal

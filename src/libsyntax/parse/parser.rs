@@ -1521,14 +1521,14 @@ impl<'a> Parser<'a> {
                         let s = Symbol::intern(&parse::str_lit(&s.as_str()));
                         (true, LitKind::Str(s, ast::StrStyle::Cooked))
                     }
-                    token::StrRaw(s, n) => {
+                    token::StrRaw(n, s) => {
                         let s = Symbol::intern(&parse::raw_str_lit(&s.as_str()));
                         (true, LitKind::Str(s, ast::StrStyle::Raw(n)))
                     }
                     token::ByteStr(i) => {
                         (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str())))
                     }
-                    token::ByteStrRaw(i, _) => {
+                    token::ByteStrRaw(_, i) => {
                         (true, LitKind::ByteStr(Rc::new(i.to_string().into_bytes())))
                     }
                 };
@@ -5637,7 +5637,7 @@ impl<'a> Parser<'a> {
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> PResult<'a, Option<abi::Abi>> {
         match self.token {
-            token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
+            token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(_, s), suf) => {
                 let sp = self.span;
                 self.expect_no_suffix(sp, "ABI spec", suf);
                 self.bump();
@@ -6134,7 +6134,7 @@ impl<'a> Parser<'a> {
     pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
         let ret = match self.token {
             token::Literal(token::Str_(s), suf) => (s, ast::StrStyle::Cooked, suf),
-            token::Literal(token::StrRaw(s, n), suf) => (s, ast::StrStyle::Raw(n), suf),
+            token::Literal(token::StrRaw(n, s), suf) => (s, ast::StrStyle::Raw(n), suf),
             _ => return None
         };
         self.bump();

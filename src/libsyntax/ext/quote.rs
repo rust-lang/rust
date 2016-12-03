@@ -649,9 +649,9 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
             return mk_lit!("Str_", suf, mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident)))
         }
 
-        token::Literal(token::StrRaw(ident, n), suf) => {
-            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident)),
-                           cx.expr_usize(sp, n))
+        token::Literal(token::StrRaw(n, ident), suf) => {
+            return mk_lit!("StrRaw", suf, cx.expr_u16(sp, n),
+                           mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident)));
         }
 
         token::Ident(ident) => {
