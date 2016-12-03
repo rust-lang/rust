@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
         format!(".{}({})",
                 method.name,
-                if self.has_not_input_arg(method) {
+                if self.has_no_input_arg(method) {
                     ""
                 } else {
                     "..."
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn get_best_match(&self, methods: &[AssociatedItem]) -> String {
         let no_argument_methods: Vec<_> =
             methods.iter()
-                   .filter(|ref x| self.has_not_input_arg(&*x))
+                   .filter(|ref x| self.has_no_input_arg(&*x))
                    .map(|x| x.clone())
                    .collect();
         if no_argument_methods.len() > 0 {
@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // This function checks if the method isn't static and takes other arguments than `self`.
-    fn has_not_input_arg(&self, method: &AssociatedItem) -> bool {
+    fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
         match method.def() {
             Def::Method(def_id) => {
                 match self.tcx.item_type(def_id).sty {
