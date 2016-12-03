@@ -39,14 +39,10 @@ struct CoherenceChecker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
-    cc: &'a CoherenceChecker<'a, 'tcx>,
-}
-
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceChecker<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
-            self.cc.check_implementation(item)
+            self.check_implementation(item)
         }
     }
 
@@ -81,14 +77,11 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    fn check(&self) {
+    fn check(&mut self) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        self.tcx.visit_all_item_likes_in_krate(
-            DepNode::CoherenceCheckImpl,
-            &mut CoherenceCheckVisitor { cc: self });
-        builtin::check(self.tcx);
+        self.tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl, self);
     }
 
     fn check_implementation(&self, item: &Item) {
@@ -174,4 +167,5 @@ pub fn check_coherence(ccx: &CrateCtxt) {
     unsafety::check(ccx.tcx);
     orphan::check(ccx.tcx);
     overlap::check(ccx.tcx);
+    builtin::check(ccx.tcx);
 }
