@@ -93,7 +93,7 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
-    match file_format::read_file(path) {
+    match file_format::read_file(sess, path) {
         Ok(Some(data)) => return Some(data),
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
@@ -132,6 +132,10 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let prev_commandline_args_hash = u64::decode(&mut dep_graph_decoder)?;
 
     if prev_commandline_args_hash != tcx.sess.opts.dep_tracking_hash() {
+        if tcx.sess.opts.debugging_opts.incremental_info {
+            println!("incremental: completely ignoring cache because of \
+                      differing commandline arguments");
+        }
         // We can't reuse the cache, purge it.
         debug!("decode_dep_graph: differing commandline arg hashes");
         for swp in work_products {
@@ -192,7 +196,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if tcx.sess.opts.debugging_opts.incremental_info {
                     // It'd be nice to pretty-print these paths better than just
                     // using the `Debug` impls, but wev.
-                    println!("module {:?} is dirty because {:?} changed or was removed",
+                    println!("incremental: module {:?} is dirty because {:?} \
+                              changed or was removed",
                              target_node,
                              raw_source_node.map_def(|&index| {
                                  Some(directory.def_path_string(tcx, index))
@@ -250,11 +255,24 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    current_hash);
                 continue;
             }
+
+            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+                println!("node {:?} is dirty as hash is {:?} was {:?}",
+                         dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                         current_hash,
+                         hash.hash);
+            }
+
             debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
                    dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
                    current_hash,
                    hash.hash);
         } else {
+            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+                println!("node {:?} is dirty as it was removed",
+                         hash.dep_node);
+            }
+
             debug!("initial_dirty_nodes: {:?} is dirty as it was removed",
                    hash.dep_node);
         }
@@ -277,14 +295,19 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("reconcile_work_products: dep-node for {:?} is dirty", swp);
             delete_dirty_work_product(tcx, swp);
         } else {
-            let all_files_exist =
-                swp.work_product
-                   .saved_files
-                   .iter()
-                   .all(|&(_, ref file_name)| {
-                       let path = in_incr_comp_dir_sess(tcx.sess, &file_name);
-                       path.exists()
-                   });
+            let mut all_files_exist = true;
+            for &(_, ref file_name) in swp.work_product.saved_files.iter() {
+                let path = in_incr_comp_dir_sess(tcx.sess, file_name);
+                if !path.exists() {
+                    all_files_exist = false;
+
+                    if tcx.sess.opts.debugging_opts.incremental_info {
+                        println!("incremental: could not find file for up-to-date work product: {}",
+                                 path.display());
+                    }
+                }
+            }
+
             if all_files_exist {
                 debug!("reconcile_work_products: all files for {:?} exist", swp);
                 tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
@@ -331,7 +354,7 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
 
-    let data = match file_format::read_file(&file_path) {
+    let data = match file_format::read_file(tcx.sess, &file_path) {
         Ok(Some(data)) => data,
         Ok(None) => {
             debug!("load_prev_metadata_hashes() - File produced by incompatible \
