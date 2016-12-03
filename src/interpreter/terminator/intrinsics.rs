@@ -182,7 +182,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByValPair(ptr, extra) => Lvalue::Ptr {
                         ptr: ptr.to_ptr(),
                         extra: match self.tcx.struct_tail(ty).sty {
-                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()),
                             ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
                             _ => bug!("invalid fat pointer type: {}", ptr_ty),
                         },
@@ -465,7 +465,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         Ok((size, align))
                     }
                 }
-                ty::TyTrait(..) => {
+                ty::TyDynamic(..) => {
                     let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     let size = self.memory.read_usize(vtable.offset(pointer_size))?;

@@ -771,7 +771,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (field_index, &self.tcx.struct_tail(ty).sty) {
                     (1, &ty::TyStr) |
                     (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
-                    (1, &ty::TyTrait(_)) |
+                    (1, &ty::TyDynamic(..)) |
                     (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.u8)),
                     _ => bug!("invalid fat pointee type: {}", ty),
                 }
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("deref to {} on {:?}", pointee_type, val);
 
                 match self.tcx.struct_tail(pointee_type).sty {
-                    ty::TyTrait(_) => {
+                    ty::TyDynamic(..) => {
                         let (ptr, vtable) = val.expect_ptr_vtable_pair(&self.memory)?;
                         (ptr, LvalueExtra::Vtable(vtable))
                     },
@@ -1462,7 +1462,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     trace!("reading fat pointer extra of type {}", ty);
                     let extra = ptr.offset(self.memory.pointer_size());
                     let extra = match self.tcx.struct_tail(ty).sty {
-                        ty::TyTrait(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
+                        ty::TyDynamic(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
                         ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
@@ -1529,14 +1529,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let ptr = PrimVal::from_ptr(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
-                    (&ty::TyTrait(_), &ty::TyTrait(_)) => {
+                    (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
                         // For now, upcasts are limited to changes in marker
                         // traits, and hence never actually require an actual
                         // change to the vtable.
                         self.write_value(src, dest, dest_ty)?;
                     },
-                    (_, &ty::TyTrait(ref data)) => {
-                        let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
+                    (_, &ty::TyDynamic(ref data, _)) => {
+                        let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
                         let trait_ref = self.tcx.erase_regions(&trait_ref);
                         let vtable = self.get_vtable(trait_ref)?;
                         let ptr = src.read_ptr(&self.memory)?;

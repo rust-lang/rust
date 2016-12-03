@@ -550,7 +550,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByValPair(prim_ptr, extra) => {
                         let ptr = prim_ptr.to_ptr();
                         let extra = match self.tcx.struct_tail(contents_ty).sty {
-                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()),
                             ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
                             _ => bug!("invalid fat pointer type: {}", ty),
                         };
@@ -640,7 +640,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 self.drop_fields(fields.iter().cloned().zip(offsets.iter().cloned()), lval, drop)?;
             },
-            ty::TyTrait(_) => {
+            ty::TyDynamic(..) => {
                 let (ptr, vtable) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
                     _ => bug!("expected an lvalue with a vtable"),
