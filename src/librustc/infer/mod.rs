@@ -1367,7 +1367,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                    cause: &ObligationCause<'tcx>,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: TypeError<'tcx>) -> DiagnosticBuilder<'tcx> {
+                                   err: TypeError<'tcx>)
+                                   -> DiagnosticBuilder<'tcx> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }

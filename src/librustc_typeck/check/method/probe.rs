@@ -37,6 +37,22 @@ pub enum LookingFor<'tcx> {
     ReturnType(Ty<'tcx>),
 }
 
+impl<'tcx> LookingFor<'tcx> {
+    pub fn is_method_name(&self) -> bool {
+        match *self {
+            LookingFor::MethodName(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_return_type(&self) -> bool {
+        match *self {
+            LookingFor::ReturnType(_) => true,
+            _ => false,
+        }
+    }
+}
+
 struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
@@ -468,44 +484,81 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let item = match self.impl_or_trait_item(impl_def_id) {
-            Some(m) => m,
-            None => {
+        let items = self.impl_or_trait_item(impl_def_id);
+        if items.len() < 1 {
+            return // No method with correct name on this impl
+        }
+
+        if self.looking_for.is_method_name() {
+            let item = items[0];
+
+            if !self.has_applicable_self(&item) {
+                // No receiver declared. Not a candidate.
+                return self.record_static_candidate(ImplSource(impl_def_id));
+            }
+
+            if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
+                self.private_candidate = Some(item.def());
                 return;
-            } // No method with correct name on this impl
-        };
+            }
 
-        if !self.has_applicable_self(&item) {
-            // No receiver declared. Not a candidate.
-            return self.record_static_candidate(ImplSource(impl_def_id));
+            let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
+            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
+
+            // Determine the receiver type that the method itself expects.
+            let xform_self_ty = self.xform_self_ty(&item, impl_ty, impl_substs);
+
+            // We can't use normalize_associated_types_in as it will pollute the
+            // fcx's fulfillment context after this probe is over.
+            let cause = traits::ObligationCause::misc(self.span, self.body_id);
+            let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+            let traits::Normalized { value: xform_self_ty, obligations } =
+                traits::normalize(selcx, cause, &xform_self_ty);
+            debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
+                   xform_self_ty);
+
+            self.inherent_candidates.push(Candidate {
+                xform_self_ty: xform_self_ty,
+                item: item,
+                kind: InherentImplCandidate(impl_substs, obligations),
+                import_id: self.import_id,
+            });
+        } else {
+            for item in items {
+                if !self.has_applicable_self(&item) {
+                    // No receiver declared. Not a candidate.
+                    self.record_static_candidate(ImplSource(impl_def_id));
+                    continue
+                }
+
+                if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
+                    self.private_candidate = Some(item.def());
+                    continue
+                }
+
+                let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
+                let impl_ty = impl_ty.subst(self.tcx, impl_substs);
+
+                // Determine the receiver type that the method itself expects.
+                let xform_self_ty = self.xform_self_ty(&item, impl_ty, impl_substs);
+
+                // We can't use normalize_associated_types_in as it will pollute the
+                // fcx's fulfillment context after this probe is over.
+                let cause = traits::ObligationCause::misc(self.span, self.body_id);
+                let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+                let traits::Normalized { value: xform_self_ty, obligations } =
+                    traits::normalize(selcx, cause, &xform_self_ty);
+                debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
+                       xform_self_ty);
+
+                self.inherent_candidates.push(Candidate {
+                    xform_self_ty: xform_self_ty,
+                    item: item,
+                    kind: InherentImplCandidate(impl_substs, obligations),
+                    import_id: self.import_id,
+                });
+            }
         }
-
-        if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
-            self.private_candidate = Some(item.def());
-            return;
-        }
-
-        let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = impl_ty.subst(self.tcx, impl_substs);
-
-        // Determine the receiver type that the method itself expects.
-        let xform_self_ty = self.xform_self_ty(&item, impl_ty, impl_substs);
-
-        // We can't use normalize_associated_types_in as it will pollute the
-        // fcx's fulfillment context after this probe is over.
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let mut selcx = &mut traits::SelectionContext::new(self.fcx);
-        let traits::Normalized { value: xform_self_ty, obligations } =
-            traits::normalize(selcx, cause, &xform_self_ty);
-        debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
-               xform_self_ty);
-
-        self.inherent_candidates.push(Candidate {
-            xform_self_ty: xform_self_ty,
-            item: item,
-            kind: InherentImplCandidate(impl_substs, obligations),
-            import_id: self.import_id,
-        });
     }
 
     fn assemble_inherent_candidates_from_object(&mut self,
@@ -598,12 +651,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let item = match self.impl_or_trait_item(bound_trait_ref.def_id()) {
-                Some(v) => v,
-                None => {
-                    continue;
-                }
-            };
+            let items = self.impl_or_trait_item(bound_trait_ref.def_id());
+            if items.len() < 1 {
+                continue
+            }
+            let item = items[0];
 
             if !self.has_applicable_self(&item) {
                 self.record_static_candidate(TraitSource(bound_trait_ref.def_id()));
@@ -665,12 +717,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
                trait_def_id);
 
-        let item = match self.impl_or_trait_item(trait_def_id) {
-            Some(i) => i,
-            None => {
-                return Ok(());
-            }
-        };
+        let items = self.impl_or_trait_item(trait_def_id);
+        if items.len() < 1 {
+            return Ok(());
+        }
+        let item = items[0];
 
         // Check whether `trait_def_id` defines a method with suitable name:
         if !self.has_applicable_self(&item) {
@@ -1351,16 +1402,17 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     /// Find the method with the appropriate name (or return type, as the case may be).
-    fn impl_or_trait_item(&self, def_id: DefId) -> Option<ty::AssociatedItem> {
+    fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
         match self.looking_for {
             LookingFor::MethodName(name) => {
-                self.fcx.associated_item(def_id, name)
+                self.fcx.associated_item(def_id, name).map_or(Vec::new(), |x| vec![x])
             }
             LookingFor::ReturnType(return_ty) => {
                 self.tcx
                     .associated_items(def_id)
                     .map(|did| self.tcx.associated_item(did.def_id))
-                    .find(|m| self.matches_return_type(m, return_ty))
+                    .filter(|m| self.matches_return_type(m, return_ty))
+                    .collect()
             }
         }
     }
