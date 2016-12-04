@@ -18,7 +18,7 @@ macro_rules! cfg_if {
 use libc::{c_int, c_void, uintptr_t};
 
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum _Unwind_Reason_Code {
     _URC_NO_REASON = 0,
     _URC_FOREIGN_EXCEPTION_CAUGHT = 1,
