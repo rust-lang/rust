@@ -259,7 +259,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Ty {
             id: t.id,
             node: match t.node {
-                TyKind::Infer | TyKind::ImplicitSelf => hir::TyInfer,
+                TyKind::Infer => hir::TyInfer,
                 TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
                 TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
                 TyKind::Rptr(ref region, ref mt) => {
@@ -282,6 +282,16 @@ impl<'a> LoweringContext<'a> {
                 }
                 TyKind::Path(ref qself, ref path) => {
                     hir::TyPath(self.lower_qpath(t.id, qself, path, ParamMode::Explicit))
+                }
+                TyKind::ImplicitSelf => {
+                    hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
+                        def: self.expect_full_def(t.id),
+                        segments: hir_vec![hir::PathSegment {
+                            name: keywords::SelfType.name(),
+                            parameters: hir::PathParameters::none()
+                        }],
+                        span: t.span,
+                    })))
                 }
                 TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
@@ -976,7 +986,7 @@ impl<'a> LoweringContext<'a> {
                 ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
                 ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
                 ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
-                    has_self: sig.decl.get_self().is_some(),
+                    has_self: sig.decl.has_self(),
                 },
                 ImplItemKind::Macro(..) => unimplemented!(),
             },
@@ -1051,24 +1061,13 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
-        let hir_sig = hir::MethodSig {
+        hir::MethodSig {
             generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),
-        };
-        // Check for `self: _` and `self: &_`
-        if let Some(SelfKind::Explicit(..)) = sig.decl.get_self().map(|eself| eself.node) {
-            match hir_sig.decl.get_self().map(|eself| eself.node) {
-                Some(hir::SelfKind::Value(..)) | Some(hir::SelfKind::Region(..)) => {
-                    self.diagnostic().span_err(sig.decl.inputs[0].ty.span,
-                        "the type placeholder `_` is not allowed within types on item signatures");
-                }
-                _ => {}
-            }
         }
-        hir_sig
     }
 
     fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {
