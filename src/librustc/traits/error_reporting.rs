@@ -487,13 +487,29 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
 
-                                let mut err = struct_span_err!(self.tcx.sess, span, E0277,
-                                    "the trait bound `{}` is not satisfied",
-                                    trait_ref.to_predicate());
-                                err.span_label(span, &format!("the trait `{}` is not implemented \
-                                                               for `{}`",
-                                                              trait_ref,
-                                                              trait_ref.self_ty()));
+                                let (post_message, pre_message) =
+                                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data)
+                                        = obligation.cause.code {
+                                    let parent_trait_ref = self.resolve_type_vars_if_possible(
+                                        &data.parent_trait_ref);
+                                    (format!(" in `{}`", parent_trait_ref.0.self_ty()),
+                                     format!("within `{}`, ", parent_trait_ref.0.self_ty()))
+                                } else {
+                                    (String::new(), String::new())
+                                };
+                                let mut err = struct_span_err!(
+                                    self.tcx.sess,
+                                    span,
+                                    E0277,
+                                    "the trait bound `{}` is not satisfied{}",
+                                    trait_ref.to_predicate(),
+                                    post_message);
+                                err.span_label(span,
+                                               &format!("{}the trait `{}` is not \
+                                                         implemented for `{}`",
+                                                        pre_message,
+                                                        trait_ref,
+                                                        trait_ref.self_ty()));
 
                                 // Try to report a help message
 
