@@ -782,6 +782,7 @@ pub struct ModuleS<'a> {
 
     resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Mark, Name, Span)>>,
+    macro_resolutions: RefCell<Vec<(Box<[Ident]>, PathScope, Span)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -810,6 +811,7 @@ impl<'a> ModuleS<'a> {
             normal_ancestor_id: None,
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
+            macro_resolutions: RefCell::new(Vec::new()),
             unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -921,6 +923,14 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
+        }
+    }
+
+    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Rc<SyntaxExtension> {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding.get_macro(resolver),
+            NameBindingKind::Ambiguity { b1, .. } => b1.get_macro(resolver),
+            _ => resolver.get_macro(self.def()),
         }
     }
 
@@ -1307,6 +1317,7 @@ impl<'a> Resolver<'a> {
     pub fn resolve_crate(&mut self, krate: &Crate) {
         ImportResolver { resolver: self }.finalize_imports();
         self.current_module = self.graph_root;
+        self.finalize_current_module_macro_resolutions();
         visit::walk_crate(self, krate);
 
         check_unused::check_crate(self, krate);
@@ -2350,10 +2361,13 @@ impl<'a> Resolver<'a> {
 
             let binding = if let Some(module) = module {
                 self.resolve_name_in_module(module, ident.name, ns, false, record_used)
+            } else if opt_ns == Some(MacroNS) {
+                self.resolve_lexical_macro_path_segment(ident.name, ns, record_used)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
-                    Some(LexicalScopeBinding::Def(def)) if opt_ns.is_some() => {
+                    Some(LexicalScopeBinding::Def(def))
+                            if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
                         return PathResult::NonModule(PathResolution {
                             base_def: def,
                             depth: path.len() - 1,
@@ -2369,7 +2383,7 @@ impl<'a> Resolver<'a> {
                         module = Some(next_module);
                     } else if binding.def() == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
-                    } else if opt_ns.is_some() {
+                    } else if opt_ns.is_some() && !(opt_ns == Some(MacroNS) && !is_last) {
                         return PathResult::NonModule(PathResolution {
                             base_def: binding.def(),
                             depth: path.len() - i - 1,
@@ -3050,15 +3064,22 @@ impl<'a> Resolver<'a> {
 
         for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
-            let msg1 = format!("`{}` could resolve to the name imported here", name);
-            let msg2 = format!("`{}` could also resolve to the name imported here", name);
+            let participle = |binding: &NameBinding| {
+                if binding.is_import() { "imported" } else { "defined" }
+            };
+            let msg1 = format!("`{}` could resolve to the name {} here", name, participle(b1));
+            let msg2 = format!("`{}` could also resolve to the name {} here", name, participle(b2));
             self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
                 .span_note(b1.span, &msg1)
                 .span_note(b2.span, &msg2)
-                .note(&if lexical || !b1.is_glob_import() {
-                    "macro-expanded macro imports do not shadow".to_owned()
-                } else {
+                .note(&if !lexical && b1.is_glob_import() {
                     format!("consider adding an explicit import of `{}` to disambiguate", name)
+                } else if let Def::Macro(..) = b1.def() {
+                    format!("macro-expanded {} do not shadow",
+                            if b1.is_import() { "macro imports" } else { "macros" })
+                } else {
+                    format!("macro-expanded {} do not shadow when used in a macro invocation path",
+                            if b1.is_import() { "imports" } else { "items" })
                 })
                 .emit();
         }

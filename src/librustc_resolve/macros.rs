@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {Module, ModuleKind, NameBinding, NameBindingKind, Resolver, AmbiguityError};
+use {AmbiguityError, Resolver, ResolutionError, resolve_error};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathScope, PathResult};
 use Namespace::{self, MacroNS};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
@@ -25,6 +26,7 @@ use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::fold::Folder;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -193,7 +195,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             match self.builtin_macros.get(&attrs[i].name()).cloned() {
-                Some(binding) => match *self.get_macro(binding) {
+                Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
                     }
@@ -207,48 +209,72 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
-            self.session.span_err(path.span, "expected macro name without module separators");
+        let ast::Path { ref segments, global, span } = *path;
+        if segments.iter().any(|segment| !segment.parameters.is_empty()) {
+            let kind =
+                if segments.last().unwrap().parameters.is_empty() { "module" } else { "macro" };
+            let msg = format!("type parameters are not allowed on {}s", kind);
+            self.session.span_err(path.span, &msg);
             return Err(Determinacy::Determined);
         }
-        let name = path.segments[0].identifier.name;
 
+        let path_scope = if global { PathScope::Global } else { PathScope::Lexical };
+        let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();
+
+        if path.len() > 1 || global {
+            if !self.use_extern_macros {
+                let msg = "non-ident macro paths are experimental";
+                let feature = "use_extern_macros";
+                emit_feature_err(&self.session.parse_sess, feature, span, GateIssue::Language, msg);
+                return Err(Determinacy::Determined);
+            }
+
+            let ext = match self.resolve_path(&path, path_scope, Some(MacroNS), None) {
+                PathResult::NonModule(path_res) => Ok(self.get_macro(path_res.base_def)),
+                PathResult::Module(..) => unreachable!(),
+                PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
+                _ => Err(Determinacy::Determined),
+            };
+            self.current_module.macro_resolutions.borrow_mut()
+                .push((path.into_boxed_slice(), path_scope, span));
+            return ext;
+        }
+
+        let name = path[0].name;
         let result = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
             Some(MacroBinding::Legacy(binding)) => Ok(binding.ext.clone()),
-            Some(MacroBinding::Modern(binding)) => Ok(self.get_macro(binding)),
-            None => match self.resolve_in_item_lexical_scope(name, MacroNS, None) {
-                Some(binding) => Ok(self.get_macro(binding)),
-                None => return Err(if force {
+            Some(MacroBinding::Modern(binding)) => Ok(binding.get_macro(self)),
+            None => match self.resolve_lexical_macro_path_segment(name, MacroNS, None) {
+                Ok(binding) => Ok(binding.get_macro(self)),
+                Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
+                _ => {
                     let msg = format!("macro undefined: '{}!'", name);
-                    let mut err = self.session.struct_span_err(path.span, &msg);
+                    let mut err = self.session.struct_span_err(span, &msg);
                     self.suggest_macro_name(&name.as_str(), &mut err);
                     err.emit();
-                    Determinacy::Determined
-                } else {
-                    Determinacy::Undetermined
-                }),
+                    return Err(Determinacy::Determined);
+                },
             },
         };
 
         if self.use_extern_macros {
-            self.current_module.legacy_macro_resolutions.borrow_mut()
-                .push((scope, name, path.span));
+            self.current_module.legacy_macro_resolutions.borrow_mut().push((scope, name, span));
         }
         result
     }
 }
 
 impl<'a> Resolver<'a> {
-    // Resolve the name in the module's lexical scope, excluding non-items.
-    fn resolve_in_item_lexical_scope(&mut self,
-                                     name: Name,
-                                     ns: Namespace,
-                                     record_used: Option<Span>)
-                                     -> Option<&'a NameBinding<'a>> {
+    // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
+    pub fn resolve_lexical_macro_path_segment(&mut self,
+                                              name: Name,
+                                              ns: Namespace,
+                                              record_used: Option<Span>)
+                                              -> Result<&'a NameBinding<'a>, Determinacy> {
         let mut module = self.current_module;
-        let mut potential_expanded_shadower = None;
+        let mut potential_expanded_shadower: Option<&NameBinding> = None;
         loop {
             // Since expanded macros may not shadow the lexical scope (enforced below),
             // we can ignore unresolved invocations (indicated by the penultimate argument).
@@ -256,26 +282,30 @@ impl<'a> Resolver<'a> {
                 Ok(binding) => {
                     let span = match record_used {
                         Some(span) => span,
-                        None => return Some(binding),
+                        None => return Ok(binding),
                     };
-                    if let Some(shadower) = potential_expanded_shadower {
-                        self.ambiguity_errors.push(AmbiguityError {
-                            span: span, name: name, b1: shadower, b2: binding, lexical: true,
-                        });
-                        return Some(shadower);
-                    } else if binding.expansion == Mark::root() {
-                        return Some(binding);
-                    } else {
-                        potential_expanded_shadower = Some(binding);
+                    match potential_expanded_shadower {
+                        Some(shadower) if shadower.def() != binding.def() => {
+                            self.ambiguity_errors.push(AmbiguityError {
+                                span: span, name: name, b1: shadower, b2: binding, lexical: true,
+                            });
+                            return Ok(shadower);
+                        }
+                        _ if binding.expansion == Mark::root() => return Ok(binding),
+                        _ => potential_expanded_shadower = Some(binding),
                     }
                 },
-                Err(Determinacy::Undetermined) => return None,
+                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
                 Err(Determinacy::Determined) => {}
             }
 
             match module.kind {
                 ModuleKind::Block(..) => module = module.parent.unwrap(),
-                ModuleKind::Def(..) => return potential_expanded_shadower,
+                ModuleKind::Def(..) => return match potential_expanded_shadower {
+                    Some(binding) => Ok(binding),
+                    None if record_used.is_some() => Err(Determinacy::Determined),
+                    None => Err(Determinacy::Undetermined),
+                },
             }
         }
     }
@@ -343,12 +373,22 @@ impl<'a> Resolver<'a> {
 
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
+        for &(ref path, scope, span) in module.macro_resolutions.borrow().iter() {
+            match self.resolve_path(path, scope, Some(MacroNS), Some(span)) {
+                PathResult::NonModule(_) => {},
+                PathResult::Failed(msg, _) => {
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                }
+                _ => unreachable!(),
+            }
+        }
+
         for &(mark, name, span) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, name, true);
-            let resolution = self.resolve_in_item_lexical_scope(name, MacroNS, Some(span));
+            let resolution = self.resolve_lexical_macro_path_segment(name, MacroNS, Some(span));
             let (legacy_resolution, resolution) = match (legacy_resolution, resolution) {
-                (Some(legacy_resolution), Some(resolution)) => (legacy_resolution, resolution),
+                (Some(legacy_resolution), Ok(resolution)) => (legacy_resolution, resolution),
                 _ => continue,
             };
             let (legacy_span, participle) = match legacy_resolution {
