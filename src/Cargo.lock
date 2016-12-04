@@ -403,6 +403,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "gcc 0.3.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_bitflags 0.0.0",
 ]
 
 [[package]]

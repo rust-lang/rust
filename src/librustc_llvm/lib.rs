@@ -29,8 +29,12 @@
 #![feature(link_args)]
 #![feature(linked_from)]
 #![feature(staged_api)]
+#![cfg_attr(not(stage0), feature(rustc_private))]
 
 extern crate libc;
+#[macro_use]
+#[no_link]
+extern crate rustc_bitflags;
 
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;

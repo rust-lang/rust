@@ -11,7 +11,7 @@
 use debuginfo::{DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
                 DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
                 DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
-                DINameSpace};
+                DINameSpace, DIFlags};
 
 use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
@@ -408,7 +408,6 @@ pub enum Visibility {
 }
 
 pub mod debuginfo {
-    pub use self::DIDescriptorFlags::*;
     use super::MetadataRef;
 
     #[allow(missing_copy_implementations)]
@@ -433,24 +432,29 @@ pub mod debuginfo {
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
 
-    #[derive(Copy, Clone)]
-    pub enum DIDescriptorFlags {
-        FlagPrivate = 1 << 0,
-        FlagProtected = 1 << 1,
-        FlagFwdDecl = 1 << 2,
-        FlagAppleBlock = 1 << 3,
-        FlagBlockByrefStruct = 1 << 4,
-        FlagVirtual = 1 << 5,
-        FlagArtificial = 1 << 6,
-        FlagExplicit = 1 << 7,
-        FlagPrototyped = 1 << 8,
-        FlagObjcClassComplete = 1 << 9,
-        FlagObjectPointer = 1 << 10,
-        FlagVector = 1 << 11,
-        FlagStaticMember = 1 << 12,
-        FlagIndirectVariable = 1 << 13,
-        FlagLValueReference = 1 << 14,
-        FlagRValueReference = 1 << 15,
+    // These values **must** match with LLVMRustDIFlags!!
+    bitflags! {
+        #[repr(C)]
+        #[derive(Debug, Default)]
+        flags DIFlags: ::libc::uint32_t {
+            const FlagZero                = 0,
+            const FlagPrivate             = 1,
+            const FlagProtected           = 2,
+            const FlagPublic              = 3,
+            const FlagFwdDecl             = (1 << 2),
+            const FlagAppleBlock          = (1 << 3),
+            const FlagBlockByrefStruct    = (1 << 4),
+            const FlagVirtual             = (1 << 5),
+            const FlagArtificial          = (1 << 6),
+            const FlagExplicit            = (1 << 7),
+            const FlagPrototyped          = (1 << 8),
+            const FlagObjcClassComplete   = (1 << 9),
+            const FlagObjectPointer       = (1 << 10),
+            const FlagVector              = (1 << 11),
+            const FlagStaticMember        = (1 << 12),
+            const FlagLValueReference     = (1 << 13),
+            const FlagRValueReference     = (1 << 14),
+        }
     }
 }
 
@@ -1343,7 +1347,7 @@ extern "C" {
                                            isLocalToUnit: bool,
                                            isDefinition: bool,
                                            ScopeLine: c_uint,
-                                           Flags: c_uint,
+                                           Flags: DIFlags,
                                            isOptimized: bool,
                                            Fn: ValueRef,
                                            TParam: DIArray,
@@ -1371,7 +1375,7 @@ extern "C" {
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
                                              AlignInBits: u64,
-                                             Flags: c_uint,
+                                             Flags: DIFlags,
                                              DerivedFrom: DIType,
                                              Elements: DIArray,
                                              RunTimeLang: c_uint,
@@ -1387,7 +1391,7 @@ extern "C" {
                                              SizeInBits: u64,
                                              AlignInBits: u64,
                                              OffsetInBits: u64,
-                                             Flags: c_uint,
+                                             Flags: DIFlags,
                                              Ty: DIType)
                                              -> DIDerivedType;
 
@@ -1423,7 +1427,7 @@ extern "C" {
                                            LineNo: c_uint,
                                            Ty: DIType,
                                            AlwaysPreserve: bool,
-                                           Flags: c_uint,
+                                           Flags: DIFlags,
                                            ArgNo: c_uint)
                                            -> DIVariable;
 
@@ -1483,7 +1487,7 @@ extern "C" {
                                             LineNumber: c_uint,
                                             SizeInBits: u64,
                                             AlignInBits: u64,
-                                            Flags: c_uint,
+                                            Flags: DIFlags,
                                             Elements: DIArray,
                                             RunTimeLang: c_uint,
                                             UniqueId: *const c_char)
