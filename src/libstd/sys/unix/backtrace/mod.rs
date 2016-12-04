@@ -83,7 +83,8 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
-pub use self::tracing::write;
+pub use self::tracing::unwind_backtrace;
+pub use self::printing::{foreach_symbol_fileline, resolve_symname};
 
 // tracing impls:
 mod tracing;
@@ -100,3 +101,5 @@ pub mod gnu {
         Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
     }
 }
+
+pub struct BacktraceContext;
