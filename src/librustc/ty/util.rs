@@ -147,34 +147,40 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(None, Some(self.clone()), Reveal::ExactMatch).enter(|infcx| {
-            let adt = match self_type.sty {
-                ty::TyAdt(adt, substs) => match adt.adt_kind() {
-                    AdtKind::Struct | AdtKind::Union => {
-                        for field in adt.all_fields() {
-                            let field_ty = field.ty(tcx, substs);
-                            if infcx.type_moves_by_default(field_ty, span) {
-                                return Err(CopyImplementationError::InfrigingField(
-                                    field.name))
-                            }
-                        }
-                        adt
-                    }
-                    AdtKind::Enum => {
-                        for variant in &adt.variants {
-                            for field in &variant.fields {
-                                let field_ty = field.ty(tcx, substs);
-                                if infcx.type_moves_by_default(field_ty, span) {
-                                    return Err(CopyImplementationError::InfrigingVariant(
-                                        variant.name))
-                                }
-                            }
-                        }
-                        adt
-                    }
-                },
+        tcx.infer_ctxt(None, Some(self.clone()), Reveal::NotSpecializable).enter(|infcx| {
+            let (adt, substs) = match self_type.sty {
+                ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt)
             };
+
+            let field_implements_copy = |field: &ty::FieldDef| {
+                let cause = traits::ObligationCause::dummy();
+                match traits::fully_normalize(&infcx, cause, &field.ty(tcx, substs)) {
+                    Ok(ty) => !infcx.type_moves_by_default(ty, span),
+                    Err(..) => false
+                }
+            };
+
+            match adt.adt_kind() {
+                AdtKind::Struct | AdtKind::Union => {
+                    for field in adt.all_fields() {
+                        if !field_implements_copy(field) {
+                            return Err(CopyImplementationError::InfrigingField(
+                                field.name))
+                        }
+                    }
+                }
+                AdtKind::Enum => {
+                    for variant in &adt.variants {
+                        for field in &variant.fields {
+                            if !field_implements_copy(field) {
+                                return Err(CopyImplementationError::InfrigingVariant(
+                                    variant.name))
+                            }
+                        }
+                    }
+                }
+            }
 
             if adt.has_dtor() {
                 return Err(CopyImplementationError::HasDestructor);
