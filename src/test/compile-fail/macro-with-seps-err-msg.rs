@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    globnar::brotz!(); //~ ERROR expected macro name without module separators
-    ::foo!(); //~ ERROR expected macro name without module separators
-    foo::<T>!(); //~ ERROR expected macro name without module separators
+    globnar::brotz!(); //~ ERROR non-ident macro paths are experimental
+    ::foo!(); //~ ERROR non-ident macro paths are experimental
+    foo::<T>!(); //~ ERROR type parameters are not allowed on macros
 }
