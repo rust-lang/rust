@@ -603,7 +603,8 @@ syntax named by _designator_. Valid designators are:
 * `ty`: a [type](#types)
 * `ident`: an [identifier](#identifiers)
 * `path`: a [path](#paths)
-* `tt`: either side of the `=>` in macro rules
+* `tt`: a token tree (a single [token](#tokens) or a sequence of token trees surrounded
+  by matching `()`, `[]`, or `{}`)
 * `meta`: the contents of an [attribute](#attributes)
 
 In the transcriber, the
