@@ -352,6 +352,91 @@ DIT* unwrapDIptr(LLVMRustMetadataRef ref) {
 #define DIArray DINodeArray
 #define unwrapDI unwrapDIptr
 
+// These values **must** match debuginfo::DIFlags! They also *happen*
+// to match LLVM, but that isn't required as we do giant sets of
+// matching below. The value shouldn't be directly passed to LLVM.
+enum class LLVMRustDIFlags : uint32_t {
+    FlagZero                = 0,
+    FlagPrivate             = 1,
+    FlagProtected           = 2,
+    FlagPublic              = 3,
+    FlagFwdDecl             = (1 << 2),
+    FlagAppleBlock          = (1 << 3),
+    FlagBlockByrefStruct    = (1 << 4),
+    FlagVirtual             = (1 << 5),
+    FlagArtificial          = (1 << 6),
+    FlagExplicit            = (1 << 7),
+    FlagPrototyped          = (1 << 8),
+    FlagObjcClassComplete   = (1 << 9),
+    FlagObjectPointer       = (1 << 10),
+    FlagVector              = (1 << 11),
+    FlagStaticMember        = (1 << 12),
+    FlagLValueReference     = (1 << 13),
+    FlagRValueReference     = (1 << 14),
+    // Do not add values that are not supported by the minimum LLVM
+    // version we support!
+};
+
+inline LLVMRustDIFlags operator& (LLVMRustDIFlags a, LLVMRustDIFlags b) {
+    return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+
+inline LLVMRustDIFlags operator| (LLVMRustDIFlags a, LLVMRustDIFlags b) {
+    return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+
+inline LLVMRustDIFlags& operator|= (LLVMRustDIFlags& a, LLVMRustDIFlags b) {
+    return a = a | b;
+}
+
+inline bool is_set(LLVMRustDIFlags f) {
+    return f != LLVMRustDIFlags::FlagZero;
+}
+
+inline LLVMRustDIFlags visibility(LLVMRustDIFlags f) {
+    return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(f) & 0x3);
+}
+
+#if LLVM_VERSION_GE(4, 0)
+static DINode::DIFlags from_rust(LLVMRustDIFlags flags) {
+    DINode::DIFlags result = DINode::DIFlags::FlagZero;
+#else
+static unsigned from_rust(LLVMRustDIFlags flags) {
+    unsigned result = 0;
+#endif
+
+    switch (visibility(flags)) {
+    case LLVMRustDIFlags::FlagPrivate:
+        result |= DINode::DIFlags::FlagPrivate;
+        break;
+    case LLVMRustDIFlags::FlagProtected:
+        result |= DINode::DIFlags::FlagProtected;
+        break;
+    case LLVMRustDIFlags::FlagPublic:
+        result |= DINode::DIFlags::FlagPublic;
+        break;
+    default:
+        // The rest are handled below
+        break;
+    }
+
+    if (is_set(flags & LLVMRustDIFlags::FlagFwdDecl))             { result |= DINode::DIFlags::FlagFwdDecl; }
+    if (is_set(flags & LLVMRustDIFlags::FlagAppleBlock))          { result |= DINode::DIFlags::FlagAppleBlock; }
+    if (is_set(flags & LLVMRustDIFlags::FlagBlockByrefStruct))    { result |= DINode::DIFlags::FlagBlockByrefStruct; }
+    if (is_set(flags & LLVMRustDIFlags::FlagVirtual))             { result |= DINode::DIFlags::FlagVirtual; }
+    if (is_set(flags & LLVMRustDIFlags::FlagArtificial))          { result |= DINode::DIFlags::FlagArtificial; }
+    if (is_set(flags & LLVMRustDIFlags::FlagExplicit))            { result |= DINode::DIFlags::FlagExplicit; }
+    if (is_set(flags & LLVMRustDIFlags::FlagPrototyped))          { result |= DINode::DIFlags::FlagPrototyped; }
+    if (is_set(flags & LLVMRustDIFlags::FlagObjcClassComplete))   { result |= DINode::DIFlags::FlagObjcClassComplete; }
+    if (is_set(flags & LLVMRustDIFlags::FlagObjectPointer))       { result |= DINode::DIFlags::FlagObjectPointer; }
+    if (is_set(flags & LLVMRustDIFlags::FlagVector))              { result |= DINode::DIFlags::FlagVector; }
+    if (is_set(flags & LLVMRustDIFlags::FlagStaticMember))        { result |= DINode::DIFlags::FlagStaticMember; }
+    if (is_set(flags & LLVMRustDIFlags::FlagLValueReference))     { result |= DINode::DIFlags::FlagLValueReference; }
+    if (is_set(flags & LLVMRustDIFlags::FlagRValueReference))     { result |= DINode::DIFlags::FlagRValueReference; }
+
+    return result;
+}
+
 extern "C" uint32_t LLVMRustDebugMetadataVersion() {
     return DEBUG_METADATA_VERSION;
 }
@@ -431,7 +516,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
     bool isLocalToUnit,
     bool isDefinition,
     unsigned ScopeLine,
-    unsigned Flags,
+    LLVMRustDIFlags Flags,
     bool isOptimized,
     LLVMValueRef Fn,
     LLVMRustMetadataRef TParam,
@@ -443,7 +528,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
         unwrapDI<DISubroutineType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
-        Flags, isOptimized,
+        from_rust(Flags), isOptimized,
         TParams,
         unwrapDIptr<DISubprogram>(Decl));
     unwrap<Function>(Fn)->setSubprogram(Sub);
@@ -453,7 +538,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
         unwrapDI<DISubroutineType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
-        Flags, isOptimized,
+        from_rust(Flags), isOptimized,
         unwrap<Function>(Fn),
         unwrapDIptr<MDNode>(TParam),
         unwrapDIptr<MDNode>(Decl)));
@@ -489,7 +574,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
+    LLVMRustDIFlags Flags,
     LLVMRustMetadataRef DerivedFrom,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
@@ -502,7 +587,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
         LineNumber,
         SizeInBits,
         AlignInBits,
-        Flags,
+        from_rust(Flags),
         unwrapDI<DIType>(DerivedFrom),
         DINodeArray(unwrapDI<MDTuple>(Elements)),
         RunTimeLang,
@@ -520,12 +605,12 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateMemberType(
     uint64_t SizeInBits,
     uint64_t AlignInBits,
     uint64_t OffsetInBits,
-    unsigned Flags,
+    LLVMRustDIFlags Flags,
     LLVMRustMetadataRef Ty) {
     return wrap(Builder->createMemberType(
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File), LineNo,
-        SizeInBits, AlignInBits, OffsetInBits, Flags,
+        SizeInBits, AlignInBits, OffsetInBits, from_rust(Flags),
         unwrapDI<DIType>(Ty)));
 }
 
@@ -581,7 +666,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     unsigned LineNo,
     LLVMRustMetadataRef Ty,
     bool AlwaysPreserve,
-    unsigned Flags,
+    LLVMRustDIFlags Flags,
     unsigned ArgNo) {
 #if LLVM_VERSION_GE(3, 8)
     if (Tag == 0x100) { // DW_TAG_auto_variable
@@ -589,20 +674,20 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
             unwrapDI<DIDescriptor>(Scope), Name,
             unwrapDI<DIFile>(File),
             LineNo,
-            unwrapDI<DIType>(Ty), AlwaysPreserve, Flags));
+            unwrapDI<DIType>(Ty), AlwaysPreserve, from_rust(Flags)));
     } else {
         return wrap(Builder->createParameterVariable(
             unwrapDI<DIDescriptor>(Scope), Name, ArgNo,
             unwrapDI<DIFile>(File),
             LineNo,
-            unwrapDI<DIType>(Ty), AlwaysPreserve, Flags));
+            unwrapDI<DIType>(Ty), AlwaysPreserve, from_rust(Flags)));
     }
 #else
     return wrap(Builder->createLocalVariable(Tag,
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File),
         LineNo,
-        unwrapDI<DIType>(Ty), AlwaysPreserve, Flags, ArgNo));
+        unwrapDI<DIType>(Ty), AlwaysPreserve, from_rust(Flags), ArgNo));
 #endif
 }
 
@@ -701,7 +786,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
+    LLVMRustDIFlags Flags,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
     const char* UniqueId)
@@ -713,7 +798,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
         LineNumber,
         SizeInBits,
         AlignInBits,
-        Flags,
+        from_rust(Flags),
         DINodeArray(unwrapDI<MDTuple>(Elements)),
         RunTimeLang,
         UniqueId
