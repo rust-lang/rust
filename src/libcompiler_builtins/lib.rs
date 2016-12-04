@@ -17,14 +17,16 @@
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
 #![feature(staged_api)]
-#![cfg_attr(any(target_pointer_width="32", target_pointer_width="16"),
+#![cfg_attr(any(target_pointer_width="32", target_pointer_width="16", target_os="windows",
+            target_arch="mips64"),
             feature(core_intrinsics, core_float))]
 #![feature(associated_consts)]
 #![cfg_attr(not(stage0), feature(i128_type))]
 
 #![allow(non_camel_case_types, unused_variables)]
 
-#[cfg(any(target_pointer_width="32", target_pointer_width="16"))]
+#[cfg(any(target_pointer_width="32", target_pointer_width="16", target_os="windows",
+          target_arch="mips64"))]
 pub mod reimpls {
 
     #![allow(unused_comparisons)]
