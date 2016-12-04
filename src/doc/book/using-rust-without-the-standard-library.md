@@ -13,7 +13,7 @@ don’t want to use the standard library via an attribute: `#![no_std]`.
 
 To use `#![no_std]`, add it to your crate root:
 
-```rust
+```rust,ignore
 #![no_std]
 
 fn plus_one(x: i32) -> i32 {
@@ -29,7 +29,7 @@ use its features without an explicit import. By the same token, when using
 prelude](../core/prelude/v1/index.html). This means that a lot of code will Just
 Work:
 
-```rust
+```rust,ignore
 #![no_std]
 
 fn may_fail(failure: bool) -> Result<(), &'static str> {

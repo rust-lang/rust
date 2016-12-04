@@ -344,6 +344,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     prog
 }
 
+// FIXME(aburka): use a real parser to deal with multiline attributes
 fn partition_source(s: &str) -> (String, String) {
     use rustc_unicode::str::UnicodeStr;
 
@@ -354,7 +355,7 @@ fn partition_source(s: &str) -> (String, String) {
     for line in s.lines() {
         let trimline = line.trim();
         let header = trimline.is_whitespace() ||
-            trimline.starts_with("#![feature");
+            trimline.starts_with("#![");
         if !header || after_header {
             after_header = true;
             after.push_str(line);
