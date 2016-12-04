@@ -153,10 +153,6 @@ declare_features! (
     // rustc internal
     (active, staged_api, "1.0.0", None),
 
-    // Allows using items which are missing stability attributes
-    // rustc internal
-    (active, unmarked_api, "1.0.0", None),
-
     // Allows using #![no_core]
     (active, no_core, "1.3.0", Some(29639)),
 
@@ -333,6 +329,9 @@ declare_features! (
     (removed, test_removed_feature, "1.0.0", None),
     (removed, visible_private_types, "1.0.0", None),
     (removed, unsafe_no_drop_flag, "1.0.0", None),
+    // Allows using items which are missing stability attributes
+    // rustc internal
+    (removed, unmarked_api, "1.0.0", None),
 );
 
 declare_features! (
