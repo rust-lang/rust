@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::prelude::*;
-use io;
-use libc::c_void;
-use sys::c;
-use sys::dynamic_lib::DynamicLibrary;
-use sys_common::gnu::libbacktrace;
+#[cfg(target_env = "msvc")]
+#[path = "msvc.rs"]
+mod printing;
 
-pub fn print(w: &mut Write,
-             i: isize,
-             addr: u64,
-             _process: c::HANDLE,
-             _dbghelp: &DynamicLibrary)
-              -> io::Result<()> {
-    let addr = addr as usize as *mut c_void;
-    libbacktrace::print(w, i, addr, addr)
+#[cfg(target_env = "gnu")]
+mod printing {
+    pub use sys_common::gnu::libbacktrace::{foreach_symbol_fileline, resolve_symname};
 }
+
+pub use self::printing::{foreach_symbol_fileline, resolve_symname};
