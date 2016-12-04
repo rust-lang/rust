@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::{self, ImplItemKind, TraitItem_};
+use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::ty;
@@ -449,10 +449,10 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
         TypeError::Mutability => {
             if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
                 let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
-                    TraitItem_::MethodTraitItem(ref trait_m_sig, _) => {
+                    TraitItemKind::Method(ref trait_m_sig, _) => {
                         trait_m_sig.decl.inputs.iter()
                     }
-                    _ => bug!("{:?} is not a MethodTraitItem", trait_m),
+                    _ => bug!("{:?} is not a TraitItemKind::Method", trait_m),
                 };
 
                 impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
@@ -475,10 +475,10 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
             if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
                 let (trait_m_output, trait_m_iter) =
                     match tcx.map.expect_trait_item(trait_m_node_id).node {
-                        TraitItem_::MethodTraitItem(ref trait_m_sig, _) => {
+                        TraitItemKind::Method(ref trait_m_sig, _) => {
                             (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
                         }
-                        _ => bug!("{:?} is not a MethodTraitItem", trait_m),
+                        _ => bug!("{:?} is not a TraitItemKind::Method", trait_m),
                     };
 
                 let impl_iter = impl_sig.inputs().iter();
@@ -674,7 +674,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let trait_m_node_id = tcx.map.as_local_node_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_node_id {
             match tcx.map.expect_trait_item(trait_id).node {
-                TraitItem_::MethodTraitItem(ref trait_m_sig, _) => {
+                TraitItemKind::Method(ref trait_m_sig, _) => {
                     if let Some(arg) = trait_m_sig.decl.inputs.get(if trait_number_args > 0 {
                         trait_number_args - 1
                     } else {
@@ -825,7 +825,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             // Add a label to the Span containing just the type of the item
             let trait_c_node_id = tcx.map.as_local_node_id(trait_c.def_id).unwrap();
             let trait_c_span = match tcx.map.expect_trait_item(trait_c_node_id).node {
-                TraitItem_::ConstTraitItem(ref ty, _) => ty.span,
+                TraitItemKind::Const(ref ty, _) => ty.span,
                 _ => bug!("{:?} is not a trait const", trait_c),
             };
 

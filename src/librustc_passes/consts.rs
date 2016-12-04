@@ -265,7 +265,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, t: &'tcx hir::TraitItem) {
         match t.node {
-            hir::ConstTraitItem(_, ref default) => {
+            hir::TraitItemKind::Const(_, ref default) => {
                 if let Some(ref expr) = *default {
                     self.global_expr(Mode::Const, &expr);
                 } else {

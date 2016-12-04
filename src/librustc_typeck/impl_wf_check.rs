@@ -87,6 +87,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
         }
     }
 
+    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem) { }
+
     fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) { }
 }
 

@@ -241,7 +241,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, trait_item: &hir::TraitItem) {
-        if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
+        if let hir::TraitItemKind::Method(ref sig, None) = trait_item.node {
             if sig.unsafety == hir::Unsafety::Unsafe {
                 cx.span_lint(UNSAFE_CODE,
                              trait_item.span,
@@ -374,12 +374,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
             hir::ItemUnion(..) => "a union",
-            hir::ItemTrait(.., ref items) => {
+            hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
                     self.private_traits.insert(it.id);
-                    for itm in items {
-                        self.private_traits.insert(itm.id);
+                    for trait_item_ref in trait_item_refs {
+                        self.private_traits.insert(trait_item_ref.id.node_id);
                     }
                     return;
                 }
@@ -418,9 +418,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let desc = match trait_item.node {
-            hir::ConstTraitItem(..) => "an associated constant",
-            hir::MethodTraitItem(..) => "a trait method",
-            hir::TypeTraitItem(..) => "an associated type",
+            hir::TraitItemKind::Const(..) => "an associated constant",
+            hir::TraitItemKind::Method(..) => "a trait method",
+            hir::TraitItemKind::Type(..) => "an associated type",
         };
 
         self.check_missing_docs_attrs(cx,

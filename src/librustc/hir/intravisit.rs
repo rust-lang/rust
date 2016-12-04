@@ -177,6 +177,17 @@ pub trait Visitor<'v> : Sized {
         }
     }
 
+    /// Like `visit_nested_item()`, but for trait items. See
+    /// `visit_nested_item()` for advice on when to override this
+    /// method.
+    #[allow(unused_variables)]
+    fn visit_nested_trait_item(&mut self, id: TraitItemId) {
+        let opt_item = self.nested_visit_map().inter().map(|map| map.trait_item(id));
+        if let Some(item) = opt_item {
+            self.visit_trait_item(item);
+        }
+    }
+
     /// Like `visit_nested_item()`, but for impl items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
@@ -272,6 +283,9 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem) {
         walk_trait_item(self, ti)
+    }
+    fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) {
+        walk_trait_item_ref(self, ii)
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem) {
         walk_impl_item(self, ii)
@@ -469,9 +483,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
-            for impl_item_ref in impl_item_refs {
-                visitor.visit_impl_item_ref(impl_item_ref);
-            }
+            walk_list!(visitor, visit_impl_item_ref, impl_item_refs);
         }
         ItemStruct(ref struct_definition, ref generics) |
         ItemUnion(ref struct_definition, ref generics) => {
@@ -479,11 +491,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
         }
-        ItemTrait(_, ref generics, ref bounds, ref methods) => {
+        ItemTrait(_, ref generics, ref bounds, ref trait_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
-            walk_list!(visitor, visit_trait_item, methods);
+            walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
@@ -788,17 +800,17 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
     visitor.visit_name(trait_item.span, trait_item.name);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     match trait_item.node {
-        ConstTraitItem(ref ty, ref default) => {
+        TraitItemKind::Const(ref ty, ref default) => {
             visitor.visit_id(trait_item.id);
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, default);
         }
-        MethodTraitItem(ref sig, None) => {
+        TraitItemKind::Method(ref sig, None) => {
             visitor.visit_id(trait_item.id);
             visitor.visit_generics(&sig.generics);
             visitor.visit_fn_decl(&sig.decl);
         }
-        MethodTraitItem(ref sig, Some(body_id)) => {
+        TraitItemKind::Method(ref sig, Some(body_id)) => {
             visitor.visit_fn(FnKind::Method(trait_item.name,
                                             sig,
                                             None,
@@ -808,12 +820,21 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
                              trait_item.span,
                              trait_item.id);
         }
-        TypeTraitItem(ref bounds, ref default) => {
+        TraitItemKind::Type(ref bounds, ref default) => {
             visitor.visit_id(trait_item.id);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
     }
+}
+
+pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: &'v TraitItemRef) {
+    // NB: Deliberately force a compilation error if/when new fields are added.
+    let TraitItemRef { id, name, ref kind, span, ref defaultness } = *trait_item_ref;
+    visitor.visit_nested_trait_item(id);
+    visitor.visit_name(span, name);
+    visitor.visit_associated_item_kind(kind);
+    visitor.visit_defaultness(defaultness);
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {

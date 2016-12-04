@@ -858,7 +858,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, " ")?;
                 self.bopen()?;
                 for trait_item in trait_items {
-                    self.print_trait_item(trait_item)?;
+                    self.print_trait_item_ref(trait_item)?;
                 }
                 self.bclose(item.span)?;
             }
@@ -1008,19 +1008,29 @@ impl<'a> State<'a> {
                       vis)
     }
 
+    pub fn print_trait_item_ref(&mut self, item_ref: &hir::TraitItemRef) -> io::Result<()> {
+        if let Some(krate) = self.krate {
+            // skip nested items if krate context was not provided
+            let item = &krate.trait_item(item_ref.id);
+            self.print_trait_item(item)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ti.span.lo)?;
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
-            hir::ConstTraitItem(ref ty, ref default) => {
+            hir::TraitItemKind::Const(ref ty, ref default) => {
                 self.print_associated_const(ti.name,
                                             &ty,
                                             default.as_ref().map(|expr| &**expr),
                                             &hir::Inherited)?;
             }
-            hir::MethodTraitItem(ref sig, ref body) => {
+            hir::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     self.head("")?;
                 }
@@ -1034,7 +1044,7 @@ impl<'a> State<'a> {
                     word(&mut self.s, ";")?;
                 }
             }
-            hir::TypeTraitItem(ref bounds, ref default) => {
+            hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.name,
                                            Some(bounds),
                                            default.as_ref().map(|ty| &**ty))?;

@@ -51,7 +51,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(..) = item.node {
+        if let hir::TraitItemKind::Const(..) = item.node {
             return // nothing worth match checking in a constant
         } else {
             intravisit::walk_trait_item(self, item);

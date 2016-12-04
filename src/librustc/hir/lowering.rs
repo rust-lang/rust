@@ -51,7 +51,6 @@ use rustc_data_structures::fnv::FnvHashMap;
 
 use std::collections::BTreeMap;
 use std::iter;
-use std::mem;
 
 use syntax::ast::*;
 use syntax::errors;
@@ -77,6 +76,7 @@ pub struct LoweringContext<'a> {
     /// The items being lowered are collected here.
     items: BTreeMap<NodeId, hir::Item>,
 
+    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
 }
 
@@ -108,6 +108,7 @@ pub fn lower_crate(sess: &Session,
         exprs: FnvHashMap(),
         resolver: resolver,
         items: BTreeMap::new(),
+        trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
     }.lower_crate(krate)
 }
@@ -133,8 +134,9 @@ impl<'a> LoweringContext<'a> {
             span: c.span,
             exported_macros: exported_macros,
             items: self.items,
+            trait_items: self.trait_items,
             impl_items: self.impl_items,
-            exprs: mem::replace(&mut self.exprs, FnvHashMap()),
+            exprs: self.exprs,
         }
     }
 
@@ -150,8 +152,15 @@ impl<'a> LoweringContext<'a> {
                 visit::walk_item(self, item);
             }
 
+            fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
+                let id = hir::TraitItemId { node_id: item.id };
+                let hir_item = self.lctx.lower_trait_item(item);
+                self.lctx.trait_items.insert(id, hir_item);
+                visit::walk_trait_item(self, item);
+            }
+
             fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
-                let id = self.lctx.lower_impl_item_ref(item).id;
+                let id = hir::ImplItemId { node_id: item.id };
                 let hir_item = self.lctx.lower_impl_item(item);
                 self.lctx.impl_items.insert(id, hir_item);
                 visit::walk_impl_item(self, item);
@@ -907,7 +916,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Trait(unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_bounds(bounds);
-                let items = items.iter().map(|item| self.lower_trait_item(item)).collect();
+                let items = items.iter().map(|item| self.lower_trait_item_ref(item)).collect();
                 hir::ItemTrait(self.lower_unsafety(unsafety),
                                self.lower_generics(generics),
                                bounds,
@@ -925,26 +934,50 @@ impl<'a> LoweringContext<'a> {
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
-                        hir::ConstTraitItem(this.lower_ty(ty),
-                                            default.as_ref().map(|x| P(this.lower_expr(x))))
+                        hir::TraitItemKind::Const(this.lower_ty(ty),
+                                                  default.as_ref().map(|x| P(this.lower_expr(x))))
                     }
                     TraitItemKind::Method(ref sig, ref body) => {
-                        hir::MethodTraitItem(this.lower_method_sig(sig),
-                                             body.as_ref().map(|x| {
+                        hir::TraitItemKind::Method(this.lower_method_sig(sig),
+                                                   body.as_ref().map(|x| {
                             let body = this.lower_block(x);
                             let expr = this.expr_block(body, ThinVec::new());
                             this.record_expr(expr)
                         }))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
-                        hir::TypeTraitItem(this.lower_bounds(bounds),
-                                           default.as_ref().map(|x| this.lower_ty(x)))
+                        hir::TraitItemKind::Type(this.lower_bounds(bounds),
+                                                 default.as_ref().map(|x| this.lower_ty(x)))
                     }
                     TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
                 },
                 span: i.span,
             }
         })
+    }
+
+    fn lower_trait_item_ref(&mut self, i: &TraitItem) -> hir::TraitItemRef {
+        let (kind, has_default) = match i.node {
+            TraitItemKind::Const(_, ref default) => {
+                (hir::AssociatedItemKind::Const, default.is_some())
+            }
+            TraitItemKind::Type(_, ref default) => {
+                (hir::AssociatedItemKind::Type, default.is_some())
+            }
+            TraitItemKind::Method(ref sig, ref default) => {
+                (hir::AssociatedItemKind::Method {
+                    has_self: sig.decl.has_self(),
+                 }, default.is_some())
+            }
+            TraitItemKind::Macro(..) => unimplemented!(),
+        };
+        hir::TraitItemRef {
+            id: hir::TraitItemId { node_id: i.id },
+            name: i.ident.name,
+            span: i.span,
+            defaultness: self.lower_defaultness(Defaultness::Default, has_default),
+            kind: kind,
+        }
     }
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {

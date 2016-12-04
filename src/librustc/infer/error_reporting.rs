@@ -1079,7 +1079,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 ast_map::NodeTraitItem(item) => {
                     match item.node {
-                        hir::MethodTraitItem(ref sig, Some(_)) => {
+                        hir::TraitItemKind::Method(ref sig, Some(_)) => {
                             Some((&sig.decl,
                                   &sig.generics,
                                   sig.unsafety,

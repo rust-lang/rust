@@ -1270,17 +1270,17 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
 impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ConstTraitItem(ref ty, ref default) => {
+            hir::TraitItemKind::Const(ref ty, ref default) => {
                 AssociatedConstItem(ty.clean(cx),
                                     default.as_ref().map(|e| pprust::expr_to_string(&e)))
             }
-            hir::MethodTraitItem(ref sig, Some(_)) => {
+            hir::TraitItemKind::Method(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
             }
-            hir::MethodTraitItem(ref sig, None) => {
+            hir::TraitItemKind::Method(ref sig, None) => {
                 TyMethodItem(sig.clean(cx))
             }
-            hir::TypeTraitItem(ref bounds, ref default) => {
+            hir::TraitItemKind::Type(ref bounds, ref default) => {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };

@@ -185,6 +185,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
         }
     }
 
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    }
+
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
@@ -227,6 +230,9 @@ impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx,
                 }
             }
         }
+    }
+
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
     }
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {

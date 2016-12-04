@@ -234,6 +234,11 @@ impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
         visit::walk_item(self, item);
     }
 
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        self.calculate_node_id(trait_item.id, |v| v.visit_trait_item(trait_item));
+        visit::walk_trait_item(self, trait_item);
+    }
+
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         self.calculate_node_id(impl_item.id, |v| v.visit_impl_item(impl_item));
         visit::walk_impl_item(self, impl_item);

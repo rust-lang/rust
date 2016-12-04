@@ -565,6 +565,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
         check_item_body(self.ccx, i);
     }
 
+    fn visit_trait_item(&mut self, _item: &'tcx hir::TraitItem) {
+        // done as part of `visit_item` above
+    }
+
     fn visit_impl_item(&mut self, _item: &'tcx hir::ImplItem) {
         // done as part of `visit_item` above
     }
@@ -945,18 +949,19 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             }
         }
       }
-      hir::ItemTrait(.., ref trait_items) => {
-        for trait_item in trait_items {
+      hir::ItemTrait(.., ref trait_item_refs) => {
+        for trait_item_ref in trait_item_refs {
+            let trait_item = ccx.tcx.map.trait_item(trait_item_ref.id);
             match trait_item.node {
-                hir::ConstTraitItem(_, Some(ref expr)) => {
+                hir::TraitItemKind::Const(_, Some(ref expr)) => {
                     check_const(ccx, &expr, trait_item.id)
                 }
-                hir::MethodTraitItem(ref sig, Some(body_id)) => {
+                hir::TraitItemKind::Method(ref sig, Some(body_id)) => {
                     check_bare_fn(ccx, &sig.decl, body_id, trait_item.id, trait_item.span);
                 }
-                hir::MethodTraitItem(_, None) |
-                hir::ConstTraitItem(_, None) |
-                hir::TypeTraitItem(..) => {
+                hir::TraitItemKind::Method(_, None) |
+                hir::TraitItemKind::Const(_, None) |
+                hir::TraitItemKind::Type(..) => {
                     // Nothing to do.
                 }
             }

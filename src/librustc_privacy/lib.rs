@@ -160,21 +160,19 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             hir::ItemImpl(.., None, _, ref impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
-                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
-                    if impl_item.vis == hir::Public {
-                        self.update(impl_item.id, item_level);
+                    if impl_item_ref.vis == hir::Public {
+                        self.update(impl_item_ref.id.node_id, item_level);
                     }
                 }
             }
             hir::ItemImpl(.., Some(_), _, ref impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
-                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
-                    self.update(impl_item.id, item_level);
+                    self.update(impl_item_ref.id.node_id, item_level);
                 }
             }
-            hir::ItemTrait(.., ref trait_items) => {
-                for trait_item in trait_items {
-                    self.update(trait_item.id, item_level);
+            hir::ItemTrait(.., ref trait_item_refs) => {
+                for trait_item_ref in trait_item_refs {
+                    self.update(trait_item_ref.id.node_id, item_level);
                 }
             }
             hir::ItemStruct(ref def, _) | hir::ItemUnion(ref def, _) => {
@@ -214,15 +212,16 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.id).generics().predicates().item_type();
                 }
             }
-            hir::ItemTrait(.., ref trait_items) => {
+            hir::ItemTrait(.., ref trait_item_refs) => {
                 if item_level.is_some() {
                     self.reach(item.id).generics().predicates();
 
-                    for trait_item in trait_items {
-                        let mut reach = self.reach(trait_item.id);
+                    for trait_item_ref in trait_item_refs {
+                        let mut reach = self.reach(trait_item_ref.id.node_id);
                         reach.generics().predicates();
 
-                        if let hir::TypeTraitItem(_, None) = trait_item.node {
+                        if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
+                           !trait_item_ref.defaultness.has_value() {
                             // No type to visit.
                         } else {
                             reach.item_type();
@@ -231,12 +230,12 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             // Visit everything except for private impl items
-            hir::ItemImpl(.., ref trait_ref, _, ref impl_items) => {
+            hir::ItemImpl(.., ref trait_ref, _, ref impl_item_refs) => {
                 if item_level.is_some() {
                     self.reach(item.id).generics().predicates().impl_trait_ref();
 
-                    for impl_item in impl_items {
-                        let id = impl_item.id.node_id;
+                    for impl_item_ref in impl_item_refs {
+                        let id = impl_item_ref.id.node_id;
                         if trait_ref.is_some() || self.get(id).is_some() {
                             self.reach(id).generics().predicates().item_type();
                         }
@@ -789,22 +788,19 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_item_refs {
-                        let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
-                        match impl_item.node {
-                            hir::ImplItemKind::Const(..) => {
-                                if self.item_is_public(&impl_item.id, &impl_item.vis) {
+                        if self.item_is_public(&impl_item_ref.id.node_id, &impl_item_ref.vis) {
+                            let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
+                            match impl_item_ref.kind {
+                                hir::AssociatedItemKind::Const => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
-                            }
-                            hir::ImplItemKind::Method(ref sig, _) => {
-                                if !sig.decl.has_self() &&
-                                        self.item_is_public(&impl_item.id, &impl_item.vis) {
+                                hir::AssociatedItemKind::Method { has_self: false } => {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
+                                _ => {}
                             }
-                            _ => {}
                         }
                     }
                     if found_pub_static {
@@ -1092,14 +1088,15 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.inner_visibility = item_visibility;
                 intravisit::walk_item(self, item);
             }
-            hir::ItemTrait(.., ref trait_items) => {
+            hir::ItemTrait(.., ref trait_item_refs) => {
                 self.check(item.id, item_visibility).generics().predicates();
 
-                for trait_item in trait_items {
-                    let mut check = self.check(trait_item.id, item_visibility);
+                for trait_item_ref in trait_item_refs {
+                    let mut check = self.check(trait_item_ref.id.node_id, item_visibility);
                     check.generics().predicates();
 
-                    if let hir::TypeTraitItem(_, None) = trait_item.node {
+                    if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
+                       !trait_item_ref.defaultness.has_value() {
                         // No type to visit.
                     } else {
                         check.item_type();

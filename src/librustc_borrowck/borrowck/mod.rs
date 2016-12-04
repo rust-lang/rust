@@ -88,7 +88,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
+        if let hir::TraitItemKind::Const(_, Some(ref expr)) = ti.node {
             gather_loans::gather_loans_in_static_initializer(self, ti.id, &expr);
         }
         intravisit::walk_trait_item(self, ti);

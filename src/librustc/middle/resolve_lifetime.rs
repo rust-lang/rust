@@ -266,7 +266,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // methods in an impl can reuse label names.
         let saved = replace(&mut self.labels_in_fn, vec![]);
 
-        if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
+        if let hir::TraitItemKind::Method(ref sig, None) = trait_item.node {
             self.visit_early_late(
                 trait_item.id,
                 &sig.decl, &sig.generics,
