@@ -1066,7 +1066,11 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
     }
 }
 
-fn resolve_item<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, item: &'tcx hir::Item) {
+fn resolve_item_like<'a, 'tcx, F>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
+                                  id: ast::NodeId,
+                                  walk: F)
+    where F: FnOnce(&mut RegionResolutionVisitor<'tcx, 'a>)
+{
     // Items create a new outer block scope as far as we're concerned.
     let prev_cx = visitor.cx;
     let prev_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
@@ -1075,8 +1079,8 @@ fn resolve_item<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, item:
         var_parent: ROOT_CODE_EXTENT,
         parent: ROOT_CODE_EXTENT
     };
-    intravisit::walk_item(visitor, item);
-    visitor.create_item_scope_if_needed(item.id);
+    walk(visitor);
+    visitor.create_item_scope_if_needed(id);
     visitor.cx = prev_cx;
     visitor.terminating_scopes = prev_ts;
 }
@@ -1179,17 +1183,15 @@ impl<'ast, 'a> Visitor<'ast> for RegionResolutionVisitor<'ast, 'a> {
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
-        resolve_item(self, i);
+        resolve_item_like(self, i.id, |this| intravisit::walk_item(this, i));
     }
 
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
-        intravisit::walk_impl_item(self, ii);
-        self.create_item_scope_if_needed(ii.id);
+        resolve_item_like(self, ii.id, |this| intravisit::walk_impl_item(this, ii));
     }
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
-        intravisit::walk_trait_item(self, ti);
-        self.create_item_scope_if_needed(ti.id);
+        resolve_item_like(self, ti.id, |this| intravisit::walk_trait_item(this, ti));
     }
 
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl,
