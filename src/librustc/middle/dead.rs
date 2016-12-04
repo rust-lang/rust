@@ -21,7 +21,7 @@ use hir::itemlikevisit::ItemLikeVisitor;
 use middle::privacy;
 use ty::{self, TyCtxt};
 use hir::def::Def;
-use hir::def_id::{DefId};
+use hir::def_id::DefId;
 use lint;
 use util::nodemap::FxHashSet;
 
@@ -418,6 +418,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
+    defined_as_main: Option<DefId>,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
@@ -515,7 +516,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        if self.should_warn_about_item(item) {
+        if self.should_warn_about_item(item) &&
+            self.defined_as_main.map_or(true, |x| x != self.tcx.map.local_def_id(item.id)) {
             self.warn_dead_code(
                 item.id,
                 item.span,
@@ -593,10 +595,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &privacy::AccessLevels) {
+                             access_levels: &privacy::AccessLevels,
+                             defined_as_main: Option<DefId>) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
     let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
-    let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
+    let mut visitor = DeadVisitor { tcx: tcx,
+                                    live_symbols: live_symbols,
+                                    defined_as_main: defined_as_main, };
     intravisit::walk_crate(&mut visitor, krate);
 }

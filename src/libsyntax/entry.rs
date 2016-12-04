@@ -17,10 +17,12 @@ pub enum EntryPointType {
     MainAttr,
     Start,
     OtherMain, // Not an entry point, but some other function named main
+    ImportedMain, // function imported as "main" in root namespace 
 }
 
 // Beware, this is duplicated in librustc/middle/entry.rs, make sure to keep
 // them in sync.
+// FIXME: get it sync or find other way to keep sane in --test mode
 pub fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
     match item.node {
         ItemKind::Fn(..) => {

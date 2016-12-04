@@ -232,6 +232,7 @@ impl PpSourceMode {
                                                                  resolutions.clone(),
                                                                  arenas,
                                                                  id,
+                                                                 None,
                                                                  |tcx, _, _, _| {
                     let annotation = TypedAnnotation { tcx: tcx };
                     let _ignore = tcx.dep_graph.in_ignore();
@@ -960,6 +961,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      resolutions.clone(),
                                                      arenas,
                                                      crate_name,
+                                                     None,
                                                      |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
