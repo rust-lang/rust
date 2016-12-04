@@ -25,7 +25,7 @@ use syntax_pos::{self, BytePos};
 use errors;
 
 use hir;
-use hir::{Crate, PatKind, RegionTyParamBound, SelfKind, TraitTyParamBound, TraitBoundModifier};
+use hir::{Crate, PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 
 use std::io::{self, Write, Read};
 
@@ -1954,27 +1954,6 @@ impl<'a> State<'a> {
         self.end() // close enclosing cbox
     }
 
-    fn print_explicit_self(&mut self, explicit_self: &hir::ExplicitSelf) -> io::Result<()> {
-        match explicit_self.node {
-            SelfKind::Value(m) => {
-                self.print_mutability(m)?;
-                word(&mut self.s, "self")
-            }
-            SelfKind::Region(ref lt, m) => {
-                word(&mut self.s, "&")?;
-                self.print_opt_lifetime(lt)?;
-                self.print_mutability(m)?;
-                word(&mut self.s, "self")
-            }
-            SelfKind::Explicit(ref typ, m) => {
-                self.print_mutability(m)?;
-                word(&mut self.s, "self")?;
-                self.word_space(":")?;
-                self.print_type(&typ)
-            }
-        }
-    }
-
     pub fn print_fn(&mut self,
                     decl: &hir::FnDecl,
                     unsafety: hir::Unsafety,
@@ -2185,21 +2164,17 @@ impl<'a> State<'a> {
         match input.ty.node {
             hir::TyInfer if is_closure => self.print_pat(&input.pat)?,
             _ => {
-                if let Some(eself) = input.to_self() {
-                    self.print_explicit_self(&eself)?;
+                let invalid = if let PatKind::Binding(_, _, name, _) = input.pat.node {
+                    name.node == keywords::Invalid.name()
                 } else {
-                    let invalid = if let PatKind::Binding(_, _, name, _) = input.pat.node {
-                        name.node == keywords::Invalid.name()
-                    } else {
-                        false
-                    };
-                    if !invalid {
-                        self.print_pat(&input.pat)?;
-                        word(&mut self.s, ":")?;
-                        space(&mut self.s)?;
-                    }
-                    self.print_type(&input.ty)?;
+                    false
+                };
+                if !invalid {
+                    self.print_pat(&input.pat)?;
+                    word(&mut self.s, ":")?;
+                    space(&mut self.s)?;
                 }
+                self.print_type(&input.ty)?;
             }
         }
         self.end()

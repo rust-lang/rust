@@ -1471,12 +1471,13 @@ impl Arg {
     }
 
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
+        let span = mk_sp(eself.span.lo, eself_ident.span.hi);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
-            span: DUMMY_SP,
+            span: span,
         });
-        let arg = |mutbl, ty, span| Arg {
+        let arg = |mutbl, ty| Arg {
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
                 node: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
@@ -1486,15 +1487,13 @@ impl Arg {
             id: DUMMY_NODE_ID,
         };
         match eself.node {
-            SelfKind::Explicit(ty, mutbl) => {
-                arg(mutbl, ty, mk_sp(eself.span.lo, eself_ident.span.hi))
-            }
-            SelfKind::Value(mutbl) => arg(mutbl, infer_ty, eself.span),
+            SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),
+            SelfKind::Value(mutbl) => arg(mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => arg(Mutability::Immutable, P(Ty {
                 id: DUMMY_NODE_ID,
                 node: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl: mutbl }),
-                span: DUMMY_SP,
-            }), eself.span),
+                span: span,
+            })),
         }
     }
 }

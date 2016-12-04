@@ -50,7 +50,7 @@
 
 use rustc_const_eval::eval_length;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use hir::{self, SelfKind};
+use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
 use hir::print as pprust;
@@ -1743,36 +1743,33 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // declaration are bound to that function type.
         let rb = MaybeWithAnonTypes::new(BindingRscope::new(), arg_anon_scope);
 
-        // `implied_output_region` is the region that will be assumed for any
-        // region parameters in the return type. In accordance with the rules for
-        // lifetime elision, we can determine it in two ways. First (determined
-        // here), if self is by-reference, then the implied output region is the
-        // region of the self parameter.
-        let (self_ty, explicit_self) = match (opt_untransformed_self_ty, decl.get_self()) {
-            (Some(untransformed_self_ty), Some(explicit_self)) => {
-                let self_type = self.determine_self_type(&rb, untransformed_self_ty,
-                                                         &explicit_self);
-                (Some(self_type), Some(ExplicitSelf::determine(untransformed_self_ty, self_type)))
+        let input_tys: Vec<Ty> =
+            decl.inputs.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
+
+        let has_self = decl.has_self();
+        let explicit_self = match (opt_untransformed_self_ty, has_self) {
+            (Some(untransformed_self_ty), true) => {
+                Some(ExplicitSelf::determine(untransformed_self_ty, input_tys[0]))
             }
-            _ => (None, None),
+            _ => None
         };
 
-        // HACK(eddyb) replace the fake self type in the AST with the actual type.
-        let arg_params = if self_ty.is_some() {
-            &decl.inputs[1..]
-        } else {
-            &decl.inputs[..]
-        };
-        let arg_tys: Vec<Ty> =
-            arg_params.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
-
-        // Second, if there was exactly one lifetime (either a substitution or a
-        // reference) in the arguments, then any anonymous regions in the output
-        // have that lifetime.
         let implied_output_region = match explicit_self {
+            // `implied_output_region` is the region that will be assumed for any
+            // region parameters in the return type. In accordance with the rules for
+            // lifetime elision, we can determine it in two ways. First (determined
+            // here), if self is by-reference, then the implied output region is the
+            // region of the self parameter.
             Some(ExplicitSelf::ByReference(region, _)) => Ok(*region),
+
+            // Second, if there was exactly one lifetime (either a substitution or a
+            // reference) in the arguments, then any anonymous regions in the output
+            // have that lifetime.
             _ => {
-                self.find_implied_output_region(&arg_tys,
+                let arg_params = &decl.inputs[has_self as usize..];
+                let arg_tys = &input_tys[has_self as usize..];
+
+                self.find_implied_output_region(arg_tys,
                                                 arg_params.iter()
                                                     .map(|a| pprust::pat_to_string(&a.pat)))
 
@@ -1793,35 +1790,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             unsafety: unsafety,
             abi: abi,
             sig: ty::Binder(self.tcx().mk_fn_sig(
-                self_ty.into_iter().chain(arg_tys),
+                input_tys.into_iter(),
                 output_ty,
                 decl.variadic
             )),
         })
-    }
-
-    fn determine_self_type<'a>(&self,
-                               rscope: &RegionScope,
-                               untransformed_self_ty: Ty<'tcx>,
-                               explicit_self: &hir::ExplicitSelf)
-                               -> Ty<'tcx>
-    {
-        match explicit_self.node {
-            SelfKind::Value(..) => untransformed_self_ty,
-            SelfKind::Region(ref lifetime, mutability) => {
-                let region =
-                    self.opt_ast_region_to_region(
-                                             rscope,
-                                             explicit_self.span,
-                                             lifetime);
-                self.tcx().mk_ref(region,
-                    ty::TypeAndMut {
-                        ty: untransformed_self_ty,
-                        mutbl: mutability
-                    })
-            }
-            SelfKind::Explicit(ref ast_type, _) => self.ast_ty_to_ty(rscope, &ast_type)
-        }
     }
 
     pub fn ty_of_closure(&self,

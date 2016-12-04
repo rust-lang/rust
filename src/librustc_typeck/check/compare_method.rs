@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
+use rustc::hir::{self, ImplItemKind, TraitItem_};
 use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::ty;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::hir::{ImplItemKind, TraitItem_, Ty_};
 use rustc::util::common::ErrorReported;
 
 use syntax::ast;
@@ -456,31 +455,18 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                     _ => bug!("{:?} is not a MethodTraitItem", trait_m),
                 };
 
-                impl_m_iter.zip(trait_m_iter)
-                           .find(|&(ref impl_arg, ref trait_arg)| {
-                               match (&impl_arg.ty.node, &trait_arg.ty.node) {
-                                   (&Ty_::TyRptr(_, ref impl_mt), &Ty_::TyRptr(_, ref trait_mt)) |
-                                   (&Ty_::TyPtr(ref impl_mt), &Ty_::TyPtr(ref trait_mt)) => {
-                                       impl_mt.mutbl != trait_mt.mutbl
-                                   }
-                                   _ => false,
-                               }
-                           })
-                           .map(|(ref impl_arg, ref trait_arg)| {
-                               match (impl_arg.to_self(), trait_arg.to_self()) {
-                                   (Some(impl_self), Some(trait_self)) => {
-                                       (impl_self.span, Some(trait_self.span))
-                                   }
-                                   (None, None) => (impl_arg.ty.span, Some(trait_arg.ty.span)),
-                                   _ => {
-                                       bug!("impl and trait fns have different first args, impl: \
-                                             {:?}, trait: {:?}",
-                                            impl_arg,
-                                            trait_arg)
-                                   }
-                               }
-                           })
-                           .unwrap_or((cause.span, tcx.map.span_if_local(trait_m.def_id)))
+                impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
+                    match (&impl_arg.ty.node, &trait_arg.ty.node) {
+                        (&hir::TyRptr(_, ref impl_mt), &hir::TyRptr(_, ref trait_mt)) |
+                        (&hir::TyPtr(ref impl_mt), &hir::TyPtr(ref trait_mt)) => {
+                            impl_mt.mutbl != trait_mt.mutbl
+                        }
+                        _ => false,
+                    }
+                }).map(|(ref impl_arg, ref trait_arg)| {
+                    (impl_arg.ty.span, Some(trait_arg.ty.span))
+                })
+                .unwrap_or_else(|| (cause.span, tcx.map.span_if_local(trait_m.def_id)))
             } else {
                 (cause.span, tcx.map.span_if_local(trait_m.def_id))
             }

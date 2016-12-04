@@ -2127,7 +2127,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let (kind, has_self, has_value) = match trait_item.node {
             hir::MethodTraitItem(ref sig, ref body) => {
-                (AssociatedKind::Method, sig.decl.get_self().is_some(),
+                (AssociatedKind::Method, sig.decl.has_self(),
                  body.is_some())
             }
             hir::ConstTraitItem(_, ref value) => {

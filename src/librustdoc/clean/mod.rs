@@ -1184,16 +1184,17 @@ pub enum SelfTy {
 
 impl Argument {
     pub fn to_self(&self) -> Option<SelfTy> {
-        if self.name == "self" {
-            match self.type_ {
-                Infer => Some(SelfValue),
-                BorrowedRef{ref lifetime, mutability, ref type_} if **type_ == Infer => {
-                    Some(SelfBorrowed(lifetime.clone(), mutability))
-                }
-                _ => Some(SelfExplicit(self.type_.clone()))
+        if self.name != "self" {
+            return None;
+        }
+        if self.type_.is_self_type() {
+            return Some(SelfValue);
+        }
+        match self.type_ {
+            BorrowedRef{ref lifetime, mutability, ref type_} if type_.is_self_type() => {
+                Some(SelfBorrowed(lifetime.clone(), mutability))
             }
-        } else {
-            None
+            _ => Some(SelfExplicit(self.type_.clone()))
         }
     }
 }
@@ -1353,11 +1354,13 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     };
                     let self_arg_ty = *fty.sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
-                        decl.inputs.values[0].type_ = Infer;
+                        decl.inputs.values[0].type_ = Generic(String::from("Self"));
                     } else if let ty::TyRef(_, mt) = self_arg_ty.sty {
                         if mt.ty == self_ty {
                             match decl.inputs.values[0].type_ {
-                                BorrowedRef{ref mut type_, ..} => **type_ = Infer,
+                                BorrowedRef{ref mut type_, ..} => {
+                                    **type_ = Generic(String::from("Self"))
+                                }
                                 _ => unreachable!(),
                             }
                         }
@@ -1566,6 +1569,13 @@ impl Type {
         match *self {
             ResolvedPath { is_generic, .. } => is_generic,
             _ => false,
+        }
+    }
+
+    pub fn is_self_type(&self) -> bool {
+        match *self {
+            Generic(ref name) => name == "Self",
+            _ => false
         }
     }
 }

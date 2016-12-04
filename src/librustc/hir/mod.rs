@@ -35,8 +35,8 @@ use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FxHashSet};
 use rustc_data_structures::fnv::FnvHashMap;
 
-use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
-use syntax::codemap::{self, respan, Spanned};
+use syntax_pos::{Span, ExpnId, DUMMY_SP};
+use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
@@ -1234,37 +1234,8 @@ pub struct Arg {
     pub id: NodeId,
 }
 
-/// Alternative representation for `Arg`s describing `self` parameter of methods.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum SelfKind {
-    /// `self`, `mut self`
-    Value(Mutability),
-    /// `&'lt self`, `&'lt mut self`
-    Region(Option<Lifetime>, Mutability),
-    /// `self: TYPE`, `mut self: TYPE`
-    Explicit(P<Ty>, Mutability),
-}
-
-pub type ExplicitSelf = Spanned<SelfKind>;
-
 impl Arg {
-    pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Binding(BindByValue(mutbl), _, name, _) = self.pat.node {
-            if name.node == keywords::SelfValue.name() {
-                return match self.ty.node {
-                    TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyRptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyInfer => {
-                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
-                    }
-                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
-                                     SelfKind::Explicit(self.ty.clone(), mutbl)))
-                }
-            }
-        }
-        None
-    }
-
-    pub fn is_self(&self) -> bool {
+    fn is_self(&self) -> bool {
         if let PatKind::Binding(_, _, name, _) = self.pat.node {
             name.node == keywords::SelfValue.name()
         } else {
@@ -1282,9 +1253,6 @@ pub struct FnDecl {
 }
 
 impl FnDecl {
-    pub fn get_self(&self) -> Option<ExplicitSelf> {
-        self.inputs.get(0).and_then(Arg::to_self)
-    }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
     }
