@@ -132,7 +132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
+        if let hir::TraitItemKind::Const(_, Some(ref expr)) = item.node {
             self.visit_const(item.id, expr);
         } else {
             intravisit::walk_trait_item(self, item);

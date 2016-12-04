@@ -159,10 +159,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         }
     }
 
-    fn check_trait_or_impl_item(&mut self,
-                                item_id: ast::NodeId,
-                                span: Span,
-                                sig_if_method: Option<&hir::MethodSig>) {
+    fn check_associated_item(&mut self,
+                             item_id: ast::NodeId,
+                             span: Span,
+                             sig_if_method: Option<&hir::MethodSig>) {
         let code = self.code.clone();
         self.for_id(item_id, span).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -607,10 +607,10 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         let method_sig = match trait_item.node {
-            hir::TraitItem_::MethodTraitItem(ref sig, _) => Some(sig),
+            hir::TraitItemKind::Method(ref sig, _) => Some(sig),
             _ => None
         };
-        self.check_trait_or_impl_item(trait_item.id, trait_item.span, method_sig);
+        self.check_associated_item(trait_item.id, trait_item.span, method_sig);
         intravisit::walk_trait_item(self, trait_item)
     }
 
@@ -620,7 +620,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             hir::ImplItemKind::Method(ref sig, _) => Some(sig),
             _ => None
         };
-        self.check_trait_or_impl_item(impl_item.id, impl_item.span, method_sig);
+        self.check_associated_item(impl_item.id, impl_item.span, method_sig);
         intravisit::walk_impl_item(self, impl_item)
     }
 }

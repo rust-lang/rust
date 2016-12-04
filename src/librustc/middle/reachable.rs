@@ -166,9 +166,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_method)) => {
                 match trait_method.node {
-                    hir::ConstTraitItem(_, ref default) => default.is_some(),
-                    hir::MethodTraitItem(_, ref body) => body.is_some(),
-                    hir::TypeTraitItem(..) => false,
+                    hir::TraitItemKind::Const(_, ref default) => default.is_some(),
+                    hir::TraitItemKind::Method(_, ref body) => body.is_some(),
+                    hir::TraitItemKind::Type(..) => false,
                 }
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
@@ -274,17 +274,17 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeTraitItem(trait_method) => {
                 match trait_method.node {
-                    hir::ConstTraitItem(_, None) |
-                    hir::MethodTraitItem(_, None) => {
+                    hir::TraitItemKind::Const(_, None) |
+                    hir::TraitItemKind::Method(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::ConstTraitItem(_, Some(ref body)) => {
+                    hir::TraitItemKind::Const(_, Some(ref body)) => {
                         self.visit_expr(body);
                     }
-                    hir::MethodTraitItem(_, Some(body_id)) => {
+                    hir::TraitItemKind::Method(_, Some(body_id)) => {
                         self.visit_body(body_id);
                     }
-                    hir::TypeTraitItem(..) => {}
+                    hir::TraitItemKind::Type(..) => {}
                 }
             }
             ast_map::NodeImplItem(impl_item) => {
@@ -357,6 +357,8 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
             }
         }
     }
+
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
         // processed in visit_item above

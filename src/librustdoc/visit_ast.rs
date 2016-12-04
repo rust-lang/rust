@@ -456,11 +456,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.constants.push(s);
             },
-            hir::ItemTrait(unsafety, ref gen, ref b, ref items) => {
+            hir::ItemTrait(unsafety, ref gen, ref b, ref item_ids) => {
+                let items = item_ids.iter()
+                                    .map(|ti| self.cx.tcx.map.trait_item(ti.id).clone())
+                                    .collect();
                 let t = Trait {
                     unsafety: unsafety,
                     name: name,
-                    items: items.clone(),
+                    items: items,
                     generics: gen.clone(),
                     bounds: b.iter().cloned().collect(),
                     id: item.id,

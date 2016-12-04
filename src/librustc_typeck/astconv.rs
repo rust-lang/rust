@@ -1708,12 +1708,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn ty_of_method(&self,
                         sig: &hir::MethodSig,
-                        untransformed_self_ty: Ty<'tcx>,
+                        opt_self_value_ty: Option<Ty<'tcx>>,
                         anon_scope: Option<AnonTypeScope>)
                         -> &'tcx ty::BareFnTy<'tcx> {
         self.ty_of_method_or_bare_fn(sig.unsafety,
                                      sig.abi,
-                                     Some(untransformed_self_ty),
+                                     opt_self_value_ty,
                                      &sig.decl,
                                      None,
                                      anon_scope)
@@ -1731,7 +1731,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn ty_of_method_or_bare_fn(&self,
                                unsafety: hir::Unsafety,
                                abi: abi::Abi,
-                               opt_untransformed_self_ty: Option<Ty<'tcx>>,
+                               opt_self_value_ty: Option<Ty<'tcx>>,
                                decl: &hir::FnDecl,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
@@ -1746,13 +1746,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let input_tys: Vec<Ty> =
             decl.inputs.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
 
-        let has_self = decl.has_self();
-        let explicit_self = match (opt_untransformed_self_ty, has_self) {
-            (Some(untransformed_self_ty), true) => {
-                Some(ExplicitSelf::determine(untransformed_self_ty, input_tys[0]))
-            }
-            _ => None
-        };
+        let has_self = opt_self_value_ty.is_some();
+        let explicit_self = opt_self_value_ty.map(|self_value_ty| {
+            ExplicitSelf::determine(self_value_ty, input_tys[0])
+        });
 
         let implied_output_region = match explicit_self {
             // `implied_output_region` is the region that will be assumed for any

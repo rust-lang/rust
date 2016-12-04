@@ -98,6 +98,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         }
     }
 
+    fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
+        self.visit_trait_item(self.krate.trait_item(item_id))
+    }
+
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
         self.visit_impl_item(self.krate.impl_item(item_id))
     }

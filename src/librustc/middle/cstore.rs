@@ -183,9 +183,9 @@ impl<'a> InlinedItemRef<'a> {
                            _tcx: TyCtxt)
                            -> InlinedItemRef<'a> {
         let (body, args) = match item.node {
-            hir::ConstTraitItem(_, Some(ref body)) =>
+            hir::TraitItemKind::Const(_, Some(ref body)) =>
                 (&**body, Vec::new()),
-            hir::ConstTraitItem(_, None) => {
+            hir::TraitItemKind::Const(_, None) => {
                 bug!("InlinedItemRef::from_trait_item called for const without body")
             },
             _ => bug!("InlinedItemRef::from_trait_item wrong kind")

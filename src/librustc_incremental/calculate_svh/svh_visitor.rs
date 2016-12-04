@@ -473,12 +473,12 @@ enum SawTraitOrImplItemComponent {
     SawTraitOrImplItemType
 }
 
-fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
+fn saw_trait_item(ti: &TraitItemKind) -> SawTraitOrImplItemComponent {
     match *ti {
-        ConstTraitItem(..) => SawTraitOrImplItemConst,
-        MethodTraitItem(ref sig, ref body) =>
+        TraitItemKind::Const(..) => SawTraitOrImplItemConst,
+        TraitItemKind::Method(ref sig, ref body) =>
             SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, body.is_some()),
-        TypeTraitItem(..) => SawTraitOrImplItemType
+        TraitItemKind::Type(..) => SawTraitOrImplItemType
     }
 }
 
@@ -1157,6 +1157,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             // These fields are handled separately:
             exported_macros: _,
             items: _,
+            trait_items: _,
             impl_items: _,
             exprs: _,
         } = *krate;

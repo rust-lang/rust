@@ -66,7 +66,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
         match ti.node {
-            hir::ConstTraitItem(_, ref default) => {
+            hir::TraitItemKind::Const(_, ref default) => {
                 if let Some(_) = *default {
                     let mut recursion_visitor = CheckItemRecursionVisitor::new(self, &ti.span);
                     recursion_visitor.visit_trait_item(ti);

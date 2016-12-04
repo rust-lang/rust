@@ -204,6 +204,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, ty);
     }
 
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        self.with_collect_item_sig(trait_item.id, || {
+            convert_trait_item(self.ccx, trait_item)
+        });
+        intravisit::walk_trait_item(self, trait_item);
+    }
+
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         self.with_collect_item_sig(impl_item.id, || {
             convert_impl_item(self.ccx, impl_item)
@@ -644,8 +651,14 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ImplContainer(_) => Some(AnonTypeScope::new(def_id)),
         TraitContainer(_) => None
     };
+    let assoc_item = ccx.tcx.associated_item(def_id);
+    let self_value_ty = if assoc_item.method_has_self_argument {
+        Some(untransformed_rcvr_ty)
+    } else {
+        None
+    };
     let fty = AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                                    sig, untransformed_rcvr_ty, anon_scope);
+                                    sig, self_value_ty, anon_scope);
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.map.span(id), def_id);
@@ -785,56 +798,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
         },
-        hir::ItemTrait(.., ref trait_items) => {
+        hir::ItemTrait(..) => {
             generics_of_def_id(ccx, def_id);
             trait_def_of_item(ccx, it);
             let _: Result<(), ErrorReported> = // any error is already reported, can ignore
                 ccx.ensure_super_predicates(it.span, def_id);
             convert_trait_predicates(ccx, it);
-            let trait_predicates = tcx.item_predicates(def_id);
-
-            debug!("convert: trait_bounds={:?}", trait_predicates);
-
-            // FIXME: is the ordering here important? I think it is.
-            let container = TraitContainer(def_id);
-
-            // Convert all the associated constants.
-            for trait_item in trait_items {
-                if let hir::ConstTraitItem(ref ty, _) = trait_item.node {
-                    let const_def_id = ccx.tcx.map.local_def_id(trait_item.id);
-                    generics_of_def_id(ccx, const_def_id);
-                    let ty = ccx.icx(&trait_predicates)
-                        .to_ty(&ExplicitRscope, ty);
-                    tcx.item_types.borrow_mut().insert(const_def_id, ty);
-                    convert_associated_const(ccx, container, trait_item.id, ty)
-                }
-            }
-
-            // Convert all the associated types.
-            for trait_item in trait_items {
-                if let hir::TypeTraitItem(_, ref opt_ty) = trait_item.node {
-                    let type_def_id = ccx.tcx.map.local_def_id(trait_item.id);
-                    generics_of_def_id(ccx, type_def_id);
-
-                    let typ = opt_ty.as_ref().map({
-                        |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
-                    });
-
-                    convert_associated_type(ccx, container, trait_item.id, typ);
-                }
-            }
-
-            // Convert all the methods
-            for trait_item in trait_items {
-                if let hir::MethodTraitItem(ref sig, _) = trait_item.node {
-                    convert_method(ccx,
-                                   container,
-                                   trait_item.id,
-                                   sig,
-                                   tcx.mk_self_type(),
-                                   &trait_predicates);
-                }
-            }
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {
@@ -863,6 +832,44 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             generics_of_def_id(ccx, def_id);
             predicates_of_item(ccx, it);
         },
+    }
+}
+
+fn convert_trait_item(ccx: &CrateCtxt, trait_item: &hir::TraitItem) {
+    let tcx = ccx.tcx;
+
+    // we can lookup details about the trait because items are visited
+    // before trait-items
+    let trait_def_id = tcx.map.get_parent_did(trait_item.id);
+    let trait_predicates = tcx.item_predicates(trait_def_id);
+
+    match trait_item.node {
+        hir::TraitItemKind::Const(ref ty, _) => {
+            let const_def_id = ccx.tcx.map.local_def_id(trait_item.id);
+            generics_of_def_id(ccx, const_def_id);
+            let ty = ccx.icx(&trait_predicates)
+                        .to_ty(&ExplicitRscope, &ty);
+            tcx.item_types.borrow_mut().insert(const_def_id, ty);
+            convert_associated_const(ccx, TraitContainer(trait_def_id),
+                                     trait_item.id, ty);
+        }
+
+        hir::TraitItemKind::Type(_, ref opt_ty) => {
+            let type_def_id = ccx.tcx.map.local_def_id(trait_item.id);
+            generics_of_def_id(ccx, type_def_id);
+
+            let typ = opt_ty.as_ref().map({
+                |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
+            });
+
+            convert_associated_type(ccx, TraitContainer(trait_def_id), trait_item.id, typ);
+        }
+
+        hir::TraitItemKind::Method(ref sig, _) => {
+            convert_method(ccx, TraitContainer(trait_def_id),
+                           trait_item.id, sig, tcx.mk_self_type(),
+                           &trait_predicates);
+        }
     }
 }
 
@@ -1290,12 +1297,13 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                                  ast_generics: &hir::Generics,
                                                  trait_predicates: &ty::GenericPredicates<'tcx>,
                                                  self_trait_ref: ty::TraitRef<'tcx>,
-                                                 trait_items: &[hir::TraitItem])
+                                                 trait_item_refs: &[hir::TraitItemRef])
                                                  -> Vec<ty::Predicate<'tcx>>
     {
-        trait_items.iter().flat_map(|trait_item| {
+        trait_item_refs.iter().flat_map(|trait_item_ref| {
+            let trait_item = ccx.tcx.map.trait_item(trait_item_ref.id);
             let bounds = match trait_item.node {
-                hir::TypeTraitItem(ref bounds, _) => bounds,
+                hir::TraitItemKind::Type(ref bounds, _) => bounds,
                 _ => {
                     return vec![].into_iter();
                 }
@@ -1363,7 +1371,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let ast_generics = match node {
             NodeTraitItem(item) => {
                 match item.node {
-                    MethodTraitItem(ref sig, _) => &sig.generics,
+                    TraitItemKind::Method(ref sig, _) => &sig.generics,
                     _ => &no_generics
                 }
             }

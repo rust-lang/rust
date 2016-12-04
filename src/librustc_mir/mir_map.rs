@@ -168,7 +168,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Trait associated const defaults.
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
+        if let hir::TraitItemKind::Const(_, Some(ref expr)) = item.node {
             self.cx(MirSource::Const(item.id)).build(|cx| {
                 build::construct_const(cx, item.id, expr)
             });

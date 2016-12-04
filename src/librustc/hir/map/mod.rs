@@ -257,10 +257,20 @@ impl<'ast> Map<'ast> {
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
-                            // (Note that trait items don't currently have
-                            // their own dep node, so there's also just one
-                            // HirBody node for all the items)
-                            if self.is_body(last_id, item) {
+                            if self.is_item_body(last_id, item) {
+                                return DepNode::HirBody(def_id);
+                            }
+                        }
+                        return DepNode::Hir(def_id);
+                    }
+
+                    EntryTraitItem(_, item) => {
+                        let def_id = self.local_def_id(id);
+                        assert!(!self.is_inlined_def_id(def_id));
+
+                        if let Some(last_id) = last_expr {
+                            // The body of the item may have a separate dep node
+                            if self.is_trait_item_body(last_id, item) {
                                 return DepNode::HirBody(def_id);
                             }
                         }
@@ -280,7 +290,6 @@ impl<'ast> Map<'ast> {
                     }
 
                     EntryForeignItem(p, _) |
-                    EntryTraitItem(p, _) |
                     EntryVariant(p, _) |
                     EntryField(p, _) |
                     EntryStmt(p, _) |
@@ -358,18 +367,16 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    fn is_body(&self, node_id: NodeId, item: &Item) -> bool {
+    fn is_item_body(&self, node_id: NodeId, item: &Item) -> bool {
         match item.node {
             ItemFn(_, _, _, _, _, body) => body.node_id() == node_id,
-            // Since trait items currently don't get their own dep nodes,
-            // we check here whether node_id is the body of any of the items.
-            // If they get their own dep nodes, this can go away
-            ItemTrait(_, _, _, ref trait_items) => {
-                trait_items.iter().any(|trait_item| { match trait_item.node {
-                    MethodTraitItem(_, Some(body)) => body.node_id() == node_id,
-                    _ => false
-                }})
-            }
+            _ => false
+        }
+    }
+
+    fn is_trait_item_body(&self, node_id: NodeId, item: &TraitItem) -> bool {
+        match item.node {
+            TraitItemKind::Method(_, Some(body)) => body.node_id() == node_id,
             _ => false
         }
     }
@@ -434,6 +441,14 @@ impl<'ast> Map<'ast> {
 
     pub fn krate(&self) -> &'ast Crate {
         self.forest.krate()
+    }
+
+    pub fn trait_item(&self, id: TraitItemId) -> &'ast TraitItem {
+        self.read(id.node_id);
+
+        // NB: intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.trait_item(id)
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'ast ImplItem {
@@ -1045,9 +1060,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeTraitItem(ti)) => {
             let kind = match ti.node {
-                ConstTraitItem(..) => "assoc constant",
-                MethodTraitItem(..) => "trait method",
-                TypeTraitItem(..) => "assoc type",
+                TraitItemKind::Const(..) => "assoc constant",
+                TraitItemKind::Method(..) => "trait method",
+                TraitItemKind::Type(..) => "assoc type",
             };
 
             format!("{} {} in {}{}", kind, ti.name, path_str(), id_str)

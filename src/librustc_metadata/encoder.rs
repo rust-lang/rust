@@ -442,7 +442,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match trait_item.kind {
             ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::MethodTraitItem(ref sig, _) = ast_item.node {
+                let fn_data = if let hir::TraitItemKind::Method(ref sig, _) = ast_item.node {
                     FnData {
                         constness: hir::Constness::NotConst,
                         arg_names: self.encode_fn_arg_names(&sig.decl),
@@ -486,7 +486,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if let hir::ConstTraitItem(_, Some(_)) = ast_item.node {
+            ast: if let hir::TraitItemKind::Const(_, Some(_)) = ast_item.node {
                 // We only save the HIR for associated consts with bodies
                 // (InlinedItemRef::from_trait_item panics otherwise)
                 let trait_def_id = trait_item.container.id();
@@ -1161,6 +1161,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem) {}
 
     fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
         // handled in `visit_item` above

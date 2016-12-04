@@ -22,7 +22,6 @@ pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
-pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UnOp::*;
@@ -41,7 +40,7 @@ use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
 
@@ -431,6 +430,7 @@ pub struct Crate {
     // slightly different results.
     pub items: BTreeMap<NodeId, Item>,
 
+    pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub exprs: FnvHashMap<ExprId, Expr>,
 }
@@ -438,6 +438,10 @@ pub struct Crate {
 impl Crate {
     pub fn item(&self, id: NodeId) -> &Item {
         &self.items[&id]
+    }
+
+    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem {
+        &self.trait_items[&id]
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &ImplItem {
@@ -457,6 +461,10 @@ impl Crate {
     {
         for (_, item) in &self.items {
             visitor.visit_item(item);
+        }
+
+        for (_, trait_item) in &self.trait_items {
+            visitor.visit_trait_item(trait_item);
         }
 
         for (_, impl_item) in &self.impl_items {
@@ -1070,6 +1078,14 @@ pub struct MethodSig {
     pub generics: Generics,
 }
 
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the node-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct TraitItemId {
+    pub node_id: NodeId,
+}
+
 /// Represents an item declaration within a trait declaration,
 /// possibly including a default implementation. A trait item is
 /// either required (meaning it doesn't have an implementation, just a
@@ -1079,21 +1095,21 @@ pub struct TraitItem {
     pub id: NodeId,
     pub name: Name,
     pub attrs: HirVec<Attribute>,
-    pub node: TraitItem_,
+    pub node: TraitItemKind,
     pub span: Span,
 }
 
 /// Represents a trait method or associated constant or type
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TraitItem_ {
+pub enum TraitItemKind {
     /// An associated constant with an optional value (otherwise `impl`s
     /// must contain a value)
-    ConstTraitItem(P<Ty>, Option<P<Expr>>),
+    Const(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<ExprId>),
+    Method(MethodSig, Option<ExprId>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
-    TypeTraitItem(TyParamBounds, Option<P<Ty>>),
+    Type(TyParamBounds, Option<P<Ty>>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1234,28 +1250,12 @@ pub struct Arg {
     pub id: NodeId,
 }
 
-impl Arg {
-    fn is_self(&self) -> bool {
-        if let PatKind::Binding(_, _, name, _) = self.pat.node {
-            name.node == keywords::SelfValue.name()
-        } else {
-            false
-        }
-    }
-}
-
 /// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
     pub inputs: HirVec<Arg>,
     pub output: FunctionRetTy,
     pub variadic: bool,
-}
-
-impl FnDecl {
-    pub fn has_self(&self) -> bool {
-        self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1548,7 +1548,7 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItem>),
+    ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
 
     // Default trait implementations
     ///
@@ -1582,6 +1582,21 @@ impl Item_ {
             ItemDefaultImpl(..) => "item",
         }
     }
+}
+
+/// A reference from an trait to one of its associated items. This
+/// contains the item's id, naturally, but also the item's name and
+/// some other high-level details (like whether it is an associated
+/// type or method, and whether it is public). This allows other
+/// passes to find the impl they want without loading the id (which
+/// means fewer edges in the incremental compilation graph).
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct TraitItemRef {
+    pub id: TraitItemId,
+    pub name: Name,
+    pub kind: AssociatedItemKind,
+    pub span: Span,
+    pub defaultness: Defaultness,
 }
 
 /// A reference from an impl to one of its associated items. This
