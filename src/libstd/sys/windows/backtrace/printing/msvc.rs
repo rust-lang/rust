@@ -15,6 +15,7 @@ use libc::{c_ulong, c_int, c_char, c_void};
 use mem;
 use sys::c;
 use sys::dynamic_lib::DynamicLibrary;
+use sys::backtrace::BacktraceContext;
 use sys_common::backtrace::{output, output_fileline};
 
 type SymFromAddrFn =
@@ -24,17 +25,12 @@ type SymGetLineFromAddr64Fn =
     unsafe extern "system" fn(c::HANDLE, u64, *mut u32,
                               *mut c::IMAGEHLP_LINE64) -> c::BOOL;
 
-pub fn print(w: &mut Write,
-             i: isize,
-             addr: u64,
-             process: c::HANDLE,
-             dbghelp: &DynamicLibrary)
-              -> io::Result<()> {
+/// Converts a pointer to symbol to its string value.
+pub fn resolve_symname<F>(symaddr: Frame, callback: F) -> io::Result<()>
+    where F: FnOnce(Option<&str>) -> io::Result<()>
+{
     unsafe {
-        let SymFromAddr = sym!(dbghelp, "SymFromAddr", SymFromAddrFn);
-        let SymGetLineFromAddr64 = sym!(dbghelp,
-                                        "SymGetLineFromAddr64",
-                                        SymGetLineFromAddr64Fn);
+        let SymFromAddr = sym!(&context.dbghelp, "SymFromAddr", SymFromAddrFn);
 
         let mut info: c::SYMBOL_INFO = mem::zeroed();
         info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
@@ -44,30 +40,44 @@ pub fn print(w: &mut Write,
         info.SizeOfStruct = 88;
 
         let mut displacement = 0u64;
-        let ret = SymFromAddr(process, addr, &mut displacement, &mut info);
+        let ret = SymFromAddr(context.process,
+                              symbol_addr as u64,
+                              &mut displacement,
+                              &mut info);
 
-        let name = if ret == c::TRUE {
+        let symname = if ret == c::TRUE {
             let ptr = info.Name.as_ptr() as *const c_char;
-            Some(CStr::from_ptr(ptr).to_bytes())
+            CStr::from_ptr(ptr).to_str().ok()
         } else {
             None
-        };
+        }
+        callback(symname)
+    }
+}
 
-        output(w, i, addr as usize as *mut c_void, name)?;
+pub fn foreach_symbol_fileline<F>(symbol_addr: Frame,
+                                  mut f: F,
+                                  context: &BacktraceContext)
+    -> io::Result<bool>
+    where F: FnMut(&[u8], libc::c_int) -> io::Result<()>
+{
+    unsafe {
+        let SymGetLineFromAddr64 = sym!(&context.dbghelp,
+                                        "SymGetLineFromAddr64",
+                                        SymGetLineFromAddr64Fn);
 
-        // Now find out the filename and line number
         let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
         line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
         let mut displacement = 0u32;
-        let ret = SymGetLineFromAddr64(process, addr, &mut displacement, &mut line);
+        let ret = SymGetLineFromAddr64(context.process,
+                                       symbol_addr,
+                                       &mut displacement,
+                                       &mut line);
         if ret == c::TRUE {
-            output_fileline(w,
-                            CStr::from_ptr(line.Filename).to_bytes(),
-                            line.LineNumber as c_int,
-                            false)
-        } else {
-            Ok(())
+            let name = CStr::from_ptr(line.Filename).to_bytes();
+            f(name, line.LineNumber as libc::c_int)?;
         }
+        Ok(false)
     }
 }
