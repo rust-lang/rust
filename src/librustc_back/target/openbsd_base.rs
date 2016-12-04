@@ -17,6 +17,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         linker_is_gnu: true,
         has_rpath: true,
+        is_like_openbsd: true,
         pre_link_args: vec![
             // GNU-style linkers will use this to omit linking to libraries
             // which don't actually fulfill any relocations, but only for
