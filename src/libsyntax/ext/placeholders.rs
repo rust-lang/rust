@@ -25,7 +25,7 @@ use std::mem;
 pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
-            path: ast::Path { span: DUMMY_SP, global: false, segments: Vec::new() },
+            path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: Vec::new(),
         })
     }

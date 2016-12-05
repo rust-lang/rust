@@ -578,9 +578,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_poly_trait_ref(&mut self,
                             tref: &'tcx ast::PolyTraitRef,
                             m: &'tcx ast::TraitBoundModifier) {
-        let ast::Path { ref segments, span, global } = tref.trait_ref.path;
+        let ast::Path { ref segments, span } = tref.trait_ref.path;
         let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
-        let def = self.resolve_trait_reference(&path, global, None, span);
+        let def = self.resolve_trait_reference(&path, None, span);
         self.record_def(tref.trait_ref.ref_id, def);
         visit::walk_poly_trait_ref(self, tref, m);
     }
@@ -753,13 +753,6 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
-enum PathScope {
-    Global,
-    Lexical,
-    Import,
-}
-
 #[derive(Clone)]
 enum PathResult<'a> {
     Module(Module<'a>),
@@ -783,7 +776,7 @@ pub struct ModuleData<'a> {
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, Span)>>,
-    macro_resolutions: RefCell<Vec<(Box<[Ident]>, PathScope, Span)>>,
+    macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -1174,13 +1167,12 @@ impl<'a> ty::NodeIdTree for Resolver<'a> {
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
         let namespace = if is_value { ValueNS } else { TypeNS };
-        let hir::Path { ref segments, span, global, ref mut def } = *path;
+        let hir::Path { ref segments, span, ref mut def } = *path;
         let path: Vec<_> = segments.iter().map(|seg| Ident::with_empty_ctxt(seg.name)).collect();
-        let scope = if global { PathScope::Global } else { PathScope::Lexical };
-        match self.resolve_path(&path, scope, Some(namespace), Some(span)) {
+        match self.resolve_path(&path, Some(namespace), Some(span)) {
             PathResult::Module(module) => *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.depth == 0 => *def = path_res.base_def,
-            PathResult::NonModule(..) => match self.resolve_path(&path, scope, None, Some(span)) {
+            PathResult::NonModule(..) => match self.resolve_path(&path, None, Some(span)) {
                 PathResult::Failed(msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
@@ -1601,17 +1593,16 @@ impl<'a> Resolver<'a> {
                             prefix.segments.iter().map(|seg| seg.identifier).collect();
                         // Resolve prefix of an import with empty braces (issue #28388)
                         if items.is_empty() && !prefix.segments.is_empty() {
-                            let (scope, span) = (PathScope::Import, prefix.span);
+                            let span = prefix.span;
                             // FIXME(#38012) This should be a module path, not anything in TypeNS.
-                            let result =
-                                self.resolve_path(&path, scope, Some(TypeNS), Some(span));
+                            let result = self.resolve_path(&path, Some(TypeNS), Some(span));
                             let (def, msg) = match result {
                                 PathResult::Module(module) => (module.def().unwrap(), None),
                                 PathResult::NonModule(res) if res.depth == 0 =>
                                     (res.base_def, None),
                                 PathResult::NonModule(_) => {
                                     // Resolve a module path for better errors
-                                    match self.resolve_path(&path, scope, None, Some(span)) {
+                                    match self.resolve_path(&path, None, Some(span)) {
                                         PathResult::Failed(msg, _) => (Def::Err, Some(msg)),
                                         _ => unreachable!(),
                                     }
@@ -1698,19 +1689,17 @@ impl<'a> Resolver<'a> {
 
     fn resolve_trait_reference(&mut self,
                                path: &[Ident],
-                               global: bool,
                                generics: Option<&Generics>,
                                span: Span)
                                -> PathResolution {
-        let scope = if global { PathScope::Global } else { PathScope::Lexical };
-        let def = match self.resolve_path(path, scope, None, Some(span)) {
+        let def = match self.resolve_path(path, None, Some(span)) {
             PathResult::Module(module) => Some(module.def().unwrap()),
             PathResult::NonModule(..) => return err_path_resolution(),
             PathResult::Failed(msg, false) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 return err_path_resolution();
             }
-            _ => match self.resolve_path(path, scope, Some(TypeNS), None) {
+            _ => match self.resolve_path(path, Some(TypeNS), None) {
                 PathResult::NonModule(path_resolution) => Some(path_resolution.base_def),
                 _ => None,
             },
@@ -1766,9 +1755,9 @@ impl<'a> Resolver<'a> {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
-            let ast::Path { ref segments, span, global } = trait_ref.path;
+            let ast::Path { ref segments, span } = trait_ref.path;
             let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
-            let path_res = self.resolve_trait_reference(&path, global, generics, span);
+            let path_res = self.resolve_trait_reference(&path, generics, span);
             assert!(path_res.depth == 0);
             self.record_def(trait_ref.ref_id, path_res);
             if path_res.base_def != Def::Err {
@@ -2260,9 +2249,8 @@ impl<'a> Resolver<'a> {
                                    path: &Path,
                                    ns: Namespace)
                                    -> Option<PathResolution> {
-        let ast::Path { ref segments, global, span } = *path;
+        let ast::Path { ref segments, span } = *path;
         let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
-        let scope = if global { PathScope::Global } else { PathScope::Lexical };
 
         if let Some(qself) = maybe_qself {
             if qself.position == 0 {
@@ -2273,10 +2261,10 @@ impl<'a> Resolver<'a> {
                 });
             }
             // Make sure the trait is valid.
-            self.resolve_trait_reference(&path[..qself.position], global, None, span);
+            self.resolve_trait_reference(&path[..qself.position], None, span);
         }
 
-        let result = match self.resolve_path(&path, scope, Some(ns), Some(span)) {
+        let result = match self.resolve_path(&path, Some(ns), Some(span)) {
             PathResult::NonModule(path_res) => match path_res.base_def {
                 Def::Trait(..) if maybe_qself.is_some() => return None,
                 _ => path_res,
@@ -2297,7 +2285,7 @@ impl<'a> Resolver<'a> {
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
             PathResult::Module(..) | PathResult::Failed(..)
-                    if scope == PathScope::Lexical && (ns == TypeNS || path.len() > 1) &&
+                    if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
                 PathResolution {
                     base_def: Def::PrimTy(self.primitive_type_table.primitive_types[&path[0].name]),
@@ -2317,7 +2305,7 @@ impl<'a> Resolver<'a> {
         }
 
         let unqualified_result = {
-            match self.resolve_path(&[*path.last().unwrap()], PathScope::Lexical, Some(ns), None) {
+            match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
                 PathResult::NonModule(path_res) => path_res.base_def,
                 PathResult::Module(module) => module.def().unwrap(),
                 _ => return Some(result),
@@ -2333,26 +2321,18 @@ impl<'a> Resolver<'a> {
 
     fn resolve_path(&mut self,
                     path: &[Ident],
-                    scope: PathScope,
                     opt_ns: Option<Namespace>, // `None` indicates a module path
                     record_used: Option<Span>)
                     -> PathResult<'a> {
-        let (mut module, allow_self) = match scope {
-            PathScope::Lexical => (None, true),
-            PathScope::Import => (Some(self.graph_root), true),
-            PathScope::Global => (Some(self.graph_root), false),
-        };
-        let mut allow_super = allow_self;
+        let mut module = None;
+        let mut allow_super = true;
 
         for (i, &ident) in path.iter().enumerate() {
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
 
-            if i == 0 && allow_self && ns == TypeNS && ident.name == keywords::SelfValue.name() {
+            if i == 0 && ns == TypeNS && ident.name == keywords::SelfValue.name() {
                 module = Some(self.module_map[&self.current_module.normal_ancestor_id.unwrap()]);
-                continue
-            } else if i == 0 && allow_self && ns == TypeNS && ident.name == "$crate" {
-                module = Some(self.resolve_crate_var(ident.ctxt));
                 continue
             } else if allow_super && ns == TypeNS && ident.name == keywords::Super.name() {
                 let current_module = if i == 0 { self.current_module } else { module.unwrap() };
@@ -2366,6 +2346,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             allow_super = false;
+
+            if i == 0 && ns == TypeNS && ident.name == keywords::CrateRoot.name() {
+                module = Some(self.graph_root);
+                continue
+            } else if i == 0 && ns == TypeNS && ident.name == "$crate" {
+                module = Some(self.resolve_crate_var(ident.ctxt));
+                continue
+            }
 
             let binding = if let Some(module) = module {
                 self.resolve_ident_in_module(module, ident, ns, false, record_used)
@@ -2430,7 +2418,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        PathResult::Module(module.unwrap())
+        PathResult::Module(module.unwrap_or(self.graph_root))
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -2665,10 +2653,8 @@ impl<'a> Resolver<'a> {
                 } else {
                     // Be helpful if the name refers to a struct
                     let path_name = path_names_to_string(path, 0);
-                    let ast::Path { ref segments, global, .. } = *path;
-                    let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
-                    let scope = if global { PathScope::Global } else { PathScope::Lexical };
-                    let type_res = match self.resolve_path(&path, scope, Some(TypeNS), None) {
+                    let path: Vec<_> = path.segments.iter().map(|seg| seg.identifier).collect();
+                    let type_res = match self.resolve_path(&path, Some(TypeNS), None) {
                         PathResult::NonModule(type_res) => Some(type_res),
                         _ => None,
                     };
@@ -2738,7 +2724,7 @@ impl<'a> Resolver<'a> {
                             } else {
                                 // we display a help message if this is a module
                                 if let PathResult::Module(module) =
-                                        self.resolve_path(&path, scope, None, None) {
+                                        self.resolve_path(&path, None, None) {
                                     def = module.def().unwrap();
                                     context = UnresolvedNameContext::PathIsMod(parent);
                                 }
@@ -2964,7 +2950,6 @@ impl<'a> Resolver<'a> {
                         segms.push(ident.into());
                         let path = Path {
                             span: span,
-                            global: false,
                             segments: segms,
                         };
                         // the entity is accessible in the following cases:
@@ -3022,7 +3007,7 @@ impl<'a> Resolver<'a> {
 
         let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
         let mut path_resolution = err_path_resolution();
-        let vis = match self.resolve_path(&path, PathScope::Import, None, Some(span)) {
+        let vis = match self.resolve_path(&path, None, Some(span)) {
             PathResult::Module(module) => {
                 path_resolution = PathResolution::new(module.def().unwrap());
                 ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
@@ -3190,15 +3175,14 @@ impl<'a> Resolver<'a> {
 }
 
 fn names_to_string(names: &[Ident]) -> String {
-    let mut first = true;
     let mut result = String::new();
-    for ident in names {
-        if first {
-            first = false
-        } else {
-            result.push_str("::")
+    for (i, ident) in names.iter().enumerate() {
+        if i > 0 {
+            result.push_str("::");
         }
-        result.push_str(&ident.name.as_str());
+        if ident.name != keywords::CrateRoot.name() {
+            result.push_str(&ident.name.as_str());
+        }
     }
     result
 }
