@@ -8,15 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
 // compile-flags: --test
 
 #![crate_type = "proc-macro"]
+#![feature(proc_macro)]
 #![feature(proc_macro, proc_macro_lib)]
 
 extern crate proc_macro;
 
-#[proc_macro_derive(A)]
-//~^ ERROR: `--test` cannot be used with proc-macro crates
-pub fn foo1(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Foo)]
+pub fn derive_foo(_input: TokenStream) -> TokenStream {
     "".parse().unwrap()
+}
+
+#[test]
+pub fn test_derive() {
+    assert!(true);
 }
