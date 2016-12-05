@@ -127,6 +127,9 @@ pub struct Config {
     // Only run tests that match this filter
     pub filter: Option<String>,
 
+    // Exactly match the filter, rather than a substring
+    pub filter_exact: bool,
+
     // Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
 
