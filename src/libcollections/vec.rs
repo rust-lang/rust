@@ -1244,7 +1244,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.extend(other.iter().cloned())
+        self.spec_extend(other.iter())
     }
 }
 
@@ -1499,7 +1499,7 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecExtend<_>>::from_iter(iter.into_iter())
+        <Self as SpecExtend<_, _>>::from_iter(iter.into_iter())
     }
 }
 
@@ -1572,12 +1572,12 @@ impl<T> Extend<T> for Vec<T> {
 }
 
 // Specialization trait used for Vec::from_iter and Vec::extend
-trait SpecExtend<I> {
+trait SpecExtend<T, I> {
     fn from_iter(iter: I) -> Self;
     fn spec_extend(&mut self, iter: I);
 }
 
-impl<I, T> SpecExtend<I> for Vec<T>
+impl<T, I> SpecExtend<T, I> for Vec<T>
     where I: Iterator<Item=T>,
 {
     default fn from_iter(mut iterator: I) -> Self {
@@ -1607,7 +1607,7 @@ impl<I, T> SpecExtend<I> for Vec<T>
     }
 }
 
-impl<I, T> SpecExtend<I> for Vec<T>
+impl<T, I> SpecExtend<T, I> for Vec<T>
     where I: TrustedLen<Item=T>,
 {
     fn from_iter(iterator: I) -> Self {
@@ -1642,6 +1642,33 @@ impl<I, T> SpecExtend<I> for Vec<T>
     }
 }
 
+impl<'a, T: 'a, I> SpecExtend<&'a T, I> for Vec<T>
+    where I: Iterator<Item=&'a T>,
+          T: Clone,
+{
+    default fn from_iter(iterator: I) -> Self {
+        SpecExtend::from_iter(iterator.cloned())
+    }
+
+    default fn spec_extend(&mut self, iterator: I) {
+        self.spec_extend(iterator.cloned())
+    }
+}
+
+impl<'a, T: 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T>
+    where T: Copy,
+{
+    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
+        let slice = iterator.as_slice();
+        self.reserve(slice.len());
+        unsafe {
+            let len = self.len();
+            self.set_len(len + slice.len());
+            self.get_unchecked_mut(len..).copy_from_slice(slice);
+        }
+    }
+}
+
 impl<T> Vec<T> {
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
@@ -1669,7 +1696,7 @@ impl<T> Vec<T> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().map(|&x| x))
+        self.spec_extend(iter.into_iter())
     }
 }
 
