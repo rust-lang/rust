@@ -75,6 +75,10 @@ pub fn modify(sess: &ParseSess,
         handler.err("cannot mix `proc-macro` crate type with others");
     }
 
+    if is_test_crate {
+        return krate;
+    }
+
     krate.module.items.push(mk_registrar(&mut cx, &collect.derives));
 
     if krate.exported_macros.len() > 0 {
@@ -141,8 +145,6 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
         }
 
         if self.is_test_crate {
-            self.handler.span_err(attr.span(),
-                                  "`--test` cannot be used with proc-macro crates");
             return;
         }
 
