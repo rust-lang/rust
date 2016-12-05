@@ -1737,7 +1737,6 @@ impl Clean<Type> for hir::Ty {
                 segments.pop();
                 let trait_path = hir::Path {
                     span: p.span,
-                    global: p.global,
                     def: Def::Trait(cx.tcx.associated_item(p.def.def_id()).container.id()),
                     segments: segments.into(),
                 };
@@ -1756,7 +1755,6 @@ impl Clean<Type> for hir::Ty {
                 }
                 let trait_path = hir::Path {
                     span: self.span,
-                    global: false,
                     def: def,
                     segments: vec![].into(),
                 };
@@ -2213,9 +2211,9 @@ impl Path {
 impl Clean<Path> for hir::Path {
     fn clean(&self, cx: &DocContext) -> Path {
         Path {
-            global: self.global,
+            global: self.is_global(),
             def: self.def,
-            segments: self.segments.clean(cx),
+            segments: if self.is_global() { &self.segments[1..] } else { &self.segments }.clean(cx),
         }
     }
 }
@@ -2270,24 +2268,19 @@ impl Clean<PathSegment> for hir::PathSegment {
 }
 
 fn qpath_to_string(p: &hir::QPath) -> String {
-    let (segments, global) = match *p {
-        hir::QPath::Resolved(_, ref path) => {
-            (&path.segments, path.global)
-        }
-        hir::QPath::TypeRelative(_, ref segment) => {
-            return segment.name.to_string()
-        }
+    let segments = match *p {
+        hir::QPath::Resolved(_, ref path) => &path.segments,
+        hir::QPath::TypeRelative(_, ref segment) => return segment.name.to_string(),
     };
 
     let mut s = String::new();
-    let mut first = true;
-    for i in segments.iter().map(|x| x.name.as_str()) {
-        if !first || global {
+    for (i, seg) in segments.iter().enumerate() {
+        if i > 0 {
             s.push_str("::");
-        } else {
-            first = false;
         }
-        s.push_str(&i);
+        if seg.name != keywords::CrateRoot.name() {
+            s.push_str(&*seg.name.as_str());
+        }
     }
     s
 }

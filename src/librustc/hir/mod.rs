@@ -105,13 +105,16 @@ pub struct LifetimeDef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Path {
     pub span: Span,
-    /// A `::foo` path, is relative to the crate root rather than current
-    /// module (like paths in an import).
-    pub global: bool,
     /// The definition that the path resolved to.
     pub def: Def,
     /// The segments in the path: the things separated by `::`.
     pub segments: HirVec<PathSegment>,
+}
+
+impl Path {
+    pub fn is_global(&self) -> bool {
+        !self.segments.is_empty() && self.segments[0].name == keywords::CrateRoot.name()
+    }
 }
 
 impl fmt::Debug for Path {

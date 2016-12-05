@@ -80,8 +80,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         }],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::Use(P(codemap::dummy_spanned(ast::ViewPathGlob(ast::Path {
-            global: false,
-            segments: vec![name, "prelude", "v1"].into_iter().map(|name| {
+            segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
                 ast::Ident::from_str(name).into()
             }).collect(),
             span: span,

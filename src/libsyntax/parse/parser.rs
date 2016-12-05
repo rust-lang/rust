@@ -1614,7 +1614,6 @@ impl<'a> Parser<'a> {
         } else {
             ast::Path {
                 span: span,
-                global: false,
                 segments: vec![]
             }
         };
@@ -1658,7 +1657,7 @@ impl<'a> Parser<'a> {
         // Parse any number of segments and bound sets. A segment is an
         // identifier followed by an optional lifetime and a set of types.
         // A bound set is a set of type parameter bounds.
-        let segments = match mode {
+        let mut segments = match mode {
             PathStyle::Type => {
                 self.parse_path_segments_without_colons()?
             }
@@ -1670,13 +1669,16 @@ impl<'a> Parser<'a> {
             }
         };
 
+        if is_global {
+            segments.insert(0, ast::PathSegment::crate_root());
+        }
+
         // Assemble the span.
         let span = mk_sp(lo, self.prev_span.hi);
 
         // Assemble the result.
         Ok(ast::Path {
             span: span,
-            global: is_global,
             segments: segments,
         })
     }
@@ -5180,7 +5182,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Crate) {
             pub_crate(self)
         } else {
-            let path = self.parse_path(PathStyle::Mod)?;
+            let path = self.parse_path(PathStyle::Mod)?.default_to_global();
             self.expect(&token::CloseDelim(token::Paren))?;
             Ok(Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID })
         }
@@ -6068,9 +6070,9 @@ impl<'a> Parser<'a> {
         if self.check(&token::OpenDelim(token::Brace)) || self.check(&token::BinOp(token::Star)) ||
            self.is_import_coupler() {
             // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
+            self.eat(&token::ModSep);
             let prefix = ast::Path {
-                global: self.eat(&token::ModSep),
-                segments: Vec::new(),
+                segments: vec![ast::PathSegment::crate_root()],
                 span: mk_sp(lo, self.span.hi),
             };
             let view_path_kind = if self.eat(&token::BinOp(token::Star)) {
@@ -6080,7 +6082,7 @@ impl<'a> Parser<'a> {
             };
             Ok(P(spanned(lo, self.span.hi, view_path_kind)))
         } else {
-            let prefix = self.parse_path(PathStyle::Mod)?;
+            let prefix = self.parse_path(PathStyle::Mod)?.default_to_global();
             if self.is_import_coupler() {
                 // `foo::bar::{a, b}` or `foo::bar::*`
                 self.bump();

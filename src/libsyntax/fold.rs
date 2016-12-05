@@ -433,9 +433,8 @@ pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
     i
 }
 
-pub fn noop_fold_path<T: Folder>(Path {global, segments, span}: Path, fld: &mut T) -> Path {
+pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
     Path {
-        global: global,
         segments: segments.move_map(|PathSegment {identifier, parameters}| PathSegment {
             identifier: fld.fold_ident(identifier),
             parameters: parameters.map(|ps| ps.map(|ps| fld.fold_path_parameters(ps))),

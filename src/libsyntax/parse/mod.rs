@@ -633,7 +633,6 @@ mod tests {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
-                        global: false,
                         segments: vec![Ident::from_str("a").into()],
                     }),
                     span: sp(0, 1),
@@ -647,8 +646,9 @@ mod tests {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 6),
-                        global: true,
-                        segments: vec![Ident::from_str("a").into(), Ident::from_str("b").into()],
+                        segments: vec![ast::PathSegment::crate_root(),
+                                       Ident::from_str("a").into(),
+                                       Ident::from_str("b").into()]
                     }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
@@ -757,7 +757,6 @@ mod tests {
                         id: ast::DUMMY_NODE_ID,
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
-                            global: false,
                             segments: vec![Ident::from_str("d").into()],
                         }),
                         span:sp(7,8),
@@ -775,7 +774,6 @@ mod tests {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
-                               global:false,
                                segments: vec![Ident::from_str("b").into()],
                             }),
                            span: sp(0,1),
@@ -817,7 +815,6 @@ mod tests {
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
-                                        global:false,
                                         segments: vec![Ident::from_str("i32").into()],
                                         }),
                                         span:sp(10,13)
@@ -860,7 +857,6 @@ mod tests {
                                                 node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
-                                                        global:false,
                                                         segments: vec![Ident::from_str("b").into()],
                                                       }),
                                                 span: sp(17,18),

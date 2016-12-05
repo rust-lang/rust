@@ -111,10 +111,8 @@ pub struct LifetimeDef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Path {
     pub span: Span,
-    /// A `::foo` path, is relative to the crate root rather than current
-    /// module (like paths in an import).
-    pub global: bool,
     /// The segments in the path: the things separated by `::`.
+    /// Global paths begin with `keywords::CrateRoot`.
     pub segments: Vec<PathSegment>,
 }
 
@@ -136,9 +134,21 @@ impl Path {
     pub fn from_ident(s: Span, identifier: Ident) -> Path {
         Path {
             span: s,
-            global: false,
             segments: vec![identifier.into()],
         }
+    }
+
+    pub fn default_to_global(mut self) -> Path {
+        let name = self.segments[0].identifier.name;
+        if !self.is_global() && name != "$crate" &&
+           name != keywords::SelfValue.name() && name != keywords::Super.name() {
+            self.segments.insert(0, PathSegment::crate_root());
+        }
+        self
+    }
+
+    pub fn is_global(&self) -> bool {
+        !self.segments.is_empty() && self.segments[0].identifier.name == keywords::CrateRoot.name()
     }
 }
 
@@ -163,6 +173,15 @@ pub struct PathSegment {
 impl From<Ident> for PathSegment {
     fn from(id: Ident) -> Self {
         PathSegment { identifier: id, parameters: None }
+    }
+}
+
+impl PathSegment {
+    pub fn crate_root() -> Self {
+        PathSegment {
+            identifier: keywords::CrateRoot.ident(),
+            parameters: None,
+        }
     }
 }
 

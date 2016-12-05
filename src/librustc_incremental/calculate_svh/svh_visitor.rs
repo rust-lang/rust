@@ -189,7 +189,6 @@ enum SawAbiComponent<'a> {
     SawStructField,
     SawVariant,
     SawQPath,
-    SawPath(bool),
     SawPathSegment,
     SawPathParameters,
     SawBlock,
@@ -678,7 +677,6 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_path(&mut self, path: &'tcx Path, _: ast::NodeId) {
         debug!("visit_path: st={:?}", self.st);
-        SawPath(path.global).hash(self.st);
         hash_span!(self, path.span);
         visit::walk_path(self, path)
     }

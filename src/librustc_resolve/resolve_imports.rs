@@ -12,7 +12,7 @@ use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
-use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError};
+use {NameBinding, NameBindingKind, PathResult, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
@@ -24,6 +24,7 @@ use rustc::hir::def::*;
 use syntax::ast::{Ident, NodeId};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
+use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
@@ -490,7 +491,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
             directive.vis.set(ty::Visibility::PrivateExternal);
-            let result = self.resolve_path(&directive.module_path, PathScope::Import, None, None);
+            let result = self.resolve_path(&directive.module_path, None, None);
             directive.vis.set(vis);
 
             match result {
@@ -553,15 +554,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.current_module = directive.parent;
 
         let ImportDirective { ref module_path, span, .. } = *directive;
-        let module_result = self.resolve_path(&module_path, PathScope::Import, None, Some(span));
+        let module_result = self.resolve_path(&module_path, None, Some(span));
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(msg, _) => {
-                let mut path = vec![keywords::SelfValue.ident()];
-                path.extend(module_path);
-                let result = self.resolve_path(&path, PathScope::Import, None, None);
-                return if let PathResult::Module(..) = result {
-                    Some(format!("Did you mean `self::{}`?", &names_to_string(module_path)))
+                let (mut self_path, mut self_result) = (module_path.clone(), None);
+                if !self_path.is_empty() && !token::Ident(self_path[0]).is_path_segment_keyword() {
+                    self_path[0].name = keywords::SelfValue.name();
+                    self_result = Some(self.resolve_path(&self_path, None, None));
+                }
+                return if let Some(PathResult::Module(..)) = self_result {
+                    Some(format!("Did you mean `{}`?", names_to_string(&self_path)))
                 } else {
                     Some(msg)
                 };
@@ -787,6 +790,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 }
 
 fn import_path_to_string(names: &[Ident], subclass: &ImportDirectiveSubclass) -> String {
+    let global = !names.is_empty() && names[0].name == keywords::CrateRoot.name();
+    let names = if global { &names[1..] } else { names };
     if names.is_empty() {
         import_directive_subclass_to_string(subclass)
     } else {
