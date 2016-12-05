@@ -9,6 +9,7 @@
 // except according to those terms.
 #![allow(non_camel_case_types)]
 #![cfg_attr(not(stage0), feature(i128_type))]
+#![no_std]
 #![crate_type="rlib"]
 #![crate_name="rustc_i128"]
 
