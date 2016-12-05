@@ -74,7 +74,7 @@ pub mod reimpls {
         ($a: expr, $b: expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
             let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits / 2;
+            let half_bits = bits >> 1;
             if b & half_bits != 0 {
                 <$ty>::from_parts((a.high() >> (b - half_bits)) as <$ty as LargeInt>::LowHalf,
                                   a.high() >> (half_bits - 1))
@@ -97,7 +97,7 @@ pub mod reimpls {
         ($a: expr, $b: expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
             let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits / 2;
+            let half_bits = bits >> 1;
             if b & half_bits != 0 {
                 <$ty>::from_parts(a.high() >> (b - half_bits), 0)
             } else if b == 0 {
