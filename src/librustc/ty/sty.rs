@@ -1121,6 +1121,17 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_mutable_pointer(&self) -> bool {
+        match self.sty {
+            TyRawPtr(tnm) | TyRef(_, tnm) => if let hir::Mutability::MutMutable = tnm.mutbl {
+                true
+            } else {
+                false
+            },
+            _ => false
+        }
+    }
+
     pub fn is_unsafe_ptr(&self) -> bool {
         match self.sty {
             TyRawPtr(_) => return true,
