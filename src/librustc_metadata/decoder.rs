@@ -11,13 +11,13 @@
 // Decoding metadata from a single crate's metadata
 
 use astencode::decode_inlined_item;
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, NativeLibraryKind};
+use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use index::Index;
 use schema::*;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::{DefKey, DefPathData};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
@@ -36,7 +36,6 @@ use rustc::mir::Mir;
 use std::borrow::Cow;
 use std::cell::Ref;
 use std::io;
-use std::iter::FromIterator;
 use std::mem;
 use std::str;
 use std::u32;
@@ -1089,15 +1088,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
-        if self.dllimport_foreign_items.borrow().is_none() {
-            *self.dllimport_foreign_items.borrow_mut() = Some(FxHashSet::from_iter(
-                self.get_native_libraries().iter()
-                    .filter(|lib| lib.kind == NativeLibraryKind::NativeUnknown)
-                    .flat_map(|lib| &lib.foreign_items)
-                    .map(|id| *id)
-            ));
-        }
-        self.dllimport_foreign_items.borrow().as_ref().unwrap().contains(&id)
+        self.dllimport_foreign_items.contains(&id)
     }
 
     pub fn is_defaulted_trait(&self, trait_id: DefIndex) -> bool {

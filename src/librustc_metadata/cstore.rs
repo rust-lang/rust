@@ -85,7 +85,7 @@ pub struct CrateMetadata {
 
     pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
     // Foreign items imported from a dylib (Windows only)
-    pub dllimport_foreign_items: RefCell<Option<FxHashSet<DefIndex>>>,
+    pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
 pub struct CachedInlinedItem {
