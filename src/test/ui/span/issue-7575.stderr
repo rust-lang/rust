@@ -1,0 +1,67 @@
+error: no method named `f9` found for type `usize` in the current scope
+  --> $DIR/issue-7575.rs:74:18
+   |
+74 |     u.f8(42) + u.f9(342) + m.fff(42)
+   |                  ^^
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: candidate #1 is defined in the trait `CtxtFn`
+  --> $DIR/issue-7575.rs:16:5
+   |
+16 |     fn f9(usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
+note: candidate #2 is defined in the trait `OtherTrait`
+  --> $DIR/issue-7575.rs:20:5
+   |
+20 |     fn f9(usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
+note: candidate #3 is defined in the trait `UnusedTrait`
+  --> $DIR/issue-7575.rs:29:5
+   |
+29 |     fn f9(usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `UnusedTrait::f9(u, 342)` instead
+   = help: items from traits can only be used if the trait is implemented and in scope; the following traits define an item `f9`, perhaps you need to implement one of them:
+   = help: candidate #1: `CtxtFn`
+   = help: candidate #2: `OtherTrait`
+   = help: candidate #3: `UnusedTrait`
+
+error: no method named `fff` found for type `Myisize` in the current scope
+  --> $DIR/issue-7575.rs:74:30
+   |
+74 |     u.f8(42) + u.f9(342) + m.fff(42)
+   |                              ^^^
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: candidate #1 is defined in an impl for the type `Myisize`
+  --> $DIR/issue-7575.rs:51:5
+   |
+51 |       fn fff(i: isize) -> isize { //~ NOTE candidate
+   |  _____^ starting here...
+52 | |         i
+53 | |     }
+   | |_____^ ...ending here
+
+error: no method named `is_str` found for type `T` in the current scope
+  --> $DIR/issue-7575.rs:85:7
+   |
+85 |     t.is_str()
+   |       ^^^^^^
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: candidate #1 is defined in the trait `ManyImplTrait`
+  --> $DIR/issue-7575.rs:57:5
+   |
+57 |       fn is_str() -> bool { //~ NOTE candidate
+   |  _____^ starting here...
+58 | |         false
+59 | |     }
+   | |_____^ ...ending here
+   = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
+   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `is_str`, perhaps you need to implement it:
+   = help: candidate #1: `ManyImplTrait`
+
+error: aborting due to 3 previous errors
+
