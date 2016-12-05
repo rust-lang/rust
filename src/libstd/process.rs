@@ -1167,4 +1167,62 @@ mod tests {
             Ok(_) => panic!(),
         }
     }
+
+    /// Test that process creation flags work by debugging a process.
+    /// Other creation flags make it hard or impossible to detect
+    /// behavioral changes in the process.
+    #[test]
+    #[cfg(windows)]
+    fn test_creation_flags() {
+        use os::windows::process::CommandExt;
+        use sys::c::{BOOL, DWORD, INFINITE};
+        #[repr(C, packed)]
+        struct DEBUG_EVENT {
+            pub event_code: DWORD,
+            pub process_id: DWORD,
+            pub thread_id: DWORD,
+            // This is a union in the real struct, but we don't
+            // need this data for the purposes of this test.
+            pub _junk: [u8; 164],
+        }
+
+        extern "system" {
+            fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: DWORD) -> BOOL;
+            fn ContinueDebugEvent(dwProcessId: DWORD, dwThreadId: DWORD,
+                                  dwContinueStatus: DWORD) -> BOOL;
+        }
+
+        const DEBUG_PROCESS: DWORD = 1;
+        const EXIT_PROCESS_DEBUG_EVENT: DWORD = 5;
+        const DBG_EXCEPTION_NOT_HANDLED: DWORD = 0x80010001;
+
+        let mut child = Command::new("cmd")
+            .creation_flags(DEBUG_PROCESS)
+            .stdin(Stdio::piped()).spawn().unwrap();
+        child.stdin.take().unwrap().write_all(b"exit\r\n").unwrap();
+        let mut events = 0;
+        let mut event = DEBUG_EVENT {
+            event_code: 0,
+            process_id: 0,
+            thread_id: 0,
+            _junk: [0; 164],
+        };
+        loop {
+            if unsafe { WaitForDebugEvent(&mut event as *mut DEBUG_EVENT, INFINITE) } == 0 {
+                panic!("WaitForDebugEvent failed!");
+            }
+            events += 1;
+
+            if event.event_code == EXIT_PROCESS_DEBUG_EVENT {
+                break;
+            }
+
+            if unsafe { ContinueDebugEvent(event.process_id,
+                                           event.thread_id,
+                                           DBG_EXCEPTION_NOT_HANDLED) } == 0 {
+                panic!("ContinueDebugEvent failed!");
+            }
+        }
+        assert!(events > 0);
+    }
 }
