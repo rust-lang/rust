@@ -113,6 +113,13 @@ fn register_native_lib(sess: &Session,
     cstore.add_used_library(lib);
 }
 
+fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+    match lib.cfg {
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        None => true,
+    }
+}
+
 // Extra info about a crate loaded for plugins or exported macros.
 struct ExtensionCrate {
     metadata: PMDSource,
@@ -290,7 +297,7 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let cmeta = Rc::new(cstore::CrateMetadata {
+        let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
             key_map: metadata.load_key_map(crate_root.index),
@@ -308,9 +315,18 @@ impl<'a> CrateLoader<'a> {
                 rlib: rlib,
                 rmeta: rmeta,
             },
-            dllimport_foreign_items: RefCell::new(None),
-        });
+            dllimport_foreign_items: FxHashSet(),
+        };
 
+        let dllimports: Vec<_> = cmeta.get_native_libraries().iter()
+                            .filter(|lib| relevant_lib(self.sess, lib) &&
+                                          lib.kind == cstore::NativeLibraryKind::NativeUnknown)
+                            .flat_map(|lib| &lib.foreign_items)
+                            .map(|id| *id)
+                            .collect();
+        cmeta.dllimport_foreign_items.extend(dllimports);
+
+        let cmeta = Rc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
         (cnum, cmeta)
     }
@@ -643,7 +659,7 @@ impl<'a> CrateLoader<'a> {
         let mut items = vec![];
         let libs = self.cstore.get_used_libraries();
         for lib in libs.borrow().iter() {
-            if lib.kind == kind {
+            if relevant_lib(self.sess, lib) && lib.kind == kind {
                 items.extend(&lib.foreign_items);
             }
         }
