@@ -67,7 +67,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     metadata_llcx: ContextRef,
 
     export_map: ExportMap,
-    reachable: NodeSet,
+    exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
@@ -437,7 +437,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                export_map: ExportMap,
                link_meta: LinkMeta,
-               reachable: NodeSet,
+               exported_symbols: NodeSet,
                check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
@@ -454,7 +454,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         // they're not available to be linked against. This poses a few problems
         // for the compiler, some of which are somewhat fundamental, but we use
         // the `use_dll_storage_attrs` variable below to attach the `dllexport`
-        // attribute to all LLVM functions that are reachable (e.g. they're
+        // attribute to all LLVM functions that are exported e.g. they're
         // already tagged with external linkage). This is suboptimal for a few
         // reasons:
         //
@@ -493,7 +493,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
             export_map: export_map,
-            reachable: reachable,
+            exported_symbols: exported_symbols,
             link_meta: link_meta,
             tcx: tcx,
             stats: Stats {
@@ -527,8 +527,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.export_map
     }
 
-    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
-        &self.reachable
+    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
+        &self.exported_symbols
     }
 
     pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
@@ -768,8 +768,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.export_map
     }
 
-    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
-        &self.shared.reachable
+    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
+        &self.shared.exported_symbols
     }
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {

@@ -306,14 +306,22 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         })
     }
 
+    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
+    {
+        self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
+            krate: cnum,
+            index: index
+        })
+    }
+
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
     {
         self.get_crate_data(cnum).get_native_libraries()
     }
 
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
     {
-        self.get_crate_data(cnum).get_reachable_ids()
+        self.get_crate_data(cnum).get_exported_symbols()
     }
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {

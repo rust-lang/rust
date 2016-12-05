@@ -78,6 +78,7 @@ pub mod back {
     pub mod linker;
     pub mod link;
     pub mod lto;
+    pub mod symbol_export;
     pub mod symbol_names;
     pub mod write;
     pub mod msvc;
@@ -169,7 +170,7 @@ pub struct CrateTranslation {
     pub metadata_module: ModuleTranslation,
     pub link: middle::cstore::LinkMeta,
     pub metadata: Vec<u8>,
-    pub reachable: Vec<String>,
+    pub exported_symbols: back::symbol_export::ExportedSymbols,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo
