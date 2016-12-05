@@ -328,8 +328,9 @@ pub trait CrateStore<'tcx> {
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
+    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
@@ -491,9 +492,11 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            -> Symbol { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
+    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
+        { bug!("derive_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
