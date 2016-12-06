@@ -1068,6 +1068,10 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
+        self.dllimport_foreign_items.contains(&id)
+    }
+
     pub fn is_defaulted_trait(&self, trait_id: DefIndex) -> bool {
         match self.entry(trait_id).kind {
             EntryKind::Trait(data) => data.decode(self).has_default_impl,

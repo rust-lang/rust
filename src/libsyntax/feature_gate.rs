@@ -132,7 +132,6 @@ declare_features! (
 
     (active, allocator, "1.0.0", Some(27389)),
     (active, fundamental, "1.0.0", Some(29635)),
-    (active, linked_from, "1.3.0", Some(29629)),
     (active, main, "1.0.0", Some(29634)),
     (active, needs_allocator, "1.4.0", Some(27389)),
     (active, on_unimplemented, "1.0.0", Some(29628)),
@@ -637,12 +636,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                        "the `#[fundamental]` attribute \
                                         is an experimental feature",
                                        cfg_fn!(fundamental))),
-
-    ("linked_from", Normal, Gated(Stability::Unstable,
-                                  "linked_from",
-                                  "the `#[linked_from]` attribute \
-                                   is an experimental feature",
-                                  cfg_fn!(linked_from))),
 
     ("proc_macro_derive", Normal, Gated(Stability::Unstable,
                                         "proc_macro",

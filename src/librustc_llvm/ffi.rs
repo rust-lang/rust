@@ -471,11 +471,9 @@ pub mod debuginfo {
 // generates an llvmdeps.rs file next to this one which will be
 // automatically updated whenever LLVM is updated to include an up-to-date
 // set of the libraries we need to link to LLVM for.
-#[link(name = "rustllvm", kind = "static")]
-#[cfg(not(cargobuild))]
-extern "C" {}
-
-#[linked_from = "rustllvm"] // not quite true but good enough
+#[cfg_attr(not(all(stage0,cargobuild)),
+           link(name = "rustllvm", kind = "static"))] // not quite true but good enough
+#[cfg_attr(stage0, linked_from = "rustllvm")]
 extern "C" {
     // Create and destroy contexts.
     pub fn LLVMContextCreate() -> ContextRef;

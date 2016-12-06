@@ -637,7 +637,11 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
             }
         }
-
+        if ccx.use_dll_storage_attrs() && ccx.sess().cstore.is_dllimport_foreign_item(def_id) {
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+            }
+        }
         llfn
     };
 

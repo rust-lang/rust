@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "rlib"]
+// compile-flags: -l foo:bar
+// error-pattern: renaming of the library `foo` was specified
 
-extern crate foo;
-
-#[link(name = "bar", kind = "static")]
-extern {
-    fn bar();
-}
-
-pub fn doit() {
-    unsafe { bar(); }
-}
+#![crate_type = "lib"]

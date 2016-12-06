@@ -19,7 +19,7 @@ use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
@@ -217,9 +217,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(did.krate).is_foreign_item(did.index)
     }
 
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool
+    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
     {
-        self.do_is_statically_included_foreign_item(id)
+        self.do_is_statically_included_foreign_item(def_id)
+    }
+
+    fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
+        if def_id.krate == LOCAL_CRATE {
+            self.dllimport_foreign_items.borrow().contains(&def_id.index)
+        } else {
+            self.get_crate_data(def_id.krate).is_dllimport_foreign_item(def_id.index)
+        }
     }
 
     fn dylib_dependency_formats(&self, cnum: CrateNum)
