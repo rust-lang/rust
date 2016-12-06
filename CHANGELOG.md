@@ -2,7 +2,6 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.104 — 2016-12-01
-* Update to *rustc 1.15.0-nightly (1c448574b 2016-11-28)*
 
 ## 0.0.103 — 2016-11-25
 * Update to *rustc 1.15.0-nightly (d5814b03e 2016-11-23)*
