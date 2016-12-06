@@ -62,6 +62,12 @@ fn main() {
         "powisf2.c",
         "subdf3.c",
         "subsf3.c",
+        "floatsisf.c",
+        "floatsidf.c",
+        "floatdidf.c",
+        "floatunsisf.c",
+        "floatunsidf.c",
+        "floatundidf.c",
         // 128 bit integers
         "lshrti3.c",
         "modti3.c",

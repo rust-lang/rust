@@ -26,6 +26,12 @@ extern {
     fn __powidf2();
     fn __subsf3();
     fn __subdf3();
+    fn __floatsisf();
+    fn __floatsidf();
+    fn __floatdidf();
+    fn __floatunsisf();
+    fn __floatunsidf();
+    fn __floatundidf();
 }
 
 macro_rules! declare {
@@ -61,6 +67,12 @@ declare!(___powisf2, __powisf2);
 declare!(___powidf2, __powidf2);
 declare!(___subsf3, __subsf3);
 declare!(___subdf3, __subdf3);
+declare!(___floatsisf, __floatsisf);
+declare!(___floatsidf, __floatsidf);
+declare!(___floatdidf, __floatdidf);
+declare!(___floatunsisf, __floatunsisf);
+declare!(___floatunsidf, __floatunsidf);
+declare!(___floatundidf, __floatundidf);
 
 #[cfg(all(not(windows),
           not(target_arch = "mips64"),

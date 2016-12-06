@@ -1,5 +1,6 @@
 use core::mem;
 
+pub mod conv;
 pub mod add;
 pub mod pow;
 pub mod sub;
@@ -18,6 +19,15 @@ pub trait Float: Sized + Copy {
     /// Returns the bitwidth of the exponent
     fn exponent_bits() -> u32 {
         Self::bits() - Self::significand_bits() - 1
+    }
+    /// Returns the maximum value of the exponent
+    fn exponent_max() -> u32 {
+        (1 << Self::exponent_bits()) - 1
+    }
+
+    /// Returns the exponent bias value
+    fn exponent_bias() -> u32 {
+        Self::exponent_max() >> 1
     }
 
     /// Returns a mask for the sign bit
