@@ -131,6 +131,7 @@ pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Symbol,
     pub cfg: Option<ast::MetaItem>,
+    pub foreign_items: Vec<DefIndex>,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not
@@ -305,7 +306,8 @@ pub trait CrateStore<'tcx> {
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
+    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
+    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -463,7 +465,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_defaulted_trait(&self, did: DefId) -> bool { bug!("is_defaulted_trait") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
+    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
+    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -529,9 +532,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum> { vec![] }
-    fn used_libraries(&self) -> Vec<NativeLibrary> {
-        vec![]
-    }
+    fn used_libraries(&self) -> Vec<NativeLibrary> { vec![] }
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions

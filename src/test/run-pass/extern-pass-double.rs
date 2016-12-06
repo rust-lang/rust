@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[link(name = "rust_test_helpers")]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern {
     pub fn rust_dbg_extern_identity_double(v: f64) -> f64;
 }

@@ -22,7 +22,7 @@ use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashSet;
 use rustc::middle::cstore::NativeLibrary;
 use rustc::hir::map::Definitions;
 
@@ -52,7 +52,6 @@ pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
-    foreign_item_map: FxHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: Symbol,
 }
 
@@ -114,6 +113,13 @@ fn register_native_lib(sess: &Session,
     cstore.add_used_library(lib);
 }
 
+fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+    match lib.cfg {
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        None => true,
+    }
+}
+
 // Extra info about a crate loaded for plugins or exported macros.
 struct ExtensionCrate {
     metadata: PMDSource,
@@ -148,7 +154,6 @@ impl<'a> CrateLoader<'a> {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
-            foreign_item_map: FxHashMap(),
             local_crate_name: Symbol::intern(local_crate_name),
         }
     }
@@ -292,7 +297,7 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let cmeta = Rc::new(cstore::CrateMetadata {
+        let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
             key_map: metadata.load_key_map(crate_root.index),
@@ -310,8 +315,18 @@ impl<'a> CrateLoader<'a> {
                 rlib: rlib,
                 rmeta: rmeta,
             },
-        });
+            dllimport_foreign_items: FxHashSet(),
+        };
 
+        let dllimports: Vec<_> = cmeta.get_native_libraries().iter()
+                            .filter(|lib| relevant_lib(self.sess, lib) &&
+                                          lib.kind == cstore::NativeLibraryKind::NativeUnknown)
+                            .flat_map(|lib| &lib.foreign_items)
+                            .map(|id| *id)
+                            .collect();
+        cmeta.dllimport_foreign_items.extend(dllimports);
+
+        let cmeta = Rc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
         (cnum, cmeta)
     }
@@ -640,17 +655,27 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn register_statically_included_foreign_items(&mut self) {
+    fn get_foreign_items_of_kind(&self, kind: cstore::NativeLibraryKind) -> Vec<DefIndex> {
+        let mut items = vec![];
         let libs = self.cstore.get_used_libraries();
-        for (foreign_lib, list) in self.foreign_item_map.iter() {
-            let is_static = libs.borrow().iter().any(|lib| {
-                lib.name == &**foreign_lib && lib.kind == cstore::NativeStatic
-            });
-            if is_static {
-                for id in list {
-                    self.cstore.add_statically_included_foreign_item(*id);
-                }
+        for lib in libs.borrow().iter() {
+            if relevant_lib(self.sess, lib) && lib.kind == kind {
+                items.extend(&lib.foreign_items);
             }
+        }
+        items
+    }
+
+    fn register_statically_included_foreign_items(&mut self) {
+        for id in self.get_foreign_items_of_kind(cstore::NativeStatic) {
+            self.cstore.add_statically_included_foreign_item(id);
+        }
+    }
+
+    fn register_dllimport_foreign_items(&mut self) {
+        let mut dllimports = self.cstore.dllimport_foreign_items.borrow_mut();
+        for id in self.get_foreign_items_of_kind(cstore::NativeUnknown) {
+            dllimports.insert(id);
         }
     }
 
@@ -861,7 +886,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
+    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod,
+                           definitions: &Definitions) {
         if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
             return;
         }
@@ -912,23 +938,16 @@ impl<'a> CrateLoader<'a> {
             let cfg = cfg.map(|list| {
                 list[0].meta_item().unwrap().clone()
             });
+            let foreign_items = fm.items.iter()
+                .map(|it| definitions.opt_def_index(it.id).unwrap())
+                .collect();
             let lib = NativeLibrary {
                 name: n,
                 kind: kind,
                 cfg: cfg,
+                foreign_items: foreign_items,
             };
             register_native_lib(self.sess, self.cstore, Some(m.span), lib);
-        }
-
-        // Finally, process the #[linked_from = "..."] attribute
-        for m in i.attrs.iter().filter(|a| a.check_name("linked_from")) {
-            let lib_name = match m.value_str() {
-                Some(name) => name,
-                None => continue,
-            };
-            let list = self.foreign_item_map.entry(lib_name.to_string())
-                                                    .or_insert(Vec::new());
-            list.extend(fm.items.iter().map(|it| it.id));
         }
     }
 }
@@ -942,35 +961,76 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             dump_crates(&self.cstore);
         }
 
-        for &(ref name, kind) in &self.sess.opts.libs {
-            let lib = NativeLibrary {
-                name: Symbol::intern(name),
-                kind: kind,
-                cfg: None,
-            };
-            register_native_lib(self.sess, self.cstore, None, lib);
+        // Process libs passed on the command line
+        // First, check for errors
+        let mut renames = FxHashSet();
+        for &(ref name, ref new_name, _) in &self.sess.opts.libs {
+            if let &Some(ref new_name) = new_name {
+                if new_name.is_empty() {
+                    self.sess.err(
+                        &format!("an empty renaming target was specified for library `{}`",name));
+                } else if !self.cstore.get_used_libraries().borrow().iter()
+                                                           .any(|lib| lib.name == name as &str) {
+                    self.sess.err(&format!("renaming of the library `{}` was specified, \
+                                            however this crate contains no #[link(...)] \
+                                            attributes referencing this library.", name));
+                } else if renames.contains(name) {
+                    self.sess.err(&format!("multiple renamings were specified for library `{}` .",
+                                            name));
+                } else {
+                    renames.insert(name);
+                }
+            }
+        }
+        // Update kind and, optionally, the name of all native libaries
+        // (there may be more than one) with the specified name.
+        for &(ref name, ref new_name, kind) in &self.sess.opts.libs {
+            let mut found = false;
+            for lib in self.cstore.get_used_libraries().borrow_mut().iter_mut() {
+                if lib.name == name as &str {
+                    lib.kind = kind;
+                    if let &Some(ref new_name) = new_name {
+                        lib.name = Symbol::intern(new_name);
+                    }
+                    found = true;
+                }
+            }
+            if !found {
+                // Add if not found
+                let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
+                let lib = NativeLibrary {
+                    name: Symbol::intern(new_name.unwrap_or(name)),
+                    kind: kind,
+                    cfg: None,
+                    foreign_items: Vec::new(),
+                };
+                register_native_lib(self.sess, self.cstore, None, lib);
+            }
         }
         self.register_statically_included_foreign_items();
+        self.register_dllimport_foreign_items();
     }
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ExternCrate(_) => {}
-            ast::ItemKind::ForeignMod(ref fm) => return self.process_foreign_mod(item, fm),
-            _ => return,
+            ast::ItemKind::ForeignMod(ref fm) => {
+                self.process_foreign_mod(item, fm, definitions)
+            },
+            ast::ItemKind::ExternCrate(_) => {
+                let info = self.extract_crate_info(item).unwrap();
+                let (cnum, ..) = self.resolve_crate(
+                    &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
+                );
+
+                let def_id = definitions.opt_local_def_id(item.id).unwrap();
+                let len = definitions.def_path(def_id.index).data.len();
+
+                let extern_crate =
+                    ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
+                self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
+                self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+            }
+            _ => {}
         }
-
-        let info = self.extract_crate_info(item).unwrap();
-        let (cnum, ..) = self.resolve_crate(
-            &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
-        );
-
-        let def_id = definitions.opt_local_def_id(item.id).unwrap();
-        let len = definitions.def_path(def_id.index).data.len();
-
-        let extern_crate =
-            ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
-        self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
-        self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
     }
 }

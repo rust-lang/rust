@@ -16,7 +16,7 @@ pub struct S {
     z: u64,
 }
 
-#[link(name = "rust_test_helpers")]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern {
     pub fn get_x(x: S) -> u64;
     pub fn get_y(x: S) -> u64;

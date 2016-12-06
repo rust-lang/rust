@@ -15,13 +15,13 @@ use locator;
 use schema;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap, DefIdMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
@@ -31,7 +31,7 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
 
-pub use rustc::middle::cstore::{NativeLibrary, LinkagePreference};
+pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
 pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
 
@@ -84,6 +84,8 @@ pub struct CrateMetadata {
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
+    // Foreign items imported from a dylib (Windows only)
+    pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
 pub struct CachedInlinedItem {
@@ -100,7 +102,8 @@ pub struct CStore {
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
     used_libraries: RefCell<Vec<NativeLibrary>>,
     used_link_args: RefCell<Vec<String>>,
-    statically_included_foreign_items: RefCell<NodeSet>,
+    statically_included_foreign_items: RefCell<FxHashSet<DefIndex>>,
+    pub dllimport_foreign_items: RefCell<FxHashSet<DefIndex>>,
     pub inlined_item_cache: RefCell<DefIdMap<Option<CachedInlinedItem>>>,
     pub defid_for_inlined_node: RefCell<NodeMap<DefId>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
@@ -114,7 +117,8 @@ impl CStore {
             extern_mod_crate_map: RefCell::new(FxHashMap()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
-            statically_included_foreign_items: RefCell::new(NodeSet()),
+            statically_included_foreign_items: RefCell::new(FxHashSet()),
+            dllimport_foreign_items: RefCell::new(FxHashSet()),
             visible_parent_map: RefCell::new(FxHashMap()),
             inlined_item_cache: RefCell::new(FxHashMap()),
             defid_for_inlined_node: RefCell::new(FxHashMap()),
@@ -246,12 +250,13 @@ impl CStore {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn add_statically_included_foreign_item(&self, id: ast::NodeId) {
+    pub fn add_statically_included_foreign_item(&self, id: DefIndex) {
         self.statically_included_foreign_items.borrow_mut().insert(id);
     }
 
-    pub fn do_is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
-        self.statically_included_foreign_items.borrow().contains(&id)
+    pub fn do_is_statically_included_foreign_item(&self, def_id: DefId) -> bool {
+        assert!(def_id.krate == LOCAL_CRATE);
+        self.statically_included_foreign_items.borrow().contains(&def_id.index)
     }
 
     pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {

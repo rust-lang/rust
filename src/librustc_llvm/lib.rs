@@ -27,7 +27,7 @@
 #![feature(concat_idents)]
 #![feature(libc)]
 #![feature(link_args)]
-#![feature(linked_from)]
+#![cfg_attr(stage0, feature(linked_from))]
 #![feature(staged_api)]
 #![cfg_attr(not(stage0), feature(rustc_private))]
 

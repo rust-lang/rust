@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
 #![crate_type = "rlib"]
 
-extern crate foo;
-
-#[link(name = "bar", kind = "static")]
-extern {
-    fn bar();
+#[link(name = "dummy", kind="dylib")]
+extern "C" {
+    pub fn dylib_func2(x: i32) -> i32;
+    pub static dylib_global2: i32;
 }
 
-pub fn doit() {
-    unsafe { bar(); }
+#[link(name = "dummy", kind="static")]
+extern "C" {
+    pub fn static_func2(x: i32) -> i32;
+    pub static static_global2: i32;
 }
