@@ -10,7 +10,7 @@
 
 #![crate_type = "rlib"]
 
-#[link(name = "foo")]
+#[link(name = "foo", kind = "static")]
 extern {
     fn foo();
 }
