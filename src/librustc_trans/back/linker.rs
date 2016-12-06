@@ -321,7 +321,16 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
-        self.cmd.arg("/OPT:REF,ICF");
+        // MSVC's ICF (Identical COMDAT Folding) link optimization is
+        // slow for Rust and thus we disable it by default when not in
+        // optimization build.
+        if self.sess.opts.optimize != config::OptLevel::No {
+            self.cmd.arg("/OPT:REF,ICF");
+        } else {
+            // It is necessary to specify NOICF here, because /OPT:REF
+            // implies ICF by default.
+            self.cmd.arg("/OPT:REF,NOICF");
+        }
     }
 
     fn link_dylib(&mut self, lib: &str) {
