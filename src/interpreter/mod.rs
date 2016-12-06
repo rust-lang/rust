@@ -82,6 +82,12 @@ pub struct Frame<'tcx> {
     /// Before being initialized, a local is simply marked as None.
     pub locals: Vec<Option<Value>>,
 
+    /// Temporaries introduced to save stackframes
+    /// This is pure interpreter magic and has nothing to do with how rustc does it
+    /// An example is calling an FnMut closure that has been converted to a FnOnce closure
+    /// If they are Value::ByRef, their memory will be freed when the stackframe finishes
+    pub interpreter_temporaries: Vec<Value>,
+
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
@@ -327,6 +333,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
+        temporaries: Vec<Value>,
     ) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation += 1;
 
@@ -341,6 +348,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return_to_block: return_to_block,
             return_lvalue: return_lvalue,
             locals: locals,
+            interpreter_temporaries: temporaries,
             span: span,
             def_id: def_id,
             substs: substs,
@@ -385,9 +393,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::None => {},
         }
         // deallocate all locals that are backed by an allocation
-        for (i, local) in frame.locals.into_iter().enumerate() {
-            if let Some(Value::ByRef(ptr)) = local {
-                trace!("deallocating local {}: {:?}", i + 1, ptr);
+        for local in frame.locals.into_iter().filter_map(|l| l).chain(frame.interpreter_temporaries) {
+            if let Value::ByRef(ptr) = local {
                 self.memory.dump(ptr.alloc_id);
                 match self.memory.deallocate(ptr) {
                     // Any frozen memory means that it belongs to a constant or something referenced
@@ -1131,27 +1138,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(new_lvalue)
     }
 
-    // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
-    // remove it as soon as PrimVal can represent fat pointers.
-    fn value_to_ptr_dont_use(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
-        match value {
-            Value::ByRef(ptr) => Ok(ptr),
-
-            Value::ByVal(primval) => {
-                let ptr = self.alloc_ptr(ty)?;
-                let kind = self.ty_to_primval_kind(ty)?;
-                self.memory.write_primval(ptr, primval, kind)?;
-                Ok(ptr)
-            }
-
-            Value::ByValPair(a, b) => {
-                let ptr = self.alloc_ptr(ty)?;
-                self.write_pair_to_ptr(a, b, ptr, ty)?;
-                Ok(ptr)
-            }
-        }
-    }
-
     /// ensures this Value is not a ByRef
     fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
@@ -1719,6 +1705,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         tcx.intern_substs(&[]),
         Lvalue::from_ptr(Pointer::zst_ptr()),
         StackPopCleanup::None,
+        Vec::new(),
     ).expect("could not allocate first stack frame");
 
     loop {
