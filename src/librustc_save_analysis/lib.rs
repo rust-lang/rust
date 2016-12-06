@@ -250,8 +250,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match typ.node {
                     // Common case impl for a struct or something basic.
                     ast::TyKind::Path(None, ref path) => {
+                        filter!(self.span_utils, None, path.span, None);
                         sub_span = self.span_utils.sub_span_for_type_name(path.span);
-                        filter!(self.span_utils, sub_span, path.span, None);
                         type_data = self.lookup_ref_id(typ.id).map(|id| {
                             TypeRefData {
                                 span: sub_span.unwrap(),
