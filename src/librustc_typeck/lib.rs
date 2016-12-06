@@ -116,6 +116,7 @@ use syntax::ast;
 use syntax::abi::Abi;
 use syntax_pos::Span;
 
+use std::iter;
 use std::cell::RefCell;
 use util::nodemap::NodeMap;
 
@@ -222,11 +223,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: Vec::new(),
-                    output: tcx.mk_nil(),
-                    variadic: false
-                })
+                sig: ty::Binder(tcx.mk_fn_sig(iter::empty(), tcx.mk_nil(), false))
             }));
 
             require_same_types(
@@ -274,14 +271,14 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: vec![
+                sig: ty::Binder(tcx.mk_fn_sig(
+                    [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
-                    ],
-                    output: tcx.types.isize,
-                    variadic: false,
-                }),
+                    ].iter().cloned(),
+                    tcx.types.isize,
+                    false,
+                )),
             }));
 
             require_same_types(

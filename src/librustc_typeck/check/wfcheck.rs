@@ -449,15 +449,15 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let fty = fcx.instantiate_type_scheme(span, free_substs, &fty);
         let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
 
-        for &input_ty in &sig.inputs {
-            fcx.register_wf_obligation(input_ty, span, self.code.clone());
+        for input_ty in sig.inputs() {
+            fcx.register_wf_obligation(&input_ty, span, self.code.clone());
         }
-        implied_bounds.extend(sig.inputs);
+        implied_bounds.extend(sig.inputs());
 
-        fcx.register_wf_obligation(sig.output, span, self.code.clone());
+        fcx.register_wf_obligation(sig.output(), span, self.code.clone());
 
         // FIXME(#25759) return types should not be implied bounds
-        implied_bounds.push(sig.output);
+        implied_bounds.push(sig.output());
 
         self.check_where_clauses(fcx, span, predicates);
     }
@@ -487,7 +487,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         debug!("check_method_receiver: sig={:?}", sig);
 
-        let self_arg_ty = sig.inputs[0];
+        let self_arg_ty = sig.inputs()[0];
         let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => self_ty,
             ExplicitSelf::ByReference(region, mutbl) => {

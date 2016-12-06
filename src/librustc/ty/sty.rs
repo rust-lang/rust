@@ -563,22 +563,31 @@ pub struct ClosureTy<'tcx> {
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
-    pub inputs: Vec<Ty<'tcx>>,
-    pub output: Ty<'tcx>,
+    pub inputs_and_output: &'tcx Slice<Ty<'tcx>>,
     pub variadic: bool
+}
+
+impl<'tcx> FnSig<'tcx> {
+    pub fn inputs(&self) -> &[Ty<'tcx>] {
+        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
+
+    pub fn output(&self) -> Ty<'tcx> {
+        self.inputs_and_output[self.inputs_and_output.len() - 1]
+    }
 }
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
-    pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs.clone())
+    pub fn inputs(&self) -> Binder<&[Ty<'tcx>]> {
+        Binder(self.skip_binder().inputs())
     }
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs[index])
+        self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.output.clone())
+        self.map_bound_ref(|fn_sig| fn_sig.output().clone())
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic
@@ -1243,7 +1252,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     // Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
+    pub fn fn_args(&self) -> ty::Binder<&[Ty<'tcx>]> {
         self.fn_sig().inputs()
     }
 

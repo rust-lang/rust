@@ -495,8 +495,8 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                         _ => bug!("{:?} is not a MethodTraitItem", trait_m),
                     };
 
-                let impl_iter = impl_sig.inputs.iter();
-                let trait_iter = trait_sig.inputs.iter();
+                let impl_iter = impl_sig.inputs().iter();
+                let trait_iter = trait_sig.inputs().iter();
                 impl_iter.zip(trait_iter)
                          .zip(impl_m_iter)
                          .zip(trait_m_iter)
@@ -508,7 +508,8 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                          })
                          .next()
                          .unwrap_or_else(|| {
-                             if infcx.sub_types(false, &cause, impl_sig.output, trait_sig.output)
+                             if infcx.sub_types(false, &cause, impl_sig.output(),
+                                                trait_sig.output())
                                      .is_err() {
                                          (impl_m_output.span(), Some(trait_m_output.span()))
                                      } else {
@@ -681,9 +682,9 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     };
     let impl_m_fty = m_fty(impl_m);
     let trait_m_fty = m_fty(trait_m);
-    if impl_m_fty.sig.0.inputs.len() != trait_m_fty.sig.0.inputs.len() {
-        let trait_number_args = trait_m_fty.sig.0.inputs.len();
-        let impl_number_args = impl_m_fty.sig.0.inputs.len();
+    let trait_number_args = trait_m_fty.sig.inputs().skip_binder().len();
+    let impl_number_args = impl_m_fty.sig.inputs().skip_binder().len();
+    if trait_number_args != impl_number_args {
         let trait_m_node_id = tcx.map.as_local_node_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_node_id {
             match tcx.map.expect_trait_item(trait_id).node {

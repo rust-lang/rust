@@ -1542,6 +1542,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn mk_fn_sig<I>(self, inputs: I, output: I::Item, variadic: bool)
+        -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
+        where I: Iterator,
+              I::Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>
+    {
+        inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
+            inputs_and_output: self.intern_type_list(xs),
+            variadic: variadic
+        })
+    }
+
     pub fn mk_existential_predicates<I: InternAs<[ExistentialPredicate<'tcx>],
                                      &'tcx Slice<ExistentialPredicate<'tcx>>>>(self, iter: I)
                                      -> I::Output {

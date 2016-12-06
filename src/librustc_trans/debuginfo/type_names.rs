@@ -116,8 +116,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push_str("fn(");
 
             let sig = cx.tcx().erase_late_bound_regions_and_normalize(sig);
-            if !sig.inputs.is_empty() {
-                for &parameter_type in &sig.inputs {
+            if !sig.inputs().is_empty() {
+                for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
                     output.push_str(", ");
                 }
@@ -126,7 +126,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
 
             if sig.variadic {
-                if !sig.inputs.is_empty() {
+                if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {
                     output.push_str("...");
@@ -135,9 +135,9 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push(')');
 
-            if !sig.output.is_nil() {
+            if !sig.output().is_nil() {
                 output.push_str(" -> ");
-                push_debuginfo_type_name(cx, sig.output, true, output);
+                push_debuginfo_type_name(cx, sig.output(), true, output);
             }
         },
         ty::TyClosure(..) => {

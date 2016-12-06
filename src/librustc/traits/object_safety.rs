@@ -241,12 +241,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // The `Self` type is erased, so it should not appear in list of
         // arguments or return type apart from the receiver.
         let ref sig = self.item_type(method.def_id).fn_sig();
-        for &input_ty in &sig.0.inputs[1..] {
+        for input_ty in &sig.skip_binder().inputs()[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
             }
         }
-        if self.contains_illegal_self_type_reference(trait_def_id, sig.0.output) {
+        if self.contains_illegal_self_type_reference(trait_def_id, sig.output().skip_binder()) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
 

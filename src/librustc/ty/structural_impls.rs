@@ -232,14 +232,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
     type Lifted = ty::FnSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.inputs[..]).and_then(|inputs| {
-            tcx.lift(&self.output).map(|output| {
-                ty::FnSig {
-                    inputs: inputs,
-                    output: output,
-                    variadic: self.variadic
-                }
-            })
+        tcx.lift(&self.inputs_and_output).map(|x| {
+            ty::FnSig {
+                inputs_and_output: x,
+                variadic: self.variadic
+            }
         })
     }
 }
@@ -589,9 +586,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::FnSig { inputs: self.inputs.fold_with(folder),
-                    output: self.output.fold_with(folder),
-                    variadic: self.variadic }
+        let inputs_and_output = self.inputs_and_output.fold_with(folder);
+        ty::FnSig {
+            inputs_and_output: folder.tcx().intern_type_list(&inputs_and_output),
+            variadic: self.variadic,
+        }
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
@@ -599,7 +598,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.inputs.visit_with(visitor) || self.output.visit_with(visitor)
+        self.inputs().iter().any(|i| i.visit_with(visitor)) ||
+        self.output().visit_with(visitor)
     }
 }
 

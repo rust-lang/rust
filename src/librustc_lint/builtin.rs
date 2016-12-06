@@ -1084,8 +1084,8 @@ impl LateLintPass for MutableTransmutes {
                 let typ = cx.tcx.tables().node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
-                        let from = bare_fn.sig.0.inputs[0];
-                        let to = bare_fn.sig.0.output;
+                        let from = bare_fn.sig.skip_binder().inputs()[0];
+                        let to = bare_fn.sig.skip_binder().output();
                         return Some((&from.sty, &to.sty));
                     }
                     _ => (),

@@ -126,6 +126,6 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
 }
 
 fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: &ty::PolyFnSig<'tcx>) {
-    stack.push(sig.0.output);
-    stack.extend(sig.0.inputs.iter().cloned().rev());
+    stack.push(sig.skip_binder().output());
+    stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
 }

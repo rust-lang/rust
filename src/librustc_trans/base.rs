@@ -1077,8 +1077,8 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
-        for (i, arg_ty) in sig.inputs.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, sig.output, dest_val, Disr::from(disr), i);
+        for (i, arg_ty) in sig.inputs().iter().enumerate() {
+            let lldestptr = adt::trans_field_ptr(bcx, sig.output(), dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
             let b = &bcx.build();
@@ -1091,7 +1091,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
             }
         }
-        adt::trans_set_discr(bcx, sig.output, dest, disr);
+        adt::trans_set_discr(bcx, sig.output(), dest, disr);
     }
 
     fcx.finish(bcx, DebugLoc::None);

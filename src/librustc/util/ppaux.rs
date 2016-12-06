@@ -595,7 +595,7 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "fn")?;
-        fn_sig(f, &self.inputs, self.variadic, self.output)
+        fn_sig(f, self.inputs(), self.variadic, self.output())
     }
 }
 
@@ -625,7 +625,7 @@ impl fmt::Debug for ty::RegionVid {
 
 impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:?}; variadic: {})->{:?}", self.inputs, self.variadic, self.output)
+        write!(f, "({:?}; variadic: {})->{:?}", self.inputs(), self.variadic, self.output())
     }
 }
 

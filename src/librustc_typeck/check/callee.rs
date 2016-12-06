@@ -237,11 +237,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
                 // set up all the node type bindings.
-                error_fn_sig = ty::Binder(ty::FnSig {
-                    inputs: self.err_args(arg_exprs.len()),
-                    output: self.tcx.types.err,
-                    variadic: false,
-                });
+                error_fn_sig = ty::Binder(self.tcx.mk_fn_sig(
+                    self.err_args(arg_exprs.len()).into_iter(),
+                    self.tcx.types.err,
+                    false,
+                ));
 
                 (&error_fn_sig, None)
             }
@@ -261,17 +261,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expected_arg_tys =
             self.expected_types_for_fn_args(call_expr.span,
                                             expected,
-                                            fn_sig.output,
-                                            &fn_sig.inputs);
+                                            fn_sig.output(),
+                                            fn_sig.inputs());
         self.check_argument_types(call_expr.span,
-                                  &fn_sig.inputs,
+                                  fn_sig.inputs(),
                                   &expected_arg_tys[..],
                                   arg_exprs,
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::DontTupleArguments,
                                   def_span);
 
-        fn_sig.output
+        fn_sig.output()
     }
 
     fn confirm_deferred_closure_call(&self,
@@ -287,18 +287,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let expected_arg_tys = self.expected_types_for_fn_args(call_expr.span,
                                                                expected,
-                                                               fn_sig.output.clone(),
-                                                               &fn_sig.inputs);
+                                                               fn_sig.output().clone(),
+                                                               fn_sig.inputs());
 
         self.check_argument_types(call_expr.span,
-                                  &fn_sig.inputs,
+                                  fn_sig.inputs(),
                                   &expected_arg_tys,
                                   arg_exprs,
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::TupleArguments,
                                   None);
 
-        fn_sig.output
+        fn_sig.output()
     }
 
     fn confirm_overloaded_call(&self,
@@ -365,12 +365,12 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
 
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
-                for (&method_arg_ty, &self_arg_ty) in
-                    method_sig.inputs[1..].iter().zip(&self.fn_sig.inputs) {
-                    fcx.demand_eqtype(self.call_expr.span, self_arg_ty, method_arg_ty);
+                for (method_arg_ty, self_arg_ty) in
+                    method_sig.inputs().iter().skip(1).zip(self.fn_sig.inputs()) {
+                    fcx.demand_eqtype(self.call_expr.span, &self_arg_ty, &method_arg_ty);
                 }
 
-                fcx.demand_eqtype(self.call_expr.span, method_sig.output, self.fn_sig.output);
+                fcx.demand_eqtype(self.call_expr.span, method_sig.output(), self.fn_sig.output());
 
                 fcx.write_overloaded_call_method_map(self.call_expr, method_callee);
             }

@@ -187,11 +187,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(tcx, dg.ty()));
         let t = dg.ty();
 
-        let sig = ty::FnSig {
-            inputs: vec![tcx.mk_mut_ptr(tcx.types.i8)],
-            output: tcx.mk_nil(),
-            variadic: false,
-        };
+        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(tcx.types.i8)), tcx.mk_nil(), false);
 
         // Create a FnType for fn(*mut i8) and substitute the real type in
         // later - that prevents FnType from splitting fat pointers up.
@@ -480,14 +476,10 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let ty::FnSig {
-                    inputs: sig_inputs,
-                    output: sig_output,
-                    variadic: sig_variadic
-                } = self.tcx.erase_late_bound_regions_and_normalize(sig);
+                let sig = self.tcx.erase_late_bound_regions_and_normalize(sig);
 
-                if !sig_inputs.is_empty() {
-                    for &parameter_type in &sig_inputs {
+                if !sig.inputs().is_empty() {
+                    for &parameter_type in sig.inputs() {
                         self.push_type_name(parameter_type, output);
                         output.push_str(", ");
                     }
@@ -495,8 +487,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     output.pop();
                 }
 
-                if sig_variadic {
-                    if !sig_inputs.is_empty() {
+                if sig.variadic {
+                    if !sig.inputs().is_empty() {
                         output.push_str(", ...");
                     } else {
                         output.push_str("...");
@@ -505,9 +497,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push(')');
 
-                if !sig_output.is_nil() {
+                if !sig.output().is_nil() {
                     output.push_str(" -> ");
-                    self.push_type_name(sig_output, output);
+                    self.push_type_name(sig.output(), output);
                 }
             },
             ty::TyClosure(def_id, ref closure_substs) => {
