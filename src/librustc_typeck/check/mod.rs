@@ -2467,17 +2467,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
-                                      false, tuple_arguments);
+                                      false, tuple_arguments, None);
             self.tcx.types.err
         } else {
             match method_fn_ty.sty {
-                ty::TyFnDef(.., ref fty) => {
+                ty::TyFnDef(def_id, .., ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
                     let expected_arg_tys = self.expected_types_for_fn_args(sp, expected,
                                                                            fty.sig.0.output,
                                                                            &fty.sig.0.inputs[1..]);
+
                     self.check_argument_types(sp, &fty.sig.0.inputs[1..], &expected_arg_tys[..],
-                                              args_no_rcvr, fty.sig.0.variadic, tuple_arguments);
+                                              args_no_rcvr, fty.sig.0.variadic, tuple_arguments,
+                                              self.tcx.map.span_if_local(def_id));
                     fty.sig.0.output
                 }
                 _ => {
@@ -2495,7 +2497,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             expected_arg_tys: &[Ty<'tcx>],
                             args: &'gcx [hir::Expr],
                             variadic: bool,
-                            tuple_arguments: TupleArgumentsFlag) {
+                            tuple_arguments: TupleArgumentsFlag,
+                            def_span: Option<Span>) {
         let tcx = self.tcx;
 
         // Grab the argument types, supplying fresh type variables
@@ -2530,9 +2533,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             sp
         };
 
-        fn parameter_count_error<'tcx>(sess: &Session, sp: Span, fn_inputs: &[Ty<'tcx>],
-                                       expected_count: usize, arg_count: usize, error_code: &str,
-                                       variadic: bool) {
+        fn parameter_count_error<'tcx>(sess: &Session, sp: Span, expected_count: usize,
+                                       arg_count: usize, error_code: &str, variadic: bool,
+                                       def_span: Option<Span>) {
             let mut err = sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} parameter{} but {} parameter{} supplied",
                     if variadic {"at least "} else {""},
@@ -2542,18 +2545,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
 
-            let input_types = fn_inputs.iter().map(|i| format!("{:?}", i)).collect::<Vec<String>>();
-            if input_types.len() > 1 {
-                err.note("the following parameter types were expected:");
-                err.note(&input_types.join(", "));
-            } else if input_types.len() > 0 {
-                err.note(&format!("the following parameter type was expected: {}",
-                                  input_types[0]));
-            } else {
-                err.span_label(sp, &format!("expected {}{} parameter{}",
-                                            if variadic {"at least "} else {""},
-                                            expected_count,
-                                            if expected_count == 1 {""} else {"s"}));
+            err.span_label(sp, &format!("expected {}{} parameter{}",
+                                        if variadic {"at least "} else {""},
+                                        expected_count,
+                                        if expected_count == 1 {""} else {"s"}));
+            if let Some(def_s) = def_span {
+                err.span_label(def_s, &format!("defined here"));
             }
             err.emit();
         }
@@ -2562,8 +2559,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
-                    parameter_count_error(tcx.sess, sp_args, fn_inputs, arg_types.len(), args.len(),
-                                          "E0057", false);
+                    parameter_count_error(tcx.sess, sp_args, arg_types.len(), args.len(),
+                                          "E0057", false, def_span);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
@@ -2591,14 +2588,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                parameter_count_error(tcx.sess, sp_args, fn_inputs, expected_arg_count,
-                                      supplied_arg_count, "E0060", true);
+                parameter_count_error(tcx.sess, sp_args, expected_arg_count,
+                                      supplied_arg_count, "E0060", true, def_span);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
         } else {
-            parameter_count_error(tcx.sess, sp_args, fn_inputs, expected_arg_count,
-                                  supplied_arg_count, "E0061", false);
+            parameter_count_error(tcx.sess, sp_args, expected_arg_count,
+                                  supplied_arg_count, "E0061", false, def_span);
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
         };
