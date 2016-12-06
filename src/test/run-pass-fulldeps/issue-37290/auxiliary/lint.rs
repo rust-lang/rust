@@ -40,9 +40,9 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext,
-                fk: FnKind, _: &hir::FnDecl, expr: &hir::Expr,
-                span: Span, node: ast::NodeId)
+    fn check_fn<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>,
+                              fk: FnKind<'tcx>, _: &'tcx hir::FnDecl, expr: &'tcx hir::Expr,
+                              span: Span, node: ast::NodeId)
     {
         if let FnKind::Closure(..) = fk { return }
 

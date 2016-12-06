@@ -557,26 +557,28 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
     }
 }
 
-impl<'a> Visitor for Resolver<'a> {
-    fn visit_item(&mut self, item: &Item) {
+impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
+    fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
     }
-    fn visit_arm(&mut self, arm: &Arm) {
+    fn visit_arm(&mut self, arm: &'tcx Arm) {
         self.resolve_arm(arm);
     }
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'tcx Block) {
         self.resolve_block(block);
     }
-    fn visit_expr(&mut self, expr: &Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         self.resolve_expr(expr, None);
     }
-    fn visit_local(&mut self, local: &Local) {
+    fn visit_local(&mut self, local: &'tcx Local) {
         self.resolve_local(local);
     }
-    fn visit_ty(&mut self, ty: &Ty) {
+    fn visit_ty(&mut self, ty: &'tcx Ty) {
         self.resolve_type(ty);
     }
-    fn visit_poly_trait_ref(&mut self, tref: &ast::PolyTraitRef, m: &ast::TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self,
+                            tref: &'tcx ast::PolyTraitRef,
+                            m: &'tcx ast::TraitBoundModifier) {
         let ast::Path { ref segments, span, global } = tref.trait_ref.path;
         let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
         let def = self.resolve_trait_reference(&path, global, None, span);
@@ -584,8 +586,8 @@ impl<'a> Visitor for Resolver<'a> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self,
-                     variant: &ast::Variant,
-                     generics: &Generics,
+                     variant: &'tcx ast::Variant,
+                     generics: &'tcx Generics,
                      item_id: ast::NodeId) {
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
@@ -601,7 +603,7 @@ impl<'a> Visitor for Resolver<'a> {
                                 item_id,
                                 variant.span);
     }
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
         let type_parameters = match foreign_item.node {
             ForeignItemKind::Fn(_, ref generics) => {
                 HasTypeParameters(generics, ItemRibKind)
@@ -613,8 +615,8 @@ impl<'a> Visitor for Resolver<'a> {
         });
     }
     fn visit_fn(&mut self,
-                function_kind: FnKind,
-                declaration: &FnDecl,
+                function_kind: FnKind<'tcx>,
+                declaration: &'tcx FnDecl,
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {

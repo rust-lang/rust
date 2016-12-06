@@ -74,8 +74,8 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
-    fn visit_item(&mut self, item: &ast::Item) {
+impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &'a ast::Item) {
         visit::walk_item(self, item);
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span

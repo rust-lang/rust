@@ -85,7 +85,7 @@ macro_rules! expansions {
                 }
             }
 
-            pub fn visit_with<V: Visitor>(&self, visitor: &mut V) {
+            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
                 match *self {
                     Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     Expansion::OptExpr(None) => {}

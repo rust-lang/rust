@@ -35,7 +35,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         match &*it.name.as_str() {
             "lintme" => cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'"),
             "pleaselintme" => cx.span_lint(PLEASE_LINT, it.span, "item is named 'pleaselintme'"),

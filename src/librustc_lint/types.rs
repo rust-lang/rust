@@ -104,7 +104,7 @@ impl LintPass for TypeLimits {
 }
 
 impl LateLintPass for TypeLimits {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
                 if let hir::ExprLit(ref lit) = expr.node {
@@ -707,7 +707,7 @@ impl LintPass for ImproperCTypes {
 }
 
 impl LateLintPass for ImproperCTypes {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
         if let hir::ItemForeignMod(ref nmod) = it.node {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
@@ -735,7 +735,7 @@ impl LintPass for VariantSizeDifferences {
 }
 
 impl LateLintPass for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
