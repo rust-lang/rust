@@ -790,8 +790,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
-    fcx.ret_ty = fcx.instantiate_anon_types(&ret_ty);
-    fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty, fn_sig.variadic);
+    fcx.ret_ty = fcx.instantiate_anon_types(&Some(ret_ty));
+    fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty.unwrap(),
+                               fn_sig.variadic);
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
