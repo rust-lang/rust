@@ -490,12 +490,13 @@ impl<'a> Resolver<'a> {
 
     fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'a> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let name = self.session.cstore.crate_name(cnum);
         let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
             arenas.alloc_module(ModuleData {
                 populated: Cell::new(false),
-                ..ModuleData::new(None, ModuleKind::Def(Def::Mod(def_id), keywords::Invalid.name()))
+                ..ModuleData::new(None, ModuleKind::Def(Def::Mod(def_id), name))
             })
         })
     }
