@@ -100,7 +100,7 @@ impl LintPass for NonCamelCaseTypes {
 }
 
 impl LateLintPass for NonCamelCaseTypes {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         let extern_repr_count = it.attrs
             .iter()
             .filter(|attr| {
@@ -133,7 +133,9 @@ impl LateLintPass for NonCamelCaseTypes {
         }
     }
 
-    fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
+    fn check_generics<'a, 'tcx: 'a>(&mut self,
+                                    cx: &LateContext<'a, 'tcx>,
+                                    it: &'tcx hir::Generics) {
         for gen in it.ty_params.iter() {
             self.check_case(cx, "type parameter", gen.name, gen.span);
         }
@@ -227,7 +229,7 @@ impl LintPass for NonSnakeCase {
 }
 
 impl LateLintPass for NonSnakeCase {
-    fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
+    fn check_crate<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, cr: &'tcx hir::Crate) {
         let attr_crate_name = cr.attrs
             .iter()
             .find(|at| at.check_name("crate_name"))
@@ -239,13 +241,13 @@ impl LateLintPass for NonSnakeCase {
         }
     }
 
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                fk: FnKind,
-                _: &hir::FnDecl,
-                _: &hir::Expr,
-                span: Span,
-                id: ast::NodeId) {
+    fn check_fn<'a, 'tcx: 'a>(&mut self,
+                              cx: &LateContext<'a, 'tcx>,
+                              fk: FnKind,
+                              _: &'tcx hir::FnDecl,
+                              _: &'tcx hir::Expr,
+                              span: Span,
+                              id: ast::NodeId) {
         match fk {
             FnKind::Method(name, ..) => {
                 match method_context(cx, id, span) {
@@ -265,13 +267,15 @@ impl LateLintPass for NonSnakeCase {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         if let hir::ItemMod(_) = it.node {
             self.check_snake_case(cx, "module", &it.name.as_str(), Some(it.span));
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, trait_item: &hir::TraitItem) {
+    fn check_trait_item<'a, 'tcx: 'a>(&mut self,
+                                      cx: &LateContext<'a, 'tcx>,
+                                      trait_item: &'tcx hir::TraitItem) {
         if let hir::MethodTraitItem(_, None) = trait_item.node {
             self.check_snake_case(cx,
                                   "trait method",
@@ -280,14 +284,16 @@ impl LateLintPass for NonSnakeCase {
         }
     }
 
-    fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
+    fn check_lifetime_def<'a, 'tcx: 'a>(&mut self,
+                                        cx: &LateContext<'a, 'tcx>,
+                                        t: &'tcx hir::LifetimeDef) {
         self.check_snake_case(cx,
                               "lifetime",
                               &t.lifetime.name.as_str(),
                               Some(t.lifetime.span));
     }
 
-    fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
+    fn check_pat<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, p: &'tcx hir::Pat) {
         // Exclude parameter names from foreign functions
         let parent_node = cx.tcx.map.get_parent_node(p.id);
         if let hir::map::NodeForeignItem(item) = cx.tcx.map.get(parent_node) {
@@ -301,12 +307,12 @@ impl LateLintPass for NonSnakeCase {
         }
     }
 
-    fn check_struct_def(&mut self,
-                        cx: &LateContext,
-                        s: &hir::VariantData,
-                        _: ast::Name,
-                        _: &hir::Generics,
-                        _: ast::NodeId) {
+    fn check_struct_def<'a, 'tcx: 'a>(&mut self,
+                                      cx: &LateContext<'a, 'tcx>,
+                                      s: &'tcx hir::VariantData,
+                                      _: ast::Name,
+                                      _: &'tcx hir::Generics,
+                                      _: ast::NodeId) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.name.as_str(), Some(sf.span));
         }
@@ -349,7 +355,7 @@ impl LintPass for NonUpperCaseGlobals {
 }
 
 impl LateLintPass for NonUpperCaseGlobals {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         match it.node {
             hir::ItemStatic(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
@@ -361,7 +367,9 @@ impl LateLintPass for NonUpperCaseGlobals {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, ti: &hir::TraitItem) {
+    fn check_trait_item<'a, 'tcx: 'a>(&mut self,
+                                      cx: &LateContext<'a, 'tcx>,
+                                      ti: &'tcx hir::TraitItem) {
         match ti.node {
             hir::ConstTraitItem(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "associated constant", ti.name, ti.span);
@@ -370,7 +378,9 @@ impl LateLintPass for NonUpperCaseGlobals {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, ii: &hir::ImplItem) {
+    fn check_impl_item<'a, 'tcx: 'a>(&mut self,
+                                     cx: &LateContext<'a, 'tcx>,
+                                     ii: &'tcx hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "associated constant", ii.name, ii.span);
@@ -379,7 +389,7 @@ impl LateLintPass for NonUpperCaseGlobals {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
+    fn check_pat<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, p: &'tcx hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
             if !path.global && path.segments.len() == 1 && path.segments[0].parameters.is_empty() {

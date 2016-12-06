@@ -496,13 +496,13 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
     err
 }
 
-pub trait LintContext: Sized {
+pub trait LintContext<'tcx>: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
     fn mut_lints(&mut self) -> &mut LintStore;
     fn level_stack(&mut self) -> &mut Vec<(LintId, LevelSource)>;
-    fn enter_attrs(&mut self, attrs: &[ast::Attribute]);
-    fn exit_attrs(&mut self, attrs: &[ast::Attribute]);
+    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]);
+    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute]);
 
     /// Get the level of `lint` at the current position of the lint
     /// traversal.
@@ -606,7 +606,7 @@ pub trait LintContext: Sized {
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
     fn with_lint_attrs<F>(&mut self,
-                          attrs: &[ast::Attribute],
+                          attrs: &'tcx [ast::Attribute],
                           f: F)
         where F: FnOnce(&mut Self),
     {
@@ -729,7 +729,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LintContext for LateContext<'a, 'tcx> {
+impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     /// Get the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.tcx.sess
@@ -747,18 +747,18 @@ impl<'a, 'tcx> LintContext for LateContext<'a, 'tcx> {
         &mut self.level_stack
     }
 
-    fn enter_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
         debug!("late context: enter_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, late_passes, attrs);
     }
 
-    fn exit_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
         debug!("late context: exit_attrs({:?})", attrs);
         run_lints!(self, exit_lint_attrs, late_passes, attrs);
     }
 }
 
-impl<'a> LintContext for EarlyContext<'a> {
+impl<'a> LintContext<'a> for EarlyContext<'a> {
     /// Get the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.sess
@@ -776,12 +776,12 @@ impl<'a> LintContext for EarlyContext<'a> {
         &mut self.level_stack
     }
 
-    fn enter_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn enter_attrs(&mut self, attrs: &'a [ast::Attribute]) {
         debug!("early context: enter_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, early_passes, attrs);
     }
 
-    fn exit_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn exit_attrs(&mut self, attrs: &'a [ast::Attribute]) {
         debug!("early context: exit_attrs({:?})", attrs);
         run_lints!(self, exit_lint_attrs, early_passes, attrs);
     }
@@ -949,14 +949,14 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
         check_lint_name_attribute(self, attr);
         run_lints!(self, check_attribute, late_passes, attr);
     }
 }
 
-impl<'a> ast_visit::Visitor for EarlyContext<'a> {
-    fn visit_item(&mut self, it: &ast::Item) {
+impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
+    fn visit_item(&mut self, it: &'a ast::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, early_passes, it);
             ast_visit::walk_item(cx, it);
@@ -964,7 +964,7 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         })
     }
 
-    fn visit_foreign_item(&mut self, it: &ast::ForeignItem) {
+    fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_foreign_item, early_passes, it);
             ast_visit::walk_foreign_item(cx, it);
@@ -972,24 +972,24 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         })
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat) {
+    fn visit_pat(&mut self, p: &'a ast::Pat) {
         run_lints!(self, check_pat, early_passes, p);
         ast_visit::walk_pat(self, p);
     }
 
-    fn visit_expr(&mut self, e: &ast::Expr) {
+    fn visit_expr(&mut self, e: &'a ast::Expr) {
         self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, early_passes, e);
             ast_visit::walk_expr(cx, e);
         })
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt) {
+    fn visit_stmt(&mut self, s: &'a ast::Stmt) {
         run_lints!(self, check_stmt, early_passes, s);
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind, decl: &ast::FnDecl,
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, decl: &'a ast::FnDecl,
                 span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, early_passes, fk, decl, span, id);
         ast_visit::walk_fn(self, fk, decl, span);
@@ -997,9 +997,9 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 
     fn visit_variant_data(&mut self,
-                        s: &ast::VariantData,
+                        s: &'a ast::VariantData,
                         ident: ast::Ident,
-                        g: &ast::Generics,
+                        g: &'a ast::Generics,
                         item_id: ast::NodeId,
                         _: Span) {
         run_lints!(self, check_struct_def, early_passes, s, ident, g, item_id);
@@ -1007,14 +1007,14 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         run_lints!(self, check_struct_def_post, early_passes, s, ident, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &ast::StructField) {
+    fn visit_struct_field(&mut self, s: &'a ast::StructField) {
         self.with_lint_attrs(&s.attrs, |cx| {
             run_lints!(cx, check_struct_field, early_passes, s);
             ast_visit::walk_struct_field(cx, s);
         })
     }
 
-    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, item_id: ast::NodeId) {
+    fn visit_variant(&mut self, v: &'a ast::Variant, g: &'a ast::Generics, item_id: ast::NodeId) {
         self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, early_passes, v, g);
             ast_visit::walk_variant(cx, v, g, item_id);
@@ -1022,7 +1022,7 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         })
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty) {
+    fn visit_ty(&mut self, t: &'a ast::Ty) {
         run_lints!(self, check_ty, early_passes, t);
         ast_visit::walk_ty(self, t);
     }
@@ -1031,40 +1031,40 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         run_lints!(self, check_ident, early_passes, sp, id);
     }
 
-    fn visit_mod(&mut self, m: &ast::Mod, s: Span, n: ast::NodeId) {
+    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, n: ast::NodeId) {
         run_lints!(self, check_mod, early_passes, m, s, n);
         ast_visit::walk_mod(self, m);
         run_lints!(self, check_mod_post, early_passes, m, s, n);
     }
 
-    fn visit_local(&mut self, l: &ast::Local) {
+    fn visit_local(&mut self, l: &'a ast::Local) {
         self.with_lint_attrs(&l.attrs, |cx| {
             run_lints!(cx, check_local, early_passes, l);
             ast_visit::walk_local(cx, l);
         })
     }
 
-    fn visit_block(&mut self, b: &ast::Block) {
+    fn visit_block(&mut self, b: &'a ast::Block) {
         run_lints!(self, check_block, early_passes, b);
         ast_visit::walk_block(self, b);
         run_lints!(self, check_block_post, early_passes, b);
     }
 
-    fn visit_arm(&mut self, a: &ast::Arm) {
+    fn visit_arm(&mut self, a: &'a ast::Arm) {
         run_lints!(self, check_arm, early_passes, a);
         ast_visit::walk_arm(self, a);
     }
 
-    fn visit_expr_post(&mut self, e: &ast::Expr) {
+    fn visit_expr_post(&mut self, e: &'a ast::Expr) {
         run_lints!(self, check_expr_post, early_passes, e);
     }
 
-    fn visit_generics(&mut self, g: &ast::Generics) {
+    fn visit_generics(&mut self, g: &'a ast::Generics) {
         run_lints!(self, check_generics, early_passes, g);
         ast_visit::walk_generics(self, g);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'a ast::TraitItem) {
         self.with_lint_attrs(&trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, early_passes, trait_item);
             ast_visit::walk_trait_item(cx, trait_item);
@@ -1072,7 +1072,7 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         });
     }
 
-    fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'a ast::ImplItem) {
         self.with_lint_attrs(&impl_item.attrs, |cx| {
             run_lints!(cx, check_impl_item, early_passes, impl_item);
             ast_visit::walk_impl_item(cx, impl_item);
@@ -1080,25 +1080,25 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         });
     }
 
-    fn visit_lifetime(&mut self, lt: &ast::Lifetime) {
+    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
         run_lints!(self, check_lifetime, early_passes, lt);
     }
 
-    fn visit_lifetime_def(&mut self, lt: &ast::LifetimeDef) {
+    fn visit_lifetime_def(&mut self, lt: &'a ast::LifetimeDef) {
         run_lints!(self, check_lifetime_def, early_passes, lt);
     }
 
-    fn visit_path(&mut self, p: &ast::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, p: &'a ast::Path, id: ast::NodeId) {
         run_lints!(self, check_path, early_passes, p, id);
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_list_item(&mut self, prefix: &ast::Path, item: &ast::PathListItem) {
+    fn visit_path_list_item(&mut self, prefix: &'a ast::Path, item: &'a ast::PathListItem) {
         run_lints!(self, check_path_list_item, early_passes, item);
         ast_visit::walk_path_list_item(self, prefix, item);
     }
 
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_lints!(self, check_attribute, early_passes, attr);
     }
 }

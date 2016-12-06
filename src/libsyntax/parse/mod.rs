@@ -940,8 +940,8 @@ mod tests {
         struct PatIdentVisitor {
             spans: Vec<Span>
         }
-        impl ::visit::Visitor for PatIdentVisitor {
-            fn visit_pat(&mut self, p: &ast::Pat) {
+        impl<'a> ::visit::Visitor<'a> for PatIdentVisitor {
+            fn visit_pat(&mut self, p: &'a ast::Pat) {
                 match p.node {
                     PatKind::Ident(_ , ref spannedident, _) => {
                         self.spans.push(spannedident.span.clone());

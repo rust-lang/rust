@@ -345,7 +345,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_formals(&mut self, formals: &Vec<ast::Arg>, qualname: &str) {
+    fn process_formals(&mut self, formals: &'l [ast::Arg], qualname: &str) {
         for arg in formals {
             self.visit_pat(&arg.pat);
             let mut collector = PathCollector::new();
@@ -379,12 +379,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_method(&mut self,
-                      sig: &ast::MethodSig,
-                      body: Option<&ast::Block>,
+                      sig: &'l ast::MethodSig,
+                      body: Option<&'l ast::Block>,
                       id: ast::NodeId,
                       name: ast::Name,
                       vis: Visibility,
-                      attrs: &[Attribute],
+                      attrs: &'l [Attribute],
                       span: Span) {
         debug!("process_method: {}:{}", id, name);
 
@@ -465,7 +465,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
+    fn process_trait_ref(&mut self, trait_ref: &'l ast::TraitRef) {
         let trait_ref_data = self.save_ctxt.get_trait_ref_data(trait_ref, self.cur_scope);
         if let Some(trait_ref_data) = trait_ref_data {
             if !self.span.filter_generated(Some(trait_ref_data.span), trait_ref.path.span) {
@@ -488,7 +488,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     // Dump generic params bindings, then visit_generics
     fn process_generic_params(&mut self,
-                              generics: &ast::Generics,
+                              generics: &'l ast::Generics,
                               full_span: Span,
                               prefix: &str,
                               id: NodeId) {
@@ -522,10 +522,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_fn(&mut self,
-                  item: &ast::Item,
-                  decl: &ast::FnDecl,
-                  ty_params: &ast::Generics,
-                  body: &ast::Block) {
+                  item: &'l ast::Item,
+                  decl: &'l ast::FnDecl,
+                  ty_params: &'l ast::Generics,
+                  body: &'l ast::Block) {
         if let Some(fn_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(fn_data, FunctionData, item.span);
             if !self.span.filter_generated(Some(fn_data.span), item.span) {
@@ -547,7 +547,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         self.nest(item.id, |v| v.visit_block(&body));
     }
 
-    fn process_static_or_const_item(&mut self, item: &ast::Item, typ: &ast::Ty, expr: &ast::Expr) {
+    fn process_static_or_const_item(&mut self,
+                                    item: &'l ast::Item,
+                                    typ: &'l ast::Ty,
+                                    expr: &'l ast::Expr) {
         if let Some(var_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(var_data, VariableData, item.span);
             if !self.span.filter_generated(Some(var_data.span), item.span) {
@@ -562,11 +565,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                            id: ast::NodeId,
                            name: ast::Name,
                            span: Span,
-                           typ: &ast::Ty,
-                           expr: &ast::Expr,
+                           typ: &'l ast::Ty,
+                           expr: &'l ast::Expr,
                            parent_id: DefId,
                            vis: Visibility,
-                           attrs: &[Attribute]) {
+                           attrs: &'l [Attribute]) {
         let qualname = format!("::{}", self.tcx.node_path_str(id));
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Const);
@@ -594,9 +597,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     // FIXME tuple structs should generate tuple-specific data.
     fn process_struct(&mut self,
-                      item: &ast::Item,
-                      def: &ast::VariantData,
-                      ty_params: &ast::Generics) {
+                      item: &'l ast::Item,
+                      def: &'l ast::VariantData,
+                      ty_params: &'l ast::Generics) {
         let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
@@ -641,9 +644,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_enum(&mut self,
-                    item: &ast::Item,
-                    enum_definition: &ast::EnumDef,
-                    ty_params: &ast::Generics) {
+                    item: &'l ast::Item,
+                    enum_definition: &'l ast::EnumDef,
+                    ty_params: &'l ast::Generics) {
         let enum_data = self.save_ctxt.get_item_data(item);
         let enum_data = match enum_data {
             None => return,
@@ -721,11 +724,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_impl(&mut self,
-                    item: &ast::Item,
-                    type_parameters: &ast::Generics,
-                    trait_ref: &Option<ast::TraitRef>,
-                    typ: &ast::Ty,
-                    impl_items: &[ast::ImplItem]) {
+                    item: &'l ast::Item,
+                    type_parameters: &'l ast::Generics,
+                    trait_ref: &'l Option<ast::TraitRef>,
+                    typ: &'l ast::Ty,
+                    impl_items: &'l [ast::ImplItem]) {
         let mut has_self_ref = false;
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(impl_data, ImplData, item.span);
@@ -764,10 +767,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_trait(&mut self,
-                     item: &ast::Item,
-                     generics: &ast::Generics,
-                     trait_refs: &ast::TyParamBounds,
-                     methods: &[ast::TraitItem]) {
+                     item: &'l ast::Item,
+                     generics: &'l ast::Generics,
+                     trait_refs: &'l ast::TyParamBounds,
+                     methods: &'l [ast::TraitItem]) {
         let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         let mut val = name.clone();
@@ -938,11 +941,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_struct_lit(&mut self,
-                          ex: &ast::Expr,
-                          path: &ast::Path,
-                          fields: &Vec<ast::Field>,
-                          variant: &ty::VariantDef,
-                          base: &Option<P<ast::Expr>>) {
+                          ex: &'l ast::Expr,
+                          path: &'l ast::Path,
+                          fields: &'l [ast::Field],
+                          variant: &'l ty::VariantDef,
+                          base: &'l Option<P<ast::Expr>>) {
         self.write_sub_paths_truncated(path, false);
 
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
@@ -969,7 +972,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         walk_list!(self, visit_expr, base);
     }
 
-    fn process_method_call(&mut self, ex: &ast::Expr, args: &Vec<P<ast::Expr>>) {
+    fn process_method_call(&mut self, ex: &'l ast::Expr, args: &'l [P<ast::Expr>]) {
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(mcd, MethodCallData, ex.span);
             if !self.span.filter_generated(Some(mcd.span), ex.span) {
@@ -981,7 +984,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         walk_list!(self, visit_expr, args);
     }
 
-    fn process_pat(&mut self, p: &ast::Pat) {
+    fn process_pat(&mut self, p: &'l ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, ref fields, _) => {
                 visit::walk_path(self, path);
@@ -1014,7 +1017,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
 
-    fn process_var_decl(&mut self, p: &ast::Pat, value: String) {
+    fn process_var_decl(&mut self, p: &'l ast::Pat, value: String) {
         // The local could declare multiple new vars, we must walk the
         // pattern and collect them all.
         let mut collector = PathCollector::new();
@@ -1105,7 +1108,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_trait_item(&mut self, trait_item: &ast::TraitItem, trait_id: DefId) {
+    fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
@@ -1133,7 +1136,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_impl_item(&mut self, impl_item: &ast::ImplItem, impl_id: DefId) {
+    fn process_impl_item(&mut self, impl_item: &'l ast::ImplItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span, impl_item.id);
         match impl_item.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
@@ -1161,8 +1164,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 }
 
-impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> {
-    fn visit_item(&mut self, item: &ast::Item) {
+impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
+    fn visit_item(&mut self, item: &'l ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);
         match item.node {
@@ -1306,7 +1309,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         }
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics) {
+    fn visit_generics(&mut self, generics: &'l ast::Generics) {
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
@@ -1319,7 +1322,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         }
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty) {
+    fn visit_ty(&mut self, t: &'l ast::Ty) {
         self.process_macro_use(t.span, t.id);
         match t.node {
             ast::TyKind::Path(_, ref path) => {
@@ -1343,7 +1346,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         }
     }
 
-    fn visit_expr(&mut self, ex: &ast::Expr) {
+    fn visit_expr(&mut self, ex: &'l ast::Expr) {
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
             ast::ExprKind::Call(ref _f, ref _args) => {
@@ -1451,17 +1454,17 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         }
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac) {
+    fn visit_mac(&mut self, mac: &'l ast::Mac) {
         // These shouldn't exist in the AST at this point, log a span bug.
         span_bug!(mac.span, "macro invocation should have been expanded out of AST");
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat) {
+    fn visit_pat(&mut self, p: &'l ast::Pat) {
         self.process_macro_use(p.span, p.id);
         self.process_pat(p);
     }
 
-    fn visit_arm(&mut self, arm: &ast::Arm) {
+    fn visit_arm(&mut self, arm: &'l ast::Arm) {
         let mut collector = PathCollector::new();
         for pattern in &arm.pats {
             // collect paths from the arm's patterns
@@ -1524,12 +1527,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         self.visit_expr(&arm.body);
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt) {
+    fn visit_stmt(&mut self, s: &'l ast::Stmt) {
         self.process_macro_use(s.span, s.id);
         visit::walk_stmt(self, s)
     }
 
-    fn visit_local(&mut self, l: &ast::Local) {
+    fn visit_local(&mut self, l: &'l ast::Local) {
         self.process_macro_use(l.span, l.id);
         let value = l.init.as_ref().map(|i| self.span.snippet(i.span)).unwrap_or(String::new());
         self.process_var_decl(&l.pat, value);

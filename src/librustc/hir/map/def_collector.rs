@@ -135,8 +135,8 @@ impl<'a> DefCollector<'a> {
     }
 }
 
-impl<'a> visit::Visitor for DefCollector<'a> {
-    fn visit_item(&mut self, i: &Item) {
+impl<'a> visit::Visitor<'a> for DefCollector<'a> {
+    fn visit_item(&mut self, i: &'a Item) {
         debug!("visit_item: {:?}", i);
 
         // Pick the def data. This need not be unique, but the more
@@ -211,7 +211,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         let def = self.create_def(foreign_item.id,
                                   DefPathData::ValueNs(foreign_item.ident.name.as_str()));
 
@@ -220,7 +220,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &Generics) {
+    fn visit_generics(&mut self, generics: &'a Generics) {
         for ty_param in generics.ty_params.iter() {
             self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.ident.name.as_str()));
         }
@@ -228,7 +228,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         visit::walk_generics(self, generics);
     }
 
-    fn visit_trait_item(&mut self, ti: &TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name.as_str()),
@@ -246,7 +246,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.name.as_str()),
@@ -264,7 +264,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_pat(&mut self, pat: &Pat) {
+    fn visit_pat(&mut self, pat: &'a Pat) {
         let parent_def = self.parent_def;
 
         match pat.node {
@@ -280,7 +280,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         self.parent_def = parent_def;
     }
 
-    fn visit_expr(&mut self, expr: &Expr) {
+    fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = self.parent_def;
 
         match expr.node {
@@ -297,7 +297,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         self.parent_def = parent_def;
     }
 
-    fn visit_ty(&mut self, ty: &Ty) {
+    fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
             TyKind::Array(_, ref length) => self.visit_ast_const_integer(length),
@@ -309,15 +309,15 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         visit::walk_ty(self, ty);
     }
 
-    fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
+    fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
         self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name.as_str()));
     }
 
-    fn visit_macro_def(&mut self, macro_def: &MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'a MacroDef) {
         self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name.as_str()));
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt) {
+    fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.node {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id, false),
             _ => visit::walk_stmt(self, stmt),

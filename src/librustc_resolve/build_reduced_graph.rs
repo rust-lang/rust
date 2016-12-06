@@ -678,7 +678,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
 macro_rules! method {
     ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &$ty) {
+        fn $visit(&mut self, node: &'a $ty) {
             if let $invoc(..) = node.node {
                 self.visit_invoc(node.id);
             } else {
@@ -688,13 +688,13 @@ macro_rules! method {
     }
 }
 
-impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
-    fn visit_item(&mut self, item: &Item) {
+    fn visit_item(&mut self, item: &'a Item) {
         let macro_use = match item.node {
             ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => return, // Scope placeholder
             ItemKind::Mac(..) => {
@@ -713,7 +713,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &ast::Stmt) {
+    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
             self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(stmt.id));
         } else {
@@ -721,12 +721,12 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item, self.expansion);
         visit::walk_foreign_item(self, foreign_item);
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'a Block) {
         let (parent, legacy_scope) = (self.resolver.current_module, self.legacy_scope);
         self.resolver.build_reduced_graph_for_block(block);
         visit::walk_block(self, block);
@@ -734,7 +734,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         self.legacy_scope = legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &TraitItem) {
+    fn visit_trait_item(&mut self, item: &'a TraitItem) {
         let parent = self.resolver.current_module;
         let def_id = parent.def_id().unwrap();
 
