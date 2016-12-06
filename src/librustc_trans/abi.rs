@@ -367,13 +367,13 @@ impl FnType {
             Cdecl => llvm::CCallConv,
         };
 
-        let mut inputs = &sig.inputs[..];
+        let mut inputs = sig.inputs();
         let extra_args = if abi == RustCall {
             assert!(!sig.variadic && extra_args.is_empty());
 
-            match inputs[inputs.len() - 1].sty {
+            match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => {
-                    inputs = &inputs[..inputs.len() - 1];
+                    inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     &tupled_arguments[..]
                 }
                 _ => {
@@ -428,7 +428,7 @@ impl FnType {
             }
         };
 
-        let ret_ty = sig.output;
+        let ret_ty = sig.output();
         let mut ret = arg_of(ret_ty, true);
 
         if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
@@ -569,7 +569,7 @@ impl FnType {
             };
             // Fat pointers are returned by-value.
             if !self.ret.is_ignore() {
-                if !type_is_fat_ptr(ccx.tcx(), sig.output) {
+                if !type_is_fat_ptr(ccx.tcx(), sig.output()) {
                     fixup(&mut self.ret);
                 }
             }

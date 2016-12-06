@@ -38,6 +38,7 @@ use type_of;
 use Disr;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::hir;
+use std::iter;
 
 use syntax_pos::DUMMY_SP;
 
@@ -329,7 +330,11 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } = tcx.closure_type(def_id, substs);
-    sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
+    sig.0 = tcx.mk_fn_sig(
+        iter::once(ref_closure_ty).chain(sig.0.inputs().iter().cloned()),
+        sig.0.output(),
+        sig.0.variadic
+    );
     let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
@@ -342,7 +347,11 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
     assert_eq!(abi, Abi::RustCall);
-    sig.0.inputs[0] = closure_ty;
+    sig.0 = tcx.mk_fn_sig(
+        iter::once(closure_ty).chain(sig.0.inputs().iter().skip(1).cloned()),
+        sig.0.output(),
+        sig.0.variadic
+    );
 
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
@@ -491,13 +500,12 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     };
     let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let tuple_input_ty = tcx.intern_tup(&sig.inputs[..]);
-    let sig = ty::FnSig {
-        inputs: vec![bare_fn_ty_maybe_ref,
-                     tuple_input_ty],
-        output: sig.output,
-        variadic: false
-    };
+    let tuple_input_ty = tcx.intern_tup(sig.inputs());
+    let sig = tcx.mk_fn_sig(
+        [bare_fn_ty_maybe_ref, tuple_input_ty].iter().cloned(),
+        sig.output(),
+        false
+    );
     let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
     let tuple_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,

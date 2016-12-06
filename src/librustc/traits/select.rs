@@ -1368,21 +1368,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyFnDef(.., &ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: _,
-                    output: _,
-                    variadic: false
-                })
+                ref sig,
             }) |
             ty::TyFnPtr(&ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: _,
-                    output: _,
-                    variadic: false
-                })
-            }) => {
+                ref sig
+            }) if !sig.variadic() => {
                 candidates.vec.push(FnPointerCandidate);
             }
 

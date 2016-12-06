@@ -506,15 +506,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match *destination {
             Some((ref dest, _)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                if let Err(terr) = self.sub_types(sig.output, dest_ty) {
+                if let Err(terr) = self.sub_types(sig.output(), dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
-                                 dest_ty, sig.output, terr);
+                                 dest_ty, sig.output(), terr);
                 }
             },
             None => {
                 // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                if !sig.output.is_never() {
+                if !sig.output().is_never() {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             },
@@ -528,11 +528,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                          args: &[Operand<'tcx>])
     {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
-        if args.len() < sig.inputs.len() ||
-           (args.len() > sig.inputs.len() && !sig.variadic) {
+        if args.len() < sig.inputs().len() ||
+           (args.len() > sig.inputs().len() && !sig.variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
-        for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
+        for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(mir, self.tcx());
             if let Err(terr) = self.sub_types(op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
@@ -562,12 +562,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         // box_free takes a Box as a pointer. Allow for that.
 
-        if sig.inputs.len() != 1 {
+        if sig.inputs().len() != 1 {
             span_mirbug!(self, term, "box_free should take 1 argument");
             return;
         }
 
-        let pointee_ty = match sig.inputs[0].sty {
+        let pointee_ty = match sig.inputs()[0].sty {
             ty::TyRawPtr(mt) => mt.ty,
             _ => {
                 span_mirbug!(self, term, "box_free should take a raw ptr");

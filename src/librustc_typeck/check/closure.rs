@@ -15,6 +15,7 @@ use super::{check_fn, Expectation, FnCtxt};
 use astconv::AstConv;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
+use std::iter;
 use syntax::abi::Abi;
 use rustc::hir;
 
@@ -86,7 +87,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        fn_ty.sig.0.inputs = vec![self.tcx.intern_tup(&fn_ty.sig.0.inputs[..])];
+        fn_ty.sig.0 = self.tcx.mk_fn_sig(
+            iter::once(self.tcx.intern_tup(fn_ty.sig.skip_binder().inputs())),
+            fn_ty.sig.skip_binder().output(),
+            fn_ty.sig.variadic()
+        );
 
         debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
                expr_def_id,
@@ -212,23 +217,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                arg_param_ty);
 
         let input_tys = match arg_param_ty.sty {
-            ty::TyTuple(tys) => tys.to_vec(),
+            ty::TyTuple(tys) => tys.into_iter(),
             _ => {
                 return None;
             }
         };
-        debug!("deduce_sig_from_projection: input_tys {:?}", input_tys);
 
         let ret_param_ty = projection.0.ty;
         let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
-        debug!("deduce_sig_from_projection: ret_param_ty {:?}",
-               ret_param_ty);
+        debug!("deduce_sig_from_projection: ret_param_ty {:?}", ret_param_ty);
 
-        let fn_sig = ty::FnSig {
-            inputs: input_tys,
-            output: ret_param_ty,
-            variadic: false,
-        };
+        let fn_sig = self.tcx.mk_fn_sig(input_tys.cloned(), ret_param_ty, false);
         debug!("deduce_sig_from_projection: fn_sig {:?}", fn_sig);
 
         Some(fn_sig)

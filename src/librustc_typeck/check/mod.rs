@@ -785,18 +785,18 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, fn_sig.output, body.id);
+    let mut fcx = FnCtxt::new(inherited, fn_sig.output(), body.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
     fcx.require_type_is_sized(fcx.ret_ty, decl.output.span(), traits::ReturnType);
     fcx.ret_ty = fcx.instantiate_anon_types(&fcx.ret_ty);
-    fn_sig.output = fcx.ret_ty;
+    fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty, fn_sig.variadic);
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
 
         // Add formal parameters.
-        for (arg_ty, input) in fn_sig.inputs.iter().zip(&decl.inputs) {
+        for (arg_ty, input) in fn_sig.inputs().iter().zip(&decl.inputs) {
             // The type of the argument must be well-formed.
             //
             // NB -- this is now checked in wfcheck, but that
@@ -2473,14 +2473,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match method_fn_ty.sty {
                 ty::TyFnDef(def_id, .., ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
-                    let expected_arg_tys = self.expected_types_for_fn_args(sp, expected,
-                                                                           fty.sig.0.output,
-                                                                           &fty.sig.0.inputs[1..]);
-
-                    self.check_argument_types(sp, &fty.sig.0.inputs[1..], &expected_arg_tys[..],
+                    let expected_arg_tys = self.expected_types_for_fn_args(
+                        sp,
+                        expected,
+                        fty.sig.0.output(),
+                        &fty.sig.0.inputs()[1..]
+                    );
+                    self.check_argument_types(sp, &fty.sig.0.inputs()[1..], &expected_arg_tys[..],
                                               args_no_rcvr, fty.sig.0.variadic, tuple_arguments,
                                               self.tcx.map.span_if_local(def_id));
-                    fty.sig.0.output
+                    fty.sig.0.output()
                 }
                 _ => {
                     span_bug!(callee_expr.span, "method without bare fn type");

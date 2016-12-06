@@ -467,10 +467,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                 sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in &sig.0.inputs {
+        for &input in sig.0.inputs() {
             self.add_constraints_from_ty(generics, input, contra);
         }
-        self.add_constraints_from_ty(generics, sig.0.output, variance);
+        self.add_constraints_from_ty(generics, sig.0.output(), variance);
     }
 
     /// Adds constraints appropriate for a region appearing in a

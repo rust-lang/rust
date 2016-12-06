@@ -530,7 +530,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
-                self.hash(f.sig.inputs().skip_binder().len());
+                self.hash(f.sig.skip_binder().inputs().len());
             }
             TyDynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {

@@ -920,21 +920,12 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ctor_ty = match variant.ctor_kind {
         CtorKind::Fictive | CtorKind::Const => ty,
         CtorKind::Fn => {
-            let inputs: Vec<_> =
-                variant.fields
-                .iter()
-                .map(|field| tcx.item_type(field.did))
-                .collect();
-            let substs = mk_item_substs(&ccx.icx(&predicates),
-                                        ccx.tcx.map.span(ctor_id), def_id);
+            let inputs = variant.fields.iter().map(|field| tcx.item_type(field.did));
+            let substs = mk_item_substs(&ccx.icx(&predicates), ccx.tcx.map.span(ctor_id), def_id);
             tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: abi::Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: inputs,
-                    output: ty,
-                    variadic: false
-                })
+                sig: ty::Binder(ccx.tcx.mk_fn_sig(inputs, ty, false))
             }))
         }
     };
@@ -2085,9 +2076,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
     ccx.tcx.mk_fn_def(def_id, substs, ccx.tcx.mk_bare_fn(ty::BareFnTy {
         abi: abi,
         unsafety: hir::Unsafety::Unsafe,
-        sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                    output: output,
-                                    variadic: decl.variadic}),
+        sig: ty::Binder(ccx.tcx.mk_fn_sig(input_tys.into_iter(), output, decl.variadic)),
     }))
 }
 
