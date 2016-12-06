@@ -1798,7 +1798,7 @@ impl IntegerExt for layout::Integer {
 }
 
 
-pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: ty::FieldDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::FieldDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     let substituted = &f.ty(tcx, substs);
     tcx.normalize_associated_type(&substituted)
 }
