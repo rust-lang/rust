@@ -1974,10 +1974,8 @@ impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
           S: BuildHasher + Default
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
-        let iterator = iter.into_iter();
-        let lower = iterator.size_hint().0;
-        let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
-        map.extend(iterator);
+        let mut map = HashMap::with_hasher(Default::default());
+        map.extend(iter);
         map
     }
 }
@@ -1988,6 +1986,17 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
           S: BuildHasher
 {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+        // Keys may be already present or show multiple times in the iterator.
+        // Reserve the entire hint lower bound if the map is empty.
+        // Otherwise reserve half the hint (rounded up), so the map
+        // will only resize twice in the worst case.
+        let iter = iter.into_iter();
+        let reserve = if self.is_empty() {
+            iter.size_hint().0
+        } else {
+            (iter.size_hint().0 + 1) / 2
+        };
+        self.reserve(reserve);
         for (k, v) in iter {
             self.insert(k, v);
         }
