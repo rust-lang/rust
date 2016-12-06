@@ -848,7 +848,10 @@ then
 fi
 
 # For building LLVM
-probe_need CFG_CMAKE cmake
+if [ -z "$CFG_LLVM_ROOT" ]
+then
+  probe_need CFG_CMAKE cmake
+fi
 
 # On MacOS X, invoking `javac` pops up a dialog if the JDK is not
 # installed. Since `javac` is only used if `antlr4` is available,
@@ -1471,7 +1474,7 @@ fi
 step_msg "configuring submodules"
 
 # Have to be in the top of src directory for this
-if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ] && [ -z $CFG_ENABLE_RUSTBUILD ]
+if [ -z "$CFG_DISABLE_MANAGE_SUBMODULES" ] && [ -z "$CFG_ENABLE_RUSTBUILD" ]
 then
     cd ${CFG_SRC_DIR}
 
@@ -1547,7 +1550,7 @@ do
     then
         msg "not configuring LLVM, rustbuild in use"
         do_reconfigure=0
-    elif [ -z $CFG_LLVM_ROOT ]
+    elif [ -z "$CFG_LLVM_ROOT" ]
     then
         LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
         LLVM_INST_DIR=$LLVM_BUILD_DIR
