@@ -12,7 +12,7 @@ extern crate testcrate;
 
 extern "C" fn bar<T>(ts: testcrate::TestStruct<T>) -> T { ts.y }
 
-#[link(name = "test")]
+#[link(name = "test", kind = "static")]
 extern {
     fn call(c: extern "C" fn(testcrate::TestStruct<i32>) -> i32) -> i32;
 }
