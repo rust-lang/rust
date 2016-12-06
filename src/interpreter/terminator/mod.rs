@@ -118,7 +118,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mut drops = Vec::new();
                 self.drop(lval, ty, &mut drops)?;
                 self.goto_block(target);
-                self.eval_drop_impls(drops)?;
+                self.eval_drop_impls(drops, terminator.source_info.span)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
@@ -151,12 +151,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
-        let span = self.frame().span;
+    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>, span: Span) -> EvalResult<'tcx, ()> {
         // add them to the stack in reverse order, because the impl that needs to run the last
         // is the one that needs to be at the bottom of the stack
         for (drop_def_id, self_arg, substs) in drops.into_iter().rev() {
-            // FIXME: supply a real span
             let mir = self.load_mir(drop_def_id)?;
             trace!("substs for drop glue: {:?}", substs);
             self.push_stack_frame(

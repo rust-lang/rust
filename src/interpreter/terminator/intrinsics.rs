@@ -190,11 +190,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let mut drops = Vec::new();
                 self.drop(lvalue, ty, &mut drops)?;
+                let span = {
+                    let frame = self.frame();
+                    frame.mir[frame.block].terminator().source_info.span
+                };
                 // need to change the block before pushing the drop impl stack frames
                 // we could do this for all intrinsics before evaluating the intrinsics, but if
                 // the evaluation fails, we should not have moved forward
                 self.goto_block(target);
-                return self.eval_drop_impls(drops);
+                return self.eval_drop_impls(drops, span);
             }
 
             "fabsf32" => {
