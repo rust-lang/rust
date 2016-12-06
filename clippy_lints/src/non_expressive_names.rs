@@ -59,9 +59,9 @@ struct ExistingName {
     whitelist: &'static [&'static str],
 }
 
-struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
+struct SimilarNamesLocalVisitor<'a, 'tcx: 'a> {
     names: Vec<ExistingName>,
-    cx: &'a EarlyContext<'b>,
+    cx: &'a EarlyContext<'tcx>,
     lint: &'a NonExpressiveNames,
     single_char_names: Vec<char>,
 }
@@ -76,10 +76,10 @@ const WHITELIST: &'static [&'static [&'static str]] = &[
     &["set", "get"],
 ];
 
-struct SimilarNamesNameVisitor<'a, 'b: 'a, 'c: 'b>(&'a mut SimilarNamesLocalVisitor<'b, 'c>);
+struct SimilarNamesNameVisitor<'a: 'b, 'tcx: 'a, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
 
-impl<'a, 'b, 'c> Visitor for SimilarNamesNameVisitor<'a, 'b, 'c> {
-    fn visit_pat(&mut self, pat: &Pat) {
+impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
+    fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.node {
             PatKind::Ident(_, id, _) => self.check_name(id.span, id.node.name),
             PatKind::Struct(_, ref fields, _) => {
@@ -120,7 +120,7 @@ fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
     false
 }
 
-impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
+impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn check_short_name(&mut self, c: char, span: Span) {
         // make sure we ignore shadowing
         if self.0.single_char_names.contains(&c) {
@@ -236,18 +236,18 @@ impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Visitor for SimilarNamesLocalVisitor<'a, 'b> {
-    fn visit_local(&mut self, local: &Local) {
+impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
+    fn visit_local(&mut self, local: &'tcx Local) {
         if let Some(ref init) = local.init {
             self.apply(|this| walk_expr(this, &**init));
         }
         // add the pattern after the expression because the bindings aren't available yet in the init expression
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
-    fn visit_block(&mut self, blk: &Block) {
+    fn visit_block(&mut self, blk: &'tcx Block) {
         self.apply(|this| walk_block(this, blk));
     }
-    fn visit_arm(&mut self, arm: &Arm) {
+    fn visit_arm(&mut self, arm: &'tcx Arm) {
         self.apply(|this| {
             // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
             SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);

@@ -25,13 +25,13 @@ declare_lint! {
 pub struct Pass;
 
 impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if &*name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, ref closure_expr, _) => {
-                        let closure_expr = remove_blocks(closure_expr);
+                    ExprClosure(_, ref decl, closure_eid, _) => {
+                        let closure_expr = remove_blocks(cx.tcx.map.expr(closure_eid));
                         if_let_chain! {[
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )

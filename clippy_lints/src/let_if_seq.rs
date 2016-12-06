@@ -58,7 +58,7 @@ impl LintPass for LetIfSeq {
 }
 
 impl LateLintPass for LetIfSeq {
-    fn check_block(&mut self, cx: &LateContext, block: &hir::Block) {
+    fn check_block<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
         let mut it = block.stmts.iter().peekable();
         while let Some(stmt) = it.next() {
             if_let_chain! {[
@@ -133,8 +133,8 @@ struct UsedVisitor<'a, 'tcx: 'a> {
     used: bool,
 }
 
-impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UsedVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'v hir::Expr) {
+impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_let_chain! {[
             let hir::ExprPath(ref qpath) = expr.node,
             self.id == self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id(),
@@ -144,9 +144,16 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UsedVisitor<'a, 'tcx> {
         }}
         hir::intravisit::walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
+        hir::intravisit::NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
-fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::Block) -> Option<&'e hir::Expr> {
+fn check_assign<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    decl: hir::def_id::DefId,
+    block: &'tcx hir::Block,
+) -> Option<&'tcx hir::Expr> {
     if_let_chain! {[
         block.expr.is_none(),
         let Some(expr) = block.stmts.iter().last(),
@@ -175,7 +182,11 @@ fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::
     None
 }
 
-fn used_in_expr(cx: &LateContext, id: hir::def_id::DefId, expr: &hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    id: hir::def_id::DefId,
+    expr: &'tcx hir::Expr,
+) -> bool {
     let mut v = UsedVisitor {
         cx: cx,
         id: id,

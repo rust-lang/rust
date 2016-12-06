@@ -38,7 +38,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprAssign(ref target, _) = expr.node {
             match target.node {
                 ExprField(ref base, _) |

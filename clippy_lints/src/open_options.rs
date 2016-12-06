@@ -33,7 +33,7 @@ impl LintPass for NonSensical {
 }
 
 impl LateLintPass for NonSensical {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprMethodCall(ref name, _, ref arguments) = e.node {
             let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&arguments[0]));
             if &*name.node.as_str() == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {

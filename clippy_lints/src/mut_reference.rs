@@ -33,7 +33,7 @@ impl LintPass for UnnecessaryMutPassed {
 }
 
 impl LateLintPass for UnnecessaryMutPassed {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         let borrowed_table = cx.tcx.tables.borrow();
         match e.node {
             ExprCall(ref fn_expr, ref arguments) => {

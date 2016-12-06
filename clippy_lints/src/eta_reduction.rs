@@ -34,7 +34,7 @@ impl LintPass for EtaPass {
 }
 
 impl LateLintPass for EtaPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
             ExprCall(_, ref args) |
             ExprMethodCall(_, _, ref args) => {
@@ -48,7 +48,8 @@ impl LateLintPass for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, ref ex, _) = expr.node {
+    if let ExprClosure(_, ref decl, eid, _) = expr.node {
+        let ex = cx.tcx.map.expr(eid);
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there

@@ -167,7 +167,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Expr, _: Span, _: NodeId) {
+    fn check_fn<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, k: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span, _: NodeId) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
             return;
@@ -182,7 +182,7 @@ impl LateLintPass for Pass {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, s: &Stmt) {
+    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
         if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
@@ -216,7 +216,7 @@ impl LateLintPass for Pass {
         }}
     }
 
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             let op = cmp.node;
             if op.is_comparison() {
@@ -294,7 +294,7 @@ impl LateLintPass for Pass {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
+    fn check_pat<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if let PatKind::Binding(_, _, ref ident, Some(ref right)) = pat.node {
             if right.node == PatKind::Wild {
                 span_lint(cx,
@@ -440,9 +440,7 @@ fn in_attributes_expansion(cx: &LateContext, expr: &Expr) -> bool {
 fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
         def::Def::Local(id) | def::Def::Upvar(id, _, _) => {
-            let id = cx.tcx.map.as_local_node_id(id).expect("That DefId should be valid");
-
-            if let Some(span) = cx.tcx.map.opt_span(id) {
+            if let Some(span) = cx.tcx.map.span_if_local(id) {
                 !in_macro(cx, span)
             } else {
                 true

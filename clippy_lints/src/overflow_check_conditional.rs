@@ -31,7 +31,7 @@ impl LintPass for OverflowCheckConditional {
 
 impl LateLintPass for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain! {[
             let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
             let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = first.node,

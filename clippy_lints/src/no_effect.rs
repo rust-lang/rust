@@ -103,7 +103,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
+    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");

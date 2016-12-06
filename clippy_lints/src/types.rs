@@ -1,6 +1,6 @@
 use reexport::*;
 use rustc::hir::*;
-use rustc::hir::intravisit::{FnKind, Visitor, walk_ty};
+use rustc::hir::intravisit::{FnKind, Visitor, walk_ty, NestedVisitorMap};
 use rustc::lint::*;
 use rustc::ty;
 use std::cmp::Ordering;
@@ -70,7 +70,7 @@ impl LintPass for TypePass {
 }
 
 impl LateLintPass for TypePass {
-    fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
+    fn check_ty<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, ast_ty: &'tcx Ty) {
         if in_macro(cx, ast_ty.span) {
             return;
         }
@@ -154,7 +154,7 @@ impl LintPass for LetPass {
 }
 
 impl LateLintPass for LetPass {
-    fn check_decl(&mut self, cx: &LateContext, decl: &Decl) {
+    fn check_decl<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl) {
         check_let_unit(cx, decl)
     }
 }
@@ -191,7 +191,7 @@ impl LintPass for UnitCmp {
 }
 
 impl LateLintPass for UnitCmp {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_macro(cx, expr.span) {
             return;
         }
@@ -448,7 +448,7 @@ impl LintPass for CastPass {
 }
 
 impl LateLintPass for CastPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tcx.tables().expr_ty(ex), cx.tcx.tables().expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
@@ -536,16 +536,16 @@ impl LintPass for TypeComplexityPass {
 }
 
 impl LateLintPass for TypeComplexityPass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, _: NodeId) {
+    fn check_fn<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, _: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span, _: NodeId) {
         self.check_fndecl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
+    fn check_struct_field<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx StructField) {
         // enum variants are also struct fields now
         self.check_type(cx, &field.ty);
     }
 
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         match item.node {
             ItemStatic(ref ty, _, _) |
             ItemConst(ref ty, _) => self.check_type(cx, ty),
@@ -554,7 +554,7 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.node {
             ConstTraitItem(ref ty, _) |
             TypeTraitItem(_, Some(ref ty)) => self.check_type(cx, ty),
@@ -564,7 +564,7 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
+    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         match item.node {
             ImplItemKind::Const(ref ty, _) |
             ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
@@ -573,7 +573,7 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext, local: &Local) {
+    fn check_local<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
         if let Some(ref ty) = local.ty {
             self.check_type(cx, ty);
         }
@@ -581,7 +581,7 @@ impl LateLintPass for TypeComplexityPass {
 }
 
 impl TypeComplexityPass {
-    fn check_fndecl(&self, cx: &LateContext, decl: &FnDecl) {
+    fn check_fndecl<'a, 'tcx: 'a>(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl) {
         for arg in &decl.inputs {
             self.check_type(cx, &arg.ty);
         }
@@ -590,7 +590,7 @@ impl TypeComplexityPass {
         }
     }
 
-    fn check_type(&self, cx: &LateContext, ty: &Ty) {
+    fn check_type<'a, 'tcx: 'a>(&self, cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty) {
         if in_macro(cx, ty.span) {
             return;
         }
@@ -598,6 +598,7 @@ impl TypeComplexityPass {
             let mut visitor = TypeComplexityVisitor {
                 score: 0,
                 nest: 1,
+                cx: cx,
             };
             visitor.visit_ty(ty);
             visitor.score
@@ -613,15 +614,16 @@ impl TypeComplexityPass {
 }
 
 /// Walks a type and assigns a complexity score to it.
-struct TypeComplexityVisitor {
+struct TypeComplexityVisitor<'a, 'tcx: 'a> {
     /// total complexity score of the type
     score: u64,
     /// current nesting level
     nest: u64,
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'v> Visitor<'v> for TypeComplexityVisitor {
-    fn visit_ty(&mut self, ty: &'v Ty) {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &'tcx Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
@@ -645,6 +647,9 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
         self.nest += sub_nest;
         walk_ty(self, ty);
         self.nest -= sub_nest;
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 
@@ -678,7 +683,7 @@ impl LintPass for CharLitAsU8 {
 }
 
 impl LateLintPass for CharLitAsU8 {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         use syntax::ast::{LitKind, UintTy};
 
         if let ExprCast(ref e, _) = expr.node {
@@ -842,7 +847,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
 }
 
 impl LateLintPass for AbsurdExtremeComparisons {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         use types::ExtremeType::*;
         use types::AbsurdComparisonResult::*;
 
@@ -1067,7 +1072,7 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
 }
 
 impl LateLintPass for InvalidUpcastComparisons {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
 
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);

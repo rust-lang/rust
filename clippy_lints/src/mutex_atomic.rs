@@ -55,7 +55,7 @@ impl LintPass for MutexAtomic {
 pub struct MutexAtomic;
 
 impl LateLintPass for MutexAtomic {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let ty = cx.tcx.tables().expr_ty(expr);
         if let ty::TyAdt(_, subst) = ty.sty {
             if match_type(cx, ty, &paths::MUTEX) {

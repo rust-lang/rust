@@ -67,7 +67,7 @@ impl LintPass for AssignOps {
 }
 
 impl LateLintPass for AssignOps {
-    fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {

@@ -1,6 +1,6 @@
 use rustc::lint::{LateLintPass, LateContext, LintArray, LintPass};
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_expr};
+use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use utils::*;
 
 /// **What it does:** Checks for `if` conditions that use blocks to contain an
@@ -49,19 +49,24 @@ impl LintPass for BlockInIfCondition {
     }
 }
 
-struct ExVisitor<'v> {
-    found_block: Option<&'v Expr>,
+struct ExVisitor<'a, 'tcx: 'a> {
+    found_block: Option<&'tcx Expr>,
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'v> Visitor<'v> for ExVisitor<'v> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
-        if let ExprClosure(_, _, ref expr, _) = expr.node {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprClosure(_, _, eid, _) = expr.node {
+            let expr = self.cx.tcx.map.expr(eid);
             if matches!(expr.node, ExprBlock(_)) {
                 self.found_block = Some(expr);
                 return;
             }
         }
         walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 
@@ -70,7 +75,7 @@ const COMPLEX_BLOCK_MESSAGE: &'static str = "in an 'if' condition, avoid complex
                                              instead, move the block or closure higher and bind it with a 'let'";
 
 impl LateLintPass for BlockInIfCondition {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprIf(ref check, ref then, _) = expr.node {
             if let ExprBlock(ref block) = check.node {
                 if block.rules == DefaultBlock {
@@ -105,7 +110,7 @@ impl LateLintPass for BlockInIfCondition {
                     }
                 }
             } else {
-                let mut visitor = ExVisitor { found_block: None };
+                let mut visitor = ExVisitor { found_block: None, cx: cx };
                 walk_expr(&mut visitor, check);
                 if let Some(block) = visitor.found_block {
                     span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);

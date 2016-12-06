@@ -1,5 +1,5 @@
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, walk_expr};
+use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
@@ -57,7 +57,7 @@ impl LintPass for EvalOrderDependence {
 }
 
 impl LateLintPass for EvalOrderDependence {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
             ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => {
@@ -79,13 +79,13 @@ impl LateLintPass for EvalOrderDependence {
             _ => {}
         }
     }
-    fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
+    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor(cx).maybe_walk_expr(e),
+            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
             StmtDecl(ref d, _) => {
                 if let DeclLocal(ref local) = d.node {
                     if let Local { init: Some(ref e), .. } = **local {
-                        DivergenceVisitor(cx).visit_expr(e);
+                        DivergenceVisitor { cx: cx }.visit_expr(e);
                     }
                 }
             },
@@ -93,10 +93,12 @@ impl LateLintPass for EvalOrderDependence {
     }
 }
 
-struct DivergenceVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
+struct DivergenceVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+}
 
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
-    fn maybe_walk_expr(&mut self, e: &Expr) {
+    fn maybe_walk_expr(&mut self, e: &'tcx Expr) {
         match e.node {
             ExprClosure(..) => {},
             ExprMatch(ref e, ref arms, _) => {
@@ -114,7 +116,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
     fn report_diverging_sub_expr(&mut self, e: &Expr) {
         span_lint(
-            self.0,
+            self.cx,
             DIVERGING_SUB_EXPRESSION,
             e.span,
             "sub-expression diverges",
@@ -122,25 +124,25 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, e: &'v Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
             ExprAgain(_) |
             ExprBreak(_, _) |
             ExprRet(_) => self.report_diverging_sub_expr(e),
-            ExprCall(ref func, _) => match self.0.tcx.tables().expr_ty(func).sty {
+            ExprCall(ref func, _) => match self.cx.tcx.tables().expr_ty(func).sty {
                 ty::TyFnDef(_, _, fn_ty) |
-                ty::TyFnPtr(fn_ty) => if let ty::TyNever = self.0.tcx.erase_late_bound_regions(&fn_ty.sig).output.sty {
+                ty::TyFnPtr(fn_ty) => if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&fn_ty.sig).output.sty {
                     self.report_diverging_sub_expr(e);
                 },
                 _ => {},
             },
             ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(e.id);
-                let borrowed_table = self.0.tcx.tables.borrow();
+                let borrowed_table = self.cx.tcx.tables.borrow();
                 let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
                 let result_ty = method_type.ty.fn_ret();
-                if let ty::TyNever = self.0.tcx.erase_late_bound_regions(&result_ty).sty {
+                if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&result_ty).sty {
                     self.report_diverging_sub_expr(e);
                 }
             },
@@ -150,8 +152,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
         }
         self.maybe_walk_expr(e);
     }
-    fn visit_block(&mut self, _: &'v Block) {
+    fn visit_block(&mut self, _: &'tcx Block) {
         // don't continue over blocks, LateLintPass already does that
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 
@@ -209,7 +214,7 @@ enum StopEarly {
     Stop,
 }
 
-fn check_expr<'v, 't>(vis: & mut ReadVisitor<'v, 't>, expr: &'v Expr) -> StopEarly {
+fn check_expr<'a, 'tcx: 'a>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
     if expr.id == vis.last_expr.id {
         return StopEarly::KeepGoing;
     }
@@ -258,7 +263,7 @@ fn check_expr<'v, 't>(vis: & mut ReadVisitor<'v, 't>, expr: &'v Expr) -> StopEar
     StopEarly::KeepGoing
 }
 
-fn check_stmt<'v, 't>(vis: &mut ReadVisitor<'v, 't>, stmt: &'v Stmt) -> StopEarly {
+fn check_stmt<'a, 'tcx: 'a>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
     match stmt.node {
         StmtExpr(ref expr, _) |
         StmtSemi(ref expr, _) => check_expr(vis, expr),
@@ -276,20 +281,20 @@ fn check_stmt<'v, 't>(vis: &mut ReadVisitor<'v, 't>, stmt: &'v Stmt) -> StopEarl
 }
 
 /// A visitor that looks for reads from a variable.
-struct ReadVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>,
+struct ReadVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
     /// The id of the variable we're looking for.
     var: DefId,
     /// The expressions where the write to the variable occurred (for reporting
     /// in the lint).
-    write_expr: &'v Expr,
+    write_expr: &'tcx Expr,
     /// The last (highest in the AST) expression we've checked, so we know not
     /// to recheck it.
-    last_expr: &'v Expr,
+    last_expr: &'tcx Expr,
 }
 
-impl<'v, 't> Visitor<'v> for ReadVisitor<'v, 't> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         if expr.id == self.last_expr.id {
             return;
         }
@@ -335,6 +340,9 @@ impl<'v, 't> Visitor<'v> for ReadVisitor<'v, 't> {
         }
 
         walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 

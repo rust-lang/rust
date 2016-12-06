@@ -33,7 +33,7 @@ impl LintPass for EnumGlobUse {
 }
 
 impl LateLintPass for EnumGlobUse {
-    fn check_mod(&mut self, cx: &LateContext, m: &Mod, _: Span, _: NodeId) {
+    fn check_mod<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod, _: Span, _: NodeId) {
         // only check top level `use` statements
         for item in &m.item_ids {
             self.lint_item(cx, cx.krate.item(item.id));

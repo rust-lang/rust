@@ -80,7 +80,7 @@ impl LintPass for StringAdd {
 }
 
 impl LateLintPass for StringAdd {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
@@ -137,7 +137,7 @@ impl LintPass for StringLitAsBytes {
 }
 
 impl LateLintPass for StringLitAsBytes {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use std::ascii::AsciiExt;
         use syntax::ast::LitKind;
         use utils::{snippet, in_macro};

@@ -33,7 +33,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
             let ty::TypeVariants::TyRef(_, ref ty) = cx.tcx.tables().expr_ty_adjusted(expr).sty,

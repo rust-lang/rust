@@ -35,7 +35,7 @@ impl LintPass for NeedlessBorrow {
 }
 
 impl LateLintPass for NeedlessBorrow {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if in_macro(cx, e.span) {
             return;
         }
@@ -53,7 +53,7 @@ impl LateLintPass for NeedlessBorrow {
             }
         }
     }
-    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
+    fn check_pat<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if in_macro(cx, pat.span) {
             return;
         }

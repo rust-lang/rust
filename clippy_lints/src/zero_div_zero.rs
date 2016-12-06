@@ -28,7 +28,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // check for instances of 0.0/0.0
         if_let_chain! {[
             let ExprBinary(ref op, ref left, ref right) = expr.node,

@@ -94,7 +94,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.expn_id != lhs.expn_id
 }
 /// Returns true if this `expn_info` was expanded by any macro.
-pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
+pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id, |info| match info {
         Some(info) => {
             match info.callee.format {
@@ -109,10 +109,10 @@ pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 
 /// Returns true if the macro that expanded the crate was outside of the current crate or was a
 /// compiler plugin.
-pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
+pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     /// Invokes `in_macro` with the expansion info of the given span slightly heavy, try to use
     /// this after other checks have already happened.
-    fn in_macro_ext<T: LintContext>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
+    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
             if let ExpnFormat::MacroAttribute(..) = info.callee.format {
@@ -371,12 +371,12 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 /// ```
 /// snippet(cx, expr.span, "..")
 /// ```
-pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or_else(|_| Cow::Borrowed(default))
 }
 
 /// Convert a span to a code snippet. Returns `None` if not available.
-pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
+pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     cx.sess().codemap().span_to_snippet(span).ok()
 }
 
@@ -388,14 +388,14 @@ pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
 /// ```
 /// snippet(cx, expr.span, "..")
 /// ```
-pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     trim_multiline(snip, true)
 }
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprBlock`.
 /// Also takes an `Option<String>` which can be put inside the braces.
-pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str) -> Cow<'a, str> {
+pub fn expr_block<'a, 'b, T: LintContext<'b>>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
     if let ExprBlock(_) = expr.node {
@@ -464,15 +464,15 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     })
 }
 
-pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c Block> {
+pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
     let map = &cx.tcx.map;
     let enclosing_node = map.get_enclosing_scope(node)
                             .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(block) => Some(block),
-            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref expr), .. }) => {
-                match expr.node {
+            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, eid), .. }) => {
+                match cx.tcx.map.expr(eid).node {
                     ExprBlock(ref block) => Some(block),
                     _ => None,
                 }
@@ -501,15 +501,14 @@ impl<'a> DiagnosticWrapper<'a> {
     }
 }
 
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
         db.wiki_link(lint);
     }
 }
 
-// FIXME: needless lifetime doesn't trigger here
-pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
+pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         db.0.help(help);
@@ -517,8 +516,14 @@ pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp
     }
 }
 
-pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, note_span: Span,
-                                              note: &str) {
+pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    note_span: Span,
+    note: &str,
+) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
@@ -530,8 +535,8 @@ pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp
     }
 }
 
-pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
-    where F: FnOnce(&mut DiagnosticBuilder<'a>)
+pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
+    where F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>)
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
