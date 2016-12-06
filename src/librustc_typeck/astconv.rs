@@ -538,14 +538,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// Returns the appropriate lifetime to use for any output lifetimes
     /// (if one exists) and a vector of the (pattern, number of lifetimes)
     /// corresponding to each input type/pattern.
-    fn find_implied_output_region<F>(&self,
+    fn find_implied_output_region<I>(&self,
                                      input_tys: &[Ty<'tcx>],
-                                     input_pats: F) -> ElidedLifetime
-        where F: FnOnce() -> Vec<String>
+                                     input_pats: I) -> ElidedLifetime
+        where I: Iterator<Item=String>
     {
         let tcx = self.tcx();
-        let mut lifetimes_for_params = Vec::new();
+        let mut lifetimes_for_params = Vec::with_capacity(input_tys.len());
         let mut possible_implied_output_region = None;
+        let mut lifetimes = 0;
 
         for input_type in input_tys.iter() {
             let mut regions = FxHashSet();
@@ -554,7 +555,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             debug!("find_implied_output_regions: collected {:?} from {:?} \
                     have_bound_regions={:?}", &regions, input_type, have_bound_regions);
 
-            if regions.len() == 1 {
+            lifetimes += regions.len();
+
+            if lifetimes == 1 && regions.len() == 1 {
                 // there's a chance that the unique lifetime of this
                 // iteration will be the appropriate lifetime for output
                 // parameters, so lets store it.
@@ -571,12 +574,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             });
         }
 
-        if lifetimes_for_params.iter().map(|e| e.lifetime_count).sum::<usize>() == 1 {
+        if lifetimes == 1 {
             Ok(*possible_implied_output_region.unwrap())
         } else {
             // Fill in the expensive `name` fields now that we know they're
             // needed.
-            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats()) {
+            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats) {
                 info.name = input_pat;
             }
             Err(Some(lifetimes_for_params))
@@ -615,8 +618,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
         }));
-        let inputs_len = inputs.len();
-        let input_params = || vec![String::new(); inputs_len];
+        let input_params = iter::repeat(String::new()).take(inputs.len());
         let implied_output_region = self.find_implied_output_region(&inputs, input_params);
 
         let (output, output_span) = match data.output {
@@ -1777,14 +1779,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let implied_output_region = match explicit_self {
             Some(ExplicitSelf::ByReference(region, _)) => Ok(*region),
             _ => {
-                // `pat_to_string` is expensive and
-                // `find_implied_output_region` only needs its result when
-                // there's an error. So we wrap it in a closure to avoid
-                // calling it until necessary.
-                let arg_pats = || {
-                    arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect()
-                };
-                self.find_implied_output_region(&arg_tys, arg_pats)
+                self.find_implied_output_region(&arg_tys,
+                                                arg_params.iter()
+                                                    .map(|a| pprust::pat_to_string(&a.pat)))
+
             }
         };
 
