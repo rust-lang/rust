@@ -39,8 +39,8 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray { lint_array!(REGION_HIERARCHY) }
 }
 
-impl LateLintPass for Pass {
-    fn check_fn<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>,
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>,
                               fk: FnKind<'tcx>, _: &'tcx hir::FnDecl, expr: &'tcx hir::Expr,
                               span: Span, node: ast::NodeId)
     {

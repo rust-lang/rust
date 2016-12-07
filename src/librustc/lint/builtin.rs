@@ -262,4 +262,4 @@ impl LintPass for HardwiredLints {
     }
 }
 
-impl LateLintPass for HardwiredLints {}
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HardwiredLints {}
