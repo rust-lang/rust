@@ -662,25 +662,30 @@ attribute turns off Rust's name mangling, so that it is easier to link to.
 
 It’s important to be mindful of `panic!`s when working with FFI. A `panic!`
 across an FFI boundary is undefined behavior. If you’re writing code that may
-panic, you should run it in another thread, so that the panic doesn’t bubble up
-to C:
+panic, you should run it in a closure with [`catch_unwind()`]:
 
 ```rust
-use std::thread;
+use std::panic::catch_unwind;
 
 #[no_mangle]
 pub extern fn oh_no() -> i32 {
-    let h = thread::spawn(|| {
+    let result = catch_unwind(|| {
         panic!("Oops!");
     });
-
-    match h.join() {
-        Ok(_) => 1,
-        Err(_) => 0,
+    match result {
+        Ok(_) => 0,
+        Err(_) => 1,
     }
 }
-# fn main() {}
+
+fn main() {}
 ```
+
+Please note that [`catch_unwind()`] will only catch unwinding panics, not
+those who abort the process. See the documentation of [`catch_unwind()`]
+for more information.
+
+[`catch_unwind()`]: https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
 
 # Representing opaque structs
 
