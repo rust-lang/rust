@@ -161,7 +161,7 @@ default impl<T: Clone, Rhs> Add<Rhs> for T {
 ```
 
 This default impl does *not* mean that `Add` is implemented for all `Clone`
-data, but jut that when you do impl `Add` and `Self: Clone`, you can leave off
+data, but just that when you do impl `Add` and `Self: Clone`, you can leave off
 `add_assign`:
 
 ```rust
