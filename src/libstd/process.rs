@@ -827,6 +827,14 @@ impl Child {
 /// will be run. If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
+///
+/// # Examples
+///
+/// ```
+/// use std::process;
+///
+/// process::exit(0);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
     ::sys_common::cleanup();

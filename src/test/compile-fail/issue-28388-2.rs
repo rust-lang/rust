@@ -14,6 +14,7 @@ mod m {
     mod n {}
 }
 
-use m::n::{}; //~ ERROR module `n` is private
+use m::n::{};
+//~^ ERROR module `n` is private
 
 fn main() {}
