@@ -432,7 +432,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         args: &mut Vec<(Value, Ty<'tcx>)>,
-    ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, Vec<Value>)> {
+    ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, Vec<Pointer>)> {
         let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
         let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
 
@@ -481,13 +481,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let ptr = self.alloc_ptr(args[0].1)?;
                                 let kind = self.ty_to_primval_kind(args[0].1)?;
                                 self.memory.write_primval(ptr, primval, kind)?;
-                                temporaries.push(Value::ByRef(ptr));
+                                temporaries.push(ptr);
                                 ptr
                             },
                             Value::ByValPair(a, b) => {
                                 let ptr = self.alloc_ptr(args[0].1)?;
                                 self.write_pair_to_ptr(a, b, ptr, args[0].1)?;
-                                temporaries.push(Value::ByRef(ptr));
+                                temporaries.push(ptr);
                                 ptr
                             },
                         };

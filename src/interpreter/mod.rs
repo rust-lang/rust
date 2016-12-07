@@ -86,7 +86,7 @@ pub struct Frame<'tcx> {
     /// This is pure interpreter magic and has nothing to do with how rustc does it
     /// An example is calling an FnMut closure that has been converted to a FnOnce closure
     /// If they are Value::ByRef, their memory will be freed when the stackframe finishes
-    pub interpreter_temporaries: Vec<Value>,
+    pub interpreter_temporaries: Vec<Pointer>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -333,7 +333,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
-        temporaries: Vec<Value>,
+        temporaries: Vec<Pointer>,
     ) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation += 1;
 
@@ -393,8 +393,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::None => {},
         }
         // deallocate all locals that are backed by an allocation
-        for local in frame.locals.into_iter().filter_map(|l| l).chain(frame.interpreter_temporaries) {
-            if let Value::ByRef(ptr) = local {
+        for local in frame.locals.into_iter() {
+            if let Some(Value::ByRef(ptr)) = local {
+                trace!("deallocating local");
                 self.memory.dump(ptr.alloc_id);
                 match self.memory.deallocate(ptr) {
                     // Any frozen memory means that it belongs to a constant or something referenced
@@ -405,6 +406,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     other => return other,
                 }
             }
+        }
+        // deallocate all temporary allocations
+        for ptr in frame.interpreter_temporaries {
+            trace!("deallocating temporary allocation");
+            self.memory.dump(ptr.alloc_id);
+            self.memory.deallocate(ptr)?;
         }
         Ok(())
     }
