@@ -103,7 +103,7 @@ impl LintPass for TypeLimits {
     }
 }
 
-impl LateLintPass for TypeLimits {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
@@ -706,7 +706,7 @@ impl LintPass for ImproperCTypes {
     }
 }
 
-impl LateLintPass for ImproperCTypes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
         if let hir::ItemForeignMod(ref nmod) = it.node {
@@ -734,7 +734,7 @@ impl LintPass for VariantSizeDifferences {
     }
 }
 
-impl LateLintPass for VariantSizeDifferences {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {

@@ -129,8 +129,8 @@ impl<'a> CheckAttrVisitor<'a> {
     }
 }
 
-impl<'a> Visitor for CheckAttrVisitor<'a> {
-    fn visit_item(&mut self, item: &ast::Item) {
+impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
+    fn visit_item(&mut self, item: &'a ast::Item) {
         let target = Target::from_item(item);
         for attr in &item.attrs {
             self.check_attribute(attr, target);

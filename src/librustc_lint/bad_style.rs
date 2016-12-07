@@ -99,7 +99,7 @@ impl LintPass for NonCamelCaseTypes {
     }
 }
 
-impl LateLintPass for NonCamelCaseTypes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let extern_repr_count = it.attrs
             .iter()
@@ -226,7 +226,7 @@ impl LintPass for NonSnakeCase {
     }
 }
 
-impl LateLintPass for NonSnakeCase {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
         let attr_crate_name = cr.attrs
             .iter()
@@ -348,7 +348,7 @@ impl LintPass for NonUpperCaseGlobals {
     }
 }
 
-impl LateLintPass for NonUpperCaseGlobals {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemStatic(..) => {

@@ -48,7 +48,7 @@ pub fn print_hir_stats(krate: &hir::Crate) {
     collector.print("HIR STATS");
 }
 
-pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
+pub fn print_ast_stats<'v>(krate: &'v ast::Crate, title: &str) {
     let mut collector = StatCollector {
         krate: None,
         data: FxHashMap(),
@@ -245,133 +245,133 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 }
 
-impl<'v> ast_visit::Visitor for StatCollector<'v> {
+impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
 
-    fn visit_mod(&mut self, m: &ast::Mod, _s: Span, _n: NodeId) {
+    fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _n: NodeId) {
         self.record("Mod", Id::None, m);
         ast_visit::walk_mod(self, m)
     }
 
-    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'v ast::ForeignItem) {
         self.record("ForeignItem", Id::None, i);
         ast_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_item(&mut self, i: &ast::Item) {
+    fn visit_item(&mut self, i: &'v ast::Item) {
         self.record("Item", Id::None, i);
         ast_visit::walk_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &ast::Local) {
+    fn visit_local(&mut self, l: &'v ast::Local) {
         self.record("Local", Id::None, l);
         ast_visit::walk_local(self, l)
     }
 
-    fn visit_block(&mut self, b: &ast::Block) {
+    fn visit_block(&mut self, b: &'v ast::Block) {
         self.record("Block", Id::None, b);
         ast_visit::walk_block(self, b)
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt) {
+    fn visit_stmt(&mut self, s: &'v ast::Stmt) {
         self.record("Stmt", Id::None, s);
         ast_visit::walk_stmt(self, s)
     }
 
-    fn visit_arm(&mut self, a: &ast::Arm) {
+    fn visit_arm(&mut self, a: &'v ast::Arm) {
         self.record("Arm", Id::None, a);
         ast_visit::walk_arm(self, a)
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat) {
+    fn visit_pat(&mut self, p: &'v ast::Pat) {
         self.record("Pat", Id::None, p);
         ast_visit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, ex: &ast::Expr) {
+    fn visit_expr(&mut self, ex: &'v ast::Expr) {
         self.record("Expr", Id::None, ex);
         ast_visit::walk_expr(self, ex)
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty) {
+    fn visit_ty(&mut self, t: &'v ast::Ty) {
         self.record("Ty", Id::None, t);
         ast_visit::walk_ty(self, t)
     }
 
     fn visit_fn(&mut self,
-                fk: ast_visit::FnKind,
-                fd: &ast::FnDecl,
+                fk: ast_visit::FnKind<'v>,
+                fd: &'v ast::FnDecl,
                 s: Span,
                 _: NodeId) {
         self.record("FnDecl", Id::None, fd);
         ast_visit::walk_fn(self, fk, fd, s)
     }
 
-    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
         self.record("TraitItem", Id::None, ti);
         ast_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
         self.record("ImplItem", Id::None, ii);
         ast_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &ast::TyParamBound) {
+    fn visit_ty_param_bound(&mut self, bounds: &'v ast::TyParamBound) {
         self.record("TyParamBound", Id::None, bounds);
         ast_visit::walk_ty_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &ast::StructField) {
+    fn visit_struct_field(&mut self, s: &'v ast::StructField) {
         self.record("StructField", Id::None, s);
         ast_visit::walk_struct_field(self, s)
     }
 
     fn visit_variant(&mut self,
-                     v: &ast::Variant,
-                     g: &ast::Generics,
+                     v: &'v ast::Variant,
+                     g: &'v ast::Generics,
                      item_id: NodeId) {
         self.record("Variant", Id::None, v);
         ast_visit::walk_variant(self, v, g, item_id)
     }
 
-    fn visit_lifetime(&mut self, lifetime: &ast::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
         self.record("Lifetime", Id::None, lifetime);
         ast_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_lifetime_def(&mut self, lifetime: &ast::LifetimeDef) {
+    fn visit_lifetime_def(&mut self, lifetime: &'v ast::LifetimeDef) {
         self.record("LifetimeDef", Id::None, lifetime);
         ast_visit::walk_lifetime_def(self, lifetime)
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac) {
+    fn visit_mac(&mut self, mac: &'v ast::Mac) {
         self.record("Mac", Id::None, mac);
     }
 
     fn visit_path_list_item(&mut self,
-                            prefix: &ast::Path,
-                            item: &ast::PathListItem) {
+                            prefix: &'v ast::Path,
+                            item: &'v ast::PathListItem) {
         self.record("PathListItem", Id::None, item);
         ast_visit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_path_segment(&mut self,
                           path_span: Span,
-                          path_segment: &ast::PathSegment) {
+                          path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
         ast_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &ast::TypeBinding) {
+    fn visit_assoc_type_binding(&mut self, type_binding: &'v ast::TypeBinding) {
         self.record("TypeBinding", Id::None, type_binding);
         ast_visit::walk_assoc_type_binding(self, type_binding)
     }
 
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         self.record("Attribute", Id::None, attr);
     }
 
-    fn visit_macro_def(&mut self, macro_def: &ast::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'v ast::MacroDef) {
         self.record("MacroDef", Id::None, macro_def);
         ast_visit::walk_macro_def(self, macro_def)
     }

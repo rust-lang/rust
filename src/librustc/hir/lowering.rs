@@ -143,14 +143,14 @@ impl<'a> LoweringContext<'a> {
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
-        impl<'lcx, 'interner> Visitor for ItemLowerer<'lcx, 'interner> {
-            fn visit_item(&mut self, item: &Item) {
+        impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
+            fn visit_item(&mut self, item: &'lcx Item) {
                 let hir_item = self.lctx.lower_item(item);
                 self.lctx.items.insert(item.id, hir_item);
                 visit::walk_item(self, item);
             }
 
-            fn visit_impl_item(&mut self, item: &ImplItem) {
+            fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
                 let id = self.lctx.lower_impl_item_ref(item).id;
                 let hir_item = self.lctx.lower_impl_item(item);
                 self.lctx.impl_items.insert(id, hir_item);

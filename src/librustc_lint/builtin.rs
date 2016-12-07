@@ -69,7 +69,7 @@ impl LintPass for WhileTrue {
     }
 }
 
-impl LateLintPass for WhileTrue {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprWhile(ref cond, ..) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
@@ -93,7 +93,7 @@ declare_lint! {
 pub struct BoxPointers;
 
 impl BoxPointers {
-    fn check_heap_type<'a, 'tcx>(&self, cx: &LateContext<'a, 'tcx>, span: Span, ty: Ty<'tcx>) {
+    fn check_heap_type<'a, 'tcx>(&self, cx: &LateContext, span: Span, ty: Ty) {
         for leaf_ty in ty.walk() {
             if let ty::TyBox(_) = leaf_ty.sty {
                 let m = format!("type uses owned (Box type) pointers: {}", ty);
@@ -109,7 +109,7 @@ impl LintPass for BoxPointers {
     }
 }
 
-impl LateLintPass for BoxPointers {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(..) |
@@ -158,7 +158,7 @@ impl LintPass for NonShorthandFieldPatterns {
     }
 }
 
-impl LateLintPass for NonShorthandFieldPatterns {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         if let PatKind::Struct(_, ref field_pats, _) = pat.node {
             for fieldpat in field_pats {
@@ -194,7 +194,7 @@ impl LintPass for UnsafeCode {
     }
 }
 
-impl LateLintPass for UnsafeCode {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
@@ -220,7 +220,7 @@ impl LateLintPass for UnsafeCode {
 
     fn check_fn(&mut self,
                 cx: &LateContext,
-                fk: FnKind,
+                fk: FnKind<'tcx>,
                 _: &hir::FnDecl,
                 _: &hir::Expr,
                 span: Span,
@@ -327,7 +327,7 @@ impl LintPass for MissingDoc {
     }
 }
 
-impl LateLintPass for MissingDoc {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden() ||
                          attrs.iter().any(|attr| {
@@ -340,7 +340,7 @@ impl LateLintPass for MissingDoc {
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &LateContext, _: &[ast::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &LateContext, _attrs: &[ast::Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
@@ -494,7 +494,7 @@ impl LintPass for MissingCopyImplementations {
     }
 }
 
-impl LateLintPass for MissingCopyImplementations {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !cx.access_levels.is_reachable(item.id) {
             return;
@@ -563,7 +563,7 @@ impl LintPass for MissingDebugImplementations {
     }
 }
 
-impl LateLintPass for MissingDebugImplementations {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !cx.access_levels.is_reachable(item.id) {
             return;
@@ -669,7 +669,7 @@ impl LintPass for UnconditionalRecursion {
     }
 }
 
-impl LateLintPass for UnconditionalRecursion {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
     fn check_fn(&mut self,
                 cx: &LateContext,
                 fn_kind: FnKind,
@@ -932,7 +932,7 @@ impl LintPass for PluginAsLibrary {
     }
 }
 
-impl LateLintPass for PluginAsLibrary {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if cx.sess().plugin_registrar_fn.get().is_some() {
             // We're compiling a plugin; it's fine to link other plugins.
@@ -998,7 +998,7 @@ impl LintPass for InvalidNoMangleItems {
     }
 }
 
-impl LateLintPass for InvalidNoMangleItems {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(.., ref generics, _) => {
@@ -1052,7 +1052,7 @@ impl LintPass for MutableTransmutes {
     }
 }
 
-impl LateLintPass for MutableTransmutes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         use syntax::abi::Abi::RustIntrinsic;
 
@@ -1120,7 +1120,7 @@ impl LintPass for UnstableFeatures {
     }
 }
 
-impl LateLintPass for UnstableFeatures {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
         if attr.meta().check_name("feature") {
             if let Some(items) = attr.meta().meta_item_list() {
@@ -1147,7 +1147,7 @@ impl LintPass for UnionsWithDropFields {
     }
 }
 
-impl LateLintPass for UnionsWithDropFields {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);

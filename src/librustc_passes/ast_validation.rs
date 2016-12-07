@@ -101,8 +101,8 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-impl<'a> Visitor for AstValidator<'a> {
-    fn visit_lifetime(&mut self, lt: &Lifetime) {
+impl<'a> Visitor<'a> for AstValidator<'a> {
+    fn visit_lifetime(&mut self, lt: &'a Lifetime) {
         if lt.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   lt.id,
@@ -113,7 +113,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_lifetime(self, lt)
     }
 
-    fn visit_expr(&mut self, expr: &Expr) {
+    fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
             ExprKind::While(.., Some(ident)) |
             ExprKind::Loop(_, Some(ident)) |
@@ -129,7 +129,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_expr(self, expr)
     }
 
-    fn visit_ty(&mut self, ty: &Ty) {
+    fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
@@ -153,7 +153,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_path(&mut self, path: &Path, id: NodeId) {
+    fn visit_path(&mut self, path: &'a Path, id: NodeId) {
         if path.global && path.segments.len() > 0 {
             let ident = path.segments[0].identifier;
             if token::Ident(ident).is_path_segment_keyword() {
@@ -167,7 +167,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_path(self, path)
     }
 
-    fn visit_item(&mut self, item: &Item) {
+    fn visit_item(&mut self, item: &'a Item) {
         match item.node {
             ItemKind::Use(ref view_path) => {
                 let path = view_path.node.path();
@@ -249,7 +249,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_item(self, item)
     }
 
-    fn visit_foreign_item(&mut self, fi: &ForeignItem) {
+    fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
                 self.check_decl_no_pat(decl, |span, is_recent| {
@@ -272,7 +272,7 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
-    fn visit_vis(&mut self, vis: &Visibility) {
+    fn visit_vis(&mut self, vis: &'a Visibility) {
         match *vis {
             Visibility::Restricted { ref path, .. } => {
                 if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {

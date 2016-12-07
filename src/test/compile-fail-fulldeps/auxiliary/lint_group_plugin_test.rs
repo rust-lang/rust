@@ -34,7 +34,7 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match &*it.name.as_str() {
             "lintme" => cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'"),
@@ -46,6 +46,6 @@ impl LateLintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box Pass as LateLintPassObject);
+    reg.register_late_lint_pass(box Pass);
     reg.register_lint_group("lint_me", vec![TEST_LINT, PLEASE_LINT]);
 }
