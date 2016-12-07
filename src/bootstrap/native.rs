@@ -28,7 +28,7 @@ use cmake;
 use gcc;
 
 use Build;
-use util::up_to_date;
+use util::{self, up_to_date};
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
@@ -58,6 +58,7 @@ pub fn llvm(build: &Build, target: &str) {
 
     println!("Building LLVM for {}", target);
 
+    let _time = util::timeit();
     let _ = fs::remove_dir_all(&dst.join("build"));
     t!(fs::create_dir_all(&dst.join("build")));
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
@@ -158,6 +159,17 @@ pub fn test_helpers(build: &Build, target: &str) {
     println!("Building test helpers");
     t!(fs::create_dir_all(&dst));
     let mut cfg = gcc::Config::new();
+
+    // We may have found various cross-compilers a little differently due to our
+    // extra configuration, so inform gcc of these compilers. Note, though, that
+    // on MSVC we still need gcc's detection of env vars (ugh).
+    if !target.contains("msvc") {
+        if let Some(ar) = build.ar(target) {
+            cfg.archiver(ar);
+        }
+        cfg.compiler(build.cc(target));
+    }
+
     cfg.cargo_metadata(false)
        .out_dir(&dst)
        .target(target)

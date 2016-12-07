@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Implementation of the various `check-*` targets of the build system.
+//! Implementation of the test-related targets of the build system.
 //!
 //! This file implements the various regression test suites that we execute on
 //! our CI.
@@ -62,6 +62,8 @@ impl fmt::Display for TestKind {
 pub fn linkcheck(build: &Build, stage: u32, host: &str) {
     println!("Linkcheck stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
+
+    let _time = util::timeit();
     build.run(build.tool_cmd(&compiler, "linkchecker")
                    .arg(build.out.join(host).join("doc")));
 }
@@ -87,6 +89,7 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     let out_dir = build.out.join("ct");
     t!(fs::create_dir_all(&out_dir));
 
+    let _time = util::timeit();
     build.run(build.tool_cmd(compiler, "cargotest")
                    .env("PATH", newpath)
                    .arg(&build.cargo)
@@ -119,7 +122,8 @@ pub fn compiletest(build: &Build,
                    target: &str,
                    mode: &str,
                    suite: &str) {
-    println!("Check compiletest {} ({} -> {})", suite, compiler.host, target);
+    println!("Check compiletest suite={} mode={} ({} -> {})",
+             suite, mode, compiler.host, target);
     let mut cmd = build.tool_cmd(compiler, "compiletest");
 
     // compiletest currently has... a lot of arguments, so let's just pass all
@@ -213,6 +217,9 @@ pub fn compiletest(build: &Build,
 
     // Running a C compiler on MSVC requires a few env vars to be set, to be
     // sure to set them here.
+    //
+    // Note that if we encounter `PATH` we make sure to append to our own `PATH`
+    // rather than stomp over it.
     if target.contains("msvc") {
         for &(ref k, ref v) in build.cc[target].0.env() {
             if k != "PATH" {
@@ -221,6 +228,7 @@ pub fn compiletest(build: &Build,
         }
     }
     cmd.env("RUSTC_BOOTSTRAP", "1");
+    build.add_rust_test_threads(&mut cmd);
 
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
@@ -232,6 +240,7 @@ pub fn compiletest(build: &Build,
         cmd.arg("--android-cross-path").arg("");
     }
 
+    let _time = util::timeit();
     build.run(&mut cmd);
 }
 
@@ -244,6 +253,7 @@ pub fn docs(build: &Build, compiler: &Compiler) {
     // Do a breadth-first traversal of the `src/doc` directory and just run
     // tests for all files that end in `*.md`
     let mut stack = vec![build.src.join("src/doc")];
+    let _time = util::timeit();
 
     while let Some(p) = stack.pop() {
         if p.is_dir() {
@@ -272,6 +282,8 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
     let dir = testdir(build, compiler.host);
     t!(fs::create_dir_all(&dir));
     let output = dir.join("error-index.md");
+
+    let _time = util::timeit();
     build.run(build.tool_cmd(compiler, "error_index_generator")
                    .arg("markdown")
                    .arg(&output)
@@ -283,6 +295,7 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
 fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     let mut cmd = Command::new(build.rustdoc(compiler));
     build.add_rustc_lib_path(compiler, &mut cmd);
+    build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
 
@@ -366,16 +379,25 @@ pub fn krate(build: &Build,
     dylib_path.insert(0, build.sysroot_libdir(compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
+    if target.contains("android") {
+        cargo.arg("--no-run");
+    } else if target.contains("emscripten") {
+        cargo.arg("--no-run");
+    }
+
+    cargo.arg("--");
+
     if build.config.quiet_tests {
-        cargo.arg("--");
         cargo.arg("--quiet");
     }
 
+    let _time = util::timeit();
+
     if target.contains("android") {
-        build.run(cargo.arg("--no-run"));
+        build.run(&mut cargo);
         krate_android(build, compiler, target, mode);
     } else if target.contains("emscripten") {
-        build.run(cargo.arg("--no-run"));
+        build.run(&mut cargo);
         krate_emscripten(build, compiler, target, mode);
     } else {
         cargo.args(&build.flags.cmd.test_args());
@@ -402,14 +424,17 @@ fn krate_android(build: &Build,
                           target,
                           compiler.host,
                           test_file_name);
+        let quiet = if build.config.quiet_tests { "--quiet" } else { "" };
         let program = format!("(cd {dir}; \
                                 LD_LIBRARY_PATH=./{target} ./{test} \
                                     --logfile {log} \
+                                    {quiet} \
                                     {args})",
                               dir = ADB_TEST_DIR,
                               target = target,
                               test = test_file_name,
                               log = log,
+                              quiet = quiet,
                               args = build.flags.cmd.test_args().join(" "));
 
         let output = output(Command::new("adb").arg("shell").arg(&program));
@@ -438,18 +463,13 @@ fn krate_emscripten(build: &Build,
          let test_file_name = test.to_string_lossy().into_owned();
          println!("running {}", test_file_name);
          let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
-         let status = Command::new(nodejs)
-             .arg(&test_file_name)
-             .stderr(::std::process::Stdio::inherit())
-             .status();
-         match status {
-             Ok(status) => {
-                 if !status.success() {
-                     panic!("some tests failed");
-                 }
-             }
-             Err(e) => panic!(format!("failed to execute command: {}", e)),
-         };
+         let mut cmd = Command::new(nodejs);
+         cmd.arg(&test_file_name)
+            .stderr(::std::process::Stdio::inherit());
+         if build.config.quiet_tests {
+             cmd.arg("--quiet");
+         }
+         build.run(&mut cmd);
      }
  }
 

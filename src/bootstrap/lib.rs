@@ -13,9 +13,56 @@
 //! This module, and its descendants, are the implementation of the Rust build
 //! system. Most of this build system is backed by Cargo but the outer layer
 //! here serves as the ability to orchestrate calling Cargo, sequencing Cargo
-//! builds, building artifacts like LLVM, etc.
+//! builds, building artifacts like LLVM, etc. The goals of rustbuild are:
 //!
-//! More documentation can be found in each respective module below.
+//! * To be an easily understandable, easily extensible, and maintainable build
+//!   system.
+//! * Leverage standard tools in the Rust ecosystem to build the compiler, aka
+//!   crates.io and Cargo.
+//! * A standard interface to build across all platforms, including MSVC
+//!
+//! ## Architecture
+//!
+//! Although this build system defers most of the complicated logic to Cargo
+//! itself, it still needs to maintain a list of targets and dependencies which
+//! it can itself perform. Rustbuild is made up of a list of rules with
+//! dependencies amongst them (created in the `step` module) and then knows how
+//! to execute each in sequence. Each time rustbuild is invoked, it will simply
+//! iterate through this list of steps and execute each serially in turn.  For
+//! each step rustbuild relies on the step internally being incremental and
+//! parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
+//! to appropriate test harnesses and such.
+//!
+//! Most of the "meaty" steps that matter are backed by Cargo, which does indeed
+//! have its own parallelism and incremental management. Later steps, like
+//! tests, aren't incremental and simply run the entire suite currently.
+//!
+//! When you execute `x.py build`, the steps which are executed are:
+//!
+//! * First, the python script is run. This will automatically download the
+//!   stage0 rustc and cargo according to `src/stage0.txt`, or using the cached
+//!   versions if they're available. These are then used to compile rustbuild
+//!   itself (using Cargo). Finally, control is then transferred to rustbuild.
+//!
+//! * Rustbuild takes over, performs sanity checks, probes the environment,
+//!   reads configuration, builds up a list of steps, and then starts executing
+//!   them.
+//!
+//! * The stage0 libstd is compiled
+//! * The stage0 libtest is compiled
+//! * The stage0 librustc is compiled
+//! * The stage1 compiler is assembled
+//! * The stage1 libstd, libtest, librustc are compiled
+//! * The stage2 compiler is assembled
+//! * The stage2 libstd, libtest, librustc are compiled
+//!
+//! Each step is driven by a separate Cargo project and rustbuild orchestrates
+//! copying files between steps and otherwise preparing for Cargo to run.
+//!
+//! ## Further information
+//!
+//! More documentation can be found in each respective module below, and you can
+//! also check out the `src/bootstrap/README.md` file for more information.
 
 extern crate build_helper;
 extern crate cmake;
@@ -28,6 +75,7 @@ extern crate toml;
 
 use std::collections::HashMap;
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
@@ -128,6 +176,7 @@ pub struct Build {
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
+    is_sudo: bool,
 }
 
 #[derive(Debug)]
@@ -187,6 +236,16 @@ impl Build {
         };
         let local_rebuild = config.local_rebuild;
 
+        let is_sudo = match env::var_os("SUDO_USER") {
+            Some(sudo_user) => {
+                match env::var_os("USER") {
+                    Some(user) => user != sudo_user,
+                    None => false,
+                }
+            }
+            None => false,
+        };
+
         Build {
             flags: flags,
             config: config,
@@ -208,6 +267,7 @@ impl Build {
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
+            is_sudo: is_sudo,
         }
     }
 
@@ -414,7 +474,7 @@ impl Build {
         // how the actual compiler itself is called.
         //
         // These variables are primarily all read by
-        // src/bootstrap/{rustc,rustdoc.rs}
+        // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
@@ -435,6 +495,7 @@ impl Build {
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
+        self.add_rust_test_threads(&mut cargo);
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -458,7 +519,7 @@ impl Build {
         if self.config.rust_optimize && cmd != "bench" {
             cargo.arg("--release");
         }
-        if self.config.vendor {
+        if self.config.vendor || self.is_sudo {
             cargo.arg("--frozen");
         }
         return cargo
@@ -492,12 +553,30 @@ impl Build {
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
         let host = compiler.host;
-        let paths = vec![
+        let mut paths = vec![
             self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
             self.cargo_out(compiler, Mode::Libtest, host).join("deps"),
             self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
             self.cargo_out(compiler, Mode::Tool, host).join("deps"),
         ];
+
+        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
+        // mode) and that C compiler may need some extra PATH modification. Do
+        // so here.
+        if compiler.host.contains("msvc") {
+            let curpaths = env::var_os("PATH").unwrap_or(OsString::new());
+            let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
+            for &(ref k, ref v) in self.cc[compiler.host].0.env() {
+                if k != "PATH" {
+                    continue
+                }
+                for path in env::split_paths(v) {
+                    if !curpaths.contains(&path) {
+                        paths.push(path);
+                    }
+                }
+            }
+        }
         add_lib_path(paths, &mut cmd);
         return cmd
     }
@@ -649,6 +728,13 @@ impl Build {
         }
 
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
+    }
+
+    /// Adds the `RUST_TEST_THREADS` env var if necessary
+    fn add_rust_test_threads(&self, cmd: &mut Command) {
+        if env::var_os("RUST_TEST_THREADS").is_none() {
+            cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
+        }
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that

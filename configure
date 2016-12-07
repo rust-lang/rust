@@ -631,7 +631,7 @@ opt stage0-landing-pads 1 "enable landing pads during bootstrap with stage0"
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
-opt rustbuild 0 "use the rust and cargo based build system"
+opt rustbuild 1 "use the rust and cargo based build system"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
@@ -664,11 +664,11 @@ valopt armv7-linux-androideabi-ndk "" "armv7-linux-androideabi NDK standalone pa
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
 valopt musl-root "/usr/local" "MUSL root installation directory (deprecated)"
-valopt musl-root-x86_64 "/usr/local" "x86_64-unknown-linux-musl install directory"
-valopt musl-root-i686 "/usr/local" "i686-unknown-linux-musl install directory"
-valopt musl-root-arm "/usr/local" "arm-unknown-linux-musleabi install directory"
-valopt musl-root-armhf "/usr/local" "arm-unknown-linux-musleabihf install directory"
-valopt musl-root-armv7 "/usr/local" "armv7-unknown-linux-musleabihf install directory"
+valopt musl-root-x86_64 "" "x86_64-unknown-linux-musl install directory"
+valopt musl-root-i686 "" "i686-unknown-linux-musl install directory"
+valopt musl-root-arm "" "arm-unknown-linux-musleabi install directory"
+valopt musl-root-armhf "" "arm-unknown-linux-musleabihf install directory"
+valopt musl-root-armv7 "" "armv7-unknown-linux-musleabihf install directory"
 valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 
 if [ -e ${CFG_SRC_DIR}.git ]
@@ -1374,7 +1374,7 @@ then
     fi
 fi
 
-if [ -z "$CFG_ENABLE_RUSTBUILD" ]; then
+if [ -n "$CFG_DISABLE_RUSTBUILD" ]; then
 
   step_msg "making directories"
 
@@ -1474,7 +1474,7 @@ fi
 step_msg "configuring submodules"
 
 # Have to be in the top of src directory for this
-if [ -z "$CFG_DISABLE_MANAGE_SUBMODULES" ] && [ -z "$CFG_ENABLE_RUSTBUILD" ]
+if [ -z "$CFG_DISABLE_MANAGE_SUBMODULES" ] && [ -n "$CFG_DISABLE_RUSTBUILD" ]
 then
     cd ${CFG_SRC_DIR}
 
@@ -1546,7 +1546,7 @@ do
         ;;
     esac
 
-    if [ -n "$CFG_ENABLE_RUSTBUILD" ]
+    if [ -z "$CFG_DISABLE_RUSTBUILD" ]
     then
         msg "not configuring LLVM, rustbuild in use"
         do_reconfigure=0
@@ -1871,7 +1871,7 @@ do
     putvar $CFG_LLVM_INST_DIR
 done
 
-if [ -n "$CFG_ENABLE_RUSTBUILD" ]
+if [ -z "$CFG_DISABLE_RUSTBUILD" ]
 then
     INPUT_MAKEFILE=src/bootstrap/mk/Makefile.in
 else
@@ -1890,5 +1890,22 @@ else
     step_msg "complete"
 fi
 
-msg "run \`make help\`"
+if [ -z "$CFG_DISABLE_RUSTBUILD" ]; then
+    msg "NOTE you have now configured rust to use a rewritten build system"
+    msg "     called rustbuild, and as a result this may have bugs that "
+    msg "     you did not see before. If you experience any issues you can"
+    msg "     go back to the old build system with --disable-rustbuild and"
+    msg "     please feel free to report any bugs!"
+    msg ""
+    msg "run \`python x.py --help\`"
+else
+    warn "the makefile-based build system is deprecated in favor of rustbuild"
+    msg ""
+    msg "It is recommended you avoid passing --disable-rustbuild to get your"
+    msg "build working as the makefiles will be deleted on 2017-02-02. If you"
+    msg "encounter bugs with rustbuild please file issues against rust-lang/rust"
+    msg ""
+    msg "run \`make help\`"
+fi
+
 msg
