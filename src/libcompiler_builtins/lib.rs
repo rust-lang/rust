@@ -46,10 +46,6 @@ pub mod reimpls {
     #[cfg(not(stage0))]
     type i128_ = i128;
 
-    fn unimplemented() -> ! {
-        unsafe { ::core::intrinsics::abort() }
-    }
-
     macro_rules! ashl {
         ($a:expr, $b:expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
@@ -603,8 +599,7 @@ pub mod reimpls {
         match a.signum() {
             1 => u128_as_f64(a.uabs()),
             0 => 0.0,
-            -1 => -u128_as_f64(a.uabs()),
-            _ => unimplemented()
+            _ => -u128_as_f64(a.uabs()),
         }
     }
 
@@ -613,8 +608,7 @@ pub mod reimpls {
         match a.signum() {
             1 => u128_as_f32(a.uabs()),
             0 => 0.0,
-            -1 => -u128_as_f32(a.uabs()),
-            _ => unimplemented()
+            _ => -u128_as_f32(a.uabs()),
         }
     }
 
