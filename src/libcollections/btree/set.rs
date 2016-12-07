@@ -75,23 +75,43 @@ pub struct BTreeSet<T> {
 }
 
 /// An iterator over a `BTreeSet`'s items.
+///
+/// This structure is created by the [`iter`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`iter`]: struct.BTreeSet.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
 /// An owning iterator over a `BTreeSet`'s items.
+///
+/// This structure is created by the `into_iter` method on [`BTreeSet`]
+/// [`BTreeSet`] (provided by the `IntoIterator` trait).
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
 /// An iterator over a sub-range of `BTreeSet`'s items.
+///
+/// This structure is created by the [`range`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`range`]: struct.BTreeSet.html#method.range
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
+///
+/// This structure is created by the [`difference`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`difference`]: struct.BTreeSet.html#method.difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -99,6 +119,12 @@ pub struct Difference<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
+///
+/// This structure is created by the [`symmetric_difference`] method on
+/// [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -106,6 +132,11 @@ pub struct SymmetricDifference<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set intersection (in-order).
+///
+/// This structure is created by the [`intersection`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`intersection`]: struct.BTreeSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -113,6 +144,11 @@ pub struct Intersection<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set union (in-order).
+///
+/// This structure is created by the [`union`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`union`]: struct.BTreeSet.html#method.union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
