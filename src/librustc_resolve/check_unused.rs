@@ -103,6 +103,12 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
                     }
 
                     ViewPathList(_, ref list) => {
+                        if list.len() == 0 {
+                            self.unused_imports
+                                .entry(item.id)
+                                .or_insert_with(NodeMap)
+                                .insert(item.id, item.span);
+                        }
                         for i in list {
                             self.check_import(item.id, i.node.id, i.span);
                         }
