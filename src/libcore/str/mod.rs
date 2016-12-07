@@ -618,6 +618,11 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
     fn len(&self) -> usize {
         self.0.len()
     }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]
