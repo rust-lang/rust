@@ -82,10 +82,10 @@ pub struct Frame<'tcx> {
     /// Before being initialized, a local is simply marked as None.
     pub locals: Vec<Option<Value>>,
 
-    /// Temporaries introduced to save stackframes
+    /// Temporary allocations introduced to save stackframes
     /// This is pure interpreter magic and has nothing to do with how rustc does it
     /// An example is calling an FnMut closure that has been converted to a FnOnce closure
-    /// If they are Value::ByRef, their memory will be freed when the stackframe finishes
+    /// The memory will be freed when the stackframe finishes
     pub interpreter_temporaries: Vec<Pointer>,
 
     ////////////////////////////////////////////////////////////////////////////////
