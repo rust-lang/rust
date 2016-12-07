@@ -180,14 +180,12 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
-    ///
-    /// for x in set.iter() {
-    ///     println!("{}", x);
-    /// }
-    ///
-    /// let v: Vec<_> = set.iter().cloned().collect();
-    /// assert_eq!(v, [1, 2, 3, 4]);
+    /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
