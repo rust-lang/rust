@@ -74,19 +74,19 @@ pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
 
-/// An iterator over a BTreeSet's items.
+/// An iterator over a `BTreeSet`'s items.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
-/// An owning iterator over a BTreeSet's items.
+/// An owning iterator over a `BTreeSet`'s items.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
-/// An iterator over a sub-range of BTreeSet's items.
+/// An iterator over a sub-range of `BTreeSet`'s items.
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
@@ -120,7 +120,7 @@ pub struct Union<'a, T: 'a> {
 }
 
 impl<T: Ord> BTreeSet<T> {
-    /// Makes a new BTreeSet with a reasonable choice of B.
+    /// Makes a new `BTreeSet` with a reasonable choice of B.
     ///
     /// # Examples
     ///
@@ -137,7 +137,7 @@ impl<T: Ord> BTreeSet<T> {
 }
 
 impl<T> BTreeSet<T> {
-    /// Gets an iterator over the BTreeSet's contents.
+    /// Gets an iterator over the `BTreeSet`'s contents.
     ///
     /// # Examples
     ///
