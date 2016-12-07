@@ -650,7 +650,7 @@ fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {
                             .new_filemap(String::from("<macro expansion>"), None, text);
 
     let lexer = lexer::StringReader::new(&parse_sess.span_diagnostic, filemap);
-    let mut parser = Parser::new(parse_sess, Box::new(lexer));
+    let mut parser = Parser::new(parse_sess, Box::new(lexer), None, false);
     panictry!(parser.parse_all_token_trees())
 }
 
