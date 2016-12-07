@@ -23,9 +23,11 @@ This should get into specifics and corner-cases, and include examples of how the
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-What names and terminology work best for these concepts and why? How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
+What names and terminology work best for these concepts and why? 
+How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
 
-Would the acceptance of this proposal change how Rust is taught to new users at any level? How should this feature be introduced and taught to existing Rust users?
+Would the acceptance of this proposal change how Rust is taught to new users at any level? 
+How should this feature be introduced and taught to existing Rust users?
 
 What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
 
