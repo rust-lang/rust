@@ -32,8 +32,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_crate<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate) {
         if !attr::contains_name(&krate.attrs, "crate_okay") {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
                          "crate is not marked with #![crate_okay]");
@@ -43,5 +43,5 @@ impl LateLintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box Pass as LateLintPassObject);
+    reg.register_late_lint_pass(box Pass);
 }
