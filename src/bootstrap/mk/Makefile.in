@@ -23,9 +23,14 @@ all:
 	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
 	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
 
-# Don’t use $(Q) here, always show how to invoke the bootstrap script directly
 help:
-	$(BOOTSTRAP) --help
+	$(Q)echo 'Welcome to the rustbuild build system!'
+	$(Q)echo
+	$(Q)echo This makefile is a thin veneer over the ./x.py script located
+	$(Q)echo in this directory. To get the full power of the build system
+	$(Q)echo you can run x.py directly.
+	$(Q)echo
+	$(Q)echo To learn more run \`./x.py --help\`
 
 clean:
 	$(Q)$(BOOTSTRAP) clean $(BOOTSTRAP_ARGS)
@@ -51,15 +56,14 @@ check-cargotest:
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 install:
-ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
-	$(Q)echo "'sudo make install' is not supported currently."
-else
 	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
-endif
 tidy:
 	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS) --stage 0
 
-check-stage2-android:
-	$(Q)$(BOOTSTRAP) --step check-target --target arm-linux-androideabi
+check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
+	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
+check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
+	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-gnu
+
 
 .PHONY: dist

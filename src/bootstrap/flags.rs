@@ -239,6 +239,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
                     install: m.opt_present("install"),
                 }
             }
+            "--help" => usage(0, &opts),
             cmd => {
                 println!("unknown command: {}", cmd);
                 usage(1, &opts);
