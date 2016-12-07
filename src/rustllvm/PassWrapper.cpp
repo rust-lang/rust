@@ -533,8 +533,11 @@ LLVMRustPrintPasses() {
             StringRef PassArg = info->getPassArgument();
             StringRef PassName = info->getPassName();
             if (!PassArg.empty()) {
-                printf("%15.*s - %.*s\n", PassArg.size(), PassArg.data(),
-                       PassName.size(), PassName.data());
+                // These unsigned->signed casts could theoretically overflow, but
+                // realistically never will (and even if, the result is implementation
+                // defined rather plain UB).
+                printf("%15.*s - %.*s\n", (int)PassArg.size(), PassArg.data(),
+                       (int)PassName.size(), PassName.data());
             }
 #else
             if (info->getPassArgument() && *info->getPassArgument()) {
