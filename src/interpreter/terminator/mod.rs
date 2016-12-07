@@ -118,7 +118,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mut drops = Vec::new();
                 self.drop(lval, ty, &mut drops)?;
                 self.goto_block(target);
-                self.eval_drop_impls(drops)?;
+                self.eval_drop_impls(drops, terminator.source_info.span)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
@@ -151,12 +151,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
-        let span = self.frame().span;
+    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>, span: Span) -> EvalResult<'tcx, ()> {
         // add them to the stack in reverse order, because the impl that needs to run the last
         // is the one that needs to be at the bottom of the stack
         for (drop_def_id, self_arg, substs) in drops.into_iter().rev() {
-            // FIXME: supply a real span
             let mir = self.load_mir(drop_def_id)?;
             trace!("substs for drop glue: {:?}", substs);
             self.push_stack_frame(
@@ -166,6 +164,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 substs,
                 Lvalue::from_ptr(Pointer::zst_ptr()),
                 StackPopCleanup::None,
+                Vec::new(),
             )?;
             let mut arg_locals = self.frame().mir.args_iter();
             let first = arg_locals.next().expect("drop impl has self arg");
@@ -213,11 +212,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
 
                 // Only trait methods can have a Self parameter.
-                let (resolved_def_id, resolved_substs) =
+                let (resolved_def_id, resolved_substs, temporaries) =
                     if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
                         self.trait_method(trait_id, def_id, substs, &mut args)?
                     } else {
-                        (def_id, substs)
+                        (def_id, substs, Vec::new())
                     };
 
                 let mir = self.load_mir(resolved_def_id)?;
@@ -237,6 +236,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     resolved_substs,
                     return_lvalue,
                     return_to_block,
+                    temporaries,
                 )?;
 
                 let arg_locals = self.frame().mir.args_iter();
@@ -432,7 +432,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         args: &mut Vec<(Value, Ty<'tcx>)>,
-    ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>)> {
+    ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, Vec<Pointer>)> {
         let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
         let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
 
@@ -444,7 +444,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // and those from the method:
                 let (did, substs) = find_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
 
-                Ok((did, substs))
+                Ok((did, substs, Vec::new()))
             }
 
             traits::VtableClosure(vtable_closure) => {
@@ -455,6 +455,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let closure_kind = self.tcx.closure_kind(vtable_closure.closure_def_id);
                 trace!("closures {:?}, {:?}", closure_kind, trait_closure_kind);
                 self.unpack_fn_args(args)?;
+                let mut temporaries = Vec::new();
                 match (closure_kind, trait_closure_kind) {
                     (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
                     (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
@@ -474,23 +475,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         // Interpreter magic: insert an intermediate pointer, so we can skip the
                         // intermediate function call.
-                        // FIXME: this is a memory leak, should probably add the pointer to the
-                        // current stack.
-                        let first = self.value_to_ptr_dont_use(args[0].0, args[0].1)?;
-                        args[0].0 = Value::ByVal(PrimVal::from_ptr(first));
+                        let ptr = match args[0].0 {
+                            Value::ByRef(ptr) => ptr,
+                            Value::ByVal(primval) => {
+                                let ptr = self.alloc_ptr(args[0].1)?;
+                                let kind = self.ty_to_primval_kind(args[0].1)?;
+                                self.memory.write_primval(ptr, primval, kind)?;
+                                temporaries.push(ptr);
+                                ptr
+                            },
+                            Value::ByValPair(a, b) => {
+                                let ptr = self.alloc_ptr(args[0].1)?;
+                                self.write_pair_to_ptr(a, b, ptr, args[0].1)?;
+                                temporaries.push(ptr);
+                                ptr
+                            },
+                        };
+                        args[0].0 = Value::ByVal(PrimVal::from_ptr(ptr));
                         args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
 
                     _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
                 }
-                Ok((vtable_closure.closure_def_id, vtable_closure.substs.substs))
+                Ok((vtable_closure.closure_def_id, vtable_closure.substs.substs, temporaries))
             }
 
             traits::VtableFnPointer(vtable_fn_ptr) => {
                 if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
                     args.remove(0);
                     self.unpack_fn_args(args)?;
-                    Ok((did, substs))
+                    Ok((did, substs, Vec::new()))
                 } else {
                     bug!("VtableFnPointer did not contain a concrete function: {:?}", vtable_fn_ptr)
                 }
@@ -506,7 +520,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
                     let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
                     *first_ty = sig.inputs[0];
-                    Ok((def_id, substs))
+                    Ok((def_id, substs, Vec::new()))
                 } else {
                     Err(EvalError::VtableForArgumentlessMethod)
                 }
