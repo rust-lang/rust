@@ -78,7 +78,7 @@ impl LintPass for UnusedMut {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {
                 self.check_unused_mut_pat(cx, &a.pats)
@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         if let hir::StmtDecl(ref d, _) = s.node {
             if let hir::DeclLocal(ref l) = d.node {
                 self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
@@ -95,12 +95,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
     }
 
     fn check_fn(&mut self,
-                              cx: &LateContext<'a, 'tcx>,
-                              _: FnKind<'tcx>,
-                              decl: &'tcx hir::FnDecl,
-                              _: &'tcx hir::Expr,
-                              _: Span,
-                              _: ast::NodeId) {
+                cx: &LateContext,
+                _: FnKind,
+                decl: &hir::FnDecl,
+                _: &hir::Expr,
+                _: Span,
+                _: ast::NodeId) {
         for a in &decl.inputs {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
         }
@@ -129,7 +129,7 @@ impl LintPass for UnusedResults {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
             hir::StmtSemi(ref expr, _) => &**expr,
             _ => return,
@@ -188,7 +188,7 @@ impl LintPass for UnusedUnsafe {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) &&
@@ -215,7 +215,7 @@ impl LintPass for PathStatements {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         if let hir::StmtSemi(ref expr, _) = s.node {
             if let hir::ExprPath(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
@@ -240,9 +240,7 @@ impl LintPass for UnusedAttributes {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self,
-                                     cx: &LateContext<'a, 'tcx>,
-                                     attr: &'tcx ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
 
         // Note that check_name() marks the attribute as used if it matches.
@@ -436,7 +434,7 @@ impl LintPass for UnusedAllocation {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprBox(_) => {}
             _ => return,

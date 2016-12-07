@@ -33,7 +33,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate) {
+    fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
         if !attr::contains_name(&krate.attrs, "crate_okay") {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
                          "crate is not marked with #![crate_okay]");
