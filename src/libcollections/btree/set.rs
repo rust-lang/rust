@@ -173,7 +173,7 @@ impl<T: Ord> BTreeSet<T> {
 }
 
 impl<T> BTreeSet<T> {
-    /// Gets an iterator over the `BTreeSet`'s contents.
+    /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
     ///
     /// # Examples
     ///
@@ -181,6 +181,19 @@ impl<T> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
+    ///
+    /// Values returned by the iterator are returned in ascending order:
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<usize> = [3, 1, 2].iter().cloned().collect();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
