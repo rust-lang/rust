@@ -535,7 +535,14 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
+impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+    fn is_empty(&self) -> bool {
+        (**self).is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
