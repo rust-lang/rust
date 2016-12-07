@@ -928,6 +928,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print some statistics about AST and HIR"),
     mir_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some statistics about MIR"),
+    always_encode_mir: bool = (false, parse_bool, [TRACKED],
+          "encode MIR of all functions into the crate metadata"),
 }
 
 pub fn default_lib_output() -> CrateType {

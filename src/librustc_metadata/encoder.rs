@@ -577,7 +577,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let types = generics.parent_types as usize + generics.types.len();
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
-            (is_const_fn, needs_inline || is_const_fn)
+            let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+            (is_const_fn, needs_inline || is_const_fn || always_encode_mir)
         } else {
             (false, false)
         };
@@ -842,7 +843,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let tps_len = generics.ty_params.len();
                     let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
-                    if needs_inline || constness == hir::Constness::Const {
+                    let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+                    if needs_inline || constness == hir::Constness::Const || always_encode_mir {
                         self.encode_mir(def_id)
                     } else {
                         None
