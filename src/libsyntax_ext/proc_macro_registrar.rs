@@ -52,14 +52,17 @@ pub fn modify(sess: &ParseSess,
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver);
 
-    let mut collect = CollectCustomDerives {
-        derives: Vec::new(),
-        in_root: true,
-        handler: handler,
-        is_proc_macro_crate: is_proc_macro_crate,
-        is_test_crate: is_test_crate,
+    let derives = {
+        let mut collect = CollectCustomDerives {
+            derives: Vec::new(),
+            in_root: true,
+            handler: handler,
+            is_proc_macro_crate: is_proc_macro_crate,
+            is_test_crate: is_test_crate,
+        };
+        visit::walk_crate(&mut collect, &krate);
+        collect.derives
     };
-    visit::walk_crate(&mut collect, &krate);
 
     if !is_proc_macro_crate {
         return krate
@@ -79,7 +82,7 @@ pub fn modify(sess: &ParseSess,
         return krate;
     }
 
-    krate.module.items.push(mk_registrar(&mut cx, &collect.derives));
+    krate.module.items.push(mk_registrar(&mut cx, &derives));
 
     if krate.exported_macros.len() > 0 {
         handler.err("cannot export macro_rules! macros from a `proc-macro` \
@@ -103,8 +106,8 @@ impl<'a> CollectCustomDerives<'a> {
     }
 }
 
-impl<'a> Visitor for CollectCustomDerives<'a> {
-    fn visit_item(&mut self, item: &ast::Item) {
+impl<'a> Visitor<'a> for CollectCustomDerives<'a> {
+    fn visit_item(&mut self, item: &'a ast::Item) {
         // First up, make sure we're checking a bare function. If we're not then
         // we're just not interested in this item.
         //
@@ -240,7 +243,7 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
         visit::walk_item(self, item);
     }
 
-    fn visit_mod(&mut self, m: &ast::Mod, _s: Span, id: NodeId) {
+    fn visit_mod(&mut self, m: &'a ast::Mod, _s: Span, id: NodeId) {
         let mut prev_in_root = self.in_root;
         if id != ast::CRATE_NODE_ID {
             prev_in_root = mem::replace(&mut self.in_root, false);

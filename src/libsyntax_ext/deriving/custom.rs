@@ -21,7 +21,7 @@ use syntax::visit::Visitor;
 
 struct MarkAttrs<'a>(&'a [ast::Name]);
 
-impl<'a> Visitor for MarkAttrs<'a> {
+impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
         if self.0.contains(&attr.name()) {
             mark_used(attr);
@@ -101,4 +101,3 @@ impl MultiItemModifier for CustomDerive {
         res
     }
 }
-
