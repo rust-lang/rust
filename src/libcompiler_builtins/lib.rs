@@ -66,7 +66,7 @@ pub mod reimpls {
     }
 
     #[export_name="__ashlti3"]
-    pub extern fn shl(a: u128_, b: u128_) -> u128_ {
+    pub extern "C" fn shl(a: u128_, b: u128_) -> u128_ {
         ashl!(a, b, u128_)
     }
 
@@ -89,7 +89,7 @@ pub mod reimpls {
     }
 
     #[export_name="__ashrti3"]
-    pub extern fn shr(a: i128_, b: i128_) -> i128_ {
+    pub extern "C" fn shr(a: i128_, b: i128_) -> i128_ {
         ashr!(a, b, i128_)
     }
 
@@ -110,13 +110,13 @@ pub mod reimpls {
 
 
     #[export_name="__lshrti3"]
-    pub extern fn lshr(a: u128_, b: u128_) -> u128_ {
+    pub extern "C" fn lshr(a: u128_, b: u128_) -> u128_ {
         lshr!(a, b, u128_)
     }
 
     #[cfg(stage0)]
     #[export_name="__udivmodti4"]
-    pub extern fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
+    pub extern "C" fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
         unsafe {
         if !rem.is_null() {
             *rem = unchecked_rem(n, d);
@@ -127,7 +127,7 @@ pub mod reimpls {
 
     #[cfg(not(stage0))]
     #[export_name="__udivmodti4"]
-    pub extern fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
+    pub extern "C" fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
         // Translated from Figure 3-40 of The PowerPC Compiler Writer's Guide
         unsafe {
         // special cases, X is unknown, K != 0
@@ -261,7 +261,12 @@ pub mod reimpls {
         // 1 <= sr <= u64::bits() - 1
         let mut carry = 0;
 
-        for _ in 0..sr {
+        // FIXME: replace this with a for loop
+        // (atm not doable as this generates call to
+        // eh_personality when optimisations are turned off,
+        // which in turn gives a linker error in later
+        // compilation steps)
+        while sr > 0 {
             // r:q = ((r:q) << 1) | carry
             r = (r << 1) | (q >> (128 - 1));
             q = (q << 1) | carry as u128;
@@ -274,6 +279,7 @@ pub mod reimpls {
             let s = (d.wrapping_sub(r).wrapping_sub(1)) as i128 >> (128 - 1);
             carry = (s & 1) as u64;
             r -= d & s as u128;
+            sr -= 1;
         }
 
         if !rem.is_null() {
@@ -284,7 +290,7 @@ pub mod reimpls {
     }
 
     #[export_name="__umodti3"]
-    pub extern fn u128_mod(a: u128_, b: u128_) -> u128_ {
+    pub extern "C" fn u128_mod(a: u128_, b: u128_) -> u128_ {
         unsafe {
             let mut r = ::core::mem::zeroed();
             u128_div_mod(a, b, &mut r);
@@ -293,7 +299,7 @@ pub mod reimpls {
     }
 
     #[export_name="__modti3"]
-    pub extern fn i128_mod(a: i128_, b: i128_) -> i128_ {
+    pub extern "C" fn i128_mod(a: i128_, b: i128_) -> i128_ {
         let b = b.uabs();
         let sa = a.signum();
         let a = a.uabs();
@@ -305,7 +311,7 @@ pub mod reimpls {
     }
 
     #[export_name="__divti3"]
-    pub extern fn i128_div(a: i128_, b: i128_) -> i128_ {
+    pub extern "C" fn i128_div(a: i128_, b: i128_) -> i128_ {
         let sa = a.signum();
         let sb = b.signum();
         let a = a.uabs();
@@ -319,7 +325,7 @@ pub mod reimpls {
     }
 
     #[export_name="__udivti3"]
-    pub extern fn u128_div(a: u128_, b: u128_) -> u128_ {
+    pub extern "C" fn u128_div(a: u128_, b: u128_) -> u128_ {
         u128_div_mod(a, b, ptr::null_mut())
     }
 
@@ -365,7 +371,7 @@ pub mod reimpls {
 
     // FIXME: i32 here should be c_int.
     #[export_name="__muloti4"]
-    pub extern fn i128_mul_oflow(a: i128_, b: i128_, o: &mut i32) -> i128_ {
+    pub extern "C" fn i128_mul_oflow(a: i128_, b: i128_, o: &mut i32) -> i128_ {
         mulo!(a, b, o, i128_)
     }
 
@@ -465,24 +471,25 @@ pub mod reimpls {
 
     #[cfg(stage0)]
     #[export_name="__multi3"]
-    pub extern fn u128_mul(a: i128_, b: i128_) -> i128_ {
+    pub extern "C" fn u128_mul(a: i128_, b: i128_) -> i128_ {
         (a as i64 * b as i64) as i128_
     }
 
     #[cfg(not(stage0))]
     #[export_name="__multi3"]
-    pub extern fn u128_mul(a: i128_, b: i128_) -> i128_ {
+    pub extern "C" fn u128_mul(a: i128_, b: i128_) -> i128_ {
         mul!(a, b, i128_, i64)
     }
 
     trait AbsExt: Sized {
-        fn uabs(self) -> u128_ {
-            self.iabs() as u128_
-        }
+        fn uabs(self) -> u128_;
         fn iabs(self) -> i128_;
     }
 
     impl AbsExt for i128_ {
+        fn uabs(self) -> u128_ {
+            self.iabs() as u128_
+        }
         fn iabs(self) -> i128_ {
             ((self ^ self).wrapping_sub(self))
         }
@@ -550,12 +557,12 @@ pub mod reimpls {
     }
 
     #[export_name="__fixunsdfti"]
-    pub extern fn f64_as_u128(a: f64) -> u128_ {
+    pub extern "C" fn f64_as_u128(a: f64) -> u128_ {
         float_as_unsigned!(a, f64, u128_)
     }
 
     #[export_name="__fixunssfti"]
-    pub extern fn f32_as_u128(a: f32) -> u128_ {
+    pub extern "C" fn f32_as_u128(a: f32) -> u128_ {
         float_as_unsigned!(a, f32, u128_)
     }
 
@@ -582,17 +589,17 @@ pub mod reimpls {
     }
 
     #[export_name="__fixdfti"]
-    pub extern fn f64_as_i128(a: f64) -> i128_ {
+    pub extern "C" fn f64_as_i128(a: f64) -> i128_ {
         float_as_signed!(a, f64, i128_)
     }
 
     #[export_name="__fixsfti"]
-    pub extern fn f32_as_i128(a: f32) -> i128_ {
+    pub extern "C" fn f32_as_i128(a: f32) -> i128_ {
         float_as_signed!(a, f32, i128_)
     }
 
     #[export_name="__floattidf"]
-    pub extern fn i128_as_f64(a: i128_) -> f64 {
+    pub extern "C" fn i128_as_f64(a: i128_) -> f64 {
         match a.signum() {
             1 => u128_as_f64(a.uabs()),
             0 => 0.0,
@@ -602,7 +609,7 @@ pub mod reimpls {
     }
 
     #[export_name="__floattisf"]
-    pub extern fn i128_as_f32(a: i128_) -> f32 {
+    pub extern "C" fn i128_as_f32(a: i128_) -> f32 {
         match a.signum() {
             1 => u128_as_f32(a.uabs()),
             0 => 0.0,
@@ -612,7 +619,7 @@ pub mod reimpls {
     }
 
     #[export_name="__floatuntidf"]
-    pub extern fn u128_as_f64(mut a: u128_) -> f64 {
+    pub extern "C" fn u128_as_f64(mut a: u128_) -> f64 {
         use ::core::f64::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
         let sd = 128 - a.leading_zeros();
@@ -643,7 +650,7 @@ pub mod reimpls {
     }
 
     #[export_name="__floatuntisf"]
-    pub extern fn u128_as_f32(mut a: u128_) -> f32 {
+    pub extern "C" fn u128_as_f32(mut a: u128_) -> f32 {
         use ::core::f32::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
         let sd = 128 - a.leading_zeros();
