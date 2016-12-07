@@ -83,7 +83,7 @@ use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
-use parse::ParseSess;
+use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
@@ -407,8 +407,9 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
-    let mut parser = Parser::new_with_doc_flag(sess, Box::new(rdr), true);
+pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Option<Directory>)
+             -> NamedParseResult {
+    let mut parser = Parser::new(sess, Box::new(rdr), directory, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally
 
