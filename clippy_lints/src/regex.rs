@@ -82,12 +82,12 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_crate<'a, 'tcx: 'a>(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         self.spans.clear();
     }
 
-    fn check_block<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
@@ -106,13 +106,13 @@ impl LateLintPass for Pass {
         }}
     }
 
-    fn check_block_post<'a, 'tcx: 'a>(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
+    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if self.last.map_or(false, |id| block.id == id) {
             self.last = None;
         }
     }
 
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(ref qpath) = fun.node,

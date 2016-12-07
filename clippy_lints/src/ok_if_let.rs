@@ -40,8 +40,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain! {[ //begin checking variables
             let ExprMatch(ref op, ref body, ref source) = expr.node, //test if expr is a match
             let MatchSource::IfLetDesugar { .. } = *source, //test if it is an If Let

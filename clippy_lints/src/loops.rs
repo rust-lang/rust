@@ -307,8 +307,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
@@ -391,7 +391,7 @@ impl LateLintPass for Pass {
         }
     }
 
-    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1 && &*method.node.as_str() == "collect" &&
@@ -407,7 +407,7 @@ impl LateLintPass for Pass {
     }
 }
 
-fn check_for_loop<'a, 'tcx: 'a>(
+fn check_for_loop<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
     arg: &'tcx Expr,
@@ -423,7 +423,7 @@ fn check_for_loop<'a, 'tcx: 'a>(
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
-fn check_for_loop_range<'a, 'tcx: 'a>(
+fn check_for_loop_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
     arg: &'tcx Expr,
@@ -658,7 +658,7 @@ fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     }
 }
 
-fn check_for_loop_explicit_counter<'a, 'tcx: 'a>(
+fn check_for_loop_explicit_counter<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     arg: &'tcx Expr,
     body: &'tcx Expr,
@@ -708,7 +708,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx: 'a>(
 }
 
 /// Check for the `FOR_KV_MAP` lint.
-fn check_for_loop_over_map_kv<'a, 'tcx: 'a>(
+fn check_for_loop_over_map_kv<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
     arg: &'tcx Expr,

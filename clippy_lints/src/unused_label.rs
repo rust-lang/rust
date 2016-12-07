@@ -40,8 +40,8 @@ impl LintPass for UnusedLabel {
     }
 }
 
-impl LateLintPass for UnusedLabel {
-    fn check_fn<'a, 'tcx: 'a>(
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
+    fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,

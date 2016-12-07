@@ -36,15 +36,15 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         if !has_attr(&item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
         if !has_attr(&item.attrs) {
             return;
         }
@@ -68,33 +68,33 @@ impl LateLintPass for Pass {
         }
     }
 /*
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
         if !has_attr(&item.attrs) {
             return;
         }
     }
 
-    fn check_variant<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
         if !has_attr(&var.node.attrs) {
             return;
         }
     }
 
-    fn check_struct_field<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
         if !has_attr(&field.attrs) {
             return;
         }
     }
 */
 
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if !has_attr(&expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
-    fn check_arm<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
+    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
         if !has_attr(&arm.attrs) {
             return;
         }
@@ -109,7 +109,7 @@ impl LateLintPass for Pass {
         print_expr(cx, &arm.body, 1);
     }
 
-    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
         if !has_attr(stmt.node.attrs()) {
             return;
         }
@@ -120,7 +120,7 @@ impl LateLintPass for Pass {
     }
 /*
 
-    fn check_foreign_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
         if !has_attr(&item.attrs) {
             return;
         }

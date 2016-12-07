@@ -104,8 +104,8 @@ impl LintPass for LintWithoutLintPass {
 }
 
 
-impl LateLintPass for LintWithoutLintPass {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemStatic(ref ty, MutImmutable, ref expr) = item.node {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
@@ -116,7 +116,7 @@ impl LateLintPass for LintWithoutLintPass {
         }
     }
 
-    fn check_crate_post<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
+    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         for (lint_name, &lint_span) in &self.declared_lints {
             // When using the `declare_lint!` macro, the original `lint_span`'s
             // file points to "<rustc macros>".

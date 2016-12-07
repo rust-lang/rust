@@ -24,8 +24,8 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct Pass;
 
-impl LateLintPass for Pass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if &*name.node.as_str() == "map" && args.len() == 2 {

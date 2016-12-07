@@ -31,12 +31,12 @@ impl LintPass for MutMut {
     }
 }
 
-impl LateLintPass for MutMut {
-    fn check_block<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
         intravisit::walk_block(&mut MutVisitor { cx: cx }, block);
     }
 
-    fn check_ty<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty) {
+    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty) {
         use rustc::hir::intravisit::Visitor;
 
         MutVisitor { cx: cx }.visit_ty(ty);

@@ -74,8 +74,8 @@ const BRACED_EXPR_MESSAGE: &'static str = "omit braces around single expression 
 const COMPLEX_BLOCK_MESSAGE: &'static str = "in an 'if' condition, avoid complex blocks or closures with blocks; \
                                              instead, move the block or closure higher and bind it with a 'let'";
 
-impl LateLintPass for BlockInIfCondition {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprIf(ref check, ref then, _) = expr.node {
             if let ExprBlock(ref block) = check.node {
                 if block.rules == DefaultBlock {

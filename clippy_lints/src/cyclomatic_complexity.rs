@@ -90,8 +90,8 @@ impl CyclomaticComplexity {
     }
 }
 
-impl LateLintPass for CyclomaticComplexity {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(_, _, _, _, _, eid) = item.node {
             if !attr::contains_name(&item.attrs, "test") {
                 self.check(cx, cx.tcx.map.expr(eid), item.span);
@@ -99,22 +99,22 @@ impl LateLintPass for CyclomaticComplexity {
         }
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(_, eid) = item.node {
             self.check(cx, cx.tcx.map.expr(eid), item.span);
         }
     }
 
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let MethodTraitItem(_, Some(eid)) = item.node {
             self.check(cx, cx.tcx.map.expr(eid), item.span);
         }
     }
 
-    fn enter_lint_attrs<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
+    fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
-    fn exit_lint_attrs<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
+    fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
 }

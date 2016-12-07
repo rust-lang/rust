@@ -26,8 +26,8 @@ impl LintPass for Serde {
     }
 }
 
-impl LateLintPass for Serde {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, ref items) = item.node {
             let did = trait_ref.path.def.def_id();
             if let Some(visit_did) = get_trait_def_id(cx, &paths::SERDE_DE_VISITOR) {

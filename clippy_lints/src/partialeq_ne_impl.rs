@@ -35,8 +35,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if_let_chain! {[
             let ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) = item.node,
             !is_automatically_derived(&*item.attrs),

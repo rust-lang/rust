@@ -56,8 +56,8 @@ impl LintPass for EvalOrderDependence {
     }
 }
 
-impl LateLintPass for EvalOrderDependence {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
             ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => {
@@ -79,7 +79,7 @@ impl LateLintPass for EvalOrderDependence {
             _ => {}
         }
     }
-    fn check_stmt<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
             StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
             StmtDecl(ref d, _) => {
@@ -214,7 +214,7 @@ enum StopEarly {
     Stop,
 }
 
-fn check_expr<'a, 'tcx: 'a>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
+fn check_expr<'a, 'tcx>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
     if expr.id == vis.last_expr.id {
         return StopEarly::KeepGoing;
     }
@@ -263,7 +263,7 @@ fn check_expr<'a, 'tcx: 'a>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) 
     StopEarly::KeepGoing
 }
 
-fn check_stmt<'a, 'tcx: 'a>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
+fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
     match stmt.node {
         StmtExpr(ref expr, _) |
         StmtSemi(ref expr, _) => check_expr(vis, expr),

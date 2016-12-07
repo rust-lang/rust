@@ -50,8 +50,8 @@ impl LintPass for Swap {
     }
 }
 
-impl LateLintPass for Swap {
-    fn check_block<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
     }

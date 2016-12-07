@@ -46,8 +46,8 @@ impl LintPass for StepByZero {
     }
 }
 
-impl LateLintPass for StepByZero {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) = expr.node {
             let name = &*name.as_str();
 

@@ -27,8 +27,8 @@ impl LintPass for MemForget {
     }
 }
 
-impl LateLintPass for MemForget {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprCall(ref path_expr, ref args) = e.node {
             if let ExprPath(ref qpath) = path_expr.node {
                 let def_id = cx.tcx.tables().qpath_def(qpath, path_expr.id).def_id();

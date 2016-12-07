@@ -129,8 +129,8 @@ impl LintPass for MatchPass {
     }
 }
 
-impl LateLintPass for MatchPass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_external_macro(cx, expr.span) {
             return;
         }

@@ -53,8 +53,8 @@ impl LintPass for NonminimalBool {
     }
 }
 
-impl LateLintPass for NonminimalBool {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         NonminimalBoolVisitor { cx: cx }.visit_item(item)
     }
 }

@@ -60,8 +60,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_fn<'a, 'tcx: 'a>(
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: visit::FnKind<'tcx>,

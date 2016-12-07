@@ -79,8 +79,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_fn<'a, 'tcx: 'a>(
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
@@ -96,7 +96,7 @@ impl LateLintPass for Pass {
     }
 }
 
-fn check_fn<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
         if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
@@ -106,7 +106,7 @@ fn check_fn<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: 
     check_expr(cx, expr, &mut bindings);
 }
 
-fn check_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {
+fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {
     let len = bindings.len();
     for stmt in &block.stmts {
         match stmt.node {
@@ -121,7 +121,7 @@ fn check_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bin
     bindings.truncate(len);
 }
 
-fn check_decl<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: &mut Vec<(Name, Span)>) {
+fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) {
         return;
     }
@@ -150,7 +150,7 @@ fn is_binding(cx: &LateContext, pat_id: NodeId) -> bool {
     }
 }
 
-fn check_pat<'a, 'tcx: 'a>(
+fn check_pat<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
     init: Option<&'tcx Expr>,
@@ -285,7 +285,7 @@ fn lint_shadow<'a, 'tcx: 'a>(
     }
 }
 
-fn check_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: &mut Vec<(Name, Span)>) {
+fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, expr.span) {
         return;
     }
@@ -334,7 +334,7 @@ fn check_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindin
     }
 }
 
-fn check_ty<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut Vec<(Name, Span)>) {
+fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
         TyObjectSum(ref sty, _) |
         TySlice(ref sty) => check_ty(cx, sty, bindings),

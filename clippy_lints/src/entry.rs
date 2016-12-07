@@ -39,8 +39,8 @@ impl LintPass for HashMapLint {
     }
 }
 
-impl LateLintPass for HashMapLint {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprIf(ref check, ref then_block, ref else_block) = expr.node {
             if let ExprUnary(UnOp::UnNot, ref check) = check.node {
                 if let Some((ty, map, key)) = check_cond(cx, check) {

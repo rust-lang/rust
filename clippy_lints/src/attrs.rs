@@ -81,8 +81,8 @@ impl LintPass for AttrPass {
     }
 }
 
-impl LateLintPass for AttrPass {
-    fn check_attribute<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
+    fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let MetaItemKind::List(ref items) = attr.value.node {
             if items.is_empty() || attr.name() != "deprecated" {
                 return;
@@ -99,7 +99,7 @@ impl LateLintPass for AttrPass {
         }
     }
 
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
@@ -138,13 +138,13 @@ impl LateLintPass for AttrPass {
         }
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }

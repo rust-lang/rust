@@ -57,8 +57,8 @@ impl LintPass for LetIfSeq {
     }
 }
 
-impl LateLintPass for LetIfSeq {
-    fn check_block<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
         let mut it = block.stmts.iter().peekable();
         while let Some(stmt) = it.next() {
             if_let_chain! {[
@@ -149,7 +149,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     }
 }
 
-fn check_assign<'a, 'tcx: 'a>(
+fn check_assign<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     decl: hir::def_id::DefId,
     block: &'tcx hir::Block,

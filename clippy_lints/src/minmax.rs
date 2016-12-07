@@ -33,8 +33,8 @@ impl LintPass for MinMaxPass {
     }
 }
 
-impl LateLintPass for MinMaxPass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
             if let Some((inner_max, inner_c, _)) = min_max(cx, oe) {
                 if outer_max == inner_max {

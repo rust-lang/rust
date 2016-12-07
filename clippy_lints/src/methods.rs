@@ -549,11 +549,11 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     #[allow(unused_attributes)]
     // ^ required because `cyclomatic_complexity` attribute shows up as unused
     #[cyclomatic_complexity = "30"]
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if in_macro(cx, expr.span) {
             return;
         }
@@ -629,7 +629,7 @@ impl LateLintPass for Pass {
         }
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, implitem: &'tcx hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, implitem: &'tcx hir::ImplItem) {
         if in_external_macro(cx, implitem.span) {
             return;
         }

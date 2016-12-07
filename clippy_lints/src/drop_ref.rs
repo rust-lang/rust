@@ -35,8 +35,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCall(ref path, ref args) = expr.node {
             if let ExprPath(ref qpath) = path.node {
                 let def_id = cx.tcx.tables().qpath_def(qpath, path.id).def_id();

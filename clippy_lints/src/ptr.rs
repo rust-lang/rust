@@ -54,14 +54,14 @@ impl LintPass for PointerPass {
     }
 }
 
-impl LateLintPass for PointerPass {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(ref decl, _, _, _, _, _) = item.node {
             check_fn(cx, decl, item.id);
         }
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
             if let Some(NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
@@ -72,13 +72,13 @@ impl LateLintPass for PointerPass {
         }
     }
 
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn(cx, &sig.decl, item.id);
         }
     }
 
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref op, ref l, ref r) = expr.node {
             if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(cx,

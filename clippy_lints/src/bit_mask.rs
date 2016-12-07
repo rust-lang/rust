@@ -79,8 +79,8 @@ impl LintPass for BitMask {
     }
 }
 
-impl LateLintPass for BitMask {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {

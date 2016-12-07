@@ -68,8 +68,8 @@ impl LintPass for Functions {
     }
 }
 
-impl LateLintPass for Functions {
-    fn check_fn<'a, 'tcx: 'a>(
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
+    fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: intravisit::FnKind<'tcx>,
@@ -105,7 +105,7 @@ impl LateLintPass for Functions {
         self.check_raw_ptr(cx, unsafety, decl, expr, nodeid);
     }
 
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
         if let hir::MethodTraitItem(ref sig, eid) = item.node {
             // don't lint extern functions decls, it's not their fault
             if sig.abi == Abi::Rust {
@@ -120,7 +120,7 @@ impl LateLintPass for Functions {
     }
 }
 
-impl Functions {
+impl<'a, 'tcx> Functions {
     fn check_arg_number(&self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
@@ -131,7 +131,7 @@ impl Functions {
         }
     }
 
-    fn check_raw_ptr<'a, 'tcx: 'a>(
+    fn check_raw_ptr(
         &self,
         cx: &LateContext<'a, 'tcx>,
         unsafety: hir::Unsafety,

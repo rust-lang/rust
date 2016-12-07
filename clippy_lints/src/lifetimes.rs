@@ -56,20 +56,20 @@ impl LintPass for LifetimePass {
     }
 }
 
-impl LateLintPass for LifetimePass {
-    fn check_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
             check_fn_inner(cx, decl, generics, item.span);
         }
     }
 
-    fn check_impl_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }
 
-    fn check_trait_item<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
@@ -98,7 +98,7 @@ fn bound_lifetimes(bound: &TyParamBound) -> HirVec<&Lifetime> {
     }
 }
 
-fn check_fn_inner<'a, 'tcx: 'a>(
+fn check_fn_inner<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     decl: &'tcx FnDecl,
     generics: &'tcx Generics,

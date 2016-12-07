@@ -33,8 +33,8 @@ impl LintPass for EtaPass {
     }
 }
 
-impl LateLintPass for EtaPass {
-    fn check_expr<'a, 'tcx: 'a>(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
             ExprCall(_, ref args) |
             ExprMethodCall(_, _, ref args) => {
