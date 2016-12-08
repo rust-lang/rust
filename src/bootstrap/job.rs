@@ -123,7 +123,8 @@ pub unsafe fn setup() {
     // during startup or terminating abnormally).  This is important for running tests,
     // since some of them use abnormal termination by design.
     // This mode is inherited by all child processes.
-    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+    let mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+    SetErrorMode(mode | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 
     // Create a new job object for us to use
     let job = CreateJobObjectW(0 as *mut _, 0 as *const _);
