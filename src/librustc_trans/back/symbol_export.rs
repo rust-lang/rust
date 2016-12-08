@@ -51,8 +51,10 @@ impl ExportedSymbols {
                 scx.tcx().map.local_def_id(node_id)
             })
             .map(|def_id| {
-                (symbol_for_def_id(scx, def_id, symbol_map),
-                 export_level(scx, def_id))
+                let name = symbol_for_def_id(scx, def_id, symbol_map);
+                let export_level = export_level(scx, def_id);
+                debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
+                (name, export_level)
             })
             .collect();
 
@@ -90,9 +92,10 @@ impl ExportedSymbols {
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
-                    debug!("EXTERN-SYMBOL: {:?}", def_id);
                     let name = Instance::mono(scx, def_id).symbol_name(scx);
-                    (name, export_level(scx, def_id))
+                    let export_level = export_level(scx, def_id);
+                    debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
+                    (name, export_level)
                 })
                 .collect();
 
