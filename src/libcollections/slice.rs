@@ -1611,6 +1611,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
     // This function correctly checks invariants for the top four runs. Additionally, if the top
     // run starts at index 0, it will always demand a merge operation until the stack is fully
     // collapsed, in order to complete the sort.
+    #[inline]
     fn collapse(runs: &[Run]) -> Option<usize> {
         let n = runs.len();
         if n >= 2 && (runs[n - 1].start == 0 ||
