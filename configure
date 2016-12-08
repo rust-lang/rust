@@ -1890,6 +1890,12 @@ else
     step_msg "complete"
 fi
 
+if [ "$CFG_SRC_DIR" = `pwd` ]; then
+    X_PY=x.py
+else
+    X_PY=${CFG_SRC_DIR_RELATIVE}x.py
+fi
+
 if [ -z "$CFG_DISABLE_RUSTBUILD" ]; then
     msg "NOTE you have now configured rust to use a rewritten build system"
     msg "     called rustbuild, and as a result this may have bugs that "
@@ -1897,7 +1903,7 @@ if [ -z "$CFG_DISABLE_RUSTBUILD" ]; then
     msg "     go back to the old build system with --disable-rustbuild and"
     msg "     please feel free to report any bugs!"
     msg ""
-    msg "run \`python x.py --help\`"
+    msg "run \`python ${X_PY} --help\`"
 else
     warn "the makefile-based build system is deprecated in favor of rustbuild"
     msg ""
