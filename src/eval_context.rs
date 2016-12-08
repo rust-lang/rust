@@ -557,7 +557,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.assign_fields(dest, offsets, operands)?;
                     }
 
-                    _ => return Err(EvalError::Unimplemented(format!("can't handle destination layout {:?} when assigning {:?}", dest_layout, kind))),
+                    UntaggedUnion { .. } => {
+                        assert_eq!(operands.len(), 1);
+                        let operand = &operands[0];
+                        let value = self.eval_operand(operand)?;
+                        let value_ty = self.operand_ty(operand);
+
+                        // FIXME(solson)
+                        let dest = self.force_allocation(dest)?;
+
+                        self.write_value(value, dest, value_ty)?;
+                    }
+
+                    _ => {
+                        return Err(EvalError::Unimplemented(format!(
+                            "can't handle destination layout {:?} when assigning {:?}",
+                            dest_layout,
+                            kind
+                        )));
+                    }
                 }
             }
 

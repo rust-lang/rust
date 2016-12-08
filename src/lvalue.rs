@@ -209,6 +209,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         nonnull.offsets[field]
                     }
 
+                    UntaggedUnion { .. } => return Ok(base),
+
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
 
