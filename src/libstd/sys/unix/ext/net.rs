@@ -791,9 +791,36 @@ impl<'a> IntoIterator for &'a UnixListener {
     }
 }
 
-/// An iterator over incoming connections to a `UnixListener`.
+/// An iterator over incoming connections to a [`UnixListener`].
 ///
-/// It will never return `None`.
+/// It will never return [`None`].
+///
+/// [`None`]: ../../std/option/enum.Option.html#variant.None
+/// [`UnixListener`]: struct.UnixListener.html
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::thread;
+/// use std::os::unix::net::{UnixStream, UnixListener};
+///
+/// fn handle_client(stream: UnixStream) {
+///     // ...
+/// }
+///
+/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+///
+/// for stream in listener.incoming() {
+///     match stream {
+///         Ok(stream) => {
+///             thread::spawn(|| handle_client(stream));
+///         }
+///         Err(err) => {
+///             break;
+///         }
+///     }
+/// }
+/// ```
 #[derive(Debug)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct Incoming<'a> {
@@ -817,7 +844,7 @@ impl<'a> Iterator for Incoming<'a> {
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```no_run
 /// use std::os::unix::net::UnixDatagram;
 ///
 /// let socket = UnixDatagram::bind("/path/to/my/socket").unwrap();
