@@ -520,7 +520,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
                             if nndiscr == variant as u64 {
                                 let offsets = nonnull.offsets.iter().map(|s| s.bytes());
-                                try!(self.assign_fields(dest, offsets, operands));
+                                self.assign_fields(dest, offsets, operands)?;
                             } else {
                                 for operand in operands {
                                     let operand_ty = self.operand_ty(operand);
@@ -533,7 +533,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                                 let dest = dest.offset(offset.bytes());
                                 let dest_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                                try!(self.memory.write_int(dest, 0, dest_size));
+                                self.memory.write_int(dest, 0, dest_size)?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
