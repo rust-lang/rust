@@ -572,10 +572,12 @@ pub mod reimpls {
             }
             if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
                 (mantissa as $outty)
-                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32).wrapping_sub(exponent) as u32)
+                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32)
+                                  .wrapping_sub(exponent) as u32)
             } else {
                 (mantissa as $outty)
-                    .wrapping_shl(exponent.wrapping_sub(<$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
+                    .wrapping_shl(exponent.wrapping_sub(
+                        <$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
             }
         } }
     }
@@ -605,10 +607,12 @@ pub mod reimpls {
             }
             let r = if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
                 (mantissa as $outty)
-                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32).wrapping_sub(exponent) as u32)
+                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32)
+                                  .wrapping_sub(exponent) as u32)
             } else {
                 (mantissa as $outty)
-                    .wrapping_shl(exponent.wrapping_sub(<$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
+                    .wrapping_shl(exponent.wrapping_sub(
+                        <$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
             };
             if sign >= 0.0 { r } else { r.unchecked_neg() }
         }}
