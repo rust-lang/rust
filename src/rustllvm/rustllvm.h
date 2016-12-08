@@ -39,7 +39,6 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Vectorize.h"
-#include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"
@@ -58,6 +57,13 @@
 #include "llvm/IR/LegacyPassManager.h"
 #else
 #include "llvm/PassManager.h"
+#endif
+
+#if LLVM_VERSION_GE(4, 0)
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#else
+#include "llvm/Bitcode/ReaderWriter.h"
 #endif
 
 #include "llvm/IR/IRPrintingPasses.h"
