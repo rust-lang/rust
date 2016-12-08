@@ -9,10 +9,10 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::{ast, attr};
 
 use error::{EvalError, EvalResult};
+use eval_context::{EvalContext, Lvalue, IntegerExt, StackPopCleanup, LvalueExtra, monomorphize_field_ty};
 use memory::Pointer;
 use primval::PrimVal;
-use super::{EvalContext, Lvalue, IntegerExt, StackPopCleanup, LvalueExtra, monomorphize_field_ty};
-use super::value::Value;
+use value::Value;
 
 mod intrinsics;
 

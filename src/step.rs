@@ -2,21 +2,16 @@
 //!
 //! The main entry point is the `step` method.
 
-use super::{
-    GlobalId,
-    EvalContext,
-    Lvalue,
-    StackPopCleanup,
-    Global,
-    MirRef,
-};
-use error::{EvalResult, EvalError};
-use rustc::mir;
-use rustc::ty::{subst, self};
+use std::cell::Ref;
+
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
-use std::cell::Ref;
+use rustc::mir;
+use rustc::ty::{subst, self};
+
+use error::{EvalResult, EvalError};
+use eval_context::{GlobalId, EvalContext, Lvalue, StackPopCleanup, Global, MirRef};
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {

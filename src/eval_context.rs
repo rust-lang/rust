@@ -1,6 +1,9 @@
-use rustc::middle::const_val::ConstVal;
+use std::cell::Ref;
+use std::collections::HashMap;
+
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
+use rustc::middle::const_val::ConstVal;
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
@@ -12,39 +15,32 @@ use syntax::codemap::{self, DUMMY_SP};
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal, PrimValKind};
-pub use self::value::Value;
 
-use std::collections::HashMap;
-use std::cell::Ref;
-
-mod step;
-mod terminator;
-mod cast;
-mod vtable;
-mod value;
+// FIXME(solson): Remove this.
+pub use value::Value;
 
 pub type MirRef<'tcx> = Ref<'tcx, mir::Mir<'tcx>>;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(super) tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// The virtual memory system.
-    memory: Memory<'a, 'tcx>,
+    pub(super) memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
-    globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
+    pub(super) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'tcx>>,
+    pub(super) stack: Vec<Frame<'tcx>>,
 
     /// The maximum number of stack frames allowed
-    stack_limit: usize,
+    pub(super) stack_limit: usize,
 
     /// The maximum number of operations that may be executed.
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
-    steps_remaining: u64,
+    pub(super) steps_remaining: u64,
 }
 
 /// A stack frame.
@@ -132,14 +128,16 @@ pub enum LvalueExtra {
 /// Uniquely identifies a specific constant or static
 pub struct GlobalId<'tcx> {
     /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
-    def_id: DefId,
+    pub(super) def_id: DefId,
+
     /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
     /// constants actually have something useful here. We could special case statics and constants,
     /// but that would only require more branching when working with constants, and not bring any
     /// real benefits.
-    substs: &'tcx Substs<'tcx>,
-    /// this `Option` is `Some` for promoted constants
-    promoted: Option<mir::Promoted>,
+    pub(super) substs: &'tcx Substs<'tcx>,
+
+    /// The promoted index for this global, if it is a promoted.
+    pub(super) promoted: Option<mir::Promoted>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -150,7 +148,7 @@ pub struct Global<'tcx> {
 }
 
 impl<'tcx> Global<'tcx> {
-    fn uninitialized(ty: Ty<'tcx>) -> Self {
+    pub(super) fn uninitialized(ty: Ty<'tcx>) -> Self {
         Global {
             data: None,
             mutable: true,
@@ -228,7 +226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
-    fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+    pub(super) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
@@ -236,7 +234,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Value::ByValPair(PrimVal::from_ptr(ptr), PrimVal::from_uint(s.len() as u64)))
     }
 
-    fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
+    pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::ConstFloat;
 
@@ -271,7 +269,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Value::ByVal(primval))
     }
 
-    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+    pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         // generics are weird, don't run this function on a generic
         assert!(!ty.needs_subst());
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
@@ -291,15 +289,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
+    pub(super) fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
         self.type_size_with_substs(ty, self.substs())
     }
 
-    fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
+    pub(super) fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         self.type_align_with_substs(ty, self.substs())
     }
 
-    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<u64>> {
+    fn type_size_with_substs(
+        &self,
+        ty: Ty<'tcx>,
+        substs: &'tcx Substs<'tcx>,
+    ) -> EvalResult<'tcx, Option<u64>> {
         let layout = self.type_layout_with_substs(ty, substs)?;
         if layout.is_unsized() {
             Ok(None)
@@ -312,7 +314,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
     }
 
-    fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
+    pub(super) fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         self.type_layout_with_substs(ty, self.substs())
     }
 
@@ -362,7 +364,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn pop_stack_frame(&mut self) -> EvalResult<'tcx, ()> {
+    pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
@@ -433,7 +435,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
-    fn intrinsic_with_overflow(
+    pub(super) fn intrinsic_with_overflow(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
@@ -448,7 +450,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
     /// destination. Returns `true` if the operation overflowed.
-    fn intrinsic_overflowing(
+    pub(super) fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
@@ -483,7 +485,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ///
     /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
     /// type writes its results directly into the memory specified by the lvalue.
-    fn eval_rvalue_into_lvalue(
+    pub(super) fn eval_rvalue_into_lvalue(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         lvalue: &mir::Lvalue<'tcx>,
@@ -739,7 +741,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn nonnull_offset_and_ty(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
+    pub(super) fn nonnull_offset_and_ty(
+        &self,
+        ty: Ty<'tcx>,
+        nndiscr: u64,
+        discrfield: &[u32],
+    ) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         // Skip the constant 0 at the start meant for LLVM GEP and the outer non-null variant
         let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
@@ -827,13 +834,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
         let value = self.eval_operand(op)?;
         let ty = self.operand_ty(op);
         self.value_to_primval(value, ty)
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::Operand::*;
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
@@ -872,7 +879,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::Lvalue::Local(index) = proj.base {
                 if let Some(Value::ByValPair(a, b)) = self.frame().get_local(index) {
@@ -904,7 +911,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+    pub(super) fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
@@ -1086,11 +1093,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Lvalue::Ptr { ptr: ptr, extra: extra })
     }
 
-    fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+    pub(super) fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(lvalue.ty(&self.mir(), self.tcx).to_ty(self.tcx), self.substs())
     }
 
-    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
+    pub(super) fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
         self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
     }
 
@@ -1101,7 +1108,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn force_allocation(&mut self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+    pub(super) fn force_allocation(
+        &mut self,
+        lvalue: Lvalue<'tcx>,
+    ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
                 match self.stack[frame].get_local(local) {
@@ -1146,14 +1156,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// ensures this Value is not a ByRef
-    fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
             Value::ByRef(ptr) => self.read_value(ptr, ty),
             other => Ok(other),
         }
     }
 
-    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub(super) fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef(_) => bug!("follow_by_ref_value can't result in `ByRef`"),
 
@@ -1166,7 +1176,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn write_primval(
+    pub(super) fn write_primval(
         &mut self,
         dest: Lvalue<'tcx>,
         val: PrimVal,
@@ -1194,7 +1204,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn write_value(
+    pub(super) fn write_value(
         &mut self,
         src_val: Value,
         dest: Lvalue<'tcx>,
@@ -1277,7 +1287,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn write_value_to_ptr(
+    pub(super) fn write_value_to_ptr(
         &mut self,
         value: Value,
         dest: Pointer,
@@ -1293,7 +1303,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn write_pair_to_ptr(
+    pub(super) fn write_pair_to_ptr(
         &mut self,
         a: PrimVal,
         b: PrimVal,
@@ -1312,7 +1322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimValKind> {
+    pub(super) fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimValKind> {
         use syntax::ast::FloatTy;
 
         let kind = match ty.sty {
@@ -1396,7 +1406,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, ty)? {
             Ok(val)
         } else {
@@ -1484,19 +1494,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Some(Value::ByVal(val)))
     }
 
-    fn frame(&self) -> &Frame<'tcx> {
+    pub(super) fn frame(&self) -> &Frame<'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    pub fn frame_mut(&mut self) -> &mut Frame<'tcx> {
+    pub(super) fn frame_mut(&mut self) -> &mut Frame<'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    fn mir(&self) -> MirRef<'tcx> {
+    pub(super) fn mir(&self) -> MirRef<'tcx> {
         Ref::clone(&self.frame().mir)
     }
 
-    fn substs(&self) -> &'tcx Substs<'tcx> {
+    pub(super) fn substs(&self) -> &'tcx Substs<'tcx> {
         self.frame().substs
     }
 
@@ -1585,7 +1595,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+    pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
         if let Lvalue::Local { frame, local } = lvalue {
             if let Some(val) = self.stack[frame].get_local(local) {
                 match val {
@@ -1667,7 +1677,7 @@ impl<'tcx> Lvalue<'tcx> {
         Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
     }
 
-    fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
+    pub(super) fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
         match self {
             Lvalue::Ptr { ptr, extra } => (ptr, extra),
             _ => bug!("to_ptr_and_extra: expected Lvalue::Ptr, got {:?}", self),
@@ -1675,7 +1685,7 @@ impl<'tcx> Lvalue<'tcx> {
         }
     }
 
-    fn to_ptr(self) -> Pointer {
+    pub(super) fn to_ptr(self) -> Pointer {
         let (ptr, extra) = self.to_ptr_and_extra();
         assert_eq!(extra, LvalueExtra::None);
         ptr
@@ -1775,7 +1785,7 @@ pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 // TODO(solson): Upstream these methods into rustc::ty::layout.
 
-trait IntegerExt {
+pub(super) trait IntegerExt {
     fn size(self) -> Size;
 }
 

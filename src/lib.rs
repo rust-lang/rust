@@ -1,36 +1,44 @@
 #![feature(
     btree_range,
+    cell_extras,
     collections,
     collections_bound,
-    rustc_private,
     pub_restricted,
-    cell_extras,
+    rustc_private,
 )]
 
 // From rustc.
-#[macro_use] extern crate rustc;
+#[macro_use]
+extern crate log;
+extern crate log_settings;
+#[macro_use]
+extern crate rustc;
 extern crate rustc_borrowck;
+extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
-extern crate rustc_const_math;
 extern crate syntax;
-#[macro_use] extern crate log;
-extern crate log_settings;
 
 // From crates.io.
 extern crate byteorder;
 
+mod cast;
 mod error;
-mod interpreter;
+mod eval_context;
 mod memory;
 mod primval;
+mod step;
+mod terminator;
+mod value;
+mod vtable;
+
 
 pub use error::{
     EvalError,
     EvalResult,
 };
 
-pub use interpreter::{
+pub use eval_context::{
     EvalContext,
     Frame,
     Lvalue,

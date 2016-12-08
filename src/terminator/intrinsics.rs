@@ -5,9 +5,9 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
-use interpreter::value::Value;
-use interpreter::{EvalContext, Lvalue, LvalueExtra};
+use eval_context::{EvalContext, Lvalue, LvalueExtra};
 use primval::{self, PrimVal, PrimValKind};
+use value::Value;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
