@@ -13,6 +13,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
+use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal, PrimValKind};
 
@@ -94,67 +95,6 @@ pub struct Frame<'tcx> {
 
     /// The index of the currently evaluated statment.
     pub stmt: usize,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Lvalue<'tcx> {
-    /// An lvalue referring to a value allocated in the `Memory` system.
-    Ptr {
-        ptr: Pointer,
-        extra: LvalueExtra,
-    },
-
-    /// An lvalue referring to a value on the stack. Represented by a stack frame index paired with
-    /// a Mir local index.
-    Local {
-        frame: usize,
-        local: mir::Local,
-    },
-
-    Global(GlobalId<'tcx>),
-
-    // TODO(solson): None/Never?
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum LvalueExtra {
-    None,
-    Length(u64),
-    Vtable(Pointer),
-    DowncastVariant(usize),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-/// Uniquely identifies a specific constant or static
-pub struct GlobalId<'tcx> {
-    /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
-    pub(super) def_id: DefId,
-
-    /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
-    /// constants actually have something useful here. We could special case statics and constants,
-    /// but that would only require more branching when working with constants, and not bring any
-    /// real benefits.
-    pub(super) substs: &'tcx Substs<'tcx>,
-
-    /// The promoted index for this global, if it is a promoted.
-    pub(super) promoted: Option<mir::Promoted>,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Global<'tcx> {
-    data: Option<Value>,
-    mutable: bool,
-    ty: Ty<'tcx>,
-}
-
-impl<'tcx> Global<'tcx> {
-    pub(super) fn uninitialized(ty: Ty<'tcx>) -> Self {
-        Global {
-            data: None,
-            mutable: true,
-            ty: ty,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]

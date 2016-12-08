@@ -11,7 +11,8 @@ use rustc::mir;
 use rustc::ty::{subst, self};
 
 use error::{EvalResult, EvalError};
-use eval_context::{GlobalId, EvalContext, Lvalue, StackPopCleanup, Global, MirRef};
+use eval_context::{EvalContext, StackPopCleanup, MirRef};
+use lvalue::{Global, GlobalId, Lvalue};
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {

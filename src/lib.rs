@@ -25,13 +25,13 @@ extern crate byteorder;
 mod cast;
 mod error;
 mod eval_context;
+mod lvalue;
 mod memory;
 mod primval;
 mod step;
 mod terminator;
 mod value;
 mod vtable;
-
 
 pub use error::{
     EvalError,
@@ -41,13 +41,16 @@ pub use error::{
 pub use eval_context::{
     EvalContext,
     Frame,
-    Lvalue,
-    LvalueExtra,
     ResourceLimits,
     StackPopCleanup,
     Value,
     eval_main,
     run_mir_passes,
+};
+
+pub use lvalue::{
+    Lvalue,
+    LvalueExtra,
 };
 
 pub use memory::{

@@ -5,7 +5,8 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, Lvalue, LvalueExtra};
+use eval_context::EvalContext;
+use lvalue::{Lvalue, LvalueExtra};
 use primval::{self, PrimVal, PrimValKind};
 use value::Value;
 
