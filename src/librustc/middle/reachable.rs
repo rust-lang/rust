@@ -323,18 +323,36 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // items of non-exported traits (or maybe all local traits?) unless their respective
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
-struct CollectPrivateImplItemsVisitor<'a> {
+struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<ast::NodeId>,
 }
 
-impl<'a, 'v> ItemLikeVisitor<'v> for CollectPrivateImplItemsVisitor<'a> {
+impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemImpl(.., Some(_), _, ref impl_item_refs) = item.node {
+        if let hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {
                 for impl_item_ref in impl_item_refs {
                     self.worklist.push(impl_item_ref.id.node_id);
+                }
+
+                let trait_def_id = match trait_ref.path.def {
+                    Def::Trait(def_id) => def_id,
+                    _ => unreachable!()
+                };
+
+                if !trait_def_id.is_local() {
+                    return
+                }
+
+                for default_method in self.tcx.provided_trait_methods(trait_def_id) {
+                    let node_id = self.tcx
+                                      .map
+                                      .as_local_node_id(default_method.def_id)
+                                      .unwrap();
+                    self.worklist.push(node_id);
                 }
             }
         }
@@ -369,6 +387,7 @@ pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     {
         let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
+            tcx: tcx,
             access_levels: access_levels,
             worklist: &mut reachable_context.worklist,
         };
