@@ -587,7 +587,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 /// ```
 #[rustc_paren_sugar]
 #[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when Box<FnOnce> becomes usable", issue = "28796")]
+           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 pub trait FnBox<A> {
     type Output;
 
@@ -595,7 +595,7 @@ pub trait FnBox<A> {
 }
 
 #[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when Box<FnOnce> becomes usable", issue = "28796")]
+           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<A, F> FnBox<A> for F
     where F: FnOnce<A>
 {
@@ -607,7 +607,7 @@ impl<A, F> FnBox<A> for F
 }
 
 #[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when Box<FnOnce> becomes usable", issue = "28796")]
+           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
     type Output = R;
 
@@ -617,7 +617,7 @@ impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
 }
 
 #[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when Box<FnOnce> becomes usable", issue = "28796")]
+           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + Send + 'a> {
     type Output = R;
 

@@ -1844,7 +1844,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
 
     if let Some(stab) = item.stability.as_ref() {
         let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
-            format!(": {}", stab.deprecated_reason)
+            format!(": {}", Escape(&stab.deprecated_reason))
         } else {
             String::new()
         };
@@ -1875,7 +1875,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let unstable_reason = if show_reason && !stab.unstable_reason.is_empty() {
-                format!(": {}", stab.unstable_reason)
+                format!(": {}", Escape(&stab.unstable_reason))
             } else {
                 String::new()
             };
@@ -1884,7 +1884,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
         let note = if show_reason && !depr.note.is_empty() {
-            format!(": {}", depr.note)
+            format!(": {}", Escape(&depr.note))
         } else {
             String::new()
         };
