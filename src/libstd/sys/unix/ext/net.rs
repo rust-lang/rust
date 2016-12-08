@@ -85,6 +85,21 @@ enum AddressKind<'a> {
 }
 
 /// An address associated with a Unix socket.
+///
+/// # Examples
+///
+/// ```
+/// use std::os::unix::net::UnixListener;
+///
+/// let socket = match UnixListener::bind("/tmp/sock") {
+///     Ok(sock) => sock,
+///     Err(e) => {
+///         println!("Couldn't bind: {:?}", e);
+///         return
+///     }
+/// };
+/// let addr = socket.local_addr().expect("Couldn't get local address");
+/// ```
 #[derive(Clone)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct SocketAddr {
@@ -121,6 +136,16 @@ impl SocketAddr {
     }
 
     /// Returns true if and only if the address is unnamed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let socket = match UnixListener::bind("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.is_unnamed(), false);
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
         if let AddressKind::Unnamed = self.address() {
@@ -131,6 +156,17 @@ impl SocketAddr {
     }
 
     /// Returns the contents of this address if it is a `pathname` address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::net::UnixListener;
+    /// use std::path::Path;
+    ///
+    /// let socket = match UnixListener::bind("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn as_pathname(&self) -> Option<&Path> {
         if let AddressKind::Pathname(path) = self.address() {
