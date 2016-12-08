@@ -112,8 +112,9 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         hash_spans: hash_spans,
     };
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
-        visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
-                                 |v| visit::walk_crate(v, krate));
+        visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| {
+            v.hash_crate_root_module(krate);
+        });
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
 
         for macro_def in krate.exported_macros.iter() {

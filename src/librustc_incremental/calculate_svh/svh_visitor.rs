@@ -619,9 +619,10 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, n: NodeId) {
+    fn visit_mod(&mut self, m: &'tcx Mod, span: Span, n: NodeId) {
         debug!("visit_mod: st={:?}", self.st);
         SawMod.hash(self.st);
+        hash_span!(self, span);
         visit::walk_mod(self, m, n)
     }
 
@@ -1084,5 +1085,24 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             token::Token::DocComment(val) |
             token::Token::Shebang(val) => val.as_str().hash(self.st),
         }
+    }
+
+    pub fn hash_crate_root_module(&mut self, krate: &'tcx Crate) {
+        let hir::Crate {
+            ref module,
+            ref attrs,
+            span,
+
+            // These fields are handled separately:
+            exported_macros: _,
+            items: _,
+            impl_items: _,
+            exprs: _,
+        } = *krate;
+
+        visit::Visitor::visit_mod(self, module, span, ast::CRATE_NODE_ID);
+        // Crate attributes are not copied over to the root `Mod`, so hash them
+        // explicitly here.
+        hash_attrs!(self, attrs);
     }
 }
