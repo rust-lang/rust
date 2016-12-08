@@ -172,8 +172,21 @@ mod imp {
 
         extern {
             fn sel_registerName(name: *const libc::c_uchar) -> Sel;
-            fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
             fn objc_getClass(class_name: *const libc::c_uchar) -> NsId;
+        }
+
+        #[cfg(target_arch="aarch64")]
+        extern {
+            fn objc_msgSend(obj: NsId, sel: Sel) -> NsId;
+            #[link_name="objc_msgSend"]
+            fn objc_msgSend_ul(obj: NsId, sel: Sel, i: libc::c_ulong) -> NsId;
+        }
+
+        #[cfg(not(target_arch="aarch64"))]
+        extern {
+            fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
+            #[link_name="objc_msgSend"]
+            fn objc_msgSend_ul(obj: NsId, sel: Sel, ...) -> NsId;
         }
 
         #[link(name = "Foundation", kind = "framework")]
@@ -199,7 +212,7 @@ mod imp {
 
             let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
             for i in 0..cnt {
-                let tmp = objc_msgSend(args, object_at_sel, i);
+                let tmp = objc_msgSend_ul(args, object_at_sel, i as libc::c_ulong);
                 let utf_c_str: *const libc::c_char =
                     mem::transmute(objc_msgSend(tmp, utf8_sel));
                 let bytes = CStr::from_ptr(utf_c_str).to_bytes();
