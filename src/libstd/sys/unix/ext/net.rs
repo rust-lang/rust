@@ -437,7 +437,6 @@ impl UnixStream {
     ///
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
     ///
     /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
     /// socket.set_nonblocking(true).expect("Couldn't set non blocking");
@@ -453,7 +452,6 @@ impl UnixStream {
     ///
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
     ///
     /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
     /// if let Ok(Some(err)) = socket.take_error() {
@@ -477,7 +475,6 @@ impl UnixStream {
     ///
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
     ///
     /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
     /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
@@ -557,7 +554,7 @@ impl IntoRawFd for UnixStream {
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```no_run
 /// use std::thread;
 /// use std::os::unix::net::{UnixStream, UnixListener};
 ///
@@ -580,9 +577,6 @@ impl IntoRawFd for UnixStream {
 ///         }
 ///     }
 /// }
-///
-/// // close the listener socket
-/// drop(listener);
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixListener(Socket);
@@ -601,6 +595,20 @@ impl fmt::Debug for UnixListener {
 
 impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified socket.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = match UnixListener::bind("/path/to/the/socket") {
+    ///     Ok(sock) => sock,
+    ///     Err(e) => {
+    ///         println!("Couldn't connect: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         fn inner(path: &Path) -> io::Result<UnixListener> {
@@ -620,8 +628,23 @@ impl UnixListener {
     /// Accepts a new incoming connection to this listener.
     ///
     /// This function will block the calling thread until a new Unix connection
-    /// is established. When established, the corersponding `UnixStream` and
+    /// is established. When established, the corersponding [`UnixStream`] and
     /// the remote peer's address will be returned.
+    ///
+    /// [`UnixStream`]: ../../std/os/unix/net/struct.UnixStream.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// match listener.accept() {
+    ///     Ok((socket, addr)) => println!("Got a client: {:?}", addr),
+    ///     Err(e) => println!("accept function failed: {:?}", e),
+    /// }
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
@@ -636,24 +659,65 @@ impl UnixListener {
     /// The returned `UnixListener` is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// let listener_copy = listener.try_clone().expect("try_clone failed");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
     }
 
     /// Returns the local socket address of this listener.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
     /// Moves the socket into or out of nonblocking mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// socket.set_nonblocking(true).expect("Couldn't set non blocking");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     /// Returns the value of the `SO_ERROR` option.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let socket = match UnixListener::bind("/tmp/sock").unwrap();
+    /// if let Ok(Some(err)) = socket.take_error() {
+    ///     println!("Got error: {:?}", err);
+    /// }
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -661,8 +725,35 @@ impl UnixListener {
 
     /// Returns an iterator over incoming connections.
     ///
-    /// The iterator will never return `None` and will also not yield the
-    /// peer's `SocketAddr` structure.
+    /// The iterator will never return [`None`] and will also not yield the
+    /// peer's [`SocketAddr`] structure.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`SocketAddr`]: struct.SocketAddr.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::thread;
+    /// use std::os::unix::net::{UnixStream, UnixListener};
+    ///
+    /// fn handle_client(stream: UnixStream) {
+    ///     // ...
+    /// }
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// for stream in listener.incoming() {
+    ///     match stream {
+    ///         Ok(stream) => {
+    ///             thread::spawn(|| handle_client(stream));
+    ///         }
+    ///         Err(err) => {
+    ///             break;
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn incoming<'a>(&'a self) -> Incoming<'a> {
         Incoming { listener: self }
