@@ -50,13 +50,17 @@ pub mod reimpls {
         ($a:expr, $b:expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
             let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits / 2;
+            let half_bits = bits >> 1;
             if b & half_bits != 0 {
-                <$ty>::from_parts(0, a.low() << (b - half_bits))
+                <$ty>::from_parts(0, a.low().wrapping_shl(
+                                        b.wrapping_sub(half_bits) as u32))
             } else if b == 0 {
                 a
             } else {
-                <$ty>::from_parts(a.low() << b, (a.high() << b) | (a.low() >> (half_bits - b)))
+                <$ty>::from_parts(a.low().wrapping_shl(b as u32),
+                                  a.high().wrapping_shl(b as u32)
+                                  | a.low()
+                                     .wrapping_shr(half_bits.wrapping_sub(b) as u32))
             }
         }}
     }
@@ -72,14 +76,16 @@ pub mod reimpls {
             let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
             let half_bits = bits >> 1;
             if b & half_bits != 0 {
-                <$ty>::from_parts((a.high() >> (b - half_bits)) as <$ty as LargeInt>::LowHalf,
-                                  a.high() >> (half_bits - 1))
+                <$ty>::from_parts(a.high().wrapping_shr(b.wrapping_sub(half_bits) as u32)
+                                  as <$ty as LargeInt>::LowHalf,
+                                  a.high().wrapping_shr(half_bits.wrapping_sub(1) as u32))
             } else if b == 0 {
                 a
             } else {
                 let high_unsigned = a.high() as <$ty as LargeInt>::LowHalf;
-                <$ty>::from_parts((high_unsigned << (half_bits - b)) | (a.low() >> b),
-                                  a.high() >> b)
+                <$ty>::from_parts(high_unsigned.wrapping_shl(half_bits.wrapping_sub(b) as u32)
+                                  | a.low().wrapping_shr(b as u32),
+                                  a.high().wrapping_shr(b as u32))
             }
         }}
     }
@@ -95,11 +101,13 @@ pub mod reimpls {
             let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
             let half_bits = bits >> 1;
             if b & half_bits != 0 {
-                <$ty>::from_parts(a.high() >> (b - half_bits), 0)
+                <$ty>::from_parts(a.high().wrapping_shr(b.wrapping_sub(half_bits) as u32), 0)
             } else if b == 0 {
                 a
             } else {
-                <$ty>::from_parts((a.high() << (half_bits - b)) | (a.low() >> b), a.high() >> b)
+                <$ty>::from_parts(a.high().wrapping_shl(half_bits.wrapping_sub(b) as u32)
+                                  | a.low().wrapping_shr(b as u32),
+                                  a.high().wrapping_shr(b as u32))
             }
         }}
     }
@@ -178,9 +186,10 @@ pub mod reimpls {
 
             if d.high().is_power_of_two() {
                 if !rem.is_null() {
-                    *rem = u128::from_parts(n.low(), n.high() & (d.high() - 1));
+                    *rem = u128::from_parts(n.low(),
+                                            n.high() & (d.high().wrapping_sub(1)));
                 }
-                return u128::from(n.high() >> d.high().trailing_zeros());
+                return u128::from(n.high().wrapping_shr(d.high().trailing_zeros()));
             }
 
             // K K
@@ -196,11 +205,11 @@ pub mod reimpls {
                 return 0;
             }
 
-            sr += 1;
+            sr = sr.wrapping_add(1);
 
             // 1 <= sr <= u64::bits() - 1
-            q = n << (64 - sr);
-            r = n >> sr;
+            q = n.wrapping_shl(64u32.wrapping_sub(sr));
+            r = n.wrapping_shr(sr);
         } else {
             if d.high() == 0 {
                 // K X
@@ -208,22 +217,24 @@ pub mod reimpls {
                 // 0 K
                 if d.low().is_power_of_two() {
                     if !rem.is_null() {
-                        *rem = u128::from(n.low() & (d.low() - 1));
+                        *rem = u128::from(n.low() & (d.low().wrapping_sub(1)));
                     }
 
                     if d.low() == 1 {
                         return n;
                     } else {
                         let sr = d.low().trailing_zeros();
-                        return n >> sr;
+                        return n.wrapping_shr(sr);
                     };
                 }
 
-                sr = 1 + 64 + d.low().leading_zeros() - n.high().leading_zeros();
+                sr = (1 + 64u32)
+                    .wrapping_add(d.low().leading_zeros())
+                    .wrapping_sub(n.high().leading_zeros());
 
                 // 2 <= sr <= u64::bits() - 1
-                q = n << (128 - sr);
-                r = n >> sr;
+                q = n.wrapping_shl(128u32.wrapping_sub(sr));
+                r = n.wrapping_shr(sr);
                 // FIXME the C compiler-rt implementation has something here
                 // that looks like a speed optimisation.
                 // It would be worth a try to port it to Rust too and
@@ -242,11 +253,11 @@ pub mod reimpls {
                     return 0;
                 }
 
-                sr += 1;
+                sr = sr.wrapping_add(1);
 
                 // 1 <= sr <= u32::bits()
-                q = n << (128 - sr);
-                r = n >> sr;
+                q = n.wrapping_shl(128u32.wrapping_sub(sr));
+                r = n.wrapping_shr(sr);
             }
         }
 
@@ -264,24 +275,24 @@ pub mod reimpls {
         // compilation steps)
         while sr > 0 {
             // r:q = ((r:q) << 1) | carry
-            r = (r << 1) | (q >> (128 - 1));
-            q = (q << 1) | carry as u128;
+            r = r.wrapping_shl(1) | q.wrapping_shr(128 - 1);
+            q = q.wrapping_shl(1) | carry as u128;
 
             // carry = 0
             // if r >= d {
             //     r -= d;
             //     carry = 1;
             // }
-            let s = (d.wrapping_sub(r).wrapping_sub(1)) as i128 >> (128 - 1);
+            let s = ((d.wrapping_sub(r).wrapping_sub(1)) as i128).wrapping_shr(128 - 1);
             carry = (s & 1) as u64;
-            r -= d & s as u128;
-            sr -= 1;
+            r = r.wrapping_sub(d & s as u128);
+            sr = sr.wrapping_sub(1);
         }
 
         if !rem.is_null() {
             *rem = r;
         }
-        (q << 1) | carry as u128
+        (q.wrapping_shl(1)) | carry as u128
         }
     }
 
@@ -302,7 +313,7 @@ pub mod reimpls {
         unsafe {
             let mut r = ::core::mem::zeroed();
             u128_div_mod(a, b, &mut r);
-            if sa == -1 { -(r as i128_) } else { r as i128_ }
+            if sa == -1 { (r as i128_).unchecked_neg() } else { r as i128_ }
         }
     }
 
@@ -312,9 +323,9 @@ pub mod reimpls {
         let sb = b.signum();
         let a = a.uabs();
         let b = b.uabs();
-        let sr = sa * sb; // sign of quotient
+        let sr = sa.wrapping_mul(sb); // sign of quotient
         if sr == -1 {
-            -(u128_div_mod(a, b, ptr::null_mut()) as i128_)
+            (u128_div_mod(a, b, ptr::null_mut()) as i128_).unchecked_neg()
         } else {
             u128_div_mod(a, b, ptr::null_mut()) as i128_
         }
@@ -356,7 +367,7 @@ pub mod reimpls {
                     *overflow = 1;
                 }
             } else {
-                if abs_a > unchecked_div(<$ty>::min_value(), -abs_b) {
+                if abs_a > unchecked_div(<$ty>::min_value(), abs_b.unchecked_neg()) {
                     *overflow = 1;
                 }
             }
@@ -387,10 +398,10 @@ pub mod reimpls {
             self as u32
         }
         fn high(self) -> u32 {
-            (self >> 32) as u32
+            (self.wrapping_shr(32)) as u32
         }
         fn from_parts(low: u32, high: u32) -> u64 {
-            low as u64 | ((high as u64) << 32)
+            low as u64 | (high as u64).wrapping_shl(32)
         }
     }
     impl LargeInt for i64 {
@@ -401,10 +412,10 @@ pub mod reimpls {
             self as u32
         }
         fn high(self) -> i32 {
-            (self >> 32) as i32
+            self.wrapping_shr(32) as i32
         }
         fn from_parts(low: u32, high: i32) -> i64 {
-            low as i64 | ((high as i64) << 32)
+            low as i64 | (high as i64).wrapping_shl(32)
         }
     }
     #[cfg(not(stage0))]
@@ -442,20 +453,23 @@ pub mod reimpls {
     macro_rules! mul {
         ($a:expr, $b:expr, $ty: ty, $tyh: ty) => {{
             let (a, b) = ($a, $b);
-            let half_bits = (::core::mem::size_of::<$tyh>() * 8) / 2;
-            let lower_mask = !0 >> half_bits;
-            let mut low = (a.low() & lower_mask) * (b.low() & lower_mask);
-            let mut t = low >> half_bits;
+            let half_bits = ((::core::mem::size_of::<$tyh>() * 8) / 2) as u32;
+            let lower_mask = (!0u64).wrapping_shr(half_bits);
+            let mut low = (a.low() & lower_mask).wrapping_mul(b.low() & lower_mask);
+            let mut t = low.wrapping_shr(half_bits);
             low &= lower_mask;
-            t += (a.low() >> half_bits) * (b.low() & lower_mask);
-            low += (t & lower_mask) << half_bits;
-            let mut high = (t >> half_bits) as $tyh;
-            t = low >> half_bits;
+            t = t.wrapping_add(a.low().wrapping_shr(half_bits)
+                                      .wrapping_mul(b.low() & lower_mask));
+            low = low.wrapping_add((t & lower_mask).wrapping_shl(half_bits));
+            let mut high = t.wrapping_shr(half_bits) as $tyh;
+            t = low.wrapping_shr(half_bits);
             low &= lower_mask;
-            t += (b.low() >> half_bits) * (a.low() & lower_mask);
-            low += (t & lower_mask) << half_bits;
-            high += (t >> half_bits) as $tyh;
-            high += ((a.low() >> half_bits) * (b.low() >> half_bits)) as $tyh;
+            t = t.wrapping_add(b.low().wrapping_shr(half_bits)
+                                      .wrapping_mul(a.low() & lower_mask));
+            low = low.wrapping_add((t & lower_mask).wrapping_shl(half_bits));
+            high = high.wrapping_add(t.wrapping_shr(half_bits) as $tyh);
+            high = high.wrapping_add(a.low().wrapping_shr(half_bits)
+                           .wrapping_mul(b.low().wrapping_shr(half_bits)) as $tyh);
             high = high
                 .wrapping_add(a.high()
                 .wrapping_mul(b.low() as $tyh))
@@ -468,7 +482,7 @@ pub mod reimpls {
     #[cfg(stage0)]
     #[export_name="__multi3"]
     pub extern "C" fn u128_mul(a: i128_, b: i128_) -> i128_ {
-        (a as i64 * b as i64) as i128_
+        (a as i64).wrapping_mul(b as i64) as i128_
     }
 
     #[cfg(not(stage0))]
@@ -488,6 +502,16 @@ pub mod reimpls {
         }
         fn iabs(self) -> i128_ {
             ((self ^ self).wrapping_sub(self))
+        }
+    }
+
+    trait NegExt: Sized {
+        fn unchecked_neg(self) -> i128_;
+    }
+
+    impl NegExt for i128_ {
+        fn unchecked_neg(self) -> i128_ {
+            (!self).wrapping_add(1)
         }
     }
 
@@ -514,7 +538,8 @@ pub mod reimpls {
 
         fn to_bytes(self) -> u32 { unsafe { ::core::mem::transmute(self) } }
         fn get_exponent(self) -> i32 {
-            (((self.to_bytes() & Self::EXP_MASK) >> Self::MANTISSA_BITS) as i32) - Self::MAX_EXP
+            ((self.to_bytes() & Self::EXP_MASK).wrapping_shr(Self::MANTISSA_BITS) as i32)
+            .wrapping_sub(Self::MAX_EXP)
         }
     }
 
@@ -528,7 +553,8 @@ pub mod reimpls {
 
         fn to_bytes(self) -> u64 { unsafe { ::core::mem::transmute(self) } }
         fn get_exponent(self) -> i32 {
-            (((self.to_bytes() & Self::EXP_MASK) >> Self::MANTISSA_BITS) as i32) - Self::MAX_EXP
+            ((self.to_bytes() & Self::EXP_MASK).wrapping_shr(Self::MANTISSA_BITS) as i32)
+            .wrapping_sub(Self::MAX_EXP)
         }
     }
 
@@ -545,9 +571,11 @@ pub mod reimpls {
                 return !0;
             }
             if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
-                mantissa as $outty >> (<$fromty as FloatStuff>::MANTISSA_BITS as i32 - exponent)
+                (mantissa as $outty)
+                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32).wrapping_sub(exponent) as u32)
             } else {
-                mantissa as $outty << (exponent - <$fromty as FloatStuff>::MANTISSA_BITS as i32)
+                (mantissa as $outty)
+                    .wrapping_shl(exponent.wrapping_sub(<$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
             }
         } }
     }
@@ -576,11 +604,13 @@ pub mod reimpls {
                 return if sign > 0.0 { <$outty>::max_value() } else { <$outty>::min_value() };
             }
             let r = if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
-                mantissa as $outty >> (<$fromty as FloatStuff>::MANTISSA_BITS as i32 - exponent)
+                (mantissa as $outty)
+                    .wrapping_shr((<$fromty as FloatStuff>::MANTISSA_BITS as i32).wrapping_sub(exponent) as u32)
             } else {
-                mantissa as $outty << (exponent - <$fromty as FloatStuff>::MANTISSA_BITS as i32)
+                (mantissa as $outty)
+                    .wrapping_shl(exponent.wrapping_sub(<$fromty as FloatStuff>::MANTISSA_BITS as i32) as u32)
             };
-            if sign >= 0.0 { r } else { -r }
+            if sign >= 0.0 { r } else { r.unchecked_neg() }
         }}
     }
 
@@ -616,30 +646,35 @@ pub mod reimpls {
     pub extern "C" fn u128_as_f64(mut a: u128_) -> f64 {
         use ::core::f64::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
-        let sd = 128 - a.leading_zeros();
-        let mut e = sd - 1;
+        let sd = 128u32.wrapping_sub(a.leading_zeros());
+        let mut e = sd.wrapping_sub(1);
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
+        // SNAP: replace this with !0u128
+        let negn :u128_ = !0;
+
         if sd > MANTISSA_DIGITS {
             a = match sd {
-                MD1 => a << 1,
+                MD1 => a.wrapping_shl(1),
                 MD2 => a,
-                _ => (a >> (sd - (MANTISSA_DIGITS + 2))) |
-                     (if (a & (!0 >> (128 + MANTISSA_DIGITS + 2) - sd)) == 0 { 0 } else { 1 })
+                _ => a.wrapping_shr(sd.wrapping_sub(MANTISSA_DIGITS + 2)) |
+                     (if (a & (negn.wrapping_shr(128 + MANTISSA_DIGITS + 2)
+                                   .wrapping_sub(sd as u128_))) == 0 { 0 } else { 1 })
             };
             a |= if (a & 4) == 0 { 0 } else { 1 };
-            a += 1;
-            a >>= 2;
+            a = a.wrapping_add(1);
+            a = a.wrapping_shr(2);
             if a & (1 << MANTISSA_DIGITS) != 0 {
-                a >>= 1;
-                e += 1;
+                a = a.wrapping_shr(1);
+                e = e.wrapping_add(1);
             }
         } else {
-            a <<= MANTISSA_DIGITS - sd;
+            a = a.wrapping_shl(MANTISSA_DIGITS.wrapping_sub(sd));
         }
         unsafe {
-            ::core::mem::transmute(((e as u64 + 1023) << 52) | (a as u64 & 0x000f_ffff_ffff_ffff))
+            ::core::mem::transmute((e as u64).wrapping_add(1023).wrapping_shl(52)
+                                   | (a as u64 & 0x000f_ffff_ffff_ffff))
         }
     }
 
@@ -647,30 +682,35 @@ pub mod reimpls {
     pub extern "C" fn u128_as_f32(mut a: u128_) -> f32 {
         use ::core::f32::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
-        let sd = 128 - a.leading_zeros();
-        let mut e = sd - 1;
+        let sd = 128u32.wrapping_sub(a.leading_zeros());
+        let mut e = sd.wrapping_sub(1);
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
+        // SNAP: replace this with !0u128
+        let negn :u128_ = !0;
+
         if sd > MANTISSA_DIGITS {
             a = match sd {
-                MD1 => a << 1,
+                MD1 => a.wrapping_shl(1),
                 MD2 => a,
-                _ => (a >> (sd - (MANTISSA_DIGITS + 2))) |
-                     (if (a & (!0 >> (128 + MANTISSA_DIGITS + 2) - sd)) == 0 { 0 } else { 1 })
+                _ => a.wrapping_shr(sd.wrapping_sub(MANTISSA_DIGITS + 2)) |
+                     (if (a & (negn.wrapping_shr(128 + MANTISSA_DIGITS + 2)
+                                   .wrapping_sub(sd as u128_))) == 0 { 0 } else { 1 })
             };
             a |= if (a & 4) == 0 { 0 } else { 1 };
-            a += 1;
-            a >>= 2;
+            a = a.wrapping_add(1);
+            a = a.wrapping_shr(2);
             if a & (1 << MANTISSA_DIGITS) != 0 {
-                a >>= 1;
-                e += 1;
+                a = a.wrapping_shr(1);
+                e = e.wrapping_add(1);
             }
         } else {
-            a <<= MANTISSA_DIGITS - sd;
+            a = a.wrapping_shl(MANTISSA_DIGITS.wrapping_sub(sd));
         }
         unsafe {
-            ::core::mem::transmute(((e + 127) << 23) | (a as u32 & 0x007f_ffff))
+            ::core::mem::transmute((e as u32).wrapping_add(127).wrapping_shl(23)
+                                   | (a as u32 & 0x007f_ffff))
         }
     }
 }
