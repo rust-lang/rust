@@ -218,7 +218,7 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```no_run
 /// use std::os::unix::net::UnixStream;
 /// use std::io::prelude::*;
 ///
@@ -248,6 +248,20 @@ impl fmt::Debug for UnixStream {
 
 impl UnixStream {
     /// Connects to the socket named by `path`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock") {
+    ///     Ok(sock) => sock,
+    ///     Err(e) => {
+    ///         println!("Couldn't connect: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         fn inner(path: &Path) -> io::Result<UnixStream> {
@@ -265,6 +279,20 @@ impl UnixStream {
     /// Creates an unnamed pair of connected sockets.
     ///
     /// Returns two `UnixStream`s which are connected to each other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let (sock1, sock2) = match UnixStream::pair() {
+    ///     Ok((sock1, sock2)) => (sock1, sock2),
+    ///     Err(e) => {
+    ///         println!("Couldn't create a pair of sockets: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
         let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_STREAM)?;
@@ -277,18 +305,45 @@ impl UnixStream {
     /// object references. Both handles will read and write the same stream of
     /// data, and options set on one stream will be propogated to the other
     /// stream.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// let sock_copy = socket.try_clone().expect("Couldn't clone socket...");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
         self.0.duplicate().map(UnixStream)
     }
 
     /// Returns the socket address of the local half of this connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
     /// Returns the socket address of the remote half of this connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// let addr = socket.peer_addr().expect("Couldn't get peer address");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
@@ -296,9 +351,23 @@ impl UnixStream {
 
     /// Sets the read timeout for the socket.
     ///
-    /// If the provided value is `None`, then `read` calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// If the provided value is [`None`], then [`read()`] calls will block
+    /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
@@ -306,33 +375,91 @@ impl UnixStream {
 
     /// Sets the write timeout for the socket.
     ///
-    /// If the provided value is `None`, then `write` calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// If the provided value is [`None`], then [`write()`] calls will block
+    /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
 
     /// Returns the read timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
 
     /// Returns the write timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
 
     /// Moves the socket into or out of nonblocking mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_nonblocking(true).expect("Couldn't set non blocking");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     /// Returns the value of the `SO_ERROR` option.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// if let Ok(Some(err)) = socket.take_error() {
+    ///     println!("Got error: {:?}", err);
+    /// }
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -342,7 +469,19 @@ impl UnixStream {
     ///
     /// This function will cause all pending and future I/O calls on the
     /// specified portions to immediately return with an appropriate value
-    /// (see the documentation of `Shutdown`).
+    /// (see the documentation of [`Shutdown`]).
+    ///
+    /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = match UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
