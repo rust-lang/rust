@@ -338,7 +338,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         for local in frame.locals.into_iter() {
             if let Some(Value::ByRef(ptr)) = local {
                 trace!("deallocating local");
-                self.memory.dump(ptr.alloc_id);
+                self.memory.dump_alloc(ptr.alloc_id);
                 match self.memory.deallocate(ptr) {
                     // Any frozen memory means that it belongs to a constant or something referenced
                     // by a constant. We could alternatively check whether the alloc_id is frozen
@@ -352,7 +352,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // deallocate all temporary allocations
         for ptr in frame.interpreter_temporaries {
             trace!("deallocating temporary allocation");
-            self.memory.dump(ptr.alloc_id);
+            self.memory.dump_alloc(ptr.alloc_id);
             self.memory.deallocate(ptr)?;
         }
         Ok(())
@@ -1528,30 +1528,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
             }
-            _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}",
-                      src_ty,
-                      dest_ty),
+            _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}", src_ty, dest_ty),
         }
         Ok(())
     }
 
     pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+        let mut allocs = Vec::new();
+
         if let Lvalue::Local { frame, local } = lvalue {
             if let Some(val) = self.stack[frame].get_local(local) {
                 match val {
                     Value::ByRef(ptr) => {
                         trace!("frame[{}] {:?}:", frame, local);
-                        self.memory.dump(ptr.alloc_id);
+                        allocs.push(ptr.alloc_id);
                     }
-                    Value::ByVal(a) => {
-                        trace!("frame[{}] {:?}: {:?}", frame, local, a);
+                    Value::ByVal(val) => {
+                        trace!("frame[{}] {:?}: {:?}", frame, local, val);
+                        if let Some(alloc_id) = val.relocation { allocs.push(alloc_id); }
                     }
-                    Value::ByValPair(a, b) => {
-                        trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, a, b);
+                    Value::ByValPair(val1, val2) => {
+                        trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, val1, val2);
+                        if let Some(alloc_id) = val1.relocation { allocs.push(alloc_id); }
+                        if let Some(alloc_id) = val2.relocation { allocs.push(alloc_id); }
                     }
                 }
             }
         }
+
+        self.memory.dump_allocs(allocs);
     }
 
     /// convenience function to ensure correct usage of globals and code-sharing with locals

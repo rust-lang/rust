@@ -17,7 +17,7 @@ use primval::{PrimVal, PrimValKind};
 // Allocations and pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub u64);
 
 impl fmt::Display for AllocId {
@@ -342,12 +342,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    /// Print an allocation and all allocations it points to, recursively.
-    pub fn dump(&self, id: AllocId) {
+    /// For debugging, print an allocation and all allocations it points to, recursively.
+    pub fn dump_alloc(&self, id: AllocId) {
+        self.dump_allocs(vec![id]);
+    }
+
+    /// For debugging, print a list of allocations and all allocations they point to, recursively.
+    pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
         use std::fmt::Write;
+        allocs.sort();
+        allocs.dedup();
+        let mut allocs_to_print = VecDeque::from(allocs);
         let mut allocs_seen = HashSet::new();
-        let mut allocs_to_print = VecDeque::new();
-        allocs_to_print.push_back(id);
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id);
