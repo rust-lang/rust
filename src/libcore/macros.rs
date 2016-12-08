@@ -45,7 +45,8 @@ macro_rules! panic {
 /// Other use-cases of `assert!` include [testing] and enforcing run-time
 /// invariants in safe code (whose violation cannot result in unsafety).
 ///
-/// This macro has a second version, where a custom panic message can be provided.
+/// This macro has a second version, where a custom panic message can
+/// be provided with or without arguments for formatting.
 ///
 /// [testing]: ../book/testing.html
 ///
@@ -87,12 +88,17 @@ macro_rules! assert {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
+/// Like `assert!()`, this macro has a second version, where a custom
+/// panic message can be provided.
+///
 /// # Examples
 ///
 /// ```
 /// let a = 3;
 /// let b = 1 + 2;
 /// assert_eq!(a, b);
+///
+/// assert_eq!(a, b, "we are testing addition with {} and {}", a, b);
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -125,12 +131,17 @@ macro_rules! assert_eq {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
+/// Like `assert!()`, this macro has a second version, where a custom
+/// panic message can be provided.
+///
 /// # Examples
 ///
 /// ```
 /// let a = 3;
 /// let b = 2;
 /// assert_ne!(a, b);
+///
+/// assert_ne!(a, b, "we are testing that the values are not equal");
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.12.0")]
