@@ -198,14 +198,6 @@ pub fn build_rules(build: &Build) -> Rules {
              });
     }
     for (krate, path, default) in krates("rustc-main") {
-        // We hijacked the `src/rustc` path above for "build just the compiler"
-        // so let's not reinterpret it here as everything and redirect the
-        // `src/rustc` path to a nonexistent path.
-        let path = if path == "src/rustc" {
-            "path/to/nowhere"
-        } else {
-            path
-        };
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("libtest"))
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
@@ -403,6 +395,10 @@ pub fn build_rules(build: &Build) -> Rules {
          .default(true)
          .host(true)
          .run(move |s| check::docs(build, &s.compiler()));
+    rules.test("check-distcheck", "distcheck")
+         .dep(|s| s.name("dist-src"))
+         .run(move |_| check::distcheck(build));
+
 
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
          .run(move |s| native::test_helpers(build, s.target));

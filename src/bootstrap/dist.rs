@@ -284,6 +284,11 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+pub fn rust_src_location(build: &Build) -> PathBuf {
+    let plain_name = format!("rustc-{}-src", package_vers(build));
+    distdir(build).join(&format!("{}.tar.gz", plain_name))
+}
+
 /// Creates the `rust-src` installer component and the plain source tarball
 pub fn rust_src(build: &Build) {
     println!("Dist src");
@@ -374,7 +379,7 @@ pub fn rust_src(build: &Build) {
 
     // Create plain source tarball
     let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", plain_name))))
+    cmd.arg("-czf").arg(sanitize_sh(&rust_src_location(build)))
        .arg(&plain_name)
        .current_dir(&dst);
     build.run(&mut cmd);
