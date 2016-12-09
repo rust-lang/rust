@@ -1610,7 +1610,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let symbol_map = Rc::new(symbol_map);
 
-    let previous_work_products = trans_reuse_previous_work_products(tcx,
+    let previous_work_products = trans_reuse_previous_work_products(&shared_ccx,
                                                                     &codegen_units,
                                                                     &symbol_map);
 
@@ -1630,7 +1630,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             ModuleTranslation {
                 name: String::from(ccx.codegen_unit().name()),
-                symbol_name_hash: ccx.codegen_unit().compute_symbol_name_hash(tcx, &symbol_map),
+                symbol_name_hash: ccx.codegen_unit()
+                                     .compute_symbol_name_hash(&shared_ccx,
+                                                               &symbol_map),
                 source: source,
             }
         })
@@ -1962,7 +1964,7 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 /// For each CGU, identify if we can reuse an existing object file (or
 /// maybe other context).
-fn trans_reuse_previous_work_products(tcx: TyCtxt,
+fn trans_reuse_previous_work_products(scx: &SharedCrateContext,
                                       codegen_units: &[CodegenUnit],
                                       symbol_map: &SymbolMap)
                                       -> Vec<Option<WorkProduct>> {
@@ -1972,16 +1974,16 @@ fn trans_reuse_previous_work_products(tcx: TyCtxt,
         .map(|cgu| {
             let id = cgu.work_product_id();
 
-            let hash = cgu.compute_symbol_name_hash(tcx, symbol_map);
+            let hash = cgu.compute_symbol_name_hash(scx, symbol_map);
 
             debug!("trans_reuse_previous_work_products: id={:?} hash={}", id, hash);
 
-            if let Some(work_product) = tcx.dep_graph.previous_work_product(&id) {
+            if let Some(work_product) = scx.dep_graph().previous_work_product(&id) {
                 if work_product.input_hash == hash {
                     debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
                     return Some(work_product);
                 } else {
-                    if tcx.sess.opts.debugging_opts.incremental_info {
+                    if scx.sess().opts.debugging_opts.incremental_info {
                         println!("incremental: CGU `{}` invalidated because of \
                                   changed partitioning hash.",
                                   cgu.name());
