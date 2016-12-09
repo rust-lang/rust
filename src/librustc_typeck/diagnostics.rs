@@ -4164,12 +4164,12 @@ target / ABI combination is currently unsupported by llvm.
 If necessary, you can circumvent this check using custom target specifications.
 "##,
 
-E0571: r##"
+E0572: r##"
 A return statement was found outside of a function body.
 
 Erroneous code example:
 
-```compile_fail,E0571
+```compile_fail,E0572
 const FOO: u32 = return 0; // error: return statement outside of function body
 
 fn main() {}
