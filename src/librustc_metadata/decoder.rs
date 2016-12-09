@@ -504,6 +504,14 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Closure(_) => return None,
         })
     }
+    fn is_const_fn(&self, meta: &CrateMetadata) -> bool {
+        let constness = match *self {
+            EntryKind::Method(data) => data.decode(meta).fn_data.constness,
+            EntryKind::Fn(data) => data.decode(meta).constness,
+            _ => hir::Constness::NotConst,
+        };
+        constness == hir::Constness::Const
+    }
 }
 
 impl<'a, 'tcx> CrateMetadata {
@@ -1051,12 +1059,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn is_const_fn(&self, id: DefIndex) -> bool {
-        let constness = match self.entry(id).kind {
-            EntryKind::Method(data) => data.decode(self).fn_data.constness,
-            EntryKind::Fn(data) => data.decode(self).constness,
-            _ => hir::Constness::NotConst,
-        };
-        constness == hir::Constness::Const
+        self.entry(id).kind.is_const_fn(self)
     }
 
     pub fn is_foreign_item(&self, id: DefIndex) -> bool {
