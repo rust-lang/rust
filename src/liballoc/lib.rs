@@ -74,6 +74,7 @@
 
 #![feature(allocator)]
 #![feature(box_syntax)]
+#![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
@@ -122,6 +123,7 @@ mod boxed {
 }
 #[cfg(test)]
 mod boxed_test;
+#[cfg(target_has_atomic = "ptr")]
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;
