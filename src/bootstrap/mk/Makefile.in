@@ -55,6 +55,8 @@ check-cargotest:
 	$(Q)$(BOOTSTRAP) test src/tools/cargotest $(BOOTSTRAP_ARGS)
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
+distcheck:
+	$(Q)$(BOOTSTRAP) test distcheck
 install:
 	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
 tidy:

@@ -23,6 +23,7 @@ use std::process::Command;
 use build_helper::output;
 
 use {Build, Compiler, Mode};
+use dist;
 use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
@@ -516,4 +517,33 @@ pub fn android_copy_libs(build: &Build,
                               .arg(&target_dir));
         }
     }
+}
+
+/// Run "distcheck", a 'make check' from a tarball
+pub fn distcheck(build: &Build) {
+    if build.config.build != "x86_64-unknown-linux-gnu" {
+        return
+    }
+    if !build.config.host.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
+        return
+    }
+    if !build.config.target.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
+        return
+    }
+
+    let dir = build.out.join("tmp").join("distcheck");
+    let _ = fs::remove_dir_all(&dir);
+    t!(fs::create_dir_all(&dir));
+
+    let mut cmd = Command::new("tar");
+    cmd.arg("-xzf")
+       .arg(dist::rust_src_location(build))
+       .arg("--strip-components=1")
+       .current_dir(&dir);
+    build.run(&mut cmd);
+    build.run(Command::new("./configure")
+                     .current_dir(&dir));
+    build.run(Command::new("make")
+                     .arg("check")
+                     .current_dir(&dir));
 }
