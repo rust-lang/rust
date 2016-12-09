@@ -484,22 +484,16 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let items = self.impl_or_trait_item(impl_def_id);
-        if items.len() < 1 {
-            return // No method with correct name on this impl
-        }
-
-        if self.looking_for.is_method_name() {
-            let item = items[0];
-
+        for item in self.impl_or_trait_item(impl_def_id) {
             if !self.has_applicable_self(&item) {
                 // No receiver declared. Not a candidate.
-                return self.record_static_candidate(ImplSource(impl_def_id));
+                self.record_static_candidate(ImplSource(impl_def_id));
+                continue
             }
 
             if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
                 self.private_candidate = Some(item.def());
-                return;
+                continue
             }
 
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
@@ -523,41 +517,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 kind: InherentImplCandidate(impl_substs, obligations),
                 import_id: self.import_id,
             });
-        } else {
-            for item in items {
-                if !self.has_applicable_self(&item) {
-                    // No receiver declared. Not a candidate.
-                    self.record_static_candidate(ImplSource(impl_def_id));
-                    continue
-                }
-
-                if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
-                    self.private_candidate = Some(item.def());
-                    continue
-                }
-
-                let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-                let impl_ty = impl_ty.subst(self.tcx, impl_substs);
-
-                // Determine the receiver type that the method itself expects.
-                let xform_self_ty = self.xform_self_ty(&item, impl_ty, impl_substs);
-
-                // We can't use normalize_associated_types_in as it will pollute the
-                // fcx's fulfillment context after this probe is over.
-                let cause = traits::ObligationCause::misc(self.span, self.body_id);
-                let mut selcx = &mut traits::SelectionContext::new(self.fcx);
-                let traits::Normalized { value: xform_self_ty, obligations } =
-                    traits::normalize(selcx, cause, &xform_self_ty);
-                debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
-                       xform_self_ty);
-
-                self.inherent_candidates.push(Candidate {
-                    xform_self_ty: xform_self_ty,
-                    item: item,
-                    kind: InherentImplCandidate(impl_substs, obligations),
-                    import_id: self.import_id,
-                });
-            }
         }
     }
 
@@ -651,16 +610,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let items = self.impl_or_trait_item(bound_trait_ref.def_id());
-            if items.len() < 1 {
-                continue
-            }
-            let item = items[0];
-
-            if !self.has_applicable_self(&item) {
-                self.record_static_candidate(TraitSource(bound_trait_ref.def_id()));
-            } else {
-                mk_cand(self, bound_trait_ref, item);
+            for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
+                if !self.has_applicable_self(&item) {
+                    self.record_static_candidate(TraitSource(bound_trait_ref.def_id()));
+                } else {
+                    mk_cand(self, bound_trait_ref, item);
+                }
             }
         }
     }
@@ -717,26 +672,22 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
                trait_def_id);
 
-        let items = self.impl_or_trait_item(trait_def_id);
-        if items.len() < 1 {
-            return Ok(());
+        for item in self.impl_or_trait_item(trait_def_id) {
+            // Check whether `trait_def_id` defines a method with suitable name:
+            if !self.has_applicable_self(&item) {
+                debug!("method has inapplicable self");
+                self.record_static_candidate(TraitSource(trait_def_id));
+                continue;
+            }
+
+            self.assemble_extension_candidates_for_trait_impls(trait_def_id, item.clone());
+
+            self.assemble_closure_candidates(trait_def_id, item.clone())?;
+
+            self.assemble_projection_candidates(trait_def_id, item.clone());
+
+            self.assemble_where_clause_candidates(trait_def_id, item.clone());
         }
-        let item = items[0];
-
-        // Check whether `trait_def_id` defines a method with suitable name:
-        if !self.has_applicable_self(&item) {
-            debug!("method has inapplicable self");
-            self.record_static_candidate(TraitSource(trait_def_id));
-            return Ok(());
-        }
-
-        self.assemble_extension_candidates_for_trait_impls(trait_def_id, item.clone());
-
-        self.assemble_closure_candidates(trait_def_id, item.clone())?;
-
-        self.assemble_projection_candidates(trait_def_id, item.clone());
-
-        self.assemble_where_clause_candidates(trait_def_id, item.clone());
 
         Ok(())
     }
