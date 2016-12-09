@@ -383,7 +383,7 @@ fn test_reverse() {
 
 #[test]
 fn test_sort() {
-    for len in 4..25 {
+    for len in (2..25).chain(500..510) {
         for _ in 0..100 {
             let mut v: Vec<_> = thread_rng().gen_iter::<i32>().take(len).collect();
             let mut v1 = v.clone();
@@ -410,7 +410,7 @@ fn test_sort() {
 
 #[test]
 fn test_sort_stability() {
-    for len in 4..25 {
+    for len in (2..25).chain(500..510) {
         for _ in 0..10 {
             let mut counts = [0; 10];
 
@@ -439,6 +439,13 @@ fn test_sort_stability() {
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
         }
     }
+}
+
+#[test]
+fn test_sort_zero_sized_type() {
+    // Should not panic.
+    [(); 10].sort();
+    [(); 100].sort();
 }
 
 #[test]
@@ -1338,89 +1345,104 @@ mod bench {
         })
     }
 
-    #[bench]
-    fn sort_random_small(b: &mut Bencher) {
+    fn gen_ascending(len: usize) -> Vec<u64> {
+        (0..len as u64).collect()
+    }
+
+    fn gen_descending(len: usize) -> Vec<u64> {
+        (0..len as u64).rev().collect()
+    }
+
+    fn gen_random(len: usize) -> Vec<u64> {
         let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v: Vec<_> = rng.gen_iter::<u64>().take(5).collect();
-            v.sort();
-        });
-        b.bytes = 5 * mem::size_of::<u64>() as u64;
+        rng.gen_iter::<u64>().take(len).collect()
     }
 
-    #[bench]
-    fn sort_random_medium(b: &mut Bencher) {
+    fn gen_mostly_ascending(len: usize) -> Vec<u64> {
         let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v: Vec<_> = rng.gen_iter::<u64>().take(100).collect();
-            v.sort();
-        });
-        b.bytes = 100 * mem::size_of::<u64>() as u64;
+        let mut v = gen_ascending(len);
+        for _ in (0usize..).take_while(|x| x * x <= len) {
+            let x = rng.gen::<usize>() % len;
+            let y = rng.gen::<usize>() % len;
+            v.swap(x, y);
+        }
+        v
     }
 
-    #[bench]
-    fn sort_random_large(b: &mut Bencher) {
+    fn gen_mostly_descending(len: usize) -> Vec<u64> {
         let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v: Vec<_> = rng.gen_iter::<u64>().take(10000).collect();
-            v.sort();
-        });
-        b.bytes = 10000 * mem::size_of::<u64>() as u64;
+        let mut v = gen_descending(len);
+        for _ in (0usize..).take_while(|x| x * x <= len) {
+            let x = rng.gen::<usize>() % len;
+            let y = rng.gen::<usize>() % len;
+            v.swap(x, y);
+        }
+        v
     }
 
-    #[bench]
-    fn sort_sorted(b: &mut Bencher) {
-        let mut v: Vec<_> = (0..10000).collect();
-        b.iter(|| {
-            v.sort();
-        });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
-    }
-
-    type BigSortable = (u64, u64, u64, u64);
-
-    #[bench]
-    fn sort_big_random_small(b: &mut Bencher) {
+    fn gen_big_random(len: usize) -> Vec<[u64; 16]> {
         let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>()
-                .take(5)
-                .collect::<Vec<BigSortable>>();
-            v.sort();
-        });
-        b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
+        rng.gen_iter().map(|x| [x; 16]).take(len).collect()
     }
 
-    #[bench]
-    fn sort_big_random_medium(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>()
-                .take(100)
-                .collect::<Vec<BigSortable>>();
-            v.sort();
-        });
-        b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
+    fn gen_big_ascending(len: usize) -> Vec<[u64; 16]> {
+        (0..len as u64).map(|x| [x; 16]).take(len).collect()
     }
 
-    #[bench]
-    fn sort_big_random_large(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>()
-                .take(10000)
-                .collect::<Vec<BigSortable>>();
-            v.sort();
-        });
-        b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
+    fn gen_big_descending(len: usize) -> Vec<[u64; 16]> {
+        (0..len as u64).rev().map(|x| [x; 16]).take(len).collect()
     }
 
+    macro_rules! sort_bench {
+        ($name:ident, $gen:expr, $len:expr) => {
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                b.iter(|| $gen($len).sort());
+                b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
+            }
+        }
+    }
+
+    sort_bench!(sort_small_random, gen_random, 10);
+    sort_bench!(sort_small_ascending, gen_ascending, 10);
+    sort_bench!(sort_small_descending, gen_descending, 10);
+
+    sort_bench!(sort_small_big_random, gen_big_random, 10);
+    sort_bench!(sort_small_big_ascending, gen_big_ascending, 10);
+    sort_bench!(sort_small_big_descending, gen_big_descending, 10);
+
+    sort_bench!(sort_medium_random, gen_random, 100);
+    sort_bench!(sort_medium_ascending, gen_ascending, 100);
+    sort_bench!(sort_medium_descending, gen_descending, 100);
+
+    sort_bench!(sort_large_random, gen_random, 10000);
+    sort_bench!(sort_large_ascending, gen_ascending, 10000);
+    sort_bench!(sort_large_descending, gen_descending, 10000);
+    sort_bench!(sort_large_mostly_ascending, gen_mostly_ascending, 10000);
+    sort_bench!(sort_large_mostly_descending, gen_mostly_descending, 10000);
+
+    sort_bench!(sort_large_big_random, gen_big_random, 10000);
+    sort_bench!(sort_large_big_ascending, gen_big_ascending, 10000);
+    sort_bench!(sort_large_big_descending, gen_big_descending, 10000);
+
     #[bench]
-    fn sort_big_sorted(b: &mut Bencher) {
-        let mut v: Vec<BigSortable> = (0..10000).map(|i| (i, i, i, i)).collect();
+    fn sort_large_random_expensive(b: &mut Bencher) {
+        let len = 10000;
         b.iter(|| {
-            v.sort();
+            let mut count = 0;
+            let cmp = move |a: &u64, b: &u64| {
+                count += 1;
+                if count % 1_000_000_000 == 0 {
+                    panic!("should not happen");
+                }
+                (*a as f64).cos().partial_cmp(&(*b as f64).cos()).unwrap()
+            };
+
+            let mut v = gen_random(len);
+            v.sort_by(cmp);
+
+            black_box(count);
         });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+        b.bytes = len as u64 * mem::size_of::<u64>() as u64;
     }
 }
