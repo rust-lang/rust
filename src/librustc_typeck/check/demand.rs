@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Method(def_id) => {
                 match self.tcx.item_type(def_id).sty {
                     ty::TypeVariants::TyFnDef(_, _, fty) => {
-                        fty.sig.skip_binder().inputs.len() == 1
+                        fty.sig.skip_binder().inputs().len() == 1
                     }
                     _ => false,
                 }
