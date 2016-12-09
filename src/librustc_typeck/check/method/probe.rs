@@ -33,25 +33,17 @@ use self::CandidateKind::*;
 pub use self::PickKind::*;
 
 pub enum LookingFor<'tcx> {
+    /// looking for methods with the given name; this is the normal case
     MethodName(ast::Name),
+
+    /// looking for methods that return a given type; this is used to
+    /// assemble suggestions
     ReturnType(Ty<'tcx>),
 }
 
-impl<'tcx> LookingFor<'tcx> {
-    pub fn is_method_name(&self) -> bool {
-        match *self {
-            LookingFor::MethodName(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_return_type(&self) -> bool {
-        match *self {
-            LookingFor::ReturnType(_) => true,
-            _ => false,
-        }
-    }
-}
+/// Boolean flag used to indicate if this search is for a suggestion
+/// or not.  If true, we can allow ambiguity and so forth.
+pub struct IsSuggestion(pub bool);
 
 struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
@@ -183,13 +175,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                return_type,
                scope_expr_id);
         let method_names =
-            self.probe_op(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id,
+            self.probe_op(span, mode, LookingFor::ReturnType(return_type), IsSuggestion(true),
+                          self_ty, scope_expr_id,
                           |probe_cx| Ok(probe_cx.candidate_method_names()))
                 .unwrap_or(vec![]);
         method_names
             .iter()
             .flat_map(|&method_name| {
-                match self.probe_for_name(span, mode, method_name, self_ty, scope_expr_id) {
+                match self.probe_for_name(span, mode, method_name, IsSuggestion(true), self_ty, scope_expr_id) {
                     Ok(pick) => Some(pick.item),
                     Err(_) => None,
                 }
@@ -201,6 +194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           span: Span,
                           mode: Mode,
                           item_name: ast::Name,
+                          is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
                           scope_expr_id: ast::NodeId)
                           -> PickResult<'tcx> {
@@ -211,6 +205,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.probe_op(span,
                       mode,
                       LookingFor::MethodName(item_name),
+                      is_suggestion,
                       self_ty,
                       scope_expr_id,
                       |probe_cx| probe_cx.pick())
@@ -220,6 +215,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       span: Span,
                       mode: Mode,
                       looking_for: LookingFor<'tcx>,
+                      is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
                       scope_expr_id: ast::NodeId,
                       op: OP)
@@ -234,7 +230,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // think cause spurious errors. Really though this part should
         // take place in the `self.probe` below.
         let steps = if mode == Mode::MethodCall {
-            match self.create_steps(span, self_ty) {
+            match self.create_steps(span, self_ty, is_suggestion) {
                 Some(steps) => steps,
                 None => {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
@@ -287,7 +283,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn create_steps(&self,
                     span: Span,
-                    self_ty: Ty<'tcx>)
+                    self_ty: Ty<'tcx>,
+                    is_suggestion: IsSuggestion)
                     -> Option<Vec<CandidateStep<'tcx>>> {
         // FIXME: we don't need to create the entire steps in one pass
 
@@ -302,8 +299,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .collect();
 
-        let final_ty = autoderef.unambiguous_final_ty();
+        let final_ty = autoderef.maybe_ambiguous_final_ty();
         match final_ty.sty {
+            ty::TyInfer(ty::TyVar(_)) => {
+                // Ended in an inference variable. If we are doing
+                // a real method lookup, this is a hard error (it's an
+                // ambiguity and we can't make progress).
+                if !is_suggestion.0 {
+                    let t = self.structurally_resolved_type(span, final_ty);
+                    assert_eq!(t, self.tcx.types.err);
+                    return None
+                } else {
+                    // If we're just looking for suggestions,
+                    // though, ambiguity is no big thing, we can
+                    // just ignore it.
+                }
+            }
             ty::TyArray(elem_ty, _) => {
                 let dereferences = steps.len() - 1;
 
