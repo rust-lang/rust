@@ -5363,26 +5363,33 @@ impl<'a> Parser<'a> {
             }
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
-            let this_module = match self.directory.path.file_name() {
-                Some(file_name) => file_name.to_str().unwrap().to_owned(),
-                None => self.root_module_name.as_ref().unwrap().clone(),
-            };
-            err.span_note(id_sp,
-                          &format!("maybe move this module `{0}` to its own directory \
-                                    via `{0}{1}mod.rs`",
-                                   this_module,
-                                   path::MAIN_SEPARATOR));
+            if id_sp != syntax_pos::DUMMY_SP {
+                let full_path = self.sess.codemap().span_to_filename(id_sp);
+                let path = Path::new(&full_path);
+                let filename = path.file_stem().unwrap();
+                let parent = path.parent().unwrap_or(Path::new(""))
+                                          .to_str().unwrap_or("").to_owned();
+                let path = format!("{}/{}",
+                                   if parent.len() == 0 { "." } else { &parent },
+                                   filename.to_str().unwrap_or(""));
+                err.span_note(id_sp,
+                              &format!("maybe move this module `{0}` to its own directory \
+                                        via `{0}{1}mod.rs`",
+                                       path,
+                                       path::MAIN_SEPARATOR));
+            }
             if paths.path_exists {
                 err.span_note(id_sp,
                               &format!("... or maybe `use` the module `{}` instead \
                                         of possibly redeclaring it",
                                        paths.name));
-                Err(err)
-            } else {
-                Err(err)
             }
+            Err(err)
         } else {
-            paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
+            match paths.result {
+                Ok(succ) => Ok(succ),
+                Err(err) => Err(self.span_fatal_err(id_sp, &err.err_msg, &err.help_msg)),
+            }
         }
     }
 
