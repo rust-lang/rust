@@ -20,8 +20,8 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::util::nodemap::{FnvHashSet, FxHashSet};
-use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::util::nodemap::FxHashSet;
+use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
@@ -182,7 +182,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         method_names
             .iter()
             .flat_map(|&method_name| {
-                match self.probe_for_name(span, mode, method_name, IsSuggestion(true), self_ty, scope_expr_id) {
+                match self.probe_for_name(span, mode, method_name, IsSuggestion(true), self_ty,
+                                          scope_expr_id) {
                     Ok(pick) => Some(pick.item),
                     Err(_) => None,
                 }
