@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const FOO: u32 = return 0; //~ ERROR E0571
+const FOO: u32 = return 0; //~ ERROR E0572
 
 fn main() {}
