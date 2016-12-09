@@ -17,86 +17,111 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::__rand::{thread_rng, Rng};
 use std::thread;
 
-const REPEATS: usize = 5;
-const MAX_LEN: usize = 32;
-static drop_counts: [AtomicUsize;  MAX_LEN] =
-    // FIXME #5244: AtomicUsize is not Copy.
-    [
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
-        AtomicUsize::new(0), AtomicUsize::new(0),
-     ];
+const MAX_LEN: usize = 80;
 
-static creation_count: AtomicUsize = AtomicUsize::new(0);
+static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
+    // FIXME #5244: AtomicUsize is not Copy.
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+    AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+];
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
-struct DropCounter { x: u32, creation_id: usize }
+struct DropCounter {
+    x: u32,
+    id: usize,
+}
 
 impl Drop for DropCounter {
     fn drop(&mut self) {
-        drop_counts[self.creation_id].fetch_add(1, Ordering::Relaxed);
+        DROP_COUNTS[self.id].fetch_add(1, Ordering::Relaxed);
     }
 }
 
-pub fn main() {
-    // len can't go above 64.
-    for len in 2..MAX_LEN {
-        for _ in 0..REPEATS {
-            // reset the count for these new DropCounters, so their
-            // IDs start from 0.
-            creation_count.store(0, Ordering::Relaxed);
+fn test(input: &[DropCounter]) {
+    let len = input.len();
 
-            let mut rng = thread_rng();
-            let main = (0..len).map(|_| {
-                DropCounter {
-                    x: rng.next_u32(),
-                    creation_id: creation_count.fetch_add(1, Ordering::Relaxed),
+    // Work out the total number of comparisons required to sort
+    // this array...
+    let mut count = 0usize;
+    input.to_owned().sort_by(|a, b| { count += 1; a.cmp(b) });
+
+    // ... and then panic on each and every single one.
+    for panic_countdown in 0..count {
+        // Refresh the counters.
+        for i in 0..len {
+            DROP_COUNTS[i].store(0, Ordering::Relaxed);
+        }
+
+        let v = input.to_owned();
+        let _ = thread::spawn(move || {
+            let mut v = v;
+            let mut panic_countdown = panic_countdown;
+            v.sort_by(|a, b| {
+                if panic_countdown == 0 {
+                    panic!();
                 }
-            }).collect::<Vec<_>>();
+                panic_countdown -= 1;
+                a.cmp(b)
+            })
+        }).join();
 
-            // work out the total number of comparisons required to sort
-            // this array...
-            let mut count = 0_usize;
-            main.clone().sort_by(|a, b| { count += 1; a.cmp(b) });
+        // Check that the number of things dropped is exactly
+        // what we expect (i.e. the contents of `v`).
+        for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
+            let count = c.load(Ordering::Relaxed);
+            assert!(count == 1,
+                    "found drop count == {} for i == {}, len == {}",
+                    count, i, len);
+        }
+    }
+}
 
-            // ... and then panic on each and every single one.
-            for panic_countdown in 0..count {
-                // refresh the counters.
-                for c in &drop_counts {
-                    c.store(0, Ordering::Relaxed);
-                }
-
-                let v = main.clone();
-
-                let _ = thread::spawn(move|| {
-                    let mut v = v;
-                    let mut panic_countdown = panic_countdown;
-                    v.sort_by(|a, b| {
-                        if panic_countdown == 0 {
-                            panic!()
-                        }
-                        panic_countdown -= 1;
-                        a.cmp(b)
-                    })
-                }).join();
-
-                // check that the number of things dropped is exactly
-                // what we expect (i.e. the contents of `v`).
-                for (i, c) in drop_counts.iter().enumerate().take(len) {
-                    let count = c.load(Ordering::Relaxed);
-                    assert!(count == 1,
-                            "found drop count == {} for i == {}, len == {}",
-                            count, i, len);
-                }
+fn main() {
+    for len in (1..20).chain(70..MAX_LEN) {
+        // Test on a random array.
+        let mut rng = thread_rng();
+        let input = (0..len).map(|id| {
+            DropCounter {
+                x: rng.next_u32(),
+                id: id,
             }
+        }).collect::<Vec<_>>();
+        test(&input);
+
+        // Test on a sorted array with two elements randomly swapped, creating several natural
+        // runs of random lengths. Such arrays have very high chances of hitting all code paths in
+        // the merge procedure.
+        for _ in 0..5 {
+            let mut input = (0..len).map(|i|
+                DropCounter {
+                    x: i as u32,
+                    id: i,
+                }
+            ).collect::<Vec<_>>();
+
+            let a = rng.gen::<usize>() % len;
+            let b = rng.gen::<usize>() % len;
+            input.swap(a, b);
+
+            test(&input);
         }
     }
 }
