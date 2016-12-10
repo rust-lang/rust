@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-This RFC proposes allowing the `Self` type to be used in where clauses for trait
-implementations, as well as referencing associated types for the trait being
+This RFC proposes allowing the `Self` type to be used in every position in trait
+implementations, including where clauses and other parameters to the trait being
 implemented.
 
 # Motivation
@@ -46,28 +46,40 @@ on the associated type. It would be nice to reduce some of that duplication.
 # Detailed design
 [design]: #detailed-design
 
-The first half of this RFC is simple. Inside of a where clause for trait
-implementations, `Self` will refer to the type the trait is being implemented
-for. It will have the same value as `Self` being used in the body of the trait
-implementation.
+Instead of blocking `Self` from being used in the "header" of a trait impl,
+it will be understood to be a reference to the implementation type. For example,
+all of these would be valid:
 
-Accessing associated types will have the same result as copying the body of the
-associated type into the place where it's being used. That is to say that it
-will assume that all constraints hold, and evaluate to what the type would have
-been in that case. Ideally one should never have to write `<Self as
-CurrentTrait>::SomeType`, but in practice it will likely be required to remove
-issues with recursive evaluation.
+```rust
+impl SomeTrait for SomeType where Self: SomeOtherTrait { }
+
+impl SomeTrait<Self> for SomeType { }
+
+impl SomeTrait for SomeType where SomeOtherType<Self>: SomeTrait { }
+
+impl SomeTrait for SomeType where Self::AssocType: SomeOtherTrait {
+    AssocType = SomeOtherType;
+}
+```
+
+If the `Self` type is parameterized by `Self`, an error that the type definition
+is recursive is thrown, rather than not recognizing self.
+
+```rust
+// The error here is because this would be Vec<Vec<Self>>, Vec<Vec<Vec<Self>>>, ...
+impl SomeTrait for Vec<Self> { }
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-`Self` is always less explicit than the alternative
+`Self` is always less explicit than the alternative.
 
 # Alternatives
 [alternatives]: #alternatives
 
-Not implementing this, or only allowing bare `Self` but not associated types in
-where clauses
+Not implementing this is an alternative, as is accepting Self only in where clauses
+and not other positions in the impl header.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
