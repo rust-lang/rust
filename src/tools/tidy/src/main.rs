@@ -36,6 +36,7 @@ mod errors;
 mod features;
 mod cargo;
 mod pal;
+mod deps;
 
 fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
@@ -48,6 +49,7 @@ fn main() {
     cargo::check(&path, &mut bad);
     features::check(&path, &mut bad);
     pal::check(&path, &mut bad);
+    deps::check(&path, &mut bad);
 
     if bad {
         panic!("some tidy checks failed");
