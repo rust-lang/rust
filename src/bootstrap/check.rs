@@ -465,8 +465,7 @@ fn krate_emscripten(build: &Build,
          println!("running {}", test_file_name);
          let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
          let mut cmd = Command::new(nodejs);
-         cmd.arg(&test_file_name)
-            .stderr(::std::process::Stdio::inherit());
+         cmd.arg(&test_file_name);
          if build.config.quiet_tests {
              cmd.arg("--quiet");
          }
