@@ -18,16 +18,20 @@ use type_::Type;
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     let fixup = |a: &mut ArgType| {
-        if a.ty.kind() == Struct {
-            match llsize_of_alloc(ccx, a.ty) {
-                1 => a.cast = Some(Type::i8(ccx)),
-                2 => a.cast = Some(Type::i16(ccx)),
-                4 => a.cast = Some(Type::i32(ccx)),
-                8 => a.cast = Some(Type::i64(ccx)),
-                _ => a.make_indirect(ccx)
-            }
-        } else {
-            a.extend_integer_width_to(32);
+        match a.ty.kind() {
+            Struct => match llsize_of_alloc(ccx, a.ty) {
+                          1 => a.cast = Some(Type::i8(ccx)),
+                          2 => a.cast = Some(Type::i16(ccx)),
+                          4 => a.cast = Some(Type::i32(ccx)),
+                          8 => a.cast = Some(Type::i64(ccx)),
+                          _ => a.make_indirect(ccx)
+                      },
+            Integer => match llsize_of_alloc(ccx, a.ty) {
+                           1 ... 8 => a.extend_integer_width_to(32),
+                           16 => a.make_indirect(ccx),
+                           _ => bug!(),
+            },
+            _ => (),
         }
     };
 
