@@ -706,10 +706,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn can_have_local_instance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> bool {
-    // Take a look if we have the definition available. If not, we
-    // will not emit code for this item in the local crate, and thus
-    // don't create a translation item for it.
-    def_id.is_local() || tcx.sess.cstore.is_item_mir_available(def_id)
+    tcx.sess.cstore.can_have_local_instance(tcx, def_id)
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
