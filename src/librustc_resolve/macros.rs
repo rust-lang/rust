@@ -183,9 +183,9 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
         let ast::Path { ref segments, global, span } = *path;
-        if segments.iter().any(|segment| !segment.parameters.is_empty()) {
+        if segments.iter().any(|segment| segment.parameters.is_some()) {
             let kind =
-                if segments.last().unwrap().parameters.is_empty() { "module" } else { "macro" };
+                if segments.last().unwrap().parameters.is_some() { "macro" } else { "module" };
             let msg = format!("type parameters are not allowed on {}s", kind);
             self.session.span_err(path.span, &msg);
             return Err(Determinacy::Determined);

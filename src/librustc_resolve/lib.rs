@@ -62,7 +62,7 @@ use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
-use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 
 use syntax_pos::{Span, DUMMY_SP};
 use errors::DiagnosticBuilder;
@@ -2960,14 +2960,9 @@ impl<'a> Resolver<'a> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let params = PathParameters::none();
-                        let segment = PathSegment {
-                            identifier: ident,
-                            parameters: params,
-                        };
                         let span = name_binding.span;
                         let mut segms = path_segments.clone();
-                        segms.push(segment);
+                        segms.push(ident.into());
                         let path = Path {
                             span: span,
                             global: false,
@@ -2990,10 +2985,7 @@ impl<'a> Resolver<'a> {
                 if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(PathSegment {
-                        identifier: ident,
-                        parameters: PathParameters::none(),
-                    });
+                    path_segments.push(ident.into());
 
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
