@@ -4389,7 +4389,7 @@ impl<'a> Parser<'a> {
                     *t == token::Gt || *t == token::Comma || *t == token::Colon
                 });
                 if gt_comma_or_colon {
-                    return Err(self.fatal("TODO How to even explain this error?"));
+                    self.err("syntax `where<T>` is reserved for future use");
                 }
             }
         }
