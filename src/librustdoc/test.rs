@@ -537,4 +537,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
             intravisit::walk_struct_field(this, f);
         });
     }
+
+    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
+        self.visit_testable(macro_def.name.to_string(), &macro_def.attrs, |_| ());
+    }
 }
