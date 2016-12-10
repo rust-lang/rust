@@ -1705,12 +1705,11 @@ impl<'a> Parser<'a> {
             // Parse types, optionally.
             let parameters = if self.eat_lt() {
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
-
-                ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
+                ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
                     types: P::from_vec(types),
                     bindings: P::from_vec(bindings),
-                })
+                }.into()
             } else if self.eat(&token::OpenDelim(token::Paren)) {
                 let lo = self.prev_span.lo;
 
@@ -1727,18 +1726,17 @@ impl<'a> Parser<'a> {
 
                 let hi = self.prev_span.hi;
 
-                ast::PathParameters::Parenthesized(ast::ParenthesizedParameterData {
+                Some(P(ast::PathParameters::Parenthesized(ast::ParenthesizedParameterData {
                     span: mk_sp(lo, hi),
                     inputs: inputs,
                     output: output_ty,
-                })
+                })))
             } else {
-                ast::PathParameters::none()
+                None
             };
 
             // Assemble and push the result.
-            segments.push(ast::PathSegment { identifier: identifier,
-                                             parameters: parameters });
+            segments.push(ast::PathSegment { identifier: identifier, parameters: parameters });
 
             // Continue only if we see a `::`
             if !self.eat(&token::ModSep) {
@@ -1757,10 +1755,7 @@ impl<'a> Parser<'a> {
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
-                segments.push(ast::PathSegment {
-                    identifier: identifier,
-                    parameters: ast::PathParameters::none()
-                });
+                segments.push(identifier.into());
                 return Ok(segments);
             }
 
@@ -1768,14 +1763,13 @@ impl<'a> Parser<'a> {
             if self.eat_lt() {
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
-                let parameters = ast::AngleBracketedParameterData {
-                    lifetimes: lifetimes,
-                    types: P::from_vec(types),
-                    bindings: P::from_vec(bindings),
-                };
                 segments.push(ast::PathSegment {
                     identifier: identifier,
-                    parameters: ast::PathParameters::AngleBracketed(parameters),
+                    parameters: ast::AngleBracketedParameterData {
+                        lifetimes: lifetimes,
+                        types: P::from_vec(types),
+                        bindings: P::from_vec(bindings),
+                    }.into(),
                 });
 
                 // Consumed `a::b::<T,U>`, check for `::` before proceeding
@@ -1784,10 +1778,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Consumed `a::`, go look for `b`
-                segments.push(ast::PathSegment {
-                    identifier: identifier,
-                    parameters: ast::PathParameters::none(),
-                });
+                segments.push(identifier.into());
             }
         }
     }
@@ -1802,10 +1793,7 @@ impl<'a> Parser<'a> {
             let identifier = self.parse_path_segment_ident()?;
 
             // Assemble and push the result.
-            segments.push(ast::PathSegment {
-                identifier: identifier,
-                parameters: ast::PathParameters::none()
-            });
+            segments.push(identifier.into());
 
             // If we do not see a `::` or see `::{`/`::*`, stop.
             if !self.check(&token::ModSep) || self.is_import_coupler() {
