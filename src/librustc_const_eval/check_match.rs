@@ -26,7 +26,7 @@ use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::lint;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Diagnostic, Level, DiagnosticBuilder};
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
@@ -313,19 +313,16 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         },
 
                         hir::MatchSource::Normal => {
-                            // if we had a catchall pattern, raise an error.
-                            // Otherwise an unreachable pattern raises a warning.
+                            let mut diagnostic = Diagnostic::new(Level::Warning,
+                                                                 "unreachable pattern");
+                            diagnostic.set_span(pat.span);
+                            // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                let mut err = struct_span_err!(cx.tcx.sess, pat.span, E0001,
-                                                               "unreachable pattern");
-                                err.span_label(pat.span, &"this is an unreachable pattern");
-                                err.span_note(catchall, "this pattern matches any value");
-                                err.emit();
-                            } else {
-                                cx.tcx.sess.add_lint(lint::builtin::UNREACHABLE_PATTERNS,
-                                                     hir_pat.id, pat.span,
-                                                     String::from("unreachable pattern"));
+                                diagnostic.span_label(pat.span, &"this is an unreachable pattern");
+                                diagnostic.span_note(catchall, "this pattern matches any value");
                             }
+                            cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
+                                                            hir_pat.id, diagnostic);
                         },
 
                         hir::MatchSource::TryDesugar => {

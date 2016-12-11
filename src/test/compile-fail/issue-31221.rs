@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(non_snake_case)]
 #![deny(unreachable_patterns)]
+//~^ NOTE lint level defined here
+//~^^ NOTE lint level defined here
+//~^^^ NOTE lint level defined here
 
+#[derive(Clone, Copy)]
 enum Enum {
     Var1,
     Var2,
