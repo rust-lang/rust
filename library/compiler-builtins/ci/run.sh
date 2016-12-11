@@ -7,8 +7,8 @@ case $1 in
         xargo build --target $1 --release
         ;;
     *)
-        cargo test --target $1
-        cargo test --target $1 --release
+        cargo test --no-default-features --target $1
+        cargo test --no-default-features --target $1 --release
         ;;
 esac
 
@@ -18,7 +18,7 @@ case $1 in
         xargo build --features c --target $1 --bin intrinsics
         ;;
     *)
-        cargo build --features c --target $1 --bin intrinsics
+        cargo build --no-default-features --features c --target $1 --bin intrinsics
         ;;
 esac
 
@@ -26,12 +26,12 @@ esac
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 case $1 in
     thumb*)
-        RUSTFLAGS="-C debug-assertions=no -C link-arg=-nostartfiles" xargo rustc --features c --target $1 --bin intrinsics -- -C lto
-        xargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
+        RUSTFLAGS="-C debug-assertions=no -C link-arg=-nostartfiles" xargo rustc --no-default-features --features c --target $1 --bin intrinsics -- -C lto
+        xargo rustc --no-default-features --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
     *)
-        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features c --target $1 --bin intrinsics -- -C lto
-        cargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --no-default-features --features c --target $1 --bin intrinsics -- -C lto
+        cargo rustc --no-default-features --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
 esac
 
