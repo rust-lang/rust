@@ -3,10 +3,10 @@ use rustc::traits::{self, Reveal, SelectionContext};
 use rustc::ty::subst::Substs;
 use rustc::ty;
 
-use super::EvalContext;
 use error::EvalResult;
+use eval_context::EvalContext;
 use memory::Pointer;
-use super::terminator::{get_impl_method, ImplMethod};
+use terminator::{get_impl_method, ImplMethod};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
