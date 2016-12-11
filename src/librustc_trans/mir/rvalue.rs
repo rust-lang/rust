@@ -17,7 +17,7 @@ use rustc::mir;
 use asm;
 use base;
 use callee::Callee;
-use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
+use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder};
 use common::{C_integral};
 use debuginfo::DebugLoc;
 use adt;
@@ -70,30 +70,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // so the (generic) MIR may not be able to expand it.
                 let operand = self.trans_operand(&bcx, source);
                 let operand = operand.pack_if_pair(&bcx);
-                bcx.with_block(|bcx| {
-                    match operand.val {
-                        OperandValue::Pair(..) => bug!(),
-                        OperandValue::Immediate(llval) => {
-                            // unsize from an immediate structure. We don't
-                            // really need a temporary alloca here, but
-                            // avoiding it would require us to have
-                            // `coerce_unsized_into` use extractvalue to
-                            // index into the struct, and this case isn't
-                            // important enough for it.
-                            debug!("trans_rvalue: creating ugly alloca");
-                            let lltemp = base::alloc_ty(bcx, operand.ty, "__unsize_temp");
-                            base::store_ty(bcx, llval, lltemp, operand.ty);
-                            base::coerce_unsized_into(bcx,
-                                                      lltemp, operand.ty,
-                                                      dest.llval, cast_ty);
-                        }
-                        OperandValue::Ref(llref) => {
-                            base::coerce_unsized_into(bcx,
-                                                      llref, operand.ty,
-                                                      dest.llval, cast_ty);
-                        }
+                match operand.val {
+                    OperandValue::Pair(..) => bug!(),
+                    OperandValue::Immediate(llval) => {
+                        // unsize from an immediate structure. We don't
+                        // really need a temporary alloca here, but
+                        // avoiding it would require us to have
+                        // `coerce_unsized_into` use extractvalue to
+                        // index into the struct, and this case isn't
+                        // important enough for it.
+                        debug!("trans_rvalue: creating ugly alloca");
+                        let lltemp = base::alloc_ty(&bcx, operand.ty, "__unsize_temp");
+                        base::store_ty(&bcx, llval, lltemp, operand.ty);
+                        base::coerce_unsized_into(&bcx,
+                            lltemp, operand.ty,
+                            dest.llval, cast_ty);
                     }
-                });
+                    OperandValue::Ref(llref) => {
+                        base::coerce_unsized_into(&bcx,
+                            llref, operand.ty,
+                            dest.llval, cast_ty);
+                    }
+                }
                 bcx
             }
 
@@ -102,11 +100,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx(), size);
                 let base = base::get_dataptr_builder(&bcx, dest.llval);
-                let bcx = bcx.map_block(|block| {
-                    tvec::slice_for_each(block, base, tr_elem.ty, size, |block, llslot| {
-                        self.store_operand_direct(block, llslot, tr_elem);
-                        block
-                    })
+                let bcx = tvec::slice_for_each(bcx, base, tr_elem.ty, size, |bcx, llslot| {
+                    self.store_operand_direct(&bcx, llslot, tr_elem);
+                    bcx
                 });
                 bcx
             }
@@ -115,10 +111,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
-                        bcx.with_block(|bcx| {
-                            adt::trans_set_discr(bcx,
-                                dest.ty.to_ty(bcx.tcx()), dest.llval, Disr::from(disr));
-                        });
+                        adt::trans_set_discr(&bcx,
+                            dest.ty.to_ty(bcx.tcx()), dest.llval, Disr::from(disr));
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
@@ -171,10 +165,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     self.trans_operand(&bcx, input).immediate()
                 }).collect();
 
-                bcx.with_block(|bcx| {
-                    asm::trans_inline_asm(bcx, asm, outputs, input_vals);
-                });
-
+                asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
                 bcx
             }
 
@@ -238,10 +229,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             }
                             OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
-                                let (lldata, llextra) = bcx.with_block(|bcx| {
-                                    base::unsize_thin_ptr(bcx, lldata,
-                                                          operand.ty, cast_ty)
-                                });
+                                let (lldata, llextra) = base::unsize_thin_ptr(&bcx, lldata,
+                                    operand.ty, cast_ty);
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
@@ -281,9 +270,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             let discr = match operand.val {
                                 OperandValue::Immediate(llval) => llval,
                                 OperandValue::Ref(llptr) => {
-                                    bcx.with_block(|bcx| {
-                                        adt::trans_get_discr(bcx, operand.ty, llptr, None, true)
-                                    })
+                                    adt::trans_get_discr(&bcx, operand.ty, llptr, None, true)
                                 }
                                 OperandValue::Pair(..) => bug!("Unexpected Pair operand")
                             };
@@ -468,19 +455,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llalign = C_uint(bcx.ccx(), align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
-                let mut llval = None;
-                let bcx = bcx.map_block(|bcx| {
-                    let Result { bcx, val } = base::malloc_raw_dyn(bcx,
-                                                                   llty_ptr,
-                                                                   box_ty,
-                                                                   llsize,
-                                                                   llalign,
-                                                                   debug_loc);
-                    llval = Some(val);
-                    bcx
-                });
+                let val = base::malloc_raw_dyn(
+                    &bcx,
+                    llty_ptr,
+                    box_ty,
+                    llsize,
+                    llalign,
+                    debug_loc
+                );
                 let operand = OperandRef {
-                    val: OperandValue::Immediate(llval.unwrap()),
+                    val: OperandValue::Immediate(val),
                     ty: box_ty,
                 };
                 (bcx, operand)
@@ -543,21 +527,21 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::BinOp::BitAnd => bcx.and(lhs, rhs),
             mir::BinOp::BitXor => bcx.xor(lhs, rhs),
             mir::BinOp::Shl => {
-                bcx.with_block(|bcx| {
-                    common::build_unchecked_lshift(bcx,
-                                                   lhs,
-                                                   rhs,
-                                                   DebugLoc::None)
-                })
+                common::build_unchecked_lshift(
+                    &bcx,
+                    lhs,
+                    rhs,
+                    DebugLoc::None
+                )
             }
             mir::BinOp::Shr => {
-                bcx.with_block(|bcx| {
-                    common::build_unchecked_rshift(bcx,
-                                                   input_ty,
-                                                   lhs,
-                                                   rhs,
-                                                   DebugLoc::None)
-                })
+                common::build_unchecked_rshift(
+                    bcx,
+                    input_ty,
+                    lhs,
+                    rhs,
+                    DebugLoc::None
+                )
             }
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_nil {
@@ -677,9 +661,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::BinOp::Shl | mir::BinOp::Shr => {
                 let lhs_llty = val_ty(lhs);
                 let rhs_llty = val_ty(rhs);
-                let invert_mask = bcx.with_block(|bcx| {
-                    common::shift_mask_val(bcx, lhs_llty, rhs_llty, true)
-                });
+                let invert_mask = common::shift_mask_val(&bcx, lhs_llty, rhs_llty, true);
                 let outer_bits = bcx.and(rhs, invert_mask);
 
                 let of = bcx.icmp(llvm::IntNE, outer_bits, C_null(rhs_llty));

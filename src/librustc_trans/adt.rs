@@ -304,7 +304,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>
 
 /// Obtain a representation of the discriminant sufficient to translate
 /// destructuring; this may or may not involve the actual discriminant.
-pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_switch<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                 t: Ty<'tcx>,
                                 scrutinee: ValueRef,
                                 range_assert: bool)
@@ -331,7 +331,7 @@ pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
 }
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
+pub fn trans_get_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
                                    scrutinee: ValueRef, cast_to: Option<Type>,
                                    range_assert: bool)
     -> ValueRef {
@@ -371,8 +371,12 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
     }
 }
 
-fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: u64, discrfield: &layout::FieldPath,
-                                    scrutinee: ValueRef) -> ValueRef {
+fn struct_wrapped_nullable_bitdiscr(
+    bcx: &BlockAndBuilder,
+    nndiscr: u64,
+    discrfield: &layout::FieldPath,
+    scrutinee: ValueRef
+) -> ValueRef {
     let llptrptr = GEPi(bcx, scrutinee,
         &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>()[..]);
     let llptr = Load(bcx, llptrptr);
@@ -381,7 +385,7 @@ fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: u64, discrfield: &layou
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: Block, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
+fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
               range_assert: bool)
     -> ValueRef {
     let llty = Type::from_integer(bcx.ccx(), ity);
@@ -409,7 +413,7 @@ fn load_discr(bcx: Block, ity: layout::Integer, ptr: ValueRef, min: u64, max: u6
 /// discriminant-like value returned by `trans_switch`.
 ///
 /// This should ideally be less tightly tied to `_match`.
-pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, value: Disr)
+pub fn trans_case<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>, value: Disr)
                               -> ValueRef {
     let l = bcx.ccx().layout_of(t);
     match *l {
@@ -430,7 +434,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, value: Disr)
 
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
-pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
+pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
                                    val: ValueRef, to: Disr) {
     let l = bcx.ccx().layout_of(t);
     match *l {
@@ -461,12 +465,11 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
                     // Issue #34427: As workaround for LLVM bug on
                     // ARM, use memset of 0 on whole struct rather
                     // than storing null to single target field.
-                    let b = B(bcx);
-                    let llptr = b.pointercast(val, Type::i8(b.ccx).ptr_to());
-                    let fill_byte = C_u8(b.ccx, 0);
-                    let size = C_uint(b.ccx, nonnull.stride().bytes());
-                    let align = C_i32(b.ccx, nonnull.align.abi() as i32);
-                    base::call_memset(&b, llptr, fill_byte, size, align, false);
+                    let llptr = bcx.pointercast(val, Type::i8(bcx.ccx()).ptr_to());
+                    let fill_byte = C_u8(bcx.ccx(), 0);
+                    let size = C_uint(bcx.ccx(), nonnull.stride().bytes());
+                    let align = C_i32(bcx.ccx(), nonnull.align.abi() as i32);
+                    base::call_memset(bcx, llptr, fill_byte, size, align, false);
                 } else {
                     let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
                     let llptrptr = GEPi(bcx, val, &path[..]);
@@ -479,7 +482,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
     }
 }
 
-fn target_sets_discr_via_memset<'blk, 'tcx>(bcx: Block<'blk, 'tcx>) -> bool {
+fn target_sets_discr_via_memset<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>) -> bool {
     bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
@@ -492,9 +495,9 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
+pub fn trans_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
                                    val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
-    trans_field_ptr_builder(&bcx.build(), t, val, discr, ix)
+    trans_field_ptr_builder(bcx, t, val, discr, ix)
 }
 
 /// Access a field, at a point when the value's case is known.
@@ -530,7 +533,6 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         layout::UntaggedUnion { .. } => {
             let fields = compute_fields(bcx.ccx(), t, 0, false);
             let ty = type_of::in_memory_type_of(bcx.ccx(), fields[ix]);
-            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } |
@@ -540,9 +542,6 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             // (e.d., Result of Either with (), as one side.)
             let ty = type_of::type_of(bcx.ccx(), nullfields[ix]);
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
-            // The contents of memory at this pointer can't matter, but use
-            // the value that's "reasonable" in case of pointer comparison.
-            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } => {
@@ -550,7 +549,6 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             assert_eq!(ix, 0);
             assert_eq!(discr.0, nndiscr);
             let ty = type_of::type_of(bcx.ccx(), nnty);
-            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
@@ -569,9 +567,6 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let fty = fields[ix];
     let ccx = bcx.ccx();
     let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
-    if bcx.is_unreachable() {
-        return C_undef(ll_fty.ptr_to());
-    }
 
     let ptr_val = if needs_cast {
         let fields = st.field_index_by_increasing_offset().map(|i| {

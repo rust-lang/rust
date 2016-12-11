@@ -14,7 +14,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, Block, BlockAndBuilder};
+use common::{self, BlockAndBuilder};
 use value::Value;
 use type_of;
 use type_::Type;
@@ -247,11 +247,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          operand: OperandRef<'tcx>)
     {
         debug!("store_operand: operand={:?} lldest={:?}", operand, lldest);
-        bcx.with_block(|bcx| self.store_operand_direct(bcx, lldest, operand))
+        self.store_operand_direct(bcx, lldest, operand)
     }
 
     pub fn store_operand_direct(&mut self,
-                                bcx: Block<'bcx, 'tcx>,
+                                bcx: &BlockAndBuilder<'bcx, 'tcx>,
                                 lldest: ValueRef,
                                 operand: OperandRef<'tcx>)
     {

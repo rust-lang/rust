@@ -50,7 +50,7 @@ impl<'tcx> LvalueRef<'tcx> {
                         -> LvalueRef<'tcx>
     {
         assert!(!ty.has_erasable_regions());
-        let lltemp = bcx.with_block(|bcx| base::alloc_ty(bcx, ty, name));
+        let lltemp = base::alloc_ty(bcx, ty, name);
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
 

@@ -26,7 +26,9 @@ use attributes;
 use base;
 use base::*;
 use build::*;
-use common::{self, Block, Result, CrateContext, FunctionContext, SharedCrateContext};
+use common::{
+    self, Block, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
+};
 use consts;
 use debuginfo::DebugLoc;
 use declare;
@@ -207,11 +209,11 @@ impl<'tcx> Callee<'tcx> {
     /// For non-lang items, `dest` is always Some, and hence the result is written
     /// into memory somewhere. Nonetheless we return the actual return value of the
     /// function.
-    pub fn call<'a, 'blk>(self, bcx: Block<'blk, 'tcx>,
+    pub fn call<'a, 'blk>(self, bcx: BlockAndBuilder<'blk, 'tcx>,
                           debug_loc: DebugLoc,
                           args: &[ValueRef],
                           dest: Option<ValueRef>)
-                          -> Result<'blk, 'tcx> {
+                          -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
         trans_call_inner(bcx, debug_loc, self, args, dest)
     }
 
@@ -370,8 +372,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, &block_arena);
-    let mut bcx = fcx.init(false);
-
+    let bcx = fcx.init(false);
 
     // the first argument (`self`) will be the (by value) closure env.
 
@@ -381,9 +382,9 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llenv = if env_arg.is_indirect() {
         llargs[self_idx]
     } else {
-        let scratch = alloc_ty(bcx, closure_ty, "self");
+        let scratch = alloc_ty(&bcx, closure_ty, "self");
         let mut llarg_idx = self_idx;
-        env_arg.store_fn_arg(&bcx.build(), &mut llarg_idx, scratch);
+        env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
         scratch
     };
 
@@ -413,11 +414,11 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let self_scope = fcx.push_custom_cleanup_scope();
     fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
 
-    bcx = callee.call(bcx, DebugLoc::None, &llargs[self_idx..], dest).bcx;
+    let bcx = callee.call(bcx, DebugLoc::None, &llargs[self_idx..], dest).0;
 
-    fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
+    let bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
-    fcx.finish(bcx, DebugLoc::None);
+    fcx.finish(&bcx, DebugLoc::None);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
@@ -522,7 +523,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
-    let mut bcx = fcx.init(false);
+    let bcx = fcx.init(false);
 
     let llargs = get_params(fcx.llfn);
 
@@ -530,7 +531,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {
-            Load(bcx, llargs[self_idx])
+            Load(&bcx, llargs[self_idx])
         } else {
             llargs[self_idx]
         }
@@ -542,9 +543,8 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    bcx = callee.call(bcx, DebugLoc::None, &llargs[(self_idx + 1)..], dest).bcx;
-
-    fcx.finish(bcx, DebugLoc::None);
+    let bcx = callee.call(bcx, DebugLoc::None, &llargs[(self_idx + 1)..], dest).0;
+    fcx.finish(&bcx, DebugLoc::None);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
@@ -653,12 +653,12 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // ______________________________________________________________________
 // Translating calls
 
-fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                     debug_loc: DebugLoc,
                                     callee: Callee<'tcx>,
                                     args: &[ValueRef],
                                     opt_llretslot: Option<ValueRef>)
-                                    -> Result<'blk, 'tcx> {
+                                    -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while
@@ -666,7 +666,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // cleaned up. If no panic occurs, the values are handed off to
     // the callee, and hence none of the cleanups in this temporary
     // scope will ever execute.
-    let fcx = bcx.fcx;
+    let fcx = &bcx.fcx();
     let ccx = fcx.ccx;
 
     let fn_ret = callee.ty.fn_ret();
@@ -689,7 +689,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     if fn_ty.ret.is_indirect() {
         let mut llretslot = opt_llretslot.unwrap();
         if let Some(ty) = fn_ty.ret.cast {
-            llretslot = PointerCast(bcx, llretslot, ty.ptr_to());
+            llretslot = PointerCast(&bcx, llretslot, ty.ptr_to());
         }
         llargs.push(llretslot);
     }
@@ -698,9 +698,9 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Virtual(idx) => {
             llargs.push(args[0]);
 
-            let fn_ptr = meth::get_virtual_method(bcx, args[1], idx);
-            let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
-            callee = Fn(PointerCast(bcx, fn_ptr, llty));
+            let fn_ptr = meth::get_virtual_method(&bcx, args[1], idx);
+            let llty = fn_ty.llvm_type(&bcx.ccx()).ptr_to();
+            callee = Fn(PointerCast(&bcx, fn_ptr, llty));
             llargs.extend_from_slice(&args[2..]);
         }
         _ => llargs.extend_from_slice(args)
@@ -712,7 +712,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let (llret, bcx) = base::invoke(bcx, llfn, &llargs, debug_loc);
-    if !bcx.unreachable.get() {
+    if !bcx.is_unreachable() {
         fn_ty.apply_attrs_callsite(llret);
 
         // If the function we just called does not use an outpointer,
@@ -722,14 +722,16 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // u64.
         if !fn_ty.ret.is_indirect() {
             if let Some(llretslot) = opt_llretslot {
-                fn_ty.ret.store(&bcx.build(), llret, llretslot);
+                fn_ty.ret.store(&bcx, llret, llretslot);
             }
         }
     }
 
     if fn_ret.0.is_never() {
-        Unreachable(bcx);
+        assert!(!bcx.is_terminated());
+        bcx.set_unreachable();
+        bcx.unreachable();
     }
 
-    Result::new(bcx, llret)
+    (bcx, llret)
 }

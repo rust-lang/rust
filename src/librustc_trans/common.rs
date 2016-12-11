@@ -441,6 +441,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
+#[must_use]
 pub struct BlockS<'blk, 'tcx: 'blk> {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
@@ -555,6 +556,7 @@ impl<'blk, 'tcx> Drop for OwnedBuilder<'blk, 'tcx> {
     }
 }
 
+#[must_use]
 pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
     bcx: Block<'blk, 'tcx>,
     owned_builder: OwnedBuilder<'blk, 'tcx>,
@@ -597,8 +599,22 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     // Methods delegated to bcx
 
+    pub fn terminate(&self) {
+        debug!("terminate({})", self.bcx.to_str());
+        self.bcx.terminated.set(true);
+    }
+
+    pub fn set_unreachable(&self) {
+        debug!("set_unreachable({})", self.bcx.to_str());
+        self.bcx.unreachable.set(true);
+    }
+
     pub fn is_unreachable(&self) -> bool {
         self.bcx.unreachable.get()
+    }
+
+    pub fn is_terminated(&self) -> bool {
+        self.bcx.terminated.get()
     }
 
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
@@ -696,20 +712,6 @@ impl Clone for LandingPad {
             operand: self.cleanuppad.map(|p| {
                 OperandBundleDef::new("funclet", &[p])
             }),
-        }
-    }
-}
-
-pub struct Result<'blk, 'tcx: 'blk> {
-    pub bcx: Block<'blk, 'tcx>,
-    pub val: ValueRef
-}
-
-impl<'b, 'tcx> Result<'b, 'tcx> {
-    pub fn new(bcx: Block<'b, 'tcx>, val: ValueRef) -> Result<'b, 'tcx> {
-        Result {
-            bcx: bcx,
-            val: val,
         }
     }
 }
@@ -1016,7 +1018,7 @@ pub fn langcall(tcx: TyCtxt,
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn build_unchecked_lshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                           lhs: ValueRef,
                                           rhs: ValueRef,
                                           binop_debug_loc: DebugLoc) -> ValueRef {
@@ -1026,7 +1028,7 @@ pub fn build_unchecked_lshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     build::Shl(bcx, lhs, rhs, binop_debug_loc)
 }
 
-pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                           lhs_t: Ty<'tcx>,
                                           lhs: ValueRef,
                                           rhs: ValueRef,
@@ -1042,17 +1044,19 @@ pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn shift_mask_rhs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn shift_mask_rhs<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                               rhs: ValueRef,
                               debug_loc: DebugLoc) -> ValueRef {
     let rhs_llty = val_ty(rhs);
     build::And(bcx, rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false), debug_loc)
 }
 
-pub fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              llty: Type,
-                              mask_llty: Type,
-                              invert: bool) -> ValueRef {
+pub fn shift_mask_val<'blk, 'tcx>(
+    bcx: &BlockAndBuilder<'blk, 'tcx>,
+    llty: Type,
+    mask_llty: Type,
+    invert: bool
+) -> ValueRef {
     let kind = llty.kind();
     match kind {
         TypeKind::Integer => {
