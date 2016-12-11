@@ -359,51 +359,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn binop_with_overflow(
-        &mut self,
-        op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
-    ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        let left_ty    = self.operand_ty(left);
-        let right_ty   = self.operand_ty(right);
-        let left_kind  = self.ty_to_primval_kind(left_ty)?;
-        let right_kind = self.ty_to_primval_kind(right_ty)?;
-        let left_val   = self.eval_operand_to_primval(left)?;
-        let right_val  = self.eval_operand_to_primval(right)?;
-        operator::binary_op(op, left_val, left_kind, right_val, right_kind)
-    }
-
-    /// Applies the binary operation `op` to the two operands and writes a tuple of the result
-    /// and a boolean signifying the potential overflow to the destination.
-    pub(super) fn intrinsic_with_overflow(
-        &mut self,
-        op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
-        dest: Lvalue<'tcx>,
-        dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
-        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        let val = Value::ByValPair(val, PrimVal::from_bool(overflowed));
-        self.write_value(val, dest, dest_ty)
-    }
-
-    /// Applies the binary operation `op` to the arguments and writes the result to the
-    /// destination. Returns `true` if the operation overflowed.
-    pub(super) fn intrinsic_overflowing(
-        &mut self,
-        op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
-        dest: Lvalue<'tcx>,
-        dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, bool> {
-        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        self.write_primval(dest, val, dest_ty)?;
-        Ok(overflowed)
-    }
-
     fn assign_fields<I: IntoIterator<Item = u64>>(
         &mut self,
         dest: Lvalue<'tcx>,
