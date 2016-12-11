@@ -91,7 +91,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     let dest = fcx.llretslotptr.get();
     let llargs = get_params(fcx.llfn);
-    bcx = callee.call(bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).0;
+    bcx = callee.call(bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest, None).0;
 
     fcx.finish(&bcx);
 

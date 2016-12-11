@@ -205,7 +205,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
     let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).reify(bcx.ccx());
-    bcx.pointercast(bcx.call(r, &[size, align], bcx.lpad().and_then(|b| b.bundle())), llty_ptr)
+    bcx.pointercast(bcx.call(r, &[size, align], None), llty_ptr)
 }
 
 
@@ -451,38 +451,6 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
     }
 }
 
-pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                          llfn: ValueRef,
-                          llargs: &[ValueRef])
-                          -> (ValueRef, BlockAndBuilder<'blk, 'tcx>) {
-    let _icx = push_ctxt("invoke_");
-    if need_invoke(&bcx) {
-        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
-        for &llarg in llargs {
-            debug!("arg: {:?}", Value(llarg));
-        }
-        let normal_bcx = bcx.fcx().new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad();
-
-        let llresult = bcx.invoke(
-            llfn,
-            &llargs[..],
-            normal_bcx.llbb,
-            landing_pad,
-            bcx.lpad().and_then(|b| b.bundle())
-        );
-        return (llresult, normal_bcx.build());
-    } else {
-        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
-        for &llarg in llargs {
-            debug!("arg: {:?}", Value(llarg));
-        }
-
-        let llresult = bcx.call(llfn, &llargs[..], bcx.lpad().and_then(|b| b.bundle()));
-        return (llresult, bcx);
-    }
-}
-
 /// Returns whether this session's target will use SEH-based unwinding.
 ///
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
@@ -490,14 +458,6 @@ pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
-}
-
-fn need_invoke(bcx: &BlockAndBuilder) -> bool {
-    if bcx.sess().no_landing_pads() || bcx.lpad().is_some() {
-        false
-    } else {
-        bcx.fcx().needs_invoke()
-    }
 }
 
 pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
