@@ -467,10 +467,6 @@ pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                           debug_loc: DebugLoc)
                           -> (ValueRef, BlockAndBuilder<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
-    if bcx.is_unreachable() {
-        return (C_null(Type::i8(bcx.ccx())), bcx);
-    }
-
     if need_invoke(&bcx) {
         debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
         for &llarg in llargs {
@@ -562,10 +558,6 @@ pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tc
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
 pub fn store_ty<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
-    if cx.is_unreachable() {
-        return;
-    }
-
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
@@ -592,12 +584,6 @@ pub fn load_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
                                 ty: Ty<'tcx>)
                                 -> (ValueRef, ValueRef)
 {
-    if cx.is_unreachable() {
-        // FIXME: remove me
-        return (Load(cx, get_dataptr(cx, src)),
-                Load(cx, get_meta(cx, src)));
-    }
-
     load_fat_ptr_builder(cx, src, ty)
 }
 
@@ -644,7 +630,7 @@ pub fn with_cond<'blk, 'tcx, F>(
 {
     let _icx = push_ctxt("with_cond");
 
-    if bcx.is_unreachable() || common::const_to_opt_uint(val) == Some(0) {
+    if common::const_to_opt_uint(val) == Some(0) {
         return bcx;
     }
 
@@ -704,15 +690,11 @@ impl Lifetime {
 }
 
 pub fn call_lifetime_start(bcx: &BlockAndBuilder, ptr: ValueRef) {
-    if !bcx.is_unreachable() {
-        Lifetime::Start.call(bcx, ptr);
-    }
+    Lifetime::Start.call(bcx, ptr);
 }
 
 pub fn call_lifetime_end(bcx: &BlockAndBuilder, ptr: ValueRef) {
-    if !bcx.is_unreachable() {
-        Lifetime::End.call(bcx, ptr);
-    }
+    Lifetime::End.call(bcx, ptr);
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.
@@ -747,7 +729,7 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, s
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
 
-    if type_is_zero_size(ccx, t) || bcx.is_unreachable() {
+    if type_is_zero_size(ccx, t) {
         return;
     }
 
@@ -765,9 +747,6 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, s
 }
 
 pub fn init_zero_mem<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
-    if cx.is_unreachable() {
-        return;
-    }
     let _icx = push_ctxt("init_zero_mem");
     let bcx = cx;
     memfill(bcx, llptr, t, 0);
@@ -926,8 +905,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     // Builds the return block for a function.
     pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>,
                               ret_debug_location: DebugLoc) {
-        if self.llretslotptr.get().is_none() || ret_cx.is_unreachable() ||
-           self.fn_ty.ret.is_indirect() {
+        if self.llretslotptr.get().is_none() || self.fn_ty.ret.is_indirect() {
             return RetVoid(ret_cx, ret_debug_location);
         }
 

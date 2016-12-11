@@ -449,8 +449,6 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
     pub llbb: BasicBlockRef,
-    pub terminated: Cell<bool>,
-    pub unreachable: Cell<bool>,
 
     // If this block part of a landing pad, then this is `Some` indicating what
     // kind of landing pad its in, otherwise this is none.
@@ -469,8 +467,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
                -> Block<'blk, 'tcx> {
         fcx.block_arena.alloc(BlockS {
             llbb: llbb,
-            terminated: Cell::new(false),
-            unreachable: Cell::new(false),
             lpad: Cell::new(None),
             fcx: fcx
         })
@@ -598,24 +594,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     }
 
     // Methods delegated to bcx
-
-    pub fn terminate(&self) {
-        debug!("terminate({})", self.bcx.to_str());
-        self.bcx.terminated.set(true);
-    }
-
-    pub fn set_unreachable(&self) {
-        debug!("set_unreachable({})", self.bcx.to_str());
-        self.bcx.unreachable.set(true);
-    }
-
-    pub fn is_unreachable(&self) -> bool {
-        self.bcx.unreachable.get()
-    }
-
-    pub fn is_terminated(&self) -> bool {
-        self.bcx.terminated.get()
-    }
 
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
         self.bcx.ccx()
