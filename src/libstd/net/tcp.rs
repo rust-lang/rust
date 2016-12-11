@@ -613,44 +613,18 @@ impl TcpListener {
         self.0.ttl()
     }
 
-    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
-    ///
-    /// If this is set to `true` then the socket is restricted to sending and
-    /// receiving IPv6 packets only. In this case two IPv4 and IPv6 applications
-    /// can bind the same port at the same time.
-    ///
-    /// If this is set to `false` then the socket can be used to send and
-    /// receive packets from an IPv4-mapped IPv6 address.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::net::TcpListener;
-    ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.set_only_v6(true).expect("Cannot set to IPv6");
-    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[rustc_deprecated(since = "1.16.0",
+                       reason = "this option can only be set before the socket is bound")]
+    #[allow(missing_docs)]
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         self.0.set_only_v6(only_v6)
     }
 
-    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
-    ///
-    /// For more information about this option, see [`set_only_v6`][link].
-    ///
-    /// [link]: #method.set_only_v6
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::net::TcpListener;
-    ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.set_only_v6(true).expect("Cannot set to IPv6");
-    /// assert_eq!(listener.only_v6().unwrap_or(false), true);
-    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[rustc_deprecated(since = "1.16.0",
+                       reason = "this option can only be set before the socket is bound")]
+    #[allow(missing_docs)]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()
     }
