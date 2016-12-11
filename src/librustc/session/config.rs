@@ -269,7 +269,6 @@ top_level_options!(
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
-        mir_opt_level: usize [TRACKED],
 
         // if Some, enable incremental compilation, using the given
         // directory to store intermediate results
@@ -435,7 +434,6 @@ pub fn basic_options() -> Options {
         maybe_sysroot: None,
         target_triple: host_triple().to_string(),
         test: false,
-        mir_opt_level: 1,
         incremental: None,
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
@@ -916,8 +914,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print layout information for each type encountered"),
     print_trans_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "print the result of the translation item collection pass"),
-    mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
-          "set the MIR optimization level (0-3)"),
+    mir_opt_level: usize = (1, parse_uint, [TRACKED],
+          "set the MIR optimization level (0-3, default: 1)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1322,8 +1320,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let debugging_opts = build_debugging_options(matches, error_format);
 
-    let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
-
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
@@ -1532,7 +1528,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         test: test,
-        mir_opt_level: mir_opt_level,
         incremental: incremental,
         debugging_opts: debugging_opts,
         prints: prints,
@@ -2475,7 +2470,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.mir_opt_level = Some(1);
+        opts.debugging_opts.mir_opt_level = 3;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 }

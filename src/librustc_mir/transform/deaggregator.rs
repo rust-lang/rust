@@ -23,13 +23,10 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
         let node_id = source.item_id();
         let node_path = tcx.item_path_str(tcx.map.local_def_id(node_id));
         debug!("running on: {:?}", node_path);
-        // we only run when mir_opt_level > 1
-        match tcx.sess.opts.debugging_opts.mir_opt_level {
-            Some(0) |
-            Some(1) |
-            None => { return; },
-            _ => {}
-        };
+        // we only run when mir_opt_level > 2
+        if tcx.sess.opts.debugging_opts.mir_opt_level <= 2 {
+            return;
+        }
 
         // Do not trigger on constants.  Could be revised in future
         if let MirSource::Fn(_) = source {} else { return; }
