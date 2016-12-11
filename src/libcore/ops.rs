@@ -2907,13 +2907,13 @@ pub enum Try<T, E> {
 #[cfg(not(stage0))]
 #[unstable(feature = "question_mark_impl", issue = "31436")]
 impl<T, U, E, F> QuestionMark<Result<U, F>> for Result<T, E>
-    where E: Into<F>
+    where F: From<E>
 {
     type Continue = T;
     fn question_mark(self) -> Try<T, Result<U, F>> {
         match self {
             Ok(x) => Try::Continue(x),
-            Err(e) => Try::Done(Err(e.into())),
+            Err(e) => Try::Done(Err(From::from(e))),
         }
     }
 }
