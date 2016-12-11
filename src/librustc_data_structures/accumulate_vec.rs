@@ -19,6 +19,7 @@ use std::ops::{Deref, DerefMut};
 use std::iter::{self, IntoIterator, FromIterator};
 use std::slice;
 use std::vec;
+use std::collections::range::RangeArgument;
 
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 
@@ -69,6 +70,19 @@ impl<A: Array> AccumulateVec<A> {
         match *self {
             AccumulateVec::Array(ref mut arr) => arr.pop(),
             AccumulateVec::Heap(ref mut vec) => vec.pop(),
+        }
+    }
+
+    pub fn drain<R>(&mut self, range: R) -> Drain<A>
+        where R: RangeArgument<usize>
+    {
+        match *self {
+            AccumulateVec::Array(ref mut v) => {
+                Drain::Array(v.drain(range))
+            },
+            AccumulateVec::Heap(ref mut v) => {
+                Drain::Heap(v.drain(range))
+            },
         }
     }
 }
@@ -128,6 +142,31 @@ impl<A: Array> Iterator for IntoIter<A> {
         match self.repr {
             IntoIterRepr::Array(ref iter) => iter.size_hint(),
             IntoIterRepr::Heap(ref iter) => iter.size_hint(),
+        }
+    }
+}
+
+pub enum Drain<'a, A: Array>
+        where A::Element: 'a
+{
+    Array(array_vec::Drain<'a, A>),
+    Heap(vec::Drain<'a, A::Element>),
+}
+
+impl<'a, A: Array> Iterator for Drain<'a, A> {
+    type Item = A::Element;
+
+    fn next(&mut self) -> Option<A::Element> {
+        match *self {
+            Drain::Array(ref mut drain) => drain.next(),
+            Drain::Heap(ref mut drain) => drain.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match *self {
+            Drain::Array(ref drain) => drain.size_hint(),
+            Drain::Heap(ref drain) => drain.size_hint(),
         }
     }
 }
