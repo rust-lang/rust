@@ -15,7 +15,7 @@ use memory::Pointer;
 use value::PrimVal;
 use value::Value;
 
-mod intrinsics;
+mod intrinsic;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
