@@ -22,10 +22,15 @@ matrix:
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
+    # NOTE(nightly-2016-12-05) work around for rust-lang/rust#38281
     - env: TARGET=thumbv6m-none-eabi
+      rust: nightly-2016-12-05
     - env: TARGET=thumbv7em-none-eabi
+      rust: nightly-2016-12-05
     - env: TARGET=thumbv7em-none-eabihf
+      rust: nightly-2016-12-05
     - env: TARGET=thumbv7m-none-eabi
+      rust: nightly-2016-12-05
     - env: TARGET=x86_64-apple-darwin
       os: osx
 env: TARGET=x86_64-unknown-linux-gnu
