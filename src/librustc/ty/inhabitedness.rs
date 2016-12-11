@@ -186,18 +186,19 @@ impl<'a, 'gcx, 'tcx> FieldDef {
                 substs: &'tcx Substs<'tcx>,
                 is_enum: bool) -> NodeForrest
     {
-        if let Visibility::PrivateExternal = self.vis {
-            return NodeForrest::empty();
-        }
-
-        let data_inhabitedness = self.ty(tcx, substs).uninhabited_from(visited, tcx);
-        match self.vis {
-            Visibility::Restricted(from) if !is_enum => {
-                let node_set = NodeForrest::from_node(from);
-                let iter = Some(node_set).into_iter().chain(Some(data_inhabitedness));
-                NodeForrest::intersection(tcx, iter)
-            },
-            _ => data_inhabitedness,
+        let mut data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(visited, tcx);
+        if is_enum {
+            data_uninhabitedness()
+        } else {
+            match self.vis {
+                Visibility::PrivateExternal => NodeForrest::empty(),
+                Visibility::Restricted(from) => {
+                    let node_set = NodeForrest::from_node(from);
+                    let iter = Some(node_set).into_iter().chain(Some(data_uninhabitedness()));
+                    NodeForrest::intersection(tcx, iter)
+                },
+                Visibility::Public => data_uninhabitedness(),
+            }
         }
     }
 }
