@@ -46,7 +46,7 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
     Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
-        .call(bcx, &args, None).0
+        .call(bcx, &args, None, None).0
 }
 
 pub fn trans_exchange_free<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
@@ -288,8 +288,7 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         _ => bug!("dtor for {:?} is not an impl???", t)
     };
     let dtor_did = def.destructor().unwrap();
-    bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs)
-        .call(bcx, args, None).0;
+    bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs).call(bcx, args, None, None).0;
 
     bcx.fcx().pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
@@ -456,9 +455,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
             let data_ptr = get_dataptr(&bcx, v0);
             let vtable_ptr = bcx.load(get_meta(&bcx, v0));
             let dtor = bcx.load(vtable_ptr);
-            bcx.call(dtor,
-                &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx()))],
-                bcx.lpad().and_then(|b| b.bundle()));
+            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx()))], None);
             bcx
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {

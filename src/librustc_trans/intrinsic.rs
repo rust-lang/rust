@@ -119,7 +119,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     // These are the only intrinsic functions that diverge.
     if name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        bcx.call(llfn, &[], bcx.lpad().and_then(|b| b.bundle()));
+        bcx.call(llfn, &[], None);
         return;
     } else if name == "unreachable" {
         // FIXME: do nothing?
@@ -131,15 +131,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match (simple, name) {
         (Some(llfn), _) => {
-            bcx.call(llfn, &llargs, bcx.lpad().and_then(|b| b.bundle()))
+            bcx.call(llfn, &llargs, None)
         }
         (_, "likely") => {
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-            bcx.call(expect, &[llargs[0], C_bool(ccx, true)], bcx.lpad().and_then(|b| b.bundle()))
+            bcx.call(expect, &[llargs[0], C_bool(ccx, true)], None)
         }
         (_, "unlikely") => {
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-            bcx.call(expect, &[llargs[0], C_bool(ccx, false)], bcx.lpad().and_then(|b| b.bundle()))
+            bcx.call(expect, &[llargs[0], C_bool(ccx, false)], None)
         }
         (_, "try") => {
             try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult);
@@ -147,7 +147,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            bcx.call(llfn, &[], bcx.lpad().and_then(|b| b.bundle()))
+            bcx.call(llfn, &[], None)
         }
         (_, "size_of") => {
             let tp_ty = substs.type_at(0);
@@ -318,13 +318,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                         "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
                                                         llargs[0]),
                         "ctpop" => bcx.call(ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &llargs, bcx.lpad().and_then(|b| b.bundle())),
+                                        &llargs, None),
                         "bswap" => {
                             if width == 8 {
                                 llargs[0] // byte swap a u8/i8 is just a no-op
                             } else {
                                 bcx.call(ccx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
-                                        &llargs, bcx.lpad().and_then(|b| b.bundle()))
+                                        &llargs, None)
                             }
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
@@ -654,7 +654,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                     let f = declare::declare_cfn(ccx,
                                                  name,
                                                  Type::func(&inputs, &outputs));
-                    bcx.call(f, &llargs, bcx.lpad().and_then(|b| b.bundle()))
+                    bcx.call(f, &llargs, None)
                 }
             };
 
@@ -720,7 +720,7 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         bcx.mul(size, count),
         align,
         C_bool(ccx, volatile)],
-        bcx.lpad().and_then(|b| b.bundle()))
+        None)
 }
 
 fn memset_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
@@ -748,7 +748,7 @@ fn memset_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         bcx.mul(size, count),
         align,
         C_bool(ccx, volatile)],
-        bcx.lpad().and_then(|b| b.bundle()))
+        None)
 }
 
 fn count_zeros_intrinsic(bcx: &BlockAndBuilder,
@@ -757,7 +757,7 @@ fn count_zeros_intrinsic(bcx: &BlockAndBuilder,
                          -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    bcx.call(llfn, &[val, y], bcx.lpad().and_then(|b| b.bundle()))
+    bcx.call(llfn, &[val, y], None)
 }
 
 fn with_overflow_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
@@ -769,7 +769,7 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = bcx.call(llfn, &[a, b], bcx.lpad().and_then(|b| b.bundle()));
+    let val = bcx.call(llfn, &[a, b], None);
     let result = bcx.extract_value(val, 0);
     let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx()));
     bcx.store(result, bcx.struct_gep(out, 0));
@@ -786,7 +786,7 @@ fn try_intrinsic<'blk, 'tcx>(
     dest: ValueRef,
 ) {
     if bcx.sess().no_landing_pads() {
-        bcx.call(func, &[data], bcx.lpad().and_then(|b| b.bundle()));
+        bcx.call(func, &[data], None);
         bcx.store(C_null(Type::i8p(&bcx.ccx())), dest);
     } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, func, data, local_ptr, dest);
@@ -863,7 +863,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         let i64p = Type::i64(ccx).ptr_to();
         let slot = bcx.fcx().alloca(i64p, "slot");
         bcx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
-            bcx.lpad().and_then(|b| b.bundle()));
+            None);
 
         normal.ret(C_i32(ccx, 0));
 
@@ -890,7 +890,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bcx.call(llfn, &[func, data, local_ptr], bcx.lpad().and_then(|b| b.bundle()));
+    let ret = bcx.call(llfn, &[func, data, local_ptr], None);
     bcx.store(ret, dest);
 }
 
@@ -936,7 +936,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         let func = llvm::get_param(bcx.fcx().llfn, 0);
         let data = llvm::get_param(bcx.fcx().llfn, 1);
         let local_ptr = llvm::get_param(bcx.fcx().llfn, 2);
-        bcx.invoke(func, &[data], then.llbb(), catch.llbb(), bcx.lpad().and_then(|b| b.bundle()));
+        bcx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
         then.ret(C_i32(ccx, 0));
 
         // Type indicator for the exception being thrown.
@@ -956,7 +956,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bcx.call(llfn, &[func, data, local_ptr], bcx.lpad().and_then(|b| b.bundle()));
+    let ret = bcx.call(llfn, &[func, data, local_ptr], None);
     bcx.store(ret, dest);
 }
 

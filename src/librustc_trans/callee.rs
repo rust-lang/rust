@@ -209,9 +209,10 @@ impl<'tcx> Callee<'tcx> {
     /// function.
     pub fn call<'a, 'blk>(self, bcx: BlockAndBuilder<'blk, 'tcx>,
                           args: &[ValueRef],
-                          dest: Option<ValueRef>)
+                          dest: Option<ValueRef>,
+                          lpad: Option<&'blk llvm::OperandBundleDef>)
                           -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
-        trans_call_inner(bcx, self, args, dest)
+        trans_call_inner(bcx, self, args, dest, lpad)
     }
 
     /// Turn the callee into a function pointer.
@@ -411,7 +412,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let self_scope = fcx.push_custom_cleanup_scope();
     fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
 
-    let bcx = callee.call(bcx, &llargs[self_idx..], dest).0;
+    let bcx = callee.call(bcx, &llargs[self_idx..], dest, None).0;
 
     let bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
@@ -540,7 +541,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], dest).0;
+    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], dest, None).0;
     fcx.finish(&bcx);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
@@ -653,7 +654,8 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                     callee: Callee<'tcx>,
                                     args: &[ValueRef],
-                                    opt_llretslot: Option<ValueRef>)
+                                    opt_llretslot: Option<ValueRef>,
+                                    lpad: Option<&'blk llvm::OperandBundleDef>)
                                     -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
@@ -707,7 +709,40 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         _ => bug!("expected fn pointer callee, found {:?}", callee)
     };
 
-    let (llret, bcx) = base::invoke(bcx, llfn, &llargs);
+    fn need_invoke(bcx: &BlockAndBuilder, had_lpad: bool) -> bool {
+        if bcx.sess().no_landing_pads() || had_lpad {
+            false
+        } else {
+            bcx.fcx().needs_invoke()
+        }
+    }
+
+    let _icx = push_ctxt("invoke_");
+    let (llret, bcx) = if need_invoke(&bcx, lpad.is_some()) {
+        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
+        for &llarg in &llargs {
+            debug!("arg: {:?}", Value(llarg));
+        }
+        let normal_bcx = bcx.fcx().new_block("normal-return");
+        let landing_pad = bcx.fcx().get_landing_pad();
+
+        let llresult = bcx.invoke(
+            llfn,
+            &llargs[..],
+            normal_bcx.llbb,
+            landing_pad,
+            lpad,
+        );
+        (llresult, normal_bcx.build())
+    } else {
+        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
+        for &llarg in &llargs {
+            debug!("arg: {:?}", Value(llarg));
+        }
+
+        let llresult = bcx.call(llfn, &llargs[..], lpad);
+        (llresult, bcx)
+    };
     fn_ty.apply_attrs_callsite(llret);
 
     // If the function we just called does not use an outpointer,
