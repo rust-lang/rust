@@ -65,11 +65,10 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             }
         }
 
-        // We only run when the MIR optimization level is at least 1. This avoids messing up debug
-        // info.
-        match tcx.sess.opts.debugging_opts.mir_opt_level {
-            Some(0) | None => return,
-            _ => {}
+        // We only run when the MIR optimization level is > 1.
+        // This avoids a slow pass, and messing up debug info.
+        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+            return;
         }
 
         loop {
