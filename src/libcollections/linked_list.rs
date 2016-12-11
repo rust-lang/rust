@@ -10,8 +10,15 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `LinkedList` allows pushing and popping elements at either end and is thus
-//! efficiently usable as a double-ended queue.
+//! The `LinkedList` allows pushing and popping elements at either end
+//! in constant time.
+//!
+//! Almost always it is better to use `Vec` or [`VecDeque`] instead of
+//! [`LinkedList`]. In general, array-based containers are faster,
+//! more memory efficient and make better use of CPU cache.
+//!
+//! [`LinkedList`]: ../linked_list/struct.LinkedList.html
+//! [`VecDeque`]: ../vec_deque/struct.VecDeque.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -27,7 +34,14 @@ use core::ptr::{self, Shared};
 
 use super::SpecExtend;
 
-/// A doubly-linked list.
+/// A doubly-linked list with owned nodes.
+///
+/// The `LinkedList` allows pushing and popping elements at either end
+/// in constant time.
+///
+/// Almost always it is better to use `Vec` or `VecDeque` instead of
+/// `LinkedList`. In general, array-based containers are faster,
+/// more memory efficient and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
     head: Option<Shared<Node<T>>>,
