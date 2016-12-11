@@ -979,29 +979,21 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Checks whether a type is uninhabited.
-    /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
-    pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    /// Checks whether a type is visibly uninhabited from a particular node.
+    pub fn is_uninhabited_from(&self, block: NodeId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
-        self.is_uninhabited_recurse(&mut visited, block, cx)
+        let node_set = self.uninhabited_from(&mut visited, tcx);
+        node_set.contains(tcx, block)
     }
 
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        match self.sty {
-            TyAdt(def, substs) => {
-                def.is_uninhabited_recurse(visited, block, cx, substs)
-            },
-
-            TyNever => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, block, cx)),
-            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, block, cx),
-            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, block, cx),
-
-            _ => false,
-        }
+    /// Checks whether a type is uninhabited.
+    /// Note: just because a type is uninhabited, that doesn't mean that it's
+    /// *visibly* uninhabited outside its module. You sometimes may want
+    /// `is_uninhabited_from` instead.
+    pub fn is_uninhabited_anywhere(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        let mut visited = FxHashSet::default();
+        let node_set = self.uninhabited_from(&mut visited, tcx);
+        !node_set.is_empty()
     }
 
     pub fn is_primitive(&self) -> bool {

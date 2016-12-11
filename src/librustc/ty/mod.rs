@@ -29,7 +29,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, NodeMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -78,6 +78,7 @@ pub mod cast;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;
+pub mod inhabitedness;
 pub mod item_path;
 pub mod layout;
 pub mod _match;
@@ -1407,20 +1408,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        if !visited.insert((self.did, substs)) {
-            return false;
-        };
-        self.variants.iter().all(|v| {
-            v.is_uninhabited_recurse(visited, block, tcx, substs, self.adt_kind())
-        })
-    }
-
-    #[inline]
     pub fn is_struct(&self) -> bool {
         !self.is_union() && !self.is_enum()
     }
@@ -1754,50 +1741,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     pub fn field_named(&self, name: ast::Name) -> &FieldDef {
         self.find_field_named(name).unwrap()
     }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>,
-                                  adt_kind: AdtKind) -> bool {
-        match adt_kind {
-            AdtKind::Union => {
-                self.fields.iter().all(|f| {
-                    f.is_uninhabited_recurse(visited, block, tcx, substs, false)
-                })
-            },
-            AdtKind::Struct => {
-                self.fields.iter().any(|f| {
-                    f.is_uninhabited_recurse(visited, block, tcx, substs, false)
-                })
-            },
-            AdtKind::Enum => {
-                self.fields.iter().any(|f| {
-                    f.is_uninhabited_recurse(visited, block, tcx, substs, true)
-                })
-            },
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         tcx.item_type(self.did).subst(tcx, subst)
-    }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>,
-                                  is_enum: bool) -> bool {
-        let visible = is_enum || block.map_or(true, |b| {
-            tcx.vis_is_accessible_from(self.vis, b)
-        });
-        visible && self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
