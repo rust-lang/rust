@@ -1103,14 +1103,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn add_case(s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
+    pub fn add_case(&self, s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
         unsafe {
             if llvm::LLVMIsUndef(s) == llvm::True { return; }
             llvm::LLVMAddCase(s, on_val, dest)
         }
     }
 
-    pub fn add_incoming_to_phi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
+    pub fn add_incoming_to_phi(&self, phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
         unsafe {
             if llvm::LLVMIsUndef(phi) == llvm::True { return; }
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);

@@ -144,7 +144,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
         let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-            let (lldata, llextra) = base::load_fat_ptr_builder(bcx, llval, ty);
+            let (lldata, llextra) = base::load_fat_ptr(bcx, llval, ty);
             OperandValue::Pair(lldata, llextra)
         } else if common::type_is_imm_pair(bcx.ccx(), ty) {
             let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx(), ty).unwrap();
@@ -152,11 +152,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             let b_ptr = bcx.struct_gep(llval, 1);
 
             OperandValue::Pair(
-                base::load_ty_builder(bcx, a_ptr, a_ty),
-                base::load_ty_builder(bcx, b_ptr, b_ty)
+                base::load_ty(bcx, a_ptr, a_ty),
+                base::load_ty(bcx, b_ptr, b_ty)
             )
         } else if common::type_is_immediate(bcx.ccx(), ty) {
-            OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
+            OperandValue::Immediate(base::load_ty(bcx, llval, ty))
         } else {
             OperandValue::Ref(llval)
         };

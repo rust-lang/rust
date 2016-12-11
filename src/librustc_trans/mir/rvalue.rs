@@ -97,7 +97,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let tr_elem = self.trans_operand(&bcx, elem);
                 let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx(), size);
-                let base = base::get_dataptr_builder(&bcx, dest.llval);
+                let base = base::get_dataptr(&bcx, dest.llval);
                 let bcx = tvec::slice_for_each(bcx, base, tr_elem.ty, size, |bcx, llslot| {
                     self.store_operand_direct(&bcx, llslot, tr_elem);
                     bcx
@@ -109,17 +109,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
-                        adt::trans_set_discr(&bcx,
-                            dest.ty.to_ty(bcx.tcx()), dest.llval, Disr::from(disr));
+                        let dest_ty = dest.ty.to_ty(bcx.tcx());
+                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, Disr::from(disr));
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr_builder(&bcx,
-                                    dest.ty.to_ty(bcx.tcx()),
-                                    val, disr, field_index);
+                                let lldest_i = adt::trans_field_ptr(&bcx, dest_ty, val, disr,
+                                    field_index);
                                 self.store_operand(&bcx, lldest_i, op);
                             }
                         }

@@ -15,7 +15,7 @@
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef};
+use llvm::{True, False, Bool, OperandBundleDef, get_param};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;

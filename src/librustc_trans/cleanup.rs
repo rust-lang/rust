@@ -117,7 +117,7 @@
 pub use self::EarlyExitLabel::*;
 
 use llvm::{BasicBlockRef, ValueRef};
-use base;
+use base::{self, Lifetime};
 use common;
 use common::{BlockAndBuilder, FunctionContext, LandingPad};
 use debuginfo::{DebugLoc};
@@ -422,7 +422,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                 let addr = self.landingpad_alloca.get()
                                                .unwrap();
                                 let lp = bcx.load(addr);
-                                base::call_lifetime_end(&bcx, addr);
+                                Lifetime::End.call(&bcx, addr);
                                 base::trans_unwind_resume(&bcx, lp);
                             }
                             UnwindKind::CleanupPad(_) => {
@@ -559,9 +559,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             let addr = match self.landingpad_alloca.get() {
                 Some(addr) => addr,
                 None => {
-                    let addr = base::alloca(&pad_bcx, common::val_ty(llretval),
-                                            "");
-                    base::call_lifetime_start(&pad_bcx, addr);
+                    let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
+                    Lifetime::Start.call(&pad_bcx, addr);
                     self.landingpad_alloca.set(Some(addr));
                     addr
                 }

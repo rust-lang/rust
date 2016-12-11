@@ -14,7 +14,6 @@ use llvm;
 use llvm::ValueRef;
 use base::*;
 use common::*;
-use builder::Builder;
 use rustc::ty::Ty;
 
 pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
@@ -61,7 +60,7 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
     } else {
         body_bcx.inbounds_gep(current, &[C_uint(bcx.ccx(), 1usize)])
     };
-    Builder::add_incoming_to_phi(current, next, body_bcx.llbb());
+    body_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
     body_bcx.br(header_bcx.llbb());
     next_bcx
 }
