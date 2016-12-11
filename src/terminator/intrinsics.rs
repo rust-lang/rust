@@ -7,8 +7,8 @@ use rustc::ty::{self, Ty};
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
 use lvalue::{Lvalue, LvalueExtra};
-use primval::{self, PrimVal, PrimValKind};
-use value::Value;
+use operator;
+use value::{PrimVal, PrimValKind, Value};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -101,7 +101,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
                 let kind = self.ty_to_primval_kind(ty)?;
-                let (val, _) = primval::binary_op(mir::BinOp::Eq, old, kind, expect_old, kind)?;
+                let (val, _) = operator::binary_op(mir::BinOp::Eq, old, kind, expect_old, kind)?;
                 let dest = self.force_allocation(dest)?.to_ptr();
                 self.write_pair_to_ptr(old, val, dest, dest_ty)?;
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
@@ -120,7 +120,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, old, ty)?;
                 let kind = self.ty_to_primval_kind(ty)?;
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = primval::binary_op(mir::BinOp::Add, old, kind, change, kind)?;
+                let (val, _) = operator::binary_op(mir::BinOp::Add, old, kind, change, kind)?;
                 self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             },
 
@@ -137,7 +137,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, old, ty)?;
                 let kind = self.ty_to_primval_kind(ty)?;
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = primval::binary_op(mir::BinOp::Sub, old, kind, change, kind)?;
+                let (val, _) = operator::binary_op(mir::BinOp::Sub, old, kind, change, kind)?;
                 self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             }
 
@@ -217,7 +217,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let kind = self.ty_to_primval_kind(ty)?;
                 let a = self.value_to_primval(arg_vals[0], ty)?;
                 let b = self.value_to_primval(arg_vals[0], ty)?;
-                let result = primval::binary_op(mir::BinOp::Add, a, kind, b, kind)?;
+                let result = operator::binary_op(mir::BinOp::Add, a, kind, b, kind)?;
                 self.write_primval(dest, result.0, dest_ty)?;
             }
 
@@ -504,7 +504,7 @@ macro_rules! integer_intrinsic {
     ($name:expr, $val:expr, $kind:expr, $method:ident) => ({
         let val = $val;
 
-        use primval::PrimValKind::*;
+        use value::PrimValKind::*;
         let bits = match $kind {
             I8 => (val.bits as i8).$method() as u64,
             U8 => (val.bits as u8).$method() as u64,

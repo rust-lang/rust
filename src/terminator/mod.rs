@@ -12,7 +12,7 @@ use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty};
 use lvalue::{Lvalue, LvalueExtra};
 use memory::Pointer;
-use primval::PrimVal;
+use value::PrimVal;
 use value::Value;
 
 mod intrinsics;

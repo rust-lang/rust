@@ -1,176 +1,16 @@
-#![allow(unknown_lints)]
-#![allow(float_cmp)]
-
-use std::mem::transmute;
-
 use rustc::mir;
 
 use error::{EvalError, EvalResult};
-use memory::{AllocId, Pointer};
-
-fn bits_to_f32(bits: u64) -> f32 {
-    unsafe { transmute::<u32, f32>(bits as u32) }
-}
-
-fn bits_to_f64(bits: u64) -> f64 {
-    unsafe { transmute::<u64, f64>(bits) }
-}
-
-fn f32_to_bits(f: f32) -> u64 {
-    unsafe { transmute::<f32, u32>(f) as u64 }
-}
-
-fn f64_to_bits(f: f64) -> u64 {
-    unsafe { transmute::<f64, u64>(f) }
-}
-
-fn bits_to_bool(n: u64) -> bool {
-    // FIXME(solson): Can we reach here due to user error?
-    debug_assert!(n == 0 || n == 1, "bits interpreted as bool were {}", n);
-    n & 1 == 1
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PrimVal {
-    pub bits: u64,
-
-    /// This field is initialized when the `PrimVal` represents a pointer into an `Allocation`. An
-    /// `Allocation` in the `memory` module has a list of relocations, but a `PrimVal` is only
-    /// large enough to contain one, hence the `Option`.
-    pub relocation: Option<AllocId>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PrimValKind {
-    I8, I16, I32, I64,
-    U8, U16, U32, U64,
-    F32, F64,
-    Bool,
-    Char,
-    Ptr,
-    FnPtr,
-}
-
-impl PrimValKind {
-    pub fn is_int(self) -> bool {
-        use self::PrimValKind::*;
-        match self {
-            I8 | I16 | I32 | I64 | U8 | U16 | U32 | U64 => true,
-            _ => false,
-        }
-    }
-
-    pub fn from_uint_size(size: u64) -> Self {
-        match size {
-            1 => PrimValKind::U8,
-            2 => PrimValKind::U16,
-            4 => PrimValKind::U32,
-            8 => PrimValKind::U64,
-            _ => bug!("can't make uint with size {}", size),
-        }
-    }
-
-    pub fn from_int_size(size: u64) -> Self {
-        match size {
-            1 => PrimValKind::I8,
-            2 => PrimValKind::I16,
-            4 => PrimValKind::I32,
-            8 => PrimValKind::I64,
-            _ => bug!("can't make int with size {}", size),
-        }
-    }
-}
-
-impl PrimVal {
-    pub fn new(bits: u64) -> Self {
-        PrimVal { bits: bits, relocation: None }
-    }
-
-    pub fn new_with_relocation(bits: u64, alloc_id: AllocId) -> Self {
-        PrimVal { bits: bits, relocation: Some(alloc_id) }
-    }
-
-    pub fn from_ptr(ptr: Pointer) -> Self {
-        PrimVal::new_with_relocation(ptr.offset as u64, ptr.alloc_id)
-    }
-
-    pub fn from_bool(b: bool) -> Self {
-        PrimVal::new(b as u64)
-    }
-
-    pub fn from_char(c: char) -> Self {
-        PrimVal::new(c as u64)
-    }
-
-    pub fn from_f32(f: f32) -> Self {
-        PrimVal::new(f32_to_bits(f))
-    }
-
-    pub fn from_f64(f: f64) -> Self {
-        PrimVal::new(f64_to_bits(f))
-    }
-
-    pub fn from_uint(n: u64) -> Self {
-        PrimVal::new(n)
-    }
-
-    pub fn from_int(n: i64) -> Self {
-        PrimVal::new(n as u64)
-    }
-
-    pub fn to_f32(self) -> f32 {
-        assert!(self.relocation.is_none());
-        bits_to_f32(self.bits)
-    }
-
-    pub fn to_f64(self) -> f64 {
-        assert!(self.relocation.is_none());
-        bits_to_f64(self.bits)
-    }
-
-    pub fn to_ptr(self) -> Pointer {
-        self.relocation.map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits)
-        }).unwrap_or_else(|| Pointer::from_int(self.bits))
-    }
-
-    pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
-        self.to_ptr().to_int()
-    }
-
-    pub fn to_u64(self) -> u64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as u64;
-        }
-        self.bits
-    }
-
-    pub fn to_i64(self) -> i64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as i64;
-        }
-        self.bits as i64
-    }
-
-    pub fn try_as_ptr(self) -> Option<Pointer> {
-        self.relocation.map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits)
-        })
-    }
-
-    pub fn try_as_bool<'tcx>(self) -> EvalResult<'tcx, bool> {
-        match self.bits {
-            0 => Ok(false),
-            1 => Ok(true),
-            _ => Err(EvalError::InvalidBool),
-        }
-    }
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// MIR operator evaluation
-////////////////////////////////////////////////////////////////////////////////
+use memory::Pointer;
+use value::{
+    PrimVal,
+    PrimValKind,
+    bits_to_f32,
+    bits_to_f64,
+    f32_to_bits,
+    f64_to_bits,
+    bits_to_bool,
+};
 
 macro_rules! overflow {
     ($op:ident, $l:expr, $r:expr) => ({
@@ -246,7 +86,7 @@ pub fn binary_op<'tcx>(
     right_kind: PrimValKind,
 ) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::BinOp::*;
-    use self::PrimValKind::*;
+    use value::PrimValKind::*;
 
     // If the pointers are into the same allocation, fall through to the more general match
     // later, which will do comparisons on the `bits` fields, which are the pointer offsets
@@ -360,7 +200,7 @@ pub fn unary_op<'tcx>(
     val_kind: PrimValKind,
 ) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::UnOp::*;
-    use self::PrimValKind::*;
+    use value::PrimValKind::*;
 
     let bits = match (un_op, val_kind) {
         (Not, Bool) => !bits_to_bool(val.bits) as u64,

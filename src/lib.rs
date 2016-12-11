@@ -27,7 +27,7 @@ mod error;
 mod eval_context;
 mod lvalue;
 mod memory;
-mod primval;
+mod operator;
 mod step;
 mod terminator;
 mod value;
@@ -54,12 +54,12 @@ pub use lvalue::{
 };
 
 pub use memory::{
+    AllocId,
     Memory,
     Pointer,
-    AllocId,
 };
 
-pub use primval::{
+pub use value::{
     PrimVal,
     PrimValKind,
 };
