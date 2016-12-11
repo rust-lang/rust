@@ -1,7 +1,8 @@
 cache: cargo
 dist: trusty
 language: rust
-rust: nightly
+# NOTE(nightly-2016-12-05) work around for rust-lang/rust#38281
+rust: nightly-2016-12-05
 services: docker
 sudo: required
 
@@ -43,6 +44,9 @@ install:
     esac
 
 script:
+  # work around rust-lang/cargo#3340
+  - test "$TRAVIS_OS_NAME" = "osx" ||
+      export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
   - cargo generate-lockfile
   - if [[ $TRAVIS_OS_NAME = "linux" ]]; then
       sudo apt-get remove -y qemu-user-static &&

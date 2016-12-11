@@ -1,4 +1,4 @@
-set -e
+set -ex
 
 # Test our implementation
 case $1 in
