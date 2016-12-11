@@ -712,24 +712,20 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     };
 
     let (llret, bcx) = base::invoke(bcx, llfn, &llargs, debug_loc);
-    if !bcx.is_unreachable() {
-        fn_ty.apply_attrs_callsite(llret);
+    fn_ty.apply_attrs_callsite(llret);
 
-        // If the function we just called does not use an outpointer,
-        // store the result into the rust outpointer. Cast the outpointer
-        // type to match because some ABIs will use a different type than
-        // the Rust type. e.g., a {u32,u32} struct could be returned as
-        // u64.
-        if !fn_ty.ret.is_indirect() {
-            if let Some(llretslot) = opt_llretslot {
-                fn_ty.ret.store(&bcx, llret, llretslot);
-            }
+    // If the function we just called does not use an outpointer,
+    // store the result into the rust outpointer. Cast the outpointer
+    // type to match because some ABIs will use a different type than
+    // the Rust type. e.g., a {u32,u32} struct could be returned as
+    // u64.
+    if !fn_ty.ret.is_indirect() {
+        if let Some(llretslot) = opt_llretslot {
+            fn_ty.ret.store(&bcx, llret, llretslot);
         }
     }
 
     if fn_ret.0.is_never() {
-        assert!(!bcx.is_terminated());
-        bcx.set_unreachable();
         bcx.unreachable();
     }
 

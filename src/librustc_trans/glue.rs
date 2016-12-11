@@ -321,10 +321,6 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         let align = C_uint(bcx.ccx(), align);
         return (size, align);
     }
-    if bcx.is_unreachable() {
-        let llty = Type::int(bcx.ccx());
-        return (C_undef(llty), C_undef(llty));
-    }
     match t.sty {
         ty::TyAdt(def, substs) => {
             let ccx = bcx.ccx();

@@ -24,22 +24,12 @@ use debuginfo::DebugLoc;
 
 use libc::{c_uint, c_char};
 
-// The difference between a block being unreachable and being terminated is
-// somewhat obscure, and has to do with error checking. When a block is
-// terminated, we're saying that trying to add any further statements in the
-// block is an error. On the other hand, if something is unreachable, that
-// means that the block was terminated in some way that we don't want to check
-// for (panic/break/return statements, call to diverging functions, etc), and
-// further instructions to the block should simply be ignored.
-
 pub fn RetVoid(cx: &BlockAndBuilder, debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.ret_void();
 }
 
 pub fn Ret(cx: &BlockAndBuilder, v: ValueRef, debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.ret(v);
 }
@@ -47,13 +37,11 @@ pub fn Ret(cx: &BlockAndBuilder, v: ValueRef, debug_loc: DebugLoc) {
 pub fn AggregateRet(cx: &BlockAndBuilder,
     ret_vals: &[ValueRef],
     debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.aggregate_ret(ret_vals);
 }
 
 pub fn Br(cx: &BlockAndBuilder, dest: BasicBlockRef, debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.br(dest);
 }
@@ -63,14 +51,12 @@ pub fn CondBr(cx: &BlockAndBuilder,
     then: BasicBlockRef,
     else_: BasicBlockRef,
     debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.cond_br(if_, then, else_);
 }
 
 pub fn Switch(cx: &BlockAndBuilder, v: ValueRef, else_: BasicBlockRef, num_cases: usize)
     -> ValueRef {
-        cx.terminate();
         cx.switch(v, else_, num_cases)
     }
 
@@ -85,7 +71,6 @@ pub fn IndirectBr(cx: &BlockAndBuilder,
     addr: ValueRef,
     num_dests: usize,
     debug_loc: DebugLoc) {
-    cx.terminate();
     debug_loc.apply(cx.fcx());
     cx.indirect_br(addr, num_dests);
 }
@@ -97,7 +82,6 @@ pub fn Invoke(cx: &BlockAndBuilder,
     catch: BasicBlockRef,
     debug_loc: DebugLoc)
     -> ValueRef {
-    cx.terminate();
     debug!("Invoke({:?} with arguments ({}))",
     Value(fn_),
     args.iter().map(|a| {
@@ -687,7 +671,6 @@ pub fn Trap(cx: &BlockAndBuilder) {
 
 pub fn LandingPad(cx: &BlockAndBuilder, ty: Type, pers_fn: ValueRef,
     num_clauses: usize) -> ValueRef {
-    assert!(!cx.is_unreachable());
     cx.landing_pad(ty, pers_fn, num_clauses, cx.fcx().llfn)
 }
 
@@ -720,26 +703,22 @@ pub fn AtomicRMW(cx: &BlockAndBuilder, op: AtomicRmwBinOp,
 pub fn CleanupPad(cx: &BlockAndBuilder,
     parent: Option<ValueRef>,
     args: &[ValueRef]) -> ValueRef {
-    assert!(!cx.is_unreachable());
     cx.cleanup_pad(parent, args)
 }
 
 pub fn CleanupRet(cx: &BlockAndBuilder,
     cleanup: ValueRef,
     unwind: Option<BasicBlockRef>) -> ValueRef {
-    cx.terminate();
     cx.cleanup_ret(cleanup, unwind)
 }
 
 pub fn CatchPad(cx: &BlockAndBuilder,
     parent: ValueRef,
     args: &[ValueRef]) -> ValueRef {
-    assert!(!cx.is_unreachable());
     cx.catch_pad(parent, args)
 }
 
 pub fn CatchRet(cx: &BlockAndBuilder, pad: ValueRef, unwind: BasicBlockRef) -> ValueRef {
-    cx.terminate();
     cx.catch_ret(pad, unwind)
 }
 
@@ -747,7 +726,6 @@ pub fn CatchSwitch(cx: &BlockAndBuilder,
     parent: Option<ValueRef>,
     unwind: Option<BasicBlockRef>,
     num_handlers: usize) -> ValueRef {
-    cx.terminate();
     cx.catch_switch(parent, unwind, num_handlers)
 }
 

@@ -343,10 +343,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                             scope: &CleanupScope<'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
 
         let mut bcx = bcx;
-        if !bcx.is_unreachable() {
-            for cleanup in scope.cleanups.iter().rev() {
-                bcx = cleanup.trans(bcx, scope.debug_loc);
-            }
+        for cleanup in scope.cleanups.iter().rev() {
+            bcx = cleanup.trans(bcx, scope.debug_loc);
         }
         bcx
     }
