@@ -44,6 +44,8 @@ install:
     esac
 
 script:
+  # work around rust-lang/cargo#3340
+  - export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
   - cargo generate-lockfile
   - if [[ $TRAVIS_OS_NAME = "linux" ]]; then
       sudo apt-get remove -y qemu-user-static &&
