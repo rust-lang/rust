@@ -25,12 +25,10 @@ use abi::{Abi, FnType};
 use attributes;
 use base;
 use base::*;
-use build::*;
 use common::{
     self, Block, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
 };
 use consts;
-use debuginfo::DebugLoc;
 use declare;
 use value::Value;
 use meth;
@@ -210,11 +208,10 @@ impl<'tcx> Callee<'tcx> {
     /// into memory somewhere. Nonetheless we return the actual return value of the
     /// function.
     pub fn call<'a, 'blk>(self, bcx: BlockAndBuilder<'blk, 'tcx>,
-                          debug_loc: DebugLoc,
                           args: &[ValueRef],
                           dest: Option<ValueRef>)
                           -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
-        trans_call_inner(bcx, debug_loc, self, args, dest)
+        trans_call_inner(bcx, self, args, dest)
     }
 
     /// Turn the callee into a function pointer.
@@ -414,11 +411,11 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let self_scope = fcx.push_custom_cleanup_scope();
     fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
 
-    let bcx = callee.call(bcx, DebugLoc::None, &llargs[self_idx..], dest).0;
+    let bcx = callee.call(bcx, &llargs[self_idx..], dest).0;
 
     let bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
-    fcx.finish(&bcx, DebugLoc::None);
+    fcx.finish(&bcx);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
@@ -531,7 +528,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {
-            Load(&bcx, llargs[self_idx])
+            bcx.load(llargs[self_idx])
         } else {
             llargs[self_idx]
         }
@@ -543,8 +540,8 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    let bcx = callee.call(bcx, DebugLoc::None, &llargs[(self_idx + 1)..], dest).0;
-    fcx.finish(&bcx, DebugLoc::None);
+    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], dest).0;
+    fcx.finish(&bcx);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
@@ -654,7 +651,6 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // Translating calls
 
 fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                                    debug_loc: DebugLoc,
                                     callee: Callee<'tcx>,
                                     args: &[ValueRef],
                                     opt_llretslot: Option<ValueRef>)
@@ -689,7 +685,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     if fn_ty.ret.is_indirect() {
         let mut llretslot = opt_llretslot.unwrap();
         if let Some(ty) = fn_ty.ret.cast {
-            llretslot = PointerCast(&bcx, llretslot, ty.ptr_to());
+            llretslot = bcx.pointercast(llretslot, ty.ptr_to());
         }
         llargs.push(llretslot);
     }
@@ -700,7 +696,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
 
             let fn_ptr = meth::get_virtual_method(&bcx, args[1], idx);
             let llty = fn_ty.llvm_type(&bcx.ccx()).ptr_to();
-            callee = Fn(PointerCast(&bcx, fn_ptr, llty));
+            callee = Fn(bcx.pointercast(fn_ptr, llty));
             llargs.extend_from_slice(&args[2..]);
         }
         _ => llargs.extend_from_slice(args)
@@ -711,7 +707,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         _ => bug!("expected fn pointer callee, found {:?}", callee)
     };
 
-    let (llret, bcx) = base::invoke(bcx, llfn, &llargs, debug_loc);
+    let (llret, bcx) = base::invoke(bcx, llfn, &llargs);
     fn_ty.apply_attrs_callsite(llret);
 
     // If the function we just called does not use an outpointer,

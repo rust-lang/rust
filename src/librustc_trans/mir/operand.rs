@@ -264,11 +264,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
             OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
             OperandValue::Pair(a, b) => {
-                use build::*;
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                Store(bcx, a, StructGEP(bcx, lldest, 0));
-                Store(bcx, b, StructGEP(bcx, lldest, 1));
+                bcx.store(a, bcx.struct_gep(lldest, 0));
+                bcx.store(b, bcx.struct_gep(lldest, 1));
             }
         }
     }

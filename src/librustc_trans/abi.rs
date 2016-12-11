@@ -10,7 +10,6 @@
 
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
-use build::AllocaFcx;
 use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
 use context::CrateContext;
 use cabi_x86;
@@ -278,7 +277,7 @@ impl ArgType {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = AllocaFcx(bcx.fcx(), ty, "abi_cast");
+                let llscratch = bcx.fcx().alloca(ty, "abi_cast");
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...

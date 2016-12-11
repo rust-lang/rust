@@ -14,11 +14,9 @@ use llvm::{ValueRef, get_params};
 use rustc::traits;
 use abi::FnType;
 use base::*;
-use build::*;
 use callee::Callee;
 use common::*;
 use consts;
-use debuginfo::DebugLoc;
 use declare;
 use glue;
 use machine;
@@ -40,7 +38,7 @@ pub fn get_virtual_method<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
            vtable_index, Value(llvtable));
 
-    Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]))
+    bcx.load(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]))
 }
 
 /// Generate a shim function that allows an object type like `SomeTrait` to
@@ -93,10 +91,9 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     let dest = fcx.llretslotptr.get();
     let llargs = get_params(fcx.llfn);
-    bcx = callee.call(bcx, DebugLoc::None,
-                      &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).0;
+    bcx = callee.call(bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).0;
 
-    fcx.finish(&bcx, DebugLoc::None);
+    fcx.finish(&bcx);
 
     llfn
 }

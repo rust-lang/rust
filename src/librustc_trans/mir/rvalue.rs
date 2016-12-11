@@ -19,7 +19,6 @@ use base;
 use callee::Callee;
 use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder};
 use common::{C_integral};
-use debuginfo::DebugLoc;
 use adt;
 use machine;
 use type_::Type;
@@ -37,8 +36,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
                         bcx: BlockAndBuilder<'bcx, 'tcx>,
                         dest: LvalueRef<'tcx>,
-                        rvalue: &mir::Rvalue<'tcx>,
-                        debug_loc: DebugLoc)
+                        rvalue: &mir::Rvalue<'tcx>)
                         -> BlockAndBuilder<'bcx, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
@@ -59,7 +57,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
-                    let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
+                    let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                     self.store_operand(&bcx, dest.llval, temp);
                     return bcx;
                 }
@@ -171,7 +169,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             _ => {
                 assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue));
-                let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
+                let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                 self.store_operand(&bcx, dest.llval, temp);
                 bcx
             }
@@ -180,8 +178,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     pub fn trans_rvalue_operand(&mut self,
                                 bcx: BlockAndBuilder<'bcx, 'tcx>,
-                                rvalue: &mir::Rvalue<'tcx>,
-                                debug_loc: DebugLoc)
+                                rvalue: &mir::Rvalue<'tcx>)
                                 -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue),
@@ -455,14 +452,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llalign = C_uint(bcx.ccx(), align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
-                let val = base::malloc_raw_dyn(
-                    &bcx,
-                    llty_ptr,
-                    box_ty,
-                    llsize,
-                    llalign,
-                    debug_loc
-                );
+                let val = base::malloc_raw_dyn(&bcx, llty_ptr, box_ty, llsize, llalign);
                 let operand = OperandRef {
                     val: OperandValue::Immediate(val),
                     ty: box_ty,
@@ -526,23 +516,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::BinOp::BitOr => bcx.or(lhs, rhs),
             mir::BinOp::BitAnd => bcx.and(lhs, rhs),
             mir::BinOp::BitXor => bcx.xor(lhs, rhs),
-            mir::BinOp::Shl => {
-                common::build_unchecked_lshift(
-                    &bcx,
-                    lhs,
-                    rhs,
-                    DebugLoc::None
-                )
-            }
-            mir::BinOp::Shr => {
-                common::build_unchecked_rshift(
-                    bcx,
-                    input_ty,
-                    lhs,
-                    rhs,
-                    DebugLoc::None
-                )
-            }
+            mir::BinOp::Shl => common::build_unchecked_lshift(bcx, lhs, rhs),
+            mir::BinOp::Shr => common::build_unchecked_rshift(bcx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_nil {
                 C_bool(bcx.ccx(), match op {
