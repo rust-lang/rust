@@ -127,6 +127,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, impl_data.impl_def_id,
                                               substs, node_item.node);
+                let substs = infcx.tcx.erase_regions(&substs);
                 tcx.lift(&substs).unwrap_or_else(|| {
                     bug!("find_method: translate_substs \
                           returned {:?} which contains inference types/regions",
