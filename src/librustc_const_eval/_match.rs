@@ -379,14 +379,14 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(ref sub_ty) => {
-            if sub_ty.is_uninhabited(Some(cx.node), cx.tcx) {
+            if sub_ty.is_uninhabited_from(cx.node, cx.tcx) {
                 vec![Slice(0)]
             } else {
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
         ty::TyArray(ref sub_ty, length) => {
-            if length == 0 || !sub_ty.is_uninhabited(Some(cx.node), cx.tcx) {
+            if length == 0 || !sub_ty.is_uninhabited_from(cx.node, cx.tcx) {
                 vec![Slice(length)]
             } else {
                 vec![]
@@ -395,10 +395,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
             def.variants.iter().filter_map(|v| {
                 let mut visited = FxHashSet::default();
-                if v.is_uninhabited_recurse(&mut visited,
-                                            Some(cx.node),
-                                            cx.tcx, substs,
-                                            AdtKind::Enum) {
+                let node_set = v.uninhabited_from(&mut visited,
+                                                  cx.tcx, substs,
+                                                  AdtKind::Enum);
+                if node_set.contains(cx.tcx, cx.node) {
                     None
                 } else {
                     Some(Variant(v.did))
@@ -406,7 +406,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect()
         }
         _ => {
-            if pcx.ty.is_uninhabited(Some(cx.node), cx.tcx) {
+            if pcx.ty.is_uninhabited_from(cx.node, cx.tcx) {
                 vec![]
             } else {
                 vec![Single]
