@@ -1762,56 +1762,48 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Try(ref sub_expr) => {
                     // to:
                     //
+                    // match QuestionMark::question_mark(<expr>) {
+                    //     Try::Continue(val) => val,
+                    //     Try::Done(r) => return r,
+                    // }
                     // match Carrier::translate(<expr>) {
                     //     Ok(val) => val,
                     //     Err(err) => return Carrier::from_error(From::from(err))
                     // }
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
-                    // Carrier::translate(<expr>)
+                    // QuestionMark::question_mark(<expr>)
                     let discr = {
                         // expand <expr>
                         let sub_expr = self.lower_expr(sub_expr);
 
-                        let path = &["ops", "Carrier", "translate"];
+                        let path = &["ops", "QuestionMark", "question_mark"];
                         let path = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
                         P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                     };
 
-                    // Ok(val) => val
+                    // Continue(val) => val
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
-                        let val_pat = self.pat_ident(e.span, val_ident);
-                        let val_expr = P(self.expr_ident(e.span, val_ident, val_pat.id));
-                        let ok_pat = self.pat_ok(e.span, val_pat);
+                        let val_pat = self.pat_ident(unstable_span, val_ident);
+                        let val_expr = P(self.expr_ident(unstable_span, val_ident, val_pat.id));
+                        let ok_pat = self.pat_continue(unstable_span, val_pat);
 
                         self.arm(hir_vec![ok_pat], val_expr)
                     };
 
-                    // Err(err) => return Carrier::from_error(From::from(err))
+                    // Done(r) => return r
                     let err_arm = {
                         let err_ident = self.str_to_ident("err");
-                        let err_local = self.pat_ident(e.span, err_ident);
-                        let from_expr = {
-                            let path = &["convert", "From", "from"];
-                            let from = P(self.expr_std_path(e.span, path, ThinVec::new()));
-                            let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
+                        let err_local = self.pat_ident(unstable_span, err_ident);
 
-                            self.expr_call(e.span, from, hir_vec![err_expr])
-                        };
-                        let from_err_expr = {
-                            let path = &["ops", "Carrier", "from_error"];
-                            let from_err = P(self.expr_std_path(unstable_span, path,
-                                                                ThinVec::new()));
-                            P(self.expr_call(e.span, from_err, hir_vec![from_expr]))
-                        };
-
-                        let ret_expr = P(self.expr(e.span,
-                                                   hir::Expr_::ExprRet(Some(from_err_expr)),
+                        let err_expr = self.expr_ident(unstable_span, err_ident, err_local.id);
+                        let ret_expr = P(self.expr(unstable_span,
+                                                   hir::Expr_::ExprRet(Some(P(err_expr))),
                                                                        ThinVec::new()));
 
-                        let err_pat = self.pat_err(e.span, err_local);
-                        self.arm(hir_vec![err_pat], ret_expr)
+                        let done_pat = self.pat_done(unstable_span, err_local);
+                        self.arm(hir_vec![done_pat], ret_expr)
                     };
 
                     return self.expr_match(e.span, discr, hir_vec![err_arm, ok_arm],
@@ -2060,20 +2052,20 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        self.pat_std_enum(span, &["result", "Result", "Ok"], hir_vec![pat])
-    }
-
-    fn pat_err(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        self.pat_std_enum(span, &["result", "Result", "Err"], hir_vec![pat])
-    }
-
     fn pat_some(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
         self.pat_std_enum(span, &["option", "Option", "Some"], hir_vec![pat])
     }
 
     fn pat_none(&mut self, span: Span) -> P<hir::Pat> {
         self.pat_std_enum(span, &["option", "Option", "None"], hir_vec![])
+    }
+
+    fn pat_continue(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+        self.pat_std_enum(span, &["ops", "Try", "Continue"], hir_vec![pat])
+    }
+
+    fn pat_done(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+        self.pat_std_enum(span, &["ops", "Try", "Done"], hir_vec![pat])
     }
 
     fn pat_std_enum(&mut self,
