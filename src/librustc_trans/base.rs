@@ -51,7 +51,6 @@ use session::{self, DataTypeKind, Session};
 use abi::{self, Abi, FnType};
 use adt;
 use attributes;
-use build::*;
 use builder::{Builder, noname};
 use callee::{Callee};
 use common::{BlockAndBuilder, C_bool, C_bytes_in_context, C_i32, C_uint};
@@ -174,11 +173,11 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 }
 
 pub fn get_meta(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
-    StructGEP(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
+    bcx.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
 pub fn get_dataptr(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
-    StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
+    bcx.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 pub fn get_meta_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
@@ -207,15 +206,14 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
-                                  align: ValueRef,
-                                  debug_loc: DebugLoc)
+                                  align: ValueRef)
                                   -> ValueRef {
     let _icx = push_ctxt("malloc_raw_exchange");
 
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
     let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).reify(bcx.ccx());
-    PointerCast(bcx, Call(bcx, r, &[size, align], debug_loc), llty_ptr)
+    bcx.pointercast(bcx.call(r, &[size, align], bcx.lpad().and_then(|b| b.bundle())), llty_ptr)
 }
 
 
@@ -258,13 +256,12 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                       rhs: ValueRef,
                                       t: Ty<'tcx>,
                                       ret_ty: Type,
-                                      op: hir::BinOp_,
-                                      debug_loc: DebugLoc)
+                                      op: hir::BinOp_)
                                       -> ValueRef {
     let signed = match t.sty {
         ty::TyFloat(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
-            return SExt(bcx, FCmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty);
+            return bcx.sext(bcx.fcmp(cmp, lhs, rhs), ret_ty);
         },
         ty::TyUint(_) => false,
         ty::TyInt(_) => true,
@@ -276,7 +273,7 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    SExt(bcx, ICmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty)
+    bcx.sext(bcx.icmp(cmp, lhs, rhs), ret_ty)
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -326,8 +323,7 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(common::type_is_sized(bcx.tcx(), a));
             let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), b).ptr_to();
-            (PointerCast(bcx, src, ptr_ty),
-             unsized_info(bcx.ccx(), a, b, None))
+            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx(), a, b, None))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -352,7 +348,7 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                 // the types match up.
                 let (base, info) = load_fat_ptr(bcx, src, src_ty);
                 let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), dst_ty);
-                let base = PointerCast(bcx, base, llcast_ty);
+                let base = bcx.pointercast(base, llcast_ty);
                 (base, info)
             } else {
                 let base = load_ty(bcx, src, src_ty);
@@ -414,8 +410,10 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
     }
 }
 
-pub fn cast_shift_expr_rhs(cx: &BlockAndBuilder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op, lhs, rhs, |a, b| Trunc(cx, a, b), |a, b| ZExt(cx, a, b))
+pub fn cast_shift_expr_rhs(
+    cx: &BlockAndBuilder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
+) -> ValueRef {
+    cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
 pub fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
@@ -463,8 +461,7 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
 
 pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                           llfn: ValueRef,
-                          llargs: &[ValueRef],
-                          debug_loc: DebugLoc)
+                          llargs: &[ValueRef])
                           -> (ValueRef, BlockAndBuilder<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if need_invoke(&bcx) {
@@ -475,12 +472,13 @@ pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         let normal_bcx = bcx.fcx().new_block("normal-return");
         let landing_pad = bcx.fcx().get_landing_pad();
 
-        let llresult = Invoke(&bcx,
-                              llfn,
-                              &llargs[..],
-                              normal_bcx.llbb,
-                              landing_pad,
-                              debug_loc);
+        let llresult = bcx.invoke(
+            llfn,
+            &llargs[..],
+            normal_bcx.llbb,
+            landing_pad,
+            bcx.lpad().and_then(|b| b.bundle())
+        );
         return (llresult, normal_bcx.build());
     } else {
         debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
@@ -488,7 +486,7 @@ pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
             debug!("arg: {:?}", Value(llarg));
         }
 
-        let llresult = Call(&bcx, llfn, &llargs[..], debug_loc);
+        let llresult = bcx.call(llfn, &llargs[..], bcx.lpad().and_then(|b| b.bundle()));
         return (llresult, bcx);
     }
 }
@@ -518,7 +516,9 @@ pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
-pub fn load_ty<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+pub fn load_ty<'blk, 'tcx>(
+    cx: &BlockAndBuilder<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>
+) -> ValueRef {
     load_ty_builder(cx, ptr, t)
 }
 
@@ -557,15 +557,17 @@ pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tc
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+pub fn store_ty<'blk, 'tcx>(
+    cx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>
+) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
-        let lladdr = ExtractValue(cx, v, abi::FAT_PTR_ADDR);
-        let llextra = ExtractValue(cx, v, abi::FAT_PTR_EXTRA);
+        let lladdr = cx.extract_value(v, abi::FAT_PTR_ADDR);
+        let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
         store_fat_ptr(cx, lladdr, llextra, dst, t);
     } else {
-        Store(cx, from_immediate(cx, v), dst);
+        cx.store(from_immediate(cx, v), dst);
     }
 }
 
@@ -575,8 +577,8 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
                                  dst: ValueRef,
                                  _ty: Ty<'tcx>) {
     // FIXME: emit metadata
-    Store(cx, data, get_dataptr(cx, dst));
-    Store(cx, extra, get_meta(cx, dst));
+    cx.store(data, get_dataptr(cx, dst));
+    cx.store(extra, get_meta(cx, dst));
 }
 
 pub fn load_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
@@ -609,7 +611,7 @@ pub fn load_fat_ptr_builder<'a, 'tcx>(
 
 pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
     if val_ty(val) == Type::i1(bcx.ccx()) {
-        ZExt(bcx, val, Type::i8(bcx.ccx()))
+        bcx.zext(val, Type::i8(bcx.ccx()))
     } else {
         val
     }
@@ -617,7 +619,7 @@ pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
 
 pub fn to_immediate(bcx: &BlockAndBuilder, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
-        Trunc(bcx, val, Type::i1(bcx.ccx()))
+        bcx.trunc(val, Type::i1(bcx.ccx()))
     } else {
         val
     }
@@ -637,9 +639,9 @@ pub fn with_cond<'blk, 'tcx, F>(
     let fcx = bcx.fcx();
     let next_cx = fcx.new_block("next").build();
     let cond_cx = fcx.new_block("cond").build();
-    CondBr(&bcx, val, cond_cx.llbb(), next_cx.llbb(), DebugLoc::None);
+    bcx.cond_br(val, cond_cx.llbb(), next_cx.llbb());
     let after_cx = f(cond_cx);
-    Br(&after_cx, next_cx.llbb(), DebugLoc::None);
+    after_cx.br(next_cx.llbb());
     next_cx
 }
 
@@ -702,8 +704,9 @@ pub fn trans_unwind_resume(bcx: &BlockAndBuilder, lpval: ValueRef) {
     if !bcx.sess().target.target.options.custom_unwind_resume {
         bcx.resume(lpval);
     } else {
-        let exc_ptr = ExtractValue(bcx, lpval, 0);
-        Call(bcx, bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr], DebugLoc::None);
+        let exc_ptr = bcx.extract_value(lpval, 0);
+        bcx.call(bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr],
+            bcx.lpad().and_then(|b| b.bundle()));
     }
 }
 
@@ -725,7 +728,9 @@ pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>) {
+pub fn memcpy_ty<'blk, 'tcx>(
+    bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
+) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
 
@@ -792,7 +797,7 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 pub fn alloca(cx: &BlockAndBuilder, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
     DebugLoc::None.apply(cx.fcx());
-    Alloca(cx, ty, name)
+    cx.fcx().alloca(ty, name)
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
@@ -863,7 +868,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         // Use a dummy instruction as the insertion point for all allocas.
         // This is later removed in FunctionContext::cleanup.
         self.alloca_insert_pt.set(Some(unsafe {
-            Load(&entry_bcx, C_null(Type::i8p(self.ccx)));
+            entry_bcx.load(C_null(Type::i8p(self.ccx)));
             llvm::LLVMGetFirstInstruction(entry_bcx.llbb())
         }));
 
@@ -881,7 +886,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             let slot = if self.fn_ty.ret.is_indirect() {
                 get_param(self.llfn, 0)
             } else {
-                AllocaFcx(self, llty, "sret_slot")
+                self.alloca(llty, "sret_slot")
             };
 
             self.llretslotptr.set(Some(slot));
@@ -892,21 +897,19 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
     /// Ties up the llstaticallocas -> llloadenv -> lltop edges,
     /// and builds the return block.
-    pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>,
-                  ret_debug_loc: DebugLoc) {
+    pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
         let _icx = push_ctxt("FunctionContext::finish");
 
-        self.build_return_block(ret_cx, ret_debug_loc);
+        self.build_return_block(ret_cx);
 
         DebugLoc::None.apply(self);
         self.cleanup();
     }
 
     // Builds the return block for a function.
-    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>,
-                              ret_debug_location: DebugLoc) {
+    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
         if self.llretslotptr.get().is_none() || self.fn_ty.ret.is_indirect() {
-            return RetVoid(ret_cx, ret_debug_location);
+            return ret_cx.ret_void();
         }
 
         let retslot = self.llretslotptr.get().unwrap();
@@ -925,13 +928,13 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 }
 
                 if self.fn_ty.ret.is_indirect() {
-                    Store(ret_cx, retval, get_param(self.llfn, 0));
-                    RetVoid(ret_cx, ret_debug_location)
+                    ret_cx.store(retval, get_param(self.llfn, 0));
+                    ret_cx.ret_void()
                 } else {
                     if llty == Type::i1(self.ccx) {
-                        retval = Trunc(ret_cx, retval, llty);
+                        retval = ret_cx.trunc(retval, llty);
                     }
-                    Ret(ret_cx, retval, ret_debug_location)
+                    ret_cx.ret(retval)
                 }
             }
             (_, cast_ty) if self.fn_ty.ret.is_indirect() => {
@@ -941,24 +944,24 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
                 call_memcpy(&ret_cx, get_param(self.llfn, 0),
                             retslot, llsz, llalign as u32);
-                RetVoid(ret_cx, ret_debug_location)
+                ret_cx.ret_void()
             }
             (_, Some(cast_ty)) => {
-                let load = Load(ret_cx, PointerCast(ret_cx, retslot, cast_ty.ptr_to()));
+                let load = ret_cx.load(ret_cx.pointercast(retslot, cast_ty.ptr_to()));
                 let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
                 unsafe {
                     llvm::LLVMSetAlignment(load, llalign);
                 }
-                Ret(ret_cx, load, ret_debug_location)
+                ret_cx.ret(load)
             }
             (_, None) => {
                 let retval = if llty == Type::i1(self.ccx) {
-                    let val = LoadRangeAssert(ret_cx, retslot, 0, 2, llvm::False);
-                    Trunc(ret_cx, val, llty)
+                    let val = ret_cx.load_range_assert(retslot, 0, 2, llvm::False);
+                    ret_cx.trunc(val, llty)
                 } else {
-                    Load(ret_cx, retslot)
+                    ret_cx.load(retslot)
                 };
-                Ret(ret_cx, retval, ret_debug_location)
+                ret_cx.ret(retval)
             }
         }
     }
@@ -1056,7 +1059,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         adt::trans_set_discr(&bcx, sig.output(), dest, disr);
     }
 
-    fcx.finish(&bcx, DebugLoc::None);
+    fcx.finish(&bcx);
 }
 
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {

@@ -26,12 +26,11 @@ use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
 use abi::{Abi, FnType};
 use base;
-use build;
 use builder::Builder;
 use callee::Callee;
 use cleanup;
 use consts;
-use debuginfo::{self, DebugLoc};
+use debuginfo;
 use declare;
 use machine;
 use monomorphize;
@@ -433,6 +432,12 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         attributes::unwind(llfn, true);
         unwresume.set(Some(llfn));
         Callee::ptr(llfn, ty)
+    }
+
+    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+        let b = self.ccx.builder();
+        b.position_before(self.alloca_insert_pt.get().unwrap());
+        b.alloca(ty, name)
     }
 }
 
@@ -998,35 +1003,32 @@ pub fn langcall(tcx: TyCtxt,
 
 pub fn build_unchecked_lshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                           lhs: ValueRef,
-                                          rhs: ValueRef,
-                                          binop_debug_loc: DebugLoc) -> ValueRef {
+                                          rhs: ValueRef) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    build::Shl(bcx, lhs, rhs, binop_debug_loc)
+    let rhs = shift_mask_rhs(bcx, rhs);
+    bcx.shl(lhs, rhs)
 }
 
 pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                           lhs_t: Ty<'tcx>,
                                           lhs: ValueRef,
-                                          rhs: ValueRef,
-                                          binop_debug_loc: DebugLoc) -> ValueRef {
+                                          rhs: ValueRef) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
+    let rhs = shift_mask_rhs(bcx, rhs);
     let is_signed = lhs_t.is_signed();
     if is_signed {
-        build::AShr(bcx, lhs, rhs, binop_debug_loc)
+        bcx.ashr(lhs, rhs)
     } else {
-        build::LShr(bcx, lhs, rhs, binop_debug_loc)
+        bcx.lshr(lhs, rhs)
     }
 }
 
 fn shift_mask_rhs<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                              rhs: ValueRef,
-                              debug_loc: DebugLoc) -> ValueRef {
+                              rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
-    build::And(bcx, rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false), debug_loc)
+    bcx.and(rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val<'blk, 'tcx>(
@@ -1048,7 +1050,7 @@ pub fn shift_mask_val<'blk, 'tcx>(
         },
         TypeKind::Vector => {
             let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
-            build::VectorSplat(bcx, mask_llty.vector_length(), mask)
+            bcx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }

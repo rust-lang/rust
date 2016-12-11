@@ -22,10 +22,9 @@ use rustc::traits;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use adt;
 use base::*;
-use build::*;
 use callee::{Callee};
+use builder::Builder;
 use common::*;
-use debuginfo::DebugLoc;
 use machine::*;
 use monomorphize;
 use trans_item::TransItem;
@@ -41,35 +40,28 @@ use syntax_pos::DUMMY_SP;
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                            v: ValueRef,
                                            size: ValueRef,
-                                           align: ValueRef,
-                                           debug_loc: DebugLoc)
+                                           align: ValueRef)
                                            -> BlockAndBuilder<'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
 
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
-    let args = [PointerCast(&bcx, v, Type::i8p(bcx.ccx())), size, align];
+    let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
     Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
-        .call(bcx, debug_loc, &args, None).0
+        .call(bcx, &args, None).0
 }
 
 pub fn trans_exchange_free<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                                        v: ValueRef,
                                        size: u64,
-                                       align: u32,
-                                       debug_loc: DebugLoc)
+                                       align: u32)
                                        -> BlockAndBuilder<'blk, 'tcx> {
     let ccx = cx.ccx();
-    trans_exchange_free_dyn(cx,
-                            v,
-                            C_uint(ccx, size),
-                            C_uint(ccx, align),
-                            debug_loc)
+    trans_exchange_free_dyn(cx, v, C_uint(ccx, size), C_uint(ccx, align))
 }
 
 pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                           ptr: ValueRef,
-                                          content_ty: Ty<'tcx>,
-                                          debug_loc: DebugLoc)
+                                          content_ty: Ty<'tcx>)
                                           -> BlockAndBuilder<'blk, 'tcx> {
     assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
@@ -78,7 +70,7 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     // `Box<ZeroSizeType>` does not allocate.
     if content_size != 0 {
         let content_align = align_of(bcx.ccx(), content_ty);
-        trans_exchange_free(bcx, ptr, content_size, content_align, debug_loc)
+        trans_exchange_free(bcx, ptr, content_size, content_align)
     } else {
         bcx
     }
@@ -132,15 +124,13 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn drop_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                            v: ValueRef,
-                           t: Ty<'tcx>,
-                           debug_loc: DebugLoc) -> BlockAndBuilder<'blk, 'tcx> {
-    drop_ty_core(bcx, v, t, debug_loc, false)
+                           t: Ty<'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
+    drop_ty_core(bcx, v, t, false)
 }
 
 pub fn drop_ty_core<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                 v: ValueRef,
                                 t: Ty<'tcx>,
-                                debug_loc: DebugLoc,
                                 skip_dtor: bool)
                                 -> BlockAndBuilder<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
@@ -156,13 +146,13 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         let glue = get_drop_glue_core(ccx, g);
         let glue_type = get_drop_glue_type(ccx.tcx(), t);
         let ptr = if glue_type != t {
-            PointerCast(&bcx, v, type_of(ccx, glue_type).ptr_to())
+            bcx.pointercast(v, type_of(ccx, glue_type).ptr_to())
         } else {
             v
         };
 
         // No drop-hint ==> call standard drop glue
-        Call(&bcx, glue, &[ptr], debug_loc);
+        bcx.call(glue, &[ptr], bcx.lpad().and_then(|b| b.bundle()));
     }
     bcx
 }
@@ -170,14 +160,13 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
 pub fn drop_ty_immediate<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                      v: ValueRef,
                                      t: Ty<'tcx>,
-                                     debug_loc: DebugLoc,
                                      skip_dtor: bool)
                                      -> BlockAndBuilder<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloc_ty(&bcx, t, "");
     call_lifetime_start(&bcx, vp);
     store_ty(&bcx, v, vp, t);
-    let bcx = drop_ty_core(bcx, vp, t, debug_loc, skip_dtor);
+    let bcx = drop_ty_core(bcx, vp, t, skip_dtor);
     call_lifetime_end(&bcx, vp);
     bcx
 }
@@ -249,7 +238,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // type, so we don't need to explicitly cast the function parameter.
 
     let bcx = make_drop_glue(bcx, get_param(llfn, 0), g);
-    fcx.finish(&bcx, DebugLoc::None);
+    fcx.finish(&bcx);
 }
 
 fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
@@ -285,8 +274,8 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     } else {
         // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
         unsized_args = [
-            Load(&bcx, get_dataptr(&bcx, v0)),
-            Load(&bcx, get_meta(&bcx, v0))
+            bcx.load(get_dataptr(&bcx, v0)),
+            bcx.load(get_meta(&bcx, v0))
         ];
         &unsized_args
     };
@@ -301,7 +290,7 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     };
     let dtor_did = def.destructor().unwrap();
     bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs)
-        .call(bcx, DebugLoc::None, args, None).0;
+        .call(bcx, args, None).0;
 
     bcx.fcx().pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
@@ -436,29 +425,27 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
             assert!(!skip_dtor);
             if !type_is_sized(bcx.tcx(), content_ty) {
                 let llval = get_dataptr(&bcx, v0);
-                let llbox = Load(&bcx, llval);
-                let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                let llbox = bcx.load(llval);
+                let bcx = drop_ty(bcx, v0, content_ty);
                 // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
                 let info = get_meta(&bcx, v0);
-                let info = Load(&bcx, info);
+                let info = bcx.load(info);
                 let (llsize, llalign) = size_and_align_of_dst(&bcx, content_ty, info);
 
                 // `Box<ZeroSizeType>` does not allocate.
-                let needs_free = ICmp(
-                    &bcx,
+                let needs_free = bcx.icmp(
                     llvm::IntNE,
                     llsize,
                     C_uint(bcx.ccx(), 0u64),
-                    DebugLoc::None
                 );
                 with_cond(bcx, needs_free, |bcx| {
-                    trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
+                    trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
                 })
             } else {
                 let llval = v0;
-                let llbox = Load(&bcx, llval);
-                let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
-                trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
+                let llbox = bcx.load(llval);
+                let bcx = drop_ty(bcx, llbox, content_ty);
+                trans_exchange_free_ty(bcx, llbox, content_ty)
             }
         }
         ty::TyDynamic(..) => {
@@ -468,12 +455,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
             // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
             assert!(!skip_dtor);
             let data_ptr = get_dataptr(&bcx, v0);
-            let vtable_ptr = Load(&bcx, get_meta(&bcx, v0));
-            let dtor = Load(&bcx, vtable_ptr);
-            Call(&bcx,
-                 dtor,
-                 &[PointerCast(&bcx, Load(&bcx, data_ptr), Type::i8p(bcx.ccx()))],
-                 DebugLoc::None);
+            let vtable_ptr = bcx.load(get_meta(&bcx, v0));
+            let dtor = bcx.load(vtable_ptr);
+            bcx.call(dtor,
+                &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx()))],
+                bcx.lpad().and_then(|b| b.bundle()));
             bcx
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
@@ -512,7 +498,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             let field_ptr = adt::trans_field_ptr(&cx, t, av, Disr::from(variant.disr_val), i);
-            cx = drop_ty(cx, field_ptr, arg, DebugLoc::None);
+            cx = drop_ty(cx, field_ptr, arg);
         }
         return cx;
     }
@@ -521,8 +507,8 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
         adt::MaybeSizedValue::sized(av)
     } else {
         // FIXME(#36457) -- we should pass unsized values as two arguments
-        let data = Load(&cx, get_dataptr(&cx, av));
-        let info = Load(&cx, get_meta(&cx, av));
+        let data = cx.load(get_dataptr(&cx, av));
+        let info = cx.load(get_meta(&cx, av));
         adt::MaybeSizedValue::unsized_(data, info)
     };
 
@@ -531,7 +517,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
                 let llupvar = adt::trans_field_ptr(&cx, t, value, Disr(0), i);
-                cx = drop_ty(cx, llupvar, upvar_ty, DebugLoc::None);
+                cx = drop_ty(cx, llupvar, upvar_ty);
             }
         }
         ty::TyArray(_, n) => {
@@ -539,17 +525,17 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
             let len = C_uint(cx.ccx(), n);
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(cx, base, unit_ty, len,
-                |bb, vv| drop_ty(bb, vv, unit_ty, DebugLoc::None));
+                |bb, vv| drop_ty(bb, vv, unit_ty));
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(cx, value.value, unit_ty, value.meta,
-                |bb, vv| drop_ty(bb, vv, unit_ty, DebugLoc::None));
+                |bb, vv| drop_ty(bb, vv, unit_ty));
         }
         ty::TyTuple(ref args) => {
             for (i, arg) in args.iter().enumerate() {
                 let llfld_a = adt::trans_field_ptr(&cx, t, value, Disr(0), i);
-                cx = drop_ty(cx, llfld_a, *arg, DebugLoc::None);
+                cx = drop_ty(cx, llfld_a, *arg);
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
@@ -563,11 +549,11 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                     } else {
                         // FIXME(#36457) -- we should pass unsized values as two arguments
                         let scratch = alloc_ty(&cx, field_ty, "__fat_ptr_iter");
-                        Store(&cx, llfld_a, get_dataptr(&cx, scratch));
-                        Store(&cx, value.meta, get_meta(&cx, scratch));
+                        cx.store(llfld_a, get_dataptr(&cx, scratch));
+                        cx.store(value.meta, get_meta(&cx, scratch));
                         scratch
                     };
-                    cx = drop_ty(cx, val, field_ty, DebugLoc::None);
+                    cx = drop_ty(cx, val, field_ty);
                 }
             }
             AdtKind::Union => {
@@ -591,7 +577,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                     }
                     (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
                         let tcx = cx.tcx();
-                        cx = drop_ty(cx, lldiscrim_a, tcx.types.isize, DebugLoc::None);
+                        cx = drop_ty(cx, lldiscrim_a, tcx.types.isize);
 
                         // Create a fall-through basic block for the "else" case of
                         // the switch instruction we're about to generate. Note that
@@ -607,8 +593,8 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                         // call this for an already-valid enum in which case the `ret
                         // void` will never be hit.
                         let ret_void_cx = fcx.new_block("enum-iter-ret-void").build();
-                        RetVoid(&ret_void_cx, DebugLoc::None);
-                        let llswitch = Switch(&cx, lldiscrim_a, ret_void_cx.llbb(), n_variants);
+                        ret_void_cx.ret_void();
+                        let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
                         let next_cx = fcx.new_block("enum-iter-next").build();
 
                         for variant in &adt.variants {
@@ -616,9 +602,9 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                                 &variant.disr_val.to_string());
                             let variant_cx = fcx.new_block(&variant_cx_name).build();
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
-                            AddCase(llswitch, case_val, variant_cx.llbb());
+                            Builder::add_case(llswitch, case_val, variant_cx.llbb());
                             let variant_cx = iter_variant(variant_cx, t, value, variant, substs);
-                            Br(&variant_cx, next_cx.llbb(), DebugLoc::None);
+                            variant_cx.br(next_cx.llbb());
                         }
                         cx = next_cx;
                     }

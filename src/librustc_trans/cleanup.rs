@@ -118,7 +118,6 @@ pub use self::EarlyExitLabel::*;
 
 use llvm::{BasicBlockRef, ValueRef};
 use base;
-use build;
 use common;
 use common::{BlockAndBuilder, FunctionContext, LandingPad};
 use debuginfo::{DebugLoc};
@@ -344,7 +343,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         let mut bcx = bcx;
         for cleanup in scope.cleanups.iter().rev() {
-            bcx = cleanup.trans(bcx, scope.debug_loc);
+            bcx = cleanup.trans(bcx);
         }
         bcx
     }
@@ -422,13 +421,13 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                             UnwindKind::LandingPad => {
                                 let addr = self.landingpad_alloca.get()
                                                .unwrap();
-                                let lp = build::Load(&bcx, addr);
+                                let lp = bcx.load(addr);
                                 base::call_lifetime_end(&bcx, addr);
                                 base::trans_unwind_resume(&bcx, lp);
                             }
                             UnwindKind::CleanupPad(_) => {
-                                let pad = build::CleanupPad(&bcx, None, &[]);
-                                build::CleanupRet(&bcx, pad, None);
+                                let pad = bcx.cleanup_pad(None, &[]);
+                                bcx.cleanup_ret(pad, None);
                             }
                         }
                         prev_llbb = bcx.llbb();
@@ -488,7 +487,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 let mut bcx_out = bcx_in;
                 let len = scope.cleanups.len();
                 for cleanup in scope.cleanups.iter().rev().take(len - skip) {
-                    bcx_out = cleanup.trans(bcx_out, scope.debug_loc);
+                    bcx_out = cleanup.trans(bcx_out);
                 }
                 skip = 0;
                 exit_label.branch(&bcx_out, prev_llbb);
@@ -540,8 +539,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             // creation of the landingpad instruction). We then create a
             // cleanuppad instruction which has no filters to run cleanup on all
             // exceptions.
-            build::SetPersonalityFn(&pad_bcx, llpersonality);
-            let llretval = build::CleanupPad(&pad_bcx, None, &[]);
+            pad_bcx.set_personality_fn(llpersonality);
+            let llretval = pad_bcx.cleanup_pad(None, &[]);
             UnwindKind::CleanupPad(llretval)
         } else {
             // The landing pad return type (the type being propagated). Not sure
@@ -552,10 +551,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                         false);
 
             // The only landing pad clause will be 'cleanup'
-            let llretval = build::LandingPad(&pad_bcx, llretty, llpersonality, 1);
+            let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1, pad_bcx.fcx().llfn);
 
             // The landing pad block is a cleanup
-            build::SetCleanup(&pad_bcx, llretval);
+            pad_bcx.set_cleanup(llretval);
 
             let addr = match self.landingpad_alloca.get() {
                 Some(addr) => addr,
@@ -567,7 +566,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     addr
                 }
             };
-            build::Store(&pad_bcx, llretval, addr);
+            pad_bcx.store(llretval, addr);
             UnwindKind::LandingPad
         };
 
@@ -629,9 +628,9 @@ impl EarlyExitLabel {
     /// the `cleanupret` instruction instead of the `br` instruction.
     fn branch(&self, from_bcx: &BlockAndBuilder, to_llbb: BasicBlockRef) {
         if let UnwindExit(UnwindKind::CleanupPad(pad)) = *self {
-            build::CleanupRet(from_bcx, pad, Some(to_llbb));
+            from_bcx.cleanup_ret(pad, Some(to_llbb));
         } else {
-            build::Br(from_bcx, to_llbb, DebugLoc::None);
+            from_bcx.br(to_llbb);
         }
     }
 
@@ -649,7 +648,7 @@ impl EarlyExitLabel {
     fn start(&self, bcx: &BlockAndBuilder) -> EarlyExitLabel {
         match *self {
             UnwindExit(UnwindKind::CleanupPad(..)) => {
-                let pad = build::CleanupPad(bcx, None, &[]);
+                let pad = bcx.cleanup_pad(None, &[]);
                 bcx.set_lpad_ref(Some(bcx.fcx().lpad_arena.alloc(LandingPad::msvc(pad))));
                 UnwindExit(UnwindKind::CleanupPad(pad))
             }
@@ -683,10 +682,7 @@ pub struct DropValue<'tcx> {
 }
 
 impl<'tcx> DropValue<'tcx> {
-    fn trans<'blk>(&self,
-                   bcx: BlockAndBuilder<'blk, 'tcx>,
-                   debug_loc: DebugLoc)
-                   -> BlockAndBuilder<'blk, 'tcx> {
+    fn trans<'blk>(&self, bcx: BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
         let skip_dtor = self.skip_dtor;
         let _icx = if skip_dtor {
             base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=true")
@@ -694,9 +690,9 @@ impl<'tcx> DropValue<'tcx> {
             base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=false")
         };
         if self.is_immediate {
-            glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
+            glue::drop_ty_immediate(bcx, self.val, self.ty, self.skip_dtor)
         } else {
-            glue::drop_ty_core(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
+            glue::drop_ty_core(bcx, self.val, self.ty, self.skip_dtor)
         }
     }
 }

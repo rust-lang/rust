@@ -16,10 +16,10 @@ use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
 use base;
-use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, Block, BlockAndBuilder, LandingPad};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use builder::Builder;
 use consts;
 use debuginfo::DebugLoc;
 use Disr;
@@ -167,7 +167,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if default_bb != Some(target) {
                         let llbb = llblock(self, target);
                         let llval = adt::trans_case(&bcx, ty, Disr::from(adt_variant.disr_val));
-                        build::AddCase(switch, llval, llbb)
+                        Builder::add_case(switch, llval, llbb)
                     }
                 }
             }
@@ -180,7 +180,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 for (value, target) in values.iter().zip(targets) {
                     let val = Const::from_constval(bcx.ccx(), value.clone(), switch_ty);
                     let llbb = llblock(self, *target);
-                    build::AddCase(switch, val.llval, llbb)
+                    Builder::add_case(switch, val.llval, llbb)
                 }
             }
 
@@ -204,7 +204,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let llscratch = build::AllocaFcx(bcx.fcx(), ret.original_ty, "ret");
+                            let llscratch = bcx.fcx().alloca(ret.original_ty, "ret");
                             self.store_operand(&bcx, llscratch, op);
                             llscratch
                         }
@@ -257,8 +257,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // I want to avoid touching all of trans.
                     let scratch = base::alloc_ty(&bcx, ty, "drop");
                     base::call_lifetime_start(&bcx, scratch);
-                    build::Store(&bcx, lvalue.llval, base::get_dataptr(&bcx, scratch));
-                    build::Store(&bcx, lvalue.llextra, base::get_meta(&bcx, scratch));
+                    bcx.store(lvalue.llval, base::get_dataptr(&bcx, scratch));
+                    bcx.store(lvalue.llextra, base::get_meta(&bcx, scratch));
                     scratch
                 };
                 if let Some(unwind) = unwind {
@@ -479,8 +479,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         // I want to avoid touching all of trans.
                         let scratch = base::alloc_ty(&bcx, ty, "drop");
                         base::call_lifetime_start(&bcx, scratch);
-                        build::Store(&bcx, llval, base::get_dataptr(&bcx, scratch));
-                        build::Store(&bcx, llextra, base::get_meta(&bcx, scratch));
+                        bcx.store(llval, base::get_dataptr(&bcx, scratch));
+                        bcx.store(llextra, base::get_meta(&bcx, scratch));
                         scratch
                     };
                     if let Some(unwind) = *cleanup {
@@ -702,7 +702,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let (mut llval, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let llscratch = build::AllocaFcx(bcx.fcx(), arg.original_ty, "arg");
+                    let llscratch = bcx.fcx().alloca(arg.original_ty, "arg");
                     self.store_operand(bcx, llscratch, op);
                     (llscratch, true)
                 } else {

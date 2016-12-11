@@ -33,11 +33,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if let mir::Lvalue::Local(index) = *lvalue {
                     match self.locals[index] {
                         LocalRef::Lvalue(tr_dest) => {
-                            self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
+                            self.trans_rvalue(bcx, tr_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
-                            let (bcx, operand) = self.trans_rvalue_operand(bcx, rvalue,
-                                                                           debug_loc);
+                            let (bcx, operand) = self.trans_rvalue_operand(bcx, rvalue);
                             self.locals[index] = LocalRef::Operand(Some(operand));
                             bcx
                         }
@@ -51,13 +50,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             } else {
                                 // If the type is zero-sized, it's already been set here,
                                 // but we still need to make sure we translate the operand
-                                self.trans_rvalue_operand(bcx, rvalue, debug_loc).0
+                                self.trans_rvalue_operand(bcx, rvalue).0
                             }
                         }
                     }
                 } else {
                     let tr_dest = self.trans_lvalue(&bcx, lvalue);
-                    self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
+                    self.trans_rvalue(bcx, tr_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {

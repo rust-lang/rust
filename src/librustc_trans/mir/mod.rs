@@ -478,10 +478,9 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
                 use base::*;
-                use build::*;
                 use common::*;
                 let alloc = alloca(bcx, val_ty(llval), "__debuginfo_env_ptr");
-                Store(bcx, llval, alloc);
+                bcx.store(llval, alloc);
                 alloc
             } else {
                 llval

@@ -12,7 +12,6 @@
 
 use llvm::{self, ValueRef};
 use base;
-use build::*;
 use common::*;
 use type_of;
 use type_::Type;
@@ -90,20 +89,21 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
     let constraint_cstr = CString::new(all_constraints).unwrap();
-    let r = InlineAsmCall(bcx,
-                          asm.as_ptr(),
-                          constraint_cstr.as_ptr(),
-                          &inputs,
-                          output_type,
-                          ia.volatile,
-                          ia.alignstack,
-                          dialect);
+    let r = bcx.inline_asm_call(
+        asm.as_ptr(),
+        constraint_cstr.as_ptr(),
+        &inputs,
+        output_type,
+        ia.volatile,
+        ia.alignstack,
+        dialect
+    );
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
     for (i, (_, &(val, _))) in outputs.enumerate() {
-        let v = if num_outputs == 1 { r } else { ExtractValue(bcx, r, i) };
-        Store(bcx, v, val);
+        let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i) };
+        bcx.store(v, val);
     }
 
     // Store expn_id in a metadata node so we can map LLVM errors

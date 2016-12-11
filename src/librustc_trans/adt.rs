@@ -48,7 +48,6 @@ use std;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
-use build::*;
 use common::*;
 use debuginfo::DebugLoc;
 use glue;
@@ -348,7 +347,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
             load_discr(bcx, discr, scrutinee, min, max, range_assert)
         }
         layout::General { discr, .. } => {
-            let ptr = StructGEP(bcx, scrutinee, 0);
+            let ptr = bcx.struct_gep(scrutinee, 0);
             load_discr(bcx, discr, ptr, 0, def.variants.len() as u64 - 1,
                        range_assert)
         }
@@ -358,7 +357,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
             let llptrty = type_of::sizing_type_of(bcx.ccx(),
                 monomorphize::field_ty(bcx.ccx().tcx(), substs,
                 &def.variants[nndiscr as usize].fields[0]));
-            ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None)
+            bcx.icmp(cmp, bcx.load(scrutinee), C_null(llptrty))
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
             struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee)
@@ -367,7 +366,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
     };
     match cast_to {
         None => val,
-        Some(llty) => if is_discr_signed(&l) { SExt(bcx, val, llty) } else { ZExt(bcx, val, llty) }
+        Some(llty) => if is_discr_signed(&l) { bcx.sext(val, llty) } else { bcx.zext(val, llty) }
     }
 }
 
@@ -377,11 +376,11 @@ fn struct_wrapped_nullable_bitdiscr(
     discrfield: &layout::FieldPath,
     scrutinee: ValueRef
 ) -> ValueRef {
-    let llptrptr = GEPi(bcx, scrutinee,
+    let llptrptr = bcx.gepi(scrutinee,
         &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>()[..]);
-    let llptr = Load(bcx, llptrptr);
+    let llptr = bcx.load(llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
-    ICmp(bcx, cmp, llptr, C_null(val_ty(llptr)), DebugLoc::None)
+    bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
 }
 
 /// Helper for cases where the discriminant is simply loaded.
@@ -401,11 +400,11 @@ fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u
         // rejected by the LLVM verifier (it would mean either an
         // empty set, which is impossible, or the entire range of the
         // type, which is pointless).
-        Load(bcx, ptr)
+        bcx.load(ptr)
     } else {
         // llvm::ConstantRange can deal with ranges that wrap around,
         // so an overflow on (max + 1) is fine.
-        LoadRangeAssert(bcx, ptr, min, max.wrapping_add(1), /* signed: */ True)
+        bcx.load_range_assert(ptr, min, max.wrapping_add(1), /* signed: */ True)
     }
 }
 
@@ -440,12 +439,12 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
             assert_discr_in_range(Disr(min), Disr(max), to);
-            Store(bcx, C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
+            bcx.store(C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
                   val);
         }
         layout::General{ discr, .. } => {
-            Store(bcx, C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
-                  StructGEP(bcx, val, 0));
+            bcx.store(C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
+                  bcx.struct_gep(val, 0));
         }
         layout::Univariant { .. }
         | layout::UntaggedUnion { .. }
@@ -456,7 +455,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
             let nnty = compute_fields(bcx.ccx(), t, nndiscr as usize, false)[0];
             if to.0 != nndiscr {
                 let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-                Store(bcx, C_null(llptrty), val);
+                bcx.store(C_null(llptrty), val);
             }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
@@ -472,9 +471,9 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
                     base::call_memset(bcx, llptr, fill_byte, size, align, false);
                 } else {
                     let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
-                    let llptrptr = GEPi(bcx, val, &path[..]);
+                    let llptrptr = bcx.gepi(val, &path[..]);
                     let llptrty = val_ty(llptrptr).element_type();
-                    Store(bcx, C_null(llptrty), llptrptr);
+                    bcx.store(C_null(llptrty), llptrptr);
                 }
             }
         }
