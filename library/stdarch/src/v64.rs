@@ -1,108 +1,39 @@
-use std::mem::transmute;
-
 use simd::*;
 
-macro_rules! define_ty {
-    ($name:ident, $($elty:ident),+) => {
-        #[repr(simd)]
-        #[derive(Clone, Copy, Debug)]
-        #[allow(non_camel_case_types)]
-        pub struct $name($($elty),*);
-    }
-}
+define_ty! { f32x2, f32, f32 }
+define_impl! { f32x2, f32, 2, x0, x1 }
 
-macro_rules! define_ty_internal {
-    ($name:ident, $($elty:ident),+) => {
-        #[repr(simd)]
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        #[allow(non_camel_case_types)]
-        pub struct $name($($elty),*);
-    }
-}
+define_ty! { u32x2, u32, u32 }
+define_impl! { u32x2, u32, 2, x0, x1 }
 
-macro_rules! define_impl {
-    ($name:ident, $boolname:ident, $elemty:ident, $nelems:expr,
-     $($elname:ident),+) => {
-        impl From<__m64> for $name {
-            #[inline]
-            fn from(v: __m64) -> $name { unsafe { transmute(v) } }
-        }
+define_ty! { i32x2, i32, i32 }
+define_impl! { i32x2, i32, 2, x0, x1 }
 
-        impl $name {
-            #[inline]
-            pub fn new($($elname: $elemty),*) -> $name {
-                $name($($elname),*)
-            }
+define_ty! { u16x4, u16, u16, u16, u16 }
+define_impl! { u16x4, u16, 4, x0, x1, x2, x3 }
 
-            #[inline]
-            pub fn splat(value: $elemty) -> $name {
-                $name($({
-                    #[allow(non_camel_case_types, dead_code)]
-                    struct $elname;
-                    value
-                }),*)
-            }
+define_ty! { i16x4, i16, i16, i16, i16 }
+define_impl! { i16x4, i16, 4, x0, x1, x2, x3 }
 
-            #[inline]
-            pub fn eq(self, other: $name) -> $boolname {
-                unsafe { simd_eq(self, other) }
-            }
+define_ty! { u8x8, u8, u8, u8, u8, u8, u8, u8, u8 }
+define_impl! { u8x8, u8, 8, x0, x1, x2, x3, x4, x5, x6, x7 }
 
-            #[inline]
-            pub fn ne(self, other: $name) -> $boolname {
-                unsafe { simd_ne(self, other) }
-            }
+define_ty! { i8x8, i8, i8, i8, i8, i8, i8, i8, i8 }
+define_impl! { i8x8, i8, 8, x0, x1, x2, x3, x4, x5, x6, x7 }
 
-            #[inline]
-            pub fn lt(self, other: $name) -> $boolname {
-                unsafe { simd_lt(self, other) }
-            }
+define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
+define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8);
+define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8);
+define_from!(i16x4, u32x2, i32x2, u16x4, u8x8, i8x8);
+define_from!(u8x8, u32x2, i32x2, u16x4, i16x4, i8x8);
+define_from!(i8x8, u32x2, i32x2, u16x4, i16x4, u8x8);
 
-            #[inline]
-            pub fn le(self, other: $name) -> $boolname {
-                unsafe { simd_le(self, other) }
-            }
-
-            #[inline]
-            pub fn gt(self, other: $name) -> $boolname {
-                unsafe { simd_gt(self, other) }
-            }
-
-            #[inline]
-            pub fn ge(self, other: $name) -> $boolname {
-                unsafe { simd_ge(self, other) }
-            }
-
-            #[inline]
-            pub unsafe fn extract(self, idx: u32) -> $elemty {
-                debug_assert!(idx < $nelems);
-                simd_extract(self, idx)
-            }
-
-            #[inline]
-            pub unsafe fn insert(self, idx: u32, val: $elemty) -> $name {
-                debug_assert!(idx < $nelems);
-                simd_insert(self, idx, val)
-            }
-
-            #[inline]
-            pub fn as_m64(self) -> __m64 { unsafe { transmute(self) } }
-            #[inline]
-            pub fn as_u64(self) -> u64 { unsafe { transmute(self) } }
-        }
-    }
-}
-
-define_ty! { __m64, u64 }
-
-define_ty_internal! { boolu64x1, u64 }
-define_ty_internal! { boolu32x2, u32, u32 }
-
-define_ty_internal! { u64x1, u64 }
-define_impl! { u64x1, boolu64x1, u64, 1, x0 }
-
-define_ty_internal! { u32x2, u32, u32 }
-define_impl! { u32x2, boolu32x2, u32, 2, x0, x1 }
-
-define_ty_internal! { i32x2, i32, i32 }
-define_impl! { i32x2, boolu32x2, i32, 2, x0, x1 }
+define_common_ops!(f32x2, u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
+define_float_ops!(f32x2);
+define_integer_ops!(
+    (u32x2, u32),
+    (i32x2, i32),
+    (u16x4, u16),
+    (i16x4, i16),
+    (u8x8, u8),
+    (i8x8, i8));

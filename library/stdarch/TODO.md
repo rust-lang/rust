@@ -49,37 +49,37 @@ sse2
 * [x] `_mm_srai_epi32`
 * [x] `_mm_sra_epi32`
 * [x] `_mm_srli_si128`
-* [ ] `_mm_srli_epi16`
-* [ ] `_mm_srl_epi16`
-* [ ] `_mm_srli_epi32`
-* [ ] `_mm_srl_epi32`
-* [ ] `_mm_srli_epi64`
-* [ ] `_mm_srl_epi64`
-* [ ] `_mm_and_si128`
-* [ ] `_mm_andnot_si128`
-* [ ] `_mm_or_si128`
-* [ ] `_mm_xor_si128`
-* [ ] `_mm_cmpeq_epi8`
-* [ ] `_mm_cmpeq_epi16`
-* [ ] `_mm_cmpeq_epi32`
-* [ ] `_mm_cmpgt_epi8`
-* [ ] `_mm_cmpgt_epi16`
-* [ ] `_mm_cmpgt_epi32`
-* [ ] `_mm_cmplt_epi8`
-* [ ] `_mm_cmplt_epi16`
-* [ ] `_mm_cmplt_epi32`
+* [x] `_mm_srli_epi16`
+* [x] `_mm_srl_epi16`
+* [x] `_mm_srli_epi32`
+* [x] `_mm_srl_epi32`
+* [x] `_mm_srli_epi64`
+* [x] `_mm_srl_epi64`
+* [x] `_mm_and_si128`
+* [x] `_mm_andnot_si128`
+* [x] `_mm_or_si128`
+* [x] `_mm_xor_si128`
+* [x] `_mm_cmpeq_epi8`
+* [x] `_mm_cmpeq_epi16`
+* [x] `_mm_cmpeq_epi32`
+* [x] `_mm_cmpgt_epi8`
+* [x] `_mm_cmpgt_epi16`
+* [x] `_mm_cmpgt_epi32`
+* [x] `_mm_cmplt_epi8`
+* [x] `_mm_cmplt_epi16`
+* [x] `_mm_cmplt_epi32`
 * [x] `_mm_cvtepi32_pd`
-* [ ] `_mm_cvtsi32_sd`
-* [ ] `_mm_cvtsi64_sd`
-* [ ] `_mm_cvtsi64x_sd`
-* [ ] `_mm_cvtepi32_ps`
+* [x] `_mm_cvtsi32_sd`
+* [x] `_mm_cvtsi64_sd`
+* [x] `_mm_cvtsi64x_sd`
+* [x] `_mm_cvtepi32_ps`
 * [ ] `_mm_cvtpi32_pd`
-* [ ] `_mm_cvtsi32_si128`
-* [ ] `_mm_cvtsi64_si128`
-* [ ] `_mm_cvtsi64x_si128`
-* [ ] `_mm_cvtsi128_si32`
-* [ ] `_mm_cvtsi128_si64`
-* [ ] `_mm_cvtsi128_si64x`
+* [x] `_mm_cvtsi32_si128`
+* [x] `_mm_cvtsi64_si128`
+* [x] `_mm_cvtsi64x_si128`
+* [x] `_mm_cvtsi128_si32`
+* [x] `_mm_cvtsi128_si64`
+* [x] `_mm_cvtsi128_si64x`
 * [ ] `_mm_set_epi64`
 * [x] `_mm_set_epi64x`
 * [x] `_mm_set_epi32`
@@ -98,47 +98,47 @@ sse2
 * [x] `_mm_loadl_epi64`
 * [x] `_mm_load_si128`
 * [x] `_mm_loadu_si128`
-* [ ] `_mm_maskmoveu_si128`
-* [ ] `_mm_store_si128`
-* [ ] `_mm_storeu_si128`
-* [ ] `_mm_storel_epi64`
+* [x] `_mm_maskmoveu_si128`
+* [x] `_mm_store_si128`
+* [x] `_mm_storeu_si128`
+* [x] `_mm_storel_epi64`
 * [ ] `_mm_stream_si128`
 * [ ] `_mm_stream_si32`
 * [ ] `_mm_stream_si64`
 * [ ] `_mm_movepi64_pi64`
 * [ ] `_mm_movpi64_epi64`
-* [ ] `_mm_move_epi64`
-* [ ] `_mm_packs_epi16`
-* [ ] `_mm_packs_epi32`
-* [ ] `_mm_packus_epi16`
-* [ ] `_mm_extract_epi16`
-* [ ] `_mm_insert_epi16`
-* [ ] `_mm_movemask_epi8`
-* [ ] `_mm_shuffle_epi32`
-* [ ] `_mm_shufflehi_epi16`
-* [ ] `_mm_shufflelo_epi16`
-* [ ] `_mm_unpackhi_epi8`
-* [ ] `_mm_unpackhi_epi16`
-* [ ] `_mm_unpackhi_epi32`
-* [ ] `_mm_unpackhi_epi64`
-* [ ] `_mm_unpacklo_epi8`
-* [ ] `_mm_unpacklo_epi16`
-* [ ] `_mm_unpacklo_epi32`
-* [ ] `_mm_unpacklo_epi64`
-* [ ] `_mm_add_sd`
-* [ ] `_mm_add_pd`
-* [ ] `_mm_div_sd`
-* [ ] `_mm_div_pd`
-* [ ] `_mm_max_sd`
-* [ ] `_mm_max_pd`
-* [ ] `_mm_min_sd`
-* [ ] `_mm_min_pd`
-* [ ] `_mm_mul_sd`
-* [ ] `_mm_mul_pd`
-* [ ] `_mm_sqrt_sd`
-* [ ] `_mm_sqrt_pd`
-* [ ] `_mm_sub_sd`
-* [ ] `_mm_sub_pd`
+* [x] `_mm_move_epi64`
+* [x] `_mm_packs_epi16`
+* [x] `_mm_packs_epi32`
+* [x] `_mm_packus_epi16`
+* [x] `_mm_extract_epi16`
+* [x] `_mm_insert_epi16`
+* [x] `_mm_movemask_epi8`
+* [x] `_mm_shuffle_epi32`
+* [x] `_mm_shufflehi_epi16`
+* [x] `_mm_shufflelo_epi16`
+* [x] `_mm_unpackhi_epi8`
+* [x] `_mm_unpackhi_epi16`
+* [x] `_mm_unpackhi_epi32`
+* [x] `_mm_unpackhi_epi64`
+* [x] `_mm_unpacklo_epi8`
+* [x] `_mm_unpacklo_epi16`
+* [x] `_mm_unpacklo_epi32`
+* [x] `_mm_unpacklo_epi64`
+* [x] `_mm_add_sd`
+* [x] `_mm_add_pd`
+* [x] `_mm_div_sd`
+* [x] `_mm_div_pd`
+* [x] `_mm_max_sd`
+* [x] `_mm_max_pd`
+* [x] `_mm_min_sd`
+* [x] `_mm_min_pd`
+* [x] `_mm_mul_sd`
+* [x] `_mm_mul_pd`
+* [x] `_mm_sqrt_sd`
+* [x] `_mm_sqrt_pd`
+* [x] `_mm_sub_sd`
+* [x] `_mm_sub_pd`
 * [ ] `_mm_and_pd`
 * [ ] `_mm_andnot_pd`
 * [ ] `_mm_or_pd`
