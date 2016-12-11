@@ -188,7 +188,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if &*item.name.as_str() == "is_empty" {
                 let ty = cx.tcx.item_type(item.def_id).fn_sig().skip_binder();
-                ty.inputs.len() == 1
+                ty.inputs().len() == 1
             } else {
                 false
             }

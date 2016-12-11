@@ -751,7 +751,7 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
     let fn_def_id = cx.tcx.map.local_def_id(fn_item);
     let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
     let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, fn_sig);
-    fn_sig.output
+    fn_sig.output()
 }
 
 /// Check if two types are the same.

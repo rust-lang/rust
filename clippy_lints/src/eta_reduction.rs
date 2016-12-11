@@ -66,7 +66,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 ty::TyFnDef(_, _, fn_ty) |
                 ty::TyFnPtr(fn_ty) => {
                     if fn_ty.unsafety == Unsafety::Unsafe ||
-                       fn_ty.sig.skip_binder().output.sty == ty::TyNever {
+                       fn_ty.sig.skip_binder().output().sty == ty::TyNever {
                         return;
                     }
                 }
