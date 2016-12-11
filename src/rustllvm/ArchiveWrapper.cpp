@@ -37,6 +37,8 @@ struct RustArchiveIterator {
     Archive::child_iterator end;
 #if LLVM_VERSION_GE(3, 9)
     Error err;
+
+    RustArchiveIterator() : err(Error::success()) { }
 #endif
 };
 
