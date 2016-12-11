@@ -494,19 +494,13 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
-                                   val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
-    trans_field_ptr_builder(bcx, t, val, discr, ix)
-}
-
-/// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+pub fn trans_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                            t: Ty<'tcx>,
                                            val: MaybeSizedValue,
                                            discr: Disr, ix: usize)
                                            -> ValueRef {
     let l = bcx.ccx().layout_of(t);
-    debug!("trans_field_ptr_builder on {} represented as {:#?}", t, l);
+    debug!("trans_field_ptr on {} represented as {:#?}", t, l);
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.

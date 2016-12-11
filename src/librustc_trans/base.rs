@@ -172,20 +172,12 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-pub fn get_meta(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
+pub fn get_meta(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
     bcx.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
-pub fn get_dataptr(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
+pub fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
     bcx.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
-}
-
-pub fn get_meta_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
-}
-
-pub fn get_dataptr_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 fn require_alloc_fn<'blk, 'tcx>(
@@ -516,13 +508,7 @@ pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
-pub fn load_ty<'blk, 'tcx>(
-    cx: &BlockAndBuilder<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>
-) -> ValueRef {
-    load_ty_builder(cx, ptr, t)
-}
-
-pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
     let ccx = b.ccx;
     if type_is_zero_size(ccx, t) {
         return C_undef(type_of::type_of(ccx, t));
@@ -581,22 +567,14 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
     cx.store(extra, get_meta(cx, dst));
 }
 
-pub fn load_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
-                                src: ValueRef,
-                                ty: Ty<'tcx>)
-                                -> (ValueRef, ValueRef)
-{
-    load_fat_ptr_builder(cx, src, ty)
-}
-
-pub fn load_fat_ptr_builder<'a, 'tcx>(
+pub fn load_fat_ptr<'a, 'tcx>(
     b: &Builder<'a, 'tcx>,
     src: ValueRef,
     t: Ty<'tcx>)
     -> (ValueRef, ValueRef)
 {
 
-    let ptr = get_dataptr_builder(b, src);
+    let ptr = get_dataptr(b, src);
     let ptr = if t.is_region_ptr() || t.is_unique() {
         b.load_nonnull(ptr)
     } else {
@@ -604,7 +582,7 @@ pub fn load_fat_ptr_builder<'a, 'tcx>(
     };
 
     // FIXME: emit metadata on `meta`.
-    let meta = b.load(get_meta_builder(b, src));
+    let meta = b.load(get_meta(b, src));
 
     (ptr, meta)
 }
@@ -647,56 +625,38 @@ pub fn with_cond<'blk, 'tcx, F>(
 
 pub enum Lifetime { Start, End }
 
-// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
-// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
-// and the intrinsic for `lt` and passes them to `emit`, which is in
-// charge of generating code to call the passed intrinsic on whatever
-// block of generated code is targetted for the intrinsic.
-//
-// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
-// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
-fn core_lifetime_emit<'blk, 'tcx, F>(ccx: &'blk CrateContext<'blk, 'tcx>,
-                                     ptr: ValueRef,
-                                     lt: Lifetime,
-                                     emit: F)
-    where F: FnOnce(&'blk CrateContext<'blk, 'tcx>, machine::llsize, ValueRef)
-{
-    if ccx.sess().opts.optimize == config::OptLevel::No {
-        return;
-    }
-
-    let _icx = push_ctxt(match lt {
-        Lifetime::Start => "lifetime_start",
-        Lifetime::End => "lifetime_end"
-    });
-
-    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
-    if size == 0 {
-        return;
-    }
-
-    let lifetime_intrinsic = ccx.get_intrinsic(match lt {
-        Lifetime::Start => "llvm.lifetime.start",
-        Lifetime::End => "llvm.lifetime.end"
-    });
-    emit(ccx, size, lifetime_intrinsic)
-}
-
 impl Lifetime {
+    // If LLVM lifetime intrinsic support is enabled (i.e. optimizations
+    // on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
+    // and the intrinsic for `lt` and passes them to `emit`, which is in
+    // charge of generating code to call the passed intrinsic on whatever
+    // block of generated code is targetted for the intrinsic.
+    //
+    // If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
+    // off) or `ptr` is zero-sized, then no-op (does not call `emit`).
     pub fn call(self, b: &Builder, ptr: ValueRef) {
-        core_lifetime_emit(b.ccx, ptr, self, |ccx, size, lifetime_intrinsic| {
-            let ptr = b.pointercast(ptr, Type::i8p(ccx));
-            b.call(lifetime_intrinsic, &[C_u64(ccx, size), ptr], None);
+        if b.ccx.sess().opts.optimize == config::OptLevel::No {
+            return;
+        }
+
+        let _icx = push_ctxt(match self {
+            Lifetime::Start => "lifetime_start",
+            Lifetime::End => "lifetime_end"
         });
+
+        let size = machine::llsize_of_alloc(b.ccx, val_ty(ptr).element_type());
+        if size == 0 {
+            return;
+        }
+
+        let lifetime_intrinsic = b.ccx.get_intrinsic(match self {
+            Lifetime::Start => "llvm.lifetime.start",
+            Lifetime::End => "llvm.lifetime.end"
+        });
+
+        let ptr = b.pointercast(ptr, Type::i8p(b.ccx));
+        b.call(lifetime_intrinsic, &[C_u64(b.ccx, size), ptr], None);
     }
-}
-
-pub fn call_lifetime_start(bcx: &BlockAndBuilder, ptr: ValueRef) {
-    Lifetime::Start.call(bcx, ptr);
-}
-
-pub fn call_lifetime_end(bcx: &BlockAndBuilder, ptr: ValueRef) {
-    Lifetime::End.call(bcx, ptr);
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.

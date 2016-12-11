@@ -15,11 +15,10 @@ use rustc::ty::{self, layout};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
-use base;
+use base::{self, Lifetime};
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, Block, BlockAndBuilder, LandingPad};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
-use builder::Builder;
 use consts;
 use debuginfo::DebugLoc;
 use Disr;
@@ -122,7 +121,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                     let ps = self.get_personality_slot(&bcx);
                     let lp = bcx.load(ps);
-                    base::call_lifetime_end(&bcx, ps);
+                    Lifetime::End.call(&bcx, ps);
                     base::trans_unwind_resume(&bcx, lp);
                 }
             }
@@ -167,7 +166,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if default_bb != Some(target) {
                         let llbb = llblock(self, target);
                         let llval = adt::trans_case(&bcx, ty, Disr::from(adt_variant.disr_val));
-                        Builder::add_case(switch, llval, llbb)
+                        bcx.add_case(switch, llval, llbb)
                     }
                 }
             }
@@ -180,7 +179,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 for (value, target) in values.iter().zip(targets) {
                     let val = Const::from_constval(bcx.ccx(), value.clone(), switch_ty);
                     let llbb = llblock(self, *target);
-                    Builder::add_case(switch, val.llval, llbb)
+                    bcx.add_case(switch, val.llval, llbb)
                 }
             }
 
@@ -256,7 +255,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // here that can be cleanly backported to beta, so
                     // I want to avoid touching all of trans.
                     let scratch = base::alloc_ty(&bcx, ty, "drop");
-                    base::call_lifetime_start(&bcx, scratch);
+                    Lifetime::Start.call(&bcx, scratch);
                     bcx.store(lvalue.llval, base::get_dataptr(&bcx, scratch));
                     bcx.store(lvalue.llextra, base::get_meta(&bcx, scratch));
                     scratch
@@ -478,7 +477,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         // here that can be cleanly backported to beta, so
                         // I want to avoid touching all of trans.
                         let scratch = base::alloc_ty(&bcx, ty, "drop");
-                        base::call_lifetime_start(&bcx, scratch);
+                        Lifetime::Start.call(&bcx, scratch);
                         bcx.store(llval, base::get_dataptr(&bcx, scratch));
                         bcx.store(llextra, base::get_meta(&bcx, scratch));
                         scratch
@@ -752,9 +751,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             Ref(llval) => {
                 let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let ptr = adt::trans_field_ptr_builder(bcx, tuple.ty, base, Disr(0), n);
+                    let ptr = adt::trans_field_ptr(bcx, tuple.ty, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-                        let (lldata, llextra) = base::load_fat_ptr_builder(bcx, ptr, ty);
+                        let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
                         Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to
@@ -817,7 +816,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
             let slot = base::alloca(bcx, llretty, "personalityslot");
             self.llpersonalityslot = Some(slot);
-            base::call_lifetime_start(bcx, slot);
+            Lifetime::Start.call(bcx, slot);
             slot
         }
     }

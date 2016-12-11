@@ -23,7 +23,6 @@ use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use adt;
 use base::*;
 use callee::{Callee};
-use builder::Builder;
 use common::*;
 use machine::*;
 use monomorphize;
@@ -164,10 +163,10 @@ pub fn drop_ty_immediate<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                      -> BlockAndBuilder<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloc_ty(&bcx, t, "");
-    call_lifetime_start(&bcx, vp);
+    Lifetime::Start.call(&bcx, vp);
     store_ty(&bcx, v, vp, t);
     let bcx = drop_ty_core(bcx, vp, t, skip_dtor);
-    call_lifetime_end(&bcx, vp);
+    Lifetime::End.call(&bcx, vp);
     bcx
 }
 
@@ -602,7 +601,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                                 &variant.disr_val.to_string());
                             let variant_cx = fcx.new_block(&variant_cx_name).build();
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
-                            Builder::add_case(llswitch, case_val, variant_cx.llbb());
+                            variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
                             let variant_cx = iter_variant(variant_cx, t, value, variant, substs);
                             variant_cx.br(next_cx.llbb());
                         }

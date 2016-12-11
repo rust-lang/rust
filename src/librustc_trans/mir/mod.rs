@@ -361,10 +361,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                     // they are the two sub-fields of a single aggregate field.
                     let meta = &fcx.fn_ty.args[idx];
                     idx += 1;
-                    arg.store_fn_arg(bcx, &mut llarg_idx,
-                                     base::get_dataptr_builder(bcx, dst));
-                    meta.store_fn_arg(bcx, &mut llarg_idx,
-                                      base::get_meta_builder(bcx, dst));
+                    arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, dst));
+                    meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, dst));
                 } else {
                     arg.store_fn_arg(bcx, &mut llarg_idx, dst);
                 }
@@ -436,10 +434,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 // so make an alloca to store them in.
                 let meta = &fcx.fn_ty.args[idx];
                 idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx,
-                                 base::get_dataptr_builder(bcx, lltemp));
-                meta.store_fn_arg(bcx, &mut llarg_idx,
-                                  base::get_meta_builder(bcx, lltemp));
+                arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, lltemp));
+                meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, lltemp));
             } else  {
                 // otherwise, arg is passed by value, so make a
                 // temporary and store it there

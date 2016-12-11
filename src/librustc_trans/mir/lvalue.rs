@@ -146,8 +146,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = adt::trans_field_ptr_builder(bcx, base_ty, base,
-                                                                       Disr(discr), field.index());
+                        let llprojected = adt::trans_field_ptr(bcx, base_ty, base, Disr(discr),
+                            field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
