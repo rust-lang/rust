@@ -199,9 +199,9 @@ fn require_alloc_fn<'blk, 'tcx>(
     }
 }
 
-// The following malloc_raw_dyn* functions allocate a box to contain
-// a given type, but with a potentially dynamic size.
-
+// malloc_raw_dyn allocates a box to contain a given type, but with a potentially dynamic size.
+//
+// MIR requires that ExchangeMallocFnLangItem cannot unwind.
 pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
