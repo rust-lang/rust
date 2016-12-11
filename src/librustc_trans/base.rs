@@ -54,11 +54,10 @@ use attributes;
 use build::*;
 use builder::{Builder, noname};
 use callee::{Callee};
-use common::{Block, C_bool, C_bytes_in_context, C_i32, C_uint};
+use common::{BlockAndBuilder, C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use common::{CrateContext, FunctionContext};
-use common::{Result};
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -174,11 +173,11 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-pub fn get_meta(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+pub fn get_meta(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
     StructGEP(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
-pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+pub fn get_dataptr(bcx: &BlockAndBuilder, fat_ptr: ValueRef) -> ValueRef {
     StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
@@ -190,7 +189,9 @@ pub fn get_dataptr_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
     b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
 
-fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem) -> DefId {
+fn require_alloc_fn<'blk, 'tcx>(
+    bcx: &BlockAndBuilder<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem
+) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
         Err(s) => {
@@ -202,21 +203,19 @@ fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: L
 // The following malloc_raw_dyn* functions allocate a box to contain
 // a given type, but with a potentially dynamic size.
 
-pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
                                   align: ValueRef,
                                   debug_loc: DebugLoc)
-                                  -> Result<'blk, 'tcx> {
+                                  -> ValueRef {
     let _icx = push_ctxt("malloc_raw_exchange");
 
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
-    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
-        .call(bcx, debug_loc, &[size, align], None);
-
-    Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
+    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).reify(bcx.ccx());
+    PointerCast(bcx, Call(bcx, r, &[size, align], debug_loc), llty_ptr)
 }
 
 
@@ -254,7 +253,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn compare_simd_types<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
                                       t: Ty<'tcx>,
@@ -311,7 +310,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                    src: ValueRef,
                                    src_ty: Ty<'tcx>,
                                    dst_ty: Ty<'tcx>)
@@ -336,7 +335,7 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn coerce_unsized_into<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                        src: ValueRef,
                                        src_ty: Ty<'tcx>,
                                        dst: ValueRef,
@@ -415,7 +414,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
     }
 }
 
-pub fn cast_shift_expr_rhs(cx: Block, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+pub fn cast_shift_expr_rhs(cx: &BlockAndBuilder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs, |a, b| Trunc(cx, a, b), |a, b| ZExt(cx, a, b))
 }
 
@@ -462,38 +461,38 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
     }
 }
 
-pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn invoke<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                           llfn: ValueRef,
                           llargs: &[ValueRef],
                           debug_loc: DebugLoc)
-                          -> (ValueRef, Block<'blk, 'tcx>) {
+                          -> (ValueRef, BlockAndBuilder<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
-    if bcx.unreachable.get() {
+    if bcx.is_unreachable() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    if need_invoke(bcx) {
-        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb);
+    if need_invoke(&bcx) {
+        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
         for &llarg in llargs {
             debug!("arg: {:?}", Value(llarg));
         }
-        let normal_bcx = bcx.fcx.new_block("normal-return");
-        let landing_pad = bcx.fcx.get_landing_pad();
+        let normal_bcx = bcx.fcx().new_block("normal-return");
+        let landing_pad = bcx.fcx().get_landing_pad();
 
-        let llresult = Invoke(bcx,
+        let llresult = Invoke(&bcx,
                               llfn,
                               &llargs[..],
                               normal_bcx.llbb,
                               landing_pad,
                               debug_loc);
-        return (llresult, normal_bcx);
+        return (llresult, normal_bcx.build());
     } else {
-        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb);
+        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
         for &llarg in llargs {
             debug!("arg: {:?}", Value(llarg));
         }
 
-        let llresult = Call(bcx, llfn, &llargs[..], debug_loc);
+        let llresult = Call(&bcx, llfn, &llargs[..], debug_loc);
         return (llresult, bcx);
     }
 }
@@ -507,15 +506,11 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn avoid_invoke(bcx: Block) -> bool {
-    bcx.sess().no_landing_pads() || bcx.lpad().is_some()
-}
-
-pub fn need_invoke(bcx: Block) -> bool {
-    if avoid_invoke(bcx) {
+fn need_invoke(bcx: &BlockAndBuilder) -> bool {
+    if bcx.sess().no_landing_pads() || bcx.lpad().is_some() {
         false
     } else {
-        bcx.fcx.needs_invoke()
+        bcx.fcx().needs_invoke()
     }
 }
 
@@ -527,11 +522,8 @@ pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
-pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    if cx.unreachable.get() {
-        return C_undef(type_of::type_of(cx.ccx(), t));
-    }
-    load_ty_builder(&B(cx), ptr, t)
+pub fn load_ty<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+    load_ty_builder(cx, ptr, t)
 }
 
 pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
@@ -569,8 +561,8 @@ pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tc
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
-    if cx.unreachable.get() {
+pub fn store_ty<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+    if cx.is_unreachable() {
         return;
     }
 
@@ -585,7 +577,7 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
     }
 }
 
-pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+pub fn store_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
                                  data: ValueRef,
                                  extra: ValueRef,
                                  dst: ValueRef,
@@ -595,18 +587,18 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     Store(cx, extra, get_meta(cx, dst));
 }
 
-pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+pub fn load_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
                                 src: ValueRef,
                                 ty: Ty<'tcx>)
                                 -> (ValueRef, ValueRef)
 {
-    if cx.unreachable.get() {
+    if cx.is_unreachable() {
         // FIXME: remove me
         return (Load(cx, get_dataptr(cx, src)),
                 Load(cx, get_meta(cx, src)));
     }
 
-    load_fat_ptr_builder(&B(cx), src, ty)
+    load_fat_ptr_builder(cx, src, ty)
 }
 
 pub fn load_fat_ptr_builder<'a, 'tcx>(
@@ -629,7 +621,7 @@ pub fn load_fat_ptr_builder<'a, 'tcx>(
     (ptr, meta)
 }
 
-pub fn from_immediate(bcx: Block, val: ValueRef) -> ValueRef {
+pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
     if val_ty(val) == Type::i1(bcx.ccx()) {
         ZExt(bcx, val, Type::i8(bcx.ccx()))
     } else {
@@ -637,7 +629,7 @@ pub fn from_immediate(bcx: Block, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
+pub fn to_immediate(bcx: &BlockAndBuilder, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
         Trunc(bcx, val, Type::i1(bcx.ccx()))
     } else {
@@ -645,23 +637,23 @@ pub fn to_immediate(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>, val: ValueRef, f: F) -> Block<'blk, 'tcx>
-    where F: FnOnce(Block<'blk, 'tcx>) -> Block<'blk, 'tcx>
+pub fn with_cond<'blk, 'tcx, F>(
+    bcx: BlockAndBuilder<'blk, 'tcx>, val: ValueRef, f: F
+) -> BlockAndBuilder<'blk, 'tcx>
+    where F: FnOnce(BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx>
 {
     let _icx = push_ctxt("with_cond");
 
-    if bcx.unreachable.get() || common::const_to_opt_uint(val) == Some(0) {
+    if bcx.is_unreachable() || common::const_to_opt_uint(val) == Some(0) {
         return bcx;
     }
 
-    let fcx = bcx.fcx;
-    let next_cx = fcx.new_block("next");
-    let cond_cx = fcx.new_block("cond");
-    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb, DebugLoc::None);
+    let fcx = bcx.fcx();
+    let next_cx = fcx.new_block("next").build();
+    let cond_cx = fcx.new_block("cond").build();
+    CondBr(&bcx, val, cond_cx.llbb(), next_cx.llbb(), DebugLoc::None);
     let after_cx = f(cond_cx);
-    if !after_cx.terminated.get() {
-        Br(after_cx, next_cx.llbb, DebugLoc::None);
-    }
+    Br(&after_cx, next_cx.llbb(), DebugLoc::None);
     next_cx
 }
 
@@ -711,26 +703,25 @@ impl Lifetime {
     }
 }
 
-pub fn call_lifetime_start(bcx: Block, ptr: ValueRef) {
-    if !bcx.unreachable.get() {
-        Lifetime::Start.call(&bcx.build(), ptr);
+pub fn call_lifetime_start(bcx: &BlockAndBuilder, ptr: ValueRef) {
+    if !bcx.is_unreachable() {
+        Lifetime::Start.call(bcx, ptr);
     }
 }
 
-pub fn call_lifetime_end(bcx: Block, ptr: ValueRef) {
-    if !bcx.unreachable.get() {
-        Lifetime::End.call(&bcx.build(), ptr);
+pub fn call_lifetime_end(bcx: &BlockAndBuilder, ptr: ValueRef) {
+    if !bcx.is_unreachable() {
+        Lifetime::End.call(bcx, ptr);
     }
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.
-pub fn trans_unwind_resume(bcx: Block, lpval: ValueRef) {
+pub fn trans_unwind_resume(bcx: &BlockAndBuilder, lpval: ValueRef) {
     if !bcx.sess().target.target.options.custom_unwind_resume {
-        Resume(bcx, lpval);
+        bcx.resume(lpval);
     } else {
         let exc_ptr = ExtractValue(bcx, lpval, 0);
-        bcx.fcx.eh_unwind_resume()
-            .call(bcx, DebugLoc::None, &[exc_ptr], None);
+        Call(bcx, bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr], DebugLoc::None);
     }
 }
 
@@ -752,11 +743,11 @@ pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>) {
+pub fn memcpy_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
 
-    if type_is_zero_size(ccx, t) || bcx.unreachable.get() {
+    if type_is_zero_size(ccx, t) || bcx.is_unreachable() {
         return;
     }
 
@@ -764,7 +755,7 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRe
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
-        call_memcpy(&B(bcx), dst, src, llsz, llalign as u32);
+        call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else if common::type_is_fat_ptr(bcx.tcx(), t) {
         let (data, extra) = load_fat_ptr(bcx, src, t);
         store_fat_ptr(bcx, data, extra, dst, t);
@@ -773,13 +764,13 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRe
     }
 }
 
-pub fn init_zero_mem<'blk, 'tcx>(cx: Block<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
-    if cx.unreachable.get() {
+pub fn init_zero_mem<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
+    if cx.is_unreachable() {
         return;
     }
     let _icx = push_ctxt("init_zero_mem");
     let bcx = cx;
-    memfill(&B(bcx), llptr, t, 0);
+    memfill(bcx, llptr, t, 0);
 }
 
 // Always use this function instead of storing a constant byte to the memory
@@ -812,24 +803,17 @@ pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
 }
 
-pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                             ty: Ty<'tcx>,
                             name: &str) -> ValueRef {
     assert!(!ty.has_param_types());
     alloca(bcx, type_of::type_of(bcx.ccx(), ty), name)
 }
 
-pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca(cx: &BlockAndBuilder, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
-    if cx.unreachable.get() {
-        unsafe {
-            return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
-        }
-    }
-    DebugLoc::None.apply(cx.fcx);
-    let result = Alloca(cx, ty, name);
-    debug!("alloca({:?}) = {:?}", name, result);
-    result
+    DebugLoc::None.apply(cx.fcx());
+    Alloca(cx, ty, name)
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
@@ -894,14 +878,14 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
     /// Performs setup on a newly created function, creating the entry
     /// scope block and allocating space for the return pointer.
-    pub fn init(&'blk self, skip_retptr: bool) -> Block<'blk, 'tcx> {
-        let entry_bcx = self.new_block("entry-block");
+    pub fn init(&'blk self, skip_retptr: bool) -> BlockAndBuilder<'blk, 'tcx> {
+        let entry_bcx = self.new_block("entry-block").build();
 
         // Use a dummy instruction as the insertion point for all allocas.
         // This is later removed in FunctionContext::cleanup.
         self.alloca_insert_pt.set(Some(unsafe {
-            Load(entry_bcx, C_null(Type::i8p(self.ccx)));
-            llvm::LLVMGetFirstInstruction(entry_bcx.llbb)
+            Load(&entry_bcx, C_null(Type::i8p(self.ccx)));
+            llvm::LLVMGetFirstInstruction(entry_bcx.llbb())
         }));
 
         if !self.fn_ty.ret.is_ignore() && !skip_retptr {
@@ -929,7 +913,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
     /// Ties up the llstaticallocas -> llloadenv -> lltop edges,
     /// and builds the return block.
-    pub fn finish(&'blk self, ret_cx: Block<'blk, 'tcx>,
+    pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>,
                   ret_debug_loc: DebugLoc) {
         let _icx = push_ctxt("FunctionContext::finish");
 
@@ -940,10 +924,9 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     }
 
     // Builds the return block for a function.
-    pub fn build_return_block(&self, ret_cx: Block<'blk, 'tcx>,
+    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>,
                               ret_debug_location: DebugLoc) {
-        if self.llretslotptr.get().is_none() ||
-           ret_cx.unreachable.get() ||
+        if self.llretslotptr.get().is_none() || ret_cx.is_unreachable() ||
            self.fn_ty.ret.is_indirect() {
             return RetVoid(ret_cx, ret_debug_location);
         }
@@ -978,7 +961,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 assert_eq!(cast_ty, None);
                 let llsz = llsize_of(self.ccx, self.fn_ty.ret.ty);
                 let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
-                call_memcpy(&B(ret_cx), get_param(self.llfn, 0),
+                call_memcpy(&ret_cx, get_param(self.llfn, 0),
                             retslot, llsz, llalign as u32);
                 RetVoid(ret_cx, ret_debug_location)
             }
@@ -1080,23 +1063,22 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, sig.output(), dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
-            let b = &bcx.build();
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 let meta = &fcx.fn_ty.args[arg_idx];
                 arg_idx += 1;
-                arg.store_fn_arg(b, &mut llarg_idx, get_dataptr(bcx, lldestptr));
-                meta.store_fn_arg(b, &mut llarg_idx, get_meta(bcx, lldestptr));
+                arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));
+                meta.store_fn_arg(&bcx, &mut llarg_idx, get_meta(&bcx, lldestptr));
             } else {
-                arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
+                arg.store_fn_arg(&bcx, &mut llarg_idx, lldestptr);
             }
         }
-        adt::trans_set_discr(bcx, sig.output(), dest, disr);
+        adt::trans_set_discr(&bcx, sig.output(), dest, disr);
     }
 
-    fcx.finish(bcx, DebugLoc::None);
+    fcx.finish(&bcx, DebugLoc::None);
 }
 
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {

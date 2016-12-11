@@ -63,12 +63,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {
                 let ty = self.monomorphized_lvalue_ty(lvalue);
                 let lvalue_transed = self.trans_lvalue(&bcx, lvalue);
-                bcx.with_block(|bcx|
-                    adt::trans_set_discr(bcx,
-                                         ty,
-                                        lvalue_transed.llval,
-                                        Disr::from(variant_index))
-                );
+                adt::trans_set_discr(&bcx,
+                    ty,
+                    lvalue_transed.llval,
+                    Disr::from(variant_index));
                 bcx
             }
             mir::StatementKind::StorageLive(ref lvalue) => {

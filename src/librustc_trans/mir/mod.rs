@@ -181,7 +181,7 @@ impl<'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
-    let bcx = fcx.init(true).build();
+    let bcx = fcx.init(true);
     let mir = bcx.mir();
 
     // Analyze the temps to determine which must be lvalues
@@ -240,11 +240,9 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                 if dbg {
                     let dbg_loc = mircx.debug_loc(source_info);
                     if let DebugLoc::ScopeAt(scope, span) = dbg_loc {
-                        bcx.with_block(|bcx| {
-                            declare_local(bcx, name, ty, scope,
-                                        VariableAccess::DirectVariable { alloca: lvalue.llval },
-                                        VariableKind::LocalVariable, span);
-                        });
+                        declare_local(&bcx, name, ty, scope,
+                            VariableAccess::DirectVariable { alloca: lvalue.llval },
+                            VariableKind::LocalVariable, span);
                     } else {
                         panic!("Unexpected");
                     }
@@ -353,9 +351,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lltemp = bcx.with_block(|bcx| {
-                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-            });
+            let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                 let dst = bcx.struct_gep(lltemp, i);
                 let arg = &fcx.fn_ty.args[idx];
@@ -376,7 +372,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
             // Now that we have one alloca that contains the aggregate value,
             // we can create one debuginfo entry for the argument.
-            bcx.with_block(|bcx| arg_scope.map(|scope| {
+            arg_scope.map(|scope| {
                 let variable_access = VariableAccess::DirectVariable {
                     alloca: lltemp
                 };
@@ -384,7 +380,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               arg_ty, scope, variable_access,
                               VariableKind::ArgumentVariable(arg_index + 1),
                               bcx.fcx().span.unwrap_or(DUMMY_SP));
-            }));
+            });
 
             return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
         }
@@ -433,9 +429,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
-            let lltemp = bcx.with_block(|bcx| {
-                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-            });
+            let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
             if common::type_is_fat_ptr(tcx, arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
@@ -453,7 +447,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             }
             lltemp
         };
-        bcx.with_block(|bcx| arg_scope.map(|scope| {
+        arg_scope.map(|scope| {
             // Is this a regular argument?
             if arg_index > 0 || mir.upvar_decls.is_empty() {
                 declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
@@ -531,7 +525,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               VariableKind::CapturedVariable,
                               bcx.fcx().span.unwrap_or(DUMMY_SP));
             }
-        }));
+        });
         LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty)))
     }).collect()
 }

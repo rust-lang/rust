@@ -25,7 +25,7 @@ use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_inline_asm<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                     ia: &hir::InlineAsm,
                                     outputs: Vec<(ValueRef, Ty<'tcx>)>,
                                     mut inputs: Vec<ValueRef>) {

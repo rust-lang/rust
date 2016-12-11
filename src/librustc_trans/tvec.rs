@@ -18,16 +18,16 @@ use common::*;
 use debuginfo::DebugLoc;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                      data_ptr: ValueRef,
                                      unit_ty: Ty<'tcx>,
                                      len: ValueRef,
                                      f: F)
-                                     -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
+                                     -> BlockAndBuilder<'blk, 'tcx>
+    where F: FnOnce(BlockAndBuilder<'blk, 'tcx>, ValueRef) -> BlockAndBuilder<'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::slice_for_each");
-    let fcx = bcx.fcx;
+    let fcx = bcx.fcx();
 
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx(), unit_ty);
@@ -37,27 +37,33 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         InBoundsGEP(bcx, a, &[b])
     };
 
-    let header_bcx = fcx.new_block("slice_loop_header");
-    let body_bcx = fcx.new_block("slice_loop_body");
-    let next_bcx = fcx.new_block("slice_loop_next");
+    let body_bcx = fcx.new_block("slice_loop_body").build();
+    let next_bcx = fcx.new_block("slice_loop_next").build();
+    let header_bcx = fcx.new_block("slice_loop_header").build();
 
     let start = if zst {
         C_uint(bcx.ccx(), 0 as usize)
     } else {
         data_ptr
     };
-    let end = add(bcx, start, len);
+    let end = add(&bcx, start, len);
 
-    Br(bcx, header_bcx.llbb, DebugLoc::None);
-    let current = Phi(header_bcx, val_ty(start), &[start], &[bcx.llbb]);
+    Br(&bcx, header_bcx.llbb(), DebugLoc::None);
+    let current = Phi(&header_bcx, val_ty(start), &[start], &[bcx.llbb()]);
 
     let keep_going =
-        ICmp(header_bcx, llvm::IntNE, current, end, DebugLoc::None);
-    CondBr(header_bcx, keep_going, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
+        ICmp(&header_bcx, llvm::IntNE, current, end, DebugLoc::None);
+    CondBr(&header_bcx, keep_going, body_bcx.llbb(), next_bcx.llbb(), DebugLoc::None);
 
     let body_bcx = f(body_bcx, if zst { data_ptr } else { current });
-    let next = add(body_bcx, current, C_uint(bcx.ccx(), 1usize));
-    AddIncomingToPhi(current, next, body_bcx.llbb);
-    Br(body_bcx, header_bcx.llbb, DebugLoc::None);
+    // FIXME(simulacrum): The code below is identical to the closure (add) above, but using the
+    // closure doesn't compile due to body_bcx still being borrowed when dropped.
+    let next = if zst {
+        Add(&body_bcx, current, C_uint(bcx.ccx(), 1usize), DebugLoc::None)
+    } else {
+        InBoundsGEP(&body_bcx, current, &[C_uint(bcx.ccx(), 1usize)])
+    };
+    AddIncomingToPhi(current, next, body_bcx.llbb());
+    Br(&body_bcx, header_bcx.llbb(), DebugLoc::None);
     next_bcx
 }

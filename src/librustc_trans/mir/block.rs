@@ -40,6 +40,7 @@ use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 use std::cell::Ref as CellRef;
+use std::ptr;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -121,10 +122,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                     let ps = self.get_personality_slot(&bcx);
                     let lp = bcx.load(ps);
-                    bcx.with_block(|bcx| {
-                        base::call_lifetime_end(bcx, ps);
-                        base::trans_unwind_resume(bcx, lp);
-                    });
+                    base::call_lifetime_end(&bcx, ps);
+                    base::trans_unwind_resume(&bcx, lp);
                 }
             }
 
@@ -143,9 +142,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr = bcx.with_block(|bcx|
-                    adt::trans_get_discr(bcx, ty, discr_lvalue.llval, None, true)
-                );
+                let discr = adt::trans_get_discr(&bcx, ty, discr_lvalue.llval, None, true);
 
                 let mut bb_hist = FxHashMap();
                 for target in targets {
@@ -169,8 +166,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 for (adt_variant, &target) in adt_def.variants.iter().zip(targets) {
                     if default_bb != Some(target) {
                         let llbb = llblock(self, target);
-                        let llval = bcx.with_block(|bcx| adt::trans_case(
-                                bcx, ty, Disr::from(adt_variant.disr_val)));
+                        let llval = adt::trans_case(&bcx, ty, Disr::from(adt_variant.disr_val));
                         build::AddCase(switch, llval, llbb)
                     }
                 }
@@ -179,7 +175,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let (otherwise, targets) = targets.split_last().unwrap();
                 let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
-                let discr = bcx.with_block(|bcx| base::to_immediate(bcx, discr, switch_ty));
+                let discr = base::to_immediate(&bcx, discr, switch_ty);
                 let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
                     let val = Const::from_constval(bcx.ccx(), value.clone(), switch_ty);
@@ -259,13 +255,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // but I am shooting for a quick fix to #35546
                     // here that can be cleanly backported to beta, so
                     // I want to avoid touching all of trans.
-                    bcx.with_block(|bcx| {
-                        let scratch = base::alloc_ty(bcx, ty, "drop");
-                        base::call_lifetime_start(bcx, scratch);
-                        build::Store(bcx, lvalue.llval, base::get_dataptr(bcx, scratch));
-                        build::Store(bcx, lvalue.llextra, base::get_meta(bcx, scratch));
-                        scratch
-                    })
+                    let scratch = base::alloc_ty(&bcx, ty, "drop");
+                    base::call_lifetime_start(&bcx, scratch);
+                    build::Store(&bcx, lvalue.llval, base::get_dataptr(&bcx, scratch));
+                    build::Store(&bcx, lvalue.llextra, base::get_meta(&bcx, scratch));
+                    scratch
                 };
                 if let Some(unwind) = unwind {
                     bcx.invoke(drop_fn,
@@ -443,6 +437,65 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return;
                 }
 
+                // FIXME: This should proxy to the drop glue in the future when the ABI matches;
+                // most of the below code was copied from the match arm for TerminatorKind::Drop.
+                if intrinsic == Some("drop_in_place") {
+                    let &(_, target) = destination.as_ref().unwrap();
+                    let ty = if let ty::TyFnDef(_, substs, _) = callee.ty.sty {
+                        substs.type_at(0)
+                    } else {
+                        bug!("Unexpected ty: {}", callee.ty);
+                    };
+
+                    // Double check for necessity to drop
+                    if !glue::type_needs_drop(bcx.tcx(), ty) {
+                        funclet_br(self, bcx, target);
+                        return;
+                    }
+
+                    let ptr =  self.trans_operand(&bcx, &args[0]);
+                    let (llval, llextra) = match ptr.val {
+                        Immediate(llptr) => (llptr, ptr::null_mut()),
+                        Pair(llptr, llextra) => (llptr, llextra),
+                        Ref(_) => bug!("Deref of by-Ref type {:?}", ptr.ty)
+                    };
+
+                    let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
+                    let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
+                    let is_sized = common::type_is_sized(bcx.tcx(), ty);
+                    let llvalue = if is_sized {
+                        if drop_ty != ty {
+                            bcx.pointercast(llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                        } else {
+                            llval
+                        }
+                    } else {
+                        // FIXME(#36457) Currently drop glue takes sized
+                        // values as a `*(data, meta)`, but elsewhere in
+                        // MIR we pass `(data, meta)` as two separate
+                        // arguments. It would be better to fix drop glue,
+                        // but I am shooting for a quick fix to #35546
+                        // here that can be cleanly backported to beta, so
+                        // I want to avoid touching all of trans.
+                        let scratch = base::alloc_ty(&bcx, ty, "drop");
+                        base::call_lifetime_start(&bcx, scratch);
+                        build::Store(&bcx, llval, base::get_dataptr(&bcx, scratch));
+                        build::Store(&bcx, llextra, base::get_meta(&bcx, scratch));
+                        scratch
+                    };
+                    if let Some(unwind) = *cleanup {
+                        bcx.invoke(drop_fn,
+                            &[llvalue],
+                            self.blocks[target].llbb,
+                            llblock(self, unwind),
+                            cleanup_bundle);
+                    } else {
+                        bcx.call(drop_fn, &[llvalue], cleanup_bundle);
+                        funclet_br(self, bcx, target);
+                    }
+                    return;
+                }
+
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();
                     self.with_lvalue_ref(&bcx, dest, |this, dest| {
@@ -537,10 +590,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bug!("Cannot use direct operand with an intrinsic call")
                         };
 
-                        bcx.with_block(|bcx| {
-                            trans_intrinsic_call(bcx, callee.ty, &fn_ty,
-                                                 &llargs, dest, debug_loc);
-                        });
+                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest, debug_loc);
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
@@ -554,8 +604,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         if let Some((_, target)) = *destination {
                             funclet_br(self, bcx, target);
                         } else {
-                            // trans_intrinsic_call already used Unreachable.
-                            // bcx.unreachable();
+                            bcx.unreachable();
                         }
 
                         return;
@@ -620,9 +669,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let (ptr, meta) = (a, b);
                 if *next_idx == 0 {
                     if let Virtual(idx) = *callee {
-                        let llfn = bcx.with_block(|bcx| {
-                            meth::get_virtual_method(bcx, meta, idx)
-                        });
+                        let llfn = meth::get_virtual_method(bcx, meta, idx);
                         let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
                         *callee = Fn(bcx.pointercast(llfn, llty));
                     }
@@ -768,12 +815,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             slot
         } else {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            bcx.with_block(|bcx| {
-                let slot = base::alloca(bcx, llretty, "personalityslot");
-                self.llpersonalityslot = Some(slot);
-                base::call_lifetime_start(bcx, slot);
-                slot
-            })
+            let slot = base::alloca(bcx, llretty, "personalityslot");
+            self.llpersonalityslot = Some(slot);
+            base::call_lifetime_start(bcx, slot);
+            slot
         }
     }
 
@@ -863,18 +908,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return if fn_ret_ty.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        let tmp = bcx.with_block(|bcx| {
-                            base::alloc_ty(bcx, ret_ty, "tmp_ret")
-                        });
+                        let tmp = base::alloc_ty(bcx, ret_ty, "tmp_ret");
                         llargs.push(tmp);
                         ReturnDest::IndirectOperand(tmp, index)
                     } else if is_intrinsic {
                         // Currently, intrinsics always need a location to store
                         // the result. so we create a temporary alloca for the
                         // result
-                        let tmp = bcx.with_block(|bcx| {
-                            base::alloc_ty(bcx, ret_ty, "tmp_ret")
-                        });
+                        let tmp = base::alloc_ty(bcx, ret_ty, "tmp_ret");
                         ReturnDest::IndirectOperand(tmp, index)
                     } else {
                         ReturnDest::DirectOperand(index)
@@ -939,9 +980,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if ret_ty.cast.is_some() {
-                    let tmp = bcx.with_block(|bcx| {
-                        base::alloc_ty(bcx, op.ty, "tmp_ret")
-                    });
+                    let tmp = base::alloc_ty(bcx, op.ty, "tmp_ret");
                     ret_ty.store(bcx, op.immediate(), tmp);
                     self.trans_load(bcx, tmp, op.ty)
                 } else {

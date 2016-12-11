@@ -27,7 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::{CrateContext, FunctionContext, Block, BlockAndBuilder};
+use common::{CrateContext, FunctionContext, BlockAndBuilder};
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
@@ -441,7 +441,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn declare_local<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                  variable_name: ast::Name,
                                  variable_type: Ty<'tcx>,
                                  scope_metadata: DIScope,
@@ -494,16 +494,16 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
                     debug_loc,
-                    bcx.llbb);
+                    bcx.llbb());
 
-                llvm::LLVMSetInstDebugLocation(::build::B(bcx).llbuilder, instr);
+                llvm::LLVMSetInstDebugLocation(bcx.llbuilder, instr);
             }
         }
     }
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx
+            assert!(!bcx.fcx()
                         .debug_context
                         .get_ref(span)
                         .source_locations_enabled

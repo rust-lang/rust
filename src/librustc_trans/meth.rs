@@ -32,7 +32,7 @@ use rustc::ty;
 const VTABLE_OFFSET: usize = 3;
 
 /// Extracts a method from a trait object's vtable, at the specified index.
-pub fn get_virtual_method<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn get_virtual_method<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                       llvtable: ValueRef,
                                       vtable_index: usize)
                                       -> ValueRef {
@@ -94,9 +94,9 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let dest = fcx.llretslotptr.get();
     let llargs = get_params(fcx.llfn);
     bcx = callee.call(bcx, DebugLoc::None,
-                      &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).bcx;
+                      &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).0;
 
-    fcx.finish(bcx, DebugLoc::None);
+    fcx.finish(&bcx, DebugLoc::None);
 
     llfn
 }
