@@ -36,71 +36,70 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
         // In fact, we might not want to trigger in other cases.
         // Ex: when we could use SROA.  See issue #35259
 
-        let mut curr: usize = 0;
         for bb in mir.basic_blocks_mut() {
-            let idx = match get_aggregate_statement_index(curr, &bb.statements) {
-                Some(idx) => idx,
-                None => continue,
-            };
-            // do the replacement
-            debug!("removing statement {:?}", idx);
-            let src_info = bb.statements[idx].source_info;
-            let suffix_stmts = bb.statements.split_off(idx+1);
-            let orig_stmt = bb.statements.pop().unwrap();
-            let (lhs, rhs) = match orig_stmt.kind {
-                StatementKind::Assign(ref lhs, ref rhs) => (lhs, rhs),
-                _ => span_bug!(src_info.span, "expected assign, not {:?}", orig_stmt),
-            };
-            let (agg_kind, operands) = match rhs {
-                &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
-                _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
-            };
-            let (adt_def, variant, substs) = match agg_kind {
-                &AggregateKind::Adt(adt_def, variant, substs, None) => (adt_def, variant, substs),
-                _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
-            };
-            let n = bb.statements.len();
-            bb.statements.reserve(n + operands.len() + suffix_stmts.len());
-            for (i, op) in operands.iter().enumerate() {
-                let ref variant_def = adt_def.variants[variant];
-                let ty = variant_def.fields[i].ty(tcx, substs);
-                let rhs = Rvalue::Use(op.clone());
+            let mut curr: usize = 0;
+            while let Some(idx) = get_aggregate_statement_index(curr, &bb.statements) {
+                // do the replacement
+                debug!("removing statement {:?}", idx);
+                let src_info = bb.statements[idx].source_info;
+                let suffix_stmts = bb.statements.split_off(idx+1);
+                let orig_stmt = bb.statements.pop().unwrap();
+                let (lhs, rhs) = match orig_stmt.kind {
+                    StatementKind::Assign(ref lhs, ref rhs) => (lhs, rhs),
+                    _ => span_bug!(src_info.span, "expected assign, not {:?}", orig_stmt),
+                };
+                let (agg_kind, operands) = match rhs {
+                    &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
+                    _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
+                };
+                let (adt_def, variant, substs) = match agg_kind {
+                    &AggregateKind::Adt(adt_def, variant, substs, None)
+                        => (adt_def, variant, substs),
+                    _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
+                };
+                let n = bb.statements.len();
+                bb.statements.reserve(n + operands.len() + suffix_stmts.len());
+                for (i, op) in operands.iter().enumerate() {
+                    let ref variant_def = adt_def.variants[variant];
+                    let ty = variant_def.fields[i].ty(tcx, substs);
+                    let rhs = Rvalue::Use(op.clone());
 
-                let lhs_cast = if adt_def.variants.len() > 1 {
-                    Lvalue::Projection(Box::new(LvalueProjection {
-                        base: lhs.clone(),
-                        elem: ProjectionElem::Downcast(adt_def, variant),
-                    }))
-                } else {
-                    lhs.clone()
+                    let lhs_cast = if adt_def.variants.len() > 1 {
+                        Lvalue::Projection(Box::new(LvalueProjection {
+                            base: lhs.clone(),
+                            elem: ProjectionElem::Downcast(adt_def, variant),
+                        }))
+                    } else {
+                        lhs.clone()
+                    };
+
+                    let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
+                        base: lhs_cast,
+                        elem: ProjectionElem::Field(Field::new(i), ty),
+                    }));
+                    let new_statement = Statement {
+                        source_info: src_info,
+                        kind: StatementKind::Assign(lhs_proj, rhs),
+                    };
+                    debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
+                    bb.statements.push(new_statement);
+                }
+
+                // if the aggregate was an enum, we need to set the discriminant
+                if adt_def.variants.len() > 1 {
+                    let set_discriminant = Statement {
+                        kind: StatementKind::SetDiscriminant {
+                            lvalue: lhs.clone(),
+                            variant_index: variant,
+                        },
+                        source_info: src_info,
+                    };
+                    bb.statements.push(set_discriminant);
                 };
 
-                let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
-                    base: lhs_cast,
-                    elem: ProjectionElem::Field(Field::new(i), ty),
-                }));
-                let new_statement = Statement {
-                    source_info: src_info,
-                    kind: StatementKind::Assign(lhs_proj, rhs),
-                };
-                debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
-                bb.statements.push(new_statement);
+                curr = bb.statements.len();
+                bb.statements.extend(suffix_stmts);
             }
-
-            // if the aggregate was an enum, we need to set the discriminant
-            if adt_def.variants.len() > 1 {
-                let set_discriminant = Statement {
-                    kind: StatementKind::SetDiscriminant {
-                        lvalue: lhs.clone(),
-                        variant_index: variant,
-                    },
-                    source_info: src_info,
-                };
-                bb.statements.push(set_discriminant);
-            };
-
-            curr = bb.statements.len();
-            bb.statements.extend(suffix_stmts);
         }
     }
 }
