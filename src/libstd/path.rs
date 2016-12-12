@@ -136,9 +136,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // Windows Prefixes
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Path prefixes (Redox and Windows only).
-///
-/// Redox uses schemes like `scheme:reference` to identify different I/O systems
+/// Path prefixes (Windows only).
 ///
 /// Windows uses a variety of path styles, including references to drive
 /// volumes (like `C:`), network shared folders (like `\\server\share`) and
@@ -187,9 +185,6 @@ impl<'a> Prefix<'a> {
             os_str_as_u8_slice(s).len()
         }
         match *self {
-            #[cfg(target_os = "redox")]
-            Verbatim(x) => 1 + os_str_len(x),
-            #[cfg(not(target_os = "redox"))]
             Verbatim(x) => 4 + os_str_len(x),
             VerbatimUNC(x, y) => {
                 8 + os_str_len(x) +

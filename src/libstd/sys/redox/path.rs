@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use path::Prefix;
 use ffi::OsStr;
 
 #[inline]
@@ -23,8 +22,9 @@ pub fn is_verbatim_sep(b: u8) -> bool {
 
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix> {
     if let Some(path_str) = path.to_str() {
-        if let Some(i) = path_str.find(':') {
-            Some(Prefix::Verbatim(OsStr::new(&path_str[..i])))
+        if let Some(_i) = path_str.find(':') {
+            //TODO: Redox specific prefix Some(Prefix::Verbatim(OsStr::new(&path_str[..i])))
+            None
         } else {
             None
         }
