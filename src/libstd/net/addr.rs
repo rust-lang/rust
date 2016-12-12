@@ -446,6 +446,20 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
     }
 }
 
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
+impl From<SocketAddrV4> for SocketAddr {
+    fn from(sock4: SocketAddrV4) -> SocketAddr {
+        SocketAddr::V4(sock4)
+    }
+}
+
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
+impl From<SocketAddrV6> for SocketAddr {
+    fn from(sock6: SocketAddrV6) -> SocketAddr {
+        SocketAddr::V6(sock6)
+    }
+}
+
 impl<'a> IntoInner<(*const c::sockaddr, c::socklen_t)> for &'a SocketAddr {
     fn into_inner(self) -> (*const c::sockaddr, c::socklen_t) {
         match *self {
