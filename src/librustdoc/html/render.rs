@@ -71,7 +71,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown};
+use html::markdown::{self, Markdown, MarkdownHtml};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -1844,7 +1844,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
 
     if let Some(stab) = item.stability.as_ref() {
         let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
-            format!(": {}", Escape(&stab.deprecated_reason))
+            format!(": {}", stab.deprecated_reason)
         } else {
             String::new()
         };
@@ -1854,7 +1854,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, Markdown(&deprecated_reason));
+            let text = format!("Deprecated{}{}", since, MarkdownHtml(&deprecated_reason));
             stability.push(format!("<em class='stab deprecated'>{}</em>", text))
         };
 
@@ -1875,16 +1875,16 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let unstable_reason = if show_reason && !stab.unstable_reason.is_empty() {
-                format!(": {}", Escape(&stab.unstable_reason))
+                format!(": {}", stab.unstable_reason)
             } else {
                 String::new()
             };
-            let text = format!("Unstable{}{}", unstable_extra, Markdown(&unstable_reason));
+            let text = format!("Unstable{}{}", unstable_extra, MarkdownHtml(&unstable_reason));
             stability.push(format!("<em class='stab unstable'>{}</em>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
         let note = if show_reason && !depr.note.is_empty() {
-            format!(": {}", Escape(&depr.note))
+            format!(": {}", depr.note)
         } else {
             String::new()
         };
@@ -1894,7 +1894,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, Markdown(&note));
+        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
         stability.push(format!("<em class='stab deprecated'>{}</em>", text))
     }
 
