@@ -205,7 +205,10 @@ impl<'a> base::Resolver for Resolver<'a> {
             }
 
             let ext = match self.resolve_path(&path, path_scope, Some(MacroNS), None) {
-                PathResult::NonModule(path_res) => Ok(self.get_macro(path_res.base_def)),
+                PathResult::NonModule(path_res) => match path_res.base_def {
+                    Def::Err => Err(Determinacy::Determined),
+                    def @ _ => Ok(self.get_macro(def)),
+                },
                 PathResult::Module(..) => unreachable!(),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 _ => Err(Determinacy::Determined),
