@@ -133,7 +133,7 @@ pub fn call_drop_glue<'blk, 'tcx>(
     v: ValueRef,
     t: Ty<'tcx>,
     skip_dtor: bool,
-    lpad: Option<&'blk LandingPad>,
+    funclet: Option<&'blk Funclet>,
 ) -> BlockAndBuilder<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
@@ -154,7 +154,7 @@ pub fn call_drop_glue<'blk, 'tcx>(
         };
 
         // No drop-hint ==> call standard drop glue
-        bcx.call(glue, &[ptr], lpad.and_then(|b| b.bundle()));
+        bcx.call(glue, &[ptr], funclet.map(|b| b.bundle()));
     }
     bcx
 }

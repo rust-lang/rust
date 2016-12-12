@@ -17,7 +17,7 @@ use abi::{Abi, FnType, ArgType};
 use adt;
 use base::{self, Lifetime};
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, BlockAndBuilder, LandingPad};
+use common::{self, BlockAndBuilder, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use debuginfo::DebugLoc;
@@ -44,20 +44,20 @@ use std::ptr;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock,
-        lpads: &IndexVec<mir::BasicBlock, Option<LandingPad>>) {
+        funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
         let mut bcx = self.build_block(bb);
         let data = &CellRef::clone(&self.mir)[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
-        let lpad = match self.cleanup_kinds[bb] {
-            CleanupKind::Internal { funclet } => lpads[funclet].as_ref(),
-            _ => lpads[bb].as_ref(),
+        let funclet = match self.cleanup_kinds[bb] {
+            CleanupKind::Internal { funclet } => funclets[funclet].as_ref(),
+            _ => funclets[bb].as_ref(),
         };
 
         // Create the cleanup bundle, if needed.
-        let cleanup_pad = lpad.and_then(|lp| lp.cleanuppad());
-        let cleanup_bundle = lpad.and_then(|l| l.bundle());
+        let cleanup_pad = funclet.map(|lp| lp.cleanuppad());
+        let cleanup_bundle = funclet.map(|l| l.bundle());
 
         let funclet_br = |this: &Self, bcx: BlockAndBuilder, bb: mir::BasicBlock| {
             let lltarget = this.blocks[bb];
@@ -866,28 +866,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn init_cpad(&mut self, bb: mir::BasicBlock,
-        lpads: &mut IndexVec<mir::BasicBlock, Option<LandingPad>>) {
+        funclets: &mut IndexVec<mir::BasicBlock, Option<Funclet>>) {
         let bcx = self.build_block(bb);
         let data = &self.mir[bb];
         debug!("init_cpad({:?})", data);
 
         match self.cleanup_kinds[bb] {
             CleanupKind::NotCleanup => {
-                lpads[bb] = None;
+                funclets[bb] = None;
             }
             _ if !base::wants_msvc_seh(bcx.sess()) => {
-                lpads[bb] = Some(LandingPad::gnu());
+                funclets[bb] = Funclet::gnu();
             }
             CleanupKind::Internal { funclet: _ } => {
                 // FIXME: is this needed?
                 bcx.set_personality_fn(self.fcx.eh_personality());
-                lpads[bb] = None;
+                funclets[bb] = None;
             }
             CleanupKind::Funclet => {
                 bcx.set_personality_fn(self.fcx.eh_personality());
                 DebugLoc::None.apply_to_bcx(&bcx);
                 let cleanup_pad = bcx.cleanup_pad(None, &[]);
-                lpads[bb] = Some(LandingPad::msvc(cleanup_pad));
+                funclets[bb] = Funclet::msvc(cleanup_pad);
             }
         };
     }

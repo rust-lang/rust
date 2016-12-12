@@ -308,7 +308,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     //pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
 
     // The arena that landing pads are allocated from.
-    pub lpad_arena: TypedArena<LandingPad>,
+    pub funclet_arena: TypedArena<Funclet>,
 
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
@@ -483,7 +483,7 @@ pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
 
     // If this block part of a landing pad, then this is `Some` indicating what
     // kind of landing pad its in, otherwise this is none.
-    lpad: Cell<Option<&'blk LandingPad>>,
+    funclet: Cell<Option<&'blk Funclet>>,
 
     // The function context for the function to which this block is
     // attached.
@@ -499,7 +499,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         owned_builder.builder.position_at_end(llbb);
         BlockAndBuilder {
             llbb: llbb,
-            lpad: Cell::new(None),
+            funclet: Cell::new(None),
             fcx: fcx,
             owned_builder: owned_builder,
         }
@@ -535,17 +535,17 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.fcx.mir()
     }
 
-    pub fn set_lpad(&self, lpad: Option<LandingPad>) {
-        self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
+    pub fn set_funclet(&self, funclet: Option<Funclet>) {
+        self.set_funclet_ref(funclet.map(|p| &*self.fcx().funclet_arena.alloc(p)))
     }
 
-    pub fn set_lpad_ref(&self, lpad: Option<&'blk LandingPad>) {
+    pub fn set_funclet_ref(&self, funclet: Option<&'blk Funclet>) {
         // FIXME: use an IVar?
-        self.lpad.set(lpad);
+        self.funclet.set(funclet);
     }
 
-    pub fn lpad(&self) -> Option<&'blk LandingPad> {
-        self.lpad.get()
+    pub fn funclet(&self) -> Option<&'blk Funclet> {
+        self.funclet.get()
     }
 }
 
@@ -570,39 +570,37 @@ impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {
 /// When inside of a landing pad, each function call in LLVM IR needs to be
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct LandingPad {
-    cleanuppad: Option<ValueRef>,
-    operand: Option<OperandBundleDef>,
+pub struct Funclet {
+    cleanuppad: ValueRef,
+    operand: OperandBundleDef,
 }
 
-impl LandingPad {
-    pub fn gnu() -> LandingPad {
-        LandingPad { cleanuppad: None, operand: None }
+impl Funclet {
+    pub fn gnu() -> Option<Funclet> {
+        None
     }
 
-    pub fn msvc(cleanuppad: ValueRef) -> LandingPad {
-        LandingPad {
-            cleanuppad: Some(cleanuppad),
-            operand: Some(OperandBundleDef::new("funclet", &[cleanuppad])),
-        }
+    pub fn msvc(cleanuppad: ValueRef) -> Option<Funclet> {
+        Some(Funclet {
+            cleanuppad: cleanuppad,
+            operand: OperandBundleDef::new("funclet", &[cleanuppad]),
+        })
     }
 
-    pub fn bundle(&self) -> Option<&OperandBundleDef> {
-        self.operand.as_ref()
-    }
-
-    pub fn cleanuppad(&self) -> Option<ValueRef> {
+    pub fn cleanuppad(&self) -> ValueRef {
         self.cleanuppad
     }
+
+    pub fn bundle(&self) -> &OperandBundleDef {
+        &self.operand
+    }
 }
 
-impl Clone for LandingPad {
-    fn clone(&self) -> LandingPad {
-        LandingPad {
+impl Clone for Funclet {
+    fn clone(&self) -> Funclet {
+        Funclet {
             cleanuppad: self.cleanuppad,
-            operand: self.cleanuppad.map(|p| {
-                OperandBundleDef::new("funclet", &[p])
-            }),
+            operand: OperandBundleDef::new("funclet", &[self.cleanuppad]),
         }
     }
 }

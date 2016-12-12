@@ -119,7 +119,7 @@ pub use self::EarlyExitLabel::*;
 use llvm::{BasicBlockRef, ValueRef};
 use base::{self, Lifetime};
 use common;
-use common::{BlockAndBuilder, FunctionContext, LandingPad};
+use common::{BlockAndBuilder, FunctionContext, Funclet};
 use debuginfo::{DebugLoc};
 use glue;
 use type_::Type;
@@ -343,7 +343,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         let mut bcx = bcx;
         for cleanup in scope.cleanups.iter().rev() {
-            bcx = cleanup.trans(bcx);
+            bcx = cleanup.trans(bcx.funclet(), bcx);
         }
         bcx
     }
@@ -430,7 +430,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                     bcx.call(
                                         bcx.fcx().eh_unwind_resume().reify(bcx.ccx()),
                                         &[exc_ptr],
-                                        bcx.lpad().and_then(|b| b.bundle()));
+                                        bcx.funclet().map(|b| b.bundle()));
                                 }
                             }
                             UnwindKind::CleanupPad(_) => {
@@ -495,7 +495,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 let mut bcx_out = bcx_in;
                 let len = scope.cleanups.len();
                 for cleanup in scope.cleanups.iter().rev().take(len - skip) {
-                    bcx_out = cleanup.trans(bcx_out);
+                    bcx_out = cleanup.trans(bcx_out.funclet(), bcx_out);
                 }
                 skip = 0;
                 exit_label.branch(&bcx_out, prev_llbb);
@@ -645,7 +645,7 @@ impl EarlyExitLabel {
     /// for the same kind of early exit label that `self` is.
     ///
     /// This function will appropriately configure `bcx` based on the kind of
-    /// label this is. For UnwindExit labels, the `lpad` field of the block will
+    /// label this is. For UnwindExit labels, the `funclet` field of the block will
     /// be set to `Some`, and for MSVC exceptions this function will generate a
     /// `cleanuppad` instruction at the start of the block so it may be jumped
     /// to in the future (e.g. so this block can be cached as an early exit).
@@ -656,11 +656,11 @@ impl EarlyExitLabel {
         match *self {
             UnwindExit(UnwindKind::CleanupPad(..)) => {
                 let pad = bcx.cleanup_pad(None, &[]);
-                bcx.set_lpad_ref(Some(bcx.fcx().lpad_arena.alloc(LandingPad::msvc(pad))));
+                bcx.set_funclet(Funclet::msvc(pad));
                 UnwindExit(UnwindKind::CleanupPad(pad))
             }
             UnwindExit(UnwindKind::LandingPad) => {
-                bcx.set_lpad_ref(Some(bcx.fcx().lpad_arena.alloc(LandingPad::gnu())));
+                bcx.set_funclet(Funclet::gnu());
                 *self
             }
         }
@@ -689,18 +689,20 @@ pub struct DropValue<'tcx> {
 }
 
 impl<'tcx> DropValue<'tcx> {
-    fn trans<'blk>(&self, bcx: BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
+    fn trans<'blk>(
+        &self,
+        funclet: Option<&'blk Funclet>,
+        bcx: BlockAndBuilder<'blk, 'tcx>,
+    ) -> BlockAndBuilder<'blk, 'tcx> {
         if self.is_immediate {
             let vp = base::alloc_ty(&bcx, self.ty, "");
             Lifetime::Start.call(&bcx, vp);
             base::store_ty(&bcx, self.val, vp, self.ty);
-            let lpad = bcx.lpad();
-            let bcx = glue::call_drop_glue(bcx, vp, self.ty, self.skip_dtor, lpad);
+            let bcx = glue::call_drop_glue(bcx, vp, self.ty, self.skip_dtor, funclet);
             Lifetime::End.call(&bcx, vp);
             bcx
         } else {
-            let lpad = bcx.lpad();
-            glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, lpad)
+            glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
         }
     }
 }
