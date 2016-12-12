@@ -505,12 +505,10 @@ impl<'tcx> CleanupScope<'tcx> {
         }
     }
 
-    fn cached_early_exit(&self,
-                         label: UnwindKind)
-                         -> Option<(BasicBlockRef, usize)> {
-        self.cached_early_exits.iter().rev().
-            find(|e| e.label == label).
-            map(|e| (e.cleanup_block, e.last_cleanup))
+    fn cached_early_exit(&self, label: UnwindKind) -> Option<(BasicBlockRef, usize)> {
+        self.cached_early_exits.iter().rev()
+            .find(|e| e.label == label)
+            .map(|e| (e.cleanup_block, e.last_cleanup))
     }
 
     fn add_cached_early_exit(&mut self,
@@ -525,8 +523,7 @@ impl<'tcx> CleanupScope<'tcx> {
 
     /// True if this scope has cleanups that need unwinding
     fn needs_invoke(&self) -> bool {
-        self.cached_landing_pad.is_some() ||
-            !self.cleanups.is_empty()
+        self.cached_landing_pad.is_some() || !self.cleanups.is_empty()
     }
 
     /// Returns a suitable name to use for the basic block that handles this cleanup scope
@@ -597,11 +594,8 @@ pub struct DropValue<'tcx> {
 }
 
 impl<'tcx> DropValue<'tcx> {
-    fn trans<'blk>(
-        &self,
-        funclet: Option<&'blk Funclet>,
-        bcx: BlockAndBuilder<'blk, 'tcx>,
-    ) -> BlockAndBuilder<'blk, 'tcx> {
+    fn trans<'blk>(&self, funclet: Option<&'blk Funclet>, bcx: BlockAndBuilder<'blk, 'tcx>)
+        -> BlockAndBuilder<'blk, 'tcx> {
         glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
     }
 }
