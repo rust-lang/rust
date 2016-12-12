@@ -299,6 +299,7 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
+    cmd.env("RUSTC_BOOTSTRAP", "1");
 
     let mut test_args = build.flags.cmd.test_args().join(" ");
     if build.config.quiet_tests {

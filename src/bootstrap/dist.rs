@@ -324,13 +324,6 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
     t!(fs::remove_dir_all(&image));
-
-    // Create plain source tarball
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", name))))
-       .arg("analysis")
-       .current_dir(&src);
-    build.run(&mut cmd);
 }
 
 /// Creates the `rust-src` installer component and the plain source tarball

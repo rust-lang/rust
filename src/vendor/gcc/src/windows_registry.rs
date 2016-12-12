@@ -211,6 +211,11 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
             let sub = otry!(vc_lib_subdir(target));
             tool.libs.push(path.join("lib").join(sub));
             tool.include.push(path.join("include"));
+            let atlmfc_path = path.join("atlmfc");
+            if atlmfc_path.exists() {
+                tool.libs.push(atlmfc_path.join("lib").join(sub));
+                tool.include.push(atlmfc_path.join("include"));
+            }
             Some(tool)
         }).next()
     }
