@@ -56,9 +56,11 @@ An unknown "kind" was specified for a link attribute. Erroneous code example:
 ```
 
 Please specify a valid "kind" value, from one of the following:
+
  * static
  * dylib
  * framework
+
 "##,
 
 E0459: r##"

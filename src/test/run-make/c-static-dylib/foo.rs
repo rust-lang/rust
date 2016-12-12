@@ -10,7 +10,7 @@
 
 #![crate_type = "dylib"]
 
-#[link(name = "cfoo")]
+#[link(name = "cfoo", kind = "static")]
 extern {
     fn foo();
 }

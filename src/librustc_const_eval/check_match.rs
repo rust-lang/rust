@@ -19,8 +19,6 @@ use eval::report_const_eval_err;
 
 use rustc::dep_graph::DepNode;
 
-use rustc::hir::pat_util::{pat_bindings, pat_contains_bindings};
-
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
@@ -31,7 +29,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
-use rustc::hir::intravisit::{self, Visitor, FnKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use rustc::hir::print::pat_to_string;
 use rustc::hir::{self, Pat, PatKind};
 
@@ -43,12 +41,16 @@ use syntax_pos::Span;
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, _expr: &hir::Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, _expr: &'tcx hir::Expr) {
         return // const, static and N in [T; N] - shouldn't contain anything
     }
 
-    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(..) = item.node {
             return // nothing worth match checking in a constant
         } else {
@@ -56,7 +58,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(..) = item.node {
             return // nothing worth match checking in a constant
         } else {
@@ -64,8 +66,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "check_match: closure outside of function")
         }
@@ -92,8 +94,12 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     param_env: &'a ty::ParameterEnvironment<'tcx>
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &hir::Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
         match ex.node {
@@ -104,7 +110,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, loc: &hir::Local) {
+    fn visit_local(&mut self, loc: &'tcx hir::Local) {
         intravisit::walk_local(self, loc);
 
         self.check_irrefutable(&loc.pat, false);
@@ -113,8 +119,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
         self.check_patterns(false, slice::ref_slice(&loc.pat));
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, n: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, n: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, n);
 
         for input in &fd.inputs {
@@ -204,7 +210,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = self.tcx.tables().node_id_to_type(scrut.id);
             if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited(self.tcx) {
+                if !pat_ty.is_uninhabited(Some(scrut.id), self.tcx) {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(self.tcx.sess, span,
                                                format!("non-exhaustive patterns: type {} \
@@ -262,26 +268,22 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), name, None) = p.node {
+        if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), _, name, None) = p.node {
             let pat_ty = cx.tcx.tables().pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
-                if edef.is_enum() {
-                    if let Def::Local(..) = cx.tcx.expect_def(p.id) {
-                        if edef.variants.iter().any(|variant| {
-                            variant.name == name.node && variant.ctor_kind == CtorKind::Const
-                        }) {
-                            let ty_path = cx.tcx.item_path_str(edef.did);
-                            let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
-                                "pattern binding `{}` is named the same as one \
-                                of the variants of the type `{}`",
-                                name.node, ty_path);
-                            help!(err,
-                                "if you meant to match on a variant, \
-                                consider making the path in the pattern qualified: `{}::{}`",
-                                ty_path, name.node);
-                            err.emit();
-                        }
-                    }
+                if edef.is_enum() && edef.variants.iter().any(|variant| {
+                    variant.name == name.node && variant.ctor_kind == CtorKind::Const
+                }) {
+                    let ty_path = cx.tcx.item_path_str(edef.did);
+                    let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
+                        "pattern binding `{}` is named the same as one \
+                         of the variants of the type `{}`",
+                        name.node, ty_path);
+                    help!(err,
+                        "if you meant to match on a variant, \
+                        consider making the path in the pattern qualified: `{}::{}`",
+                        ty_path, name.node);
+                    err.emit();
                 }
             }
         }
@@ -290,13 +292,13 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
 }
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
-fn pat_is_catchall(dm: &DefMap, pat: &Pat) -> bool {
+fn pat_is_catchall(pat: &Pat) -> bool {
     match pat.node {
         PatKind::Binding(.., None) => true,
-        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(dm, s),
-        PatKind::Ref(ref s, _) => pat_is_catchall(dm, s),
+        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
+        PatKind::Ref(ref s, _) => pat_is_catchall(s),
         PatKind::Tuple(ref v, _) => v.iter().all(|p| {
-            pat_is_catchall(dm, &p)
+            pat_is_catchall(&p)
         }),
         _ => false
     }
@@ -374,7 +376,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }
             if guard.is_none() {
                 seen.push(v);
-                if catchall.is_none() && pat_is_catchall(&cx.tcx.def_map.borrow(), hir_pat) {
+                if catchall.is_none() && pat_is_catchall(hir_pat) {
                     catchall = Some(pat.span);
                 }
             }
@@ -454,7 +456,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
     for pat in pats {
-        pat_bindings(&pat, |bm, _, span, _path| {
+        pat.each_binding(|bm, _, span, _path| {
             if let hir::BindByRef(..) = bm {
                 by_ref_span = Some(span);
             }
@@ -465,7 +467,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| pat_contains_bindings(&p)) {
+        if sub.map_or(false, |p| p.contains_bindings()) {
             struct_span_err!(cx.tcx.sess, p.span, E0007,
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, &format!("binds an already bound by-move value by moving it"))
@@ -486,7 +488,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 
     for pat in pats {
         pat.walk(|p| {
-            if let PatKind::Binding(hir::BindByValue(..), _, ref sub) = p.node {
+            if let PatKind::Binding(hir::BindByValue(..), _, _, ref sub) = p.node {
                 let pat_ty = cx.tcx.tables().node_id_to_type(p.id);
                 if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
                     check_move(p, sub.as_ref().map(|p| &**p));
@@ -563,6 +565,10 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+
     fn visit_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatKind::Binding(.., ref subpat) => {

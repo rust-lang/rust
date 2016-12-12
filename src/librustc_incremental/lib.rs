@@ -19,8 +19,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
@@ -50,6 +48,7 @@ pub mod ich;
 pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::compute_incremental_hashes_map;
 pub use calculate_svh::IncrementalHashesMap;
+pub use calculate_svh::hasher::IchHasher;
 pub use persist::load_dep_graph;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;

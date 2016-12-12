@@ -194,6 +194,14 @@ impl SocketAddr {
 
 impl SocketAddrV4 {
     /// Creates a new socket address from the (ip, port) pair.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 {
@@ -207,6 +215,15 @@ impl SocketAddrV4 {
     }
 
     /// Returns the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// assert_eq!(socket.ip(), &Ipv4Addr::new(127, 0, 0, 1));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
         unsafe {
@@ -215,18 +232,47 @@ impl SocketAddrV4 {
     }
 
     /// Change the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let mut socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// socket.set_ip(Ipv4Addr::new(192, 168, 0, 1));
+    /// assert_eq!(socket.ip(), &Ipv4Addr::new(192, 168, 0, 1));
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: Ipv4Addr) {
         self.inner.sin_addr = *new_ip.as_inner()
     }
 
     /// Returns the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// assert_eq!(socket.port(), 8080);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
         ntoh(self.inner.sin_port)
     }
 
     /// Change the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let mut socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// socket.set_port(4242);
+    /// assert_eq!(socket.port(), 4242);
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
         self.inner.sin_port = hton(new_port);
@@ -236,6 +282,14 @@ impl SocketAddrV4 {
 impl SocketAddrV6 {
     /// Creates a new socket address from the ip/port/flowinfo/scope_id
     /// components.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(ip: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32)
                -> SocketAddrV6 {
@@ -252,6 +306,15 @@ impl SocketAddrV6 {
     }
 
     /// Returns the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// assert_eq!(socket.ip(), &Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv6Addr {
         unsafe {
@@ -260,18 +323,47 @@ impl SocketAddrV6 {
     }
 
     /// Change the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// socket.set_ip(Ipv6Addr::new(76, 45, 0, 0, 0, 0, 0, 0));
+    /// assert_eq!(socket.ip(), &Ipv6Addr::new(76, 45, 0, 0, 0, 0, 0, 0));
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: Ipv6Addr) {
         self.inner.sin6_addr = *new_ip.as_inner()
     }
 
     /// Returns the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// assert_eq!(socket.port(), 8080);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
         ntoh(self.inner.sin6_port)
     }
 
     /// Change the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// socket.set_port(4242);
+    /// assert_eq!(socket.port(), 4242);
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
         self.inner.sin6_port = hton(new_port);
@@ -279,12 +371,31 @@ impl SocketAddrV6 {
 
     /// Returns the flow information associated with this address,
     /// corresponding to the `sin6_flowinfo` field in C.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 10, 0);
+    /// assert_eq!(socket.flowinfo(), 10);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flowinfo(&self) -> u32 {
         self.inner.sin6_flowinfo
     }
 
     /// Change the flow information associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 10, 0);
+    /// socket.set_flowinfo(56);
+    /// assert_eq!(socket.flowinfo(), 56);
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_flowinfo(&mut self, new_flowinfo: u32) {
         self.inner.sin6_flowinfo = new_flowinfo;
@@ -292,12 +403,31 @@ impl SocketAddrV6 {
 
     /// Returns the scope ID associated with this address,
     /// corresponding to the `sin6_scope_id` field in C.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 78);
+    /// assert_eq!(socket.scope_id(), 78);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn scope_id(&self) -> u32 {
         self.inner.sin6_scope_id
     }
 
     /// Change the scope ID associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV6, Ipv6Addr};
+    ///
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 78);
+    /// socket.set_scope_id(42);
+    /// assert_eq!(socket.scope_id(), 42);
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_scope_id(&mut self, new_scope_id: u32) {
         self.inner.sin6_scope_id = new_scope_id;

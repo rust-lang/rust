@@ -17,7 +17,7 @@
 mod rustrt {
     extern crate libc;
 
-    #[link(name = "rust_test_helpers")]
+    #[link(name = "rust_test_helpers", kind = "static")]
     extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }

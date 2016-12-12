@@ -22,4 +22,5 @@ pub fn main() {}
 
 #[cfg(rpass2)]
 #[rustc_dirty(label="Hir", cfg="rpass2")]
+#[rustc_dirty(label="HirBody", cfg="rpass2")]
 pub fn main() {}

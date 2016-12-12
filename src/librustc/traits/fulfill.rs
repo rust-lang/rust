@@ -17,8 +17,8 @@ use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProce
 use std::marker::PhantomData;
 use std::mem;
 use syntax::ast;
-use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, NodeMap};
+use hir::def_id::DefId;
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -230,18 +230,21 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         normalized.value
     }
 
-    pub fn register_builtin_bound(&mut self,
-                                  infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  ty: Ty<'tcx>,
-                                  builtin_bound: ty::BuiltinBound,
-                                  cause: ObligationCause<'tcx>)
+    pub fn register_bound(&mut self,
+                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                          ty: Ty<'tcx>,
+                          def_id: DefId,
+                          cause: ObligationCause<'tcx>)
     {
-        match infcx.tcx.predicate_for_builtin_bound(cause, builtin_bound, 0, ty) {
-            Ok(predicate) => {
-                self.register_predicate_obligation(infcx, predicate);
-            }
-            Err(ErrorReported) => { }
-        }
+        let trait_ref = ty::TraitRef {
+            def_id: def_id,
+            substs: infcx.tcx.mk_substs_trait(ty, &[]),
+        };
+        self.register_predicate_obligation(infcx, Obligation {
+            cause: cause,
+            recursion_depth: 0,
+            predicate: trait_ref.to_predicate()
+        });
     }
 
     pub fn register_region_obligation(&mut self,

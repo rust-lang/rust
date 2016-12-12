@@ -74,8 +74,8 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
-    fn visit_item(&mut self, item: &ast::Item) {
+impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &'a ast::Item) {
         visit::walk_item(self, item);
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
@@ -103,6 +103,12 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
                     }
 
                     ViewPathList(_, ref list) => {
+                        if list.len() == 0 {
+                            self.unused_imports
+                                .entry(item.id)
+                                .or_insert_with(NodeMap)
+                                .insert(item.id, item.span);
+                        }
                         for i in list {
                             self.check_import(item.id, i.node.id, i.span);
                         }

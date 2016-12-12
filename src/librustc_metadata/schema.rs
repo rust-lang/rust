@@ -34,15 +34,17 @@ pub fn rustc_version() -> String {
 
 /// Metadata encoding version.
 /// NB: increment this if you change the format of metadata such that
-/// the rustc version can't be found to compare with `RUSTC_VERSION`.
-pub const METADATA_VERSION: u8 = 3;
+/// the rustc version can't be found to compare with `rustc_version()`.
+pub const METADATA_VERSION: u8 = 4;
 
 /// Metadata header which includes `METADATA_VERSION`.
 /// To get older versions of rustc to ignore this metadata,
 /// there are 4 zero bytes at the start, which are treated
 /// as a length of 0 by old compilers.
 ///
-/// This header is followed by the position of the `CrateRoot`.
+/// This header is followed by the position of the `CrateRoot`,
+/// which is encoded as a 32-bit big-endian unsigned integer,
+/// and further followed by the rustc version string.
 pub const METADATA_HEADER: &'static [u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
@@ -163,7 +165,6 @@ pub enum LazyState {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
-    pub rustc_version: String,
     pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
@@ -179,7 +180,7 @@ pub struct CrateRoot {
     pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub impls: LazySeq<TraitImpls>,
-    pub reachable_ids: LazySeq<DefIndex>,
+    pub exported_symbols: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
 }
 
@@ -197,17 +198,10 @@ pub struct TraitImpls {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MacroDef {
-    pub name: ast::Name,
-    pub attrs: Vec<ast::Attribute>,
-    pub span: Span,
-    pub body: String,
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
 pub struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: ty::Visibility,
+    pub span: Lazy<Span>,
     pub def_key: Lazy<hir::map::DefKey>,
     pub attributes: LazySeq<ast::Attribute>,
     pub children: LazySeq<DefIndex>,
@@ -257,6 +251,11 @@ pub struct ModData {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
+pub struct MacroDef {
+    pub body: String,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData {
     pub constness: hir::Constness,
     pub arg_names: LazySeq<ast::Name>,
@@ -277,7 +276,6 @@ pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_default_impl: bool,
-    pub trait_ref: Lazy<ty::TraitRef<'tcx>>,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 

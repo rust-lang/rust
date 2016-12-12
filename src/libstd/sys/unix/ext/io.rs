@@ -43,7 +43,7 @@ pub trait AsRawFd {
 /// descriptor.
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawFd {
-    /// Constructs a new instances of `Self` from the given raw file
+    /// Constructs a new instance of `Self` from the given raw file
     /// descriptor.
     ///
     /// This function **consumes ownership** of the specified file

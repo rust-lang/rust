@@ -13,6 +13,7 @@
 use super::FnCtxt;
 use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use rustc::hir;
@@ -179,7 +180,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var();
+        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
 
         let return_ty = match self.lookup_op_method(expr, lhs_ty, vec![rhs_ty_var],
                                                     Symbol::intern(name), trait_def_id,

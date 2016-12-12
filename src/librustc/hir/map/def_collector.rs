@@ -11,7 +11,7 @@
 use hir::map::definitions::*;
 
 use hir;
-use hir::intravisit;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use middle::cstore::InlinedItem;
@@ -135,8 +135,8 @@ impl<'a> DefCollector<'a> {
     }
 }
 
-impl<'a> visit::Visitor for DefCollector<'a> {
-    fn visit_item(&mut self, i: &Item) {
+impl<'a> visit::Visitor<'a> for DefCollector<'a> {
+    fn visit_item(&mut self, i: &'a Item) {
         debug!("visit_item: {:?}", i);
 
         // Pick the def data. This need not be unique, but the more
@@ -155,7 +155,20 @@ impl<'a> visit::Visitor for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name.as_str()),
             ItemKind::Mac(..) if i.id == DUMMY_NODE_ID => return, // Scope placeholder
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
-            ItemKind::Use(..) => DefPathData::Misc,
+            ItemKind::Use(ref view_path) => {
+                match view_path.node {
+                    ViewPathGlob(..) => {}
+
+                    // FIXME(eddyb) Should use the real name. Which namespace?
+                    ViewPathSimple(..) => {}
+                    ViewPathList(_, ref imports) => {
+                        for import in imports {
+                            self.create_def(import.node.id, DefPathData::Misc);
+                        }
+                    }
+                }
+                DefPathData::Misc
+            }
         };
         let def = self.create_def(i.id, def_data);
 
@@ -198,7 +211,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         let def = self.create_def(foreign_item.id,
                                   DefPathData::ValueNs(foreign_item.ident.name.as_str()));
 
@@ -207,7 +220,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &Generics) {
+    fn visit_generics(&mut self, generics: &'a Generics) {
         for ty_param in generics.ty_params.iter() {
             self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.ident.name.as_str()));
         }
@@ -215,7 +228,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         visit::walk_generics(self, generics);
     }
 
-    fn visit_trait_item(&mut self, ti: &TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name.as_str()),
@@ -233,7 +246,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.name.as_str()),
@@ -251,7 +264,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         });
     }
 
-    fn visit_pat(&mut self, pat: &Pat) {
+    fn visit_pat(&mut self, pat: &'a Pat) {
         let parent_def = self.parent_def;
 
         match pat.node {
@@ -267,7 +280,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         self.parent_def = parent_def;
     }
 
-    fn visit_expr(&mut self, expr: &Expr) {
+    fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = self.parent_def;
 
         match expr.node {
@@ -284,7 +297,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         self.parent_def = parent_def;
     }
 
-    fn visit_ty(&mut self, ty: &Ty) {
+    fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
             TyKind::Array(_, ref length) => self.visit_ast_const_integer(length),
@@ -296,15 +309,15 @@ impl<'a> visit::Visitor for DefCollector<'a> {
         visit::walk_ty(self, ty);
     }
 
-    fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
+    fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
         self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name.as_str()));
     }
 
-    fn visit_macro_def(&mut self, macro_def: &MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'a MacroDef) {
         self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name.as_str()));
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt) {
+    fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.node {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id, false),
             _ => visit::walk_stmt(self, stmt),
@@ -313,7 +326,18 @@ impl<'a> visit::Visitor for DefCollector<'a> {
 }
 
 // We walk the HIR rather than the AST when reading items from metadata.
-impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
+impl<'ast> Visitor<'ast> for DefCollector<'ast> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        // note however that we override `visit_body` below
+        NestedVisitorMap::None
+    }
+
+    fn visit_body(&mut self, id: hir::ExprId) {
+        if let Some(krate) = self.hir_crate {
+            self.visit_expr(krate.expr(id));
+        }
+    }
+
     fn visit_item(&mut self, i: &'ast hir::Item) {
         debug!("visit_item: {:?}", i);
 
@@ -423,7 +447,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_pat(&mut self, pat: &'ast hir::Pat) {
         let parent_def = self.parent_def;
 
-        if let hir::PatKind::Binding(_, name, _) = pat.node {
+        if let hir::PatKind::Binding(_, _, name, _) = pat.node {
             let def = self.create_def(pat.id, DefPathData::Binding(name.node.as_str()));
             self.parent_def = Some(def);
         }

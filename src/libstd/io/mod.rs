@@ -256,7 +256,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use cmp;
-use rustc_unicode::str as core_str;
+use std_unicode::str as core_str;
 use error as std_error;
 use fmt;
 use result;

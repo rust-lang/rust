@@ -589,11 +589,11 @@ please see the [Documentation chapter](documentation.html).
 
 # Testing and concurrency
 
-One thing that is important to note when writing tests are run concurrently
-using threads. For this reason you should take care that your tests are written
-in such a way as to not depend on each-other, or on any shared state. "Shared
-state" can also include the environment, such as the current working directory,
-or environment variables.
+One thing that is important to note when writing tests is that they may be run
+concurrently using threads. For this reason you should take care that your tests
+are written in such a way as to not depend on each-other, or on any shared
+state. "Shared state" can also include the environment, such as the current
+working directory, or environment variables.
 
 If this is an issue it is possible to control this concurrency, either by
 setting the environment variable `RUST_TEST_THREADS`, or by passing the argument

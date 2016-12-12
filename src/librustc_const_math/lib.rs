@@ -25,7 +25,6 @@
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(question_mark))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

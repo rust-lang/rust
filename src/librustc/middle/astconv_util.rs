@@ -14,14 +14,14 @@
  * Almost certainly this could (and should) be refactored out of existence.
  */
 
+use hir;
 use hir::def::Def;
 use ty::{Ty, TyCtxt};
 
 use syntax_pos::Span;
-use hir as ast;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn prohibit_type_params(self, segments: &[ast::PathSegment]) {
+    pub fn prohibit_type_params(self, segments: &[hir::PathSegment]) {
         for segment in segments {
             for typ in segment.parameters.types() {
                 struct_span_err!(self.sess, typ.span, E0109,
@@ -53,25 +53,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn prim_ty_to_ty(self,
-                         segments: &[ast::PathSegment],
-                         nty: ast::PrimTy)
+                         segments: &[hir::PathSegment],
+                         nty: hir::PrimTy)
                          -> Ty<'tcx> {
         self.prohibit_type_params(segments);
         match nty {
-            ast::TyBool => self.types.bool,
-            ast::TyChar => self.types.char,
-            ast::TyInt(it) => self.mk_mach_int(it),
-            ast::TyUint(uit) => self.mk_mach_uint(uit),
-            ast::TyFloat(ft) => self.mk_mach_float(ft),
-            ast::TyStr => self.mk_str()
+            hir::TyBool => self.types.bool,
+            hir::TyChar => self.types.char,
+            hir::TyInt(it) => self.mk_mach_int(it),
+            hir::TyUint(uit) => self.mk_mach_uint(uit),
+            hir::TyFloat(ft) => self.mk_mach_float(ft),
+            hir::TyStr => self.mk_str()
         }
     }
 
     /// If a type in the AST is a primitive type, return the ty::Ty corresponding
     /// to it.
-    pub fn ast_ty_to_prim_ty(self, ast_ty: &ast::Ty) -> Option<Ty<'tcx>> {
-        if let ast::TyPath(None, ref path) = ast_ty.node {
-            if let Def::PrimTy(nty) = self.expect_def(ast_ty.id) {
+    pub fn ast_ty_to_prim_ty(self, ast_ty: &hir::Ty) -> Option<Ty<'tcx>> {
+        if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+            if let Def::PrimTy(nty) = path.def {
                 Some(self.prim_ty_to_ty(&path.segments, nty))
             } else {
                 None

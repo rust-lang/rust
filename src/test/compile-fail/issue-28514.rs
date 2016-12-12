@@ -21,7 +21,7 @@ mod inner {
         fn b(&self) { }
     }
 
-    pub trait C: A + B { //~ ERROR private trait in public interface
+    pub trait C: A + B { //~ ERROR private trait `inner::A` in public interface
                          //~^ WARN will become a hard error
         fn c(&self) { }
     }

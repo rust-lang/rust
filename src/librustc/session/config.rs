@@ -262,14 +262,13 @@ top_level_options!(
         //            much sense: The search path can stay the same while the
         //            things discovered there might have changed on disk.
         search_paths: SearchPaths [TRACKED],
-        libs: Vec<(String, cstore::NativeLibraryKind)> [TRACKED],
+        libs: Vec<(String, Option<String>, cstore::NativeLibraryKind)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
         target_triple: String [TRACKED],
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
-        mir_opt_level: usize [TRACKED],
 
         // if Some, enable incremental compilation, using the given
         // directory to store intermediate results
@@ -308,6 +307,7 @@ pub enum PrintRequest {
     TargetFeatures,
     RelocationModels,
     CodeModels,
+    TargetSpec,
 }
 
 pub enum Input {
@@ -434,7 +434,6 @@ pub fn basic_options() -> Options {
         maybe_sysroot: None,
         target_triple: host_triple().to_string(),
         test: false,
-        mir_opt_level: 1,
         incremental: None,
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
@@ -885,6 +884,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "enable incremental compilation (experimental)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
+    incremental_dump_hash: bool = (false, parse_bool, [UNTRACKED],
+        "dump hash information in textual format to stdout"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
           "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -909,10 +910,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "keep the AST after lowering it to HIR"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
           "show spans for compiler debugging (expr|pat|ty)"),
+    print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
+          "print layout information for each type encountered"),
     print_trans_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "print the result of the translation item collection pass"),
-    mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
-          "set the MIR optimization level (0-3)"),
+    mir_opt_level: usize = (1, parse_uint, [TRACKED],
+          "set the MIR optimization level (0-3, default: 1)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -921,6 +924,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some statistics about AST and HIR"),
+    mir_stats: bool = (false, parse_bool, [UNTRACKED],
+          "print some statistics about MIR"),
+    always_encode_mir: bool = (false, parse_bool, [TRACKED],
+          "encode MIR of all functions into the crate metadata"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1136,6 +1143,13 @@ mod opt {
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+    let mut print_opts = vec!["crate-name", "file-names", "sysroot", "cfg",
+                              "target-list", "target-cpus", "target-features",
+                              "relocation-models", "code-models"];
+    if nightly_options::is_nightly_build() {
+        print_opts.push("target-spec-json");
+    }
+
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
@@ -1155,9 +1169,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                               the compiler to emit",
                  "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
-                               print on stdout",
-                 "[crate-name|file-names|sysroot|cfg|target-list|target-cpus|\
-                   target-features|relocation-models|code-models]"),
+                               print on stdout", &print_opts.join("|")),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1308,8 +1320,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let debugging_opts = build_debugging_options(matches, error_format);
 
-    let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
-
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
@@ -1437,6 +1447,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
+        // Parse string of the form "[KIND=]lib[:new_name]",
+        // where KIND is one of "dylib", "framework", "static".
         let mut parts = s.splitn(2, '=');
         let kind = parts.next().unwrap();
         let (name, kind) = match (parts.next(), kind) {
@@ -1450,7 +1462,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                                                  s));
             }
         };
-        (name.to_string(), kind)
+        let mut name_parts = name.splitn(2, ':');
+        let name = name_parts.next().unwrap();
+        let new_name = name_parts.next();
+        (name.to_string(), new_name.map(|n| n.to_string()), kind)
     }).collect();
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
@@ -1467,6 +1482,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
+            "target-spec-json" if nightly_options::is_unstable_enabled(matches)
+                => PrintRequest::TargetSpec,
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
@@ -1511,7 +1528,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         test: test,
-        mir_opt_level: mir_opt_level,
         incremental: incremental,
         debugging_opts: debugging_opts,
         prints: prints,
@@ -1714,8 +1730,8 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, cstore::NativeLibraryKind));
-
+    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
+                                                 cstore::NativeLibraryKind));
     impl DepTrackingHash for SearchPaths {
         fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
             let mut elems: Vec<_> = self
@@ -1735,6 +1751,21 @@ mod dep_tracking {
             DepTrackingHash::hash(&self.0, hasher, error_format);
             Hash::hash(&1, hasher);
             DepTrackingHash::hash(&self.1, hasher, error_format);
+        }
+    }
+
+    impl<T1, T2, T3> DepTrackingHash for (T1, T2, T3)
+        where T1: DepTrackingHash,
+              T2: DepTrackingHash,
+              T3: DepTrackingHash
+    {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+            Hash::hash(&0, hasher);
+            DepTrackingHash::hash(&self.0, hasher, error_format);
+            Hash::hash(&1, hasher);
+            DepTrackingHash::hash(&self.1, hasher, error_format);
+            Hash::hash(&2, hasher);
+            DepTrackingHash::hash(&self.2, hasher, error_format);
         }
     }
 
@@ -2141,29 +2172,37 @@ mod tests {
         let mut v1 = super::basic_options();
         let mut v2 = super::basic_options();
         let mut v3 = super::basic_options();
+        let mut v4 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), cstore::NativeStatic),
-                       (String::from("b"), cstore::NativeFramework),
-                       (String::from("c"), cstore::NativeUnknown)];
+        v1.libs = vec![(String::from("a"), None, cstore::NativeStatic),
+                       (String::from("b"), None, cstore::NativeFramework),
+                       (String::from("c"), None, cstore::NativeUnknown)];
 
         // Change label
-        v2.libs = vec![(String::from("a"), cstore::NativeStatic),
-                       (String::from("X"), cstore::NativeFramework),
-                       (String::from("c"), cstore::NativeUnknown)];
+        v2.libs = vec![(String::from("a"), None, cstore::NativeStatic),
+                       (String::from("X"), None, cstore::NativeFramework),
+                       (String::from("c"), None, cstore::NativeUnknown)];
 
         // Change kind
-        v3.libs = vec![(String::from("a"), cstore::NativeStatic),
-                       (String::from("b"), cstore::NativeStatic),
-                       (String::from("c"), cstore::NativeUnknown)];
+        v3.libs = vec![(String::from("a"), None, cstore::NativeStatic),
+                       (String::from("b"), None, cstore::NativeStatic),
+                       (String::from("c"), None, cstore::NativeUnknown)];
+
+        // Change new-name
+        v4.libs = vec![(String::from("a"), None, cstore::NativeStatic),
+                       (String::from("b"), Some(String::from("X")), cstore::NativeFramework),
+                       (String::from("c"), None, cstore::NativeUnknown)];
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
+        assert!(v1.dep_tracking_hash() != v4.dep_tracking_hash());
 
         // Check clone
         assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
         assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
         assert_eq!(v3.dep_tracking_hash(), v3.clone().dep_tracking_hash());
+        assert_eq!(v4.dep_tracking_hash(), v4.clone().dep_tracking_hash());
     }
 
     #[test]
@@ -2173,17 +2212,17 @@ mod tests {
         let mut v3 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), cstore::NativeStatic),
-                       (String::from("b"), cstore::NativeFramework),
-                       (String::from("c"), cstore::NativeUnknown)];
+        v1.libs = vec![(String::from("a"), None, cstore::NativeStatic),
+                       (String::from("b"), None, cstore::NativeFramework),
+                       (String::from("c"), None, cstore::NativeUnknown)];
 
-        v2.libs = vec![(String::from("b"), cstore::NativeFramework),
-                       (String::from("a"), cstore::NativeStatic),
-                       (String::from("c"), cstore::NativeUnknown)];
+        v2.libs = vec![(String::from("b"), None, cstore::NativeFramework),
+                       (String::from("a"), None, cstore::NativeStatic),
+                       (String::from("c"), None, cstore::NativeUnknown)];
 
-        v3.libs = vec![(String::from("c"), cstore::NativeUnknown),
-                       (String::from("a"), cstore::NativeStatic),
-                       (String::from("b"), cstore::NativeFramework)];
+        v3.libs = vec![(String::from("c"), None, cstore::NativeUnknown),
+                       (String::from("a"), None, cstore::NativeStatic),
+                       (String::from("b"), None, cstore::NativeFramework)];
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
@@ -2431,7 +2470,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.mir_opt_level = Some(1);
+        opts.debugging_opts.mir_opt_level = 3;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 }

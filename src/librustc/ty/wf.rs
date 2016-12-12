@@ -17,7 +17,7 @@ use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
-use util::common::ErrorReported;
+use middle::lang_items;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -282,14 +282,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
-            match self.infcx.tcx.trait_ref_for_builtin_bound(ty::BoundSized, subty) {
-                Ok(trait_ref) => {
-                    self.out.push(
-                        traits::Obligation::new(cause,
-                                                trait_ref.to_predicate()));
-                }
-                Err(ErrorReported) => { }
-            }
+            let trait_ref = ty::TraitRef {
+                def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
+            };
+            self.out.push(traits::Obligation::new(cause, trait_ref.to_predicate()));
         }
     }
 
@@ -298,7 +295,6 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
     fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
-        let tcx = self.infcx.tcx;
         let mut subtys = ty0.walk();
         while let Some(ty) = subtys.next() {
             match ty.sty {
@@ -377,12 +373,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // of whatever returned this exact `impl Trait`.
                 }
 
-                ty::TyTrait(ref data) => {
+                ty::TyDynamic(data, r) => {
                     // WfObject
                     //
                     // Here, we defer WF checking due to higher-ranked
                     // regions. This is perhaps not ideal.
-                    self.from_object_ty(ty, data);
+                    self.from_object_ty(ty, data, r);
 
                     // FIXME(#27579) RFC also considers adding trait
                     // obligations that don't refer to Self and
@@ -391,15 +387,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     let cause = self.cause(traits::MiscObligation);
 
                     let component_traits =
-                        data.builtin_bounds.iter().flat_map(|bound| {
-                            tcx.lang_items.from_builtin_kind(bound).ok()
-                        })
-                        .chain(Some(data.principal.def_id()));
+                        data.auto_traits().chain(data.principal().map(|p| p.def_id()));
                     self.out.extend(
-                        component_traits.map(|did| { traits::Obligation::new(
+                        component_traits.map(|did| traits::Obligation::new(
                             cause.clone(),
                             ty::Predicate::ObjectSafe(did)
-                        )})
+                        ))
                     );
                 }
 
@@ -456,7 +449,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                   .collect()
     }
 
-    fn from_object_ty(&mut self, ty: Ty<'tcx>, data: &ty::TraitObject<'tcx>) {
+    fn from_object_ty(&mut self, ty: Ty<'tcx>,
+                      data: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
+                      region: &'tcx ty::Region) {
         // Imagine a type like this:
         //
         //     trait Foo { }
@@ -491,11 +486,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
         if !data.has_escaping_regions() {
             let implicit_bounds =
-                object_region_bounds(self.infcx.tcx,
-                                     data.principal,
-                                     data.builtin_bounds);
+                object_region_bounds(self.infcx.tcx, data);
 
-            let explicit_bound = data.region_bound;
+            let explicit_bound = region;
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
@@ -514,8 +507,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    principal: ty::PolyExistentialTraitRef<'tcx>,
-    others: ty::BuiltinBounds)
+    existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
     -> Vec<&'tcx ty::Region>
 {
     // Since we don't actually *know* the self type for an object,
@@ -523,8 +515,13 @@ pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     // a skolemized type.
     let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
-    let mut predicates = others.to_predicates(tcx, open_ty);
-    predicates.push(principal.with_self_ty(tcx, open_ty).to_predicate());
+    let predicates = existential_predicates.iter().filter_map(|predicate| {
+        if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {
+            None
+        } else {
+            Some(predicate.with_self_ty(tcx, open_ty))
+        }
+    }).collect();
 
     tcx.required_region_bounds(open_ty, predicates)
 }

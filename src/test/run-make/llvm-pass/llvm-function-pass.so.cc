@@ -28,7 +28,12 @@ namespace {
 
     bool runOnFunction(Function &F) override;
 
-    const char *getPassName() const override {
+#if LLVM_VERSION_MAJOR >= 4
+    StringRef
+#else
+    const char *
+#endif
+    getPassName() const override {
       return "Some LLVM pass";
     }
 

@@ -25,7 +25,7 @@ all:
 
 	# Should not link dead code...
 	$(RUSTC) -Z print-link-args dummy.rs 2>&1 | \
-		grep -e '--gc-sections' -e '-dead_strip' -e '/OPT:REF,ICF'
+		grep -e '--gc-sections' -e '-dead_strip' -e '/OPT:REF'
 	# ... unless you specifically ask to keep it
 	$(RUSTC) -Z print-link-args -C link-dead-code dummy.rs 2>&1 | \
-		(! grep -e '--gc-sections' -e '-dead_strip' -e '/OPT:REF,ICF')
+		(! grep -e '--gc-sections' -e '-dead_strip' -e '/OPT:REF')

@@ -18,20 +18,31 @@
 use session::Session;
 use syntax::ast;
 
-pub fn update_recursion_limit(sess: &Session, krate: &ast::Crate) {
+use std::cell::Cell;
+
+pub fn update_limits(sess: &Session, krate: &ast::Crate) {
+    update_limit(sess, krate, &sess.recursion_limit, "recursion_limit",
+                 "recursion limit");
+    update_limit(sess, krate, &sess.type_length_limit, "type_length_limit",
+                 "type length limit");
+}
+
+fn update_limit(sess: &Session, krate: &ast::Crate, limit: &Cell<usize>,
+                name: &str, description: &str) {
     for attr in &krate.attrs {
-        if !attr.check_name("recursion_limit") {
+        if !attr.check_name(name) {
             continue;
         }
 
         if let Some(s) = attr.value_str() {
             if let Some(n) = s.as_str().parse().ok() {
-                sess.recursion_limit.set(n);
+                limit.set(n);
                 return;
             }
         }
 
-        span_err!(sess, attr.span, E0296, "malformed recursion limit attribute, \
-                                  expected #![recursion_limit=\"N\"]");
+        span_err!(sess, attr.span, E0296,
+                  "malformed {} attribute, expected #![{}=\"N\"]",
+                  description, name);
     }
 }

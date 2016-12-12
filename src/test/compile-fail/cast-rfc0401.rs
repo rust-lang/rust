@@ -115,4 +115,9 @@ fn main()
     let _ = cf as *const Bar;
     //~^ ERROR casting
     //~^^ NOTE vtable kinds
+
+    vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
+    //~^ ERROR casting `&{float}` as `f32` is invalid
+    //~| NOTE cannot cast `&{float}` as `f32`
+    //~| NOTE did you mean `*s`?
 }

@@ -19,7 +19,9 @@ use hir;
 use util::nodemap::FxHashMap;
 
 /// A trait's definition with type information.
-pub struct TraitDef<'tcx> {
+pub struct TraitDef {
+    pub def_id: DefId,
+
     pub unsafety: hir::Unsafety,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
@@ -27,15 +29,6 @@ pub struct TraitDef<'tcx> {
     /// sugar. This is a temporary thing -- eventually any trait wil
     /// be usable with the sugar (or without it).
     pub paren_sugar: bool,
-
-    /// Generic type definitions. Note that `Self` is listed in here
-    /// as having a single bound, the trait itself (e.g., in the trait
-    /// `Eq`, there is a single bound `Self : Eq`). This is so that
-    /// default methods get to assume that the `Self` parameters
-    /// implements the trait.
-    pub generics: &'tcx ty::Generics<'tcx>,
-
-    pub trait_ref: ty::TraitRef<'tcx>,
 
     // Impls of a trait. To allow for quicker lookup, the impls are indexed by a
     // simplified version of their `Self` type: impls with a simplifiable `Self`
@@ -72,28 +65,22 @@ pub struct TraitDef<'tcx> {
     pub def_path_hash: u64,
 }
 
-impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
-    pub fn new(unsafety: hir::Unsafety,
+impl<'a, 'gcx, 'tcx> TraitDef {
+    pub fn new(def_id: DefId,
+               unsafety: hir::Unsafety,
                paren_sugar: bool,
-               generics: &'tcx ty::Generics<'tcx>,
-               trait_ref: ty::TraitRef<'tcx>,
                def_path_hash: u64)
-               -> TraitDef<'tcx> {
+               -> TraitDef {
         TraitDef {
+            def_id: def_id,
             paren_sugar: paren_sugar,
             unsafety: unsafety,
-            generics: generics,
-            trait_ref: trait_ref,
             nonblanket_impls: RefCell::new(FxHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
             specialization_graph: RefCell::new(traits::specialization_graph::Graph::new()),
             def_path_hash: def_path_hash,
         }
-    }
-
-    pub fn def_id(&self) -> DefId {
-        self.trait_ref.def_id
     }
 
     // returns None if not yet calculated
@@ -117,11 +104,11 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
     }
 
     fn write_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
-        tcx.dep_graph.write(DepNode::TraitImpls(self.trait_ref.def_id));
+        tcx.dep_graph.write(DepNode::TraitImpls(self.def_id));
     }
 
     fn read_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
-        tcx.dep_graph.read(DepNode::TraitImpls(self.trait_ref.def_id));
+        tcx.dep_graph.read(DepNode::TraitImpls(self.def_id));
     }
 
     /// Records a basic trait-to-implementation mapping.
@@ -203,13 +190,13 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
             .insert(tcx, impl_def_id)
     }
 
-    pub fn ancestors(&'a self, of_impl: DefId) -> specialization_graph::Ancestors<'a, 'tcx> {
+    pub fn ancestors(&'a self, of_impl: DefId) -> specialization_graph::Ancestors<'a> {
         specialization_graph::ancestors(self, of_impl)
     }
 
     pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, mut f: F) {
         self.read_trait_impls(tcx);
-        tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
+        tcx.populate_implementations_for_trait_if_necessary(self.def_id);
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);
@@ -231,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
     {
         self.read_trait_impls(tcx);
 
-        tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
+        tcx.populate_implementations_for_trait_if_necessary(self.def_id);
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);

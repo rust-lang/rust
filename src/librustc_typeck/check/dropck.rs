@@ -21,7 +21,7 @@ use rustc::traits::{self, ObligationCause, Reveal};
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 
 /// check_drop_impl confirms that the Drop implementation identfied by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -59,7 +59,7 @@ pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> 
         _ => {
             // Destructors only work on nominal types.  This was
             // already checked by coherence, so we can panic here.
-            let span = ccx.tcx.map.def_id_span(drop_impl_did, syntax_pos::DUMMY_SP);
+            let span = ccx.tcx.def_span(drop_impl_did);
             span_bug!(span,
                       "should have been rejected by coherence check: {}",
                       dtor_self_type);
@@ -88,7 +88,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let named_type = tcx.item_type(self_type_did);
         let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
-        let drop_impl_span = tcx.map.def_id_span(drop_impl_did, syntax_pos::DUMMY_SP);
+        let drop_impl_span = tcx.def_span(drop_impl_did);
         let fresh_impl_substs =
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
@@ -173,7 +173,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 
     let self_type_node_id = tcx.map.as_local_node_id(self_type_did).unwrap();
 
-    let drop_impl_span = tcx.map.def_id_span(drop_impl_did, syntax_pos::DUMMY_SP);
+    let drop_impl_span = tcx.def_span(drop_impl_did);
 
     // We can assume the predicates attached to struct/enum definition
     // hold.
@@ -515,7 +515,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
         }
 
         // these are always dtorck
-        ty::TyTrait(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
+        ty::TyDynamic(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
     }
 }
 
@@ -564,7 +564,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             let revised_ty = revise_self_ty(tcx, adt_def, impl_def_id, substs);
             return DropckKind::RevisedSelf(revised_ty);
         }
-        ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
+        ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
             return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
         },
@@ -589,7 +589,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 //
 // then revises input: `Foo<'r,i64,&'r i64>` to: `Foo<'static,i64,()>`
 fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  adt_def: ty::AdtDef<'tcx>,
+                                  adt_def: &'tcx ty::AdtDef,
                                   impl_def_id: DefId,
                                   substs: &Substs<'tcx>)
                                   -> Ty<'tcx> {

@@ -17,7 +17,7 @@ extern crate libc;
 use std::process::{Command, ExitStatus};
 use std::env;
 
-#[link(name = "rust_test_helpers")]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern {
     fn rust_get_null_ptr() -> *mut ::libc::c_char;
 }

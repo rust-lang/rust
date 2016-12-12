@@ -21,7 +21,6 @@
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(range_contains)]
 #![feature(libc)]
 #![feature(unicode)]
@@ -32,7 +31,7 @@ extern crate term;
 extern crate log;
 #[macro_use]
 extern crate libc;
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate syntax_pos;
 

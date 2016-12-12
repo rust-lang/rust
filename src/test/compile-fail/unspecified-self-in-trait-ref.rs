@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub trait Foo<A=Self> {
-    fn foo();
+    fn foo(&self);
 }
 
 pub trait Bar<X=usize, A=Self> {
-    fn foo();
+    fn foo(&self);
 }
 
 fn main() {

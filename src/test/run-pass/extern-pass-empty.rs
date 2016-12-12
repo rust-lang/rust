@@ -30,7 +30,7 @@ struct ManyInts {
 
 struct Empty;
 
-#[link(name = "rust_test_helpers")]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern {
     fn rust_dbg_extern_empty_struct(v1: ManyInts, e: Empty, v2: ManyInts);
 }

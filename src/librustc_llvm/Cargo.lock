@@ -1,0 +1,22 @@
+[root]
+name = "rustc_llvm"
+version = "0.0.0"
+dependencies = [
+ "build_helper 0.1.0",
+ "gcc 0.3.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_bitflags 0.0.0",
+]
+
+[[package]]
+name = "build_helper"
+version = "0.1.0"
+
+[[package]]
+name = "gcc"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "rustc_bitflags"
+version = "0.0.0"
+

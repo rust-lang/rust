@@ -45,17 +45,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
         if item.vis == hir::Public || item.span == DUMMY_SP {
             return;
         }
-        if let hir::ItemUse(ref path) = item.node {
-            match path.node {
-                hir::ViewPathSimple(..) | hir::ViewPathGlob(..) => {
-                    self.check_import(item.id, path.span);
-                }
-                hir::ViewPathList(_, ref path_list) => {
-                    for path_item in path_list {
-                        self.check_import(path_item.node.id, path_item.span);
-                    }
-                }
-            }
+        if let hir::ItemUse(ref path, _) = item.node {
+            self.check_import(item.id, path.span);
         }
     }
 

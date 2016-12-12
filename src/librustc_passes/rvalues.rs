@@ -18,7 +18,7 @@ use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::traits::Reveal;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -31,11 +31,15 @@ struct RvalueContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for RvalueContext<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
     fn visit_fn(&mut self,
-                fk: intravisit::FnKind<'v>,
-                fd: &'v hir::FnDecl,
-                b: &'v hir::Expr,
+                fk: intravisit::FnKind<'tcx>,
+                fd: &'tcx hir::FnDecl,
+                b: hir::ExprId,
                 s: Span,
                 fn_id: ast::NodeId) {
         // FIXME (@jroesch) change this to be an inference context
@@ -46,8 +50,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for RvalueContext<'a, 'tcx> {
                 tcx: infcx.tcx,
                 param_env: &param_env
             };
+            let body = infcx.tcx.map.expr(b);
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
-            euv.walk_fn(fd, b);
+            euv.walk_fn(fd, body);
         });
         intravisit::walk_fn(self, fk, fd, b, s, fn_id)
     }

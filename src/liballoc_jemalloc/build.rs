@@ -69,6 +69,7 @@ fn main() {
         .read_dir()
         .unwrap()
         .map(|e| e.unwrap())
+        .filter(|e| &*e.file_name() != ".git")
         .collect::<Vec<_>>();
     while let Some(entry) = stack.pop() {
         let path = entry.path();
@@ -150,11 +151,17 @@ fn main() {
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
 
     run(&mut cmd);
-    run(Command::new("make")
-        .current_dir(&build_dir)
-        .arg("build_lib_static")
-        .arg("-j")
-        .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
+    let mut make = Command::new("make");
+    make.current_dir(&build_dir)
+        .arg("build_lib_static");
+
+    // mingw make seems... buggy? unclear...
+    if !host.contains("windows") {
+        make.arg("-j")
+            .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set"));
+    }
+
+    run(&mut make);
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");

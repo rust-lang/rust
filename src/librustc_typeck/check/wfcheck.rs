@@ -18,12 +18,13 @@ use middle::region::{CodeExtent};
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::middle::lang_items;
 
 use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
@@ -50,7 +51,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let id = self.id;
         let span = self.span;
         self.inherited.enter(|inh| {
-            let fcx = FnCtxt::new(&inh, inh.ccx.tcx.types.never, id);
+            let fcx = FnCtxt::new(&inh, Some(inh.ccx.tcx.types.never), id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 ccx: fcx.ccx,
                 code: code
@@ -117,18 +118,12 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
-                ccx.tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id);
-                match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
-                    Some(ty::BoundSend) | Some(ty::BoundSync) => {}
-                    Some(_) | None => {
-                        if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
-                            error_192(ccx, item.span);
-                        }
-                    }
+                if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
+                    error_192(ccx, item.span);
                 }
             }
-            hir::ItemFn(.., ref body) => {
-                self.check_item_fn(item, body);
+            hir::ItemFn(.., body_id) => {
+                self.check_item_fn(item, body_id);
             }
             hir::ItemStatic(..) => {
                 self.check_item_type(item);
@@ -188,7 +183,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     fcx.register_wf_obligation(ty, span, code.clone());
                 }
                 ty::AssociatedKind::Method => {
-                    reject_shadowing_type_parameters(fcx.tcx, span, item.def_id);
+                    reject_shadowing_type_parameters(fcx.tcx, item.def_id);
                     let method_ty = fcx.tcx.item_type(item.def_id);
                     let method_ty = fcx.instantiate_type_scheme(span, free_substs, &method_ty);
                     let predicates = fcx.instantiate_bounds(span, item.def_id, free_substs);
@@ -241,9 +236,9 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 // For DST, all intermediate types must be sized.
                 let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
-                    fcx.register_builtin_bound(
+                    fcx.register_bound(
                         field.ty,
-                        ty::BoundSized,
+                        fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
                         traits::ObligationCause::new(field.span,
                                                      fcx.body_id,
                                                      traits::FieldSized));
@@ -290,12 +285,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 }
             });
 
-        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-
-        let has_ty_params =
-            trait_def.generics
-                      .types
-                      .len() > 1;
+        let has_ty_params = self.tcx().item_generics(trait_def_id).types.len() > 1;
 
         // We use an if-else here, since the generics will also trigger
         // an extraneous error message when we find predicates like
@@ -347,7 +337,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn check_item_fn(&mut self,
                      item: &hir::Item,
-                     body: &hir::Expr)
+                     body_id: hir::ExprId)
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -364,7 +354,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body.id);
+            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id());
             this.check_fn_or_method(fcx, item.span, bare_fn_ty, &predicates,
                                     free_id_outlive, &mut implied_bounds);
             implied_bounds
@@ -459,15 +449,15 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let fty = fcx.instantiate_type_scheme(span, free_substs, &fty);
         let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
 
-        for &input_ty in &sig.inputs {
-            fcx.register_wf_obligation(input_ty, span, self.code.clone());
+        for input_ty in sig.inputs() {
+            fcx.register_wf_obligation(&input_ty, span, self.code.clone());
         }
-        implied_bounds.extend(sig.inputs);
+        implied_bounds.extend(sig.inputs());
 
-        fcx.register_wf_obligation(sig.output, span, self.code.clone());
+        fcx.register_wf_obligation(sig.output(), span, self.code.clone());
 
         // FIXME(#25759) return types should not be implied bounds
-        implied_bounds.push(sig.output);
+        implied_bounds.push(sig.output());
 
         self.check_where_clauses(fcx, span, predicates);
     }
@@ -497,7 +487,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         debug!("check_method_receiver: sig={:?}", sig);
 
-        let self_arg_ty = sig.inputs[0];
+        let self_arg_ty = sig.inputs()[0];
         let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => self_ty,
             ExplicitSelf::ByReference(region, mutbl) => {
@@ -581,7 +571,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     }
 }
 
-fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
+fn reject_shadowing_type_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.item_generics(def_id);
     let parent = tcx.item_generics(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.types
@@ -592,23 +582,22 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
     for method_param in &generics.types {
         if impl_params.contains_key(&method_param.name) {
             // Tighten up the span to focus on only the shadowing type
-            let shadow_node_id = tcx.map.as_local_node_id(method_param.def_id).unwrap();
-            let type_span = match tcx.map.opt_span(shadow_node_id) {
-                Some(osp) => osp,
-                None => span
-            };
+            let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is
             // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params.get(&method_param.name).unwrap();
-            let trait_node_id = tcx.map.as_local_node_id(*trait_def_id).unwrap();
-            let trait_decl_span = tcx.map.opt_span(trait_node_id).unwrap();
+            let trait_def_id = impl_params[&method_param.name];
+            let trait_decl_span = tcx.def_span(trait_def_id);
             error_194(tcx, type_span, trait_decl_span, method_param.name);
         }
     }
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         self.check_item_well_formed(i);

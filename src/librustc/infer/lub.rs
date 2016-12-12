@@ -13,6 +13,7 @@ use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
+use traits::ObligationCause;
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
@@ -81,6 +82,10 @@ impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx>
 {
     fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
         self.fields.infcx
+    }
+
+    fn cause(&self) -> &ObligationCause<'tcx> {
+        &self.fields.trace.cause
     }
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {

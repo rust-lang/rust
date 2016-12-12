@@ -13,8 +13,11 @@
 pub struct Foo;
 impl Foo {
     fn zero(self) -> Foo { self }
+    //~^ NOTE defined here
     fn one(self, _: isize) -> Foo { self }
+    //~^ NOTE defined here
     fn two(self, _: isize, _: isize) -> Foo { self }
+    //~^ NOTE defined here
 }
 
 fn main() {
@@ -22,10 +25,9 @@ fn main() {
     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter was supplied
      //~^ NOTE expected 0 parameters
      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
-     //~^ NOTE the following parameter type was expected
+     //~^ NOTE expected 1 parameter
      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
-     //~^ NOTE the following parameter types were expected
-     //~| NOTE isize, isize
+     //~^ NOTE expected 2 parameters
 
     let y = Foo;
     y.zero()

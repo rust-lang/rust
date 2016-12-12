@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::pat_util;
 use rustc::ty;
 use rustc::ty::adjustment;
 use util::nodemap::FxHashMap;
@@ -44,7 +43,7 @@ impl UnusedMut {
 
         let mut mutables = FxHashMap();
         for p in pats {
-            pat_util::pat_bindings(p, |mode, id, _, path1| {
+            p.each_binding(|mode, id, _, path1| {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
@@ -78,7 +77,7 @@ impl LintPass for UnusedMut {
     }
 }
 
-impl LateLintPass for UnusedMut {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {
@@ -129,7 +128,7 @@ impl LintPass for UnusedResults {
     }
 }
 
-impl LateLintPass for UnusedResults {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
             hir::StmtSemi(ref expr, _) => &**expr,
@@ -188,7 +187,7 @@ impl LintPass for UnusedUnsafe {
     }
 }
 
-impl LateLintPass for UnusedUnsafe {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
@@ -215,10 +214,10 @@ impl LintPass for PathStatements {
     }
 }
 
-impl LateLintPass for PathStatements {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         if let hir::StmtSemi(ref expr, _) = s.node {
-            if let hir::ExprPath(..) = expr.node {
+            if let hir::ExprPath(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
         }
@@ -240,7 +239,7 @@ impl LintPass for UnusedAttributes {
     }
 }
 
-impl LateLintPass for UnusedAttributes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
 
@@ -406,11 +405,11 @@ impl LintPass for UnusedImportBraces {
     }
 }
 
-impl LateLintPass for UnusedImportBraces {
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if let hir::ItemUse(ref view_path) = item.node {
-            if let hir::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 && items[0].node.name != keywords::SelfValue.name() {
+impl EarlyLintPass for UnusedImportBraces {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        if let ast::ItemKind::Use(ref view_path) = item.node {
+            if let ast::ViewPathList(_, ref items) = view_path.node {
+                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
                     let msg = format!("braces around {} is unnecessary", items[0].node.name);
                     cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
                 }
@@ -434,7 +433,7 @@ impl LintPass for UnusedAllocation {
     }
 }
 
-impl LateLintPass for UnusedAllocation {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprBox(_) => {}

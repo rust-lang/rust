@@ -663,10 +663,8 @@ impl<T, S> FromIterator<T> for HashSet<T, S>
           S: BuildHasher + Default
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> HashSet<T, S> {
-        let iterator = iter.into_iter();
-        let lower = iterator.size_hint().0;
-        let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
-        set.extend(iterator);
+        let mut set = HashSet::with_hasher(Default::default());
+        set.extend(iter);
         set
     }
 }
@@ -677,9 +675,7 @@ impl<T, S> Extend<T> for HashSet<T, S>
           S: BuildHasher
 {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for k in iter {
-            self.insert(k);
-        }
+        self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
 }
 

@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-pub use self::MaybeTyped::*;
 
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
@@ -16,10 +15,10 @@ use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::{Def, ExportMap};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, NodeMap};
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -42,21 +41,11 @@ use html::render::RenderInfo;
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
 
-/// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
-pub enum MaybeTyped<'a, 'tcx: 'a> {
-    Typed(TyCtxt<'a, 'tcx, 'tcx>),
-    NotTyped(&'a session::Session)
-}
-
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
-    pub map: &'a hir_map::Map<'tcx>,
-    pub maybe_typed: MaybeTyped<'a, 'tcx>,
-    pub input: Input,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub populated_all_crate_impls: Cell<bool>,
-    pub deref_trait_did: Cell<Option<DefId>>,
-    pub deref_mut_trait_did: Cell<Option<DefId>>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
@@ -75,26 +64,14 @@ pub struct DocContext<'a, 'tcx: 'a> {
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
     pub export_map: ExportMap,
+
+    /// Table from HIR Ty nodes to their resolved Ty.
+    pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
 }
 
-impl<'b, 'tcx> DocContext<'b, 'tcx> {
-    pub fn sess<'a>(&'a self) -> &'a session::Session {
-        match self.maybe_typed {
-            Typed(tcx) => &tcx.sess,
-            NotTyped(ref sess) => sess
-        }
-    }
-
-    pub fn tcx_opt<'a>(&'a self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
-        match self.maybe_typed {
-            Typed(tcx) => Some(tcx),
-            NotTyped(_) => None
-        }
-    }
-
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        let tcx_opt = self.tcx_opt();
-        tcx_opt.expect("tcx not present")
+impl<'a, 'tcx> DocContext<'a, 'tcx> {
+    pub fn sess(&self) -> &session::Session {
+        &self.tcx.sess
     }
 
     /// Call the closure with the given parameters set as
@@ -197,7 +174,7 @@ pub fn run_core(search_paths: SearchPaths,
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let ty::CrateAnalysis { access_levels, export_map, .. } = analysis;
+        let ty::CrateAnalysis { access_levels, export_map, hir_ty_to_ty, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access
         // to the map from defid -> nodeid
@@ -208,24 +185,21 @@ pub fn run_core(search_paths: SearchPaths,
         };
 
         let ctxt = DocContext {
-            map: &tcx.map,
-            maybe_typed: Typed(tcx),
-            input: input,
+            tcx: tcx,
             populated_all_crate_impls: Cell::new(false),
-            deref_trait_did: Cell::new(None),
-            deref_mut_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
             export_map: export_map,
+            hir_ty_to_ty: hir_ty_to_ty,
         };
-        debug!("crate: {:?}", ctxt.map.krate());
+        debug!("crate: {:?}", tcx.map.krate());
 
         let krate = {
             let mut v = RustdocVisitor::new(&ctxt);
-            v.visit(ctxt.map.krate());
+            v.visit(tcx.map.krate());
             v.clean(&ctxt)
         };
 

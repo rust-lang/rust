@@ -20,6 +20,6 @@ type Test = Add +
             //~| NOTE missing associated type `Output` value
             Sub;
             //~^ ERROR E0225
-            //~| NOTE non-builtin trait used as bounds
+            //~| NOTE non-Send/Sync additional trait
 
 fn main() { }

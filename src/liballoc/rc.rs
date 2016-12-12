@@ -12,35 +12,35 @@
 
 //! Single-threaded reference-counting pointers.
 //!
-//! The type [`Rc<T>`][rc] provides shared ownership of a value of type `T`,
-//! allocated in the heap. Invoking [`clone`][clone] on `Rc` produces a new
-//! pointer to the same value in the heap. When the last `Rc` pointer to a
+//! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
+//! allocated in the heap. Invoking [`clone()`][clone] on [`Rc`] produces a new
+//! pointer to the same value in the heap. When the last [`Rc`] pointer to a
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
 //! Shared references in Rust disallow mutation by default, and `Rc` is no
-//! exception. If you need to mutate through an `Rc`, use [`Cell`][cell] or
-//! [`RefCell`][refcell].
+//! exception. If you need to mutate through an [`Rc`], use [`Cell`] or
+//! [`RefCell`].
 //!
-//! `Rc` uses non-atomic reference counting. This means that overhead is very
-//! low, but an `Rc` cannot be sent between threads, and consequently `Rc`
+//! [`Rc`] uses non-atomic reference counting. This means that overhead is very
+//! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
 //! does not implement [`Send`][send]. As a result, the Rust compiler
-//! will check *at compile time* that you are not sending `Rc`s between
+//! will check *at compile time* that you are not sending [`Rc`]s between
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
 //!
-//! The [`downgrade`][downgrade] method can be used to create a non-owning
-//! [`Weak`][weak] pointer. A `Weak` pointer can be [`upgrade`][upgrade]d
-//! to an `Rc`, but this will return [`None`][option] if the value has
+//! The [`downgrade()`][downgrade] method can be used to create a non-owning
+//! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
+//! to an [`Rc`], but this will return [`None`] if the value has
 //! already been dropped.
 //!
-//! A cycle between `Rc` pointers will never be deallocated. For this reason,
-//! `Weak` is used to break cycles. For example, a tree could have strong
-//! `Rc` pointers from parent nodes to children, and `Weak` pointers from
+//! A cycle between [`Rc`] pointers will never be deallocated. For this reason,
+//! [`Weak`] is used to break cycles. For example, a tree could have strong
+//! [`Rc`] pointers from parent nodes to children, and [`Weak`] pointers from
 //! children back to their parents.
 //!
-//! `Rc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
-//! so you can call `T`'s methods on a value of type `Rc<T>`. To avoid name
-//! clashes with `T`'s methods, the methods of `Rc<T>` itself are [associated
+//! `Rc<T>` automatically dereferences to `T` (via the [`Deref`] trait),
+//! so you can call `T`'s methods on a value of type [`Rc<T>`][`Rc`]. To avoid name
+//! clashes with `T`'s methods, the methods of [`Rc<T>`][`Rc`] itself are [associated
 //! functions][assoc], called using function-like syntax:
 //!
 //! ```
@@ -50,28 +50,15 @@
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
-//! `Weak<T>` does not auto-dereference to `T`, because the value may have
+//! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the value may have
 //! already been destroyed.
-//!
-//! [rc]: struct.Rc.html
-//! [weak]: struct.Weak.html
-//! [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
-//! [cell]: ../../std/cell/struct.Cell.html
-//! [refcell]: ../../std/cell/struct.RefCell.html
-//! [send]: ../../std/marker/trait.Send.html
-//! [arc]: ../../std/sync/struct.Arc.html
-//! [deref]: ../../std/ops/trait.Deref.html
-//! [downgrade]: struct.Rc.html#method.downgrade
-//! [upgrade]: struct.Weak.html#method.upgrade
-//! [option]: ../../std/option/enum.Option.html
-//! [assoc]: ../../book/method-syntax.html#associated-functions
 //!
 //! # Examples
 //!
 //! Consider a scenario where a set of `Gadget`s are owned by a given `Owner`.
 //! We want to have our `Gadget`s point to their `Owner`. We can't do this with
 //! unique ownership, because more than one gadget may belong to the same
-//! `Owner`. `Rc` allows us to share an `Owner` between multiple `Gadget`s,
+//! `Owner`. [`Rc`] allows us to share an `Owner` between multiple `Gadget`s,
 //! and have the `Owner` remain allocated as long as any `Gadget` points at it.
 //!
 //! ```
@@ -127,20 +114,20 @@
 //! ```
 //!
 //! If our requirements change, and we also need to be able to traverse from
-//! `Owner` to `Gadget`, we will run into problems. An `Rc` pointer from `Owner`
+//! `Owner` to `Gadget`, we will run into problems. An [`Rc`] pointer from `Owner`
 //! to `Gadget` introduces a cycle between the values. This means that their
 //! reference counts can never reach 0, and the values will remain allocated
-//! forever: a memory leak. In order to get around this, we can use `Weak`
+//! forever: a memory leak. In order to get around this, we can use [`Weak`]
 //! pointers.
 //!
 //! Rust actually makes it somewhat difficult to produce this loop in the first
 //! place. In order to end up with two values that point at each other, one of
-//! them needs to be mutable. This is difficult because `Rc` enforces
+//! them needs to be mutable. This is difficult because [`Rc`] enforces
 //! memory safety by only giving out shared references to the value it wraps,
 //! and these don't allow direct mutation. We need to wrap the part of the
-//! value we wish to mutate in a [`RefCell`][refcell], which provides *interior
+//! value we wish to mutate in a [`RefCell`], which provides *interior
 //! mutability*: a method to achieve mutability through a shared reference.
-//! `RefCell` enforces Rust's borrowing rules at runtime.
+//! [`RefCell`] enforces Rust's borrowing rules at runtime.
 //!
 //! ```
 //! use std::rc::Rc;
@@ -214,6 +201,19 @@
 //!     // Gadget Man, so he gets destroyed as well.
 //! }
 //! ```
+//!
+//! [`Rc`]: struct.Rc.html
+//! [`Weak`]: struct.Weak.html
+//! [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
+//! [`Cell`]: ../../std/cell/struct.Cell.html
+//! [`RefCell`]: ../../std/cell/struct.RefCell.html
+//! [send]: ../../std/marker/trait.Send.html
+//! [arc]: ../../std/sync/struct.Arc.html
+//! [`Deref`]: ../../std/ops/trait.Deref.html
+//! [downgrade]: struct.Rc.html#method.downgrade
+//! [upgrade]: struct.Weak.html#method.upgrade
+//! [`None`]: ../../std/option/enum.Option.html#variant.None
+//! [assoc]: ../../book/method-syntax.html#associated-functions
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -251,9 +251,11 @@ struct RcBox<T: ?Sized> {
 /// See the [module-level documentation](./index.html) for more details.
 ///
 /// The inherent methods of `Rc` are all associated functions, which means
-/// that you have to call them as e.g. `Rc::get_mut(&value)` instead of
-/// `value.get_mut()`.  This avoids conflicts with methods of the inner
+/// that you have to call them as e.g. [`Rc::get_mut(&value)`][get_mut] instead of
+/// `value.get_mut()`. This avoids conflicts with methods of the inner
 /// type `T`.
+///
+/// [get_mut]: #method.get_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -337,10 +339,10 @@ impl<T> Rc<T> {
     }
 
     /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
-    /// [`Ok`][result].
+    /// [`Ok`].
     ///
     /// [try_unwrap]: struct.Rc.html#method.try_unwrap
-    /// [result]: ../../std/result/enum.Result.html
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     ///
     /// # Examples
     ///
@@ -543,14 +545,14 @@ impl<T: ?Sized> Rc<T> {
     /// Returns a mutable reference to the inner value, if there are
     /// no other `Rc` or [`Weak`][weak] pointers to the same value.
     ///
-    /// Returns [`None`][option] otherwise, because it is not safe to
+    /// Returns [`None`] otherwise, because it is not safe to
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
     /// the inner value when it's shared.
     ///
     /// [weak]: struct.Weak.html
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [make_mut]: struct.Rc.html#method.make_mut
     /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
     ///

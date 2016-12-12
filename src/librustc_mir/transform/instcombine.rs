@@ -38,7 +38,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                     _: MirSource,
                     mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
-        if tcx.sess.opts.debugging_opts.mir_opt_level == Some(0) {
+        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
         }
 

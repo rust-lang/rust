@@ -15,7 +15,7 @@
 use os::windows::io::{FromRawHandle, RawHandle, AsRawHandle, IntoRawHandle};
 use process;
 use sys;
-use sys_common::{AsInner, FromInner, IntoInner};
+use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
@@ -95,5 +95,24 @@ pub trait ExitStatusExt {
 impl ExitStatusExt for process::ExitStatus {
     fn from_raw(raw: u32) -> Self {
         process::ExitStatus::from_inner(From::from(raw))
+    }
+}
+
+/// Windows-specific extensions to the `std::process::Command` builder
+#[unstable(feature = "windows_process_extensions", issue = "37827")]
+pub trait CommandExt {
+    /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
+    ///
+    /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
+    /// [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
+    #[unstable(feature = "windows_process_extensions", issue = "37827")]
+    fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
+}
+
+#[unstable(feature = "windows_process_extensions", issue = "37827")]
+impl CommandExt for process::Command {
+    fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
+        self.as_inner_mut().creation_flags(flags);
+        self
     }
 }

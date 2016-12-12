@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(linked_from)]
 #![crate_type = "dylib"]
 
 #[link(name = "foo", kind = "static")]
-#[linked_from = "foo"]
 extern {
     pub fn foo();
 }

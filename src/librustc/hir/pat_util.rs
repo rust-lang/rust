@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def::*;
+use hir::def::Def;
 use hir::def_id::DefId;
 use hir::{self, PatKind};
-use ty::TyCtxt;
 use syntax::ast;
 use syntax::codemap::Spanned;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::iter::{Enumerate, ExactSizeIterator};
 
@@ -51,139 +50,144 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
     }
 }
 
-pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::Lit(_) | PatKind::Range(..) | PatKind::Path(Some(..), _) => true,
-        PatKind::TupleStruct(..) |
-        PatKind::Path(..) |
-        PatKind::Struct(..) => {
-            match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) | Some(Def::VariantCtor(..)) => true,
-                _ => false
-            }
-        }
-        PatKind::Slice(..) => true,
-        _ => false
-    }
-}
+impl hir::Pat {
+    pub fn is_refutable(&self) -> bool {
+        match self.node {
+            PatKind::Lit(_) |
+            PatKind::Range(..) |
+            PatKind::Path(hir::QPath::Resolved(Some(..), _)) |
+            PatKind::Path(hir::QPath::TypeRelative(..)) => true,
 
-pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::Path(..) => {
-            match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
-                _ => false
-            }
-        }
-        _ => false
-    }
-}
-
-/// Call `f` on every "binding" in a pattern, e.g., on `a` in
-/// `match foo() { Some(a) => (), None => () }`
-pub fn pat_bindings<F>(pat: &hir::Pat, mut f: F)
-    where F: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
-{
-    pat.walk(|p| {
-        if let PatKind::Binding(binding_mode, ref pth, _) = p.node {
-            f(binding_mode, p.id, p.span, pth);
-        }
-        true
-    });
-}
-
-/// Checks if the pattern contains any patterns that bind something to
-/// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
-pub fn pat_contains_bindings(pat: &hir::Pat) -> bool {
-    let mut contains_bindings = false;
-    pat.walk(|p| {
-        if let PatKind::Binding(..) = p.node {
-            contains_bindings = true;
-            false // there's at least one binding, can short circuit now.
-        } else {
-            true
-        }
-    });
-    contains_bindings
-}
-
-/// Checks if the pattern contains any `ref` or `ref mut` bindings,
-/// and if yes whether its containing mutable ones or just immutables ones.
-pub fn pat_contains_ref_binding(pat: &hir::Pat) -> Option<hir::Mutability> {
-    let mut result = None;
-    pat_bindings(pat, |mode, _, _, _| {
-        if let hir::BindingMode::BindByRef(m) = mode {
-            // Pick Mutable as maximum
-            match result {
-                None | Some(hir::MutImmutable) => result = Some(m),
-                _ => (),
-            }
-        }
-    });
-    result
-}
-
-/// Checks if the patterns for this arm contain any `ref` or `ref mut`
-/// bindings, and if yes whether its containing mutable ones or just immutables ones.
-pub fn arm_contains_ref_binding(arm: &hir::Arm) -> Option<hir::Mutability> {
-    arm.pats.iter()
-            .filter_map(|pat| pat_contains_ref_binding(pat))
-            .max_by_key(|m| match *m {
-                hir::MutMutable => 1,
-                hir::MutImmutable => 0,
-            })
-}
-
-/// Checks if the pattern contains any patterns that bind something to
-/// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
-pub fn pat_contains_bindings_or_wild(pat: &hir::Pat) -> bool {
-    let mut contains_bindings = false;
-    pat.walk(|p| {
-        match p.node {
-            PatKind::Binding(..) | PatKind::Wild => {
-                contains_bindings = true;
-                false // there's at least one binding/wildcard, can short circuit now.
-            }
-            _ => true
-        }
-    });
-    contains_bindings
-}
-
-pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
-    match pat.node {
-        PatKind::Binding(hir::BindByValue(..), ref path1, None) => {
-            Some(path1.node)
-        }
-        _ => {
-            None
-        }
-    }
-}
-
-pub fn def_to_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> hir::Path {
-    hir::Path::from_name(DUMMY_SP, tcx.item_name(id))
-}
-
-/// Return variants that are necessary to exist for the pattern to match.
-pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
-    let mut variants = vec![];
-    pat.walk(|p| {
-        match p.node {
-            PatKind::TupleStruct(..) |
-            PatKind::Path(..) |
-            PatKind::Struct(..) => {
-                match dm.get(&p.id).map(|d| d.full_def()) {
-                    Some(Def::Variant(id)) |
-                    Some(Def::VariantCtor(id, ..)) => variants.push(id),
-                    _ => ()
+            PatKind::Path(hir::QPath::Resolved(_, ref path)) |
+            PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
+            PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
+                match path.def {
+                    Def::Variant(..) | Def::VariantCtor(..) => true,
+                    _ => false
                 }
             }
-            _ => ()
+            PatKind::Slice(..) => true,
+            _ => false
         }
-        true
-    });
-    variants.sort();
-    variants.dedup();
-    variants
+    }
+
+    pub fn is_const(&self) -> bool {
+        match self.node {
+            PatKind::Path(hir::QPath::TypeRelative(..)) => true,
+            PatKind::Path(hir::QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Const(..) | Def::AssociatedConst(..) => true,
+                    _ => false
+                }
+            }
+            _ => false
+        }
+    }
+
+    /// Call `f` on every "binding" in a pattern, e.g., on `a` in
+    /// `match foo() { Some(a) => (), None => () }`
+    pub fn each_binding<F>(&self, mut f: F)
+        where F: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
+    {
+        self.walk(|p| {
+            if let PatKind::Binding(binding_mode, _, ref pth, _) = p.node {
+                f(binding_mode, p.id, p.span, pth);
+            }
+            true
+        });
+    }
+
+    /// Checks if the pattern contains any patterns that bind something to
+    /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
+    pub fn contains_bindings(&self) -> bool {
+        let mut contains_bindings = false;
+        self.walk(|p| {
+            if let PatKind::Binding(..) = p.node {
+                contains_bindings = true;
+                false // there's at least one binding, can short circuit now.
+            } else {
+                true
+            }
+        });
+        contains_bindings
+    }
+
+    /// Checks if the pattern contains any patterns that bind something to
+    /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
+    pub fn contains_bindings_or_wild(&self) -> bool {
+        let mut contains_bindings = false;
+        self.walk(|p| {
+            match p.node {
+                PatKind::Binding(..) | PatKind::Wild => {
+                    contains_bindings = true;
+                    false // there's at least one binding/wildcard, can short circuit now.
+                }
+                _ => true
+            }
+        });
+        contains_bindings
+    }
+
+    pub fn simple_name(&self) -> Option<ast::Name> {
+        match self.node {
+            PatKind::Binding(hir::BindByValue(..), _, ref path1, None) => {
+                Some(path1.node)
+            }
+            _ => {
+                None
+            }
+        }
+    }
+
+    /// Return variants that are necessary to exist for the pattern to match.
+    pub fn necessary_variants(&self) -> Vec<DefId> {
+        let mut variants = vec![];
+        self.walk(|p| {
+            match p.node {
+                PatKind::Path(hir::QPath::Resolved(_, ref path)) |
+                PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
+                PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
+                    match path.def {
+                        Def::Variant(id) |
+                        Def::VariantCtor(id, ..) => variants.push(id),
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
+            true
+        });
+        variants.sort();
+        variants.dedup();
+        variants
+    }
+
+    /// Checks if the pattern contains any `ref` or `ref mut` bindings,
+    /// and if yes whether its containing mutable ones or just immutables ones.
+    pub fn contains_ref_binding(&self) -> Option<hir::Mutability> {
+        let mut result = None;
+        self.each_binding(|mode, _, _, _| {
+            if let hir::BindingMode::BindByRef(m) = mode {
+                // Pick Mutable as maximum
+                match result {
+                    None | Some(hir::MutImmutable) => result = Some(m),
+                    _ => (),
+                }
+            }
+        });
+        result
+    }
+}
+
+impl hir::Arm {
+    /// Checks if the patterns for this arm contain any `ref` or `ref mut`
+    /// bindings, and if yes whether its containing mutable ones or just immutables ones.
+    pub fn contains_ref_binding(&self) -> Option<hir::Mutability> {
+        self.pats.iter()
+                 .filter_map(|pat| pat.contains_ref_binding())
+                 .max_by_key(|m| match *m {
+                    hir::MutMutable => 1,
+                    hir::MutImmutable => 0,
+                 })
+    }
 }

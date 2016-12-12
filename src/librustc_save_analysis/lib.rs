@@ -18,7 +18,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(custom_attribute)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -42,8 +41,8 @@ pub mod external_data;
 pub mod span_utils;
 
 use rustc::hir;
-use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def::Def;
+use rustc::hir::map::Node;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
@@ -85,6 +84,7 @@ pub mod recorder {
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    analysis: &'l ty::CrateAnalysis<'tcx>,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -93,16 +93,20 @@ macro_rules! option_try(
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>) -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+               analysis: &'l ty::CrateAnalysis<'tcx>)
+               -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
-        SaveContext::from_span_utils(tcx, span_utils)
+        SaveContext::from_span_utils(tcx, analysis, span_utils)
     }
 
     pub fn from_span_utils(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+                           analysis: &'l ty::CrateAnalysis<'tcx>,
                            span_utils: SpanUtils<'tcx>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
+            analysis: analysis,
             span_utils: span_utils,
         }
     }
@@ -246,8 +250,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match typ.node {
                     // Common case impl for a struct or something basic.
                     ast::TyKind::Path(None, ref path) => {
+                        filter!(self.span_utils, None, path.span, None);
                         sub_span = self.span_utils.sub_span_for_type_name(path.span);
-                        filter!(self.span_utils, sub_span, path.span, None);
                         type_data = self.lookup_ref_id(typ.id).map(|id| {
                             TypeRefData {
                                 span: sub_span.unwrap(),
@@ -318,7 +322,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let (qualname, parent_scope, decl_id, vis, docs) =
           match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
-                Some(NodeItem(item)) => {
+                Some(Node::NodeItem(item)) => {
                     match item.node {
                         hir::ItemImpl(.., ref ty, _) => {
                             let mut result = String::from("<");
@@ -358,7 +362,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get_if_local(def_id) {
-                        Some(NodeItem(item)) => {
+                        Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
                              From::from(&item.vis),
@@ -497,8 +501,51 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    pub fn get_path_def(&self, id: NodeId) -> Def {
+        match self.tcx.map.get(id) {
+            Node::NodeTraitRef(tr) => tr.path.def,
+
+            Node::NodeItem(&hir::Item { node: hir::ItemUse(ref path, _), .. }) |
+            Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
+
+            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
+            Node::NodeExpr(&hir::Expr { node: hir::ExprStruct(ref qpath, ..), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
+                self.tcx.tables().qpath_def(qpath, id)
+            }
+
+            Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
+                Def::Local(def_id)
+            }
+
+            Node::NodeTy(&hir::Ty { node: hir::TyPath(ref qpath), .. }) => {
+                match *qpath {
+                    hir::QPath::Resolved(_, ref path) => path.def,
+                    hir::QPath::TypeRelative(..) => {
+                        if let Some(ty) = self.analysis.hir_ty_to_ty.get(&id) {
+                            if let ty::TyProjection(proj) = ty.sty {
+                                for item in self.tcx.associated_items(proj.trait_ref.def_id) {
+                                    if item.kind == ty::AssociatedKind::Type {
+                                        if item.name == proj.item_name {
+                                            return Def::AssociatedTy(item.def_id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Def::Err
+                    }
+                }
+            }
+
+            _ => Def::Err
+        }
+    }
+
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
-        let def = self.tcx.expect_def(id);
+        let def = self.get_path_def(id);
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
@@ -574,7 +621,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_field_ref_data(&self,
                               field_ref: &ast::Field,
-                              variant: ty::VariantDef,
+                              variant: &ty::VariantDef,
                               parent: NodeId)
                               -> Option<VariableRefData> {
         let f = variant.field_named(field_ref.ident.node.name);
@@ -642,8 +689,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.tcx.expect_def(ref_id) {
-            Def::PrimTy(_) | Def::SelfTy(..) => None,
+        match self.get_path_def(ref_id) {
+            Def::PrimTy(_) | Def::SelfTy(..) | Def::Err => None,
             def => Some(def.def_id()),
         }
     }
@@ -694,7 +741,7 @@ impl PathCollector {
     }
 }
 
-impl Visitor for PathCollector {
+impl<'a> Visitor<'a> for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, ..) => {
@@ -766,7 +813,7 @@ impl Format {
 
 pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                krate: &ast::Crate,
-                               analysis: &'l ty::CrateAnalysis<'l>,
+                               analysis: &'l ty::CrateAnalysis<'tcx>,
                                cratename: &str,
                                odir: Option<&Path>,
                                format: Format) {
@@ -814,12 +861,12 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     root_path.pop();
     let output = &mut output_file;
 
-    let save_ctxt = SaveContext::new(tcx);
+    let save_ctxt = SaveContext::new(tcx, analysis);
 
     macro_rules! dump {
         ($new_dumper: expr) => {{
             let mut dumper = $new_dumper;
-            let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
+            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
             visitor.dump_crate_info(cratename, krate);
             visit::walk_crate(&mut visitor, krate);

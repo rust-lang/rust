@@ -10,10 +10,11 @@
 
 extern "C" {
     fn printf(_: *const u8, ...) -> u32;
+    //~^ NOTE defined here
 }
 
 fn main() {
     unsafe { printf(); }
     //~^ ERROR E0060
-    //~| NOTE the following parameter type was expected: *const u8
+    //~| expected at least 1 parameter
 }

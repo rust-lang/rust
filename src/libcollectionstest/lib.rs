@@ -18,12 +18,14 @@
 #![feature(const_fn)]
 #![feature(dedup_by)]
 #![feature(enumset)]
+#![feature(exact_size_is_empty)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(repeat_str)]
 #![feature(step_by)]
 #![feature(str_escape)]
 #![feature(str_replacen)]
+#![feature(string_split_off)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -31,7 +33,7 @@
 
 extern crate collections;
 extern crate test;
-extern crate rustc_unicode;
+extern crate std_unicode;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

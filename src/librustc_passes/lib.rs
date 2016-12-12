@@ -23,7 +23,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(staged_api)]
 #![feature(rustc_private)]
@@ -47,6 +46,7 @@ pub mod ast_validation;
 pub mod consts;
 pub mod hir_stats;
 pub mod loops;
+pub mod mir_stats;
 pub mod no_asm;
 pub mod rvalues;
 pub mod static_recursion;

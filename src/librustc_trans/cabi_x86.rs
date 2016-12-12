@@ -25,7 +25,8 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
             // http://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = &ccx.sess().target.target;
-            if t.options.is_like_osx || t.options.is_like_windows {
+            if t.options.is_like_osx || t.options.is_like_windows
+                || t.options.is_like_openbsd {
                 match llsize_of_alloc(ccx, fty.ret.ty) {
                     1 => fty.ret.cast = Some(Type::i8(ccx)),
                     2 => fty.ret.cast = Some(Type::i16(ccx)),

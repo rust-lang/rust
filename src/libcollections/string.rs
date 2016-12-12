@@ -63,8 +63,8 @@ use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
 use core::str::pattern::Pattern;
-use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
-use rustc_unicode::str as unicode_str;
+use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use std_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
@@ -1129,8 +1129,6 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, idx: usize, ch: char) {
-        let len = self.len();
-        assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
         let mut bits = [0; 4];
         let bits = ch.encode_utf8(&mut bits).as_bytes();
@@ -1184,7 +1182,6 @@ impl String {
                reason = "recent addition",
                issue = "35553")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
-        assert!(idx <= self.len());
         assert!(self.is_char_boundary(idx));
 
         unsafe {
@@ -1258,6 +1255,38 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Divide one string into two at an index.
+    ///
+    /// The argument, `mid`, should be a byte offset from the start of the string. It must also
+    /// be on the boundary of a UTF-8 code point.
+    ///
+    /// The two strings returned go from the start of the string to `mid`, and from `mid` to the end
+    /// of the string.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid` is not on a `UTF-8` code point boundary, or if it is beyond the last
+    /// code point of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(string_split_off)]
+    /// # fn main() {
+    /// let mut hello = String::from("Hello, World!");
+    /// let world = hello.split_off(7);
+    /// assert_eq!(hello, "Hello, ");
+    /// assert_eq!(world, "World!");
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "string_split_off", issue = "38080")]
+    pub fn split_off(&mut self, mid: usize) -> String {
+        assert!(self.is_char_boundary(mid));
+        let other = self.vec.split_off(mid);
+        unsafe { String::from_utf8_unchecked(other) }
     }
 
     /// Truncates this `String`, removing all contents.

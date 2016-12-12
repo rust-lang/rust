@@ -24,13 +24,17 @@
 
 #![feature(associated_consts)]
 #![feature(box_syntax)]
+#![feature(concat_idents)]
 #![feature(libc)]
 #![feature(link_args)]
+#![cfg_attr(stage0, feature(linked_from))]
 #![feature(staged_api)]
-#![feature(linked_from)]
-#![feature(concat_idents)]
+#![cfg_attr(not(stage0), feature(rustc_private))]
 
 extern crate libc;
+#[macro_use]
+#[no_link]
+extern crate rustc_bitflags;
 
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;
@@ -66,13 +70,13 @@ impl LLVMRustResult {
 
 pub fn AddFunctionAttrStringValue(llfn: ValueRef,
                                   idx: AttributePlace,
-                                  attr: &'static str,
-                                  value: &'static str) {
+                                  attr: &CStr,
+                                  value: &CStr) {
     unsafe {
         LLVMRustAddFunctionAttrStringValue(llfn,
                                            idx.as_uint(),
-                                           attr.as_ptr() as *const _,
-                                           value.as_ptr() as *const _)
+                                           attr.as_ptr(),
+                                           value.as_ptr())
     }
 }
 

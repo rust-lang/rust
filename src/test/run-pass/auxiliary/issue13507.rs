@@ -70,7 +70,7 @@ pub mod testtypes {
     // Tests TyFnPtr
     pub type FooFnPtr = fn(u8) -> bool;
 
-    // Tests TyTrait
+    // Tests TyDynamic
     pub trait FooTrait {
         fn foo_method(&self) -> usize;
     }

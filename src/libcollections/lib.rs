@@ -36,6 +36,7 @@
 #![cfg_attr(not(test), feature(char_escape_debug))]
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
+#![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
 #![feature(fused)]
 #![feature(heap_api)]
@@ -46,18 +47,19 @@
 #![feature(placement_in)]
 #![feature(placement_new_protocol)]
 #![feature(shared)]
+#![feature(slice_get_slice)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(staged_api)]
-#![feature(step_by)]
 #![feature(trusted_len)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(untagged_unions)]
 #![cfg_attr(test, feature(rand, test))]
 
 #![no_std]
 
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate alloc;
 
 #[cfg(test)]

@@ -529,10 +529,22 @@ LLVMRustPrintPasses() {
     LLVMInitializePasses();
     struct MyListener : PassRegistrationListener {
         void passEnumerate(const PassInfo *info) {
+#if LLVM_VERSION_GE(4, 0)
+            StringRef PassArg = info->getPassArgument();
+            StringRef PassName = info->getPassName();
+            if (!PassArg.empty()) {
+                // These unsigned->signed casts could theoretically overflow, but
+                // realistically never will (and even if, the result is implementation
+                // defined rather plain UB).
+                printf("%15.*s - %.*s\n", (int)PassArg.size(), PassArg.data(),
+                       (int)PassName.size(), PassName.data());
+            }
+#else
             if (info->getPassArgument() && *info->getPassArgument()) {
                 printf("%15s - %s\n", info->getPassArgument(),
                        info->getPassName());
             }
+#endif
         }
     } listener;
 

@@ -34,7 +34,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::record_time;
@@ -112,8 +112,9 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         hash_spans: hash_spans,
     };
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
-        visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
-                                 |v| visit::walk_crate(v, krate));
+        visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| {
+            v.hash_crate_root_module(krate);
+        });
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
 
         for macro_def in krate.exported_macros.iter() {
@@ -149,19 +150,30 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     {
         assert!(def_id.is_local());
         debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
+        self.calculate_def_hash(DepNode::Hir(def_id), false, &mut walk_op);
+        self.calculate_def_hash(DepNode::HirBody(def_id), true, &mut walk_op);
+    }
+
+    fn calculate_def_hash<W>(&mut self,
+                             dep_node: DepNode<DefId>,
+                             hash_bodies: bool,
+                             walk_op: &mut W)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
+    {
         let mut state = IchHasher::new();
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
                                                    &mut self.def_path_hashes,
                                                    &mut self.codemap,
-                                                   self.hash_spans));
+                                                   self.hash_spans,
+                                                   hash_bodies));
         let bytes_hashed = state.bytes_hashed();
         let item_hash = state.finish();
-        self.hashes.insert(DepNode::Hir(def_id), item_hash);
-        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
+        debug!("calculate_def_hash: dep_node={:?} hash={:?}", dep_node, item_hash);
+        self.hashes.insert(dep_node, item_hash);
 
         let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
-                           bytes_hashed;
+            bytes_hashed;
         self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
     }
 
@@ -200,7 +212,8 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
                                                             self.tcx,
                                                             &mut self.def_path_hashes,
                                                             &mut self.codemap,
-                                                            self.hash_spans);
+                                                            self.hash_spans,
+                                                            false);
             visitor.hash_attributes(&krate.attrs);
         }
 
@@ -212,6 +225,10 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 
 
 impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.calculate_node_id(item.id, |v| v.visit_item(item));
         visit::walk_item(self, item);

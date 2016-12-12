@@ -496,8 +496,8 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
         },
 
         ref ty => {
-            let opt_span = origin_id.and_then(|id|tcx.map.opt_span(id));
-            span_bug!(opt_span.unwrap_or(DUMMY_SP),
+            let span = origin_id.map_or(DUMMY_SP, |id| tcx.map.span(id));
+            span_bug!(span,
                       "type {:?} ({:?}) is not fragmentable",
                       parent_ty, ty);
         }

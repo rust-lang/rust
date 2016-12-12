@@ -12,7 +12,7 @@
 
 extern crate libc;
 
-#[link(name="foo")]
+#[link(name="foo", kind = "static")]
 extern {
     fn should_return_one() -> libc::c_int;
 }
