@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ffi::OsStr;
+use path::Prefix;
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
