@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
-use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, LandingPad};
+use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
 use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind, FunctionDebugContext};
 use type_of;
 
@@ -285,19 +285,19 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     let mut rpo = traversal::reverse_postorder(&mir);
 
-    let mut lpads: IndexVec<mir::BasicBlock, Option<LandingPad>> =
+    let mut funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
         IndexVec::from_elem(None, mir.basic_blocks());
 
     // Prepare each block for translation.
     for (bb, _) in rpo.by_ref() {
-        mircx.init_cpad(bb, &mut lpads);
+        mircx.init_cpad(bb, &mut funclets);
     }
     rpo.reset();
 
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        mircx.trans_block(bb, &lpads);
+        mircx.trans_block(bb, &funclets);
     }
 
     // Remove blocks that haven't been visited, or have no
