@@ -1240,6 +1240,163 @@ pub fn _mm_sub_pd(a: f64x2, b: f64x2) -> f64x2 {
     a - b
 }
 
+/// Compute the bitwise AND of packed double-precision (64-bit) floating-point
+/// elements in `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_and_pd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe {
+        let a: i64x2 = mem::transmute(a);
+        let b: i64x2 = mem::transmute(b);
+        mem::transmute(a & b)
+    }
+}
+
+/// Compute the bitwise NOT of `a` and then AND with `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_andnot_pd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe {
+        let a: i64x2 = mem::transmute(a);
+        let b: i64x2 = mem::transmute(b);
+        mem::transmute((!a) & b)
+    }
+}
+
+/// Compute the bitwise OR of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_or_pd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe {
+        let a: i64x2 = mem::transmute(a);
+        let b: i64x2 = mem::transmute(b);
+        mem::transmute(a | b)
+    }
+}
+
+/// Compute the bitwise OR of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_xor_pd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe {
+        let a: i64x2 = mem::transmute(a);
+        let b: i64x2 = mem::transmute(b);
+        mem::transmute(a ^ b)
+    }
+}
+
+/// Return a new vector with the low element of `a` replaced by the equality
+/// comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpeq_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 0) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the less-than
+/// comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmplt_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 1) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// less-than-or-equal comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmple_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 2) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// greater-than comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpgt_sd(a: f64x2, b: f64x2) -> f64x2 {
+    _mm_cmplt_sd(b, a).insert(1, a.extract(1))
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// greater-than-or-equal comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpge_sd(a: f64x2, b: f64x2) -> f64x2 {
+    _mm_cmple_sd(b, a).insert(1, a.extract(1))
+}
+
+/// Return a new vector with the low element of `a` replaced by the result
+/// of comparing both of the lower elements of `a` and `b` to `NaN`. If
+/// neither are equal to `NaN` then `0xFFFFFFFFFFFFFFFF` is used and `0`
+/// otherwise.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpord_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 7) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the result of
+/// comparing both of the lower elements of `a` and `b` to `NaN`. If either is
+/// equal to `NaN` then `0xFFFFFFFFFFFFFFFF` is used and `0` otherwise.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpunord_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 3) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the not-equal
+/// comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpneq_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 4) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// not-less-than comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpnlt_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 5) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// not-less-than-or-equal comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpnle_sd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmpsd(a, b, 6) }
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// not-greater-than comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpngt_sd(a: f64x2, b: f64x2) -> f64x2 {
+    _mm_cmpnlt_sd(b, a).insert(1, a.extract(1))
+}
+
+/// Return a new vector with the low element of `a` replaced by the
+/// not-greater-than-or-equal comparison of the lower elements of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpnge_sd(a: f64x2, b: f64x2) -> f64x2 {
+    _mm_cmpnle_sd(b, a).insert(1, a.extract(1))
+}
+
+/// Compare corresponding elements in `a` and `b` for equality.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_cmpeq_pd(a: f64x2, b: f64x2) -> f64x2 {
+    unsafe { cmppd(a, b, 0) }
+}
+
+
+
+
+
+
+
 
 #[inline(always)]
 #[target_feature = "+sse2"]
@@ -1357,6 +1514,10 @@ extern {
     fn sqrtsd(a: f64x2) -> f64x2;
     #[link_name = "llvm.x86.sse2.sqrt.pd"]
     fn sqrtpd(a: f64x2) -> f64x2;
+    #[link_name = "llvm.x86.sse2.cmp.sd"]
+    fn cmpsd(a: f64x2, b: f64x2, imm8: i8) -> f64x2;
+    #[link_name = "llvm.x86.sse2.cmp.pd"]
+    fn cmppd(a: f64x2, b: f64x2, imm8: i8) -> f64x2;
 }
 
 #[cfg(test)]
@@ -2438,5 +2599,211 @@ mod tests {
         assert_eq!(
             sse2::_mm_sub_pd(f64x2::new(1.0, 2.0), f64x2::new(5.0, 10.0)),
             f64x2::new(-4.0, -8.0));
+    }
+
+    #[test]
+    fn _mm_and_pd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let a: f64x2 = transmute(i64x2::splat(5));
+            let b: f64x2 = transmute(i64x2::splat(3));
+            let e: f64x2 = transmute(i64x2::splat(1));
+            assert_eq!(sse2::_mm_and_pd(a, b), e);
+        }
+    }
+
+    #[test]
+    fn _mm_andnot_pd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let a: f64x2 = transmute(i64x2::splat(5));
+            let b: f64x2 = transmute(i64x2::splat(3));
+            let e: f64x2 = transmute(i64x2::splat(2));
+            assert_eq!(sse2::_mm_andnot_pd(a, b), e);
+        }
+    }
+
+    #[test]
+    fn _mm_or_pd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let a: f64x2 = transmute(i64x2::splat(5));
+            let b: f64x2 = transmute(i64x2::splat(3));
+            let e: f64x2 = transmute(i64x2::splat(7));
+            assert_eq!(sse2::_mm_or_pd(a, b), e);
+        }
+    }
+
+    #[test]
+    fn _mm_xor_pd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let a: f64x2 = transmute(i64x2::splat(5));
+            let b: f64x2 = transmute(i64x2::splat(3));
+            let e: f64x2 = transmute(i64x2::splat(6));
+            assert_eq!(sse2::_mm_xor_pd(a, b), e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpeq_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpeq_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmplt_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(5.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmplt_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmple_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmple_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpgt_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(5.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpgt_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpge_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpge_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpord_sd() {
+        use std::f64::NAN;
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(NAN, 2.0), f64x2::new(5.0, 3.0));
+            let e = u64x2::new(0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpord_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpunord_sd() {
+        use std::f64::NAN;
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(NAN, 2.0), f64x2::new(5.0, 3.0));
+            let e = u64x2::new(!0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpunord_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpneq_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(5.0, 3.0));
+            let e = u64x2::new(!0u64, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpneq_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpnlt_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(5.0, 3.0));
+            let e = u64x2::new(0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpnlt_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpnle_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpnle_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpngt_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(5.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpngt_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpnge_sd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(0, transmute(2.0f64));
+            let r: u64x2 = transmute(sse2::_mm_cmpnge_sd(a, b));
+            assert_eq!(r, e);
+        }
+    }
+
+    #[test]
+    fn _mm_cmpeq_pd() {
+        use std::mem::transmute;
+
+        unsafe {
+            let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
+            let e = u64x2::new(!0, 0);
+            let r: u64x2 = transmute(sse2::_mm_cmpeq_pd(a, b));
+            assert_eq!(r, e);
+        }
     }
 }

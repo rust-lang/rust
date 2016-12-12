@@ -139,23 +139,23 @@ sse2
 * [x] `_mm_sqrt_pd`
 * [x] `_mm_sub_sd`
 * [x] `_mm_sub_pd`
-* [ ] `_mm_and_pd`
-* [ ] `_mm_andnot_pd`
-* [ ] `_mm_or_pd`
-* [ ] `_mm_xor_pd`
-* [ ] `_mm_cmpeq_sd`
-* [ ] `_mm_cmplt_sd`
-* [ ] `_mm_cmple_sd`
-* [ ] `_mm_cmpgt_sd`
-* [ ] `_mm_cmpge_sd`
-* [ ] `_mm_cmpord_sd`
-* [ ] `_mm_cmpunord_sd`
-* [ ] `_mm_cmpneq_sd`
-* [ ] `_mm_cmpnlt_sd`
-* [ ] `_mm_cmpnle_sd`
-* [ ] `_mm_cmpngt_sd`
-* [ ] `_mm_cmpnge_sd`
-* [ ] `_mm_cmpeq_pd`
+* [x] `_mm_and_pd`
+* [x] `_mm_andnot_pd`
+* [x] `_mm_or_pd`
+* [x] `_mm_xor_pd`
+* [x] `_mm_cmpeq_sd`
+* [x] `_mm_cmplt_sd`
+* [x] `_mm_cmple_sd`
+* [x] `_mm_cmpgt_sd`
+* [x] `_mm_cmpge_sd`
+* [x] `_mm_cmpord_sd`
+* [x] `_mm_cmpunord_sd`
+* [x] `_mm_cmpneq_sd`
+* [x] `_mm_cmpnlt_sd`
+* [x] `_mm_cmpnle_sd`
+* [x] `_mm_cmpngt_sd`
+* [x] `_mm_cmpnge_sd`
+* [x] `_mm_cmpeq_pd`
 * [ ] `_mm_cmplt_pd`
 * [ ] `_mm_cmple_pd`
 * [ ] `_mm_cmpgt_pd`

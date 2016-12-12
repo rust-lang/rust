@@ -3,6 +3,11 @@ extern crate stdsimd;
 use std::env;
 use stdsimd as s;
 
+#[inline(never)]
+fn foobar(a: s::f64x2, b: s::f64x2) -> s::f64x2 {
+    s::_mm_cmpge_sd(a, b)
+}
+
 fn main() {
     let x0: f64 = env::args().nth(1).unwrap().parse().unwrap();
     let x1: f64 = env::args().nth(2).unwrap().parse().unwrap();
@@ -15,6 +20,7 @@ fn main() {
 
     let a = s::f64x2::new(x0, x1);
     let b = s::f64x2::new(x2, x3);
-    let r = s::_mm_div_sd(a, b);
+    // let r = s::_mm_cmplt_sd(a, b);
+    let r = foobar(a, b);
     println!("{:?}", r);
 }
