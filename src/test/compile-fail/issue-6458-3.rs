@@ -12,7 +12,7 @@ use std::mem;
 
 fn main() {
     mem::transmute(0);
-    //~^ ERROR unable to infer enough type information about `_` [E0282]
-    //~| NOTE cannot infer type for `_`
+    //~^ ERROR unable to infer enough type information about `U` [E0282]
+    //~| NOTE cannot infer type for `U`
     //~| NOTE type annotations or generic parameter binding
 }

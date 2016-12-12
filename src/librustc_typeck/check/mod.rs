@@ -85,8 +85,8 @@ use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
 use hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
-                   TypeTrace, type_variable};
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin, TypeTrace};
+use rustc::infer::type_variable::{self, TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
@@ -117,7 +117,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span};
+use syntax_pos::{self, BytePos, Span, DUMMY_SP};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -683,11 +683,11 @@ struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
-    fn assign(&mut self, _span: Span, nid: ast::NodeId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: ast::NodeId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
-                let var_ty = self.fcx.next_ty_var();
+                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
@@ -1444,8 +1444,8 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         Ok(r)
     }
 
-    fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
-        self.next_ty_var()
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
+        self.next_ty_var(TypeVariableOrigin::TypeInference(span))
     }
 
     fn ty_infer_for_def(&self,
@@ -1751,13 +1751,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(ty_var) = self.anon_types.borrow().get(&def_id) {
                     return ty_var;
                 }
-                let ty_var = self.next_ty_var();
+                let span = self.tcx.def_span(def_id);
+                let ty_var = self.next_ty_var(TypeVariableOrigin::TypeInference(span));
                 self.anon_types.borrow_mut().insert(def_id, ty_var);
 
                 let item_predicates = self.tcx.item_predicates(def_id);
                 let bounds = item_predicates.instantiate(self.tcx, substs);
 
-                let span = self.tcx.def_span(def_id);
                 for predicate in bounds.predicates {
                     // Change the predicate to refer to the type variable,
                     // which will be the concrete type, instead of the TyAnon.
@@ -2204,7 +2204,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let conflicting_default =
                         self.find_conflicting_default(&unbound_tyvars, &default_map, conflict)
                             .unwrap_or(type_variable::Default {
-                                ty: self.next_ty_var(),
+                                ty: self.next_ty_var(
+                                    TypeVariableOrigin::MiscVariable(syntax_pos::DUMMY_SP)),
                                 origin_span: syntax_pos::DUMMY_SP,
                                 // what do I put here?
                                 def_id: self.tcx.map.local_def_id(ast::CRATE_NODE_ID)
@@ -2398,7 +2399,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                unsize,
                index_ty);
 
-        let input_ty = self.next_ty_var();
+        let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
 
         // First, try built-in indexing.
         match (adjusted_ty.builtin_index(), &index_ty.sty) {
@@ -3486,8 +3487,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Add adjustments to !-expressions
         if ty.is_never() {
-            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(expr.id) {
-                let adj_ty = self.next_diverging_ty_var();
+            if let Some(hir::map::NodeExpr(node_expr)) = self.tcx.map.find(expr.id) {
+                let adj_ty = self.next_diverging_ty_var(
+                    TypeVariableOrigin::AdjustmentType(node_expr.span));
                 self.write_adjustment(expr.id, adjustment::Adjustment {
                     kind: adjustment::Adjust::NeverToAny,
                     target: adj_ty
@@ -3781,7 +3783,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
           }
           hir::ExprLoop(ref body, _, _) => {
-            let unified = self.next_ty_var();
+            let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(body.span));
             let coerce_to = expected.only_has_type(self).unwrap_or(unified);
             let ctxt = LoopCtxt {
                 unified: unified,
@@ -3860,7 +3862,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             });
 
-            let mut unified = self.next_ty_var();
+            let mut unified = self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span));
             let coerce_to = uty.unwrap_or(unified);
 
             for (i, e) in args.iter().enumerate() {
@@ -3905,7 +3907,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (uty, uty)
                 }
                 None => {
-                    let t: Ty = self.next_ty_var();
+                    let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
                     let element_ty = self.check_expr_has_type(&element, t);
                     (element_ty, t)
                 }
@@ -4154,31 +4156,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let node_id = match stmt.node {
+        let (node_id, span) = match stmt.node {
             hir::StmtDecl(ref decl, id) => {
-                match decl.node {
+                let span = match decl.node {
                     hir::DeclLocal(ref l) => {
                         self.check_decl_local(&l);
+                        l.span
                     }
-                    hir::DeclItem(_) => {/* ignore for now */ }
-                }
-                id
+                    hir::DeclItem(_) => {/* ignore for now */
+                        DUMMY_SP
+                    }
+                };
+                (id, span)
             }
             hir::StmtExpr(ref expr, id) => {
                 // Check with expected type of ()
                 self.check_expr_has_type(&expr, self.tcx.mk_nil());
-                id
+                (id, expr.span)
             }
             hir::StmtSemi(ref expr, id) => {
                 self.check_expr(&expr);
-                id
+                (id, expr.span)
             }
         };
 
         if self.has_errors.get() {
             self.write_error(node_id);
         } else if self.diverges.get().always() {
-            self.write_ty(node_id, self.next_diverging_ty_var());
+            self.write_ty(node_id, self.next_diverging_ty_var(
+                TypeVariableOrigin::DivergingStmt(span)));
         } else {
             self.write_nil(node_id);
         }
@@ -4224,7 +4230,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            ty = self.next_diverging_ty_var();
+            ty = self.next_diverging_ty_var(TypeVariableOrigin::DivergingBlockExpr(blk.span));
         } else if let ExpectHasType(ety) = expected {
             if let Some(ref e) = blk.expr {
                 // Coerce the tail expression to the right type.

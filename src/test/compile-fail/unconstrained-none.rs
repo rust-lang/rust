@@ -11,7 +11,7 @@
 // Issue #5062
 
 fn main() {
-    None; //~ ERROR unable to infer enough type information about `_` [E0282]
-          //~| NOTE cannot infer type for `_`
+    None; //~ ERROR unable to infer enough type information about `T` [E0282]
+          //~| NOTE cannot infer type for `T`
           //~| NOTE type annotations or generic parameter binding
 }
