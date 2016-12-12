@@ -177,26 +177,21 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         CustomScopeIndex { index: index }
     }
 
-    /// Removes the top cleanup scope from the stack without executing its cleanups. The top
-    /// cleanup scope must be the temporary scope `custom_scope`.
-    pub fn pop_custom_cleanup_scope(&self,
-                                    custom_scope: CustomScopeIndex) {
-        debug!("pop_custom_cleanup_scope({})", custom_scope.index);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
-        let _ = self.pop_scope();
-    }
-
     /// Removes the top cleanup scope from the stack, which must be a temporary scope, and
     /// generates the code to do its cleanups for normal exit.
     pub fn pop_and_trans_custom_cleanup_scope(&self,
-                                              bcx: BlockAndBuilder<'blk, 'tcx>,
+                                              mut bcx: BlockAndBuilder<'blk, 'tcx>,
                                               custom_scope: CustomScopeIndex)
                                               -> BlockAndBuilder<'blk, 'tcx> {
         debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
+        assert!(self.is_valid_custom_scope(custom_scope));
+        assert!(custom_scope.index == self.scopes.borrow().len() - 1);
 
         let scope = self.pop_scope();
-        self.trans_scope_cleanups(bcx, &scope)
+        for cleanup in scope.cleanups.iter().rev() {
+            bcx = cleanup.trans(bcx.funclet(), bcx);
+        }
+        bcx
     }
 
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of
@@ -243,29 +238,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         };
 
         debug!("schedule_drop_adt_contents({:?}, val={:?}, ty={:?}) skip_dtor={}",
-               cleanup_scope,
-               Value(val),
-               ty,
-               drop.skip_dtor);
-
-        self.schedule_clean(cleanup_scope, drop);
-    }
-
-    /// Schedules a (deep) drop of `val`, which is an instance of `ty`
-    pub fn schedule_drop_immediate(&self,
-                                   cleanup_scope: CustomScopeIndex,
-                                   val: ValueRef,
-                                   ty: Ty<'tcx>) {
-
-        if !self.type_needs_drop(ty) { return; }
-        let drop = DropValue {
-            is_immediate: true,
-            val: val,
-            ty: ty,
-            skip_dtor: false,
-        };
-
-        debug!("schedule_drop_immediate({:?}, val={:?}, ty={:?}) skip_dtor={}",
                cleanup_scope,
                Value(val),
                ty,
@@ -326,26 +298,9 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         return llbb;
     }
 
-    fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
-        self.is_valid_custom_scope(custom_scope) &&
-            custom_scope.index == self.scopes.borrow().len() - 1
-    }
-
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         let scopes = self.scopes.borrow();
         custom_scope.index < scopes.len()
-    }
-
-    /// Generates the cleanups for `scope` into `bcx`
-    fn trans_scope_cleanups(&self, // cannot borrow self, will recurse
-                            bcx: BlockAndBuilder<'blk, 'tcx>,
-                            scope: &CleanupScope<'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
-
-        let mut bcx = bcx;
-        for cleanup in scope.cleanups.iter().rev() {
-            bcx = cleanup.trans(bcx.funclet(), bcx);
-        }
-        bcx
     }
 
     fn scopes_len(&self) -> usize {
