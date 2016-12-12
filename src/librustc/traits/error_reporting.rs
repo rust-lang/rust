@@ -457,11 +457,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err
     }
 
+
+    /// Get the parent trait chain start
+    fn get_parent_trait_ref(&self, code: &ObligationCauseCode<'tcx>) -> Option<String> {
+        match code {
+            &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
+                let parent_trait_ref = self.resolve_type_vars_if_possible(
+                    &data.parent_trait_ref);
+                match self.get_parent_trait_ref(&data.parent_code) {
+                    Some(t) => Some(t),
+                    None => Some(format!("{}", parent_trait_ref.0.self_ty())),
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
                                   error: &SelectionError<'tcx>)
     {
         let span = obligation.cause.span;
+
         let mut err = match *error {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
@@ -486,16 +503,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 return;
                             } else {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
-
-                                let (post_message, pre_message) =
-                                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data)
-                                        = obligation.cause.code {
-                                    let parent_trait_ref = self.resolve_type_vars_if_possible(
-                                        &data.parent_trait_ref);
-                                    (format!(" in `{}`", parent_trait_ref.0.self_ty()),
-                                     format!("within `{}`, ", parent_trait_ref.0.self_ty()))
-                                } else {
-                                    (String::new(), String::new())
+                                let (post_message, pre_message) = match self.get_parent_trait_ref(
+                                    &obligation.cause.code)
+                                {
+                                    Some(t) => {
+                                        (format!(" in `{}`", t), format!("within `{}`, ", t))
+                                    }
+                                    None => (String::new(), String::new()),
                                 };
                                 let mut err = struct_span_err!(
                                     self.tcx.sess,
