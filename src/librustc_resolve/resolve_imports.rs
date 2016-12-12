@@ -41,6 +41,7 @@ pub enum ImportDirectiveSubclass<'a> {
         target: Ident,
         source: Ident,
         result: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
+        type_ns_only: bool,
     },
     GlobImport {
         is_prelude: bool,
@@ -503,8 +504,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         directive.imported_module.set(Some(module));
-        let (source, target, result) = match directive.subclass {
-            SingleImport { source, target, ref result } => (source, target, result),
+        let (source, target, result, type_ns_only) = match directive.subclass {
+            SingleImport { source, target, ref result, type_ns_only } =>
+                (source, target, result, type_ns_only),
             GlobImport { .. } => {
                 self.resolve_glob_import(directive);
                 return true;
@@ -513,7 +515,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         let mut indeterminate = false;
-        self.per_ns(|this, ns| {
+        self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Err(Undetermined) = result[ns].get() {
                 result[ns].set(this.resolve_ident_in_module(module, source, ns, false, None));
             } else {
@@ -573,8 +575,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             _ => return None,
         };
 
-        let (ident, result) = match directive.subclass {
-            SingleImport { source, ref result, .. } => (source, result),
+        let (ident, result, type_ns_only) = match directive.subclass {
+            SingleImport { source, ref result, type_ns_only, .. } => (source, result, type_ns_only),
             GlobImport { .. } if module.def_id() == directive.parent.def_id() => {
                 // Importing a module into itself is not allowed.
                 return Some("Cannot glob-import a module into itself.".to_string());
@@ -592,7 +594,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         let mut all_ns_err = true;
-        self.per_ns(|this, ns| {
+        self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
                 if this.record_use(ident, ns, binding, directive.span) {
@@ -604,7 +606,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         if all_ns_err {
             let mut all_ns_failed = true;
-            self.per_ns(|this, ns| {
+            self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                 match this.resolve_ident_in_module(module, ident, ns, false, Some(span)) {
                     Ok(_) => all_ns_failed = false,
                     _ => {}
