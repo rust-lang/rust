@@ -33,7 +33,6 @@ use type_::Type;
 use value::Value;
 use Disr;
 
-use arena::TypedArena;
 use syntax_pos::DUMMY_SP;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
@@ -121,19 +120,23 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn drop_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                           v: ValueRef,
-                           t: Ty<'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
-    drop_ty_core(bcx, v, t, false)
+fn drop_ty<'blk, 'tcx>(
+    bcx: BlockAndBuilder<'blk, 'tcx>,
+    v: ValueRef,
+    t: Ty<'tcx>,
+) -> BlockAndBuilder<'blk, 'tcx> {
+    call_drop_glue(bcx, v, t, false, None)
 }
 
-pub fn drop_ty_core<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                                v: ValueRef,
-                                t: Ty<'tcx>,
-                                skip_dtor: bool)
-                                -> BlockAndBuilder<'blk, 'tcx> {
+pub fn call_drop_glue<'blk, 'tcx>(
+    bcx: BlockAndBuilder<'blk, 'tcx>,
+    v: ValueRef,
+    t: Ty<'tcx>,
+    skip_dtor: bool,
+    lpad: Option<&'blk LandingPad>,
+) -> BlockAndBuilder<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
-    debug!("drop_ty_core(t={:?}, skip_dtor={})", t, skip_dtor);
+    debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
     let _icx = push_ctxt("drop_ty");
     if bcx.fcx().type_needs_drop(t) {
         let ccx = bcx.ccx();
@@ -151,22 +154,8 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         };
 
         // No drop-hint ==> call standard drop glue
-        bcx.call(glue, &[ptr], bcx.lpad().and_then(|b| b.bundle()));
+        bcx.call(glue, &[ptr], lpad.and_then(|b| b.bundle()));
     }
-    bcx
-}
-
-pub fn drop_ty_immediate<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                                     v: ValueRef,
-                                     t: Ty<'tcx>,
-                                     skip_dtor: bool)
-                                     -> BlockAndBuilder<'blk, 'tcx> {
-    let _icx = push_ctxt("drop_ty_immediate");
-    let vp = alloc_ty(&bcx, t, "");
-    Lifetime::Start.call(&bcx, vp);
-    store_ty(&bcx, v, vp, t);
-    let bcx = drop_ty_core(bcx, vp, t, skip_dtor);
-    Lifetime::End.call(&bcx, vp);
     bcx
 }
 
@@ -221,9 +210,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert_eq!(g.ty(), get_drop_glue_type(tcx, g.ty()));
     let (llfn, fn_ty) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
-    let (arena, fcx): (TypedArena<_>, FunctionContext);
-    arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &arena);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
 
     let bcx = fcx.init(false);
 
@@ -588,15 +575,15 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                         // from the outer function, and any other use case will only
                         // call this for an already-valid enum in which case the `ret
                         // void` will never be hit.
-                        let ret_void_cx = fcx.new_block("enum-iter-ret-void").build();
+                        let ret_void_cx = fcx.build_new_block("enum-iter-ret-void");
                         ret_void_cx.ret_void();
                         let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
-                        let next_cx = fcx.new_block("enum-iter-next").build();
+                        let next_cx = fcx.build_new_block("enum-iter-next");
 
                         for variant in &adt.variants {
                             let variant_cx_name = format!("enum-iter-variant-{}",
                                 &variant.disr_val.to_string());
-                            let variant_cx = fcx.new_block(&variant_cx_name).build();
+                            let variant_cx = fcx.build_new_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
                             let variant_cx = iter_variant(variant_cx, t, value, variant, substs);

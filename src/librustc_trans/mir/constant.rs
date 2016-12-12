@@ -952,7 +952,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           -> Const<'tcx>
     {
         debug!("trans_constant({:?})", constant);
-        let ty = bcx.monomorphize(&constant.ty);
+        let ty = bcx.fcx().monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
                 // Shortcut for zero-sized types, including function item
@@ -962,7 +962,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return Const::new(C_null(llty), ty);
                 }
 
-                let substs = bcx.monomorphize(&substs);
+                let substs = bcx.fcx().monomorphize(&substs);
                 let instance = Instance::new(def_id, substs);
                 MirConstContext::trans_def(bcx.ccx(), instance, IndexVec::new())
             }

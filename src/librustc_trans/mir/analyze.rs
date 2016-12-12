@@ -16,19 +16,18 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
-use common::{self, Block, BlockAndBuilder};
+use common::{self, BlockAndBuilder};
 use glue;
 use super::rvalue;
 
-pub fn lvalue_locals<'bcx, 'tcx>(bcx: Block<'bcx,'tcx>,
+pub fn lvalue_locals<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx,'tcx>,
                                  mir: &mir::Mir<'tcx>) -> BitVector {
-    let bcx = bcx.build();
     let mut analyzer = LocalAnalyzer::new(mir, &bcx);
 
     analyzer.visit_mir(mir);
 
     for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
-        let ty = bcx.monomorphize(&ty);
+        let ty = bcx.fcx().monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
         if ty.is_scalar() ||
             ty.is_unique() ||
@@ -142,7 +141,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
             if let mir::Lvalue::Local(_) = proj.base {
                 let ty = proj.base.ty(self.mir, self.bcx.tcx());
 
-                let ty = self.bcx.monomorphize(&ty.to_ty(self.bcx.tcx()));
+                let ty = self.bcx.fcx().monomorphize(&ty.to_ty(self.bcx.tcx()));
                 if common::type_is_imm_pair(self.bcx.ccx(), ty) {
                     if let mir::ProjectionElem::Field(..) = proj.elem {
                         if let LvalueContext::Consume = context {
@@ -172,7 +171,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
 
                 LvalueContext::Drop => {
                     let ty = lvalue.ty(self.mir, self.bcx.tcx());
-                    let ty = self.bcx.monomorphize(&ty.to_ty(self.bcx.tcx()));
+                    let ty = self.bcx.fcx().monomorphize(&ty.to_ty(self.bcx.tcx()));
 
                     // Only need the lvalue if we're actually dropping it.
                     if glue::type_needs_drop(self.bcx.tcx(), ty) {
@@ -200,10 +199,7 @@ pub enum CleanupKind {
     Internal { funclet: mir::BasicBlock }
 }
 
-pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
-                                mir: &mir::Mir<'tcx>)
-                                -> IndexVec<mir::BasicBlock, CleanupKind>
-{
+pub fn cleanup_kinds<'bcx,'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {

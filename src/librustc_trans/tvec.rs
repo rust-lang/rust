@@ -35,9 +35,9 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
         bcx.inbounds_gep(a, &[b])
     };
 
-    let body_bcx = fcx.new_block("slice_loop_body").build();
-    let next_bcx = fcx.new_block("slice_loop_next").build();
-    let header_bcx = fcx.new_block("slice_loop_header").build();
+    let body_bcx = fcx.build_new_block("slice_loop_body");
+    let next_bcx = fcx.build_new_block("slice_loop_next");
+    let header_bcx = fcx.build_new_block("slice_loop_header");
 
     let start = if zst {
         C_uint(bcx.ccx(), 0usize)

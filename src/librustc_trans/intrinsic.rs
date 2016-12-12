@@ -10,7 +10,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use arena::TypedArena;
 use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
@@ -812,10 +811,10 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
         bcx.set_personality_fn(bcx.fcx().eh_personality());
 
-        let normal = bcx.fcx().new_block("normal").build();
-        let catchswitch = bcx.fcx().new_block("catchswitch").build();
-        let catchpad = bcx.fcx().new_block("catchpad").build();
-        let caught = bcx.fcx().new_block("caught").build();
+        let normal = bcx.fcx().build_new_block("normal");
+        let catchswitch = bcx.fcx().build_new_block("catchswitch");
+        let catchpad = bcx.fcx().build_new_block("catchpad");
+        let caught = bcx.fcx().build_new_block("caught");
 
         let func = llvm::get_param(bcx.fcx().llfn, 0);
         let data = llvm::get_param(bcx.fcx().llfn, 1);
@@ -930,8 +929,8 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bcx.fcx().new_block("then").build();
-        let catch = bcx.fcx().new_block("catch").build();
+        let then = bcx.fcx().build_new_block("then");
+        let catch = bcx.fcx().build_new_block("catch");
 
         let func = llvm::get_param(bcx.fcx().llfn, 0);
         let data = llvm::get_param(bcx.fcx().llfn, 1);
@@ -978,9 +977,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let (fcx, block_arena);
-    block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
     trans(fcx.init(true));
     fcx.cleanup();
     llfn

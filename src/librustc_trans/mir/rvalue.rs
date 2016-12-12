@@ -52,7 +52,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
            }
 
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, cast_ty) => {
-                let cast_ty = bcx.monomorphize(&cast_ty);
+                let cast_ty = bcx.fcx().monomorphize(&cast_ty);
 
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
@@ -187,7 +187,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
                 let operand = self.trans_operand(&bcx, source);
                 debug!("cast operand is {:?}", operand);
-                let cast_ty = bcx.monomorphize(&cast_ty);
+                let cast_ty = bcx.fcx().monomorphize(&cast_ty);
 
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
@@ -444,7 +444,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Rvalue::Box(content_ty) => {
-                let content_ty: Ty<'tcx> = bcx.monomorphize(&content_ty);
+                let content_ty: Ty<'tcx> = bcx.fcx().monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx(), content_ty);
                 let llsize = machine::llsize_of(bcx.ccx(), llty);
                 let align = type_of::align_of(bcx.ccx(), content_ty);
