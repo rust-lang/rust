@@ -114,13 +114,12 @@
 //! code for `expr` itself is responsible for freeing any other byproducts
 //! that may be in play.
 
-pub use self::EarlyExitLabel::*;
+use self::EarlyExitLabel::*;
 
 use llvm::{BasicBlockRef, ValueRef};
 use base::{self, Lifetime};
 use common;
 use common::{BlockAndBuilder, FunctionContext, Funclet};
-use debuginfo::{DebugLoc};
 use glue;
 use type_::Type;
 use value::Value;
@@ -129,10 +128,6 @@ use rustc::ty::Ty;
 pub struct CleanupScope<'tcx> {
     // Cleanups to run upon scope exit.
     cleanups: Vec<DropValue<'tcx>>,
-
-    // The debug location any drop calls generated for this scope will be
-    // associated with.
-    debug_loc: DebugLoc,
 
     cached_early_exits: Vec<CachedEarlyExit>,
     cached_landing_pad: Option<BasicBlockRef>,
@@ -144,18 +139,18 @@ pub struct CustomScopeIndex {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum EarlyExitLabel {
+enum EarlyExitLabel {
     UnwindExit(UnwindKind),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum UnwindKind {
+enum UnwindKind {
     LandingPad,
     CleanupPad(ValueRef),
 }
 
 #[derive(Copy, Clone)]
-pub struct CachedEarlyExit {
+struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
     last_cleanup: usize,
@@ -165,15 +160,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn push_custom_cleanup_scope(&self) -> CustomScopeIndex {
         let index = self.scopes_len();
         debug!("push_custom_cleanup_scope(): {}", index);
-
-        // Just copy the debuginfo source location from the enclosing scope
-        let debug_loc = self.scopes
-                            .borrow()
-                            .last()
-                            .map(|opt_scope| opt_scope.debug_loc)
-                            .unwrap_or(DebugLoc::None);
-
-        self.push_scope(CleanupScope::new(debug_loc));
+        self.push_scope(CleanupScope::new());
         CustomScopeIndex { index: index }
     }
 
@@ -282,8 +269,67 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             popped_scopes.push(self.pop_scope());
         }
 
-        // Check for an existing landing pad in the new topmost scope:
-        let llbb = self.get_or_create_landing_pad();
+        // Creates a landing pad for the top scope, if one does not exist.  The
+        // landing pad will perform all cleanups necessary for an unwind and then
+        // `resume` to continue error propagation:
+        //
+        //     landing_pad -> ... cleanups ... -> [resume]
+        //
+        // (The cleanups and resume instruction are created by
+        // `trans_cleanups_to_exit_scope()`, not in this function itself.)
+        let mut scopes = self.scopes.borrow_mut();
+        let last_scope = scopes.last_mut().unwrap();
+        let llbb = if let Some(llbb) = last_scope.cached_landing_pad {
+            llbb
+        } else {
+            let name = last_scope.block_name("unwind");
+            let pad_bcx = self.build_new_block(&name[..]);
+            last_scope.cached_landing_pad = Some(pad_bcx.llbb());
+            let llpersonality = pad_bcx.fcx().eh_personality();
+
+            let val = if base::wants_msvc_seh(self.ccx.sess()) {
+                // A cleanup pad requires a personality function to be specified, so
+                // we do that here explicitly (happens implicitly below through
+                // creation of the landingpad instruction). We then create a
+                // cleanuppad instruction which has no filters to run cleanup on all
+                // exceptions.
+                pad_bcx.set_personality_fn(llpersonality);
+                let llretval = pad_bcx.cleanup_pad(None, &[]);
+                UnwindKind::CleanupPad(llretval)
+            } else {
+                // The landing pad return type (the type being propagated). Not sure
+                // what this represents but it's determined by the personality
+                // function and this is what the EH proposal example uses.
+                let llretty = Type::struct_(self.ccx,
+                    &[Type::i8p(self.ccx), Type::i32(self.ccx)],
+                    false);
+
+                // The only landing pad clause will be 'cleanup'
+                let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1,
+                    pad_bcx.fcx().llfn);
+
+                // The landing pad block is a cleanup
+                pad_bcx.set_cleanup(llretval);
+
+                let addr = match self.landingpad_alloca.get() {
+                    Some(addr) => addr,
+                    None => {
+                        let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
+                        Lifetime::Start.call(&pad_bcx, addr);
+                        self.landingpad_alloca.set(Some(addr));
+                        addr
+                    }
+                };
+                pad_bcx.store(llretval, addr);
+                UnwindKind::LandingPad
+            };
+
+            // Generate the cleanup block and branch to it.
+            let label = UnwindExit(val);
+            let cleanup_llbb = self.trans_cleanups_to_exit_scope(label);
+            label.branch(&pad_bcx, cleanup_llbb);
+            pad_bcx.llbb()
+        };
 
         // Push the scopes we removed back on:
         loop {
@@ -346,11 +392,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// breaks. The return value would be the first basic block in that sequence
     /// (`Cleanup(AST 24)`). The caller could then branch to `Cleanup(AST 24)`
     /// and it will perform all cleanups and finally branch to the `break_blk`.
-    fn trans_cleanups_to_exit_scope(&'blk self,
-                                    label: EarlyExitLabel)
-                                    -> BasicBlockRef {
-        debug!("trans_cleanups_to_exit_scope label={:?} scopes={}",
-               label, self.scopes_len());
+    fn trans_cleanups_to_exit_scope(&'blk self, label: EarlyExitLabel) -> BasicBlockRef {
+        debug!("trans_cleanups_to_exit_scope label={:?} scopes={}", label, self.scopes_len());
 
         let orig_scopes_len = self.scopes_len();
         let mut prev_llbb;
@@ -367,36 +410,34 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         // (Presuming that there are no cached exits)
         loop {
             if self.scopes_len() == 0 {
-                match label {
-                    UnwindExit(val) => {
-                        // Generate a block that will resume unwinding to the
-                        // calling function
-                        let bcx = self.build_new_block("resume");
-                        match val {
-                            UnwindKind::LandingPad => {
-                                let addr = self.landingpad_alloca.get()
-                                               .unwrap();
-                                let lp = bcx.load(addr);
-                                Lifetime::End.call(&bcx, addr);
-                                if !bcx.sess().target.target.options.custom_unwind_resume {
-                                    bcx.resume(lp);
-                                } else {
-                                    let exc_ptr = bcx.extract_value(lp, 0);
-                                    bcx.call(
-                                        bcx.fcx().eh_unwind_resume().reify(bcx.ccx()),
-                                        &[exc_ptr],
-                                        bcx.funclet().map(|b| b.bundle()));
-                                }
-                            }
-                            UnwindKind::CleanupPad(_) => {
-                                let pad = bcx.cleanup_pad(None, &[]);
-                                bcx.cleanup_ret(pad, None);
-                            }
+                let val = match label {
+                    UnwindExit(val) => val,
+                };
+                // Generate a block that will resume unwinding to the
+                // calling function
+                let bcx = self.build_new_block("resume");
+                match val {
+                    UnwindKind::LandingPad => {
+                        let addr = self.landingpad_alloca.get().unwrap();
+                        let lp = bcx.load(addr);
+                        Lifetime::End.call(&bcx, addr);
+                        if !bcx.sess().target.target.options.custom_unwind_resume {
+                            bcx.resume(lp);
+                        } else {
+                            let exc_ptr = bcx.extract_value(lp, 0);
+                            bcx.call(
+                                bcx.fcx().eh_unwind_resume().reify(bcx.ccx()),
+                                &[exc_ptr],
+                                bcx.funclet().map(|b| b.bundle()));
                         }
-                        prev_llbb = bcx.llbb();
-                        break;
+                    }
+                    UnwindKind::CleanupPad(_) => {
+                        let pad = bcx.cleanup_pad(None, &[]);
+                        bcx.cleanup_ret(pad, None);
                     }
                 }
+                prev_llbb = bcx.llbb();
+                break;
             }
 
             // Pop off the scope, since we may be generating
@@ -466,85 +507,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         assert_eq!(self.scopes_len(), orig_scopes_len);
         prev_llbb
     }
-
-    /// Creates a landing pad for the top scope, if one does not exist.  The
-    /// landing pad will perform all cleanups necessary for an unwind and then
-    /// `resume` to continue error propagation:
-    ///
-    ///     landing_pad -> ... cleanups ... -> [resume]
-    ///
-    /// (The cleanups and resume instruction are created by
-    /// `trans_cleanups_to_exit_scope()`, not in this function itself.)
-    fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef {
-        let pad_bcx;
-
-        debug!("get_or_create_landing_pad");
-
-        // Check if a landing pad block exists; if not, create one.
-        {
-            let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.last_mut().unwrap();
-            match last_scope.cached_landing_pad {
-                Some(llbb) => return llbb,
-                None => {
-                    let name = last_scope.block_name("unwind");
-                    pad_bcx = self.build_new_block(&name[..]);
-                    last_scope.cached_landing_pad = Some(pad_bcx.llbb());
-                }
-            }
-        };
-
-        let llpersonality = pad_bcx.fcx().eh_personality();
-
-        let val = if base::wants_msvc_seh(self.ccx.sess()) {
-            // A cleanup pad requires a personality function to be specified, so
-            // we do that here explicitly (happens implicitly below through
-            // creation of the landingpad instruction). We then create a
-            // cleanuppad instruction which has no filters to run cleanup on all
-            // exceptions.
-            pad_bcx.set_personality_fn(llpersonality);
-            let llretval = pad_bcx.cleanup_pad(None, &[]);
-            UnwindKind::CleanupPad(llretval)
-        } else {
-            // The landing pad return type (the type being propagated). Not sure
-            // what this represents but it's determined by the personality
-            // function and this is what the EH proposal example uses.
-            let llretty = Type::struct_(self.ccx,
-                                        &[Type::i8p(self.ccx), Type::i32(self.ccx)],
-                                        false);
-
-            // The only landing pad clause will be 'cleanup'
-            let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1, pad_bcx.fcx().llfn);
-
-            // The landing pad block is a cleanup
-            pad_bcx.set_cleanup(llretval);
-
-            let addr = match self.landingpad_alloca.get() {
-                Some(addr) => addr,
-                None => {
-                    let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
-                    Lifetime::Start.call(&pad_bcx, addr);
-                    self.landingpad_alloca.set(Some(addr));
-                    addr
-                }
-            };
-            pad_bcx.store(llretval, addr);
-            UnwindKind::LandingPad
-        };
-
-        // Generate the cleanup block and branch to it.
-        let label = UnwindExit(val);
-        let cleanup_llbb = self.trans_cleanups_to_exit_scope(label);
-        label.branch(&pad_bcx, cleanup_llbb);
-
-        return pad_bcx.llbb();
-    }
 }
 
 impl<'tcx> CleanupScope<'tcx> {
-    fn new(debug_loc: DebugLoc) -> CleanupScope<'tcx> {
+    fn new() -> CleanupScope<'tcx> {
         CleanupScope {
-            debug_loc: debug_loc,
             cleanups: vec![],
             cached_early_exits: vec![],
             cached_landing_pad: None,
