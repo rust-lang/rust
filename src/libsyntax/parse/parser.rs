@@ -71,7 +71,7 @@ bitflags! {
     }
 }
 
-type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
+type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
 
 /// How to parse a path. There are three different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -5005,8 +5005,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse struct Foo { ... }
-    fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_struct(&mut self) -> PResult<'a, (ItemInfo, Span)> {
         let class_name = self.parse_ident()?;
+        let sp = self.prev_span;  // struct's name's span
         let mut generics = self.parse_generics()?;
 
         // There is a special case worth noting here, as reported in issue #17904.
@@ -5050,7 +5051,7 @@ impl<'a> Parser<'a> {
                                             name, found `{}`", token_str)))
         };
 
-        Ok((class_name, ItemKind::Struct(vdata, generics), None))
+        Ok(((class_name, ItemKind::Struct(vdata, generics), None), sp))
     }
 
     /// Parse union Foo { ... }
@@ -5920,10 +5921,9 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Struct) {
             // STRUCT ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_struct()?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo,
-                                    prev_span.hi,
+            let ((ident, item_, extra_attrs), sp) = self.parse_item_struct()?;
+            let item = self.mk_item(sp.lo,
+                                    sp.hi,
                                     ident,
                                     item_,
                                     visibility,
