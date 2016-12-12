@@ -524,12 +524,14 @@ impl fmt::Display for IpAddr {
     }
 }
 
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<Ipv4Addr> for IpAddr {
     fn from(ipv4: Ipv4Addr) -> IpAddr {
         IpAddr::V4(ipv4)
     }
 }
 
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<Ipv6Addr> for IpAddr {
     fn from(ipv6: Ipv6Addr) -> IpAddr {
         IpAddr::V6(ipv6)
