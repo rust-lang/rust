@@ -25,6 +25,8 @@
 
 # Indicates whether ccache is used when building LLVM
 #ccache = false
+# or alternatively ...
+#ccache = "/path/to/ccache"
 
 # If an external LLVM root is specified, we automatically check the version by
 # default to make sure it's within the range that we're expecting, but setting

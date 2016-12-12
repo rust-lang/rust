@@ -109,10 +109,10 @@ pub fn llvm(build: &Build, target: &str) {
 
     // MSVC handles compiler business itself
     if !target.contains("msvc") {
-        if build.config.ccache {
-           cfg.define("CMAKE_C_COMPILER", "ccache")
+        if let Some(ref ccache) = build.config.ccache {
+           cfg.define("CMAKE_C_COMPILER", ccache)
               .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", "ccache")
+              .define("CMAKE_CXX_COMPILER", ccache)
               .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
         } else {
            cfg.define("CMAKE_C_COMPILER", build.cc(target))
