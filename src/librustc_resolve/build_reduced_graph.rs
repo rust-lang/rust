@@ -168,6 +168,7 @@ impl<'a> Resolver<'a> {
                             target: binding,
                             source: source,
                             result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
+                            type_ns_only: false,
                         };
                         self.add_import_directive(
                             module_path, subclass, view_path.span, item.id, vis, expansion,
@@ -195,10 +196,10 @@ impl<'a> Resolver<'a> {
 
                         for source_item in source_items {
                             let node = source_item.node;
-                            let (module_path, ident, rename) = {
+                            let (module_path, ident, rename, type_ns_only) = {
                                 if node.name.name != keywords::SelfValue.name() {
                                     let rename = node.rename.unwrap_or(node.name);
-                                    (module_path.clone(), node.name, rename)
+                                    (module_path.clone(), node.name, rename, false)
                                 } else {
                                     let ident = *module_path.last().unwrap();
                                     if ident.name == keywords::CrateRoot.name() {
@@ -212,13 +213,14 @@ impl<'a> Resolver<'a> {
                                     }
                                     let module_path = module_path.split_last().unwrap().1;
                                     let rename = node.rename.unwrap_or(ident);
-                                    (module_path.to_vec(), ident, rename)
+                                    (module_path.to_vec(), ident, rename, true)
                                 }
                             };
                             let subclass = SingleImport {
                                 target: rename,
                                 source: ident,
                                 result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
+                                type_ns_only: type_ns_only,
                             };
                             let id = source_item.node.id;
                             self.add_import_directive(
