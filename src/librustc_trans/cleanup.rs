@@ -114,8 +114,6 @@
 //! code for `expr` itself is responsible for freeing any other byproducts
 //! that may be in play.
 
-use self::EarlyExitLabel::*;
-
 use llvm::{BasicBlockRef, ValueRef};
 use base::{self, Lifetime};
 use common;
@@ -138,11 +136,6 @@ pub struct CustomScopeIndex {
     index: usize
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-enum EarlyExitLabel {
-    UnwindExit(UnwindKind),
-}
-
 #[derive(Copy, Clone, Debug)]
 enum UnwindKind {
     LandingPad,
@@ -151,7 +144,7 @@ enum UnwindKind {
 
 #[derive(Copy, Clone)]
 struct CachedEarlyExit {
-    label: EarlyExitLabel,
+    label: UnwindKind,
     cleanup_block: BasicBlockRef,
     last_cleanup: usize,
 }
@@ -325,9 +318,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             };
 
             // Generate the cleanup block and branch to it.
-            let label = UnwindExit(val);
-            let cleanup_llbb = self.trans_cleanups_to_exit_scope(label);
-            label.branch(&pad_bcx, cleanup_llbb);
+            let cleanup_llbb = self.trans_cleanups_to_exit_scope(val);
+            val.branch(&pad_bcx, cleanup_llbb);
             pad_bcx.llbb()
         };
 
@@ -392,7 +384,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// breaks. The return value would be the first basic block in that sequence
     /// (`Cleanup(AST 24)`). The caller could then branch to `Cleanup(AST 24)`
     /// and it will perform all cleanups and finally branch to the `break_blk`.
-    fn trans_cleanups_to_exit_scope(&'blk self, label: EarlyExitLabel) -> BasicBlockRef {
+    fn trans_cleanups_to_exit_scope(&'blk self, label: UnwindKind) -> BasicBlockRef {
         debug!("trans_cleanups_to_exit_scope label={:?} scopes={}", label, self.scopes_len());
 
         let orig_scopes_len = self.scopes_len();
@@ -410,13 +402,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         // (Presuming that there are no cached exits)
         loop {
             if self.scopes_len() == 0 {
-                let val = match label {
-                    UnwindExit(val) => val,
-                };
                 // Generate a block that will resume unwinding to the
                 // calling function
                 let bcx = self.build_new_block("resume");
-                match val {
+                match label {
                     UnwindKind::LandingPad => {
                         let addr = self.landingpad_alloca.get().unwrap();
                         let lp = bcx.load(addr);
@@ -519,7 +508,7 @@ impl<'tcx> CleanupScope<'tcx> {
     }
 
     fn cached_early_exit(&self,
-                         label: EarlyExitLabel)
+                         label: UnwindKind)
                          -> Option<(BasicBlockRef, usize)> {
         self.cached_early_exits.iter().rev().
             find(|e| e.label == label).
@@ -527,7 +516,7 @@ impl<'tcx> CleanupScope<'tcx> {
     }
 
     fn add_cached_early_exit(&mut self,
-                             label: EarlyExitLabel,
+                             label: UnwindKind,
                              blk: BasicBlockRef,
                              last_cleanup: usize) {
         self.cached_early_exits.push(
@@ -548,7 +537,7 @@ impl<'tcx> CleanupScope<'tcx> {
     }
 }
 
-impl EarlyExitLabel {
+impl UnwindKind {
     /// Generates a branch going from `from_bcx` to `to_llbb` where `self` is
     /// the exit label attached to the start of `from_bcx`.
     ///
@@ -556,7 +545,7 @@ impl EarlyExitLabel {
     /// of label. For example with MSVC exceptions unwind exit labels will use
     /// the `cleanupret` instruction instead of the `br` instruction.
     fn branch(&self, from_bcx: &BlockAndBuilder, to_llbb: BasicBlockRef) {
-        if let UnwindExit(UnwindKind::CleanupPad(pad)) = *self {
+        if let UnwindKind::CleanupPad(pad) = *self {
             from_bcx.cleanup_ret(pad, Some(to_llbb));
         } else {
             from_bcx.br(to_llbb);
@@ -574,14 +563,14 @@ impl EarlyExitLabel {
     ///
     /// Returns a new label which will can be used to cache `bcx` in the list of
     /// early exits.
-    fn start(&self, bcx: &BlockAndBuilder) -> EarlyExitLabel {
+    fn start(&self, bcx: &BlockAndBuilder) -> UnwindKind {
         match *self {
-            UnwindExit(UnwindKind::CleanupPad(..)) => {
+            UnwindKind::CleanupPad(..) => {
                 let pad = bcx.cleanup_pad(None, &[]);
                 bcx.set_funclet(Funclet::msvc(pad));
-                UnwindExit(UnwindKind::CleanupPad(pad))
+                UnwindKind::CleanupPad(pad)
             }
-            UnwindExit(UnwindKind::LandingPad) => {
+            UnwindKind::LandingPad => {
                 bcx.set_funclet(Funclet::gnu());
                 *self
             }
@@ -590,8 +579,8 @@ impl EarlyExitLabel {
 }
 
 impl PartialEq for UnwindKind {
-    fn eq(&self, val: &UnwindKind) -> bool {
-        match (*self, *val) {
+    fn eq(&self, label: &UnwindKind) -> bool {
+        match (*self, *label) {
             (UnwindKind::LandingPad, UnwindKind::LandingPad) |
             (UnwindKind::CleanupPad(..), UnwindKind::CleanupPad(..)) => true,
             _ => false,
