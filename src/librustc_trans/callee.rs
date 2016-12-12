@@ -16,7 +16,6 @@
 
 pub use self::CalleeData::*;
 
-use arena::TypedArena;
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -26,7 +25,7 @@ use attributes;
 use base;
 use base::*;
 use common::{
-    self, Block, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
+    self, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
 };
 use consts;
 use declare;
@@ -71,25 +70,8 @@ impl<'tcx> Callee<'tcx> {
         }
     }
 
-    /// Trait or impl method call.
-    pub fn method_call<'blk>(bcx: Block<'blk, 'tcx>,
-                             method_call: ty::MethodCall)
-                             -> Callee<'tcx> {
-        let method = bcx.tcx().tables().method_map[&method_call];
-        Callee::method(bcx, method)
-    }
-
-    /// Trait or impl method.
-    pub fn method<'blk>(bcx: Block<'blk, 'tcx>,
-                        method: ty::MethodCallee<'tcx>) -> Callee<'tcx> {
-        let substs = bcx.fcx.monomorphize(&method.substs);
-        Callee::def(bcx.ccx(), method.def_id, substs)
-    }
-
     /// Function or method definition.
-    pub fn def<'a>(ccx: &CrateContext<'a, 'tcx>,
-                   def_id: DefId,
-                   substs: &'tcx Substs<'tcx>)
+    pub fn def<'a>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>)
                    -> Callee<'tcx> {
         let tcx = ccx.tcx();
 
@@ -367,9 +349,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
-    block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, &block_arena);
+    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None);
     let bcx = fcx.init(false);
 
     // the first argument (`self`) will be the (by value) closure env.
@@ -518,9 +498,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
-    block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
     let bcx = fcx.init(false);
 
     let llargs = get_params(fcx.llfn);
@@ -723,17 +701,11 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         for &llarg in &llargs {
             debug!("arg: {:?}", Value(llarg));
         }
-        let normal_bcx = bcx.fcx().new_block("normal-return");
+        let normal_bcx = bcx.fcx().build_new_block("normal-return");
         let landing_pad = bcx.fcx().get_landing_pad();
 
-        let llresult = bcx.invoke(
-            llfn,
-            &llargs[..],
-            normal_bcx.llbb,
-            landing_pad,
-            lpad,
-        );
-        (llresult, normal_bcx.build())
+        let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, lpad);
+        (llresult, normal_bcx)
     } else {
         debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
         for &llarg in &llargs {

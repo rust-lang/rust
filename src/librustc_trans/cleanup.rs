@@ -416,14 +416,22 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     UnwindExit(val) => {
                         // Generate a block that will resume unwinding to the
                         // calling function
-                        let bcx = self.new_block("resume").build();
+                        let bcx = self.build_new_block("resume");
                         match val {
                             UnwindKind::LandingPad => {
                                 let addr = self.landingpad_alloca.get()
                                                .unwrap();
                                 let lp = bcx.load(addr);
                                 Lifetime::End.call(&bcx, addr);
-                                base::trans_unwind_resume(&bcx, lp);
+                                if !bcx.sess().target.target.options.custom_unwind_resume {
+                                    bcx.resume(lp);
+                                } else {
+                                    let exc_ptr = bcx.extract_value(lp, 0);
+                                    bcx.call(
+                                        bcx.fcx().eh_unwind_resume().reify(bcx.ccx()),
+                                        &[exc_ptr],
+                                        bcx.lpad().and_then(|b| b.bundle()));
+                                }
                             }
                             UnwindKind::CleanupPad(_) => {
                                 let pad = bcx.cleanup_pad(None, &[]);
@@ -481,7 +489,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
 
-                let bcx_in = self.new_block(&name[..]).build();
+                let bcx_in = self.build_new_block(&name[..]);
                 let exit_label = label.start(&bcx_in);
                 let next_llbb = bcx_in.llbb();
                 let mut bcx_out = bcx_in;
@@ -525,7 +533,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 Some(llbb) => return llbb,
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(&name[..]).build();
+                    pad_bcx = self.build_new_block(&name[..]);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb());
                 }
             }
@@ -682,16 +690,17 @@ pub struct DropValue<'tcx> {
 
 impl<'tcx> DropValue<'tcx> {
     fn trans<'blk>(&self, bcx: BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx> {
-        let skip_dtor = self.skip_dtor;
-        let _icx = if skip_dtor {
-            base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=true")
-        } else {
-            base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=false")
-        };
         if self.is_immediate {
-            glue::drop_ty_immediate(bcx, self.val, self.ty, self.skip_dtor)
+            let vp = base::alloc_ty(&bcx, self.ty, "");
+            Lifetime::Start.call(&bcx, vp);
+            base::store_ty(&bcx, self.val, vp, self.ty);
+            let lpad = bcx.lpad();
+            let bcx = glue::call_drop_glue(bcx, vp, self.ty, self.skip_dtor, lpad);
+            Lifetime::End.call(&bcx, vp);
+            bcx
         } else {
-            glue::drop_ty_core(bcx, self.val, self.ty, self.skip_dtor)
+            let lpad = bcx.lpad();
+            glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, lpad)
         }
     }
 }

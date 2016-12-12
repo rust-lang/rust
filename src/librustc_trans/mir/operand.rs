@@ -197,7 +197,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             let llval = [a, b][f.index()];
                             let op = OperandRef {
                                 val: OperandValue::Immediate(llval),
-                                ty: bcx.monomorphize(&ty)
+                                ty: bcx.fcx().monomorphize(&ty)
                             };
 
                             // Handle nested pairs.

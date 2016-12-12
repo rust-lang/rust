@@ -305,7 +305,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub span: Option<Span>,
 
     // The arena that blocks are allocated from.
-    pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
+    //pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
 
     // The arena that landing pads are allocated from.
     pub lpad_arena: TypedArena<LandingPad>,
@@ -333,16 +333,19 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn new_block(&'a self,
-                     name: &str)
-                     -> Block<'a, 'tcx> {
+    pub fn new_block(&'a self, name: &str) -> BasicBlockRef {
         unsafe {
             let name = CString::new(name).unwrap();
-            let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
-                                                           self.llfn,
-                                                           name.as_ptr());
-            BlockS::new(llbb, self)
+            llvm::LLVMAppendBasicBlockInContext(
+                self.ccx.llcx(),
+                self.llfn,
+                name.as_ptr()
+            )
         }
+    }
+
+    pub fn build_new_block(&'a self, name: &str) -> BlockAndBuilder<'a, 'tcx> {
+        BlockAndBuilder::new(self.new_block(name), self)
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
@@ -441,94 +444,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 }
 
-// Basic block context.  We create a block context for each basic block
-// (single-entry, single-exit sequence of instructions) we generate from Rust
-// code.  Each basic block we generate is attached to a function, typically
-// with many basic blocks per function.  All the basic blocks attached to a
-// function are organized as a directed graph.
-#[must_use]
-pub struct BlockS<'blk, 'tcx: 'blk> {
-    // The BasicBlockRef returned from a call to
-    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
-    // block to the function pointed to by llfn.  We insert
-    // instructions into that block by way of this block context.
-    // The block pointing to this one in the function's digraph.
-    pub llbb: BasicBlockRef,
-
-    // If this block part of a landing pad, then this is `Some` indicating what
-    // kind of landing pad its in, otherwise this is none.
-    pub lpad: Cell<Option<&'blk LandingPad>>,
-
-    // The function context for the function to which this block is
-    // attached.
-    pub fcx: &'blk FunctionContext<'blk, 'tcx>,
-}
-
-pub type Block<'blk, 'tcx> = &'blk BlockS<'blk, 'tcx>;
-
-impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
-    pub fn new(llbb: BasicBlockRef,
-               fcx: &'blk FunctionContext<'blk, 'tcx>)
-               -> Block<'blk, 'tcx> {
-        fcx.block_arena.alloc(BlockS {
-            llbb: llbb,
-            lpad: Cell::new(None),
-            fcx: fcx
-        })
-    }
-
-    pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
-        self.fcx.ccx
-    }
-    pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
-        self.fcx
-    }
-    pub fn tcx(&self) -> TyCtxt<'blk, 'tcx, 'tcx> {
-        self.fcx.ccx.tcx()
-    }
-    pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
-
-    pub fn lpad(&self) -> Option<&'blk LandingPad> {
-        self.lpad.get()
-    }
-
-    pub fn set_lpad_ref(&self, lpad: Option<&'blk LandingPad>) {
-        // FIXME: use an IVar?
-        self.lpad.set(lpad);
-    }
-
-    pub fn set_lpad(&self, lpad: Option<LandingPad>) {
-        self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
-    }
-
-    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.fcx.mir()
-    }
-
-    pub fn name(&self, name: ast::Name) -> String {
-        name.to_string()
-    }
-
-    pub fn node_id_to_string(&self, id: ast::NodeId) -> String {
-        self.tcx().map.node_to_string(id).to_string()
-    }
-
-    pub fn to_str(&self) -> String {
-        format!("[block {:p}]", self)
-    }
-
-    pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx>
-    {
-        monomorphize::apply_param_substs(self.fcx.ccx.shared(),
-                                         self.fcx.param_substs,
-                                         value)
-    }
-
-    pub fn build(&'blk self) -> BlockAndBuilder<'blk, 'tcx> {
-        BlockAndBuilder::new(self, OwnedBuilder::new_with_ccx(self.ccx()))
-    }
-}
 
 pub struct OwnedBuilder<'blk, 'tcx: 'blk> {
     builder: Builder<'blk, 'tcx>
@@ -559,77 +474,78 @@ impl<'blk, 'tcx> Drop for OwnedBuilder<'blk, 'tcx> {
 
 #[must_use]
 pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
-    bcx: Block<'blk, 'tcx>,
+    // The BasicBlockRef returned from a call to
+    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
+    // block to the function pointed to by llfn.  We insert
+    // instructions into that block by way of this block context.
+    // The block pointing to this one in the function's digraph.
+    llbb: BasicBlockRef,
+
+    // If this block part of a landing pad, then this is `Some` indicating what
+    // kind of landing pad its in, otherwise this is none.
+    lpad: Cell<Option<&'blk LandingPad>>,
+
+    // The function context for the function to which this block is
+    // attached.
+    fcx: &'blk FunctionContext<'blk, 'tcx>,
+
     owned_builder: OwnedBuilder<'blk, 'tcx>,
 }
 
 impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
-    pub fn new(bcx: Block<'blk, 'tcx>, owned_builder: OwnedBuilder<'blk, 'tcx>) -> Self {
+    pub fn new(llbb: BasicBlockRef, fcx: &'blk FunctionContext<'blk, 'tcx>) -> Self {
+        let owned_builder = OwnedBuilder::new_with_ccx(fcx.ccx);
         // Set the builder's position to this block's end.
-        owned_builder.builder.position_at_end(bcx.llbb);
+        owned_builder.builder.position_at_end(llbb);
         BlockAndBuilder {
-            bcx: bcx,
+            llbb: llbb,
+            lpad: Cell::new(None),
+            fcx: fcx,
             owned_builder: owned_builder,
         }
-    }
-
-    pub fn with_block<F, R>(&self, f: F) -> R
-        where F: FnOnce(Block<'blk, 'tcx>) -> R
-    {
-        let result = f(self.bcx);
-        self.position_at_end(self.bcx.llbb);
-        result
     }
 
     pub fn at_start<F, R>(&self, f: F) -> R
         where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>) -> R
     {
-        self.position_at_start(self.bcx.llbb);
+        self.position_at_start(self.llbb);
         let r = f(self);
-        self.position_at_end(self.bcx.llbb);
+        self.position_at_end(self.llbb);
         r
     }
 
-    // Methods delegated to bcx
-
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
-        self.bcx.ccx()
+        self.fcx.ccx
     }
     pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
-        self.bcx.fcx()
+        self.fcx
     }
     pub fn tcx(&self) -> TyCtxt<'blk, 'tcx, 'tcx> {
-        self.bcx.tcx()
+        self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'blk Session {
-        self.bcx.sess()
+        self.fcx.ccx.sess()
     }
 
     pub fn llbb(&self) -> BasicBlockRef {
-        self.bcx.llbb
+        self.llbb
     }
 
     pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.bcx.mir()
-    }
-
-    pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx>
-    {
-        self.bcx.monomorphize(value)
+        self.fcx.mir()
     }
 
     pub fn set_lpad(&self, lpad: Option<LandingPad>) {
-        self.bcx.set_lpad(lpad)
+        self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
     }
 
     pub fn set_lpad_ref(&self, lpad: Option<&'blk LandingPad>) {
         // FIXME: use an IVar?
-        self.bcx.set_lpad_ref(lpad);
+        self.lpad.set(lpad);
     }
 
     pub fn lpad(&self) -> Option<&'blk LandingPad> {
-        self.bcx.lpad()
+        self.lpad.get()
     }
 }
 

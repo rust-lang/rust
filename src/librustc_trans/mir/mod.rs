@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use libc::c_uint;
-use llvm::{self, ValueRef};
-use rustc::ty::{self, layout};
+use llvm::{self, ValueRef, BasicBlockRef};
+use rustc::ty;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
-use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext, C_null};
+use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, LandingPad};
 use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind, FunctionDebugContext};
 use type_of;
 
@@ -54,17 +54,17 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     llpersonalityslot: Option<ValueRef>,
 
     /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, Block<'bcx, 'tcx>>,
+    blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
 
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: IndexVec<mir::BasicBlock, Option<Block<'bcx, 'tcx>>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
 
     /// Cached unreachable block
-    unreachable_block: Option<Block<'bcx, 'tcx>>,
+    unreachable_block: Option<BasicBlockRef>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `LvalueRef` representing an alloca, but not always:
@@ -186,13 +186,11 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
-    let (lvalue_locals, cleanup_kinds) = bcx.with_block(|bcx| {
-        (analyze::lvalue_locals(bcx, &mir),
-         analyze::cleanup_kinds(bcx, &mir))
-    });
+    let lvalue_locals = analyze::lvalue_locals(&bcx, &mir);
+    let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
     // Allocate a `Block` for every basic block
-    let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
+    let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK {
                 fcx.new_block("start")
@@ -222,7 +220,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let ty = bcx.monomorphize(&decl.ty);
+            let ty = bcx.fcx().monomorphize(&decl.ty);
 
             if let Some(name) = decl.name {
                 // User variable
@@ -276,7 +274,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Branch to the START block
     let start_bcx = mircx.blocks[mir::START_BLOCK];
-    bcx.br(start_bcx.llbb);
+    bcx.br(start_bcx);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
@@ -287,23 +285,26 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     let mut rpo = traversal::reverse_postorder(&mir);
 
+    let mut lpads: IndexVec<mir::BasicBlock, Option<LandingPad>> =
+        IndexVec::from_elem(None, mir.basic_blocks());
+
     // Prepare each block for translation.
     for (bb, _) in rpo.by_ref() {
-        mircx.init_cpad(bb);
+        mircx.init_cpad(bb, &mut lpads);
     }
     rpo.reset();
 
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        mircx.trans_block(bb);
+        mircx.trans_block(bb, &lpads);
     }
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
     for bb in mir.basic_blocks().indices() {
         let block = mircx.blocks[bb];
-        let block = BasicBlock(block.llbb);
+        let block = BasicBlock(block);
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("trans_mir: block {:?} was not visited", bb);
@@ -338,7 +339,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
-        let arg_ty = bcx.monomorphize(&arg_decl.ty);
+        let arg_ty = bcx.fcx().monomorphize(&arg_decl.ty);
 
         if Some(local) == mir.spread_arg {
             // This argument (e.g. the last argument in the "rust-call" ABI)

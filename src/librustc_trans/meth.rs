@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use attributes;
-use arena::TypedArena;
 use llvm::{ValueRef, get_params};
 use rustc::traits;
 use abi::FnType;
@@ -84,9 +83,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
-    block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
     let mut bcx = fcx.init(false);
 
     let dest = fcx.llretslotptr.get();

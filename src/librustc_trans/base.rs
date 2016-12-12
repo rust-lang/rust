@@ -575,8 +575,8 @@ pub fn with_cond<'blk, 'tcx, F>(
     }
 
     let fcx = bcx.fcx();
-    let next_cx = fcx.new_block("next").build();
-    let cond_cx = fcx.new_block("cond").build();
+    let next_cx = fcx.build_new_block("next");
+    let cond_cx = fcx.build_new_block("cond");
     bcx.cond_br(val, cond_cx.llbb(), next_cx.llbb());
     let after_cx = f(cond_cx);
     after_cx.br(next_cx.llbb());
@@ -616,17 +616,6 @@ impl Lifetime {
 
         let ptr = b.pointercast(ptr, Type::i8p(b.ccx));
         b.call(lifetime_intrinsic, &[C_u64(b.ccx, size), ptr], None);
-    }
-}
-
-// Generates code for resumption of unwind at the end of a landing pad.
-pub fn trans_unwind_resume(bcx: &BlockAndBuilder, lpval: ValueRef) {
-    if !bcx.sess().target.target.options.custom_unwind_resume {
-        bcx.resume(lpval);
-    } else {
-        let exc_ptr = bcx.extract_value(lpval, 0);
-        bcx.call(bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr],
-            bcx.lpad().and_then(|b| b.bundle()));
     }
 }
 
@@ -727,8 +716,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
-               block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
+               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>)
+               //block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         let (param_substs, def_id) = match definition {
             Some((instance, ..)) => {
@@ -772,7 +761,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             fn_ty: fn_ty,
             param_substs: param_substs,
             span: None,
-            block_arena: block_arena,
+            //block_arena: block_arena,
             lpad_arena: TypedArena::new(),
             ccx: ccx,
             debug_context: debug_context,
@@ -783,7 +772,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// Performs setup on a newly created function, creating the entry
     /// scope block and allocating space for the return pointer.
     pub fn init(&'blk self, skip_retptr: bool) -> BlockAndBuilder<'blk, 'tcx> {
-        let entry_bcx = self.new_block("entry-block").build();
+        let entry_bcx = self.build_new_block("entry-block");
 
         // Use a dummy instruction as the insertion point for all allocas.
         // This is later removed in FunctionContext::cleanup.
@@ -924,13 +913,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let (arena, fcx): (TypedArena<_>, FunctionContext);
-    arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx,
-                               lldecl,
-                               fn_ty,
-                               Some((instance, &sig, abi)),
-                               &arena);
+    let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)));
 
     if fcx.mir.is_none() {
         bug!("attempted translation of `{}` w/o MIR", instance);
@@ -953,9 +936,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let (arena, fcx): (TypedArena<_>, FunctionContext);
-    arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None, &arena);
+    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None);
     let bcx = fcx.init(false);
 
     if !fcx.fn_ty.ret.is_ignore() {
