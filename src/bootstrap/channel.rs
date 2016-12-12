@@ -15,7 +15,7 @@
 //! `package_vers`, and otherwise indicating to the compiler what it should
 //! print out as part of its version information.
 
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::prelude::*;
 use std::process::Command;
 

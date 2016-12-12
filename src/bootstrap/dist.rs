@@ -18,7 +18,7 @@
 //! out to `rust-installer` still. This may one day be replaced with bits and
 //! pieces of `rustup.rs`!
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::Command;
@@ -324,13 +324,6 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
     t!(fs::remove_dir_all(&image));
-
-    // Create plain source tarball
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", name))))
-       .arg("analysis")
-       .current_dir(&src);
-    build.run(&mut cmd);
 }
 
 /// Creates the `rust-src` installer component and the plain source tarball
