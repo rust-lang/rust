@@ -523,20 +523,20 @@ body.blur > :not(#help) {
 	padding: 20px;
 }
 
-em.stab {
-	display: inline-block;
+.stab {
+	display: table;
 	border-width: 1px;
 	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
 	font-size: 90%;
-	font-style: normal;
 }
-em.stab p {
+.stab p {
 	display: inline;
 }
 
 .module-item .stab {
+	display: inline;
 	border-width: 0;
 	padding: 0;
 	margin: 0;

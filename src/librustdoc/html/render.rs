@@ -1655,8 +1655,13 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
 }
 
 fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
-    for stability in short_stability(item, cx, true) {
-        write!(w, "<div class='stability'>{}</div>", stability)?;
+    let stabilities = short_stability(item, cx, true);
+    if !stabilities.is_empty() {
+        write!(w, "<div class='stability'>")?;
+        for stability in stabilities {
+            write!(w, "{}", stability)?;
+        }
+        write!(w, "</div>")?;
     }
     Ok(())
 }
@@ -1855,7 +1860,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let text = format!("Deprecated{}{}", since, Markdown(&deprecated_reason));
-            stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+            stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
         if stab.level == stability::Unstable {
@@ -1880,7 +1885,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let text = format!("Unstable{}{}", unstable_extra, Markdown(&unstable_reason));
-            stability.push(format!("<em class='stab unstable'>{}</em>", text))
+            stability.push(format!("<div class='stab unstable'>{}</div>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
         let note = if show_reason && !depr.note.is_empty() {
@@ -1895,7 +1900,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         };
 
         let text = format!("Deprecated{}{}", since, Markdown(&note));
-        stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+        stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
     stability
