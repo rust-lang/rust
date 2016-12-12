@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * This module contains the code to convert from the wacky tcx data
- * structures into the hair. The `builder` is generally ignorant of
- * the tcx etc, and instead goes through the `Cx` for most of its
- * work.
- */
+//! This module contains the code to convert from the wacky tcx data
+//! structures into the hair. The `builder` is generally ignorant of
+//! the tcx etc, and instead goes through the `Cx` for most of its
+//! work.
+//!
 
 use hair::*;
 use rustc::mir::transform::MirSource;
@@ -32,19 +31,17 @@ use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
-pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     constness: hir::Constness,
 
     /// True if this constant/function needs overflow checks.
-    check_overflow: bool
+    check_overflow: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               src: MirSource)
-               -> Cx<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
         let constness = match src {
             MirSource::Const(_) |
             MirSource::Static(..) => hir::Constness::Const,
@@ -52,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
                 fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
             }
-            MirSource::Promoted(..) => bug!()
+            MirSource::Promoted(..) => bug!(),
         };
 
         let src_node_id = src.item_id();
@@ -70,13 +67,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are translated in.
-        let mut check_overflow = attrs.iter().any(|item| {
-            item.check_name("rustc_inherit_overflow_checks")
-        });
+        let mut check_overflow = attrs.iter()
+            .any(|item| item.check_name("rustc_inherit_overflow_checks"));
 
         // Respect -Z force-overflow-checks=on and -C debug-assertions.
-        check_overflow |= infcx.tcx.sess.opts.debugging_opts.force_overflow_checks
-               .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+        check_overflow |= infcx.tcx
+            .sess
+            .opts
+            .debugging_opts
+            .force_overflow_checks
+            .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
 
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             tcx: infcx.tcx,
             infcx: infcx,
             constness: constness,
-            check_overflow: check_overflow
+            check_overflow: check_overflow,
         }
     }
 }
@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
-            Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val))},
+            Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val)) },
             Err(_) => bug!("usize literal out of range for target"),
         }
     }
@@ -128,9 +128,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        Literal::Value {
-            value: const_eval::eval_const_expr(self.tcx.global_tcx(), e)
-        }
+        Literal::Value { value: const_eval::eval_const_expr(self.tcx.global_tcx(), e) }
     }
 
     pub fn trait_method(&mut self,
@@ -145,10 +143,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             if item.kind == ty::AssociatedKind::Method && item.name == method_name {
                 let method_ty = self.tcx.item_type(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, Literal::Item {
-                    def_id: item.def_id,
-                    substs: substs,
-                });
+                return (method_ty,
+                        Literal::Item {
+                            def_id: item.def_id,
+                            substs: substs,
+                        });
             }
         }
 
@@ -168,7 +167,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
         let ty = self.tcx.lift_to_global(&ty).unwrap_or_else(|| {
             bug!("MIR: Cx::needs_drop({}) got \
-                  type with inference types/regions", ty);
+                  type with inference types/regions",
+                 ty);
         });
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
