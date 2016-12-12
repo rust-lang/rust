@@ -30,25 +30,34 @@ matrix:
         RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin
         SRC=.
       os: osx
-      install: brew install ccache
+      install: &osx_install_sccache >
+        curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
+          tar xJf - -C /usr/local/bin --strip-components=1
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--target=i686-apple-darwin
         SRC=.
       os: osx
-      install: brew install ccache
+      install: *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
-      install: brew install ccache
+      install: *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=
         RUST_CONFIGURE_ARGS=--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios
         SRC=.
       os: osx
-      install: brew install ccache
+      install: *osx_install_sccache
+
+env:
+  global:
+    - SCCACHE_BUCKET=rust-lang-ci-sccache
+    - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
+    # AWS_SECRET_ACCESS_KEY=...
+    - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
 script:
   - >
@@ -77,5 +86,3 @@ notifications:
 cache:
   directories:
     - $HOME/docker
-    - $HOME/.ccache
-    - $HOME/.cargo

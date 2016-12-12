@@ -223,4 +223,8 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     if build.lldb_version.is_some() {
         build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
     }
+
+    if let Some(ref s) = build.config.ccache {
+        need_cmd(s.as_ref());
+    }
 }
