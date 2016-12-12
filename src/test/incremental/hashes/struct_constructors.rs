@@ -202,6 +202,12 @@ mod change_constructor_path_indirectly_regular_struct {
     #[cfg(not(cfail1))]
     use super::RegularStruct2 as Struct;
 
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     fn function() -> Struct {
         Struct {
             x: 0,
@@ -262,6 +268,12 @@ mod change_constructor_path_indirectly_tuple_struct {
     #[cfg(not(cfail1))]
     use super::TupleStruct2 as Struct;
 
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     fn function() -> Struct {
         Struct(0, 1, 2)
     }
