@@ -23,6 +23,9 @@ impl Test {
     pub fn new() -> Test {
         let mut gcc = PathBuf::from(env::current_exe().unwrap());
         gcc.pop();
+        if gcc.ends_with("deps") {
+            gcc.pop();
+        }
         gcc.push(format!("gcc-shim{}", env::consts::EXE_SUFFIX));
         Test {
             td: TempDir::new("gcc-test").unwrap(),
