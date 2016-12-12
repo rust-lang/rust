@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S<'a, T:'a> {
-    o: &'a Option<T>
-}
+fn foo<X>() { }
 
 fn main() {
-    S { o: &None }; //~ ERROR unable to infer enough type information about `T` [E0282]
-                    //~| NOTE cannot infer type for `T`
-                    //~| NOTE type annotations or generic parameter binding
+    foo();
 }

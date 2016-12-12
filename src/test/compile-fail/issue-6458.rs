@@ -17,8 +17,8 @@ pub fn foo<State>(_: TypeWithState<State>) {}
 
 pub fn bar() {
    foo(TypeWithState(marker::PhantomData));
-   //~^ ERROR unable to infer enough type information about `_` [E0282]
-   //~| NOTE cannot infer type for `_`
+   //~^ ERROR unable to infer enough type information about `State` [E0282]
+   //~| NOTE cannot infer type for `State`
    //~| NOTE type annotations or generic parameter binding
 }
 

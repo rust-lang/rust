@@ -12,6 +12,7 @@ use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation, Diverges};
@@ -162,7 +163,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 let max_len = cmp::max(expected_len, elements.len());
 
-                let element_tys_iter = (0..max_len).map(|_| self.next_ty_var());
+                let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(
+                    // FIXME: MiscVariable for now, obtaining the span and name information
+                    //       from all tuple elements isn't trivial.
+                    TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::TyTuple(element_tys));
                 self.demand_eqtype(pat.span, expected, pat_ty);
@@ -172,7 +176,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 pat_ty
             }
             PatKind::Box(ref inner) => {
-                let inner_ty = self.next_ty_var();
+                let inner_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(inner.span));
                 let uniq_ty = tcx.mk_box(inner_ty);
 
                 if self.check_dereferencable(pat.span, expected, &inner) {
@@ -203,7 +207,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             (expected, mt.ty)
                         }
                         _ => {
-                            let inner_ty = self.next_ty_var();
+                            let inner_ty = self.next_ty_var(
+                                TypeVariableOrigin::TypeInference(inner.span));
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
                             let rptr_ty = tcx.mk_ref(region, mt);
@@ -379,7 +384,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            discrim_ty = self.next_ty_var();
+            discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
             self.check_expr_has_type(discrim, discrim_ty);
         };
         let discrim_diverges = self.diverges.get();
@@ -407,7 +412,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // of execution reach it, we will panic, so bottom is an appropriate
         // type in that case)
         let expected = expected.adjust_for_branches(self);
-        let mut result_ty = self.next_diverging_ty_var();
+        let mut result_ty = self.next_diverging_ty_var(
+            TypeVariableOrigin::DivergingBlockExpr(expr.span));
         let mut all_arms_diverge = Diverges::WarnedAlways;
         let coerce_first = match expected {
             // We don't coerce to `()` so that if the match expression is a
