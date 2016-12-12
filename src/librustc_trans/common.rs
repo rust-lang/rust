@@ -15,7 +15,7 @@
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef, get_param};
+use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -579,14 +579,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         let result = f(self.bcx);
         self.position_at_end(self.bcx.llbb);
         result
-    }
-
-    pub fn map_block<F>(self, f: F) -> Self
-        where F: FnOnce(Block<'blk, 'tcx>) -> Block<'blk, 'tcx>
-    {
-        let BlockAndBuilder { bcx, owned_builder } = self;
-        let bcx = f(bcx);
-        BlockAndBuilder::new(bcx, owned_builder)
     }
 
     pub fn at_start<F, R>(&self, f: F) -> R
