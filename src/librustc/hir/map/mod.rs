@@ -310,8 +310,9 @@ impl<'ast> Map<'ast> {
                         id = p;
                     }
 
-                    RootCrate =>
-                        return DepNode::Krate,
+                    RootCrate => {
+                        return DepNode::Hir(DefId::local(CRATE_DEF_INDEX));
+                    }
 
                     RootInlinedParent(_) =>
                         bug!("node {} has inlined ancestor but is not inlined", id0),
@@ -782,7 +783,7 @@ impl<'ast> Map<'ast> {
             Some(EntryVisibility(_, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, v)) => bug!("unexpected Visibility {:?}", v),
 
-            Some(RootCrate) => self.krate().span,
+            Some(RootCrate) => self.forest.krate.span,
             Some(RootInlinedParent(parent)) => parent.body.span,
             Some(NotPresent) | None => {
                 bug!("hir::map::Map::span: id not in map: {:?}", id)
