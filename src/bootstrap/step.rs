@@ -871,6 +871,10 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
 
         // And finally, iterate over everything and execute it.
         for step in order.iter() {
+            if self.build.flags.keep_stage.map_or(false, |s| step.stage <= s) {
+                self.build.verbose(&format!("keeping step {:?}", step));
+                continue;
+            }
             self.build.verbose(&format!("executing step {:?}", step));
             (self.rules[step.name].run)(step);
         }
