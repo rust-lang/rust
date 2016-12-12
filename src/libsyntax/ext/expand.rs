@@ -85,7 +85,7 @@ macro_rules! expansions {
                 }
             }
 
-            pub fn visit_with<V: Visitor>(&self, visitor: &mut V) {
+            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
                 match *self {
                     Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     Expansion::OptExpr(None) => {}
@@ -400,12 +400,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                           &self.cx.ecfg.features.unwrap());
         }
 
-        if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
-            self.cx.span_err(path.span, "expected macro name without module separators");
-            return kind.dummy(span);
-        }
-
-        let extname = path.segments[0].identifier.name;
+        let extname = path.segments.last().unwrap().identifier.name;
         let ident = ident.unwrap_or(keywords::Invalid.ident());
         let marked_tts = mark_tts(&tts, mark);
         let opt_expanded = match *ext {

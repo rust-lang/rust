@@ -178,18 +178,17 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
                 }
 
                 // check for overlap with the automatic `impl Trait for Trait`
-                if let ty::TyTrait(ref data) = trait_ref.self_ty().sty {
+                if let ty::TyDynamic(ref data, ..) = trait_ref.self_ty().sty {
                     // This is something like impl Trait1 for Trait2. Illegal
                     // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
-                    if !self.tcx.is_object_safe(data.principal.def_id()) {
-                        // This is an error, but it will be
-                        // reported by wfcheck.  Ignore it
-                        // here. This is tested by
-                        // `coherence-impl-trait-for-trait-object-safe.rs`.
+                    if data.principal().map_or(true, |p| !self.tcx.is_object_safe(p.def_id())) {
+                        // This is an error, but it will be reported by wfcheck.  Ignore it here.
+                        // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
                     } else {
                         let mut supertrait_def_ids =
-                            traits::supertrait_def_ids(self.tcx, data.principal.def_id());
+                            traits::supertrait_def_ids(self.tcx,
+                                                       data.principal().unwrap().def_id());
                         if supertrait_def_ids.any(|d| d == trait_def_id) {
                             span_err!(self.tcx.sess,
                                       item.span,

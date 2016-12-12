@@ -14,16 +14,17 @@ use hir::def_id::DefId;
 
 use middle::region;
 use ty::subst::Substs;
-use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
-use util::common::ErrorReported;
+use ty::subst::Kind;
 
-use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
-use std::ops;
+use std::iter;
+use std::cmp::Ordering;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast::{self, Name, NodeId};
 use syntax::symbol::{keywords, InternedString};
+use util::nodemap::FxHashSet;
 
 use serialize;
 
@@ -112,7 +113,7 @@ pub enum TypeVariants<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyAdt` corresponds to an ADT
     /// definition and not a concrete use of it.
-    TyAdt(AdtDef<'tcx>, &'tcx Substs<'tcx>),
+    TyAdt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -146,7 +147,7 @@ pub enum TypeVariants<'tcx> {
     TyFnPtr(&'tcx BareFnTy<'tcx>),
 
     /// A trait, defined with `trait`.
-    TyTrait(Box<TraitObject<'tcx>>),
+    TyDynamic(Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>, &'tcx ty::Region),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -274,12 +275,104 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct TraitObject<'tcx> {
-    pub principal: PolyExistentialTraitRef<'tcx>,
-    pub region_bound: &'tcx ty::Region,
-    pub builtin_bounds: BuiltinBounds,
-    pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub enum ExistentialPredicate<'tcx> {
+    // e.g. Iterator
+    Trait(ExistentialTraitRef<'tcx>),
+    // e.g. Iterator::Item = T
+    Projection(ExistentialProjection<'tcx>),
+    // e.g. Send
+    AutoTrait(DefId),
+}
+
+impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
+    pub fn cmp(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, other: &Self) -> Ordering {
+        use self::ExistentialPredicate::*;
+        match (*self, *other) {
+            (Trait(_), Trait(_)) => Ordering::Equal,
+            (Projection(ref a), Projection(ref b)) => a.sort_key(tcx).cmp(&b.sort_key(tcx)),
+            (AutoTrait(ref a), AutoTrait(ref b)) =>
+                tcx.lookup_trait_def(*a).def_path_hash.cmp(&tcx.lookup_trait_def(*b).def_path_hash),
+            (Trait(_), _) => Ordering::Less,
+            (Projection(_), Trait(_)) => Ordering::Greater,
+            (Projection(_), _) => Ordering::Less,
+            (AutoTrait(_), _) => Ordering::Greater,
+        }
+    }
+
+}
+
+impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
+    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
+        -> ty::Predicate<'tcx> {
+        use ty::ToPredicate;
+        match *self.skip_binder() {
+            ExistentialPredicate::Trait(tr) => Binder(tr).with_self_ty(tcx, self_ty).to_predicate(),
+            ExistentialPredicate::Projection(p) =>
+                ty::Predicate::Projection(Binder(p.with_self_ty(tcx, self_ty))),
+            ExistentialPredicate::AutoTrait(did) => {
+                let trait_ref = Binder(ty::TraitRef {
+                    def_id: did,
+                    substs: tcx.mk_substs_trait(self_ty, &[]),
+                });
+                trait_ref.to_predicate()
+            }
+        }
+    }
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<ExistentialPredicate<'tcx>> {}
+
+impl<'tcx> Slice<ExistentialPredicate<'tcx>> {
+    pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
+        match self.get(0) {
+            Some(&ExistentialPredicate::Trait(tr)) => Some(tr),
+            _ => None
+        }
+    }
+
+    #[inline]
+    pub fn projection_bounds<'a>(&'a self) ->
+        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        self.iter().filter_map(|predicate| {
+            match *predicate {
+                ExistentialPredicate::Projection(p) => Some(p),
+                _ => None,
+            }
+        })
+    }
+
+    #[inline]
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+        self.iter().filter_map(|predicate| {
+            match *predicate {
+                ExistentialPredicate::AutoTrait(d) => Some(d),
+                _ => None
+            }
+        })
+    }
+}
+
+impl<'tcx> Binder<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+    pub fn principal(&self) -> Option<PolyExistentialTraitRef<'tcx>> {
+        self.skip_binder().principal().map(Binder)
+    }
+
+    #[inline]
+    pub fn projection_bounds<'a>(&'a self) ->
+        impl Iterator<Item=PolyExistentialProjection<'tcx>> + 'a {
+        self.skip_binder().projection_bounds().map(Binder)
+    }
+
+    #[inline]
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+        self.skip_binder().auto_traits()
+    }
+
+    pub fn iter<'a>(&'a self)
+        -> impl DoubleEndedIterator<Item=Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        self.skip_binder().iter().cloned().map(Binder)
+    }
 }
 
 /// A complete reference to a trait. These take numerous guises in syntax,
@@ -343,13 +436,29 @@ pub struct ExistentialTraitRef<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
 }
 
-impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
+    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'b {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
         self.substs.types()
+    }
+
+    /// Object types don't have a self-type specified. Therefore, when
+    /// we convert the principal trait-ref into a normal trait-ref,
+    /// you must give *some* self-type. A common choice is `mk_err()`
+    /// or some skolemized type.
+    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
+        -> ty::TraitRef<'tcx>  {
+        // otherwise the escaping regions would be captured by the binder
+        assert!(!self_ty.has_escaping_regions());
+
+        ty::TraitRef {
+            def_id: self.def_id,
+            substs: tcx.mk_substs(
+                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned()))
+        }
     }
 }
 
@@ -454,22 +563,31 @@ pub struct ClosureTy<'tcx> {
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
-    pub inputs: Vec<Ty<'tcx>>,
-    pub output: Ty<'tcx>,
+    pub inputs_and_output: &'tcx Slice<Ty<'tcx>>,
     pub variadic: bool
+}
+
+impl<'tcx> FnSig<'tcx> {
+    pub fn inputs(&self) -> &[Ty<'tcx>] {
+        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
+
+    pub fn output(&self) -> Ty<'tcx> {
+        self.inputs_and_output[self.inputs_and_output.len() - 1]
+    }
 }
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
-    pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs.clone())
+    pub fn inputs(&self) -> Binder<&[Ty<'tcx>]> {
+        Binder(self.skip_binder().inputs())
     }
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs[index])
+        self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.output.clone())
+        self.map_bound_ref(|fn_sig| fn_sig.output().clone())
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic
@@ -712,122 +830,53 @@ pub struct ExistentialProjection<'tcx> {
 
 pub type PolyExistentialProjection<'tcx> = Binder<ExistentialProjection<'tcx>>;
 
-impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
+impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
     pub fn item_name(&self) -> Name {
-        self.0.item_name // safe to skip the binder to access a name
+        self.item_name // safe to skip the binder to access a name
     }
 
     pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (u64, InternedString) {
         // We want something here that is stable across crate boundaries.
         // The DefId isn't but the `deterministic_hash` of the corresponding
         // DefPath is.
-        let trait_def = tcx.lookup_trait_def(self.0.trait_ref.def_id);
+        let trait_def = tcx.lookup_trait_def(self.trait_ref.def_id);
         let def_path_hash = trait_def.def_path_hash;
 
         // An `ast::Name` is also not stable (it's just an index into an
         // interning table), so map to the corresponding `InternedString`.
-        let item_name = self.0.item_name.as_str();
+        let item_name = self.item_name.as_str();
         (def_path_hash, item_name)
     }
 
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         self_ty: Ty<'tcx>)
-                        -> ty::PolyProjectionPredicate<'tcx>
+                        -> ty::ProjectionPredicate<'tcx>
     {
         // otherwise the escaping regions would be captured by the binders
         assert!(!self_ty.has_escaping_regions());
 
-        let trait_ref = self.map_bound(|proj| proj.trait_ref);
-        self.map_bound(|proj| ty::ProjectionPredicate {
+        ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
-                trait_ref: trait_ref.with_self_ty(tcx, self_ty).0,
-                item_name: proj.item_name
+                trait_ref: self.trait_ref.with_self_ty(tcx, self_ty),
+                item_name: self.item_name
             },
-            ty: proj.ty
-        })
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct BuiltinBounds(EnumSet<BuiltinBound>);
-
-impl<'a, 'gcx, 'tcx> BuiltinBounds {
-    pub fn empty() -> BuiltinBounds {
-        BuiltinBounds(EnumSet::new())
-    }
-
-    pub fn iter(&self) -> enum_set::Iter<BuiltinBound> {
-        self.into_iter()
-    }
-
-    pub fn to_predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         self_ty: Ty<'tcx>)
-                         -> Vec<ty::Predicate<'tcx>> {
-        self.iter().filter_map(|builtin_bound|
-            match tcx.trait_ref_for_builtin_bound(builtin_bound, self_ty) {
-                Ok(trait_ref) => Some(trait_ref.to_predicate()),
-                Err(ErrorReported) => { None }
-            }
-        ).collect()
-    }
-}
-
-impl ops::Deref for BuiltinBounds {
-    type Target = EnumSet<BuiltinBound>;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-impl ops::DerefMut for BuiltinBounds {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
-}
-
-impl<'a> IntoIterator for &'a BuiltinBounds {
-    type Item = BuiltinBound;
-    type IntoIter = enum_set::Iter<BuiltinBound>;
-    fn into_iter(self) -> Self::IntoIter {
-        (**self).into_iter()
-    }
-}
-
-#[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
-           Debug, Copy)]
-pub enum BuiltinBound {
-    Send = 0,
-    Sized = 1,
-    Copy = 2,
-    Sync = 3,
-}
-
-impl CLike for BuiltinBound {
-    fn to_usize(&self) -> usize {
-        *self as usize
-    }
-    fn from_usize(v: usize) -> BuiltinBound {
-        match v {
-            0 => BuiltinBound::Send,
-            1 => BuiltinBound::Sized,
-            2 => BuiltinBound::Copy,
-            3 => BuiltinBound::Sync,
-            _ => bug!("{} is not a valid BuiltinBound", v)
+            ty: self.ty
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn try_add_builtin_trait(self,
-                                 trait_def_id: DefId,
-                                 builtin_bounds: &mut EnumSet<BuiltinBound>)
-                                 -> bool
-    {
-        //! Checks whether `trait_ref` refers to one of the builtin
-        //! traits, like `Send`, and adds the corresponding
-        //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
-        //! is a builtin trait.
+impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
+    pub fn item_name(&self) -> Name {
+        self.skip_binder().item_name()
+    }
 
-        match self.lang_items.to_builtin_kind(trait_def_id) {
-            Some(bound) => { builtin_bounds.insert(bound); true }
-            None => false
-        }
+    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (u64, InternedString) {
+        self.skip_binder().sort_key(tcx)
+    }
+
+    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
+        -> ty::PolyProjectionPredicate<'tcx> {
+        self.map_bound(|p| p.with_self_ty(tcx, self_ty))
     }
 }
 
@@ -929,19 +978,27 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, _cx: TyCtxt) -> bool {
-        // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
-        // more complete.
+    /// Checks whether a type is uninhabited.
+    /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
+    pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        let mut visited = FxHashSet::default();
+        self.is_uninhabited_recurse(&mut visited, block, cx)
+    }
+
+    pub fn is_uninhabited_recurse(&self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         match self.sty {
-            TyAdt(def, _) => def.is_empty(),
+            TyAdt(def, substs) => {
+                def.is_uninhabited_recurse(visited, block, cx, substs)
+            },
 
-            // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
-            // and they don't break anything. But I'm keeping my changes small for now.
-            //TyNever => true,
-            //TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
+            TyNever => true,
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, block, cx)),
+            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, block, cx),
+            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, block, cx),
 
-            // FIXME(canndrew): this line breaks core::fmt
-            //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
             _ => false,
         }
     }
@@ -1079,7 +1136,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_trait(&self) -> bool {
         match self.sty {
-            TyTrait(..) => true,
+            TyDynamic(..) => true,
             _ => false
         }
     }
@@ -1195,7 +1252,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     // Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
+    pub fn fn_args(&self) -> ty::Binder<&[Ty<'tcx>]> {
         self.fn_sig().inputs()
     }
 
@@ -1212,14 +1269,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn ty_to_def_id(&self) -> Option<DefId> {
         match self.sty {
-            TyTrait(ref tt) => Some(tt.principal.def_id()),
+            TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),
             TyAdt(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
             _ => None
         }
     }
 
-    pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
+    pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             TyAdt(adt, _) => Some(adt),
             _ => None
@@ -1234,9 +1291,11 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyRef(region, _) => {
                 vec![region]
             }
-            TyTrait(ref obj) => {
-                let mut v = vec![obj.region_bound];
-                v.extend(obj.principal.skip_binder().substs.regions());
+            TyDynamic(ref obj, region) => {
+                let mut v = vec![region];
+                if let Some(p) = obj.principal() {
+                    v.extend(p.skip_binder().substs.regions());
+                }
                 v
             }
             TyAdt(_, substs) | TyAnon(_, substs) => {

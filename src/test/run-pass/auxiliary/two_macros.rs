@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[macro_export]
-macro_rules! macro_one { () => ("one") }
+macro_rules! macro_one { ($($t:tt)*) => ($($t)*) }
 
 #[macro_export]
-macro_rules! macro_two { () => ("two") }
+macro_rules! macro_two { ($($t:tt)*) => ($($t)*) }

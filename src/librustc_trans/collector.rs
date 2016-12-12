@@ -361,6 +361,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             recursion_depth_reset = Some(check_recursion_limit(scx.tcx(),
                                                                instance,
                                                                recursion_depths));
+            check_type_length_limit(scx.tcx(), instance);
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
@@ -430,6 +431,40 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     recursion_depths.insert(instance.def, recursion_depth + 1);
 
     (instance.def, recursion_depth)
+}
+
+fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     instance: Instance<'tcx>)
+{
+    let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
+    debug!(" => type length={}", type_length);
+
+    // Rust code can easily create exponentially-long types using only a
+    // polynomial recursion depth. Even with the default recursion
+    // depth, you can easily get cases that take >2^60 steps to run,
+    // which means that rustc basically hangs.
+    //
+    // Bail out in these cases to avoid that bad user experience.
+    let type_length_limit = tcx.sess.type_length_limit.get();
+    if type_length > type_length_limit {
+        // The instance name is already known to be too long for rustc. Use
+        // `{:.64}` to avoid blasting the user's terminal with thousands of
+        // lines of type-name.
+        let instance_name = instance.to_string();
+        let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
+                          instance_name);
+        let mut diag = if let Some(node_id) = tcx.map.as_local_node_id(instance.def) {
+            tcx.sess.struct_span_fatal(tcx.map.span(node_id), &msg)
+        } else {
+            tcx.sess.struct_fatal(&msg)
+        };
+
+        diag.note(&format!(
+            "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
+            type_length_limit*2));
+        diag.emit();
+        tcx.sess.abort_if_errors();
+    }
 }
 
 struct MirNeighborCollector<'a, 'tcx: 'a> {
@@ -671,10 +706,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn can_have_local_instance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> bool {
-    // Take a look if we have the definition available. If not, we
-    // will not emit code for this item in the local crate, and thus
-    // don't create a translation item for it.
-    def_id.is_local() || tcx.sess.cstore.is_item_mir_available(def_id)
+    tcx.sess.cstore.can_have_local_instance(tcx, def_id)
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
@@ -763,14 +795,15 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyFnDef(..) |
         ty::TyFnPtr(_)  |
         ty::TyNever     |
-        ty::TyTrait(_)  => {
+        ty::TyDynamic(..)  => {
             /* nothing to do */
         }
         ty::TyAdt(adt_def, substs) => {
             for field in adt_def.all_fields() {
+                let field_type = scx.tcx().item_type(field.did);
                 let field_type = monomorphize::apply_param_substs(scx,
                                                                   substs,
-                                                                  &field.unsubst_ty());
+                                                                  &field_type);
                 let field_type = glue::get_drop_glue_type(scx.tcx(), field_type);
 
                 if glue::type_needs_drop(scx.tcx(), field_type) {
@@ -1003,18 +1036,20 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                                                    output: &mut Vec<TransItem<'tcx>>) {
     assert!(!trait_ty.needs_subst() && !impl_ty.needs_subst());
 
-    if let ty::TyTrait(ref trait_ty) = trait_ty.sty {
-        let poly_trait_ref = trait_ty.principal.with_self_ty(scx.tcx(), impl_ty);
-        let param_substs = scx.tcx().intern_substs(&[]);
+    if let ty::TyDynamic(ref trait_ty, ..) = trait_ty.sty {
+        if let Some(principal) = trait_ty.principal() {
+            let poly_trait_ref = principal.with_self_ty(scx.tcx(), impl_ty);
+            let param_substs = scx.tcx().intern_substs(&[]);
 
-        // Walk all methods of the trait, including those of its supertraits
-        let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
-        let methods = methods.filter_map(|method| method)
-            .filter_map(|(def_id, substs)| do_static_dispatch(scx, def_id, substs, param_substs))
-            .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
-            .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
-        output.extend(methods);
-
+            // Walk all methods of the trait, including those of its supertraits
+            let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
+            let methods = methods.filter_map(|method| method)
+                .filter_map(|(def_id, substs)| do_static_dispatch(scx, def_id, substs,
+                                                                  param_substs))
+                .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
+                .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
+            output.extend(methods);
+        }
         // Also add the destructor
         let dg_type = glue::get_drop_glue_type(scx.tcx(), impl_ty);
         output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));

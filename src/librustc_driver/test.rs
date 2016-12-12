@@ -24,6 +24,7 @@ use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
@@ -36,6 +37,7 @@ use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
+use syntax_pos::DUMMY_SP;
 
 use rustc::hir;
 
@@ -131,12 +133,11 @@ fn test_env<F>(source_string: &str,
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &ast_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &resolutions.def_map);
+    let named_region_map = resolve_lifetime::krate(&sess, &ast_map);
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
     TyCtxt::create_and_enter(&sess,
                              &arenas,
-                             resolutions.def_map,
                              resolutions.trait_map,
                              named_region_map.unwrap(),
                              ast_map,
@@ -266,15 +267,10 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
-        let input_args = input_tys.iter().cloned().collect();
         self.infcx.tcx.mk_fn_ptr(self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Normal,
             abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_args,
-                output: output_ty,
-                variadic: false,
-            }),
+            sig: ty::Binder(self.infcx.tcx.mk_fn_sig(input_tys.iter().cloned(), output_ty, false)),
         }))
     }
 
@@ -495,7 +491,7 @@ fn sub_free_bound_false_infer() {
     //! does NOT hold for any instantiation of `_#1`.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_infer1 = env.infcx.next_ty_var();
+        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         env.check_not_sub(env.t_fn(&[t_infer1], env.tcx().types.isize),
                           env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
@@ -514,7 +510,7 @@ fn lub_free_bound_infer() {
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         env.create_simple_region_hierarchy();
-        let t_infer1 = env.infcx.next_ty_var();
+        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(1, 1);
         env.check_lub(env.t_fn(&[t_infer1], env.tcx().types.isize),
@@ -634,7 +630,7 @@ fn glb_bound_free() {
 fn glb_bound_free_infer() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_infer1 = env.infcx.next_ty_var();
+        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
 
         // compute GLB(fn(_) -> isize, for<'b> fn(&'b isize) -> isize),
         // which should yield for<'b> fn(&'b isize) -> isize

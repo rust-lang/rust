@@ -225,12 +225,12 @@
 //! often called 'iterator adapters', as they're a form of the 'adapter
 //! pattern'.
 //!
-//! Common iterator adapters include [`map()`], [`take()`], and [`collect()`].
+//! Common iterator adapters include [`map()`], [`take()`], and [`filter()`].
 //! For more, see their documentation.
 //!
 //! [`map()`]: trait.Iterator.html#method.map
 //! [`take()`]: trait.Iterator.html#method.take
-//! [`collect()`]: trait.Iterator.html#method.collect
+//! [`filter()`]: trait.Iterator.html#method.filter
 //!
 //! # Laziness
 //!
@@ -268,7 +268,7 @@
 //! [`map()`]: trait.Iterator.html#method.map
 //!
 //! The two most common ways to evaluate an iterator are to use a `for` loop
-//! like this, or using the [`collect()`] adapter to produce a new collection.
+//! like this, or using the [`collect()`] method to produce a new collection.
 //!
 //! [`collect()`]: trait.Iterator.html#method.collect
 //!
@@ -368,7 +368,16 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Rev<I>
-    where I: ExactSizeIterator + DoubleEndedIterator {}
+    where I: ExactSizeIterator + DoubleEndedIterator
+{
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Rev<I>
@@ -425,7 +434,15 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
     where I: ExactSizeIterator<Item=&'a T>, T: Clone
-{}
+{
+    fn len(&self) -> usize {
+        self.it.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.it.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, I, T: 'a> FusedIterator for Cloned<I>
@@ -920,7 +937,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 /// you can also [`map()`] backwards:
 ///
 /// ```rust
-/// let v: Vec<i32> = vec![1, 2, 3].into_iter().rev().map(|x| x + 1).collect();
+/// let v: Vec<i32> = vec![1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
 ///
 /// assert_eq!(v, [4, 3, 2]);
 /// ```
@@ -1007,7 +1024,16 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
-    where F: FnMut(I::Item) -> B {}
+    where F: FnMut(I::Item) -> B
+{
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
@@ -1236,7 +1262,15 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 #[doc(hidden)]
 unsafe impl<I> TrustedRandomAccess for Enumerate<I>
@@ -1945,7 +1979,15 @@ impl<I> DoubleEndedIterator for Fuse<I>
 
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 /// An iterator that calls a function with a reference to each element before
 /// yielding it.
@@ -2012,7 +2054,16 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
-    where F: FnMut(&I::Item) {}
+    where F: FnMut(&I::Item)
+{
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>

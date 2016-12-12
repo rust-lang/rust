@@ -18,6 +18,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 use filetime::FileTime;
 
@@ -188,4 +189,20 @@ pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
     buf.push(file);
 
     buf
+}
+
+pub struct TimeIt(Instant);
+
+/// Returns an RAII structure that prints out how long it took to drop.
+pub fn timeit() -> TimeIt {
+    TimeIt(Instant::now())
+}
+
+impl Drop for TimeIt {
+    fn drop(&mut self) {
+        let time = self.0.elapsed();
+        println!("\tfinished in {}.{:03}",
+                 time.as_secs(),
+                 time.subsec_nanos() / 1_000_000);
+    }
 }

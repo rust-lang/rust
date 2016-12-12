@@ -23,7 +23,7 @@ use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use syntax::tokenstream;
 use rustc::hir;
 use rustc::hir::*;
-use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
@@ -52,6 +52,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     hash_spans: bool,
     codemap: &'a mut CachingCodemapView<'tcx>,
     overflow_checks_enabled: bool,
+    hash_bodies: bool,
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
@@ -59,7 +60,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                tcx: TyCtxt<'hash, 'tcx, 'tcx>,
                def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
                codemap: &'a mut CachingCodemapView<'tcx>,
-               hash_spans: bool)
+               hash_spans: bool,
+               hash_bodies: bool)
                -> Self {
         let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
             .unwrap_or(tcx.sess.opts.debug_assertions);
@@ -71,6 +73,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             hash_spans: hash_spans,
             codemap: codemap,
             overflow_checks_enabled: check_overflow,
+            hash_bodies: hash_bodies,
         }
     }
 
@@ -185,10 +188,10 @@ enum SawAbiComponent<'a> {
     SawImplItem(SawTraitOrImplItemComponent),
     SawStructField,
     SawVariant,
+    SawQPath,
     SawPath(bool),
     SawPathSegment,
     SawPathParameters,
-    SawPathListItem,
     SawBlock,
     SawPat(SawPatComponent),
     SawLocal,
@@ -259,7 +262,7 @@ enum SawExprComponent<'a> {
     SawExprAssign,
     SawExprAssignOp(hir::BinOp_),
     SawExprIndex,
-    SawExprPath(Option<usize>),
+    SawExprPath,
     SawExprAddrOf(hir::Mutability),
     SawExprRet,
     SawExprInlineAsm(&'a hir::InlineAsm),
@@ -333,10 +336,10 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprField(_, name)       => (SawExprField(name.node.as_str()), false),
         ExprTupField(_, id)      => (SawExprTupField(id.node), false),
         ExprIndex(..)            => (SawExprIndex, true),
-        ExprPath(ref qself, _)   => (SawExprPath(qself.as_ref().map(|q| q.position)), false),
+        ExprPath(_)              => (SawExprPath, false),
         ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
-        ExprBreak(id, _)         => (SawExprBreak(id.map(|id| id.node.as_str())), false),
-        ExprAgain(id)            => (SawExprAgain(id.map(|id| id.node.as_str())), false),
+        ExprBreak(label, _)      => (SawExprBreak(label.map(|l| l.name.as_str())), false),
+        ExprAgain(label)         => (SawExprAgain(label.map(|l| l.name.as_str())), false),
         ExprRet(..)              => (SawExprRet, false),
         ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(a), false),
         ExprStruct(..)           => (SawExprStruct, false),
@@ -356,7 +359,7 @@ fn saw_lit(lit: &ast::Lit) -> SawExprComponent<'static> {
 #[derive(Hash)]
 enum SawItemComponent {
     SawItemExternCrate,
-    SawItemUse,
+    SawItemUse(UseKind),
     SawItemStatic(Mutability),
     SawItemConst,
     SawItemFn(Unsafety, Constness, Abi),
@@ -374,7 +377,7 @@ enum SawItemComponent {
 fn saw_item(node: &Item_) -> SawItemComponent {
     match *node {
         ItemExternCrate(..) => SawItemExternCrate,
-        ItemUse(..) => SawItemUse,
+        ItemUse(_, kind) => SawItemUse(kind),
         ItemStatic(_, mutability, _) => SawItemStatic(mutability),
         ItemConst(..) =>SawItemConst,
         ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
@@ -411,7 +414,7 @@ fn saw_pat(node: &PatKind) -> SawPatComponent {
         PatKind::Binding(bindingmode, ..) => SawPatBinding(bindingmode),
         PatKind::Struct(..) => SawPatStruct,
         PatKind::TupleStruct(..) => SawPatTupleStruct,
-        PatKind::Path(..) => SawPatPath,
+        PatKind::Path(_) => SawPatPath,
         PatKind::Tuple(..) => SawPatTuple,
         PatKind::Box(..) => SawPatBox,
         PatKind::Ref(_, mutability) => SawPatRef(mutability),
@@ -447,7 +450,7 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
-      TyPath(..) => SawTyPath,
+      TyPath(_) => SawTyPath,
       TyObjectSum(..) => SawTyObjectSum,
       TyPolyTraitRef(..) => SawTyPolyTraitRef,
       TyImplTrait(..) => SawTyImplTrait,
@@ -459,15 +462,16 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
 #[derive(Hash)]
 enum SawTraitOrImplItemComponent {
     SawTraitOrImplItemConst,
-    SawTraitOrImplItemMethod(Unsafety, Constness, Abi),
+    // The boolean signifies whether a body is present
+    SawTraitOrImplItemMethod(Unsafety, Constness, Abi, bool),
     SawTraitOrImplItemType
 }
 
 fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
     match *ti {
         ConstTraitItem(..) => SawTraitOrImplItemConst,
-        MethodTraitItem(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+        MethodTraitItem(ref sig, ref body) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, body.is_some()),
         TypeTraitItem(..) => SawTraitOrImplItemType
     }
 }
@@ -476,7 +480,7 @@ fn saw_impl_item(ii: &ImplItemKind) -> SawTraitOrImplItemComponent {
     match *ii {
         ImplItemKind::Const(..) => SawTraitOrImplItemConst,
         ImplItemKind::Method(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, true),
         ImplItemKind::Type(..) => SawTraitOrImplItemType
     }
 }
@@ -509,6 +513,14 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> visit::NestedVisitorMap<'this, 'tcx> {
+        if self.hash_bodies {
+            visit::NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        } else {
+            visit::NestedVisitorMap::None
+        }
+    }
+
     fn visit_variant_data(&mut self,
                           s: &'tcx VariantData,
                           name: Name,
@@ -607,9 +619,11 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, n: NodeId) {
+    fn visit_mod(&mut self, m: &'tcx Mod, span: Span, n: NodeId) {
         debug!("visit_mod: st={:?}", self.st);
-        SawMod.hash(self.st); visit::walk_mod(self, m, n)
+        SawMod.hash(self.st);
+        hash_span!(self, span);
+        visit::walk_mod(self, m, n)
     }
 
     fn visit_ty(&mut self, t: &'tcx Ty) {
@@ -655,11 +669,22 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_struct_field(self, s)
     }
 
+    fn visit_qpath(&mut self, qpath: &'tcx QPath, id: NodeId, span: Span) {
+        debug!("visit_qpath: st={:?}", self.st);
+        SawQPath.hash(self.st);
+        self.hash_discriminant(qpath);
+        visit::walk_qpath(self, qpath, id, span)
+    }
+
     fn visit_path(&mut self, path: &'tcx Path, _: ast::NodeId) {
         debug!("visit_path: st={:?}", self.st);
         SawPath(path.global).hash(self.st);
         hash_span!(self, path.span);
         visit::walk_path(self, path)
+    }
+
+    fn visit_def_mention(&mut self, def: Def) {
+        self.hash_def(def);
     }
 
     fn visit_block(&mut self, b: &'tcx Block) {
@@ -739,14 +764,6 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_poly_trait_ref(self, t, m)
     }
 
-    fn visit_path_list_item(&mut self, prefix: &'tcx Path, item: &'tcx PathListItem) {
-        debug!("visit_path_list_item: st={:?}", self.st);
-        SawPathListItem.hash(self.st);
-        self.hash_discriminant(&item.node);
-        hash_span!(self, item.span);
-        visit::walk_path_list_item(self, prefix, item)
-    }
-
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'tcx PathSegment) {
         debug!("visit_path_segment: st={:?}", self.st);
         SawPathSegment.hash(self.st);
@@ -800,11 +817,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         // or not an entry was present (we are already hashing what
         // variant it is above when we visit the HIR).
 
-        if let Some(def) = self.tcx.def_map.borrow().get(&id) {
-            debug!("hash_resolve: id={:?} def={:?} st={:?}", id, def, self.st);
-            self.hash_partial_def(def);
-        }
-
         if let Some(traits) = self.tcx.trait_map.get(&id) {
             debug!("hash_resolve: id={:?} traits={:?} st={:?}", id, traits, self.st);
             traits.len().hash(self.st);
@@ -824,11 +836,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
     fn hash_def_id(&mut self, def_id: DefId) {
         self.compute_def_id_hash(def_id).hash(self.st);
-    }
-
-    fn hash_partial_def(&mut self, def: &PathResolution) {
-        self.hash_def(def.base_def);
-        def.depth.hash(self.st);
     }
 
     fn hash_def(&mut self, def: Def) {
@@ -1078,5 +1085,24 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             token::Token::DocComment(val) |
             token::Token::Shebang(val) => val.as_str().hash(self.st),
         }
+    }
+
+    pub fn hash_crate_root_module(&mut self, krate: &'tcx Crate) {
+        let hir::Crate {
+            ref module,
+            ref attrs,
+            span,
+
+            // These fields are handled separately:
+            exported_macros: _,
+            items: _,
+            impl_items: _,
+            exprs: _,
+        } = *krate;
+
+        visit::Visitor::visit_mod(self, module, span, ast::CRATE_NODE_ID);
+        // Crate attributes are not copied over to the root `Mod`, so hash them
+        // explicitly here.
+        hash_attrs!(self, attrs);
     }
 }

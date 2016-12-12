@@ -491,11 +491,11 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// becomes available. These channels differ greatly in the semantics of the
 /// sender from asynchronous channels, however.
 ///
-/// This channel has an internal buffer on which messages will be queued. When
-/// the internal buffer becomes full, future sends will *block* waiting for the
-/// buffer to open up. Note that a buffer size of 0 is valid, in which case this
-/// becomes  "rendezvous channel" where each send will not return until a recv
-/// is paired with it.
+/// This channel has an internal buffer on which messages will be queued. `bound`
+/// specifies the buffer size. When the internal buffer becomes full, future sends
+/// will *block* waiting for the buffer to open up. Note that a buffer size of 0
+/// is valid, in which case this becomes  "rendezvous channel" where each send will
+/// not return until a recv is paired with it.
 ///
 /// As with asynchronous channels, all senders will panic in `send` if the
 /// `Receiver` has been destroyed.

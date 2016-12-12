@@ -126,10 +126,10 @@ use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
+use rustc_incremental::IchHasher;
 use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::sync::Arc;
-use std::collections::hash_map::DefaultHasher;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
@@ -188,14 +188,30 @@ impl<'tcx> CodegenUnit<'tcx> {
         DepNode::WorkProduct(self.work_product_id())
     }
 
-    pub fn compute_symbol_name_hash(&self, tcx: TyCtxt, symbol_map: &SymbolMap) -> u64 {
-        let mut state = DefaultHasher::new();
-        let all_items = self.items_in_deterministic_order(tcx, symbol_map);
+    pub fn compute_symbol_name_hash(&self,
+                                    scx: &SharedCrateContext,
+                                    symbol_map: &SymbolMap) -> u64 {
+        let mut state = IchHasher::new();
+        let exported_symbols = scx.exported_symbols();
+        let all_items = self.items_in_deterministic_order(scx.tcx(), symbol_map);
         for (item, _) in all_items {
             let symbol_name = symbol_map.get(item).unwrap();
+            symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
+            let exported = match item {
+               TransItem::Fn(ref instance) => {
+                    let node_id = scx.tcx().map.as_local_node_id(instance.def);
+                    node_id.map(|node_id| exported_symbols.contains(&node_id))
+                           .unwrap_or(false)
+               }
+               TransItem::Static(node_id) => {
+                    exported_symbols.contains(&node_id)
+               }
+               TransItem::DropGlue(..) => false,
+            };
+            exported.hash(&mut state);
         }
-        state.finish()
+        state.finish().to_smaller_hash()
     }
 
     pub fn items_in_deterministic_order(&self,

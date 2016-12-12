@@ -103,7 +103,7 @@ impl LintPass for TypeLimits {
     }
 }
 
-impl LateLintPass for TypeLimits {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
@@ -396,7 +396,7 @@ enum FfiResult {
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  def: ty::AdtDef<'tcx>,
+                                  def: &'tcx ty::AdtDef,
                                   substs: &Substs<'tcx>)
                                   -> bool {
     if def.variants.len() == 2 {
@@ -572,7 +572,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                            consider using a raw pointer instead")
             }
 
-            ty::TyTrait(..) => {
+            ty::TyDynamic(..) => {
                 FfiUnsafe("found Rust trait type in foreign module, \
                            consider using a raw pointer instead")
             }
@@ -603,8 +603,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 let sig = cx.erase_late_bound_regions(&bare_fn.sig);
-                if !sig.output.is_nil() {
-                    let r = self.check_type_for_ffi(cache, sig.output);
+                if !sig.output().is_nil() {
+                    let r = self.check_type_for_ffi(cache, sig.output());
                     match r {
                         FfiSafe => {}
                         _ => {
@@ -612,7 +612,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
                     }
                 }
-                for arg in sig.inputs {
+                for arg in sig.inputs() {
                     let r = self.check_type_for_ffi(cache, arg);
                     match r {
                         FfiSafe => {}
@@ -678,12 +678,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.item_type(def_id).fn_sig();
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
-        for (&input_ty, input_hir) in sig.inputs.iter().zip(&decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.ty.span, &input_ty);
+        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
+            self.check_type_for_ffi_and_report_errors(input_hir.ty.span, input_ty);
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
-            let ret_ty = sig.output;
+            let ret_ty = sig.output();
             if !ret_ty.is_nil() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
             }
@@ -706,7 +706,7 @@ impl LintPass for ImproperCTypes {
     }
 }
 
-impl LateLintPass for ImproperCTypes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
         if let hir::ItemForeignMod(ref nmod) = it.node {
@@ -734,7 +734,7 @@ impl LintPass for VariantSizeDifferences {
     }
 }
 
-impl LateLintPass for VariantSizeDifferences {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {

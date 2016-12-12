@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   ca-certificates \
   python2.7 \
-  python-minimal \
   git \
   cmake \
   ccache \

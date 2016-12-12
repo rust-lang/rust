@@ -418,11 +418,11 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: Abi::C,
-            sig: ty::Binder(ty::FnSig {
-                inputs: vec![tcx.mk_mut_ptr(tcx.types.u8)],
-                output: tcx.types.never,
-                variadic: false
-            }),
+            sig: ty::Binder(tcx.mk_fn_sig(
+                iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
+                tcx.types.never,
+                false
+            )),
         }));
 
         let unwresume = ccx.eh_unwind_resume();
@@ -1091,10 +1091,11 @@ pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ty::ClosureKind::FnOnce => ty,
             };
 
-            let sig = sig.map_bound(|sig| ty::FnSig {
-                inputs: iter::once(env_ty).chain(sig.inputs).collect(),
-                ..sig
-            });
+            let sig = sig.map_bound(|sig| tcx.mk_fn_sig(
+                iter::once(env_ty).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.variadic
+            ));
             Cow::Owned(ty::BareFnTy { unsafety: unsafety, abi: abi, sig: sig })
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)

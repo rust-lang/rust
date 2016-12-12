@@ -1,0 +1,10 @@
+error[E0282]: unable to infer enough type information about `X`
+  --> $DIR/missing-type-parameter.rs:14:5
+   |
+14 |     foo();
+   |     ^^^ cannot infer type for `X`
+   |
+   = note: type annotations or generic parameter binding required
+
+error: aborting due to previous error
+

@@ -86,13 +86,17 @@ benchmarks, generate documentation, install a fresh build of Rust, and more.
 It's your best friend when working on Rust, allowing you to compile & test
 your contributions before submission.
 
-All the configuration for the build system lives in [the `mk` directory][mkdir]
-in the project root. It can be hard to follow in places, as it uses some
-advanced Make features which make for some challenging reading. If you have
-questions on the build system internals, try asking in
-[`#rust-internals`][pound-rust-internals].
+The build system lives in [the `src/bootstrap` directory][bootstrap] in the
+project root. Our build system is itself written in Rust and is based on Cargo
+to actually build all the compiler's crates. If you have questions on the build
+system internals, try asking in [`#rust-internals`][pound-rust-internals].
 
-[mkdir]: https://github.com/rust-lang/rust/tree/master/mk/
+[bootstrap]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/
+
+> **Note**: the build system was recently rewritten from a jungle of makefiles
+> to the current incarnation you'll see in `src/bootstrap`. If you experience
+> bugs you can temporarily revert back to the makefiles with
+> `--disable-rustbuild` passed to `./configure`.
 
 ### Configuration
 
@@ -119,42 +123,111 @@ configuration used later in the build process. Some options to note:
 
 To see a full list of options, run `./configure --help`.
 
-### Useful Targets
+### Building
 
-Some common make targets are:
+Although the `./configure` script will generate a `Makefile`, this is actually
+just a thin veneer over the actual build system driver, `x.py`. This file, at
+the root of the repository, is used to build, test, and document various parts
+of the compiler. You can execute it as:
 
-- `make tips` - show useful targets, variables and other tips for working with
-   the build system.
-- `make rustc-stage1` - build up to (and including) the first stage. For most
-  cases we don't need to build the stage2 compiler, so we can save time by not
-  building it. The stage1 compiler is a fully functioning compiler and
-  (probably) will be enough to determine if your change works as expected.
-- `make $host/stage1/bin/rustc` - Where $host is a target triple like x86_64-unknown-linux-gnu.
-  This will build just rustc, without libstd. This is the fastest way to recompile after
-  you changed only rustc source code. Note however that the resulting rustc binary
-  won't have a stdlib to link against by default. You can build libstd once with
-  `make rustc-stage1`, rustc will pick it up afterwards. libstd is only guaranteed to
-  work if recompiled, so if there are any issues recompile it.
-- `make check` - build the full compiler & run all tests (takes a while). This
+```sh
+python x.py build
+```
+
+On some systems you can also use the shorter version:
+
+```sh
+./x.py build
+```
+
+To learn more about the driver and top-level targets, you can execute:
+
+```sh
+python x.py --help
+```
+
+The general format for the driver script is:
+
+```sh
+python x.py <command> [<directory>]
+```
+
+Some example commands are `build`, `test`, and `doc`. These will build, test,
+and document the specified directory. The second argument, `<directory>`, is
+optional and defaults to working over the entire compiler. If specified,
+however, only that specific directory will be built. For example:
+
+```sh
+# build the entire compiler
+python x.py build
+
+# build all documentation
+python x.py doc
+
+# run all test suites
+python x.py test
+
+# build only the standard library
+python x.py build src/libstd
+
+# test only one particular test suite
+python x.py test src/test/rustdoc
+
+# build only the stage0 libcore library
+python x.py build src/libcore --stage 0
+```
+
+You can explore the build system throught the various `--help` pages for each
+subcommand. For example to learn more about a command you can run:
+
+```
+python x.py build --help
+```
+
+To learn about all possible rules you can execute, run:
+
+```
+python x.py build --help --verbose
+```
+
+### Useful commands
+
+Some common invocations of `x.py` are:
+
+- `x.py build --help` - show the help message and explain the subcommand
+- `x.py build src/libtest --stage 1` - build up to (and including) the first
+  stage. For most cases we don't need to build the stage2 compiler, so we can
+  save time by not building it. The stage1 compiler is a fully functioning
+  compiler and (probably) will be enough to determine if your change works as
+  expected.
+- `x.py build src/rustc --stage 1` - This will build just rustc, without libstd.
+  This is the fastest way to recompile after you changed only rustc source code.
+  Note however that the resulting rustc binary won't have a stdlib to link
+  against by default. You can build libstd once with `x.py build src/libstd`,
+  but it is is only guaranteed to work if recompiled, so if there are any issues
+  recompile it.
+- `x.py test` - build the full compiler & run all tests (takes a while). This
   is what gets run by the continuous integration system against your pull
   request. You should run this before submitting to make sure your tests pass
   & everything builds in the correct manner.
-- `make check-stage1-std NO_REBUILD=1` - test the standard library without
-  rebuilding the entire compiler
-- `make check TESTNAME=<substring-of-test-name>` - Run a matching set of tests.
+- `x.py test src/libstd --stage 1` - test the standard library without
+  recompiling stage 2.
+- `x.py test src/test/run-pass --filter TESTNAME` - Run a matching set of tests.
   - `TESTNAME` should be a substring of the tests to match against e.g. it could
     be the fully qualified test name, or just a part of it.
     `TESTNAME=collections::hash::map::test_map::test_capacity_not_less_than_len`
     or `TESTNAME=test_capacity_not_less_than_len`.
-- `make check-stage1-rpass TESTNAME=<substring-of-test-name>` - Run a single
-  rpass test with the stage1 compiler (this will be quicker than running the
-  command above as we only build the stage1 compiler, not the entire thing).
-  You can also leave off the `-rpass` to run all stage1 test types.
-- `make check-stage1-coretest` - Run stage1 tests in `libcore`.
-- `make tidy` - Check that the source code is in compliance with Rust's style
-  guidelines. There is no official document describing Rust's full guidelines 
-  as of yet, but basic rules like 4 spaces for indentation and no more than 99
-  characters in a single line should be kept in mind when writing code.
+- `x.py test src/test/run-pass --stage 1 --filter <substring-of-test-name>` -
+  Run a single rpass test with the stage1 compiler (this will be quicker than
+  running the command above as we only build the stage1 compiler, not the entire
+  thing).  You can also leave off the directory argument to run all stage1 test
+  types.
+- `x.py test src/libcore --stage 1` - Run stage1 tests in `libcore`.
+- `x.py test src/tools/tidy` - Check that the source code is in compliance with
+  Rust's style guidelines. There is no official document describing Rust's full
+  guidelines as of yet, but basic rules like 4 spaces for indentation and no
+  more than 99 characters in a single line should be kept in mind when writing
+  code.
 
 ## Pull Requests
 
@@ -172,19 +245,17 @@ amount of time you have to wait. You need to have built the compiler at least
 once before running these will work, but that’s only one full build rather than
 one each time.
 
-    $ make -j8 rustc-stage1 && make check-stage1
+    $ python x.py test --stage 1
 
 is one such example, which builds just `rustc`, and then runs the tests. If
 you’re adding something to the standard library, try
 
-    $ make -j8 check-stage1-std NO_REBUILD=1
-
-This will not rebuild the compiler, but will run the tests.
+    $ python x.py test src/libstd --stage 1
 
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
-    $ make tidy
+    $ python x.py test src/tools/tidy
 
 Make this check before every pull request (and every new commit in a pull
 request) ; you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)

@@ -63,7 +63,8 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         Err(LoadStringError::ReadFail) => return 1,
         Err(LoadStringError::BadUtf8) => return 2,
     };
-    if let Some(playground) = matches.opt_str("markdown-playground-url") {
+    if let Some(playground) = matches.opt_str("markdown-playground-url").or(
+                              matches.opt_str("playground-url")) {
         markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
     }
 

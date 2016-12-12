@@ -39,8 +39,9 @@ dep_map_ty! { Predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { SuperPredicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { AssociatedItemDefIds: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>> }
 dep_map_ty! { ImplTraitRefs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>> }
-dep_map_ty! { TraitDefs: ItemSignature(DefId) -> &'tcx ty::TraitDef<'tcx> }
-dep_map_ty! { AdtDefs: ItemSignature(DefId) -> ty::AdtDefMaster<'tcx> }
+dep_map_ty! { TraitDefs: ItemSignature(DefId) -> &'tcx ty::TraitDef }
+dep_map_ty! { AdtDefs: ItemSignature(DefId) -> &'tcx ty::AdtDef }
+dep_map_ty! { AdtSizedConstraint: SizedConstraint(DefId) -> Ty<'tcx> }
 dep_map_ty! { ItemVariances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>> }
 dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Vec<DefId> }
 dep_map_ty! { ReprHints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>> }

@@ -36,6 +36,7 @@ use glue;
 use abi::{Abi, FnType};
 use back::symbol_names;
 use std::fmt::Write;
+use std::iter;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
@@ -186,11 +187,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(tcx, dg.ty()));
         let t = dg.ty();
 
-        let sig = ty::FnSig {
-            inputs: vec![tcx.mk_mut_ptr(tcx.types.i8)],
-            output: tcx.mk_nil(),
-            variadic: false,
-        };
+        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(tcx.types.i8)), tcx.mk_nil(), false);
 
         // Create a FnType for fn(*mut i8) and substitute the real type in
         // later - that prevents FnType from splitting fat pointers up.
@@ -410,7 +407,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
             ty::TyAdt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
-                self.push_type_params(substs, &[], output);
+                self.push_type_params(substs, iter::empty(), output);
             },
             ty::TyTuple(component_types) => {
                 output.push('(');
@@ -457,11 +454,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_type_name(inner_type, output);
                 output.push(']');
             },
-            ty::TyTrait(ref trait_data) => {
-                self.push_def_path(trait_data.principal.def_id(), output);
-                self.push_type_params(trait_data.principal.skip_binder().substs,
-                                      &trait_data.projection_bounds,
-                                      output);
+            ty::TyDynamic(ref trait_data, ..) => {
+                if let Some(principal) = trait_data.principal() {
+                    self.push_def_path(principal.def_id(), output);
+                    self.push_type_params(principal.skip_binder().substs,
+                        trait_data.projection_bounds(),
+                        output);
+                }
             },
             ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
             ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
@@ -477,14 +476,10 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let ty::FnSig {
-                    inputs: sig_inputs,
-                    output: sig_output,
-                    variadic: sig_variadic
-                } = self.tcx.erase_late_bound_regions_and_normalize(sig);
+                let sig = self.tcx.erase_late_bound_regions_and_normalize(sig);
 
-                if !sig_inputs.is_empty() {
-                    for &parameter_type in &sig_inputs {
+                if !sig.inputs().is_empty() {
+                    for &parameter_type in sig.inputs() {
                         self.push_type_name(parameter_type, output);
                         output.push_str(", ");
                     }
@@ -492,8 +487,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     output.pop();
                 }
 
-                if sig_variadic {
-                    if !sig_inputs.is_empty() {
+                if sig.variadic {
+                    if !sig.inputs().is_empty() {
                         output.push_str(", ...");
                     } else {
                         output.push_str("...");
@@ -502,16 +497,16 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push(')');
 
-                if !sig_output.is_nil() {
+                if !sig.output().is_nil() {
                     output.push_str(" -> ");
-                    self.push_type_name(sig_output, output);
+                    self.push_type_name(sig.output(), output);
                 }
             },
             ty::TyClosure(def_id, ref closure_substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.item_generics(self.tcx.closure_base_def_id(def_id));
                 let substs = closure_substs.substs.truncate_to(self.tcx, generics);
-                self.push_type_params(substs, &[], output);
+                self.push_type_params(substs, iter::empty(), output);
             }
             ty::TyError |
             ty::TyInfer(_) |
@@ -551,11 +546,14 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         output.pop();
     }
 
-    pub fn push_type_params(&self,
+    fn push_type_params<I>(&self,
                             substs: &Substs<'tcx>,
-                            projections: &[ty::PolyExistentialProjection<'tcx>],
-                            output: &mut String) {
-        if substs.types().next().is_none() && projections.is_empty() {
+                            projections: I,
+                            output: &mut String)
+        where I: Iterator<Item=ty::PolyExistentialProjection<'tcx>>
+    {
+        let mut projections = projections.peekable();
+        if substs.types().next().is_none() && projections.peek().is_none() {
             return;
         }
 
@@ -585,6 +583,6 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                                    instance: Instance<'tcx>,
                                    output: &mut String) {
         self.push_def_path(instance.def, output);
-        self.push_type_params(instance.substs, &[], output);
+        self.push_type_params(instance.substs, iter::empty(), output);
     }
 }

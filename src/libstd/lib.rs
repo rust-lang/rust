@@ -249,8 +249,8 @@
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(dropck_parametricity)]
+#![feature(exact_size_is_empty)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
@@ -276,7 +276,6 @@
 #![feature(panic_unwind)]
 #![feature(placement_in_syntax)]
 #![feature(prelude_import)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]
@@ -324,7 +323,7 @@ extern crate collections as core_collections;
 
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
@@ -421,7 +420,7 @@ pub use core_collections::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use rustc_unicode::char;
+pub use std_unicode::char;
 
 pub mod f32;
 pub mod f64;

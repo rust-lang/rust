@@ -1,9 +1,0 @@
-[package]
-name = "md5"
-version = "0.1.1"
-authors = ["Ivan Ukhov <ivan.ukhov@gmail.com>"]
-license = "MIT"
-repository = "https://github.com/stainless-steel/md5"
-homepage = "https://github.com/stainless-steel/md5"
-documentation = "https://stainless-steel.github.io/md5"
-description = "The package provides the MD5 hash function."

@@ -67,6 +67,9 @@ pub struct CrateSource {
 
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum DepKind {
+    /// A dependency that is only used for its macros, none of which are visible from other crates.
+    /// These are included in the metadata only as placeholders and are ignored when decoding.
+    UnexportedMacrosOnly,
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
@@ -75,6 +78,15 @@ pub enum DepKind {
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
     Explicit,
+}
+
+impl DepKind {
+    pub fn macros_only(self) -> bool {
+        match self {
+            DepKind::UnexportedMacrosOnly | DepKind::MacrosOnly => true,
+            DepKind::Implicit | DepKind::Explicit => false,
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -119,24 +131,103 @@ pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Symbol,
     pub cfg: Option<ast::MetaItem>,
+    pub foreign_items: Vec<DefIndex>,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not
 /// part of the AST that we parse from a file, but it becomes part of the tree
 /// that we trans.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum InlinedItem {
-    Item(DefId /* def-id in source crate */, P<hir::Item>),
-    TraitItem(DefId /* impl id */, P<hir::TraitItem>),
-    ImplItem(DefId /* impl id */, P<hir::ImplItem>)
+pub struct InlinedItem {
+    pub def_id: DefId,
+    pub body: P<hir::Expr>,
+    pub const_fn_args: Vec<Option<DefId>>,
 }
 
-/// A borrowed version of `hir::InlinedItem`.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, Hash, Debug)]
-pub enum InlinedItemRef<'a> {
-    Item(DefId, &'a hir::Item),
-    TraitItem(DefId, &'a hir::TraitItem),
-    ImplItem(DefId, &'a hir::ImplItem)
+/// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
+/// a crate; it then gets read as an InlinedItem.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, Hash, Debug)]
+pub struct InlinedItemRef<'a> {
+    pub def_id: DefId,
+    pub body: &'a hir::Expr,
+    pub const_fn_args: Vec<Option<DefId>>,
+}
+
+fn get_fn_args(decl: &hir::FnDecl) -> Vec<Option<DefId>> {
+    decl.inputs.iter().map(|arg| match arg.pat.node {
+        hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+        _ => None
+    }).collect()
+}
+
+impl<'a> InlinedItemRef<'a> {
+    pub fn from_item<'b, 'tcx>(def_id: DefId,
+                               item: &'a hir::Item,
+                               tcx: TyCtxt<'b, 'a, 'tcx>)
+                               -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ItemFn(ref decl, _, _, _, _, body_id) =>
+                (tcx.map.expr(body_id), get_fn_args(decl)),
+            hir::ItemConst(_, ref body) => (&**body, Vec::new()),
+            _ => bug!("InlinedItemRef::from_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn from_trait_item(def_id: DefId,
+                           item: &'a hir::TraitItem,
+                           _tcx: TyCtxt)
+                           -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ConstTraitItem(_, Some(ref body)) =>
+                (&**body, Vec::new()),
+            hir::ConstTraitItem(_, None) => {
+                bug!("InlinedItemRef::from_trait_item called for const without body")
+            },
+            _ => bug!("InlinedItemRef::from_trait_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn from_impl_item<'b, 'tcx>(def_id: DefId,
+                                    item: &'a hir::ImplItem,
+                                    tcx: TyCtxt<'b, 'a, 'tcx>)
+                                    -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ImplItemKind::Method(ref sig, body_id) =>
+                (tcx.map.expr(body_id), get_fn_args(&sig.decl)),
+            hir::ImplItemKind::Const(_, ref body) =>
+                (&**body, Vec::new()),
+            _ => bug!("InlinedItemRef::from_impl_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn visit<V>(&self, visitor: &mut V)
+        where V: Visitor<'a>
+    {
+        visitor.visit_expr(&self.body);
+    }
+}
+
+impl InlinedItem {
+    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
+        where V: Visitor<'ast>
+    {
+        visitor.visit_expr(&self.body);
+    }
 }
 
 pub enum LoadedMacro {
@@ -170,6 +261,7 @@ pub struct ExternCrate {
 pub trait CrateStore<'tcx> {
     // item info
     fn describe_def(&self, def: DefId) -> Option<Def>;
+    fn def_span(&self, sess: &Session, def: DefId) -> Span;
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
@@ -187,8 +279,8 @@ pub trait CrateStore<'tcx> {
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                          -> ty::Generics<'tcx>;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
-    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
-    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
+    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef;
+    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> &'tcx ty::AdtDef;
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
@@ -214,12 +306,14 @@ pub trait CrateStore<'tcx> {
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
+    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
+    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                     -> Vec<(CrateNum, LinkagePreference)>;
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
+    fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
     fn is_staged_api(&self, cnum: CrateNum) -> bool;
@@ -236,8 +330,9 @@ pub trait CrateStore<'tcx> {
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
+    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
@@ -260,6 +355,11 @@ pub trait CrateStore<'tcx> {
     fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
 
+    /// Take a look if we need to inline or monomorphize this. If so, we
+    /// will emit code for this item in the local crate, and thus
+    /// create a translation item for it.
+    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool;
+
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum>;
@@ -277,18 +377,6 @@ pub trait CrateStore<'tcx> {
                            link_meta: &LinkMeta,
                            reachable: &NodeSet) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
-}
-
-impl InlinedItem {
-    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
-        where V: Visitor<'ast>
-    {
-        match *self {
-            InlinedItem::Item(_, ref i) => visitor.visit_item(&i),
-            InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-            InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
-        }
-    }
 }
 
 // FIXME: find a better place for this?
@@ -325,6 +413,7 @@ pub struct DummyCrateStore;
 impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // item info
     fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
+    fn def_span(&self, sess: &Session, def: DefId) -> Span { bug!("def_span") }
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
@@ -344,9 +433,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                          -> ty::Generics<'tcx> { bug!("item_generics") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
-    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>
+    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef
         { bug!("trait_def") }
-    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
+    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> &'tcx ty::AdtDef
         { bug!("adt_def") }
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
@@ -381,7 +470,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_defaulted_trait(&self, did: DefId) -> bool { bug!("is_defaulted_trait") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
-    fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
+    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
+    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -393,6 +483,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("missing_lang_items") }
     fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
+    fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
@@ -409,9 +500,11 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            -> Symbol { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
+    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
+        { bug!("derive_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
@@ -440,13 +533,14 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_item_mir_available(&self, def: DefId) -> bool {
         bug!("is_item_mir_available")
     }
+    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool {
+        bug!("can_have_local_instance")
+    }
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum> { vec![] }
-    fn used_libraries(&self) -> Vec<NativeLibrary> {
-        vec![]
-    }
+    fn used_libraries(&self) -> Vec<NativeLibrary> { vec![] }
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions

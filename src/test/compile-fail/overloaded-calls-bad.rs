@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+#![feature(fn_traits, unboxed_closures)]
 
 use std::ops::FnMut;
 
@@ -41,8 +41,8 @@ fn main() {
     //~| NOTE found type
     let ans = s();
     //~^ ERROR this function takes 1 parameter but 0 parameters were supplied
-    //~| NOTE the following parameter type was expected
+    //~| NOTE expected 1 parameter
     let ans = s("burma", "shave");
     //~^ ERROR this function takes 1 parameter but 2 parameters were supplied
-    //~| NOTE the following parameter type was expected
+    //~| NOTE expected 1 parameter
 }

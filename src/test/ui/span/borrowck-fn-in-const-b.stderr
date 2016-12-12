@@ -1,0 +1,10 @@
+error: cannot borrow immutable borrowed content `*x` as mutable
+  --> $DIR/borrowck-fn-in-const-b.rs:17:9
+   |
+16 |     fn broken(x: &Vec<String>) {
+   |                  ------------ use `&mut Vec<String>` here to make mutable
+17 |         x.push(format!("this is broken"));
+   |         ^
+
+error: aborting due to previous error
+

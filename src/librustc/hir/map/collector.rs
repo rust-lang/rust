@@ -10,7 +10,7 @@
 
 use super::*;
 
-use hir::intravisit::Visitor;
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::def_id::DefId;
 use middle::cstore::InlinedItem;
 use std::iter::repeat;
@@ -91,7 +91,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map(&mut self) -> Option<&map::Map<'ast>> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -104,6 +104,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
         self.visit_impl_item(self.krate.impl_item(item_id))
+    }
+
+    fn visit_body(&mut self, id: ExprId) {
+        self.visit_expr(self.krate.expr(id))
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
@@ -122,23 +126,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     // If this is a tuple-like struct, register the constructor.
                     if !struct_def.is_struct() {
                         this.insert(struct_def.id(), NodeStructCtor(struct_def));
-                    }
-                }
-                ItemTrait(.., ref bounds, _) => {
-                    for b in bounds.iter() {
-                        if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
-                            this.insert(t.trait_ref.ref_id, NodeItem(i));
-                        }
-                    }
-                }
-                ItemUse(ref view_path) => {
-                    match view_path.node {
-                        ViewPathList(_, ref paths) => {
-                            for path in paths {
-                                this.insert(path.node.id, NodeItem(i));
-                            }
-                        }
-                        _ => ()
                     }
                 }
                 _ => {}
@@ -217,8 +204,16 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
+    fn visit_trait_ref(&mut self, tr: &'ast TraitRef) {
+        self.insert(tr.ref_id, NodeTraitRef(tr));
+
+        self.with_parent(tr.ref_id, |this| {
+            intravisit::walk_trait_ref(this, tr);
+        });
+    }
+
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Expr, s: Span, id: NodeId) {
+                b: ExprId, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
@@ -234,7 +229,28 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }
 
+    fn visit_vis(&mut self, visibility: &'ast Visibility) {
+        match *visibility {
+            Visibility::Public |
+            Visibility::Crate |
+            Visibility::Inherited => {}
+            Visibility::Restricted { id, .. } => {
+                self.insert(id, NodeVisibility(visibility));
+                self.with_parent(id, |this| {
+                    intravisit::walk_vis(this, visibility);
+                });
+            }
+        }
+    }
+
     fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
         self.insert_entry(macro_def.id, NotPresent);
+    }
+
+    fn visit_struct_field(&mut self, field: &'ast StructField) {
+        self.insert(field.id, NodeField(field));
+        self.with_parent(field.id, |this| {
+            intravisit::walk_struct_field(this, field);
+        });
     }
 }

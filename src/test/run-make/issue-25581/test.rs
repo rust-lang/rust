@@ -12,7 +12,7 @@
 
 extern crate libc;
 
-#[link(name = "test")]
+#[link(name = "test", kind = "static")]
 extern {
     fn slice_len(s: &[u8]) -> libc::size_t;
     fn slice_elem(s: &[u8], idx: libc::size_t) -> u8;

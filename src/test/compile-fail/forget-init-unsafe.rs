@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core_intrinsics)]
+
 use std::intrinsics::{init, forget};
 
 // Test that the `forget` and `init` intrinsics are really unsafe

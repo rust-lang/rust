@@ -35,14 +35,13 @@ Core encoding and decoding interfaces.
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unicode)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![cfg_attr(test, feature(test))]
 
 // test harness access
 #[cfg(test)] extern crate test;
 #[macro_use] extern crate log;
 
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

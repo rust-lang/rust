@@ -27,6 +27,7 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
+use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
@@ -38,7 +39,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use std::cmp;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 use errors::DiagnosticBuilder;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -156,7 +157,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
                 ty::TyArray(..) | ty::TySlice(..) => Some(6),
                 ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(7),
-                ty::TyTrait(..) => Some(8),
+                ty::TyDynamic(..) => Some(8),
                 ty::TyClosure(..) => Some(9),
                 ty::TyTuple(..) => Some(10),
                 ty::TyProjection(..) => Some(11),
@@ -244,11 +245,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for item in self.tcx.get_attrs(def_id).iter() {
             if item.check_name("rustc_on_unimplemented") {
                 let err_sp = item.meta().span.substitute_dummy(span);
-                let def = self.tcx.lookup_trait_def(trait_ref.def_id);
-                let trait_str = def.trait_ref.to_string();
+                let trait_str = self.tcx.item_path_str(trait_ref.def_id);
                 if let Some(istring) = item.value_str() {
                     let istring = &*istring.as_str();
-                    let generic_map = def.generics.types.iter().map(|param| {
+                    let generics = self.tcx.item_generics(trait_ref.def_id);
+                    let generic_map = generics.types.iter().map(|param| {
                         (param.name.as_str().to_string(),
                          trait_ref.substs.type_for_def(param).to_string())
                     }).collect::<FxHashMap<String, String>>();
@@ -790,9 +791,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::TyParam(..) = ty.sty {
+                if let ty::TyParam(ty::ParamTy {name, ..}) = ty.sty {
                     let infcx = self.infcx;
-                    self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var())
+                    self.var_map.entry(ty).or_insert_with(||
+                        infcx.next_ty_var(
+                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name)))
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -824,12 +827,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 
     fn need_type_info(&self, span: Span, ty: Ty<'tcx>) {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        let name = if let ty::TyInfer(ty::TyVar(ty_vid)) = ty.sty {
+            let ty_vars = self.type_variables.borrow();
+            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
+                    *ty_vars.var_origin(ty_vid)
+            {
+                name.to_string()
+            } else {
+                ty.to_string()
+            }
+        } else {
+            ty.to_string()
+        };
+
         let mut err = struct_span_err!(self.tcx.sess, span, E0282,
                                        "unable to infer enough type information about `{}`",
-                                       ty);
+                                       name);
         err.note("type annotations or generic parameter binding required");
-        err.span_label(span, &format!("cannot infer type for `{}`", ty));
-        err.emit()
+        err.span_label(span, &format!("cannot infer type for `{}`", name));
+        err.emit();
     }
 
     fn note_obligation_cause<T>(&self,
@@ -904,16 +921,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
-            }
-            ObligationCauseCode::ClosureCapture(var_id, _, builtin_bound) => {
-                let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
-                let trait_name = tcx.item_path_str(def_id);
-                let name = tcx.local_var_name_str(var_id);
-                err.note(
-                    &format!("the closure that captures `{}` requires that all captured variables \
-                              implement the trait `{}`",
-                             name,
-                             trait_name));
             }
             ObligationCauseCode::FieldSized => {
                 err.note("only the last field of a struct may have a dynamically sized type");

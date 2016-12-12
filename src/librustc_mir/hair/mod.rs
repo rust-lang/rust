@@ -221,7 +221,7 @@ pub enum ExprKind<'tcx> {
         fields: Vec<ExprRef<'tcx>>,
     },
     Adt {
-        adt_def: AdtDef<'tcx>,
+        adt_def: &'tcx AdtDef,
         variant_index: usize,
         substs: &'tcx Substs<'tcx>,
         fields: Vec<FieldExprRef<'tcx>>,

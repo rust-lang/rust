@@ -11,17 +11,6 @@ path = "rustc.rs"
 name = "rustdoc"
 path = "rustdoc.rs"
 
-[profile.release]
-opt-level = 2
-[profile.bench]
-opt-level = 2
-
-# These options are controlled from our rustc wrapper script, so turn them off
-# here and have them controlled elsewhere.
-[profile.dev]
-debug = false
-debug-assertions = false
-
 # All optional dependencies so the features passed to this Cargo.toml select
 # what should actually be built.
 [dependencies]

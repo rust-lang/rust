@@ -2,25 +2,22 @@ environment:
   matrix:
   # 32/64 bit MSVC
   - MSYS_BITS: 64
-    TARGET: x86_64-pc-windows-msvc
-    CHECK: check
-    CONFIGURE_ARGS: --enable-llvm-assertions --enable-debug-assertions
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    RUST_CHECK_TARGET: check
   - MSYS_BITS: 32
-    TARGET: i686-pc-windows-msvc
-    CHECK: check
-    CONFIGURE_ARGS: --enable-llvm-assertions --enable-debug-assertions
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    RUST_CHECK_TARGET: check
 
-  # MSVC rustbuild
+  # MSVC makefiles
   - MSYS_BITS: 64
-    CONFIGURE_ARGS: --enable-rustbuild --enable-llvm-assertions --enable-debug-assertions
-    TARGET: x86_64-pc-windows-msvc
-    CHECK: check
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --disable-rustbuild
+    RUST_CHECK_TARGET: check
 
   # MSVC cargotest
   - MSYS_BITS: 64
-    CONFIGURE_ARGS: --enable-rustbuild --enable-llvm-assertions --enable-debug-assertions
-    TARGET: x86_64-pc-windows-msvc
-    CHECK: check-cargotest
+    NO_VENDOR: 1
+    RUST_CHECK_TARGET: check-cargotest
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
   # 32/64-bit MinGW builds.
   #
@@ -47,24 +44,22 @@ environment:
   # *not* use debug assertions and llvm assertions. This is because they take
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
-    TARGET: i686-pc-windows-gnu
-    CHECK: check
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    RUST_CHECK_TARGET: check
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
 
   - MSYS_BITS: 32
-    CONFIGURE_ARGS: --enable-rustbuild --enable-llvm-assertions --enable-debug-assertions
-    TARGET: i686-pc-windows-gnu
-    CHECK: check
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --disable-rustbuild
+    RUST_CHECK_TARGET: check
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
 
   - MSYS_BITS: 64
-    CONFIGURE_ARGS: --enable-llvm-assertions --enable-debug-assertions
-    TARGET: x86_64-pc-windows-gnu
-    CHECK: check
+    RUST_CHECK_TARGET: check
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
@@ -90,15 +85,20 @@ install:
   - if NOT defined MINGW_URL set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
 
 test_script:
-  - sh ./configure
-          %CONFIGURE_ARGS%
-          --build=%TARGET%
-  - bash -c "make -j$(nproc)"
-  - bash -c "make %CHECK% -j$(nproc)"
+  - git submodule update --init
+  - set SRC=.
+  - set NO_CCACHE=1
+  - sh src/ci/run.sh
 
 cache:
-  - build/%TARGET%/llvm -> src/rustllvm/llvm-auto-clean-trigger
-  - "%TARGET%/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "build/i686-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "build/x86_64-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "i686-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "x86_64-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
 
 branches:
   only:

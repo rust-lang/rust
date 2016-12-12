@@ -27,13 +27,13 @@ pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
-pub use self::ViewPath_::*;
 pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FxHashSet};
+use rustc_data_structures::fnv::FnvHashMap;
 
 use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
@@ -108,6 +108,8 @@ pub struct Path {
     /// A `::foo` path, is relative to the crate root rather than current
     /// module (like paths in an import).
     pub global: bool,
+    /// The definition that the path resolved to.
+    pub def: Def,
     /// The segments in the path: the things separated by `::`.
     pub segments: HirVec<PathSegment>,
 }
@@ -121,21 +123,6 @@ impl fmt::Debug for Path {
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", print::path_to_string(self))
-    }
-}
-
-impl Path {
-    /// Convert a span and an identifier to the corresponding
-    /// 1-segment path.
-    pub fn from_name(s: Span, name: Name) -> Path {
-        Path {
-            span: s,
-            global: false,
-            segments: hir_vec![PathSegment {
-                name: name,
-                parameters: PathParameters::none()
-            }],
-        }
     }
 }
 
@@ -154,6 +141,16 @@ pub struct PathSegment {
     pub parameters: PathParameters,
 }
 
+impl PathSegment {
+    /// Convert an identifier to the corresponding segment.
+    pub fn from_name(name: Name) -> PathSegment {
+        PathSegment {
+            name: name,
+            parameters: PathParameters::none()
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PathParameters {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
@@ -167,6 +164,7 @@ impl PathParameters {
         AngleBracketedParameters(AngleBracketedParameterData {
             lifetimes: HirVec::new(),
             types: HirVec::new(),
+            infer_types: true,
             bindings: HirVec::new(),
         })
     }
@@ -241,6 +239,11 @@ pub struct AngleBracketedParameterData {
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: HirVec<P<Ty>>,
+    /// Whether to infer remaining type parameters, if any.
+    /// This only applies to expression and pattern paths, and
+    /// out of those only the segments with no type parameters
+    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
+    pub infer_types: bool,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -426,6 +429,7 @@ pub struct Crate {
     pub items: BTreeMap<NodeId, Item>,
 
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
+    pub exprs: FnvHashMap<ExprId, Expr>,
 }
 
 impl Crate {
@@ -455,6 +459,10 @@ impl Crate {
         for (_, impl_item) in &self.impl_items {
             visitor.visit_impl_item(impl_item);
         }
+    }
+
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        &self.exprs[&id]
     }
 }
 
@@ -527,7 +535,7 @@ impl Pat {
             PatKind::Lit(_) |
             PatKind::Range(..) |
             PatKind::Binding(..) |
-            PatKind::Path(..) => {
+            PatKind::Path(_) => {
                 true
             }
         }
@@ -566,20 +574,20 @@ pub enum PatKind {
     Wild,
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
-    Binding(BindingMode, Spanned<Name>, Option<P<Pat>>),
+    /// The `DefId` is for the definition of the variable being bound.
+    Binding(BindingMode, DefId, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, HirVec<Spanned<FieldPat>>, bool),
+    Struct(QPath, HirVec<Spanned<FieldPat>>, bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// 0 <= position <= subpats.len()
-    TupleStruct(Path, HirVec<P<Pat>>, Option<usize>),
+    TupleStruct(QPath, HirVec<P<Pat>>, Option<usize>),
 
-    /// A possibly qualified path pattern.
-    /// Such pattern can be resolved to a unit struct/variant or a constant.
-    Path(Option<QSelf>, Path),
+    /// A path pattern for an unit struct/variant or a (maybe-associated) constant.
+    Path(QPath),
 
     /// A tuple pattern `(a, b)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -836,15 +844,21 @@ pub enum BlockCheckMode {
     UnsafeBlock(UnsafeSource),
     PushUnsafeBlock(UnsafeSource),
     PopUnsafeBlock(UnsafeSource),
-    // Within this block (but outside a PopUnstableBlock), we suspend checking of stability.
-    PushUnstableBlock,
-    PopUnstableBlock,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ExprId(NodeId);
+
+impl ExprId {
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
 }
 
 /// An expression
@@ -854,6 +868,12 @@ pub struct Expr {
     pub span: Span,
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
+}
+
+impl Expr {
+    pub fn expr_id(&self) -> ExprId {
+        ExprId(self.id)
+    }
 }
 
 impl fmt::Debug for Expr {
@@ -915,7 +935,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, P<Expr>, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, ExprId, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -934,19 +954,15 @@ pub enum Expr_ {
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
 
-    /// Variable reference, possibly containing `::` and/or type
-    /// parameters, e.g. foo::bar::<baz>.
-    ///
-    /// Optionally "qualified",
-    /// e.g. `<HirVec<T> as SomeTrait>::SomeType`.
-    ExprPath(Option<QSelf>, Path),
+    /// Path to a definition, possibly containing lifetime or type parameters.
+    ExprPath(QPath),
 
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Spanned<Name>>, Option<P<Expr>>),
+    ExprBreak(Option<Label>, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Spanned<Name>>),
+    ExprAgain(Option<Label>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -957,7 +973,7 @@ pub enum Expr_ {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(P<Path>, HirVec<Field>, Option<P<Expr>>),
+    ExprStruct(QPath, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -966,22 +982,30 @@ pub enum Expr_ {
     ExprRepeat(P<Expr>, P<Expr>),
 }
 
-/// The explicit Self type in a "qualified path". The actual
-/// path, including the trait and the associated item, is stored
-/// separately. `position` represents the index of the associated
-/// item qualified with this Self type.
-///
-///     <HirVec<T> as a::b::Trait>::AssociatedItem
-///      ^~~~~     ~~~~~~~~~~~~~~^
-///      ty        position = 3
-///
-///     <HirVec<T>>::AssociatedItem
-///      ^~~~~    ^
-///      ty       position = 0
+/// Optionally `Self`-qualified value/type path or associated extension.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct QSelf {
-    pub ty: P<Ty>,
-    pub position: usize,
+pub enum QPath {
+    /// Path to a definition, optionally "fully-qualified" with a `Self`
+    /// type, if the path points to an associated item in a trait.
+    ///
+    /// E.g. an unqualified path like `Clone::clone` has `None` for `Self`,
+    /// while `<Vec<T> as Clone>::clone` has `Some(Vec<T>)` for `Self`,
+    /// even though they both have the same two-segment `Clone::clone` `Path`.
+    Resolved(Option<P<Ty>>, P<Path>),
+
+    /// Type-related paths, e.g. `<T>::default` or `<T>::Output`.
+    /// Will be resolved by type-checking to an associated item.
+    ///
+    /// UFCS source paths can desugar into this, with `Vec::new` turning into
+    /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
+    /// the `X` and `Y` nodes being each a `TyPath(QPath::TypeRelative(..))`.
+    TypeRelative(P<Ty>, P<PathSegment>)
+}
+
+impl fmt::Display for QPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", print::qpath_to_string(self))
+    }
 }
 
 /// Hints at the original code for a `match _ { .. }`
@@ -1013,6 +1037,13 @@ pub enum LoopSource {
     ForLoop,
 }
 
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub struct Label {
+    pub span: Span,
+    pub name: Name,
+    pub loop_id: NodeId
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum CaptureClause {
@@ -1058,7 +1089,7 @@ pub enum TraitItem_ {
     /// must contain a value)
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<P<Expr>>),
+    MethodTraitItem(MethodSig, Option<ExprId>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
@@ -1091,7 +1122,7 @@ pub enum ImplItemKind {
     /// of the expression
     Const(P<Ty>, P<Expr>),
     /// A method implementation with the given signature and body
-    Method(MethodSig, P<Expr>),
+    Method(MethodSig, ExprId),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1155,11 +1186,12 @@ pub enum Ty_ {
     TyNever,
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(HirVec<P<Ty>>),
-    /// A path (`module::module::...::Type`), optionally
-    /// "qualified", e.g. `<HirVec<T> as SomeTrait>::SomeType`.
+    /// A path to a type definition (`module::module::...::Type`), or an
+    /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
-    /// Type parameters are stored in the Path itself
-    TyPath(Option<QSelf>, Path),
+    /// Type parameters may be stored in each `PathSegment`.
+    TyPath(QPath),
+
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
@@ -1216,7 +1248,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Binding(BindByValue(mutbl), name, _) = self.pat.node {
+        if let PatKind::Binding(BindByValue(mutbl), _, name, _) = self.pat.node {
             if name.node == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -1232,7 +1264,7 @@ impl Arg {
     }
 
     pub fn is_self(&self) -> bool {
-        if let PatKind::Binding(_, name, _) = self.pat.node {
+        if let PatKind::Binding(_, _, name, _) = self.pat.node {
             name.node == keywords::SelfValue.name()
         } else {
             false
@@ -1375,32 +1407,20 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct PathListItem_ {
-    pub name: Name,
-    /// renamed in list, eg `use foo::{bar as baz};`
-    pub rename: Option<Name>,
-    pub id: NodeId,
-}
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum UseKind {
+    /// One import, e.g. `use foo::bar` or `use foo::bar as baz`.
+    /// Also produced for each element of a list `use`, e.g.
+    // `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
+    Single,
 
-pub type PathListItem = Spanned<PathListItem_>;
+    /// Glob import, e.g. `use foo::*`.
+    Glob,
 
-pub type ViewPath = Spanned<ViewPath_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ViewPath_ {
-    /// `foo::bar::baz as quux`
-    ///
-    /// or just
-    ///
-    /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Name, Path),
-
-    /// `foo::bar::*`
-    ViewPathGlob(Path),
-
-    /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, HirVec<PathListItem>),
+    /// Degenerate list import, e.g. `use foo::{a, b}` produces
+    /// an additional `use foo::{}` for performing checks such as
+    /// unstable feature gating. May be removed in the future.
+    ListStem,
 }
 
 /// TraitRef's appear in impls.
@@ -1534,15 +1554,20 @@ pub enum Item_ {
     ///
     /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
     ItemExternCrate(Option<Name>),
-    /// A `use` or `pub use` item
-    ItemUse(P<ViewPath>),
+
+    /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
+    ///
+    /// or just
+    ///
+    /// `use foo::bar::baz;` (with `as baz` implicitly on the right)
+    ItemUse(P<Path>, UseKind),
 
     /// A `static` item
     ItemStatic(P<Ty>, Mutability, P<Expr>),
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Expr>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, ExprId),
     /// A module
     ItemMod(Mod),
     /// An external module

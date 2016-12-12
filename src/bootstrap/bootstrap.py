@@ -30,32 +30,37 @@ def get(url, path, verbose=False):
         sha_path = sha_file.name
 
     try:
-        download(sha_path, sha_url, verbose)
+        download(sha_path, sha_url, False, verbose)
         if os.path.exists(path):
             if verify(path, sha_path, False):
-                print("using already-download file " + path)
+                if verbose:
+                    print("using already-download file " + path)
                 return
             else:
-                print("ignoring already-download file " + path + " due to failed verification")
+                if verbose:
+                    print("ignoring already-download file " + path + " due to failed verification")
                 os.unlink(path)
-        download(temp_path, url, verbose)
-        if not verify(temp_path, sha_path, True):
+        download(temp_path, url, True, verbose)
+        if not verify(temp_path, sha_path, verbose):
             raise RuntimeError("failed verification")
-        print("moving {} to {}".format(temp_path, path))
+        if verbose:
+            print("moving {} to {}".format(temp_path, path))
         shutil.move(temp_path, path)
     finally:
-        delete_if_present(sha_path)
-        delete_if_present(temp_path)
+        delete_if_present(sha_path, verbose)
+        delete_if_present(temp_path, verbose)
 
 
-def delete_if_present(path):
+def delete_if_present(path, verbose):
     if os.path.isfile(path):
-        print("removing " + path)
+        if verbose:
+            print("removing " + path)
         os.unlink(path)
 
 
-def download(path, url, verbose):
-    print("downloading {} to {}".format(url, path))
+def download(path, url, probably_big, verbose):
+    if probably_big or verbose:
+        print("downloading {}".format(url))
     # see http://serverfault.com/questions/301128/how-to-download
     if sys.platform == 'win32':
         run(["PowerShell.exe", "/nologo", "-Command",
@@ -63,17 +68,22 @@ def download(path, url, verbose):
              ".DownloadFile('{}', '{}')".format(url, path)],
             verbose=verbose)
     else:
-        run(["curl", "-o", path, url], verbose=verbose)
+        if probably_big or verbose:
+            option = "-#"
+        else:
+            option = "-s"
+        run(["curl", option, "-Sf", "-o", path, url], verbose=verbose)
 
 
 def verify(path, sha_path, verbose):
-    print("verifying " + path)
+    if verbose:
+        print("verifying " + path)
     with open(path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
     with open(sha_path, "r") as f:
         expected, _ = f.readline().split()
     verified = found == expected
-    if not verified and verbose:
+    if not verified:
         print("invalid checksum:\n"
                "    found:    {}\n"
                "    expected: {}".format(found, expected))
@@ -144,6 +154,7 @@ class RustBuild(object):
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
+            self.print_what_it_means_to_bootstrap()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             channel = self.stage0_rustc_channel()
@@ -167,6 +178,7 @@ class RustBuild(object):
 
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
+            self.print_what_it_means_to_bootstrap()
             channel = self.stage0_cargo_channel()
             filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
@@ -251,7 +263,27 @@ class RustBuild(object):
         else:
             return ''
 
+    def print_what_it_means_to_bootstrap(self):
+        if hasattr(self, 'printed'):
+            return
+        self.printed = True
+        if os.path.exists(self.bootstrap_binary()):
+            return
+        if not '--help' in sys.argv or len(sys.argv) == 1:
+            return
+
+        print('info: the build system for Rust is written in Rust, so this')
+        print('      script is now going to download a stage0 rust compiler')
+        print('      and then compile the build system itself')
+        print('')
+        print('info: in the meantime you can read more about rustbuild at')
+        print('      src/bootstrap/README.md before the download finishes')
+
+    def bootstrap_binary(self):
+        return os.path.join(self.build_dir, "bootstrap/debug/bootstrap")
+
     def build_bootstrap(self):
+        self.print_what_it_means_to_bootstrap()
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -408,22 +440,31 @@ def main():
     rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
                               'CFG_ENABLE_VENDOR' in rb.config_mk
 
+    if 'SUDO_USER' in os.environ:
+        if os.environ['USER'] != os.environ['SUDO_USER']:
+            rb.use_vendored_sources = True
+            print('info: looks like you are running this command under `sudo`')
+            print('      and so in order to preserve your $HOME this will now')
+            print('      use vendored sources by default. Note that if this')
+            print('      does not work you should run a normal build first')
+            print('      before running a command like `sudo make intall`')
+
     if rb.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
-        f = open('.cargo/config','w')
-        f.write("""
-            [source.crates-io]
-            replace-with = 'vendored-sources'
-            registry = 'https://example.com'
+        with open('.cargo/config','w') as f:
+            f.write("""
+                [source.crates-io]
+                replace-with = 'vendored-sources'
+                registry = 'https://example.com'
 
-            [source.vendored-sources]
-            directory = '{}/src/vendor'
-        """.format(rb.rust_root))
-        f.close()
+                [source.vendored-sources]
+                directory = '{}/src/vendor'
+            """.format(rb.rust_root))
     else:
         if os.path.exists('.cargo'):
             shutil.rmtree('.cargo')
+
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
@@ -438,7 +479,7 @@ def main():
     sys.stdout.flush()
 
     # Run the bootstrap
-    args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
+    args = [rb.bootstrap_binary()]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
     env["BUILD"] = rb.build

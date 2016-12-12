@@ -40,7 +40,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::error;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Formatter, Write as FmtWrite};
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
@@ -53,16 +53,16 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
-use syntax::abi;
+use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, Attributes, GetDefId, SelfTy, Mutability};
+use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -241,10 +241,10 @@ pub struct Cache {
     pub implementors: FxHashMap<DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
-    pub extern_locations: FxHashMap<CrateNum, (String, ExternalLocation)>,
+    pub extern_locations: FxHashMap<CrateNum, (String, PathBuf, ExternalLocation)>,
 
     /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: FxHashMap<clean::PrimitiveType, CrateNum>,
+    pub primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -428,6 +428,7 @@ pub fn derive_id(candidate: String) -> String {
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
+           playground_url: Option<String>,
            dst: PathBuf,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
@@ -451,32 +452,35 @@ pub fn run(mut krate: clean::Crate,
         css_file_extension: css_file_extension.clone(),
     };
 
+    // If user passed in `--playground-url` arg, we fill in crate name here
+    if let Some(url) = playground_url {
+        markdown::PLAYGROUND.with(|slot| {
+            *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
+        });
+    }
+
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
-    if let Some(attrs) = krate.module.as_ref().map(|m| m.attrs.list("doc")) {
-        for attr in attrs {
-            match *attr {
-                clean::NameValue(ref x, ref s)
-                        if "html_favicon_url" == *x => {
+    if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
+        for attr in attrs.lists("doc") {
+            let name = attr.name().map(|s| s.as_str());
+            match (name.as_ref().map(|s| &s[..]), attr.value_str()) {
+                (Some("html_favicon_url"), Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
-                clean::NameValue(ref x, ref s)
-                        if "html_logo_url" == *x => {
+                (Some("html_logo_url"), Some(s)) => {
                     scx.layout.logo = s.to_string();
                 }
-                clean::NameValue(ref x, ref s)
-                        if "html_playground_url" == *x => {
+                (Some("html_playground_url"), Some(s)) => {
                     markdown::PLAYGROUND.with(|slot| {
                         let name = krate.name.clone();
-                        *slot.borrow_mut() = Some((Some(name), s.clone()));
+                        *slot.borrow_mut() = Some((Some(name), s.to_string()));
                     });
                 }
-                clean::NameValue(ref x, ref s)
-                        if "issue_tracker_base_url" == *x => {
+                (Some("issue_tracker_base_url"), Some(s)) => {
                     scx.issue_tracker_base_url = Some(s.to_string());
                 }
-                clean::Word(ref x)
-                        if "html_no_source" == *x => {
+                (Some("html_no_source"), None) if attr.is_word() => {
                     scx.include_sources = false;
                 }
                 _ => {}
@@ -527,8 +531,13 @@ pub fn run(mut krate: clean::Crate,
 
     // Cache where all our extern crates are located
     for &(n, ref e) in &krate.externs {
-        cache.extern_locations.insert(n, (e.name.clone(),
+        let src_root = match Path::new(&e.src).parent() {
+            Some(p) => p.to_path_buf(),
+            None => PathBuf::new(),
+        };
+        cache.extern_locations.insert(n, (e.name.clone(), src_root,
                                           extern_location(e, &cx.dst)));
+
         let did = DefId { krate: n, index: CRATE_DEF_INDEX };
         cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
@@ -537,13 +546,13 @@ pub fn run(mut krate: clean::Crate,
     //
     // Favor linking to as local extern as possible, so iterate all crates in
     // reverse topological order.
-    for &(n, ref e) in krate.externs.iter().rev() {
-        for &prim in &e.primitives {
-            cache.primitive_locations.insert(prim, n);
+    for &(_, ref e) in krate.externs.iter().rev() {
+        for &(def_id, prim, _) in &e.primitives {
+            cache.primitive_locations.insert(prim, def_id);
         }
     }
-    for &prim in &krate.primitives {
-        cache.primitive_locations.insert(prim, LOCAL_CRATE);
+    for &(def_id, prim, _) in &krate.primitives {
+        cache.primitive_locations.insert(prim, def_id);
     }
 
     cache.stack.push(krate.name.clone());
@@ -717,10 +726,13 @@ fn write_shared(cx: &Context,
 
     // Update the search index
     let dst = cx.dst.join("search-index.js");
-    let all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let mut all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    all_indexes.push(search_index);
+    // Sort the indexes by crate so the file will be generated identically even
+    // with rustdoc running in parallel.
+    all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
     try_err!(writeln!(&mut w, "var searchIndex = {{}};"), &dst);
-    try_err!(writeln!(&mut w, "{}", search_index), &dst);
     for index in &all_indexes {
         try_err!(writeln!(&mut w, "{}", *index), &dst);
     }
@@ -728,7 +740,6 @@ fn write_shared(cx: &Context,
 
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
-    try_err!(mkdir(&dst), &dst);
     for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
@@ -745,37 +756,37 @@ fn write_shared(cx: &Context,
             }
         };
 
-        let mut mydst = dst.clone();
-        for part in &remote_path[..remote_path.len() - 1] {
-            mydst.push(part);
-            try_err!(mkdir(&mydst), &mydst);
-        }
-        mydst.push(&format!("{}.{}.js",
-                            remote_item_type.css_class(),
-                            remote_path[remote_path.len() - 1]));
-        let all_implementors = try_err!(collect(&mydst, &krate.name,
-                                                "implementors"),
-                                        &mydst);
-
-        try_err!(mkdir(mydst.parent().unwrap()),
-                 &mydst.parent().unwrap().to_path_buf());
-        let mut f = BufWriter::new(try_err!(File::create(&mydst), &mydst));
-        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
-
-        for implementor in &all_implementors {
-            try_err!(write!(&mut f, "{}", *implementor), &mydst);
-        }
-
-        try_err!(write!(&mut f, r#"implementors["{}"] = ["#, krate.name), &mydst);
+        let mut implementors = format!(r#"implementors["{}"] = ["#, krate.name);
         for imp in imps {
             // If the trait and implementation are in the same crate, then
             // there's no need to emit information about it (there's inlining
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try_err!(write!(&mut f, r#""{}","#, imp.impl_), &mydst);
+            write!(implementors, r#""{}","#, imp.impl_).unwrap();
         }
-        try_err!(writeln!(&mut f, r"];"), &mydst);
+        implementors.push_str("];");
+
+        let mut mydst = dst.clone();
+        for part in &remote_path[..remote_path.len() - 1] {
+            mydst.push(part);
+        }
+        try_err!(fs::create_dir_all(&mydst), &mydst);
+        mydst.push(&format!("{}.{}.js",
+                            remote_item_type.css_class(),
+                            remote_path[remote_path.len() - 1]));
+
+        let mut all_implementors = try_err!(collect(&mydst, &krate.name, "implementors"), &mydst);
+        all_implementors.push(implementors);
+        // Sort the implementors by crate so the file will be generated
+        // identically even with rustdoc running in parallel.
+        all_implementors.sort();
+
+        let mut f = try_err!(File::create(&mydst), &mydst);
+        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
+        for implementor in &all_implementors {
+            try_err!(writeln!(&mut f, "{}", *implementor), &mydst);
+        }
         try_err!(writeln!(&mut f, "{}", r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
@@ -860,13 +871,16 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.list("doc").value("html_root_url").map(|url| {
-        let mut url = url.to_owned();
+    e.attrs.lists("doc")
+     .filter(|a| a.check_name("html_root_url"))
+     .filter_map(|a| a.value_str())
+     .map(|url| {
+        let mut url = url.to_string();
         if !url.ends_with("/") {
             url.push('/')
         }
         Remote(url)
-    }).unwrap_or(Unknown) // Well, at least we tried.
+    }).next().unwrap_or(Unknown) // Well, at least we tried.
 }
 
 impl<'a> DocFolder for SourceCollector<'a> {
@@ -876,6 +890,8 @@ impl<'a> DocFolder for SourceCollector<'a> {
         if self.scx.include_sources
             // skip all invalid spans
             && item.source.filename != ""
+            // skip non-local items
+            && item.def_id.is_local()
             // Macros from other libraries get special filenames which we can
             // safely ignore.
             && !(item.source.filename.starts_with("<")
@@ -1128,13 +1144,15 @@ impl DocFolder for Cache {
                         true
                     }
                     ref t => {
-                        match t.primitive_type() {
-                            Some(prim) => {
-                                let did = DefId::local(prim.to_def_index());
+                        let prim_did = t.primitive_type().and_then(|t| {
+                            self.primitive_locations.get(&t).cloned()
+                        });
+                        match prim_did {
+                            Some(did) => {
                                 self.parent_stack.push(did);
                                 true
                             }
-                            _ => false,
+                            None => false,
                         }
                     }
                 }
@@ -1159,10 +1177,7 @@ impl DocFolder for Cache {
                         }
                         ref t => {
                             t.primitive_type().and_then(|t| {
-                                self.primitive_locations.get(&t).map(|n| {
-                                    let id = t.to_def_index();
-                                    DefId { krate: *n, index: id }
-                                })
+                                self.primitive_locations.get(&t).cloned()
                             })
                         }
                     }
@@ -1440,79 +1455,50 @@ impl<'a> Item<'a> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    fn href(&self) -> Option<String> {
-        let href = if self.item.source.loline == self.item.source.hiline {
+    fn src_href(&self) -> Option<String> {
+        let mut root = self.cx.root_path();
+
+        let cache = cache();
+        let mut path = String::new();
+        let (krate, path) = if self.item.def_id.is_local() {
+            let path = PathBuf::from(&self.item.source.filename);
+            if let Some(path) = self.cx.shared.local_sources.get(&path) {
+                (&self.cx.shared.layout.krate, path)
+            } else {
+                return None;
+            }
+        } else {
+            let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
+                Some(&(ref name, ref src, Local)) => (name, src),
+                Some(&(ref name, ref src, Remote(ref s))) => {
+                    root = s.to_string();
+                    (name, src)
+                }
+                Some(&(_, _, Unknown)) | None => return None,
+            };
+
+            let file = Path::new(&self.item.source.filename);
+            clean_srcpath(&src_root, file, false, |component| {
+                path.push_str(component);
+                path.push('/');
+            });
+            let mut fname = file.file_name().expect("source has no filename")
+                                .to_os_string();
+            fname.push(".html");
+            path.push_str(&fname.to_string_lossy());
+            (krate, &path)
+        };
+
+        let lines = if self.item.source.loline == self.item.source.hiline {
             format!("{}", self.item.source.loline)
         } else {
             format!("{}-{}", self.item.source.loline, self.item.source.hiline)
         };
-
-        // First check to see if this is an imported macro source. In this case
-        // we need to handle it specially as cross-crate inlined macros have...
-        // odd locations!
-        let imported_macro_from = match self.item.inner {
-            clean::MacroItem(ref m) => m.imported_from.as_ref(),
-            _ => None,
-        };
-        if let Some(krate) = imported_macro_from {
-            let cache = cache();
-            let root = cache.extern_locations.values().find(|&&(ref n, _)| {
-                *krate == *n
-            }).map(|l| &l.1);
-            let root = match root {
-                Some(&Remote(ref s)) => s.to_string(),
-                Some(&Local) => self.cx.root_path(),
-                None | Some(&Unknown) => return None,
-            };
-            Some(format!("{root}/{krate}/macro.{name}.html?gotomacrosrc=1",
-                         root = root,
-                         krate = krate,
-                         name = self.item.name.as_ref().unwrap()))
-
-        // If this item is part of the local crate, then we're guaranteed to
-        // know the span, so we plow forward and generate a proper url. The url
-        // has anchors for the line numbers that we're linking to.
-        } else if self.item.def_id.is_local() {
-            let path = PathBuf::from(&self.item.source.filename);
-            self.cx.shared.local_sources.get(&path).map(|path| {
-                format!("{root}src/{krate}/{path}#{href}",
-                        root = self.cx.root_path(),
-                        krate = self.cx.shared.layout.krate,
-                        path = path,
-                        href = href)
-            })
-        // If this item is not part of the local crate, then things get a little
-        // trickier. We don't actually know the span of the external item, but
-        // we know that the documentation on the other end knows the span!
-        //
-        // In this case, we generate a link to the *documentation* for this type
-        // in the original crate. There's an extra URL parameter which says that
-        // we want to go somewhere else, and the JS on the destination page will
-        // pick it up and instantly redirect the browser to the source code.
-        //
-        // If we don't know where the external documentation for this crate is
-        // located, then we return `None`.
-        } else {
-            let cache = cache();
-            let external_path = match cache.external_paths.get(&self.item.def_id) {
-                Some(&(ref path, _)) => path,
-                None => return None,
-            };
-            let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
-                Some(&(_, Remote(ref s))) => s.to_string(),
-                Some(&(_, Local)) => self.cx.root_path(),
-                Some(&(_, Unknown)) => return None,
-                None => return None,
-            };
-            for item in &external_path[..external_path.len() - 1] {
-                path.push_str(item);
-                path.push_str("/");
-            }
-            Some(format!("{path}{file}?gotosrc={goto}",
-                         path = path,
-                         file = item_path(self.item.type_(), external_path.last().unwrap()),
-                         goto = self.item.def_id.index.as_usize()))
-        }
+        Some(format!("{root}src/{krate}/{path}#{lines}",
+                     root = root,
+                     krate = krate,
+                     path = path,
+                     lines = lines))
     }
 }
 
@@ -1577,10 +1563,9 @@ impl<'a> fmt::Display for Item<'a> {
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
         if self.cx.shared.include_sources && !self.item.is_primitive() {
-            if let Some(l) = self.href() {
-                write!(fmt, "<a id='src-{}' class='srclink' \
-                              href='{}' title='{}'>[src]</a>",
-                       self.item.def_id.index.as_usize(), l, "goto source code")?;
+            if let Some(l) = self.src_href() {
+                write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                       l, "goto source code")?;
             }
         }
 
@@ -2511,49 +2496,47 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn attribute_without_value(s: &str) -> bool {
-    ["must_use", "no_mangle", "unsafe_destructor_blind_to_params"].iter().any(|x| x == &s)
-}
+fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
+    let name = attr.name();
 
-fn attribute_with_value(s: &str) -> bool {
-    ["export_name", "lang", "link_section", "must_use"].iter().any(|x| x == &s)
-}
+    if attr.is_word() {
+        Some(format!("{}", name))
+    } else if let Some(v) = attr.value_str() {
+        Some(format!("{} = {:?}", name, &v.as_str()[..]))
+    } else if let Some(values) = attr.meta_item_list() {
+        let display: Vec<_> = values.iter().filter_map(|attr| {
+            attr.meta_item().and_then(|mi| render_attribute(mi))
+        }).collect();
 
-fn attribute_with_values(s: &str) -> bool {
-    ["repr"].iter().any(|x| x == &s)
-}
-
-fn render_attribute(attr: &clean::Attribute, recurse: bool) -> Option<String> {
-    match *attr {
-        clean::Word(ref s) if attribute_without_value(&*s) || recurse => {
-            Some(format!("{}", s))
-        }
-        clean::NameValue(ref k, ref v) if attribute_with_value(&*k) => {
-            Some(format!("{} = \"{}\"", k, v))
-        }
-        clean::List(ref k, ref values) if attribute_with_values(&*k) => {
-            let display: Vec<_> = values.iter()
-                                        .filter_map(|value| render_attribute(value, true))
-                                        .map(|entry| format!("{}", entry))
-                                        .collect();
-
-            if display.len() > 0 {
-                Some(format!("{}({})", k, display.join(", ")))
-            } else {
-                None
-            }
-        }
-        _ => {
+        if display.len() > 0 {
+            Some(format!("{}({})", name, display.join(", ")))
+        } else {
             None
         }
+    } else {
+        None
     }
 }
+
+const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
+    "export_name",
+    "lang",
+    "link_section",
+    "must_use",
+    "no_mangle",
+    "repr",
+    "unsafe_destructor_blind_to_params"
+];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
-    for attr in &it.attrs {
-        if let Some(s) = render_attribute(attr, false) {
+    for attr in &it.attrs.other_attrs {
+        let name = attr.name();
+        if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
+            continue;
+        }
+        if let Some(s) = render_attribute(attr.meta()) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }
@@ -2784,8 +2767,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
         render_assoc_items(w, cx, container_item, did, what)
     } else {
         if let Some(prim) = target.primitive_type() {
-            if let Some(c) = cache().primitive_locations.get(&prim) {
-                let did = DefId { krate: *c, index: prim.to_def_index() };
+            if let Some(&did) = cache().primitive_locations.get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what)?;
             }
         }
@@ -2799,18 +2781,17 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
         write!(w, "</span><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
-        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).href() {
+        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
             write!(w, "<div class='ghost'></div>")?;
             render_stability_since_raw(w, since, outer_version)?;
-            write!(w, "<a id='src-{}' class='srclink' \
-                       href='{}' title='{}'>[src]</a>",
-                   i.impl_item.def_id.index.as_usize(), l, "goto source code")?;
+            write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                   l, "goto source code")?;
         } else {
             render_stability_since_raw(w, since, outer_version)?;
         }
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
-        if let Some(ref dox) = i.impl_item.attrs.value("doc") {
+        if let Some(ref dox) = i.impl_item.doc_value() {
             write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
         }
     }

@@ -20,8 +20,10 @@ RUN sh /build/build-musl.sh && rm -rf /build
 
 ENV RUST_CONFIGURE_ARGS \
       --target=x86_64-unknown-linux-musl \
-      --musl-root=/musl-x86_64
+      --musl-root-x86_64=/musl-x86_64
 ENV RUST_CHECK_TARGET check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu
+ENV PATH=$PATH:/musl-x86_64/bin
+ENV XPY_CHECK test --target x86_64-unknown-linux-musl
 
 RUN mkdir /tmp/obj
 RUN chmod 777 /tmp/obj

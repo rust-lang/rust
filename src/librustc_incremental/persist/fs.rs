@@ -435,8 +435,8 @@ fn copy_files(target_dir: &Path,
     }
 
     if print_stats_on_success {
-        println!("incr. comp. session directory: {} files hard-linked", files_linked);
-        println!("incr. comp. session directory: {} files copied", files_copied);
+        println!("incremental: session directory: {} files hard-linked", files_linked);
+        println!("incremental: session directory: {} files copied", files_copied);
     }
 
     Ok(files_linked > 0 || files_copied == 0)

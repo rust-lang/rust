@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(proc_macro)]
+#![feature(proc_macro, proc_macro_lib)]
 
 extern crate proc_macro;
 

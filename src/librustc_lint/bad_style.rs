@@ -99,7 +99,7 @@ impl LintPass for NonCamelCaseTypes {
     }
 }
 
-impl LateLintPass for NonCamelCaseTypes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let extern_repr_count = it.attrs
             .iter()
@@ -226,7 +226,7 @@ impl LintPass for NonSnakeCase {
     }
 }
 
-impl LateLintPass for NonSnakeCase {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
         let attr_crate_name = cr.attrs
             .iter()
@@ -288,11 +288,16 @@ impl LateLintPass for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &PatKind::Binding(_, ref path1, _) = &p.node {
-            // Exclude parameter names from foreign functions (they have no `Def`)
-            if cx.tcx.expect_def_or_none(p.id).is_some() {
-                self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
+        // Exclude parameter names from foreign functions
+        let parent_node = cx.tcx.map.get_parent_node(p.id);
+        if let hir::map::NodeForeignItem(item) = cx.tcx.map.get(parent_node) {
+            if let hir::ForeignItemFn(..) = item.node {
+                return;
             }
+        }
+
+        if let &PatKind::Binding(_, _, ref path1, _) = &p.node {
+            self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
         }
     }
 
@@ -343,7 +348,7 @@ impl LintPass for NonUpperCaseGlobals {
     }
 }
 
-impl LateLintPass for NonUpperCaseGlobals {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemStatic(..) => {
@@ -376,9 +381,9 @@ impl LateLintPass for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        if let PatKind::Path(None, ref path) = p.node {
+        if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
             if !path.global && path.segments.len() == 1 && path.segments[0].parameters.is_empty() {
-                if let Def::Const(..) = cx.tcx.expect_def(p.id) {
+                if let Def::Const(..) = path.def {
                     NonUpperCaseGlobals::check_upper_case(cx,
                                                           "constant in pattern",
                                                           path.segments[0].name,

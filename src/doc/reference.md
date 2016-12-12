@@ -603,7 +603,8 @@ syntax named by _designator_. Valid designators are:
 * `ty`: a [type](#types)
 * `ident`: an [identifier](#identifiers)
 * `path`: a [path](#paths)
-* `tt`: either side of the `=>` in macro rules
+* `tt`: a token tree (a single [token](#tokens) or a sequence of token trees surrounded
+  by matching `()`, `[]`, or `{}`)
 * `meta`: the contents of an [attribute](#attributes)
 
 In the transcriber, the
@@ -740,13 +741,14 @@ There are several kinds of item:
 * [`extern crate` declarations](#extern-crate-declarations)
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
-* [functions](#functions)
+* [function definitions](#functions)
+* [`extern` blocks](#external-blocks)
 * [type definitions](grammar.html#type-definitions)
-* [structs](#structs)
-* [enumerations](#enumerations)
+* [struct definitions](#structs)
+* [enumeration definitions](#enumerations)
 * [constant items](#constant-items)
 * [static items](#static-items)
-* [traits](#traits)
+* [trait definitions](#traits)
 * [implementations](#implementations)
 
 Some items form an implicit scope for the declaration of sub-items. In other
@@ -2461,11 +2463,6 @@ The currently implemented features of the reference compiler are:
 
 * `unboxed_closures` - Rust's new closure design, which is currently a work in
                        progress feature with many known bugs.
-
-* `unmarked_api` - Allows use of items within a `#![staged_api]` crate
-                   which have not been marked with a stability marker.
-                   Such items should not be allowed by the compiler to exist,
-                   so if you need this there probably is a compiler bug.
 
 * `allow_internal_unstable` - Allows `macro_rules!` macros to be tagged with the
                               `#[allow_internal_unstable]` attribute, designed

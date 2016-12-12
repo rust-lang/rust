@@ -62,7 +62,6 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
     impl_fn!(function, FunctionData, defs);
     impl_fn!(method, MethodData, defs);
     impl_fn!(macro_data, MacroData, defs);
-    impl_fn!(mod_data, ModData, defs);
     impl_fn!(typedef, TypeDefData, defs);
     impl_fn!(variable, VariableData, defs);
 
@@ -74,6 +73,43 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
     impl_fn!(variable_ref, VariableRefData, refs);
 
     impl_fn!(macro_use, MacroUseData, macro_refs);
+
+    fn mod_data(&mut self, data: ModData) {
+        let id: Id = From::from(data.id);
+        let mut def = Def {
+            kind: DefKind::Mod,
+            id: id,
+            span: data.span,
+            name: data.name,
+            qualname: data.qualname,
+            value: data.filename,
+            children: data.items.into_iter().map(|id| From::from(id)).collect(),
+            decl_id: None,
+            docs: data.docs,
+        };
+        if def.span.file_name != def.value {
+            // If the module is an out-of-line defintion, then we'll make the
+            // defintion the first character in the module's file and turn the
+            // the declaration into a reference to it.
+            let rf = Ref {
+                kind: RefKind::Mod,
+                span: def.span,
+                ref_id: id,
+            };
+            self.result.refs.push(rf);
+            def.span = SpanData {
+                file_name: def.value.clone(),
+                byte_start: 0,
+                byte_end: 0,
+                line_start: 1,
+                line_end: 1,
+                column_start: 1,
+                column_end: 1,
+            }
+        }
+
+        self.result.defs.push(def);
+    }
 
     // FIXME store this instead of throwing it away.
     fn impl_data(&mut self, _data: ImplData) {}
@@ -111,7 +147,7 @@ impl Analysis {
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
 // we use our own Id which is the same, but without the newtype.
-#[derive(Debug, RustcEncodable)]
+#[derive(Clone, Copy, Debug, RustcEncodable)]
 struct Id {
     krate: u32,
     index: u32,
@@ -337,21 +373,7 @@ impl From<MacroData> for Def {
         }
     }
 }
-impl From<ModData> for Def {
-    fn from(data:ModData) -> Def {
-        Def {
-            kind: DefKind::Mod,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.filename,
-            children: data.items.into_iter().map(|id| From::from(id)).collect(),
-            decl_id: None,
-            docs: data.docs,
-        }
-    }
-}
+
 impl From<TypeDefData> for Def {
     fn from(data: TypeDefData) -> Def {
         Def {

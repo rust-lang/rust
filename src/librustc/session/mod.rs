@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
+pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
+
 use dep_graph::DepGraph;
 use hir::def_id::{CrateNum, DefIndex};
 use hir::svh::Svh;
@@ -49,6 +52,7 @@ use std::fmt;
 use std::time::Duration;
 use libc::c_int;
 
+mod code_stats;
 pub mod config;
 pub mod filesearch;
 pub mod search_paths;
@@ -96,6 +100,9 @@ pub struct Session {
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
+    /// The maximum length of types during monomorphization.
+    pub type_length_limit: Cell<usize>,
+
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
@@ -111,6 +118,9 @@ pub struct Session {
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
+
+    /// Data about code being compiled, gathered during compilation.
+    pub code_stats: RefCell<CodeStats>,
 
     next_node_id: Cell<ast::NodeId>,
 }
@@ -613,6 +623,7 @@ pub fn build_session_(sopts: config::Options,
         crate_disambiguator: RefCell::new(Symbol::intern("")),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
+        type_length_limit: Cell::new(1048576),
         next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
@@ -624,7 +635,8 @@ pub fn build_session_(sopts: config::Options,
             incr_comp_hashes_count: Cell::new(0),
             incr_comp_bytes_hashed: Cell::new(0),
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
-        }
+        },
+        code_stats: RefCell::new(CodeStats::new()),
     };
 
     init_llvm(&sess);

@@ -193,6 +193,10 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
         let mut formals = Formals { entry: entry, index: index };
         intravisit::walk_fn_decl(&mut formals, decl);
         impl<'a, 'v> intravisit::Visitor<'v> for Formals<'a> {
+            fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
+                panic!("should not encounter fn bodies or items")
+            }
+
             fn visit_pat(&mut self, p: &hir::Pat) {
                 self.index.entry(p.id).or_insert(vec![]).push(self.entry);
                 intravisit::walk_pat(self, p)

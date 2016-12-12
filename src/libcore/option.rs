@@ -659,6 +659,16 @@ impl<T> Option<T> {
 impl<'a, T: Clone> Option<&'a T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = 12;
+    /// let opt_x = Some(&x);
+    /// assert_eq!(opt_x, Some(&12));
+    /// let cloned = opt_x.cloned();
+    /// assert_eq!(cloned, Some(12));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())

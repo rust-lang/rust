@@ -18,10 +18,9 @@ use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Resolver, Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
-use ResolveResult::Success;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::{DepKind, LoadedMacro};
+use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
@@ -492,7 +491,7 @@ impl<'b> Resolver<'b> {
 
     fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'b> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-        let macros_only = self.session.cstore.dep_kind(cnum) == DepKind::MacrosOnly;
+        let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
             arenas.alloc_module(ModuleS {
@@ -502,11 +501,9 @@ impl<'b> Resolver<'b> {
         })
     }
 
-    pub fn get_macro(&mut self, binding: &'b NameBinding<'b>) -> Rc<SyntaxExtension> {
-        let def_id = match binding.kind {
-            NameBindingKind::Def(Def::Macro(def_id)) => def_id,
-            NameBindingKind::Import { binding, .. } => return self.get_macro(binding),
-            NameBindingKind::Ambiguity { b1, .. } => return self.get_macro(b1),
+    pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
+        let def_id = match def {
+            Def::Macro(def_id) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
@@ -567,7 +564,8 @@ impl<'b> Resolver<'b> {
         if self.current_module.parent.is_some() && legacy_imports != LegacyMacroImports::default() {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
-        } else if self.session.cstore.dep_kind(cnum) == DepKind::MacrosOnly &&
+        } else if !self.use_extern_macros &&
+                  self.session.cstore.dep_kind(cnum).macros_only() &&
                   legacy_imports == LegacyMacroImports::default() {
             let msg = "custom derive crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
@@ -582,7 +580,7 @@ impl<'b> Resolver<'b> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
-                if let Success(binding) = result {
+                if let Ok(binding) = result {
                     self.legacy_import_macro(name, binding, span, allow_shadowing);
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
@@ -590,9 +588,11 @@ impl<'b> Resolver<'b> {
             }
         }
         for (name, span) in legacy_imports.reexports {
-            self.used_crates.insert(module.def_id().unwrap().krate);
+            let krate = module.def_id().unwrap().krate;
+            self.used_crates.insert(krate);
+            self.session.cstore.export_macros(krate);
             let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
-            if let Success(binding) = result {
+            if let Ok(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def() });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");
@@ -678,7 +678,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
 macro_rules! method {
     ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &$ty) {
+        fn $visit(&mut self, node: &'a $ty) {
             if let $invoc(..) = node.node {
                 self.visit_invoc(node.id);
             } else {
@@ -688,13 +688,13 @@ macro_rules! method {
     }
 }
 
-impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
-    fn visit_item(&mut self, item: &Item) {
+    fn visit_item(&mut self, item: &'a Item) {
         let macro_use = match item.node {
             ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => return, // Scope placeholder
             ItemKind::Mac(..) => {
@@ -713,7 +713,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &ast::Stmt) {
+    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
             self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(stmt.id));
         } else {
@@ -721,12 +721,12 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item, self.expansion);
         visit::walk_foreign_item(self, foreign_item);
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'a Block) {
         let (parent, legacy_scope) = (self.resolver.current_module, self.legacy_scope);
         self.resolver.build_reduced_graph_for_block(block);
         visit::walk_block(self, block);
@@ -734,7 +734,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         self.legacy_scope = legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &TraitItem) {
+    fn visit_trait_item(&mut self, item: &'a TraitItem) {
         let parent = self.resolver.current_module;
         let def_id = parent.def_id().unwrap();
 

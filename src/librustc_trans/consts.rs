@@ -191,7 +191,12 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                 llvm::set_thread_local(g, true);
             }
         }
-        if ccx.use_dll_storage_attrs() {
+        if ccx.use_dll_storage_attrs() && !ccx.sess().cstore.is_foreign_item(def_id) {
+            // This item is external but not foreign, i.e. it originates from an external Rust
+            // crate. Since we don't know whether this crate will be linked dynamically or
+            // statically in the final application, we always mark such symbols as 'dllimport'.
+            // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs to
+            // make things work.
             unsafe {
                 llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
             }
@@ -199,6 +204,12 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         g
     };
 
+    if ccx.use_dll_storage_attrs() && ccx.sess().cstore.is_dllimport_foreign_item(def_id) {
+        // For foreign (native) libs we know the exact storage type to use.
+        unsafe {
+            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+        }
+    }
     ccx.instances().borrow_mut().insert(instance, g);
     ccx.statics().borrow_mut().insert(g, def_id);
     g

@@ -19,7 +19,7 @@ use hir;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use infer::InferCtxt;
 
 use std::rc::Rc;
@@ -124,10 +124,6 @@ pub enum ObligationCauseCode<'tcx> {
     VariableType(ast::NodeId), // Type of each variable must be Sized
     ReturnType,                // Return type must be Sized
     RepeatVec,                 // [T,..n] --> T must be Copy
-
-    // Captures of variable the given id by a closure (span is the
-    // span of the closure)
-    ClosureCapture(ast::NodeId, Span, ty::BuiltinBound),
 
     // Types of fields (other than the last) in a struct must be sized.
     FieldSized,
@@ -369,27 +365,30 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_builtin_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                        ty: Ty<'tcx>,
-                                                        bound: ty::BuiltinBound,
-                                                        span: Span)
-                                                        -> bool
+pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                                ty: Ty<'tcx>,
+                                                def_id: DefId,
+                                                span: Span)
+-> bool
 {
-    debug!("type_known_to_meet_builtin_bound(ty={:?}, bound={:?})",
+    debug!("type_known_to_meet_bound(ty={:?}, bound={:?})",
            ty,
-           bound);
+           infcx.tcx.item_path_str(def_id));
 
-    let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
-    let obligation =
-        infcx.tcx.predicate_for_builtin_bound(cause, bound, 0, ty);
-    let obligation = match obligation {
-        Ok(o) => o,
-        Err(..) => return false
+    let trait_ref = ty::TraitRef {
+        def_id: def_id,
+        substs: infcx.tcx.mk_substs_trait(ty, &[]),
     };
+    let obligation = Obligation {
+        cause: ObligationCause::misc(span, ast::DUMMY_NODE_ID),
+        recursion_depth: 0,
+        predicate: trait_ref.to_predicate(),
+    };
+
     let result = SelectionContext::new(infcx)
         .evaluate_obligation_conservatively(&obligation);
-    debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} => {:?}",
-           ty, bound, result);
+    debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
+           ty, infcx.tcx.item_path_str(def_id), result);
 
     if result && (ty.has_infer_types() || ty.has_closure_types()) {
         // Because of inference "guessing", selection can sometimes claim
@@ -404,22 +403,22 @@ pub fn type_known_to_meet_builtin_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'g
         // anyhow).
         let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
 
-        fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
+        fulfill_cx.register_bound(infcx, ty, def_id, cause);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => {
-                debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
+                debug!("type_known_to_meet_bound: ty={:?} bound={} success",
                        ty,
-                       bound);
+                       infcx.tcx.item_path_str(def_id));
                 true
             }
             Err(e) => {
-                debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} errors={:?}",
+                debug!("type_known_to_meet_bound: ty={:?} bound={} errors={:?}",
                        ty,
-                       bound,
+                       infcx.tcx.item_path_str(def_id),
                        e);
                 false
             }

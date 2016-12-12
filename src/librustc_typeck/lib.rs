@@ -77,12 +77,10 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(question_mark))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -111,13 +109,14 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
-use session::{config, CompileResult};
+use session::config;
 use util::common::time;
 
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax_pos::Span;
 
+use std::iter;
 use std::cell::RefCell;
 use util::nodemap::NodeMap;
 
@@ -224,11 +223,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: Vec::new(),
-                    output: tcx.mk_nil(),
-                    variadic: false
-                })
+                sig: ty::Binder(tcx.mk_fn_sig(iter::empty(), tcx.mk_nil(), false))
             }));
 
             require_same_types(
@@ -276,14 +271,14 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: vec![
+                sig: ty::Binder(tcx.mk_fn_sig(
+                    [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
-                    ],
-                    output: tcx.types.isize,
-                    variadic: false,
-                }),
+                    ].iter().cloned(),
+                    tcx.types.isize,
+                    false,
+                )),
             }));
 
             require_same_types(
@@ -314,7 +309,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> CompileResult {
+                             -> Result<NodeMap<Ty<'tcx>>, usize> {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
@@ -358,7 +353,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     let err_count = tcx.sess.err_count();
     if err_count == 0 {
-        Ok(())
+        Ok(ccx.ast_ty_to_ty_cache.into_inner())
     } else {
         Err(err_count)
     }

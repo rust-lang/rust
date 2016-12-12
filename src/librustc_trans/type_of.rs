@@ -95,7 +95,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyAnon(..) | ty::TyError => {
             bug!("fictitious type {:?} in sizing_type_of()", t)
         }
-        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => bug!()
+        ty::TySlice(_) | ty::TyDynamic(..) | ty::TyStr => bug!()
     };
 
     debug!("--> mapped t={:?} to llsizingty={:?}", t, llsizingty);
@@ -148,7 +148,7 @@ fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type
         ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
             Type::uint_from_ty(ccx, ast::UintTy::Us)
         }
-        ty::TyTrait(_) => Type::vtable_ptr(ccx),
+        ty::TyDynamic(..) => Type::vtable_ptr(ccx),
         _ => bug!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
                           unsized_part, ty)
     }
@@ -258,7 +258,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       // fat pointers is of the right type (e.g. for array accesses), even
       // when taking the address of an unsized field in a struct.
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
-      ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
+      ty::TyStr | ty::TyDynamic(..) => Type::i8(cx),
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {

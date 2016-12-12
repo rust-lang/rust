@@ -19,7 +19,6 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty};
@@ -29,6 +28,7 @@ use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::util::nodemap::DefIdMap;
+use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::Span;
@@ -116,15 +116,10 @@ impl fmt::Display for Mode {
 
 pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
-        match fn_like.map(|f| f.kind()) {
-            Some(FnKind::ItemFn(_, _, _, c, ..)) => {
-                c == hir::Constness::Const
-            }
-            Some(FnKind::Method(_, m, ..)) => {
-                m.constness == hir::Constness::Const
-            }
-            _ => false
+        if let Some(fn_like) = FnLikeNode::from_node(tcx.map.get(node_id)) {
+            fn_like.constness() == hir::Constness::Const
+        } else {
+            false
         }
     } else {
         tcx.sess.cstore.is_const_fn(def_id)
@@ -1046,7 +1041,9 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
             tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+                fulfillment_cx.register_bound(&infcx, ty,
+                                              tcx.require_lang_item(lang_items::SyncTraitLangItem),
+                                              cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                     infcx.report_fulfillment_errors(&err);
                 }

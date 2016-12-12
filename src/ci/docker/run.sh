@@ -19,17 +19,21 @@ ci_dir="`dirname $docker_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
-docker build \
+docker \
+  build \
   --rm \
   -t rust-ci \
   "`dirname "$script"`/$image"
 
 mkdir -p $HOME/.ccache
 mkdir -p $HOME/.cargo
+mkdir -p $root_dir/obj
 
-exec docker run \
+exec docker \
+  run \
   --volume "$root_dir:/checkout:ro" \
-  --workdir /tmp/obj \
+  --volume "$root_dir/obj:/checkout/obj" \
+  --workdir /checkout/obj \
   --env SRC=/checkout \
   --env CCACHE_DIR=/ccache \
   --volume "$HOME/.ccache:/ccache" \

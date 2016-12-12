@@ -28,7 +28,7 @@ use syntax_pos::Span;
 
 use rustc::hir::print as pprust;
 use rustc::hir;
-use rustc::hir::Expr_;
+use rustc::infer::type_variable::TypeVariableOrigin;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -54,7 +54,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
-                        let fn_once_substs = tcx.mk_substs_trait(ty, &[self.next_ty_var()]);
+                        let fn_once_substs = tcx.mk_substs_trait(ty,
+                            &[self.next_ty_var(TypeVariableOrigin::MiscVariable(span))]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =
@@ -125,7 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item = self.associated_item(trait_did, item_name).unwrap();
-                        let item_span = self.tcx.map.def_id_span(item.def_id, span);
+                        let item_span = self.tcx.def_span(item.def_id);
                         span_note!(err,
                                    item_span,
                                    "candidate #{} is defined in the trait `{}`",
@@ -210,7 +211,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(expr) = rcvr_expr {
                         if let Ok(expr_string) = tcx.sess.codemap().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
-                        } else if let Expr_::ExprPath(_, path) = expr.node.clone() {
+                        } else if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.name);
                             }
@@ -380,7 +381,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyAdt(def, _) => def.did.is_local(),
 
-                ty::TyTrait(ref tr) => tr.principal.def_id().is_local(),
+                ty::TyDynamic(ref tr, ..) => tr.principal()
+                    .map_or(false, |p| p.def_id().is_local()),
 
                 ty::TyParam(_) => true,
 

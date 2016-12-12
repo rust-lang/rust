@@ -47,6 +47,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
         find_item(item, self, at_root);
     }
 
+
     fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem) {
         // entry fn is never an impl item
     }

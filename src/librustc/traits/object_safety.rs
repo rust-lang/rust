@@ -21,7 +21,8 @@ use super::elaborate_predicates;
 
 use hir::def_id::DefId;
 use traits;
-use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::subst::Substs;
 use syntax::ast;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -126,9 +127,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn supertraits_reference_self(self, trait_def_id: DefId) -> bool {
-        let trait_def = self.lookup_trait_def(trait_def_id);
-        let trait_ref = trait_def.trait_ref.clone();
-        let trait_ref = trait_ref.to_poly_trait_ref();
+        let trait_ref = ty::Binder(ty::TraitRef {
+            def_id: trait_def_id,
+            substs: Substs::identity_for_item(self, trait_def_id)
+        });
         let predicates = self.item_super_predicates(trait_def_id);
         predicates
             .predicates
@@ -239,12 +241,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // The `Self` type is erased, so it should not appear in list of
         // arguments or return type apart from the receiver.
         let ref sig = self.item_type(method.def_id).fn_sig();
-        for &input_ty in &sig.0.inputs[1..] {
+        for input_ty in &sig.skip_binder().inputs()[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
             }
         }
-        if self.contains_illegal_self_type_reference(trait_def_id, sig.0.output) {
+        if self.contains_illegal_self_type_reference(trait_def_id, sig.output().skip_binder()) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
 
@@ -317,8 +319,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_def = self.lookup_trait_def(trait_def_id);
-                        let trait_ref = ty::Binder(trait_def.trait_ref.clone());
+                        let trait_ref = ty::Binder(ty::TraitRef {
+                            def_id: trait_def_id,
+                            substs: Substs::identity_for_item(self, trait_def_id)
+                        });
                         supertraits = Some(traits::supertraits(self, trait_ref).collect());
                     }
 

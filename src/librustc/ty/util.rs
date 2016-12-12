@@ -14,7 +14,6 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as ast_map;
-use hir::pat_util;
 use traits::{self, Reveal};
 use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
@@ -22,6 +21,7 @@ use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
+use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
@@ -180,14 +180,6 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn pat_contains_ref_binding(self, pat: &hir::Pat) -> Option<hir::Mutability> {
-        pat_util::pat_contains_ref_binding(pat)
-    }
-
-    pub fn arm_contains_ref_binding(self, arm: &hir::Arm) -> Option<hir::Mutability> {
-        pat_util::arm_contains_ref_binding(arm)
-    }
-
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::TyAdt(def, substs) => {
@@ -374,7 +366,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `adt` that do not strictly outlive the adt value itself.
     /// (This allows programs to make cyclic structures without
     /// resorting to unasfe means; see RFCs 769 and 1238).
-    pub fn is_adt_dtorck(self, adt: ty::AdtDef) -> bool {
+    pub fn is_adt_dtorck(self, adt: &ty::AdtDef) -> bool {
         let dtor_method = match adt.destructor() {
             Some(dtor) => dtor,
             None => return false
@@ -538,11 +530,15 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
-                self.hash(f.sig.inputs().skip_binder().len());
+                self.hash(f.sig.skip_binder().inputs().len());
             }
-            TyTrait(ref data) => {
-                self.def_id(data.principal.def_id());
-                self.hash(data.builtin_bounds);
+            TyDynamic(ref data, ..) => {
+                if let Some(p) = data.principal() {
+                    self.def_id(p.def_id());
+                }
+                for d in data.auto_traits() {
+                    self.def_id(d);
+                }
             }
             TyTuple(tys) => {
                 self.hash(tys.len());
@@ -604,7 +600,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
 impl<'a, 'tcx> ty::TyS<'tcx> {
     fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: &ParameterEnvironment<'tcx>,
-                   bound: ty::BuiltinBound,
+                   def_id: DefId,
                    cache: &RefCell<FxHashMap<Ty<'tcx>, bool>>,
                    span: Span) -> bool
     {
@@ -616,7 +612,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         let result =
             tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch)
             .enter(|infcx| {
-                traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
+                traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });
         if self.has_param_types() || self.has_self_ty() {
             cache.borrow_mut().insert(self, result);
@@ -645,12 +641,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 mutbl: hir::MutMutable, ..
             }) => Some(true),
 
-            TyArray(..) | TySlice(..) | TyTrait(..) | TyTuple(..) |
+            TyArray(..) | TySlice(..) | TyDynamic(..) | TyTuple(..) |
             TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| {
-            !self.impls_bound(tcx, param_env, ty::BoundCopy, &param_env.is_copy_cache, span)
-        });
+            !self.impls_bound(tcx, param_env,
+                              tcx.require_lang_item(lang_items::CopyTraitLangItem),
+                              &param_env.is_copy_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -686,13 +683,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) | TyNever => Some(true),
 
-            TyStr | TyTrait(..) | TySlice(_) => Some(false),
+            TyStr | TyDynamic(..) | TySlice(_) => Some(false),
 
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, ty::BoundSized, &param_env.is_sized_cache, span)
-        });
+            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                              &param_env.is_sized_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -776,7 +773,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
 
-        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
+        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
             match ty.sty {
                 TyAdt(ty_def, _) => {
                      ty_def == def

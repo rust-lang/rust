@@ -54,6 +54,7 @@ pub struct Command {
     args: Vec<OsString>,
     env: Option<HashMap<OsString, OsString>>,
     cwd: Option<OsString>,
+    flags: u32,
     detach: bool, // not currently exposed in std::process
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -84,6 +85,7 @@ impl Command {
             args: Vec::new(),
             env: None,
             cwd: None,
+            flags: 0,
             detach: false,
             stdin: None,
             stdout: None,
@@ -124,6 +126,9 @@ impl Command {
     pub fn stderr(&mut self, stderr: Stdio) {
         self.stderr = Some(stderr);
     }
+    pub fn creation_flags(&mut self, flags: u32) {
+        self.flags = flags;
+    }
 
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
@@ -157,7 +162,7 @@ impl Command {
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
-        let mut flags = c::CREATE_UNICODE_ENVIRONMENT;
+        let mut flags = self.flags | c::CREATE_UNICODE_ENVIRONMENT;
         if self.detach {
             flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
         }

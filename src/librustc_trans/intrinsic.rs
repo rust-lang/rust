@@ -36,6 +36,7 @@ use rustc::session::Session;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
+use std::iter;
 
 fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
@@ -105,8 +106,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     let sig = tcx.erase_late_bound_regions_and_normalize(&fty.sig);
-    let arg_tys = sig.inputs;
-    let ret_ty = sig.output;
+    let arg_tys = sig.inputs();
+    let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id).as_str();
 
     let span = match call_debug_location {
@@ -674,7 +675,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 // again to find them and extract the arguments
                 intr.inputs.iter()
                            .zip(llargs)
-                           .zip(&arg_tys)
+                           .zip(arg_tys)
                            .flat_map(|((t, llarg), ty)| modify_as_needed(bcx, t, ty, *llarg))
                            .collect()
             };
@@ -1012,11 +1013,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;
-    let sig = ty::FnSig {
-        inputs: inputs,
-        output: output,
-        variadic: false,
-    };
+    let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
@@ -1051,11 +1048,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
-        sig: ty::Binder(ty::FnSig {
-            inputs: vec![i8p],
-            output: tcx.mk_nil(),
-            variadic: false,
-        }),
+        sig: ty::Binder(tcx.mk_fn_sig(iter::once(i8p), tcx.mk_nil(), false)),
     }));
     let output = tcx.types.i32;
     let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
@@ -1108,7 +1101,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
     let tcx = bcx.tcx();
     let sig = tcx.erase_late_bound_regions_and_normalize(callee_ty.fn_sig());
-    let arg_tys = sig.inputs;
+    let arg_tys = sig.inputs();
 
     // every intrinsic takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");

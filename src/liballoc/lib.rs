@@ -74,11 +74,13 @@
 
 #![feature(allocator)]
 #![feature(box_syntax)]
+#![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
 #![feature(dropck_parametricity)]
+#![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![feature(fundamental)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
@@ -121,6 +123,7 @@ mod boxed {
 }
 #[cfg(test)]
 mod boxed_test;
+#[cfg(target_has_atomic = "ptr")]
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;

@@ -10,7 +10,8 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
+use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig,
+                       WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
@@ -67,7 +68,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     metadata_llcx: ContextRef,
 
     export_map: ExportMap,
-    reachable: NodeSet,
+    exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
@@ -95,7 +96,8 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
-    vtables: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
+    vtables: RefCell<FxHashMap<(ty::Ty<'tcx>,
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
 
@@ -436,7 +438,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                export_map: ExportMap,
                link_meta: LinkMeta,
-               reachable: NodeSet,
+               exported_symbols: NodeSet,
                check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
@@ -453,7 +455,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         // they're not available to be linked against. This poses a few problems
         // for the compiler, some of which are somewhat fundamental, but we use
         // the `use_dll_storage_attrs` variable below to attach the `dllexport`
-        // attribute to all LLVM functions that are reachable (e.g. they're
+        // attribute to all LLVM functions that are exported e.g. they're
         // already tagged with external linkage). This is suboptimal for a few
         // reasons:
         //
@@ -492,7 +494,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
             export_map: export_map,
-            reachable: reachable,
+            exported_symbols: exported_symbols,
             link_meta: link_meta,
             tcx: tcx,
             stats: Stats {
@@ -526,8 +528,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.export_map
     }
 
-    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
-        &self.reachable
+    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
+        &self.exported_symbols
     }
 
     pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
@@ -548,6 +550,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
+    }
+
+    pub fn dep_graph<'a>(&'a self) -> &'a DepGraph {
+        &self.tcx.dep_graph
     }
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
@@ -767,8 +773,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.export_map
     }
 
-    pub fn reachable<'a>(&'a self) -> &'a NodeSet {
-        &self.shared.reachable
+    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
+        &self.shared.exported_symbols
     }
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
@@ -800,7 +806,9 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().instances
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ValueRef>> {
+    pub fn vtables<'a>(&'a self)
+        -> &'a RefCell<FxHashMap<(ty::Ty<'tcx>,
+                                  Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>> {
         &self.local().vtables
     }
 

@@ -110,6 +110,7 @@ impl FileDesc {
     #[cfg(not(any(target_env = "newlib",
                   target_os = "solaris",
                   target_os = "emscripten",
+                  target_os = "fuchsia",
                   target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -120,6 +121,7 @@ impl FileDesc {
     #[cfg(any(target_env = "newlib",
               target_os = "solaris",
               target_os = "emscripten",
+              target_os = "fuchsia",
               target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

@@ -13,12 +13,12 @@
 // unrelated errors.
 
 fn foo(a: isize, b: isize, c: isize, d:isize) {
+  //~^ NOTE defined here
   panic!();
 }
 
 fn main() {
   foo(1, 2, 3);
   //~^ ERROR this function takes 4 parameters but 3
-  //~| NOTE the following parameter types were expected:
-  //~| NOTE isize, isize, isize, isize
+  //~| NOTE expected 4 parameters
 }

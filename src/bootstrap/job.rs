@@ -51,6 +51,7 @@ type LPVOID = *mut u8;
 type JOBOBJECTINFOCLASS = i32;
 type SIZE_T = usize;
 type LARGE_INTEGER = i64;
+type UINT = u32;
 type ULONG_PTR = usize;
 type ULONGLONG = u64;
 
@@ -59,6 +60,8 @@ const DUPLICATE_SAME_ACCESS: DWORD = 0x2;
 const PROCESS_DUP_HANDLE: DWORD = 0x40;
 const JobObjectExtendedLimitInformation: JOBOBJECTINFOCLASS = 9;
 const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
+const SEM_FAILCRITICALERRORS: UINT = 0x0001;
+const SEM_NOGPFAULTERRORBOX: UINT = 0x0002;
 
 extern "system" {
     fn CreateJobObjectW(lpJobAttributes: *mut u8, lpName: *const u8) -> HANDLE;
@@ -79,6 +82,7 @@ extern "system" {
                                JobObjectInformationClass: JOBOBJECTINFOCLASS,
                                lpJobObjectInformation: LPVOID,
                                cbJobObjectInformationLength: DWORD) -> BOOL;
+    fn SetErrorMode(mode: UINT) -> UINT;
 }
 
 #[repr(C)]
@@ -115,6 +119,13 @@ struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
 }
 
 pub unsafe fn setup() {
+    // Tell Windows to not show any UI on errors (such as not finding a required dll
+    // during startup or terminating abnormally).  This is important for running tests,
+    // since some of them use abnormal termination by design.
+    // This mode is inherited by all child processes.
+    let mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+    SetErrorMode(mode | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+
     // Create a new job object for us to use
     let job = CreateJobObjectW(0 as *mut _, 0 as *const _);
     assert!(job != 0 as *mut _, "{}", io::Error::last_os_error());

@@ -269,6 +269,7 @@ pub struct Context<'a> {
     pub rejected_via_triple: Vec<CrateMismatch>,
     pub rejected_via_kind: Vec<CrateMismatch>,
     pub rejected_via_version: Vec<CrateMismatch>,
+    pub rejected_via_filename: Vec<CrateMismatch>,
     pub should_match_name: bool,
     pub is_proc_macro: Option<bool>,
 }
@@ -415,6 +416,18 @@ impl<'a> Context<'a> {
                                   i + 1,
                                   path.display(),
                                   got));
+            }
+        }
+        if !self.rejected_via_filename.is_empty() {
+            let dylibname = self.dylibname();
+            let mismatches = self.rejected_via_filename.iter();
+            for &CrateMismatch { ref path, .. } in mismatches {
+                err.note(&format!("extern location for {} is of an unknown type: {}",
+                                  self.crate_name,
+                                  path.display()))
+                   .help(&format!("file name should be lib*.rlib or {}*.{}",
+                                  dylibname.0,
+                                  dylibname.1));
             }
         }
 
@@ -639,23 +652,24 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
+        let rustc_version = rustc_version();
+        let found_version = metadata.get_rustc_version();
+        if found_version != rustc_version {
+            info!("Rejecting via version: expected {} got {}",
+                  rustc_version,
+                  found_version);
+            self.rejected_via_version.push(CrateMismatch {
+                path: libpath.to_path_buf(),
+                got: found_version,
+            });
+            return None;
+        }
+
         let root = metadata.get_root();
         if let Some(is_proc_macro) = self.is_proc_macro {
             if root.macro_derive_registrar.is_some() != is_proc_macro {
                 return None;
             }
-        }
-
-        let rustc_version = rustc_version();
-        if root.rustc_version != rustc_version {
-            info!("Rejecting via version: expected {} got {}",
-                  rustc_version,
-                  root.rustc_version);
-            self.rejected_via_version.push(CrateMismatch {
-                path: libpath.to_path_buf(),
-                got: root.rustc_version,
-            });
-            return None;
         }
 
         if self.should_match_name {
@@ -742,13 +756,12 @@ impl<'a> Context<'a> {
                         return true;
                     }
                 }
-                sess.struct_err(&format!("extern location for {} is of an unknown type: {}",
-                                         self.crate_name,
-                                         loc.display()))
-                    .help(&format!("file name should be lib*.rlib or {}*.{}",
-                                   dylibname.0,
-                                   dylibname.1))
-                    .emit();
+
+                self.rejected_via_filename.push(CrateMismatch {
+                    path: loc.clone(),
+                    got: String::new(),
+                });
+
                 false
             });
 

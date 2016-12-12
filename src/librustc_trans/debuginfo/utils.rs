@@ -34,7 +34,7 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    !cx.reachable().contains(&node_id)
+    !cx.exported_symbols().contains(&node_id)
 }
 
 #[allow(non_snake_case)]
@@ -79,7 +79,7 @@ pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
     });
 
     // Try to get some span information, if we have an inlined item.
-    let definition_span = cx.tcx().map.def_id_span(def_id, syntax_pos::DUMMY_SP);
+    let definition_span = cx.tcx().def_span(def_id);
 
     (containing_scope, definition_span)
 }

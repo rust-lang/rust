@@ -145,8 +145,8 @@ pub fn encode_dep_graph(preds: &Predecessors,
     for (&target, sources) in &preds.inputs {
         match *target {
             DepNode::MetaData(ref def_id) => {
-                // Metadata *targets* are always local metadata nodes. We handle
-                // those in `encode_metadata_hashes`, which comes later.
+                // Metadata *targets* are always local metadata nodes. We have
+                // already handled those in `encode_metadata_hashes`.
                 assert!(def_id.is_local());
                 continue;
             }
@@ -156,6 +156,12 @@ pub fn encode_dep_graph(preds: &Predecessors,
         for &source in sources {
             let source = builder.map(source);
             edges.push((source, target.clone()));
+        }
+    }
+
+    if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+        for (dep_node, hash) in &preds.hashes {
+            println!("HIR hash for {:?} is {}", dep_node, hash);
         }
     }
 
@@ -248,6 +254,15 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         let hash = state.finish();
 
         debug!("save: metadata hash for {:?} is {}", def_id, hash);
+
+        if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+            println!("metadata hash for {:?} is {}", def_id, hash);
+            for dep_node in sources {
+                println!("metadata hash for {:?} depends on {:?} with hash {}",
+                         def_id, dep_node, preds.hashes[dep_node]);
+            }
+        }
+
         serialized_hashes.hashes.push(SerializedMetadataHash {
             def_index: def_id.index,
             hash: hash,

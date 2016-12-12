@@ -24,12 +24,12 @@ use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::iter::FusedIterator;
-use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
+use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
 use string::String;
-use rustc_unicode;
+use std_unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
 use boxed::Box;
@@ -54,7 +54,7 @@ pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use rustc_unicode::str::SplitWhitespace;
+pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
@@ -1705,7 +1705,7 @@ impl str {
         }
 
         fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use rustc_unicode::derived_property::{Cased, Case_Ignorable};
+            use std_unicode::derived_property::{Cased, Case_Ignorable};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
                 None => false,

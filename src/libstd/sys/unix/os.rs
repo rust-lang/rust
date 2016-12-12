@@ -78,7 +78,7 @@ pub fn errno() -> i32 {
         static errno: c_int;
     }
 
-    errno as i32
+    unsafe { errno as i32 }
 }
 
 /// Gets a detailed string description for the given error number.
@@ -193,7 +193,7 @@ impl StdError for JoinPathsError {
     fn description(&self) -> &str { "failed to join paths" }
 }
 
-#[cfg(target_os = "freebsd")]
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut mib = [libc::CTL_KERN as c_int,
@@ -216,11 +216,6 @@ pub fn current_exe() -> io::Result<PathBuf> {
         v.set_len(sz - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
-}
-
-#[cfg(target_os = "dragonfly")]
-pub fn current_exe() -> io::Result<PathBuf> {
-    ::fs::read_link("/proc/curproc/file")
 }
 
 #[cfg(target_os = "netbsd")]

@@ -22,8 +22,7 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
-                      FlagPrototyped};
+use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
@@ -286,7 +285,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             is_local_to_unit,
             true,
             scope_line as c_uint,
-            FlagPrototyped as c_uint,
+            DIFlags::FlagPrototyped,
             cx.sess().opts.optimize != config::OptLevel::No,
             llfn,
             template_parameters,
@@ -309,18 +308,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             return create_DIArray(DIB(cx), &[]);
         }
 
-        let mut signature = Vec::with_capacity(sig.inputs.len() + 1);
+        let mut signature = Vec::with_capacity(sig.inputs().len() + 1);
 
         // Return type -- llvm::DIBuilder wants this at index 0
-        signature.push(match sig.output.sty {
+        signature.push(match sig.output().sty {
             ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-            _ => type_metadata(cx, sig.output, syntax_pos::DUMMY_SP)
+            _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
         });
 
         let inputs = if abi == Abi::RustCall {
-            &sig.inputs[..sig.inputs.len()-1]
+            &sig.inputs()[..sig.inputs().len() - 1]
         } else {
-            &sig.inputs[..]
+            sig.inputs()
         };
 
         // Arguments types
@@ -328,8 +327,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
         }
 
-        if abi == Abi::RustCall && !sig.inputs.is_empty() {
-            if let ty::TyTuple(args) = sig.inputs[sig.inputs.len() - 1].sty {
+        if abi == Abi::RustCall && !sig.inputs().is_empty() {
+            if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
                 }
@@ -478,7 +477,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     loc.line as c_uint,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
-                    0,
+                    DIFlags::FlagZero,
                     argument_index)
             };
             source_loc::set_debug_location(cx, None,

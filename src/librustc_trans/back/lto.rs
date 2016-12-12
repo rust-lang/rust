@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::link;
-use super::write;
+use back::link;
+use back::write;
+use back::symbol_export::{self, ExportedSymbols};
 use rustc::session::{self, config};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::util::common::time;
 use rustc::util::common::path2cstr;
+use rustc::hir::def_id::LOCAL_CRATE;
 use back::write::{ModuleConfig, with_llvm_pmb};
 
 use libc;
@@ -24,8 +26,23 @@ use flate;
 use std::ffi::CString;
 use std::path::Path;
 
-pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[String],
+pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
+    match crate_type {
+        config::CrateTypeExecutable |
+        config::CrateTypeStaticlib  |
+        config::CrateTypeCdylib     => true,
+
+        config::CrateTypeDylib     |
+        config::CrateTypeRlib      |
+        config::CrateTypeMetadata  |
+        config::CrateTypeProcMacro => false,
+    }
+}
+
+pub fn run(sess: &session::Session,
+           llmod: ModuleRef,
+           tm: TargetMachineRef,
+           exported_symbols: &ExportedSymbols,
            config: &ModuleConfig,
            temp_no_opt_bc_filename: &Path) {
     if sess.opts.cg.prefer_dynamic {
@@ -38,16 +55,30 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
     // Make sure we actually can run LTO
     for crate_type in sess.crate_types.borrow().iter() {
-        match *crate_type {
-            config::CrateTypeExecutable |
-            config::CrateTypeCdylib |
-            config::CrateTypeStaticlib => {}
-            _ => {
-                sess.fatal("lto can only be run for executables and \
+        if !crate_type_allows_lto(*crate_type) {
+            sess.fatal("lto can only be run for executables, cdylibs and \
                             static library outputs");
-            }
         }
     }
+
+    let export_threshold =
+        symbol_export::crates_export_threshold(&sess.crate_types.borrow()[..]);
+
+    let symbol_filter = &|&(ref name, level): &(String, _)| {
+        if symbol_export::is_below_threshold(level, export_threshold) {
+            let mut bytes = Vec::with_capacity(name.len() + 1);
+            bytes.extend(name.bytes());
+            Some(CString::new(bytes).unwrap())
+        } else {
+            None
+        }
+    };
+
+    let mut symbol_white_list: Vec<CString> = exported_symbols
+        .exported_symbols(LOCAL_CRATE)
+        .iter()
+        .filter_map(symbol_filter)
+        .collect();
 
     // For each of our upstream dependencies, find the corresponding rlib and
     // load the bitcode from the archive. Then merge it into the current LLVM
@@ -57,6 +88,11 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         if sess.cstore.is_no_builtins(cnum) {
             return;
         }
+
+        symbol_white_list.extend(
+            exported_symbols.exported_symbols(cnum)
+                            .iter()
+                            .filter_map(symbol_filter));
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {
@@ -118,11 +154,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         }
     });
 
-    // Internalize everything but the reachable symbols of the current module
-    let cstrs: Vec<CString> = reachable.iter().map(|s| {
-        CString::new(s.clone()).unwrap()
-    }).collect();
-    let arr: Vec<*const libc::c_char> = cstrs.iter().map(|c| c.as_ptr()).collect();
+    // Internalize everything but the exported symbols of the current module
+    let arr: Vec<*const libc::c_char> = symbol_white_list.iter()
+                                                         .map(|c| c.as_ptr())
+                                                         .collect();
     let ptr = arr.as_ptr();
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod,

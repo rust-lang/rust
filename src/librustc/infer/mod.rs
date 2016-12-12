@@ -24,6 +24,7 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
+use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::adjustment;
@@ -44,6 +45,7 @@ use util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
+use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
 mod bivariate;
@@ -113,7 +115,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
+    pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
     int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
@@ -1053,18 +1055,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
+    pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging, None)
+            .new_var(diverging, origin, None)
     }
 
-    pub fn next_ty_var(&self) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(false))
+    pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(false, origin))
     }
 
-    pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(true))
+    pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(true, origin))
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -1117,7 +1119,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let ty_var_id = self.type_variables
                             .borrow_mut()
-                            .new_var(false, default);
+                            .new_var(false,
+                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name),
+                                     default);
 
         self.tcx.mk_var(ty_var_id)
     }
@@ -1492,11 +1496,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+
         // this can get called from typeck (by euv), and moves_by_default
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+        !traits::type_known_to_meet_bound(self, ty, copy_def_id, span)
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
