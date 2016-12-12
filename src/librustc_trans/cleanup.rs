@@ -242,6 +242,78 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
     }
 
+    /// Creates a landing pad for the top scope, if one does not exist.  The
+    /// landing pad will perform all cleanups necessary for an unwind and then
+    /// `resume` to continue error propagation:
+    ///
+    ///     landing_pad -> ... cleanups ... -> [resume]
+    ///
+    /// (The cleanups and resume instruction are created by
+    /// `trans_cleanups_to_exit_scope()`, not in this function itself.)
+    fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef {
+        let pad_bcx;
+
+        debug!("get_or_create_landing_pad");
+
+        // Check if a landing pad block exists; if not, create one.
+        {
+            let mut scopes = self.scopes.borrow_mut();
+            let last_scope = scopes.last_mut().unwrap();
+            match last_scope.cached_landing_pad {
+                Some(llbb) => return llbb,
+                None => {
+                    let name = last_scope.block_name("unwind");
+                    pad_bcx = self.build_new_block(&name[..]);
+                    last_scope.cached_landing_pad = Some(pad_bcx.llbb());
+                }
+            }
+        };
+
+        let llpersonality = pad_bcx.fcx().eh_personality();
+
+        let val = if base::wants_msvc_seh(self.ccx.sess()) {
+            // A cleanup pad requires a personality function to be specified, so
+            // we do that here explicitly (happens implicitly below through
+            // creation of the landingpad instruction). We then create a
+            // cleanuppad instruction which has no filters to run cleanup on all
+            // exceptions.
+            pad_bcx.set_personality_fn(llpersonality);
+            let llretval = pad_bcx.cleanup_pad(None, &[]);
+            UnwindKind::CleanupPad(llretval)
+        } else {
+            // The landing pad return type (the type being propagated). Not sure
+            // what this represents but it's determined by the personality
+            // function and this is what the EH proposal example uses.
+            let llretty = Type::struct_(self.ccx,
+                                        &[Type::i8p(self.ccx), Type::i32(self.ccx)],
+                                        false);
+
+            // The only landing pad clause will be 'cleanup'
+            let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1, pad_bcx.fcx().llfn);
+
+            // The landing pad block is a cleanup
+            pad_bcx.set_cleanup(llretval);
+
+            let addr = match self.landingpad_alloca.get() {
+                Some(addr) => addr,
+                None => {
+                    let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
+                    Lifetime::Start.call(&pad_bcx, addr);
+                    self.landingpad_alloca.set(Some(addr));
+                    addr
+                }
+            };
+            pad_bcx.store(llretval, addr);
+            UnwindKind::LandingPad
+        };
+
+        // Generate the cleanup block and branch to it.
+        let cleanup_llbb = self.trans_cleanups_to_exit_scope(val);
+        val.branch(&pad_bcx, cleanup_llbb);
+
+        return pad_bcx.llbb();
+    }
+
     /// Returns a basic block to branch to in the event of a panic. This block
     /// will run the panic cleanups and eventually resume the exception that
     /// caused the landing pad to be run.
@@ -260,66 +332,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             popped_scopes.push(self.pop_scope());
         }
 
-        // Creates a landing pad for the top scope, if one does not exist.  The
-        // landing pad will perform all cleanups necessary for an unwind and then
-        // `resume` to continue error propagation:
-        //
-        //     landing_pad -> ... cleanups ... -> [resume]
-        //
-        // (The cleanups and resume instruction are created by
-        // `trans_cleanups_to_exit_scope()`, not in this function itself.)
-        let mut scopes = self.scopes.borrow_mut();
-        let last_scope = scopes.last_mut().unwrap();
-        let llbb = if let Some(llbb) = last_scope.cached_landing_pad {
-            llbb
-        } else {
-            let name = last_scope.block_name("unwind");
-            let pad_bcx = self.build_new_block(&name[..]);
-            last_scope.cached_landing_pad = Some(pad_bcx.llbb());
-            let llpersonality = pad_bcx.fcx().eh_personality();
-
-            let val = if base::wants_msvc_seh(self.ccx.sess()) {
-                // A cleanup pad requires a personality function to be specified, so
-                // we do that here explicitly (happens implicitly below through
-                // creation of the landingpad instruction). We then create a
-                // cleanuppad instruction which has no filters to run cleanup on all
-                // exceptions.
-                pad_bcx.set_personality_fn(llpersonality);
-                let llretval = pad_bcx.cleanup_pad(None, &[]);
-                UnwindKind::CleanupPad(llretval)
-            } else {
-                // The landing pad return type (the type being propagated). Not sure
-                // what this represents but it's determined by the personality
-                // function and this is what the EH proposal example uses.
-                let llretty = Type::struct_(self.ccx,
-                    &[Type::i8p(self.ccx), Type::i32(self.ccx)],
-                    false);
-
-                // The only landing pad clause will be 'cleanup'
-                let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1,
-                    pad_bcx.fcx().llfn);
-
-                // The landing pad block is a cleanup
-                pad_bcx.set_cleanup(llretval);
-
-                let addr = match self.landingpad_alloca.get() {
-                    Some(addr) => addr,
-                    None => {
-                        let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
-                        Lifetime::Start.call(&pad_bcx, addr);
-                        self.landingpad_alloca.set(Some(addr));
-                        addr
-                    }
-                };
-                pad_bcx.store(llretval, addr);
-                UnwindKind::LandingPad
-            };
-
-            // Generate the cleanup block and branch to it.
-            let cleanup_llbb = self.trans_cleanups_to_exit_scope(val);
-            val.branch(&pad_bcx, cleanup_llbb);
-            pad_bcx.llbb()
-        };
+        let llbb = self.get_or_create_landing_pad();
 
         // Push the scopes we removed back on:
         loop {
