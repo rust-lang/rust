@@ -69,7 +69,7 @@ pub fn collect(build: &mut Build) {
 
     // If we have a git directory, add in some various SHA information of what
     // commit this compiler was compiled from.
-    if fs::metadata(build.src.join(".git")).is_ok() {
+    if build.src.join(".git").is_dir() {
         let ver_date = output(Command::new("git").current_dir(&build.src)
                                       .arg("log").arg("-1")
                                       .arg("--date=short")

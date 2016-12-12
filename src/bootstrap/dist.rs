@@ -18,7 +18,7 @@
 //! out to `rust-installer` still. This may one day be replaced with bits and
 //! pieces of `rustup.rs`!
 
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::Command;
