@@ -3156,40 +3156,19 @@ impl<'a> Resolver<'a> {
         };
 
         let mut err = match (old_binding.is_extern_crate(), binding.is_extern_crate()) {
-            (true, true) => {
-                let mut e = struct_span_err!(self.session, span, E0259, "{}", msg);
-                e.span_label(span, &format!("`{}` was already imported", name));
-                e
-            },
-            (true, _) | (_, true) if binding.is_import() && old_binding.is_import() => {
-                let mut e = struct_span_err!(self.session, span, E0254, "{}", msg);
-                e.span_label(span, &"already imported");
-                e
-            },
-            (true, _) | (_, true) => {
-                let mut e = struct_span_err!(self.session, span, E0260, "{}", msg);
-                e.span_label(span, &format!("`{}` already imported", name));
-                e
+            (true, true) => struct_span_err!(self.session, span, E0259, "{}", msg),
+            (true, _) | (_, true) => match binding.is_import() && old_binding.is_import() {
+                true => struct_span_err!(self.session, span, E0254, "{}", msg),
+                false => struct_span_err!(self.session, span, E0260, "{}", msg),
             },
             _ => match (old_binding.is_import(), binding.is_import()) {
-                (false, false) => {
-                    let mut e = struct_span_err!(self.session, span, E0428, "{}", msg);
-                    e.span_label(span, &format!("already defined"));
-                    e
-                },
-                (true, true) => {
-                    let mut e = struct_span_err!(self.session, span, E0252, "{}", msg);
-                    e.span_label(span, &format!("already imported"));
-                    e
-                },
-                _ => {
-                    let mut e = struct_span_err!(self.session, span, E0255, "{}", msg);
-                    e.span_label(span, &format!("`{}` was already imported", name));
-                    e
-                }
+                (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
+                (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
+                _ => struct_span_err!(self.session, span, E0255, "{}", msg),
             },
         };
 
+        err.span_label(span, &format!("`{}` already {}", name, participle));
         if old_binding.span != syntax_pos::DUMMY_SP {
             err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
         }

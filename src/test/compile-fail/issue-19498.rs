@@ -11,13 +11,13 @@
 use self::A; //~ NOTE previous import of `A` here
 use self::B; //~ NOTE previous import of `B` here
 mod A {} //~ ERROR a module named `A` has already been imported in this module
-//~| `A` was already imported
+//~| `A` already imported
 pub mod B {} //~ ERROR a module named `B` has already been imported in this module
-//~| `B` was already imported
+//~| `B` already imported
 mod C {
     use C::D; //~ NOTE previous import of `D` here
     mod D {} //~ ERROR a module named `D` has already been imported in this module
-    //~| `D` was already imported
+    //~| `D` already imported
 }
 
 fn main() {}
