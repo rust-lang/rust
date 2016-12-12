@@ -591,7 +591,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: Escape(&shorter(item.doc_value())).to_string(),
+                desc: plain_summary_line(item.doc_value()),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -629,7 +629,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
-        Escape(&shorter(module.doc_value())).to_string()
+        plain_summary_line(module.doc_value())
     }).unwrap_or(String::new());
 
     let mut crate_data = BTreeMap::new();
@@ -1064,7 +1064,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::").to_string(),
-                            desc: Escape(&shorter(item.doc_value())).to_string(),
+                            desc: plain_summary_line(item.doc_value()),
                             parent: parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
