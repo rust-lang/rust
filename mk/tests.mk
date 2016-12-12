@@ -15,7 +15,7 @@
 
 # The names of crates that must be tested
 
-# libcore/librustc_unicode tests are in a separate crate
+# libcore/libstd_unicode tests are in a separate crate
 DEPS_coretest :=
 $(eval $(call RUST_CRATE,coretest))
 

@@ -63,8 +63,8 @@ use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
 use core::str::pattern::Pattern;
-use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
-use rustc_unicode::str as unicode_str;
+use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use std_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;

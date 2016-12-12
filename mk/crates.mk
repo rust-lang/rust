@@ -52,7 +52,7 @@
 TARGET_CRATES := libc std term \
                  getopts collections test rand \
                  compiler_builtins core alloc \
-                 rustc_unicode rustc_bitflags \
+                 std_unicode rustc_bitflags \
 		 alloc_system alloc_jemalloc \
 		 panic_abort panic_unwind unwind
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
@@ -69,11 +69,11 @@ DEPS_compiler_builtins := core native:compiler-rt
 DEPS_alloc := core libc alloc_system
 DEPS_alloc_system := core libc
 DEPS_alloc_jemalloc := core libc native:jemalloc
-DEPS_collections := core alloc rustc_unicode
+DEPS_collections := core alloc std_unicode
 DEPS_libc := core
 DEPS_rand := core
 DEPS_rustc_bitflags := core
-DEPS_rustc_unicode := core
+DEPS_std_unicode := core
 DEPS_panic_abort := libc alloc
 DEPS_panic_unwind := libc alloc unwind
 DEPS_unwind := libc
@@ -81,7 +81,7 @@ DEPS_unwind := libc
 RUSTFLAGS_compiler_builtins := -lstatic=compiler-rt
 RUSTFLAGS_panic_abort := -C panic=abort
 
-DEPS_std := core libc rand alloc collections compiler_builtins rustc_unicode \
+DEPS_std := core libc rand alloc collections compiler_builtins std_unicode \
 	native:backtrace \
 	alloc_system panic_abort panic_unwind unwind
 DEPS_arena := std
@@ -96,7 +96,7 @@ DEPS_serialize := std log
 DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
 
-DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos rustc_data_structures
+DEPS_syntax := std term serialize log arena libc rustc_bitflags std_unicode rustc_errors syntax_pos rustc_data_structures
 DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
 DEPS_syntax_pos := serialize
 DEPS_proc_macro_tokens := syntax syntax_pos log
@@ -158,7 +158,7 @@ ONLY_RLIB_libc := 1
 ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
-ONLY_RLIB_rustc_unicode := 1
+ONLY_RLIB_std_unicode := 1
 ONLY_RLIB_rustc_bitflags := 1
 ONLY_RLIB_alloc_system := 1
 ONLY_RLIB_alloc_jemalloc := 1
@@ -169,7 +169,7 @@ ONLY_RLIB_unwind := 1
 TARGET_SPECIFIC_alloc_jemalloc := 1
 
 # Documented-by-default crates
-DOC_CRATES := std alloc collections core libc rustc_unicode
+DOC_CRATES := std alloc collections core libc std_unicode
 
 ifeq ($(CFG_DISABLE_JEMALLOC),)
 RUSTFLAGS_rustc_back := --cfg 'feature="jemalloc"'

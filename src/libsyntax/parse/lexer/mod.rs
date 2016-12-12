@@ -16,7 +16,7 @@ use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use str::char_at;
 use symbol::{Symbol, keywords};
-use rustc_unicode::property::Pattern_White_Space;
+use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
 use std::char;
