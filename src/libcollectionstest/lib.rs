@@ -33,7 +33,7 @@
 
 extern crate collections;
 extern crate test;
-extern crate rustc_unicode;
+extern crate std_unicode;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

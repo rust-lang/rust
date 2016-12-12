@@ -31,7 +31,7 @@ extern crate term;
 extern crate log;
 #[macro_use]
 extern crate libc;
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate syntax_pos;
 
