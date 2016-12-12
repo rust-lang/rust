@@ -182,7 +182,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                              ty: Ty<'tcx>) {
         if !self.type_needs_drop(ty) { return; }
         let drop = DropValue {
-            is_immediate: false,
             val: val,
             ty: ty,
             skip_dtor: false,
@@ -211,7 +210,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
 
         let drop = DropValue {
-            is_immediate: false,
             val: val,
             ty: ty,
             skip_dtor: true,
@@ -593,7 +591,6 @@ impl PartialEq for UnwindKind {
 
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
-    is_immediate: bool,
     val: ValueRef,
     ty: Ty<'tcx>,
     skip_dtor: bool,
@@ -605,15 +602,6 @@ impl<'tcx> DropValue<'tcx> {
         funclet: Option<&'blk Funclet>,
         bcx: BlockAndBuilder<'blk, 'tcx>,
     ) -> BlockAndBuilder<'blk, 'tcx> {
-        if self.is_immediate {
-            let vp = base::alloc_ty(&bcx, self.ty, "");
-            Lifetime::Start.call(&bcx, vp);
-            base::store_ty(&bcx, self.val, vp, self.ty);
-            let bcx = glue::call_drop_glue(bcx, vp, self.ty, self.skip_dtor, funclet);
-            Lifetime::End.call(&bcx, vp);
-            bcx
-        } else {
-            glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
-        }
+        glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
     }
 }
