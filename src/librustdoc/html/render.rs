@@ -1468,6 +1468,13 @@ impl<'a> Item<'a> {
                 return None;
             }
         } else {
+            // Macros from other libraries get special filenames which we can
+            // safely ignore.
+            if self.item.source.filename.starts_with("<") &&
+               self.item.source.filename.ends_with("macros>") {
+                return None;
+            }
+
             let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(ref name, ref src, Local)) => (name, src),
                 Some(&(ref name, ref src, Remote(ref s))) => {

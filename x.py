@@ -16,4 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(dir, "src", "bootstrap")))
 
 import bootstrap
 
-bootstrap.main()
+try:
+    bootstrap.main()
+except KeyboardInterrupt:
+    sys.exit()
