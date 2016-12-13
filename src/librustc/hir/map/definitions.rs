@@ -18,12 +18,20 @@ use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
+//! For each definition, we track the following data.  A definition
+//! here is defined somewhat circularly as "something with a def-id",
+//! but it generally corresponds to things like structs, enums, etc.
+//! There are also some rather random cases (like const initializer
+//! expressions) that are mostly just leftovers.
+
+
 /// The definition table containing node definitions
 #[derive(Clone)]
 pub struct Definitions {
-    data: Vec<DefData>,
+    data: Vec<DefKey>,
     key_map: FxHashMap<DefKey, DefIndex>,
-    node_map: NodeMap<DefIndex>,
+    node_to_def_index: NodeMap<DefIndex>,
+    def_index_to_node: Vec<ast::NodeId>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -48,19 +56,6 @@ pub struct DefKey {
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32
-}
-
-/// For each definition, we track the following data.  A definition
-/// here is defined somewhat circularly as "something with a def-id",
-/// but it generally corresponds to things like structs, enums, etc.
-/// There are also some rather random cases (like const initializer
-/// expressions) that are mostly just leftovers.
-#[derive(Clone, Debug)]
-pub struct DefData {
-    pub key: DefKey,
-
-    /// Local ID within the HIR.
-    pub node_id: ast::NodeId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -221,7 +216,8 @@ impl Definitions {
         Definitions {
             data: vec![],
             key_map: FxHashMap(),
-            node_map: NodeMap(),
+            node_to_def_index: NodeMap(),
+            def_index_to_node: vec![],
         }
     }
 
@@ -248,7 +244,7 @@ impl Definitions {
     }
 
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
-        self.node_map.get(&node).cloned()
+        self.node_to_def_index.get(&node).cloned()
     }
 
     pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
@@ -262,7 +258,8 @@ impl Definitions {
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
             assert!(def_id.index.as_usize() < self.data.len());
-            Some(self.data[def_id.index.as_usize()].node_id)
+            // Some(self.data[def_id.index.as_usize()].node_id)
+            Some(self.def_index_to_node[def_id.index.as_usize()])
         } else {
             None
         }
@@ -277,11 +274,11 @@ impl Definitions {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
 
-        assert!(!self.node_map.contains_key(&node_id),
+        assert!(!self.node_to_def_index.contains_key(&node_id),
                 "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
                 node_id,
                 data,
-                self.data[self.node_map[&node_id].as_usize()]);
+                self.data[self.node_to_def_index[&node_id].as_usize()]);
 
         assert!(parent.is_some() ^ match data {
             DefPathData::CrateRoot | DefPathData::InlinedRoot(_) => true,
@@ -306,9 +303,10 @@ impl Definitions {
 
         // Create the definition.
         let index = DefIndex::new(self.data.len());
-        self.data.push(DefData { key: key.clone(), node_id: node_id });
-        debug!("create_def_with_parent: node_map[{:?}] = {:?}", node_id, index);
-        self.node_map.insert(node_id, index);
+        self.data.push(DefData { key: key.clone() });
+        self.def_index_to_node.push(node_id);
+        debug!("create_def_with_parent: node_to_def_index[{:?}] = {:?}", node_id, index);
+        self.node_to_def_index.insert(node_id, index);
         debug!("create_def_with_parent: key_map[{:?}] = {:?}", key, index);
         self.key_map.insert(key, index);
 
