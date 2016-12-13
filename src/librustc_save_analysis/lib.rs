@@ -827,8 +827,8 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
         Some(val) => PathBuf::from(val),
         None => match odir {
-            Some(val) => val.join("save-analysis"),
-            None => PathBuf::from("save-analysis-temp"),
+            Some(val) => val.join("analysis"),
+            None => PathBuf::from("analysis-temp"),
         },
     };
 
