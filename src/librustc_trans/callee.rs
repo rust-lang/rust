@@ -686,16 +686,8 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         _ => bug!("expected fn pointer callee, found {:?}", callee)
     };
 
-    fn need_invoke(bcx: &BlockAndBuilder, had_lpad: bool) -> bool {
-        if bcx.sess().no_landing_pads() || had_lpad {
-            false
-        } else {
-            bcx.fcx().needs_invoke()
-        }
-    }
-
     let _icx = push_ctxt("invoke_");
-    let (llret, bcx) = if need_invoke(&bcx, lpad.is_some()) {
+    let (llret, bcx) = if bcx.fcx().needs_invoke(lpad.is_some()) {
         debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
         for &llarg in &llargs {
             debug!("arg: {:?}", Value(llarg));
