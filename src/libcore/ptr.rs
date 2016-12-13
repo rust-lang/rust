@@ -117,6 +117,8 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
+/// The pointer must be aligned; use `read_unaligned` if that is not the case.
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -137,6 +139,44 @@ pub unsafe fn read<T>(src: *const T) -> T {
     tmp
 }
 
+/// Reads the value from `src` without moving it. This leaves the
+/// memory in `src` unchanged.
+///
+/// Unlike `read`, the pointer may be unaligned.
+///
+/// # Safety
+///
+/// Beyond accepting a raw pointer, this is unsafe because it semantically
+/// moves the value out of `src` without preventing further usage of `src`.
+/// If `T` is not `Copy`, then care must be taken to ensure that the value at
+/// `src` is not used before the data is overwritten again (e.g. with `write`,
+/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// because it will attempt to drop the value previously at `*src`.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// #![feature(ptr_unaligned)]
+///
+/// let x = 12;
+/// let y = &x as *const i32;
+///
+/// unsafe {
+///     assert_eq!(std::ptr::read_unaligned(y), 12);
+/// }
+/// ```
+#[inline(always)]
+#[unstable(feature = "ptr_unaligned", issue = "37955")]
+pub unsafe fn read_unaligned<T>(src: *const T) -> T {
+    let mut tmp: T = mem::uninitialized();
+    copy_nonoverlapping(src as *const u8,
+                        &mut tmp as *mut T as *mut u8,
+                        mem::size_of::<T>());
+    tmp
+}
+
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
@@ -150,6 +190,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
+///
+/// The pointer must be aligned; use `write_unaligned` if that is not the case.
 ///
 /// # Examples
 ///
@@ -169,6 +211,47 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
+}
+
+/// Overwrites a memory location with the given value without reading or
+/// dropping the old value.
+///
+/// Unlike `write`, the pointer may be unaligned.
+///
+/// # Safety
+///
+/// This operation is marked unsafe because it accepts a raw pointer.
+///
+/// It does not drop the contents of `dst`. This is safe, but it could leak
+/// allocations or resources, so care must be taken not to overwrite an object
+/// that should be dropped.
+///
+/// This is appropriate for initializing uninitialized memory, or overwriting
+/// memory that has previously been `read` from.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// #![feature(ptr_unaligned)]
+///
+/// let mut x = 0;
+/// let y = &mut x as *mut i32;
+/// let z = 12;
+///
+/// unsafe {
+///     std::ptr::write_unaligned(y, z);
+///     assert_eq!(std::ptr::read_unaligned(y), 12);
+/// }
+/// ```
+#[inline]
+#[unstable(feature = "ptr_unaligned", issue = "37955")]
+pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
+    copy_nonoverlapping(&src as *const T as *const u8,
+                        dst as *mut u8,
+                        mem::size_of::<T>());
+    mem::forget(src);
 }
 
 /// Performs a volatile read of the value from `src` without moving it. This
