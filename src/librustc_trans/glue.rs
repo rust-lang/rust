@@ -245,13 +245,13 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     //
     // FIXME (#14875) panic-in-drop semantics might be unsupported; we
     // might well consider changing below to more direct code.
-    let contents_scope = bcx.fcx().push_custom_cleanup_scope();
-
     // Issue #23611: schedule cleanup of contents, re-inspecting the
     // discriminant (if any) in case of variant swap in drop code.
-    if !shallow_drop {
-        bcx.fcx().schedule_drop_adt_contents(contents_scope, v0, t);
-    }
+    let contents_scope = if !shallow_drop {
+        bcx.fcx().schedule_drop_adt_contents(v0, t)
+    } else {
+        None
+    };
 
     let (sized_args, unsized_args);
     let args: &[ValueRef] = if type_is_sized(tcx, t) {

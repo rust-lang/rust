@@ -389,8 +389,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.push_custom_cleanup_scope();
-    fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
+    let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
 
     let bcx = callee.call(bcx, &llargs[self_idx..], dest, None).0;
 
