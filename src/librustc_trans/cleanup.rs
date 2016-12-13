@@ -212,10 +212,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
     /// Returns true if there are pending cleanups that should execute on panic.
     pub fn needs_invoke(&self) -> bool {
-        self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
+        self.scopes_len() > 0
     }
 
-    /// Creates a landing pad for the top scope, if one does not exist.  The
+    /// Creates a landing pad for the top scope, if one does not exist. The
     /// landing pad will perform all cleanups necessary for an unwind and then
     /// `resume` to continue error propagation:
     ///
@@ -223,10 +223,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     ///
     /// (The cleanups and resume instruction are created by
     /// `trans_cleanups_to_exit_scope()`, not in this function itself.)
-    fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef {
+    pub fn get_landing_pad(&'blk self) -> BasicBlockRef {
         let pad_bcx;
 
-        debug!("get_or_create_landing_pad");
+        debug!("get_landing_pad");
 
         // Check if a landing pad block exists; if not, create one.
         {
@@ -285,36 +285,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         val.branch(&pad_bcx, cleanup_llbb);
 
         return pad_bcx.llbb();
-    }
-
-    /// Returns a basic block to branch to in the event of a panic. This block
-    /// will run the panic cleanups and eventually resume the exception that
-    /// caused the landing pad to be run.
-    pub fn get_landing_pad(&'blk self) -> BasicBlockRef {
-        let _icx = base::push_ctxt("get_landing_pad");
-
-        debug!("get_landing_pad");
-
-        let orig_scopes_len = self.scopes_len();
-        assert!(orig_scopes_len > 0);
-
-        // Remove any scopes that do not have cleanups on panic:
-        let mut popped_scopes = vec![];
-        while !self.top_scope(|s| s.needs_invoke()) {
-            debug!("top scope does not need invoke");
-            popped_scopes.push(self.pop_scope());
-        }
-
-        let llbb = self.get_or_create_landing_pad();
-
-        // Push the scopes we removed back on:
-        while let Some(scope) = popped_scopes.pop() {
-            self.push_scope(scope);
-        }
-
-        assert_eq!(self.scopes_len(), orig_scopes_len);
-
-        return llbb;
     }
 
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
@@ -499,12 +469,6 @@ impl<'tcx> CleanupScope<'tcx> {
             label: label,
             cleanup_block: blk,
         });
-    }
-
-    /// True if this scope has cleanups that need unwinding
-    fn needs_invoke(&self) -> bool {
-        true
-        //self.cached_landing_pad.is_some() || self.cleanups.is_empty()
     }
 
     /// Returns a suitable name to use for the basic block that handles this cleanup scope
