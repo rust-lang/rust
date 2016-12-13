@@ -1,7 +1,7 @@
 - Feature Name: procedural_macros
 - Start Date: 2016-02-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1566
+- Rust Issue: https://github.com/rust-lang/rust/issues/38356
 
 # Summary
 [summary]: #summary
