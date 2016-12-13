@@ -553,7 +553,10 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateBasicType(
     unsigned Encoding) {
     return wrap(Builder->createBasicType(
         Name, SizeInBits,
-        AlignInBits, Encoding));
+#if LLVM_VERSION_LE(3, 9)
+        AlignInBits,
+#endif
+        Encoding));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
