@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   gdb
 
+RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
+    dpkg -i dumb-init_*.deb && \
+    rm dumb-init_*.deb
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
 ENV RUST_CHECK_TARGET check
 RUN mkdir /tmp/obj
