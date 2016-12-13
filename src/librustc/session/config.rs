@@ -1473,6 +1473,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             (Some(name), "dylib") => (name, cstore::NativeUnknown),
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
+            (Some(name), "static-nobundle") => (name, cstore::NativeStaticNobundle),
             (_, s) => {
                 early_error(error_format, &format!("unknown library kind `{}`, expected \
                                                   one of dylib, framework, or static",
