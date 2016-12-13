@@ -98,11 +98,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx(), size);
                 let base = base::get_dataptr(&bcx, dest.llval);
-                let bcx = tvec::slice_for_each(bcx, base, tr_elem.ty, size, |bcx, llslot| {
+                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
                     self.store_operand_direct(&bcx, llslot, tr_elem);
-                    bcx
-                });
-                bcx
+                })
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {

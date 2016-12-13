@@ -392,9 +392,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
 
     let bcx = callee.call(bcx, &llargs[self_idx..], dest, None).0;
-
-    let bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
-
+    fcx.pop_and_trans_custom_cleanup_scope(&bcx, self_scope);
     fcx.finish(&bcx);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
