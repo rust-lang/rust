@@ -23,6 +23,10 @@ compiler-rt = { path = "compiler-rt" }
 [features]
 # Build the missing intrinsics from compiler-rt C source code
 c = []
+# Mark this crate as the #![compiler_builtins] crate
+compiler-builtins = []
+default = ["compiler-builtins"]
+rustbuild = ["compiler-builtins"]
 weak = ["rlibc/weak"]
 
 [workspace]
