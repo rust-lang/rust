@@ -168,6 +168,15 @@ fn main() {
                 cmd.arg("-C").arg(format!("link-args={}", rpath));
             }
         }
+
+        // Generate MIR for all functions in the Rust libraries
+        // Since users will never build the stdlib themselves, they can't
+        // obtain an stdlib with full MIR. Thus we simply emit MIR always
+        // for the stdlib
+        // Don't do this for stage0 yet, since always_encode_mir isn't part of it yet
+        if stage != "0" {
+            cmd.arg("-Zalways_encode_mir");
+        }
     }
 
     // Actually run the compiler!
