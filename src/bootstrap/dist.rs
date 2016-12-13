@@ -48,6 +48,11 @@ pub fn tmpdir(build: &Build) -> PathBuf {
 /// Slurps up documentation from the `stage`'s `host`.
 pub fn docs(build: &Build, stage: u32, host: &str) {
     println!("Dist docs stage{} ({})", stage, host);
+    if !build.config.docs {
+        println!("\tskipping - docs disabled");
+        return
+    }
+
     let name = format!("rust-docs-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, name));
     let _ = fs::remove_dir_all(&image);
@@ -260,6 +265,14 @@ pub fn debugger_scripts(build: &Build,
 pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
              target);
+
+    // The only true set of target libraries came from the build triple, so
+    // let's reduce redundant work by only producing archives from that host.
+    if compiler.host != build.config.build {
+        println!("\tskipping, not a build host");
+        return
+    }
+
     let name = format!("rust-std-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, target));
     let _ = fs::remove_dir_all(&image);
@@ -294,10 +307,15 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist analysis");
 
     if build.config.channel != "nightly" {
-        println!("Skipping dist-analysis - not on nightly channel");
+        println!("\tskipping - not on nightly channel");
         return;
     }
+    if compiler.host != build.config.build {
+        println!("\tskipping - not a build host");
+        return
+    }
     if compiler.stage != 2 {
+        println!("\tskipping - not stage2");
         return
     }
 
