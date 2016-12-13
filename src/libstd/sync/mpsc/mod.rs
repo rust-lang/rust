@@ -454,9 +454,15 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 }
 
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
-///
 /// All data sent on the sender will become available on the receiver, and no
 /// send will block the calling thread (this channel has an "infinite buffer").
+///
+/// If the [`Receiver`] is disconnected while trying to [`send()`] with the
+/// [`Sender`], the [`send()`] method will return an error.
+///
+/// [`send()`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+/// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///
 /// # Examples
 ///
@@ -487,18 +493,23 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 
 /// Creates a new synchronous, bounded channel.
 ///
-/// Like asynchronous channels, the `Receiver` will block until a message
+/// Like asynchronous channels, the [`Receiver`] will block until a message
 /// becomes available. These channels differ greatly in the semantics of the
 /// sender from asynchronous channels, however.
 ///
-/// This channel has an internal buffer on which messages will be queued. `bound`
-/// specifies the buffer size. When the internal buffer becomes full, future sends
-/// will *block* waiting for the buffer to open up. Note that a buffer size of 0
-/// is valid, in which case this becomes  "rendezvous channel" where each send will
-/// not return until a recv is paired with it.
+/// This channel has an internal buffer on which messages will be queued.
+/// `bound` specifies the buffer size. When the internal buffer becomes full,
+/// future sends will *block* waiting for the buffer to open up. Note that a
+/// buffer size of 0 is valid, in which case this becomes "rendezvous channel"
+/// where each [`send()`] will not return until a recv is paired with it.
 ///
-/// As with asynchronous channels, all senders will panic in `send` if the
-/// `Receiver` has been destroyed.
+/// Like asynchronous channels, if the [`Receiver`] is disconnected while
+/// trying to [`send()`] with the [`SyncSender`], the [`send()`] method will
+/// return an error.
+///
+/// [`send()`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
+/// [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
+/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///
 /// # Examples
 ///
