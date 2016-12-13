@@ -36,6 +36,7 @@ pub fn opts() -> TargetOptions {
         relocation_model: "static".to_string(),
         disable_redzone: true,
         eliminate_frame_pointer: false,
+        target_family: Some("redox".to_string()),
         linker_is_gnu: true,
         no_default_libraries: true,
         has_elf_tls: true,
