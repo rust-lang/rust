@@ -33,11 +33,10 @@ pub fn opts() -> TargetOptions {
             "-static".to_string()
         ],
         executables: true,
-        relocation_modal: "static".to_string(),
+        relocation_model: "static".to_string(),
         disable_redzone: true,
         eliminate_frame_pointer: false,
         linker_is_gnu: true,
-        no_compiler_rt: true,
         no_default_libraries: true,
         has_elf_tls: true,
         .. Default::default()
