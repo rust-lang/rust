@@ -48,6 +48,11 @@ pub fn tmpdir(build: &Build) -> PathBuf {
 /// Slurps up documentation from the `stage`'s `host`.
 pub fn docs(build: &Build, stage: u32, host: &str) {
     println!("Dist docs stage{} ({})", stage, host);
+    if !build.config.docs {
+        println!("\tskipping - docs disabled");
+        return
+    }
+
     let name = format!("rust-docs-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, name));
     let _ = fs::remove_dir_all(&image);
