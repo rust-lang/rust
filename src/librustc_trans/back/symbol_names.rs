@@ -99,8 +99,6 @@
 
 use common::SharedCrateContext;
 use monomorphize::Instance;
-use rustc_data_structures::fmt_wrap::FmtWrap;
-use rustc_data_structures::blake2b::Blake2bHasher;
 
 use rustc::middle::weak_lang_items;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -135,7 +133,7 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     let tcx = scx.tcx();
 
-    let mut hasher = ty::util::TypeIdHasher::new(tcx, Blake2bHasher::new(8, &[]));
+    let mut hasher = ty::util::TypeIdHasher::<u64>::new(tcx);
 
     record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
         // the main symbol name is not necessarily unique; hash in the
@@ -158,9 +156,7 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     });
 
     // 64 bits should be enough to avoid collisions.
-    let mut hasher = hasher.into_inner();
-    let hash_bytes = hasher.finalize();
-    format!("h{:x}", FmtWrap(hash_bytes))
+    format!("h{:016x}", hasher.finish())
 }
 
 impl<'a, 'tcx> Instance<'tcx> {

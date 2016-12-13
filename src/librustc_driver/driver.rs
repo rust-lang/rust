@@ -11,9 +11,7 @@
 use rustc::hir;
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
 use rustc::hir::lowering::lower_crate;
-use rustc_data_structures::blake2b::Blake2bHasher;
-use rustc_data_structures::fmt_wrap::FmtWrap;
-use rustc::ty::util::ArchIndependentHasher;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType,
@@ -27,6 +25,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::{NodeSet, NodeMap};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
+use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -1274,7 +1273,7 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
     // FIXME(mw): It seems that the crate_disambiguator is used everywhere as
     //            a hex-string instead of raw bytes. We should really use the
     //            smaller representation.
-    let mut hasher = ArchIndependentHasher::new(Blake2bHasher::new(128 / 8, &[]));
+    let mut hasher = StableHasher::<Fingerprint>::new();
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
@@ -1292,14 +1291,11 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
         hasher.write(s.as_bytes());
     }
 
-    let mut hash_state = hasher.into_inner();
-    let hash_bytes = hash_state.finalize();
-
     // If this is an executable, add a special suffix, so that we don't get
     // symbol conflicts when linking against a library of the same name.
     let is_exe = session.crate_types.borrow().contains(&config::CrateTypeExecutable);
 
-    format!("{:x}{}", FmtWrap(hash_bytes), if is_exe { "-exe" } else {""})
+    format!("{}{}", hasher.finish().to_hex(), if is_exe { "-exe" } else {""})
 }
 
 pub fn build_output_filenames(input: &Input,

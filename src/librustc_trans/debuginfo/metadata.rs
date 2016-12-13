@@ -31,7 +31,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::hir;
-use rustc_data_structures::blake2b::Blake2bHasher;
+use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
 use common::CrateContext;
 use type_::Type;
@@ -42,7 +42,6 @@ use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
-use std::fmt::Write;
 use std::path::Path;
 use std::ptr;
 use syntax::ast;
@@ -147,21 +146,11 @@ impl<'tcx> TypeMap<'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-        const TYPE_ID_HASH_LENGTH: usize = 20;
 
-        let mut type_id_hasher = TypeIdHasher::new(cx.tcx(),
-                                                   Blake2bHasher::new(TYPE_ID_HASH_LENGTH, &[]));
+        let mut type_id_hasher = TypeIdHasher::<[u8; 20]>::new(cx.tcx());
         type_id_hasher.visit_ty(type_);
-        let mut hash_state = type_id_hasher.into_inner();
-        let hash: &[u8] = hash_state.finalize();
-        debug_assert!(hash.len() == TYPE_ID_HASH_LENGTH);
 
-        let mut unique_type_id = String::with_capacity(TYPE_ID_HASH_LENGTH * 2);
-
-        for byte in hash.into_iter() {
-            write!(&mut unique_type_id, "{:x}", byte).unwrap();
-        }
-
+        let unique_type_id = type_id_hasher.finish().to_hex();
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
