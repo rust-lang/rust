@@ -211,8 +211,12 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     }
 
     /// Returns true if there are pending cleanups that should execute on panic.
-    pub fn needs_invoke(&self) -> bool {
-        self.scopes_len() > 0
+    pub fn needs_invoke(&self, lpad_present: bool) -> bool {
+        if self.ccx.sess().no_landing_pads() || lpad_present {
+            false
+        } else {
+            self.scopes_len() > 0
+        }
     }
 
     /// Creates a landing pad for the top scope, if one does not exist. The
@@ -297,6 +301,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     }
 
     fn push_scope(&self, scope: CleanupScope<'tcx>) -> CustomScopeIndex {
+        assert!(self.scopes_len() == 0);
         let index = self.scopes_len();
         debug!("pushing custom cleanup scope: {}", index);
         self.scopes.borrow_mut().push(scope);
