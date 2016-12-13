@@ -476,6 +476,7 @@ fn link_rlib<'a>(sess: &'a Session,
     for lib in sess.cstore.used_libraries() {
         match lib.kind {
             NativeLibraryKind::NativeStatic => {}
+            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
@@ -674,6 +675,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
+            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
             // These are included, no need to print them
@@ -985,6 +987,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
             NativeLibraryKind::NativeStatic => bug!(),
         }
     }
@@ -1229,6 +1232,7 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
             match lib.kind {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+                NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
 
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
