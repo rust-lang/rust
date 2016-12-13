@@ -317,7 +317,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub debug_context: debuginfo::FunctionDebugContext,
 
     // Cleanup scopes.
-    pub scopes: RefCell<Vec<cleanup::CleanupScope<'tcx>>>,
+    pub cleanup_scope: RefCell<Option<cleanup::CleanupScope<'tcx>>>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
@@ -483,7 +483,7 @@ pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
 
     // If this block part of a landing pad, then this is `Some` indicating what
     // kind of landing pad its in, otherwise this is none.
-    funclet: Cell<Option<&'blk Funclet>>,
+    funclet: Option<&'blk Funclet>,
 
     // The function context for the function to which this block is
     // attached.
@@ -499,7 +499,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         owned_builder.builder.position_at_end(llbb);
         BlockAndBuilder {
             llbb: llbb,
-            funclet: Cell::new(None),
+            funclet: None,
             fcx: fcx,
             owned_builder: owned_builder,
         }
@@ -535,17 +535,17 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.fcx.mir()
     }
 
-    pub fn set_funclet(&self, funclet: Option<Funclet>) {
-        self.set_funclet_ref(funclet.map(|p| &*self.fcx().funclet_arena.alloc(p)))
+    pub fn set_funclet(&mut self, funclet: Option<Funclet>) {
+        self.funclet = funclet.map(|p| &*self.fcx().funclet_arena.alloc(p));
     }
 
-    pub fn set_funclet_ref(&self, funclet: Option<&'blk Funclet>) {
+    pub fn set_funclet_ref(&mut self, funclet: Option<&'blk Funclet>) {
         // FIXME: use an IVar?
-        self.funclet.set(funclet);
+        self.funclet = funclet;
     }
 
     pub fn funclet(&self) -> Option<&'blk Funclet> {
-        self.funclet.get()
+        self.funclet
     }
 }
 

@@ -16,13 +16,13 @@ use base::*;
 use common::*;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
+pub fn slice_for_each<'blk, 'tcx, F>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                      data_ptr: ValueRef,
                                      unit_ty: Ty<'tcx>,
                                      len: ValueRef,
                                      f: F)
                                      -> BlockAndBuilder<'blk, 'tcx>
-    where F: FnOnce(BlockAndBuilder<'blk, 'tcx>, ValueRef) -> BlockAndBuilder<'blk, 'tcx>,
+    where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>, ValueRef)
 {
     let _icx = push_ctxt("tvec::slice_for_each");
     let fcx = bcx.fcx();
@@ -52,7 +52,7 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: BlockAndBuilder<'blk, 'tcx>,
     let keep_going = header_bcx.icmp(llvm::IntNE, current, end);
     header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
-    let body_bcx = f(body_bcx, if zst { data_ptr } else { current });
+    f(&body_bcx, if zst { data_ptr } else { current });
     // FIXME(simulacrum): The code below is identical to the closure (add) above, but using the
     // closure doesn't compile due to body_bcx still being borrowed when dropped.
     let next = if zst {

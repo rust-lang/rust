@@ -765,7 +765,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             funclet_arena: TypedArena::new(),
             ccx: ccx,
             debug_context: debug_context,
-            scopes: RefCell::new(Vec::new()),
+            cleanup_scope: RefCell::new(None),
         }
     }
 
