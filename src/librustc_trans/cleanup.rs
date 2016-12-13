@@ -124,10 +124,10 @@ use value::Value;
 use rustc::ty::Ty;
 
 pub struct CleanupScope<'tcx> {
-    // Cleanups to run upon scope exit.
-    cleanups: Vec<DropValue<'tcx>>,
+    // Cleanup to run upon scope exit.
+    cleanup: DropValue<'tcx>,
 
-    cached_early_exits: Vec<CachedEarlyExit>,
+    cached_early_exit: Option<CachedEarlyExit>,
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
@@ -146,54 +146,43 @@ enum UnwindKind {
 struct CachedEarlyExit {
     label: UnwindKind,
     cleanup_block: BasicBlockRef,
-    last_cleanup: usize,
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
-    pub fn push_custom_cleanup_scope(&self) -> CustomScopeIndex {
-        let index = self.scopes_len();
-        debug!("push_custom_cleanup_scope(): {}", index);
-        self.push_scope(CleanupScope::new());
-        CustomScopeIndex { index: index }
-    }
-
     /// Removes the top cleanup scope from the stack, which must be a temporary scope, and
     /// generates the code to do its cleanups for normal exit.
     pub fn pop_and_trans_custom_cleanup_scope(&self,
-                                              mut bcx: BlockAndBuilder<'blk, 'tcx>,
-                                              custom_scope: CustomScopeIndex)
+                                              bcx: BlockAndBuilder<'blk, 'tcx>,
+                                              custom_scope: Option<CustomScopeIndex>)
                                               -> BlockAndBuilder<'blk, 'tcx> {
         debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
+
+        let custom_scope = if let Some(scope) = custom_scope {
+            scope
+        } else {
+            return bcx;
+        };
+
         assert!(self.is_valid_custom_scope(custom_scope));
         assert!(custom_scope.index == self.scopes.borrow().len() - 1);
 
         let scope = self.pop_scope();
-        for cleanup in scope.cleanups.iter().rev() {
-            bcx = cleanup.trans(bcx.funclet(), bcx);
-        }
-        bcx
+        scope.cleanup.trans(bcx.funclet(), bcx)
     }
 
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of
     /// `ty`
-    pub fn schedule_drop_mem(&self,
-                             cleanup_scope: CustomScopeIndex,
-                             val: ValueRef,
-                             ty: Ty<'tcx>) {
-        if !self.type_needs_drop(ty) { return; }
+    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> Option<CustomScopeIndex> {
+        if !self.type_needs_drop(ty) { return None; }
         let drop = DropValue {
             val: val,
             ty: ty,
             skip_dtor: false,
         };
 
-        debug!("schedule_drop_mem({:?}, val={:?}, ty={:?}) skip_dtor={}",
-               cleanup_scope,
-               Value(val),
-               ty,
-               drop.skip_dtor);
+        debug!("schedule_drop_mem(val={:?}, ty={:?}) skip_dtor={}", Value(val), ty, drop.skip_dtor);
 
-        self.schedule_clean(cleanup_scope, drop);
+        Some(self.push_scope(CleanupScope::new(drop)))
     }
 
     /// Issue #23611: Schedules a (deep) drop of the contents of
@@ -201,13 +190,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// `ty`. The scheduled code handles extracting the discriminant
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
-    pub fn schedule_drop_adt_contents(&self,
-                                      cleanup_scope: CustomScopeIndex,
-                                      val: ValueRef,
-                                      ty: Ty<'tcx>) {
+    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>)
+        -> Option<CustomScopeIndex> {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
-        if !self.type_needs_drop(ty) { return; }
+        if !self.type_needs_drop(ty) { return None; }
 
         let drop = DropValue {
             val: val,
@@ -215,26 +202,12 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             skip_dtor: true,
         };
 
-        debug!("schedule_drop_adt_contents({:?}, val={:?}, ty={:?}) skip_dtor={}",
-               cleanup_scope,
+        debug!("schedule_drop_adt_contents(val={:?}, ty={:?}) skip_dtor={}",
                Value(val),
                ty,
                drop.skip_dtor);
 
-        self.schedule_clean(cleanup_scope, drop);
-    }
-
-    /// Schedules a cleanup to occur in the top-most scope, which must be a temporary scope.
-    fn schedule_clean(&self, custom_scope: CustomScopeIndex, cleanup: DropValue<'tcx>) {
-        debug!("schedule_clean_in_custom_scope(custom_scope={})",
-               custom_scope.index);
-
-        assert!(self.is_valid_custom_scope(custom_scope));
-
-        let mut scopes = self.scopes.borrow_mut();
-        let scope = &mut (*scopes)[custom_scope.index];
-        scope.cleanups.push(cleanup);
-        scope.cached_landing_pad = None;
+        Some(self.push_scope(CleanupScope::new(drop)))
     }
 
     /// Returns true if there are pending cleanups that should execute on panic.
@@ -335,11 +308,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         let llbb = self.get_or_create_landing_pad();
 
         // Push the scopes we removed back on:
-        loop {
-            match popped_scopes.pop() {
-                Some(scope) => self.push_scope(scope),
-                None => break
-            }
+        while let Some(scope) = popped_scopes.pop() {
+            self.push_scope(scope);
         }
 
         assert_eq!(self.scopes_len(), orig_scopes_len);
@@ -356,8 +326,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         self.scopes.borrow().len()
     }
 
-    fn push_scope(&self, scope: CleanupScope<'tcx>) {
-        self.scopes.borrow_mut().push(scope)
+    fn push_scope(&self, scope: CleanupScope<'tcx>) -> CustomScopeIndex {
+        let index = self.scopes_len();
+        debug!("pushing custom cleanup scope: {}", index);
+        self.scopes.borrow_mut().push(scope);
+        CustomScopeIndex { index: index }
     }
 
     fn pop_scope(&self) -> CleanupScope<'tcx> {
@@ -401,7 +374,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         let orig_scopes_len = self.scopes_len();
         let mut prev_llbb;
         let mut popped_scopes = vec![];
-        let mut skip = 0;
 
         // First we pop off all the cleanup stacks that are
         // traversed until the exit is reached, pushing them
@@ -450,9 +422,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             // scope for this label. If so, we can stop popping scopes
             // and branch to the cached label, since it contains the
             // cleanups for any subsequent scopes.
-            if let Some((exit, last_cleanup)) = cached_exit {
+            if let Some(exit) = cached_exit {
                 prev_llbb = exit;
-                skip = last_cleanup;
                 break;
             }
         }
@@ -481,24 +452,17 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
         while let Some(mut scope) = popped_scopes.pop() {
-            if !scope.cleanups.is_empty() {
-                let name = scope.block_name("clean");
-                debug!("generating cleanups for {}", name);
+            let name = scope.block_name("clean");
+            debug!("generating cleanup for {}", name);
 
-                let bcx_in = self.build_new_block(&name[..]);
-                let exit_label = label.start(&bcx_in);
-                let next_llbb = bcx_in.llbb();
-                let mut bcx_out = bcx_in;
-                let len = scope.cleanups.len();
-                for cleanup in scope.cleanups.iter().rev().take(len - skip) {
-                    bcx_out = cleanup.trans(bcx_out.funclet(), bcx_out);
-                }
-                skip = 0;
-                exit_label.branch(&bcx_out, prev_llbb);
-                prev_llbb = next_llbb;
+            let bcx_in = self.build_new_block(&name[..]);
+            let exit_label = label.start(&bcx_in);
+            let next_llbb = bcx_in.llbb();
+            let bcx_out = scope.cleanup.trans(bcx_in.funclet(), bcx_in);
+            exit_label.branch(&bcx_out, prev_llbb);
+            prev_llbb = next_llbb;
 
-                scope.add_cached_early_exit(exit_label, prev_llbb, len);
-            }
+            scope.add_cached_early_exit(exit_label, prev_llbb);
             self.push_scope(scope);
         }
 
@@ -510,33 +474,37 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 }
 
 impl<'tcx> CleanupScope<'tcx> {
-    fn new() -> CleanupScope<'tcx> {
+    fn new(drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
         CleanupScope {
-            cleanups: vec![],
-            cached_early_exits: vec![],
+            cleanup: drop_val,
+            cached_early_exit: None,
             cached_landing_pad: None,
         }
     }
 
-    fn cached_early_exit(&self, label: UnwindKind) -> Option<(BasicBlockRef, usize)> {
-        self.cached_early_exits.iter().rev()
-            .find(|e| e.label == label)
-            .map(|e| (e.cleanup_block, e.last_cleanup))
+    fn cached_early_exit(&self, label: UnwindKind) -> Option<BasicBlockRef> {
+        if let Some(e) = self.cached_early_exit {
+            if e.label == label {
+                return Some(e.cleanup_block);
+            }
+        }
+        None
     }
 
     fn add_cached_early_exit(&mut self,
                              label: UnwindKind,
-                             blk: BasicBlockRef,
-                             last_cleanup: usize) {
-        self.cached_early_exits.push(
-            CachedEarlyExit { label: label,
-                              cleanup_block: blk,
-                              last_cleanup: last_cleanup});
+                             blk: BasicBlockRef) {
+        assert!(self.cached_early_exit.is_none());
+        self.cached_early_exit = Some(CachedEarlyExit {
+            label: label,
+            cleanup_block: blk,
+        });
     }
 
     /// True if this scope has cleanups that need unwinding
     fn needs_invoke(&self) -> bool {
-        self.cached_landing_pad.is_some() || !self.cleanups.is_empty()
+        true
+        //self.cached_landing_pad.is_some() || self.cleanups.is_empty()
     }
 
     /// Returns a suitable name to use for the basic block that handles this cleanup scope
