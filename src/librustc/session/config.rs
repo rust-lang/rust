@@ -253,6 +253,7 @@ top_level_options!(
         // Include the debug_assertions flag into dependency tracking, since it
         // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
+        debug_prefix_map: Option<(String, String)> [TRACKED],
         debuginfo: DebugInfoLevel [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
@@ -445,6 +446,7 @@ pub fn basic_options() -> Options {
         libs: Vec::new(),
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
+        debug_prefix_map: None,
         actually_rustdoc: false,
     }
 }
@@ -801,6 +803,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "optimize with possible levels 0-3, s, or z"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the cfg(debug_assertions) directive"),
+    debug_prefix_map: String = ("".to_string(), parse_string, [TRACKED],
+        "remap OLD to NEW in debug info (OLD=NEW)"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "set the inlining threshold for"),
     panic: Option<PanicStrategy> = (None, parse_panic_strategy,
@@ -1423,6 +1427,20 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         }
     };
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
+
+    let debug_prefix_map = if !cg.debug_prefix_map.is_empty() {
+        let mut parts = cg.debug_prefix_map.splitn(2, '=');
+        let old = parts.next().unwrap();
+        let new = match parts.next() {
+            Some(new) => new,
+            None => early_error(error_format,
+                                "-C debug-prefix-map value must be of the format `OLD=NEW`"),
+        };
+        Some((old.to_string(), new.to_string()))
+    } else {
+        None
+    };
+
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
             early_error(error_format, "-g and -C debuginfo both provided");
@@ -1539,6 +1557,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         libs: libs,
         unstable_features: UnstableFeatures::from_environment(),
         debug_assertions: debug_assertions,
+        debug_prefix_map: debug_prefix_map,
         actually_rustdoc: false,
     },
     cfg)
@@ -1714,6 +1733,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
+    impl_dep_tracking_hash_via_hash!(Option<(String, String)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);

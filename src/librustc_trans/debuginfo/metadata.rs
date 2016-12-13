@@ -657,6 +657,15 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
+fn remap_path(sess: &Session, path: &str) -> String {
+    for (old, new) in sess.opts.debug_prefix_map.clone() {
+        if path.starts_with(&old) {
+            return new + &path[old.len()..];
+        }
+    }
+    path.to_string()
+}
+
 pub fn file_metadata(cx: &CrateContext, path: &str, full_path: &Option<String>) -> DIFile {
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess().working_dir.to_str().unwrap();
@@ -669,7 +678,10 @@ pub fn file_metadata(cx: &CrateContext, path: &str, full_path: &Option<String>) 
             }
         });
 
-    file_metadata_(cx, path, file_name, &work_dir)
+    let sess = cx.sess();
+    let remap_file_name = remap_path(sess, file_name);
+    let remap_dir = remap_path(sess, work_dir);
+    file_metadata_(cx, path, &remap_file_name, &remap_dir)
 }
 
 pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
@@ -759,7 +771,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
                              debug_context: &CrateDebugContext,
                              sess: &Session)
                              -> DIDescriptor {
-    let work_dir = &sess.working_dir;
+    let work_dir = sess.working_dir.to_str().unwrap();
     let compile_unit_name = match sess.local_crate_source_file {
         None => fallback_path(scc),
         Some(ref abs_path) => {
@@ -781,12 +793,14 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
         }
     };
 
+    let work_dir = remap_path(sess, work_dir);
+
     debug!("compile_unit_metadata: {:?}", compile_unit_name);
     let producer = format!("rustc version {}",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
-    let work_dir = path2cstr(&work_dir);
+    let work_dir = CString::new(work_dir).unwrap();
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
