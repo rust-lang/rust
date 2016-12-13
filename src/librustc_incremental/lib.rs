@@ -48,7 +48,7 @@ pub mod ich;
 pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::compute_incremental_hashes_map;
 pub use calculate_svh::IncrementalHashesMap;
-pub use calculate_svh::hasher::IchHasher;
+pub use calculate_svh::IchHasher;
 pub use persist::load_dep_graph;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;

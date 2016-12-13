@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_data_structures::stable_hasher;
+use rustc_data_structures::ToHex;
 
 const FINGERPRINT_LENGTH: usize = 16;
 
@@ -44,6 +46,10 @@ impl Fingerprint {
         ((self.0[6] as u64) << 48) |
         ((self.0[7] as u64) << 56)
     }
+
+    pub fn to_hex(&self) -> String {
+        self.0.to_hex()
+    }
 }
 
 impl Encodable for Fingerprint {
@@ -77,5 +83,14 @@ impl ::std::fmt::Display for Fingerprint {
             write!(formatter, "{}", self.0[i])?;
         }
         Ok(())
+    }
+}
+
+
+impl stable_hasher::StableHasherResult for Fingerprint {
+    fn finish(mut hasher: stable_hasher::StableHasher<Self>) -> Self {
+        let mut fingerprint = Fingerprint::zero();
+        fingerprint.0.copy_from_slice(hasher.finalize());
+        fingerprint
     }
 }

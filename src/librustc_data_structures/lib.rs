@@ -44,6 +44,8 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 
+pub use rustc_serialize::hex::ToHex;
+
 pub mod array_vec;
 pub mod accumulate_vec;
 pub mod small_vec;
@@ -59,6 +61,7 @@ pub mod indexed_vec;
 pub mod obligation_forest;
 pub mod snapshot_map;
 pub mod snapshot_vec;
+pub mod stable_hasher;
 pub mod transitive_relation;
 pub mod unify;
 pub mod fnv;

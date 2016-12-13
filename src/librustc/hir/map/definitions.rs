@@ -10,9 +10,9 @@
 
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
@@ -131,7 +131,8 @@ impl DefPath {
     }
 
     pub fn deterministic_hash(&self, tcx: TyCtxt) -> u64 {
-        let mut state = DefaultHasher::new();
+        debug!("deterministic_hash({:?})", self);
+        let mut state = StableHasher::new();
         self.deterministic_hash_to(tcx, &mut state);
         state.finish()
     }
@@ -377,4 +378,3 @@ impl DefPathData {
         self.as_interned_str().to_string()
     }
 }
-
