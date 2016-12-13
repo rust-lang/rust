@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use PanicStrategy;
 use target::TargetOptions;
 use std::default::Default;
 
@@ -40,6 +41,7 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         no_default_libraries: true,
         has_elf_tls: true,
+        panic_strategy: PanicStrategy::Abort,
         .. Default::default()
     }
 }
