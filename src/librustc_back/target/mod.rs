@@ -69,6 +69,7 @@ mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
 mod fuchsia_base;
+mod redox_base;
 
 pub type TargetResult = Result<Target, String>;
 
@@ -183,6 +184,8 @@ supported_targets! {
 
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
+
+    ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
