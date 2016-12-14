@@ -10,9 +10,7 @@
 
 #![deny(warnings)]
 
-#![feature(borrow_state)]
 #![feature(box_syntax)]
-#![feature(cell_extras)]
 #![feature(char_escape_debug)]
 #![feature(const_fn)]
 #![feature(core_private_bignum)]
@@ -32,8 +30,6 @@
 #![feature(try_from)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(iter_max_by)]
-#![feature(iter_min_by)]
 #![feature(ordering_chaining)]
 #![feature(result_unwrap_or_default)]
 #![feature(ptr_unaligned)]

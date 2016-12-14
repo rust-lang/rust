@@ -27,7 +27,7 @@
 //! created.  See `./README.md` for details.
 
 use hir::def_id::DefId;
-use std::cell::{BorrowState, RefCell};
+use std::cell::RefCell;
 use std::env;
 
 use super::DepNode;
@@ -71,15 +71,11 @@ impl ShadowGraph {
 
     pub fn enqueue(&self, message: &DepMessage) {
         if ENABLED {
-            match self.stack.borrow_state() {
-                BorrowState::Unused => {}
-                _ => {
-                    // When we apply edge filters, that invokes the
-                    // Debug trait on DefIds, which in turn reads from
-                    // various bits of state and creates reads! Ignore
-                    // those recursive reads.
-                    return;
-                }
+            if self.stack.try_borrow().is_err() {
+                // When we apply edge filters, that invokes the Debug trait on
+                // DefIds, which in turn reads from various bits of state and
+                // creates reads! Ignore those recursive reads.
+                return;
             }
 
             let mut stack = self.stack.borrow_mut();

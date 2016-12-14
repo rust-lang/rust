@@ -10,7 +10,7 @@
 
 use io::prelude::*;
 
-use cell::{RefCell, BorrowState};
+use cell::RefCell;
 use fmt;
 use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
@@ -638,8 +638,8 @@ pub fn _print(args: fmt::Arguments) {
         LocalKeyState::Destroyed => stdout().write_fmt(args),
         LocalKeyState::Valid => {
             LOCAL_STDOUT.with(|s| {
-                if s.borrow_state() == BorrowState::Unused {
-                    if let Some(w) = s.borrow_mut().as_mut() {
+                if let Ok(mut borrowed) = s.try_borrow_mut() {
+                    if let Some(w) = borrowed.as_mut() {
                         return w.write_fmt(args);
                     }
                 }
