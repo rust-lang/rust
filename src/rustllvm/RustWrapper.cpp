@@ -651,17 +651,32 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     bool isLocalToUnit,
     LLVMValueRef Val,
     LLVMRustMetadataRef Decl = NULL,
-    uint64_t AlignInBits = 0)
-{
-    return wrap(Builder->createGlobalVariable(
-        unwrapDI<DIDescriptor>(Context),
+    uint64_t AlignInBits = 0) {
+    Constant *InitVal = cast<Constant>(unwrap(Val));
+
+#if LLVM_VERSION_GE(4, 0)
+    llvm::DIExpression *InitExpr = nullptr;
+    if (llvm::ConstantInt *IntVal = llvm::dyn_cast<llvm::ConstantInt>(InitVal)) {
+      InitExpr = Builder->createConstantValueExpression(
+          IntVal->getValue().getSExtValue());
+    } else if (llvm::ConstantFP *FPVal = llvm::dyn_cast<llvm::ConstantFP>(InitVal)) {
+        InitExpr = Builder->createConstantValueExpression(
+                FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
+    }
+#endif
+
+    return wrap(Builder->createGlobalVariable(unwrapDI<DIDescriptor>(Context),
         Name,
         LinkageName,
         unwrapDI<DIFile>(File),
         LineNo,
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
-        cast<Constant>(unwrap(Val)),
+#if LLVM_VERSION_GE(4, 0)
+        InitExpr,
+#else
+        InitVal,
+#endif
         unwrapDIptr<MDNode>(Decl)
 #if LLVM_VERSION_GE(4, 0)
         , AlignInBits
