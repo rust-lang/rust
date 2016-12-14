@@ -754,7 +754,7 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum PathScope {
     Global,
     Lexical,
@@ -2292,7 +2292,9 @@ impl<'a> Resolver<'a> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            _ if self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
+            PathResult::Module(..) | PathResult::Failed(..)
+                    if scope == PathScope::Lexical && (ns == TypeNS || path.len() > 1) &&
+                       self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
                 PathResolution {
                     base_def: Def::PrimTy(self.primitive_type_table.primitive_types[&path[0].name]),
                     depth: segments.len() - 1,
