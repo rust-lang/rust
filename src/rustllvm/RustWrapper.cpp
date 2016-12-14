@@ -552,8 +552,13 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateBasicType(
     uint64_t AlignInBits,
     unsigned Encoding) {
     return wrap(Builder->createBasicType(
-        Name, SizeInBits,
-        AlignInBits, Encoding));
+        Name,
+        SizeInBits,
+#if LLVM_VERSION_LE(3, 9)
+        AlignInBits,
+#endif
+        Encoding
+    ));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
@@ -645,8 +650,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMRustMetadataRef Ty,
     bool isLocalToUnit,
     LLVMValueRef Val,
-    LLVMRustMetadataRef Decl = NULL) {
-    return wrap(Builder->createGlobalVariable(unwrapDI<DIDescriptor>(Context),
+    LLVMRustMetadataRef Decl = NULL,
+    uint64_t AlignInBits = 0)
+{
+    return wrap(Builder->createGlobalVariable(
+        unwrapDI<DIDescriptor>(Context),
         Name,
         LinkageName,
         unwrapDI<DIFile>(File),
@@ -654,7 +662,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
         cast<Constant>(unwrap(Val)),
-        unwrapDIptr<MDNode>(Decl)));
+        unwrapDIptr<MDNode>(Decl)
+#if LLVM_VERSION_GE(4, 0)
+        , AlignInBits
+#endif
+    ));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
@@ -667,14 +679,23 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustMetadataRef Ty,
     bool AlwaysPreserve,
     LLVMRustDIFlags Flags,
-    unsigned ArgNo) {
+    unsigned ArgNo,
+    uint64_t AlignInBits)
+{
 #if LLVM_VERSION_GE(3, 8)
     if (Tag == 0x100) { // DW_TAG_auto_variable
         return wrap(Builder->createAutoVariable(
-            unwrapDI<DIDescriptor>(Scope), Name,
+            unwrapDI<DIDescriptor>(Scope),
+            Name,
             unwrapDI<DIFile>(File),
             LineNo,
-            unwrapDI<DIType>(Ty), AlwaysPreserve, from_rust(Flags)));
+            unwrapDI<DIType>(Ty),
+            AlwaysPreserve,
+            from_rust(Flags)
+#if LLVM_VERSION_GE(4,0)
+            , AlignInBits
+#endif
+        ));
     } else {
         return wrap(Builder->createParameterVariable(
             unwrapDI<DIDescriptor>(Scope), Name, ArgNo,
