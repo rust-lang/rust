@@ -460,7 +460,6 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
-    /// #![feature(unicode)]
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {
@@ -501,7 +500,6 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
-    /// #![feature(unicode)]
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {

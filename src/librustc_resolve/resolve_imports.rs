@@ -144,11 +144,9 @@ impl<'a> Resolver<'a> {
                                   -> Result<&'a NameBinding<'a>, Determinacy> {
         self.populate_module_if_necessary(module);
 
-        let resolution = self.resolution(module, name, ns);
-        let resolution = match resolution.borrow_state() {
-            ::std::cell::BorrowState::Unused => resolution.borrow_mut(),
-            _ => return Err(Determined), // This happens when there is a cycle of imports
-        };
+        let resolution = self.resolution(module, name, ns)
+            .try_borrow_mut()
+            .map_err(|_| Determined)?; // This happens when there is a cycle of imports
 
         if let Some(span) = record_used {
             if let Some(binding) = resolution.binding {

@@ -394,6 +394,7 @@ pub struct RefCell<T: ?Sized> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[unstable(feature = "borrow_state", issue = "27733")]
 #[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+#[allow(deprecated)]
 pub enum BorrowState {
     /// The cell is currently being read, there is at least one active `borrow`.
     Reading,
@@ -513,6 +514,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[unstable(feature = "borrow_state", issue = "27733")]
     #[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+    #[allow(deprecated)]
     #[inline]
     pub fn borrow_state(&self) -> BorrowState {
         match self.borrow.get() {
