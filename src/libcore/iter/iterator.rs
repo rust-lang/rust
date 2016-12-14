@@ -1701,7 +1701,7 @@ pub trait Iterator {
     /// assert_eq!(*a.iter().max_by(|x, y| x.cmp(y)).unwrap(), 5);
     /// ```
     #[inline]
-    #[unstable(feature = "iter_max_by", issue="36105")]
+    #[stable(feature = "iter_max_by", since = "1.15.0")]
     fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
@@ -1751,7 +1751,7 @@ pub trait Iterator {
     /// assert_eq!(*a.iter().min_by(|x, y| x.cmp(y)).unwrap(), -10);
     /// ```
     #[inline]
-    #[unstable(feature = "iter_min_by", issue="36105")]
+    #[stable(feature = "iter_min_by", since = "1.15.0")]
     fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
