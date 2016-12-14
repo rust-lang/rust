@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
-use std::fmt::Write;
-use std::hash::{Hash, Hasher};
-use syntax::ast;
-use syntax::symbol::{Symbol, InternedString};
-use ty::TyCtxt;
-use util::nodemap::NodeMap;
 
 //! For each definition, we track the following data.  A definition
 //! here is defined somewhat circularly as "something with a def-id",
@@ -25,11 +16,84 @@ use util::nodemap::NodeMap;
 //! expressions) that are mostly just leftovers.
 
 
+
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::StableHasher;
+use serialize::{Encodable, Decodable, Encoder, Decoder};
+use std::fmt::Write;
+use std::hash::{Hash, Hasher};
+use syntax::ast;
+use syntax::symbol::{Symbol, InternedString};
+use ty::TyCtxt;
+use util::nodemap::NodeMap;
+
+#[derive(Clone)]
+pub struct DefPathTable {
+    index_to_key: Vec<DefKey>,
+    key_to_index: FxHashMap<DefKey, DefIndex>,
+}
+
+impl DefPathTable {
+    fn insert(&mut self, key: DefKey) -> DefIndex {
+        let index = DefIndex::new(self.index_to_key.len());
+        debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
+        self.index_to_key.push(key.clone());
+        self.key_to_index.insert(key, index);
+        index
+    }
+
+    #[inline(always)]
+    pub fn def_key(&self, index: DefIndex) -> DefKey {
+        self.index_to_key[index.as_usize()].clone()
+    }
+
+    #[inline(always)]
+    pub fn def_index_for_def_key(&self, key: &DefKey) -> Option<DefIndex> {
+        self.key_to_index.get(key).cloned()
+    }
+
+    #[inline(always)]
+    pub fn contains_key(&self, key: &DefKey) -> bool {
+        self.key_to_index.contains_key(key)
+    }
+
+    /// Returns the path from the crate root to `index`. The root
+    /// nodes are not included in the path (i.e., this will be an
+    /// empty vector for the crate root). For an inlined item, this
+    /// will be the path of the item in the external crate (but the
+    /// path will begin with the path to the external crate).
+    pub fn def_path(&self, index: DefIndex) -> DefPath {
+        DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
+    }
+}
+
+
+impl Encodable for DefPathTable {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.index_to_key.encode(s)
+    }
+}
+
+impl Decodable for DefPathTable {
+    fn decode<D: Decoder>(d: &mut D) -> Result<DefPathTable, D::Error> {
+        let index_to_key: Vec<DefKey> = Decodable::decode(d)?;
+        let key_to_index = index_to_key.iter()
+                                       .enumerate()
+                                       .map(|(index, key)| (key.clone(), DefIndex::new(index)))
+                                       .collect();
+        Ok(DefPathTable {
+            index_to_key: index_to_key,
+            key_to_index: key_to_index,
+        })
+    }
+}
+
+
 /// The definition table containing node definitions
 #[derive(Clone)]
 pub struct Definitions {
-    data: Vec<DefKey>,
-    key_map: FxHashMap<DefKey, DefIndex>,
+    table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: Vec<ast::NodeId>,
 }
@@ -214,8 +278,10 @@ impl Definitions {
     /// Create new empty definition map.
     pub fn new() -> Definitions {
         Definitions {
-            data: vec![],
-            key_map: FxHashMap(),
+            table: DefPathTable {
+                index_to_key: vec![],
+                key_to_index: FxHashMap(),
+            },
             node_to_def_index: NodeMap(),
             def_index_to_node: vec![],
         }
@@ -223,15 +289,15 @@ impl Definitions {
 
     /// Get the number of definitions.
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.def_index_to_node.len()
     }
 
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.data[index.as_usize()].key.clone()
+        self.table.def_key(index)
     }
 
     pub fn def_index_for_def_key(&self, key: DefKey) -> Option<DefIndex> {
-        self.key_map.get(&key).cloned()
+        self.table.def_index_for_def_key(&key)
     }
 
     /// Returns the path from the crate root to `index`. The root
@@ -257,8 +323,7 @@ impl Definitions {
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            assert!(def_id.index.as_usize() < self.data.len());
-            // Some(self.data[def_id.index.as_usize()].node_id)
+            assert!(def_id.index.as_usize() < self.def_index_to_node.len());
             Some(self.def_index_to_node[def_id.index.as_usize()])
         } else {
             None
@@ -278,7 +343,7 @@ impl Definitions {
                 "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
                 node_id,
                 data,
-                self.data[self.node_to_def_index[&node_id].as_usize()]);
+                self.table.def_key(self.node_to_def_index[&node_id]));
 
         assert!(parent.is_some() ^ match data {
             DefPathData::CrateRoot | DefPathData::InlinedRoot(_) => true,
@@ -295,21 +360,18 @@ impl Definitions {
             }
         };
 
-        while self.key_map.contains_key(&key) {
+        while self.table.contains_key(&key) {
             key.disambiguated_data.disambiguator += 1;
         }
 
         debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let index = DefIndex::new(self.data.len());
-        self.data.push(DefData { key: key.clone() });
-        self.def_index_to_node.push(node_id);
-        debug!("create_def_with_parent: node_to_def_index[{:?}] = {:?}", node_id, index);
+        let index = self.table.insert(key);
+        debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
         self.node_to_def_index.insert(node_id, index);
-        debug!("create_def_with_parent: key_map[{:?}] = {:?}", key, index);
-        self.key_map.insert(key, index);
-
+        assert_eq!(index.as_usize(), self.def_index_to_node.len());
+        self.def_index_to_node.push(node_id);
 
         index
     }
