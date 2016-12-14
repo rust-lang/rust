@@ -363,6 +363,7 @@ impl<T> Rc<T> {
     #[unstable(feature = "rc_would_unwrap",
                reason = "just added for niche usecase",
                issue = "28356")]
+    #[rustc_deprecated(since = "1.15.0", reason = "too niche; use `strong_count` instead")]
     pub fn would_unwrap(this: &Self) -> bool {
         Rc::strong_count(&this) == 1
     }
@@ -482,8 +483,6 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_counts)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -492,8 +491,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(1, Rc::weak_count(&five));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_counts", reason = "not clearly useful",
-               issue = "28356")]
+    #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
         this.weak() - 1
     }
@@ -503,8 +501,6 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_counts)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -513,8 +509,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(2, Rc::strong_count(&five));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_counts", reason = "not clearly useful",
-               issue = "28356")]
+    #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
         this.strong()
     }
@@ -538,6 +533,8 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[unstable(feature = "rc_counts", reason = "uniqueness has unclear meaning",
                issue = "28356")]
+    #[rustc_deprecated(since = "1.15.0",
+                       reason = "too niche; use `strong_count` and `weak_count` instead")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
