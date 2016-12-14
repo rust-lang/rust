@@ -301,6 +301,7 @@ pub enum ColorConfig {
 
 pub struct TestOpts {
     pub filter: Option<String>,
+    pub filter_exact: bool,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
@@ -317,6 +318,7 @@ impl TestOpts {
     fn new() -> TestOpts {
         TestOpts {
             filter: None,
+            filter_exact: false,
             run_ignored: false,
             run_tests: false,
             bench_benchmarks: false,
@@ -348,6 +350,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
                                      be used multiple times)","FILTER"),
       getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
+      getopts::optflag("", "exact", "Exactly match filters rather than by substring"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
@@ -407,6 +410,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let run_ignored = matches.opt_present("ignored");
     let quiet = matches.opt_present("quiet");
+    let exact = matches.opt_present("exact");
 
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
@@ -448,6 +452,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let test_opts = TestOpts {
         filter: filter,
+        filter_exact: exact,
         run_ignored: run_ignored,
         run_tests: run_tests,
         bench_benchmarks: bench_benchmarks,
@@ -1118,14 +1123,26 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         None => filtered,
         Some(ref filter) => {
             filtered.into_iter()
-                    .filter(|test| test.desc.name.as_slice().contains(&filter[..]))
+                    .filter(|test| {
+                        if opts.filter_exact {
+                            test.desc.name.as_slice() == &filter[..]
+                        } else {
+                            test.desc.name.as_slice().contains(&filter[..])
+                        }
+                    })
                     .collect()
         }
     };
 
     // Skip tests that match any of the skip filters
     filtered = filtered.into_iter()
-        .filter(|t| !opts.skip.iter().any(|sf| t.desc.name.as_slice().contains(&sf[..])))
+        .filter(|t| !opts.skip.iter().any(|sf| {
+                if opts.filter_exact {
+                    t.desc.name.as_slice() == &sf[..]
+                } else {
+                    t.desc.name.as_slice().contains(&sf[..])
+                }
+            }))
         .collect();
 
     // Maybe pull out the ignored test and unignore them
@@ -1652,6 +1669,77 @@ mod tests {
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(), "1");
         assert!(!filtered[0].desc.ignore);
+    }
+
+    #[test]
+    pub fn exact_filter_match() {
+        fn tests() -> Vec<TestDescAndFn> {
+            vec!["base",
+                 "base::test",
+                 "base::test1",
+                 "base::test2",
+            ].into_iter()
+            .map(|name| TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName(name),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                },
+                testfn: DynTestFn(Box::new(move |()| {}))
+            })
+            .collect()
+        }
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("base".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 4);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("bas".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 4);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("::test".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 3);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("base::test".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 3);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base".into()),
+                filter_exact: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("bas".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 0);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("::test".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 0);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base::test".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
     }
 
     #[test]
