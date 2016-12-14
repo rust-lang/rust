@@ -664,7 +664,8 @@ pub mod reimpls {
 
             if exponent < 0 { return (0 as i128_).to_ret(); }
             if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
-                return (if sign > 0.0 { <$outty>::max_value() } else { <$outty>::min_value() }).to_ret();
+                let ret = if sign > 0.0 { <$outty>::max_value() } else { <$outty>::min_value() };
+                return ret.to_ret();
             }
             let r = if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
                 (mantissa as $outty)
