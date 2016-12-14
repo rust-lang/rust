@@ -316,7 +316,7 @@ pub struct Iter<'a, T: 'a> {
 ///
 /// This Iterator will never block the caller in order to wait for data to
 /// become available. Instead, it will return `None`.
-#[unstable(feature = "receiver_try_iter", issue = "34931")]
+#[stable(feature = "receiver_try_iter", since = "1.15.0")]
 pub struct TryIter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
@@ -1008,7 +1008,7 @@ impl<T> Receiver<T> {
     /// It will return `None` if there are no more pending values or if the
     /// channel has hung up. The iterator will never `panic!` or block the
     /// user by waiting for values.
-    #[unstable(feature = "receiver_try_iter", issue = "34931")]
+    #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<T> {
         TryIter { rx: self }
     }
@@ -1108,7 +1108,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
 }
 
-#[unstable(feature = "receiver_try_iter", issue = "34931")]
+#[stable(feature = "receiver_try_iter", since = "1.15.0")]
 impl<'a, T> Iterator for TryIter<'a, T> {
     type Item = T;
 
