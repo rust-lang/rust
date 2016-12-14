@@ -689,7 +689,33 @@ pub mod reimpls {
         float_as_signed!(a, f32, i128_)
     }
 
-    #[export_name="__floattidf"]
+    // LLVM expectations for ABI on windows are pure madness.
+
+    #[cfg(not(stage0))]
+    #[cfg_attr(windows, export_name="__floattidf")]
+    pub extern "C" fn i128_as_f64_win(alow: u64, ahigh: i64) -> f64 {
+        i128_as_f64(i128_::from_parts(alow, ahigh))
+    }
+
+    #[cfg(not(stage0))]
+    #[cfg_attr(windows, export_name="__floattisf")]
+    pub extern "C" fn i128_as_f32_win(alow: u64, ahigh: i64) -> f32 {
+        i128_as_f32(i128_::from_parts(alow, ahigh))
+    }
+
+    #[cfg(not(stage0))]
+    #[cfg_attr(windows, export_name="__floatuntidf")]
+    pub extern "C" fn u128_as_f64_win(alow: u64, ahigh: u64) -> f64 {
+        u128_as_f64(u128_::from_parts(alow, ahigh))
+    }
+
+    #[cfg(not(stage0))]
+    #[cfg_attr(windows, export_name="__floatuntisf")]
+    pub extern "C" fn u128_as_f32_win(alow: u64, ahigh: u64) -> f32 {
+        u128_as_f32(u128_::from_parts(alow, ahigh))
+    }
+
+    #[cfg_attr(any(not(windows),stage0),export_name="__floattidf")]
     pub extern "C" fn i128_as_f64(a: i128_) -> f64 {
         match a.signum() {
             1 => u128_as_f64(a.uabs()),
@@ -698,7 +724,7 @@ pub mod reimpls {
         }
     }
 
-    #[export_name="__floattisf"]
+    #[cfg_attr(any(not(windows),stage0),export_name="__floattisf")]
     pub extern "C" fn i128_as_f32(a: i128_) -> f32 {
         match a.signum() {
             1 => u128_as_f32(a.uabs()),
@@ -707,7 +733,7 @@ pub mod reimpls {
         }
     }
 
-    #[export_name="__floatuntidf"]
+    #[cfg_attr(any(not(windows),stage0),export_name="__floatuntidf")]
     pub extern "C" fn u128_as_f64(mut a: u128_) -> f64 {
         use ::core::f64::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
@@ -743,7 +769,7 @@ pub mod reimpls {
         }
     }
 
-    #[export_name="__floatuntisf"]
+    #[cfg_attr(any(not(windows),stage0),export_name="__floatuntisf")]
     pub extern "C" fn u128_as_f32(mut a: u128_) -> f32 {
         use ::core::f32::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
