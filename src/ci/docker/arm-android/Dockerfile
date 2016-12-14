@@ -25,8 +25,13 @@ COPY install-ndk.sh install-sdk.sh accept-licenses.sh /android/
 RUN sh /android/install-ndk.sh
 RUN sh /android/install-sdk.sh
 
+RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
+    dpkg -i dumb-init_*.deb && \
+    rm dumb-init_*.deb
+
 COPY start-emulator.sh /android/
-ENTRYPOINT ["/android/start-emulator.sh"]
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/android/start-emulator.sh"]
 
 ENV TARGETS=arm-linux-androideabi
 ENV TARGETS=$TARGETS,i686-linux-android
