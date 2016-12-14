@@ -462,6 +462,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         LocalVariable    |
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
+    let align = ::type_of::align_of(cx, variable_type);
 
     let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
     match (variable_access, &[][..]) {
@@ -478,7 +479,9 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
-                    argument_index)
+                    argument_index,
+                    align as u64,
+                )
             };
             source_loc::set_debug_location(cx, None,
                 InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));

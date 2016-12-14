@@ -48,7 +48,7 @@ use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 
 use std::env;
-use std::fs::{self, File};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
@@ -832,7 +832,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         },
     };
 
-    if let Err(e) = fs::create_dir_all(&root_path) {
+    if let Err(e) = rustc::util::fs::create_dir_racy(&root_path) {
         tcx.sess.err(&format!("Could not create directory {}: {}",
                               root_path.display(),
                               e));

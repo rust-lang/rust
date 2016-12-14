@@ -18,6 +18,11 @@ WORKDIR /build/
 COPY build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
 
+RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
+    dpkg -i dumb-init_*.deb && \
+    rm dumb-init_*.deb
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
 ENV RUST_CONFIGURE_ARGS \
       --target=x86_64-unknown-linux-musl \
       --musl-root-x86_64=/musl-x86_64

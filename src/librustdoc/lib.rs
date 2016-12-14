@@ -54,6 +54,9 @@ extern crate serialize as rustc_serialize; // used by deriving
 use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
 use std::env;
+use std::fmt::Display;
+use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process;
 use std::sync::mpsc::channel;
@@ -183,7 +186,7 @@ pub fn main_args(args: &[String]) -> isize {
     let matches = match getopts::getopts(&args[1..], &all_groups) {
         Ok(m) => m,
         Err(err) => {
-            println!("{}", err);
+            print_error(err);
             return 1;
         }
     };
@@ -211,11 +214,11 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     if matches.free.is_empty() {
-        println!("expected an input file to act on");
+        print_error("missing file operand");
         return 1;
     }
     if matches.free.len() > 1 {
-        println!("only one input file may be specified");
+        print_error("too many file operands");
         return 1;
     }
     let input = &matches.free[0];
@@ -227,7 +230,7 @@ pub fn main_args(args: &[String]) -> isize {
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
         Err(err) => {
-            println!("{}", err);
+            print_error(err);
             return 1;
         }
     };
@@ -247,14 +250,16 @@ pub fn main_args(args: &[String]) -> isize {
 
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
-            println!("{}", "--extend-css option must take a css file as input");
+            writeln!(
+                &mut io::stderr(),
+                "rustdoc: option --extend-css argument must be a file."
+            ).unwrap();
             return 1;
         }
     }
 
     let external_html = match ExternalHtml::load(
-            &matches.opt_strs("html-in-header"),
-            &matches.opt_strs("html-before-content"),
+            &matches.opt_strs("html-in-header"), &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content")) {
         Some(eh) => eh,
         None => return 3
@@ -291,15 +296,24 @@ pub fn main_args(args: &[String]) -> isize {
                 0
             }
             Some(s) => {
-                println!("unknown output format: {}", s);
+                print_error(format!("unknown output format: {}", s));
                 1
             }
         }
     });
     res.unwrap_or_else(|s| {
-        println!("input error: {}", s);
+        print_error(format!("input error: {}", s));
         1
     })
+}
+
+/// Prints an uniformised error message on the standard error output
+fn print_error<T>(error_message: T) where T: Display {
+    writeln!(
+        &mut io::stderr(),
+        "rustdoc: {}\nTry 'rustdoc --help' for more information.",
+        error_message
+    ).unwrap();
 }
 
 /// Looks inside the command line arguments to extract the relevant input format

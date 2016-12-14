@@ -52,13 +52,15 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+	/* Avoid using locally installed font because bad versions are in circulation:
+	 * see https://github.com/rust-lang/rust/issues/24355 */
+	src: url("SourceCodePro-Regular.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.woff") format('woff');
 }
 
 * {

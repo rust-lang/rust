@@ -499,6 +499,19 @@ impl UdpSocket {
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
     /// calls.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// match socket.take_error() {
+    ///     Ok(Some(error)) => println!("UdpSocket error: {:?}", error),
+    ///     Ok(None) => println!("No error"),
+    ///     Err(error) => println!("UdpSocket.take_error failed: {:?}", error),
+    /// }
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -507,6 +520,15 @@ impl UdpSocket {
     /// Connects this UDP socket to a remote address, allowing the `send` and
     /// `recv` syscalls to be used to send data and also applies filters to only
     /// receive data from the specified address.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("127.0.0.1:8080").expect("connect function failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         super::each_addr(addr, |addr| self.0.connect(addr))
@@ -514,8 +536,20 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// The `connect` method will connect this socket to a remote address. This
+    /// The [`connect()`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect()`]: #method.connect
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("127.0.0.1:8080").expect("connect function failed");
+    /// socket.send(&[0, 1, 2]).expect("couldn't send message");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.send(buf)
@@ -526,6 +560,20 @@ impl UdpSocket {
     ///
     /// The `connect` method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("127.0.0.1:8080").expect("connect function failed");
+    /// let mut buf = [0; 10];
+    /// match socket.recv(&mut buf) {
+    ///     Ok(received) => println!("received {} bytes", received),
+    ///     Err(e) => println!("recv function failed: {:?}", e),
+    /// }
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.recv(buf)
@@ -535,6 +583,15 @@ impl UdpSocket {
     ///
     /// On Unix this corresponds to calling fcntl, and on Windows this
     /// corresponds to calling ioctlsocket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_nonblocking(true).expect("set_nonblocking call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)

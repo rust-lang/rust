@@ -23,6 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross \
   gcc-s390x-linux-gnu libc6-dev-s390x-cross
 
+RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
+    dpkg -i dumb-init_*.deb && \
+    rm dumb-init_*.deb
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
 ENV TARGETS=aarch64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,arm-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-gnueabihf

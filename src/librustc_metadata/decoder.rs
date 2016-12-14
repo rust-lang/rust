@@ -44,7 +44,7 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, NodeId};
 use syntax::codemap;
-use syntax_pos::{self, Span, BytePos, Pos};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -515,7 +515,12 @@ impl<'tcx> EntryKind<'tcx> {
 }
 
 impl<'a, 'tcx> CrateMetadata {
+    fn is_proc_macro(&self, id: DefIndex) -> bool {
+        self.proc_macros.is_some() && id != CRATE_DEF_INDEX
+    }
+
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+        assert!(!self.is_proc_macro(item_id));
         self.root.index.lookup(self.blob.raw_bytes(), item_id)
     }
 
@@ -548,18 +553,17 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_def(&self, index: DefIndex) -> Option<Def> {
-        if self.proc_macros.is_some() {
-            Some(match index {
-                CRATE_DEF_INDEX => Def::Mod(self.local_def_id(index)),
-                _ => Def::Macro(self.local_def_id(index)),
-            })
-        } else {
-            self.entry(index).kind.to_def(self.local_def_id(index))
+        match self.is_proc_macro(index) {
+            true => Some(Def::Macro(self.local_def_id(index))),
+            false => self.entry(index).kind.to_def(self.local_def_id(index)),
         }
     }
 
     pub fn get_span(&self, index: DefIndex, sess: &Session) -> Span {
-        self.entry(index).span.decode((self, sess))
+        match self.is_proc_macro(index) {
+            true => DUMMY_SP,
+            false => self.entry(index).span.decode((self, sess)),
+        }
     }
 
     pub fn get_trait_def(&self,
@@ -670,23 +674,23 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
-        match self.proc_macros {
-            Some(_) if id != CRATE_DEF_INDEX => None,
-            _ => self.entry(id).stability.map(|stab| stab.decode(self)),
+        match self.is_proc_macro(id) {
+            true => None,
+            false => self.entry(id).stability.map(|stab| stab.decode(self)),
         }
     }
 
     pub fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
-        match self.proc_macros {
-            Some(_) if id != CRATE_DEF_INDEX => None,
-            _ => self.entry(id).deprecation.map(|depr| depr.decode(self)),
+        match self.is_proc_macro(id) {
+            true => None,
+            false => self.entry(id).deprecation.map(|depr| depr.decode(self)),
         }
     }
 
     pub fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
-        match self.proc_macros {
-            Some(_) => ty::Visibility::Public,
-            _ => self.entry(id).visibility,
+        match self.is_proc_macro(id) {
+            true => ty::Visibility::Public,
+            false => self.entry(id).visibility,
         }
     }
 
@@ -832,6 +836,7 @@ impl<'a, 'tcx> CrateMetadata {
                               id: DefIndex)
                               -> Option<&'tcx InlinedItem> {
         debug!("Looking up item: {:?}", id);
+        if self.is_proc_macro(id) { return None; }
         let item_doc = self.entry(id);
         let item_did = self.local_def_id(id);
         let parent_def_id = self.local_def_id(self.def_key(id).parent.unwrap());
@@ -844,6 +849,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
+        !self.is_proc_macro(id) &&
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
@@ -874,7 +880,10 @@ impl<'a, 'tcx> CrateMetadata {
                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: DefIndex)
                               -> Option<Mir<'tcx>> {
-        self.entry(id).mir.map(|mir| mir.decode((self, tcx)))
+        match self.is_proc_macro(id) {
+            true => None,
+            false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
+        }
     }
 
     pub fn get_associated_item(&self, id: DefIndex) -> Option<ty::AssociatedItem> {
@@ -950,7 +959,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_item_attrs(&self, node_id: DefIndex) -> Vec<ast::Attribute> {
-        if self.proc_macros.is_some() && node_id != CRATE_DEF_INDEX {
+        if self.is_proc_macro(node_id) {
             return Vec::new();
         }
         // The attributes for a tuple struct are attached to the definition, not the ctor;
@@ -1131,7 +1140,18 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn def_key(&self, id: DefIndex) -> hir_map::DefKey {
         debug!("def_key: id={:?}", id);
-        self.entry(id).def_key.decode(self)
+        if self.is_proc_macro(id) {
+            let name = self.proc_macros.as_ref().unwrap()[id.as_usize() - 1].0;
+            hir_map::DefKey {
+                parent: Some(CRATE_DEF_INDEX),
+                disambiguated_data: hir_map::DisambiguatedDefPathData {
+                    data: hir_map::DefPathData::MacroDef(name.as_str()),
+                    disambiguator: 0,
+                },
+            }
+        } else {
+            self.entry(id).def_key.decode(self)
+        }
     }
 
     // Returns the path leading to the thing with this `id`. Note that
@@ -1139,7 +1159,7 @@ impl<'a, 'tcx> CrateMetadata {
     // returns `None`
     pub fn def_path(&self, id: DefIndex) -> Option<hir_map::DefPath> {
         debug!("def_path(id={:?})", id);
-        if self.maybe_entry(id).is_some() {
+        if self.is_proc_macro(id) || self.maybe_entry(id).is_some() {
             Some(hir_map::DefPath::make(self.cnum, id, |parent| self.def_key(parent)))
         } else {
             None
