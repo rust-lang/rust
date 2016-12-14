@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libedit-dev \
   zlib1g-dev
 
+RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
+    dpkg -i dumb-init_*.deb && \
+    rm dumb-init_*.deb
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-3.7
