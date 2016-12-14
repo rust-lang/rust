@@ -40,6 +40,8 @@ pub fn opts() -> TargetOptions {
         target_family: Some("redox".to_string()),
         linker_is_gnu: true,
         no_default_libraries: true,
+        lib_allocation_crate: "alloc_system".to_string(),
+        exe_allocation_crate: "alloc_system".to_string(),
         has_elf_tls: true,
         panic_strategy: PanicStrategy::Abort,
         .. Default::default()
