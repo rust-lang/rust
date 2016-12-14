@@ -207,14 +207,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     ///
     /// (The cleanups and resume instruction are created by
     /// `trans_cleanups_to_exit_scope()`, not in this function itself.)
-    pub fn get_landing_pad(&'blk self, scope: &mut Option<CleanupScope<'tcx>>) -> BasicBlockRef {
-        // TODO: Factor out and take a CleanupScope.
-        assert!(scope.is_some());
-
+    pub fn get_landing_pad(&'blk self, scope: &mut CleanupScope<'tcx>) -> BasicBlockRef {
         debug!("get_landing_pad");
 
         // Check if a landing pad block exists; if not, create one.
-        let mut scope = scope.as_mut().unwrap();
         let mut pad_bcx = match scope.cached_landing_pad {
             Some(llbb) => return llbb,
             None => {
@@ -270,28 +266,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         return pad_bcx.llbb();
     }
 
-    fn generate_resume_block(&self, label: UnwindKind) -> BasicBlockRef {
-        // Generate a block that will resume unwinding to the calling function
-        let bcx = self.build_new_block("resume");
-        match label {
-            UnwindKind::LandingPad => {
-                let addr = self.landingpad_alloca.get().unwrap();
-                let lp = bcx.load(addr);
-                Lifetime::End.call(&bcx, addr);
-                if !bcx.sess().target.target.options.custom_unwind_resume {
-                    bcx.resume(lp);
-                } else {
-                    let exc_ptr = bcx.extract_value(lp, 0);
-                    bcx.call(bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr], None);
-                }
-            }
-            UnwindKind::CleanupPad(_) => {
-                bcx.cleanup_ret(bcx.cleanup_pad(None, &[]), None);
-            }
-        }
-        bcx.llbb()
-    }
-
     /// Used when the caller wishes to jump to an early exit, such as a return,
     /// break, continue, or unwind. This function will generate all cleanups
     /// between the top of the stack and the exit `label` and return a basic
@@ -306,7 +280,27 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         // Check if we have already cached the unwinding of this
         // scope for this label. If so, we can just branch to the cached block.
-        let exit_llbb = cached_exit.unwrap_or_else(|| self.generate_resume_block(label));
+        let exit_llbb = cached_exit.unwrap_or_else(|| {
+            // Generate a block that will resume unwinding to the calling function
+            let bcx = self.build_new_block("resume");
+            match label {
+                UnwindKind::LandingPad => {
+                    let addr = self.landingpad_alloca.get().unwrap();
+                    let lp = bcx.load(addr);
+                    Lifetime::End.call(&bcx, addr);
+                    if !bcx.sess().target.target.options.custom_unwind_resume {
+                        bcx.resume(lp);
+                    } else {
+                        let exc_ptr = bcx.extract_value(lp, 0);
+                        bcx.call(bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr], None);
+                    }
+                }
+                UnwindKind::CleanupPad(_) => {
+                    bcx.cleanup_ret(bcx.cleanup_pad(None, &[]), None);
+                }
+            }
+            bcx.llbb()
+        });
 
         let name = scope.block_name("clean");
         debug!("generating cleanup for {}", name);
