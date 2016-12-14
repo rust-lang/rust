@@ -108,7 +108,6 @@ Arguments:
     tests that should be compiled and run. For example:
 
         ./x.py test src/test/run-pass
-        ./x.py test src/test/run-pass/assert-*
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0
 

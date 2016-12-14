@@ -22,7 +22,7 @@ Note that if you're on Unix you should be able to execute the script directly:
 ./x.py build
 ```
 
-The script accepts commands, flags, and filters to determine what to do:
+The script accepts commands, flags, and arguments to determine what to do:
 
 * `build` - a general purpose command for compiling code. Alone `build` will
   bootstrap the entire compiler, and otherwise arguments passed indicate what to
@@ -54,7 +54,7 @@ The script accepts commands, flags, and filters to determine what to do:
   ./x.py test src/test/run-pass
 
   # execute only some tests in the run-pass test suite
-  ./x.py test src/test/run-pass --filter my-filter
+  ./x.py test src/test/run-pass --test-args substring-of-test-name
 
   # execute tests in the standard library in stage0
   ./x.py test --stage 0 src/libstd
