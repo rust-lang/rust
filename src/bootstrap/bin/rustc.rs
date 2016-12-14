@@ -179,7 +179,7 @@ fn main() {
         // Only do this for the nightly and dev channels, we don't want to increase
         // the size of stable libraries, and noone is able to use MIR on stable anyway
         if channel != "stable" && channel != "beta" && stage != "0" {
-            cmd.arg("-Zalways_encode_mir");
+            cmd.arg("-Zalways-encode-mir");
         }
     }
 
