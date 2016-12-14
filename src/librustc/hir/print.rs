@@ -673,7 +673,7 @@ impl<'a> State<'a> {
                     word(&mut self.s, "as")?;
                     space(&mut self.s)?;
                 }
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
@@ -684,10 +684,10 @@ impl<'a> State<'a> {
 
                 match kind {
                     hir::UseKind::Single => {
-                        if path.segments.last().unwrap().name != item.name {
+                        if path.segments.last().unwrap().name != item.name.node {
                             space(&mut self.s)?;
                             self.word_space("as")?;
-                            self.print_name(item.name)?;
+                            self.print_name(item.name.node)?;
                         }
                         word(&mut self.s, ";")?;
                     }
@@ -702,7 +702,7 @@ impl<'a> State<'a> {
                 if m == hir::MutMutable {
                     self.word_space("mut")?;
                 }
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
                 space(&mut self.s)?;
@@ -715,7 +715,7 @@ impl<'a> State<'a> {
             }
             hir::ItemConst(ref ty, ref expr) => {
                 self.head(&visibility_qualified(&item.vis, "const"))?;
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
                 space(&mut self.s)?;
@@ -732,7 +732,7 @@ impl<'a> State<'a> {
                               unsafety,
                               constness,
                               abi,
-                              Some(item.name),
+                              Some(item.name.node),
                               typarams,
                               &item.vis)?;
                 word(&mut self.s, " ")?;
@@ -742,7 +742,7 @@ impl<'a> State<'a> {
             }
             hir::ItemMod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 self.nbsp()?;
                 self.bopen()?;
                 self.print_mod(_mod, &item.attrs)?;
@@ -759,7 +759,7 @@ impl<'a> State<'a> {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 self.print_generics(params)?;
                 self.end()?; // end the inner ibox
 
@@ -771,15 +771,15 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer ibox
             }
             hir::ItemEnum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.name, item.span, &item.vis)?;
+                self.print_enum_def(enum_definition, params, item.name.node, item.span, &item.vis)?;
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
                 self.head(&visibility_qualified(&item.vis, "struct"))?;
-                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+                self.print_struct(struct_def, generics, item.name.node, item.span, true)?;
             }
             hir::ItemUnion(ref struct_def, ref generics) => {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
-                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+                self.print_struct(struct_def, generics, item.name.node, item.span, true)?;
             }
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
@@ -841,7 +841,7 @@ impl<'a> State<'a> {
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
-                self.print_name(item.name)?;
+                self.print_name(item.name.node)?;
                 self.print_generics(generics)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {

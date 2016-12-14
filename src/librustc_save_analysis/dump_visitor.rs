@@ -658,7 +658,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
 
         for variant in &enum_definition.variants {
-            let name = variant.node.name.name.to_string();
+            let name = variant.node.name.node.name.to_string();
             let mut qualname = enum_data.qualname.clone();
             qualname.push_str("::");
             qualname.push_str(&name);
@@ -1113,7 +1113,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
                 self.process_assoc_const(trait_item.id,
-                                         trait_item.ident.name,
+                                         trait_item.ident.node.name,
                                          trait_item.span,
                                          &ty,
                                          &expr,
@@ -1125,7 +1125,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.process_method(sig,
                                     body.as_ref().map(|x| &**x),
                                     trait_item.id,
-                                    trait_item.ident.name,
+                                    trait_item.ident.node.name,
                                     Visibility::Public,
                                     &trait_item.attrs,
                                     trait_item.span);
@@ -1141,7 +1141,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         match impl_item.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(impl_item.id,
-                                         impl_item.ident.name,
+                                         impl_item.ident.node.name,
                                          impl_item.span,
                                          &ty,
                                          &expr,
@@ -1153,7 +1153,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.process_method(sig,
                                     Some(body),
                                     impl_item.id,
-                                    impl_item.ident.name,
+                                    impl_item.ident.node.name,
                                     From::from(&impl_item.vis),
                                     &impl_item.attrs,
                                     impl_item.span);

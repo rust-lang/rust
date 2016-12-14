@@ -414,15 +414,19 @@ impl<'a> TraitDef<'a> {
             Annotatable::Item(ref item) => {
                 let newitem = match item.node {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
-                        self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch)
+                        self.expand_struct_def(cx,
+                                               &struct_def,
+                                               item.ident.node,
+                                               generics,
+                                               from_scratch)
                     }
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
                         self.expand_enum_def(cx, enum_def, &item.attrs,
-                                             item.ident, generics, from_scratch)
+                                             item.ident.node, generics, from_scratch)
                     }
                     ast::ItemKind::Union(ref struct_def, ref generics) => {
                         if self.supports_unions {
-                            self.expand_struct_def(cx, &struct_def, item.ident,
+                            self.expand_struct_def(cx, &struct_def, item.ident.node,
                                                    generics, from_scratch)
                         } else {
                             cx.span_err(mitem.span,
@@ -502,7 +506,7 @@ impl<'a> TraitDef<'a> {
             ast::ImplItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
-                ident: ident,
+                ident: ident.dummy_spanned(),
                 vis: ast::Visibility::Inherited,
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
@@ -921,7 +925,7 @@ impl<'a> MethodDef<'a> {
             span: trait_.span,
             vis: ast::Visibility::Inherited,
             defaultness: ast::Defaultness::Final,
-            ident: method_ident,
+            ident: method_ident.dummy_spanned(),
             node: ast::ImplItemKind::Method(ast::MethodSig {
                                                 generics: fn_generics,
                                                 abi: abi,
@@ -1459,7 +1463,7 @@ impl<'a> MethodDef<'a> {
         let summary = enum_def.variants
             .iter()
             .map(|v| {
-                let ident = v.node.name;
+                let ident = v.node.name.node;
                 let sp = Span { expn_id: trait_.span.expn_id, ..v.span };
                 let summary = trait_.summarise_struct(cx, &v.node.data);
                 (ident, sp, summary)
@@ -1578,7 +1582,7 @@ impl<'a> TraitDef<'a> {
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
         let sp = Span { expn_id: self.span.expn_id, ..variant.span };
-        let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
+        let variant_path = cx.path(sp, vec![enum_ident, variant_ident.node]);
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }
 }

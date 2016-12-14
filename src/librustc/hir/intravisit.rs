@@ -411,7 +411,7 @@ pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef)
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
-    visitor.visit_name(item.span, item.name);
+    visitor.visit_name(item.span, item.name.node);
     match item.node {
         ItemExternCrate(opt_name) => {
             visitor.visit_id(item.id);
@@ -428,7 +428,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_expr(expr);
         }
         ItemFn(ref declaration, unsafety, constness, abi, ref generics, body_id) => {
-            visitor.visit_fn(FnKind::ItemFn(item.name,
+            visitor.visit_fn(FnKind::ItemFn(item.name.node,
                                             generics,
                                             unsafety,
                                             constness,
@@ -475,7 +475,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemUnion(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_id(item.id);
-            visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
+            visitor.visit_variant_data(struct_definition,
+                                       item.name.node,
+                                       generics,
+                                       item.id,
+                                       item.span);
         }
         ItemTrait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_id(item.id);

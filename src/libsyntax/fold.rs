@@ -21,7 +21,7 @@
 use ast::*;
 use ast;
 use syntax_pos::Span;
-use codemap::{Spanned, respan};
+use codemap::{Spanned, respan, dummy_spanned};
 use parse::token;
 use ptr::P;
 use symbol::keywords;
@@ -142,6 +142,10 @@ pub trait Folder : Sized {
 
     fn fold_ident(&mut self, i: Ident) -> Ident {
         noop_fold_ident(i, self)
+    }
+
+    fn fold_spanned_ident(&mut self, i: SpannedIdent) -> SpannedIdent {
+        noop_fold_spanned_ident(i, self)
     }
 
     fn fold_usize(&mut self, i: usize) -> usize {
@@ -426,6 +430,10 @@ pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
 }
 
 pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
+    i
+}
+
+pub fn noop_fold_spanned_ident<T: Folder>(i: SpannedIdent, _: &mut T) -> SpannedIdent {
     i
 }
 
@@ -922,7 +930,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
                                        -> SmallVector<TraitItem> {
     SmallVector::one(TraitItem {
         id: folder.new_id(i.id),
-        ident: folder.fold_ident(i.ident),
+        ident: folder.fold_spanned_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
         node: match i.node {
             TraitItemKind::Const(ty, default) => {
@@ -950,7 +958,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
     SmallVector::one(ImplItem {
         id: folder.new_id(i.id),
         vis: folder.fold_vis(i.vis),
-        ident: folder.fold_ident(i.ident),
+        ident: folder.fold_spanned_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
         defaultness: i.defaultness,
         node: match i.node  {
@@ -978,7 +986,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod 
 pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, mut exported_macros, span}: Crate,
                                   folder: &mut T) -> Crate {
     let mut items = folder.fold_item(P(ast::Item {
-        ident: keywords::Invalid.ident(),
+        ident: dummy_spanned(keywords::Invalid.ident()),
         attrs: attrs,
         id: ast::DUMMY_NODE_ID,
         vis: ast::Visibility::Public,
@@ -1026,7 +1034,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
     Item {
         id: folder.new_id(id),
         vis: folder.fold_vis(vis),
-        ident: folder.fold_ident(ident),
+        ident: respan(ident.span, folder.fold_ident(ident.node)),
         attrs: fold_attrs(attrs, folder),
         node: folder.fold_item_kind(node),
         span: folder.new_span(span)

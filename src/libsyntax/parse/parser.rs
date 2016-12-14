@@ -71,7 +71,7 @@ bitflags! {
     }
 }
 
-type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
+type ItemInfo = (ast::SpannedIdent, ItemKind, Option<Vec<Attribute>>);
 
 /// How to parse a path. There are three different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -466,13 +466,13 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    pub fn parse_ident(&mut self) -> PResult<'a, ast::SpannedIdent> {
         self.check_strict_keywords();
         self.check_reserved_keywords();
         match self.token {
             token::Ident(i) => {
                 self.bump();
-                Ok(i)
+                Ok(i.spanned(self.prev_span))
             }
             _ => {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
@@ -1118,9 +1118,9 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
 
         let (name, node) = if self.eat_keyword(keywords::Type) {
-            let TyParam {ident, bounds, default, ..} = self.parse_ty_param(vec![])?;
+            let TyParam {ident, bounds, default, span, ..} = self.parse_ty_param(vec![])?;
             self.expect(&token::Semi)?;
-            (ident, TraitItemKind::Type(bounds, default))
+            (ident.spanned(span), TraitItemKind::Type(bounds, default))
         } else if self.is_const_item() {
                 self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -1153,7 +1153,7 @@ impl<'a> Parser<'a> {
             }
 
             let mac = spanned(lo, self.prev_span.hi, Mac_ { path: pth, tts: tts });
-            (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
+            (keywords::Invalid.ident().dummy_spanned(), ast::TraitItemKind::Macro(mac))
         } else {
             let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
                 Ok(cua) => cua,
@@ -1585,7 +1585,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(sid)
             }
-            _ => self.parse_ident(),
+            _ => self.parse_ident().map(|s| s.node),
          }
      }
 
@@ -1947,7 +1947,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::with_empty_ctxt(name))
         } else {
-            self.parse_ident()
+            self.parse_ident().map(|s| s.node)
         }
     }
 
@@ -1967,8 +1967,8 @@ impl<'a> Parser<'a> {
             hi = self.prev_span.hi;
 
             // Mimic `x: x` for the `x` field shorthand.
-            let path = ast::Path::from_ident(mk_sp(lo, hi), fieldname);
-            (fieldname, self.mk_expr(lo, hi, ExprKind::Path(None, path), ThinVec::new()), true)
+            let path = ast::Path::from_ident(mk_sp(lo, hi), fieldname.node);
+            (fieldname.node, self.mk_expr(lo, hi, ExprKind::Path(None, path), ThinVec::new()), true)
         };
         Ok(ast::Field {
             ident: spanned(lo, hi, fieldname),
@@ -2626,8 +2626,8 @@ impl<'a> Parser<'a> {
                     sp = mk_sp(sp.lo, self.span.hi);
                     self.parse_ident().unwrap_or_else(|mut e| {
                         e.emit();
-                        keywords::Invalid.ident()
-                    })
+                        keywords::Invalid.ident().dummy_spanned()
+                    }).node
                 }
             }
             token::SubstNt(name) => {
@@ -2642,7 +2642,7 @@ impl<'a> Parser<'a> {
             self.bump();
             sp = mk_sp(sp.lo, self.span.hi);
             let nt_kind = self.parse_ident()?;
-            Ok(TokenTree::Token(sp, MatchNt(name, nt_kind)))
+            Ok(TokenTree::Token(sp, MatchNt(name, nt_kind.node)))
         } else {
             Ok(TokenTree::Token(sp, SubstNt(name)))
         }
@@ -3480,10 +3480,9 @@ impl<'a> Parser<'a> {
                     (false, true) => BindingMode::ByValue(Mutability::Mutable),
                     (false, false) => BindingMode::ByValue(Mutability::Immutable),
                 };
-                let fieldpath = codemap::Spanned{span:self.prev_span, node:fieldname};
                 let fieldpat = P(ast::Pat{
                     id: ast::DUMMY_NODE_ID,
-                    node: PatKind::Ident(bind_type, fieldpath, None),
+                    node: PatKind::Ident(bind_type, fieldname, None),
                     span: mk_sp(boxed_span_lo, hi),
                 });
 
@@ -3496,7 +3495,7 @@ impl<'a> Parser<'a> {
                 } else {
                     fieldpat
                 };
-                (subpat, fieldname, true)
+                (subpat, fieldname.node, true)
             };
 
             fields.push(codemap::Spanned { span: mk_sp(lo, hi),
@@ -3696,7 +3695,7 @@ impl<'a> Parser<'a> {
                 "expected identifier, found enum pattern"))
         }
 
-        Ok(PatKind::Ident(binding_mode, name, sub))
+        Ok(PatKind::Ident(binding_mode, name.node, sub))
     }
 
     /// Parse a local variable declaration
@@ -3730,7 +3729,7 @@ impl<'a> Parser<'a> {
         let ty = self.parse_ty_sum()?;
         Ok(StructField {
             span: mk_sp(lo, self.prev_span.hi),
-            ident: Some(name),
+            ident: Some(name.node),
             vis: vis,
             id: ast::DUMMY_NODE_ID,
             ty: ty,
@@ -3871,7 +3870,10 @@ impl<'a> Parser<'a> {
             // it's a macro invocation
             let id = match self.token {
                 token::OpenDelim(_) => keywords::Invalid.ident(), // no special identifier
-                _ => self.parse_ident()?,
+                _ => {
+                    let id = self.parse_ident()?;
+                    id.node
+                }
             };
 
             // check that we're pointing at delimiters (need to check
@@ -3956,7 +3958,7 @@ impl<'a> Parser<'a> {
                     span: mk_sp(lo, hi),
                     node: StmtKind::Item({
                         self.mk_item(
-                            lo, hi, id /*id is good here*/,
+                            lo, hi, codemap::dummy_spanned(id) /*id is good here*/,
                             ItemKind::Mac(spanned(lo, hi, Mac_ { path: pth, tts: tts })),
                             Visibility::Inherited,
                             attrs)
@@ -4209,7 +4211,7 @@ impl<'a> Parser<'a> {
 
         Ok(TyParam {
             attrs: preceding_attrs.into(),
-            ident: ident,
+            ident: ident.node,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
             default: default,
@@ -4342,7 +4344,7 @@ impl<'a> Parser<'a> {
                 let hi = ty.span.hi;
                 let span = mk_sp(lo, hi);
                 return Ok(TypeBinding{id: ast::DUMMY_NODE_ID,
-                    ident: ident,
+                    ident: ident.node,
                     ty: ty,
                     span: span,
                 });
@@ -4704,13 +4706,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the name and optional generic types of a function header.
-    fn parse_fn_header(&mut self) -> PResult<'a, (Ident, ast::Generics)> {
+    fn parse_fn_header(&mut self) -> PResult<'a, (ast::SpannedIdent, ast::Generics)> {
         let id = self.parse_ident()?;
         let generics = self.parse_generics()?;
         Ok((id, generics))
     }
 
-    fn mk_item(&mut self, lo: BytePos, hi: BytePos, ident: Ident,
+    fn mk_item(&mut self, lo: BytePos, hi: BytePos, ident: ast::SpannedIdent,
                node: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
@@ -4838,7 +4840,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a method or a macro invocation in a trait impl.
     fn parse_impl_method(&mut self, vis: &Visibility)
-                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
+                         -> PResult<'a, (ast::SpannedIdent,
+                                         Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
             // method macro.
@@ -4860,7 +4863,7 @@ impl<'a> Parser<'a> {
             }
 
             let mac = spanned(lo, self.prev_span.hi, Mac_ { path: pth, tts: tts });
-            Ok((keywords::Invalid.ident(), vec![], ast::ImplItemKind::Macro(mac)))
+            Ok((keywords::Invalid.ident().dummy_spanned(), vec![], ast::ImplItemKind::Macro(mac)))
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
@@ -4951,7 +4954,7 @@ impl<'a> Parser<'a> {
 
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
-            Ok((keywords::Invalid.ident(),
+            Ok((keywords::Invalid.ident().dummy_spanned(),
              ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
@@ -4967,7 +4970,7 @@ impl<'a> Parser<'a> {
                 impl_items.push(self.parse_impl_item()?);
             }
 
-            Ok((keywords::Invalid.ident(),
+            Ok((keywords::Invalid.ident().dummy_spanned(),
              ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
@@ -5005,9 +5008,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse struct Foo { ... }
-    fn parse_item_struct(&mut self) -> PResult<'a, (ItemInfo, Span)> {
+    fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
-        let sp = self.prev_span;  // struct's name's span
         let mut generics = self.parse_generics()?;
 
         // There is a special case worth noting here, as reported in issue #17904.
@@ -5051,7 +5053,7 @@ impl<'a> Parser<'a> {
                                             name, found `{}`", token_str)))
         };
 
-        Ok(((class_name, ItemKind::Struct(vdata, generics), None), sp))
+        Ok((class_name, ItemKind::Struct(vdata, generics), None))
     }
 
     /// Parse union Foo { ... }
@@ -5264,9 +5266,9 @@ impl<'a> Parser<'a> {
             if in_cfg {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
-                    self.submod_path(id, &outer_attrs, id_span)?;
+                    self.submod_path(id.node, &outer_attrs, id_span)?;
                 let (module, mut attrs) =
-                    self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
+                    self.eval_src_mod(path, directory_ownership, id.node.to_string(), id_span)?;
                 if warn {
                     let attr = ast::Attribute {
                         id: attr::mk_attr_id(),
@@ -5289,7 +5291,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let old_directory = self.directory.clone();
-            self.push_directory(id, &outer_attrs);
+            self.push_directory(id.node, &outer_attrs);
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span.lo;
             let attrs = self.parse_inner_attributes()?;
@@ -5458,7 +5460,7 @@ impl<'a> Parser<'a> {
         let hi = self.span.hi;
         self.expect(&token::Semi)?;
         Ok(ast::ForeignItem {
-            ident: ident,
+            ident: ident.node,
             attrs: attrs,
             node: ForeignItemKind::Fn(decl, generics),
             id: ast::DUMMY_NODE_ID,
@@ -5479,7 +5481,7 @@ impl<'a> Parser<'a> {
         let hi = self.span.hi;
         self.expect(&token::Semi)?;
         Ok(ForeignItem {
-            ident: ident,
+            ident: ident.node,
             attrs: attrs,
             node: ForeignItemKind::Static(ty, mutbl),
             id: ast::DUMMY_NODE_ID,
@@ -5502,7 +5504,7 @@ impl<'a> Parser<'a> {
 
         let crate_name = self.parse_ident()?;
         let (maybe_path, ident) = if let Some(ident) = self.parse_rename()? {
-            (Some(crate_name.name), ident)
+            (Some(crate_name.node.name), ident.dummy_spanned())
         } else {
             (None, crate_name)
         };
@@ -5552,7 +5554,7 @@ impl<'a> Parser<'a> {
         };
         Ok(self.mk_item(lo,
                      prev_span.hi,
-                     keywords::Invalid.ident(),
+                     keywords::Invalid.ident().dummy_spanned(),
                      ItemKind::ForeignMod(m),
                      visibility,
                      attrs))
@@ -5686,7 +5688,7 @@ impl<'a> Parser<'a> {
             let prev_span = self.prev_span;
             let item = self.mk_item(lo,
                                     prev_span.hi,
-                                    keywords::Invalid.ident(),
+                                    keywords::Invalid.ident().spanned(prev_span),
                                     item_,
                                     visibility,
                                     attrs);
@@ -5921,9 +5923,10 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Struct) {
             // STRUCT ITEM
-            let ((ident, item_, extra_attrs), sp) = self.parse_item_struct()?;
-            let item = self.mk_item(sp.lo,
-                                    sp.hi,
+            let (ident, item_, extra_attrs) = self.parse_item_struct()?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo,
+                                    prev_span.hi,
                                     ident,
                                     item_,
                                     visibility,
@@ -5997,7 +6000,7 @@ impl<'a> Parser<'a> {
             let id = if self.token.is_ident() {
                 self.parse_ident()?
             } else {
-                keywords::Invalid.ident() // no special identifier
+                keywords::Invalid.ident().dummy_spanned() // no special identifier
             };
             // eat a matched-delimiter token tree:
             let delim = self.expect_open_delim()?;
@@ -6048,7 +6051,8 @@ impl<'a> Parser<'a> {
             let ident = if this.eat_keyword(keywords::SelfValue) {
                 keywords::SelfValue.ident()
             } else {
-                this.parse_ident()?
+                let id = this.parse_ident()?;
+                id.node
             };
             let rename = this.parse_rename()?;
             let node = ast::PathListItem_ {
@@ -6113,7 +6117,7 @@ impl<'a> Parser<'a> {
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
-            self.parse_ident().map(Some)
+            self.parse_ident().map(|s| Some(s.node))
         } else {
             Ok(None)
         }

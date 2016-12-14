@@ -1540,7 +1540,7 @@ pub struct ItemId {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
-    pub name: Name,
+    pub name: Spanned<Name>,
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub node: Item_,

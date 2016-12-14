@@ -18,6 +18,7 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::ast::{self, Item, MetaItem, ItemKind};
+use syntax::codemap::dummy_spanned;
 use syntax::ext::base::*;
 use syntax::parse;
 use syntax::ptr::P;
@@ -122,19 +123,19 @@ fn expand_duplicate(cx: &mut ExtCtxt,
         Annotatable::Item(it) => {
             let mut new_it = (*it).clone();
             new_it.attrs.clear();
-            new_it.ident = copy_name;
+            new_it.ident = dummy_spanned(copy_name);
             push(Annotatable::Item(P(new_it)));
         }
         Annotatable::ImplItem(it) => {
             let mut new_it = (*it).clone();
             new_it.attrs.clear();
-            new_it.ident = copy_name;
+            new_it.ident = dummy_spanned(copy_name);
             push(Annotatable::ImplItem(P(new_it)));
         }
         Annotatable::TraitItem(tt) => {
             let mut new_it = (*tt).clone();
             new_it.attrs.clear();
-            new_it.ident = copy_name;
+            new_it.ident = dummy_spanned(copy_name);
             push(Annotatable::TraitItem(P(new_it)));
         }
     }

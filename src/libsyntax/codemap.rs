@@ -20,6 +20,7 @@
 pub use self::ExpnFormat::*;
 
 use std::cell::RefCell;
+use std::fmt;
 use std::path::{Path,PathBuf};
 use std::rc::Rc;
 
@@ -59,6 +60,12 @@ pub enum ExpnFormat {
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
+}
+
+impl <T> fmt::Display for Spanned<T> where T: fmt::Display {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.node, f)
+    }
 }
 
 pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> Spanned<T> {

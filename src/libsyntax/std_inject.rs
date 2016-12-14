@@ -60,7 +60,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
                                         attr::mk_word_item(Symbol::intern("macro_use")))],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::ExternCrate(Some(crate_name)),
-        ident: ast::Ident::from_str(name),
+        ident: ast::Ident::from_str(name).dummy_spanned(),
         id: ast::DUMMY_NODE_ID,
         span: DUMMY_SP,
     }));
@@ -88,7 +88,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
             span: span,
         })))),
         id: ast::DUMMY_NODE_ID,
-        ident: keywords::Invalid.ident(),
+        ident: keywords::Invalid.ident().dummy_spanned(),
         span: span,
     }));
 

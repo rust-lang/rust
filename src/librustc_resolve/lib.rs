@@ -598,7 +598,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // `visit::walk_variant` without the discriminant expression.
         self.visit_variant_data(&variant.node.data,
-                                variant.node.name,
+                                variant.node.name.node,
                                 generics,
                                 item_id,
                                 variant.span);
@@ -1511,7 +1511,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_item(&mut self, item: &Item) {
-        let name = item.ident.name;
+        let name = item.ident.node.name;
 
         debug!("(resolving item) resolving {}", name);
 
@@ -1815,7 +1815,7 @@ impl<'a> Resolver<'a> {
                                 ImplItemKind::Const(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.ident.node.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     visit::walk_impl_item(this, impl_item);
@@ -1823,7 +1823,7 @@ impl<'a> Resolver<'a> {
                                 ImplItemKind::Method(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.ident.node.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
@@ -1839,7 +1839,7 @@ impl<'a> Resolver<'a> {
                                 ImplItemKind::Type(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.ident.node.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 

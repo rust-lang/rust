@@ -102,7 +102,7 @@ impl<'b> Resolver<'b> {
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
         let parent = self.current_module;
-        let name = item.ident.name;
+        let name = item.ident.node.name;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
 
@@ -256,7 +256,7 @@ impl<'b> Resolver<'b> {
                 self.process_legacy_macro_imports(item, module, expansion);
             }
 
-            ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
+            ItemKind::Mod(..) if item.ident.node == keywords::Invalid.ident() => {} // Crate root
 
             ItemKind::Mod(..) => {
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
@@ -365,7 +365,7 @@ impl<'b> Resolver<'b> {
                                        parent: Module<'b>,
                                        vis: ty::Visibility,
                                        expansion: Mark) {
-        let name = variant.node.name.name;
+        let name = variant.node.name.node.name;
         let def_id = self.definitions.local_def_id(variant.node.data.id());
 
         // Define a name in the type namespace.
@@ -756,10 +756,13 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 
-        self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);
+        self.resolver.trait_item_map.insert((item.ident.node.name, def_id), is_static_method);
 
         let vis = ty::Visibility::Public;
-        self.resolver.define(parent, item.ident.name, ns, (def, vis, item.span, self.expansion));
+        self.resolver.define(parent,
+                             item.ident.node.name,
+                             ns,
+                             (def, vis, item.span, self.expansion));
 
         self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
         visit::walk_trait_item(self, item);

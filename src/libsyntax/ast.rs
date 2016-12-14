@@ -18,7 +18,7 @@ pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
-use codemap::{respan, Spanned};
+use codemap::{dummy_spanned, respan, Spanned};
 use abi::Abi;
 use ext::hygiene::SyntaxContext;
 use print::pprust;
@@ -50,6 +50,14 @@ impl Ident {
    /// Maps a string to an identifier with an empty syntax context.
    pub fn from_str(s: &str) -> Ident {
        Ident::with_empty_ctxt(Symbol::intern(s))
+   }
+
+   pub fn spanned(self, sp: Span) -> SpannedIdent {
+       respan(sp, self)
+   }
+
+   pub fn dummy_spanned(self) -> SpannedIdent {
+       dummy_spanned(self)
    }
 }
 
@@ -1175,7 +1183,7 @@ pub struct MethodSig {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub ident: SpannedIdent,
     pub attrs: Vec<Attribute>,
     pub node: TraitItemKind,
     pub span: Span,
@@ -1192,7 +1200,7 @@ pub enum TraitItemKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub ident: SpannedIdent,
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
@@ -1656,7 +1664,7 @@ pub struct EnumDef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Variant_ {
-    pub name: Ident,
+    pub name: SpannedIdent,
     pub attrs: Vec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, e.g. `Foo = 1`
@@ -1831,12 +1839,18 @@ impl VariantData {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
-    pub ident: Ident,
+    pub ident: SpannedIdent,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
+}
+
+impl Item {
+    pub fn spanned_symbol(&self) -> Spanned<Symbol> {
+        respan(self.ident.span, self.ident.node.name)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

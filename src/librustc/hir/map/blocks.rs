@@ -27,6 +27,7 @@ use hir::{Expr, FnDecl};
 use hir::intravisit::FnKind;
 use syntax::abi;
 use syntax::ast::{Attribute, Name, NodeId};
+use syntax::codemap::Spanned;
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -108,7 +109,7 @@ impl<'a> Code<'a> {
 /// These are all the components one can extract from a fn item for
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
-    name:     Name,
+    name:     Spanned<Name>,
     decl:     &'a ast::FnDecl,
     unsafety: ast::Unsafety,
     constness: ast::Constness,
@@ -210,7 +211,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.name, p.generics, p.unsafety, p.constness, p.abi, p.vis, p.attrs)
+            FnKind::ItemFn(p.name.node, p.generics, p.unsafety, p.constness, p.abi, p.vis, p.attrs)
         };
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
