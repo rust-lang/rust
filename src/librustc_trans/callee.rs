@@ -27,6 +27,7 @@ use base::*;
 use common::{
     self, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
 };
+use cleanup::CleanupScope;
 use consts;
 use declare;
 use value::Value;
@@ -389,10 +390,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
-
-    let bcx = callee.call(bcx, &llargs[self_idx..], dest, None).0;
-    fcx.pop_and_trans_custom_cleanup_scope(&bcx, self_scope);
+    let mut self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
+    let bcx = trans_call_fn_once_adapter_shim(
+        bcx, callee, &llargs[self_idx..], dest, &mut self_scope);
+    fcx.trans_scope(&bcx, self_scope);
     fcx.finish(&bcx);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
@@ -685,23 +686,69 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     };
 
     let _icx = push_ctxt("invoke_");
-    let (llret, bcx) = if bcx.fcx().needs_invoke(lpad.is_some()) {
-        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb());
-        for &llarg in &llargs {
-            debug!("arg: {:?}", Value(llarg));
-        }
-        let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad();
+    let llret = bcx.call(llfn, &llargs[..], lpad);
+    fn_ty.apply_attrs_callsite(llret);
 
-        let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, lpad);
+    // If the function we just called does not use an outpointer,
+    // store the result into the rust outpointer. Cast the outpointer
+    // type to match because some ABIs will use a different type than
+    // the Rust type. e.g., a {u32,u32} struct could be returned as
+    // u64.
+    if !fn_ty.ret.is_indirect() {
+        if let Some(llretslot) = opt_llretslot {
+            fn_ty.ret.store(&bcx, llret, llretslot);
+        }
+    }
+
+    if fn_ret.0.is_never() {
+        bcx.unreachable();
+    }
+
+    (bcx, llret)
+}
+
+// This is a cleaned up version of trans_call_inner.
+fn trans_call_fn_once_adapter_shim<'a, 'blk, 'tcx>(
+    bcx: BlockAndBuilder<'blk, 'tcx>,
+    callee: Callee<'tcx>,
+    args: &[ValueRef],
+    opt_llretslot: Option<ValueRef>,
+    cleanup_scope: &mut Option<CleanupScope<'tcx>>,
+) -> BlockAndBuilder<'blk, 'tcx> {
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
+
+    // If there no destination, return must be direct, with no cast.
+    if opt_llretslot.is_none() {
+        assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
+    }
+
+    let mut llargs = Vec::new();
+
+    if fn_ty.ret.is_indirect() {
+        let mut llretslot = opt_llretslot.unwrap();
+        if let Some(ty) = fn_ty.ret.cast {
+            llretslot = bcx.pointercast(llretslot, ty.ptr_to());
+        }
+        llargs.push(llretslot);
+    }
+
+    llargs.extend_from_slice(args);
+
+    let llfn = match callee.data {
+        Fn(f) => f,
+        _ => bug!("expected fn pointer callee, found {:?}", callee)
+    };
+
+    let _icx = push_ctxt("invoke_");
+    let (llret, bcx) = if cleanup_scope.is_some() && !bcx.sess().no_landing_pads() {
+        let normal_bcx = bcx.fcx().build_new_block("normal-return");
+        let landing_pad = bcx.fcx().get_landing_pad(cleanup_scope);
+
+        let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         (llresult, normal_bcx)
     } else {
-        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb());
-        for &llarg in &llargs {
-            debug!("arg: {:?}", Value(llarg));
-        }
-
-        let llresult = bcx.call(llfn, &llargs[..], lpad);
+        let llresult = bcx.call(llfn, &llargs[..], None);
         (llresult, bcx)
     };
     fn_ty.apply_attrs_callsite(llret);
@@ -721,5 +768,5 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         bcx.unreachable();
     }
 
-    (bcx, llret)
+    bcx
 }

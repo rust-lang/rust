@@ -28,7 +28,6 @@ use abi::{Abi, FnType};
 use base;
 use builder::Builder;
 use callee::Callee;
-use cleanup;
 use consts;
 use debuginfo;
 use declare;
@@ -48,7 +47,7 @@ use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 use std::ffi::CString;
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, Ref};
 
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
@@ -315,9 +314,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
-
-    // Cleanup scopes.
-    pub cleanup_scope: RefCell<Option<cleanup::CleanupScope<'tcx>>>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
