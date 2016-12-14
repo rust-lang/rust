@@ -27,7 +27,6 @@ use base::*;
 use common::{
     self, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
 };
-use cleanup::CleanupScope;
 use consts;
 use declare;
 use value::Value;
@@ -351,7 +350,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None);
-    let bcx = fcx.init(false);
+    let mut bcx = fcx.init(false);
 
     // the first argument (`self`) will be the (by value) closure env.
 
@@ -391,8 +390,39 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
     let mut self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
-    let bcx = trans_call_fn_once_adapter_shim(
-        bcx, callee, &llargs[self_idx..], dest, &mut self_scope);
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
+
+    let first_llarg = if fn_ty.ret.is_indirect() {
+        dest
+    } else {
+        None
+    };
+    let llargs = first_llarg.into_iter().chain(llargs[self_idx..].iter().cloned())
+        .collect::<Vec<_>>();
+
+    let llfn = callee.reify(bcx.ccx());
+    let llret;
+    if self_scope.is_some() && !bcx.sess().no_landing_pads() {
+        let normal_bcx = bcx.fcx().build_new_block("normal-return");
+        let landing_pad = bcx.fcx().get_landing_pad(self_scope.as_mut().unwrap());
+
+        llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
+        bcx = normal_bcx;
+    } else {
+        llret = bcx.call(llfn, &llargs[..], None);
+    }
+    fn_ty.apply_attrs_callsite(llret);
+
+    if !fn_ty.ret.is_indirect() {
+        if let Some(llretslot) = dest {
+            fn_ty.ret.store(&bcx, llret, llretslot);
+        }
+    }
+
+    if fn_ret.0.is_never() {
+        bcx.unreachable();
+    }
     fcx.trans_scope(&bcx, self_scope);
     fcx.finish(&bcx);
 
@@ -705,68 +735,4 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     }
 
     (bcx, llret)
-}
-
-// This is a cleaned up version of trans_call_inner.
-fn trans_call_fn_once_adapter_shim<'a, 'blk, 'tcx>(
-    bcx: BlockAndBuilder<'blk, 'tcx>,
-    callee: Callee<'tcx>,
-    args: &[ValueRef],
-    opt_llretslot: Option<ValueRef>,
-    cleanup_scope: &mut Option<CleanupScope<'tcx>>,
-) -> BlockAndBuilder<'blk, 'tcx> {
-    let fn_ret = callee.ty.fn_ret();
-    let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
-
-    // If there no destination, return must be direct, with no cast.
-    if opt_llretslot.is_none() {
-        assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
-    }
-
-    let mut llargs = Vec::new();
-
-    if fn_ty.ret.is_indirect() {
-        let mut llretslot = opt_llretslot.unwrap();
-        if let Some(ty) = fn_ty.ret.cast {
-            llretslot = bcx.pointercast(llretslot, ty.ptr_to());
-        }
-        llargs.push(llretslot);
-    }
-
-    llargs.extend_from_slice(args);
-
-    let llfn = match callee.data {
-        Fn(f) => f,
-        _ => bug!("expected fn pointer callee, found {:?}", callee)
-    };
-
-    let _icx = push_ctxt("invoke_");
-    let (llret, bcx) = if cleanup_scope.is_some() && !bcx.sess().no_landing_pads() {
-        let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad(cleanup_scope.as_mut().unwrap());
-
-        let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
-        (llresult, normal_bcx)
-    } else {
-        let llresult = bcx.call(llfn, &llargs[..], None);
-        (llresult, bcx)
-    };
-    fn_ty.apply_attrs_callsite(llret);
-
-    // If the function we just called does not use an outpointer,
-    // store the result into the rust outpointer. Cast the outpointer
-    // type to match because some ABIs will use a different type than
-    // the Rust type. e.g., a {u32,u32} struct could be returned as
-    // u64.
-    if !fn_ty.ret.is_indirect() {
-        if let Some(llretslot) = opt_llretslot {
-            fn_ty.ret.store(&bcx, llret, llretslot);
-        }
-    }
-
-    if fn_ret.0.is_never() {
-        bcx.unreachable();
-    }
-
-    bcx
 }
