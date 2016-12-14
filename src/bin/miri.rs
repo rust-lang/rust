@@ -21,7 +21,6 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = CompileController::basic();
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }

@@ -27,6 +27,15 @@ fn run_pass() {
     compiletest::run_tests(&config);
 }
 
+fn miri_pass(path: &str, target: &str) {
+    let mut config = compiletest::default_config();
+    config.mode = "mir-opt".parse().expect("Invalid mode");
+    config.src_base = PathBuf::from(path);
+    config.target = target.to_owned();
+    config.rustc_path = PathBuf::from("target/debug/miri");
+    compiletest::run_tests(&config);
+}
+
 fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
     for target in std::fs::read_dir(format!("{}/lib/rustlib/", sysroot)).unwrap() {
         let target = target.unwrap();
@@ -57,65 +66,10 @@ fn compile_test() {
     };
     run_pass();
     for_all_targets(&sysroot, |target| {
-        let files = std::fs::read_dir("tests/run-pass").unwrap();
-        let files: Box<Iterator<Item=_>> = if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
-            Box::new(files.chain(std::fs::read_dir(path).unwrap()))
-        } else {
-            Box::new(files)
-        };
-        let mut mir_not_found = 0;
-        let mut crate_not_found = 0;
-        let mut success = 0;
-        let mut failed = 0;
-        for file in files {
-            let file = file.unwrap();
-            let path = file.path();
-
-            if !file.metadata().unwrap().is_file() || !path.to_str().unwrap().ends_with(".rs") {
-                continue;
-            }
-
-            let stderr = std::io::stderr();
-            write!(stderr.lock(), "test [miri-pass] {} ... ", path.display()).unwrap();
-            let mut cmd = std::process::Command::new("target/debug/miri");
-            cmd.arg(path);
-            cmd.arg(format!("--target={}", target));
-            let libs = Path::new(&sysroot).join("lib");
-            let sysroot = libs.join("rustlib").join(&target).join("lib");
-            let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
-            cmd.env(compiletest::procsrv::dylib_env_var(), paths);
-
-            match cmd.output() {
-                Ok(ref output) if output.status.success() => {
-                    success += 1;
-                    writeln!(stderr.lock(), "ok").unwrap()
-                },
-                Ok(output) => {
-                    let output_err = std::str::from_utf8(&output.stderr).unwrap();
-                    if let Some(text) = output_err.splitn(2, "no mir for `").nth(1) {
-                        mir_not_found += 1;
-                        let end = text.find('`').unwrap();
-                        writeln!(stderr.lock(), "NO MIR FOR `{}`", &text[..end]).unwrap();
-                    } else if let Some(text) = output_err.splitn(2, "can't find crate for `").nth(1) {
-                        crate_not_found += 1;
-                        let end = text.find('`').unwrap();
-                        writeln!(stderr.lock(), "CAN'T FIND CRATE FOR `{}`", &text[..end]).unwrap();
-                    } else {
-                        failed += 1;
-                        writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
-                        writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
-                        writeln!(stderr.lock(), "stderr: \n {}", output_err).unwrap();
-                    }
-                }
-                Err(e) => {
-                    writeln!(stderr.lock(), "FAILED: {}", e).unwrap();
-                    panic!("failed to execute miri");
-                },
-            }
+        miri_pass("tests/run-pass", &target);
+        if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
+            miri_pass(&path, &target);
         }
-        let stderr = std::io::stderr();
-        writeln!(stderr.lock(), "{} success, {} mir not found, {} crate not found, {} failed", success, mir_not_found, crate_not_found, failed).unwrap();
-        assert_eq!(failed, 0, "some tests failed");
     });
     compile_fail(&sysroot);
 }
