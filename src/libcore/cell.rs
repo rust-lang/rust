@@ -888,9 +888,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// `Ref::clone(...)`.  A `Clone` implementation or a method would interfere
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
-    #[unstable(feature = "cell_extras",
-               reason = "likely to be moved to a method, pending language changes",
-               issue = "27746")]
+    #[stable(feature = "cell_extras", since = "1.15.0")]
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref {
