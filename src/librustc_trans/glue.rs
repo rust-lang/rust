@@ -22,9 +22,7 @@ use rustc::traits;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use adt;
 use base::*;
-use callee::{Callee, CalleeData};
-use cleanup::CleanupScope;
-use meth;
+use callee::Callee;
 use common::*;
 use machine::*;
 use monomorphize;
@@ -224,7 +222,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(&bcx);
 }
 
-fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
+fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
                                  t: Ty<'tcx>,
                                  v0: ValueRef,
                                  shallow_drop: bool)
@@ -272,60 +270,19 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     };
     let dtor_did = def.destructor().unwrap();
     let callee = Callee::def(bcx.ccx(), dtor_did, vtbl.substs);
-    let bcx = trans_call_custom_dtor(bcx, callee, args, &mut contents_scope);
-    bcx.fcx().trans_scope(&bcx, contents_scope);
-    bcx
-}
-
-// Inlined and simplified version of callee::trans_call_inner
-fn trans_call_custom_dtor<'a, 'blk, 'tcx>(
-    bcx: BlockAndBuilder<'blk, 'tcx>,
-    callee: Callee<'tcx>,
-    args: &[ValueRef],
-    cleanup_scope: &mut Option<CleanupScope<'tcx>>,
-) -> BlockAndBuilder<'blk, 'tcx> {
-    let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
-
-    // Return must be direct, with no cast.
-    assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
-
-    let mut llargs = Vec::new();
-
-    let llfn = match callee.data {
-        CalleeData::Virtual(idx) => {
-            llargs.push(args[0]);
-
-            let fn_ptr = meth::get_virtual_method(&bcx, args[1], idx);
-            let llty = fn_ty.llvm_type(&bcx.ccx()).ptr_to();
-            let llfn = bcx.pointercast(fn_ptr, llty);
-            llargs.extend_from_slice(&args[2..]);
-            llfn
-        }
-        CalleeData::Fn(f) => {
-            llargs.extend_from_slice(args);
-            f
-        }
-        _ => bug!("Expected virtual or fn pointer callee, found {:?}", callee)
-    };
-
-    let _icx = push_ctxt("invoke_");
-    let (llret, bcx) = if cleanup_scope.is_some() && !bcx.sess().no_landing_pads() {
+    let llret;
+    if contents_scope.is_some() && !bcx.sess().no_landing_pads() {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad(cleanup_scope.as_mut().unwrap());
+        let landing_pad = bcx.fcx().get_landing_pad(contents_scope.as_mut().unwrap());
 
-        let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
-        (llresult, normal_bcx)
+        llret = bcx.invoke(callee.reify(bcx.ccx()), args, normal_bcx.llbb(), landing_pad, None);
+        bcx = normal_bcx;
     } else {
-        let llresult = bcx.call(llfn, &llargs[..], None);
-        (llresult, bcx)
-    };
-    fn_ty.apply_attrs_callsite(llret);
-
-    if fn_ret.0.is_never() {
-        bcx.unreachable();
+        llret = bcx.call(callee.reify(bcx.ccx()), args, None);
     }
-
+    fn_ty.apply_attrs_callsite(llret);
+    bcx.fcx().trans_scope(&bcx, contents_scope);
     bcx
 }
 
