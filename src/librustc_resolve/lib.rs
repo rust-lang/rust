@@ -2863,70 +2863,62 @@ impl<'a> Resolver<'a> {
     fn get_traits_containing_item(&mut self, name: Name) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", name);
 
-        fn add_trait_info(found_traits: &mut Vec<TraitCandidate>,
-                          trait_def_id: DefId,
-                          import_id: Option<NodeId>,
-                          name: Name) {
-            debug!("(adding trait info) found trait {:?} for method '{}'",
-                   trait_def_id,
-                   name);
-            found_traits.push(TraitCandidate {
-                def_id: trait_def_id,
-                import_id: import_id,
-            });
-        }
-
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((trait_def_id, _)) = self.current_trait_ref {
             if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                add_trait_info(&mut found_traits, trait_def_id, None, name);
+                found_traits.push(TraitCandidate { def_id: trait_def_id, import_id: None });
             }
         }
 
         let mut search_module = self.current_module;
         loop {
-            // Look for trait children.
-            let mut search_in_module = |this: &mut Self, module: Module<'a>| {
-                let mut traits = module.traits.borrow_mut();
-                if traits.is_none() {
-                    let mut collected_traits = Vec::new();
-                    module.for_each_child(|name, ns, binding| {
-                        if ns != TypeNS { return }
-                        if let Def::Trait(_) = binding.def() {
-                            collected_traits.push((name, binding));
-                        }
-                    });
-                    *traits = Some(collected_traits.into_boxed_slice());
-                }
+            self.get_traits_in_module_containing_item(name, search_module, &mut found_traits);
+            match search_module.kind {
+                ModuleKind::Block(..) => search_module = search_module.parent.unwrap(),
+                _ => break,
+            }
+        }
 
-                for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-                    let trait_def_id = binding.def().def_id();
-                    if this.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        let mut import_id = None;
-                        if let NameBindingKind::Import { directive, .. } = binding.kind {
-                            let id = directive.id;
-                            this.maybe_unused_trait_imports.insert(id);
-                            this.add_to_glob_map(id, trait_name);
-                            import_id = Some(id);
-                        }
-                        add_trait_info(&mut found_traits, trait_def_id, import_id, name);
-                    }
-                }
-            };
-            search_in_module(self, search_module);
-
-            if let ModuleKind::Block(..) = search_module.kind {
-                search_module = search_module.parent.unwrap();
-            } else {
-                if !search_module.no_implicit_prelude {
-                    self.prelude.map(|prelude| search_in_module(self, prelude));
-                }
-                break;
+        if let Some(prelude) = self.prelude {
+            if !search_module.no_implicit_prelude {
+                self.get_traits_in_module_containing_item(name, prelude, &mut found_traits);
             }
         }
 
         found_traits
+    }
+
+    fn get_traits_in_module_containing_item(&mut self,
+                                            name: Name,
+                                            module: Module,
+                                            found_traits: &mut Vec<TraitCandidate>) {
+        let mut traits = module.traits.borrow_mut();
+        if traits.is_none() {
+            let mut collected_traits = Vec::new();
+            module.for_each_child(|name, ns, binding| {
+                if ns != TypeNS { return }
+                if let Def::Trait(_) = binding.def() {
+                    collected_traits.push((name, binding));
+                }
+            });
+            *traits = Some(collected_traits.into_boxed_slice());
+        }
+
+        for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
+            let trait_def_id = binding.def().def_id();
+            if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                let import_id = match binding.kind {
+                    NameBindingKind::Import { directive, .. } => {
+                        self.maybe_unused_trait_imports.insert(directive.id);
+                        self.add_to_glob_map(directive.id, trait_name);
+                        Some(directive.id)
+                    }
+                    _ => None,
+                };
+                found_traits.push(TraitCandidate { def_id: trait_def_id, import_id: import_id });
+            }
+        }
     }
 
     /// When name resolution fails, this method can be used to look up candidate
