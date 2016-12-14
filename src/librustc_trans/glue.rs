@@ -312,7 +312,7 @@ fn trans_call_custom_dtor<'a, 'blk, 'tcx>(
     let _icx = push_ctxt("invoke_");
     let (llret, bcx) = if cleanup_scope.is_some() && !bcx.sess().no_landing_pads() {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad(cleanup_scope);
+        let landing_pad = bcx.fcx().get_landing_pad(cleanup_scope.as_mut().unwrap());
 
         let llresult = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         (llresult, normal_bcx)
