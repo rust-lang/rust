@@ -491,6 +491,7 @@ impl Build {
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
+             .env("RUSTC_CHANNEL", &self.config.channel)
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
         // Enable usage of unstable features
