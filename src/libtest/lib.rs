@@ -254,10 +254,16 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>) {
         Some(Err(msg)) => panic!("{:?}", msg),
         None => return,
     };
-    match run_tests_console(&opts, tests) {
-        Ok(true) => {}
-        Ok(false) => std::process::exit(101),
-        Err(e) => panic!("io error when running tests: {:?}", e),
+    if opts.list {
+        if let Err(e) = list_tests_console(&opts, tests) {
+            panic!("io error when listing tests: {:?}", e);
+        }
+    } else {
+        match run_tests_console(&opts, tests) {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(101),
+            Err(e) => panic!("io error when running tests: {:?}", e),
+        }
     }
 }
 
@@ -300,6 +306,7 @@ pub enum ColorConfig {
 }
 
 pub struct TestOpts {
+    pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
     pub run_ignored: bool,
@@ -317,6 +324,7 @@ impl TestOpts {
     #[cfg(test)]
     fn new() -> TestOpts {
         TestOpts {
+            list: false,
             filter: None,
             filter_exact: false,
             run_ignored: false,
@@ -340,6 +348,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
     vec![getopts::optflag("", "ignored", "Run ignored tests"),
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
+      getopts::optflag("", "list", "List all tests and benchmarks"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
@@ -411,6 +420,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
     let quiet = matches.opt_present("quiet");
     let exact = matches.opt_present("exact");
+    let list = matches.opt_present("list");
 
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
@@ -451,6 +461,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     let test_opts = TestOpts {
+        list: list,
         filter: filter,
         filter_exact: exact,
         run_ignored: run_ignored,
@@ -581,7 +592,8 @@ impl<T: Write> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_plain(&mut self, s: &str) -> io::Result<()> {
+    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        let s = s.as_ref();
         match self.out {
             Pretty(ref mut term) => {
                 term.write_all(s.as_bytes())?;
@@ -635,23 +647,26 @@ impl<T: Write> ConsoleTestState<T> {
                                   TEST_WARN_TIMEOUT_S))
     }
 
-    pub fn write_log(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
+    pub fn write_log<S: AsRef<str>>(&mut self, msg: S) -> io::Result<()> {
+        let msg = msg.as_ref();
         match self.log_out {
             None => Ok(()),
-            Some(ref mut o) => {
-                let s = format!("{} {}\n",
-                                match *result {
-                                    TrOk => "ok".to_owned(),
-                                    TrFailed => "failed".to_owned(),
-                                    TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                                    TrIgnored => "ignored".to_owned(),
-                                    TrMetrics(ref mm) => mm.fmt_metrics(),
-                                    TrBench(ref bs) => fmt_bench_samples(bs),
-                                },
-                                test.name);
-                o.write_all(s.as_bytes())
-            }
+            Some(ref mut o) => o.write_all(msg.as_bytes()),
         }
+    }
+
+    pub fn write_log_result(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
+        self.write_log(
+            format!("{} {}\n",
+                    match *result {
+                        TrOk => "ok".to_owned(),
+                        TrFailed => "failed".to_owned(),
+                        TrFailedMsg(ref msg) => format!("failed: {}", msg),
+                        TrIgnored => "ignored".to_owned(),
+                        TrMetrics(ref mm) => mm.fmt_metrics(),
+                        TrBench(ref bs) => fmt_bench_samples(bs),
+                    },
+                    test.name))
     }
 
     pub fn write_failures(&mut self) -> io::Result<()> {
@@ -746,6 +761,49 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     output
 }
 
+// List the tests to console, and optionally to logfile. Filters are honored.
+pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
+    let mut st = ConsoleTestState::new(opts, None::<io::Stdout>)?;
+
+    let mut ntest = 0;
+    let mut nbench = 0;
+    let mut nmetric = 0;
+
+    for test in filter_tests(&opts, tests) {
+        use TestFn::*;
+
+        let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
+
+        let fntype = match testfn {
+            StaticTestFn(..) | DynTestFn(..) => { ntest += 1; "test" },
+            StaticBenchFn(..) | DynBenchFn(..) => { nbench += 1; "benchmark" },
+            StaticMetricFn(..) | DynMetricFn(..) => { nmetric += 1; "metric" },
+        };
+
+        st.write_plain(format!("{}: {}\n", name, fntype))?;
+        st.write_log(format!("{} {}\n", fntype, name))?;
+    }
+
+    fn plural(count: u32, s: &str) -> String {
+        match count {
+            1 => format!("{} {}", 1, s),
+            n => format!("{} {}s", n, s),
+        }
+    }
+
+    if !opts.quiet {
+        if ntest != 0 || nbench != 0 || nmetric != 0 {
+            st.write_plain("\n")?;
+        }
+        st.write_plain(format!("{}, {}, {}\n",
+            plural(ntest, "test"),
+            plural(nbench, "benchmark"),
+            plural(nmetric, "metric")))?;
+    }
+
+    Ok(())
+}
+
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
 
@@ -755,7 +813,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeTimeout(ref test) => st.write_timeout(test),
             TeResult(test, result, stdout) => {
-                st.write_log(&test, &result)?;
+                st.write_log_result(&test, &result)?;
                 st.write_result(&result)?;
                 match result {
                     TrOk => st.passed += 1,
