@@ -36,14 +36,8 @@ pub fn set_source_location(fcx: &FunctionContext,
             set_debug_location(fcx.ccx, builder, UnknownLocation);
             return;
         }
-        FunctionDebugContext::RegularContext(box ref data) => data
+        FunctionDebugContext::RegularContext(ref data) => data
     };
-
-    if function_debug_context.source_location_override.get() {
-        // Just ignore any attempts to set a new debug location while
-        // the override is active.
-        return;
-    }
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         let (scope, span) = match debug_loc {
@@ -72,7 +66,7 @@ pub fn set_source_location(fcx: &FunctionContext,
 /// first real statement/expression of the function is translated.
 pub fn start_emitting_source_locations(fcx: &FunctionContext) {
     match fcx.debug_context {
-        FunctionDebugContext::RegularContext(box ref data) => {
+        FunctionDebugContext::RegularContext(ref data) => {
             data.source_locations_enabled.set(true)
         },
         _ => { /* safe to ignore */ }

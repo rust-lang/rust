@@ -54,7 +54,7 @@ pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, Mir
     let mut scopes = IndexVec::from_elem(null_scope, &mir.visibility_scopes);
 
     let fn_metadata = match fcx.debug_context {
-        FunctionDebugContext::RegularContext(box ref data) => data.fn_metadata,
+        FunctionDebugContext::RegularContext(ref data) => data.fn_metadata,
         FunctionDebugContext::DebugInfoDisabled |
         FunctionDebugContext::FunctionWithoutDebugInfo => {
             return scopes;
