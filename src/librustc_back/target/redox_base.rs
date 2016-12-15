@@ -33,6 +33,10 @@ pub fn opts() -> TargetOptions {
             // Static link
             "-static".to_string()
         ],
+        late_link_args: vec![
+            // Link to openlibm for math functions
+            "-lopenlibm".to_string()
+        ],
         executables: true,
         relocation_model: "static".to_string(),
         disable_redzone: true,
