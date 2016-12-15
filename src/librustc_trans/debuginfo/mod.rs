@@ -97,7 +97,7 @@ impl<'tcx> CrateDebugContext<'tcx> {
 }
 
 pub enum FunctionDebugContext {
-    RegularContext(Box<FunctionDebugContextData>),
+    RegularContext(FunctionDebugContextData),
     DebugInfoDisabled,
     FunctionWithoutDebugInfo,
 }
@@ -107,7 +107,7 @@ impl FunctionDebugContext {
                    span: Span)
                    -> &'a FunctionDebugContextData {
         match *self {
-            FunctionDebugContext::RegularContext(box ref data) => data,
+            FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
                 span_bug!(span,
                           "{}",
@@ -134,7 +134,6 @@ impl FunctionDebugContext {
 pub struct FunctionDebugContextData {
     fn_metadata: DISubprogram,
     source_locations_enabled: Cell<bool>,
-    source_location_override: Cell<bool>,
 }
 
 pub enum VariableAccess<'a> {
@@ -293,10 +292,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // Initialize fn debug context (including scope map and namespace map)
-    let fn_debug_context = box FunctionDebugContextData {
+    let fn_debug_context = FunctionDebugContextData {
         fn_metadata: fn_metadata,
         source_locations_enabled: Cell::new(false),
-        source_location_override: Cell::new(false),
     };
 
     return FunctionDebugContext::RegularContext(fn_debug_context);
@@ -503,11 +501,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx()
-                        .debug_context
-                        .get_ref(span)
-                        .source_locations_enabled
-                        .get());
+            assert!(!bcx.fcx().debug_context.get_ref(span).source_locations_enabled.get());
             source_loc::set_debug_location(cx, None, UnknownLocation);
         }
         _ => { /* nothing to do */ }
