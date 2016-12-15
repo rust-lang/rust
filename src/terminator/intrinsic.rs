@@ -66,6 +66,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "atomic_store" |
+            "atomic_store_relaxed" |
+            "atomic_store_rel" |
             "volatile_store" => {
                 let ty = substs.type_at(0);
                 let dest = arg_vals[0].read_ptr(&self.memory)?;
@@ -90,6 +92,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
+            "atomic_cxchg_relaxed" |
             "atomic_cxchg" => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
@@ -108,6 +111,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
+            "atomic_xadd" |
             "atomic_xadd_relaxed" => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
