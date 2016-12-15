@@ -389,8 +389,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "getenv" => {
                 {
-                    let name = args[0].read_ptr(&self.memory)?;
-                    let name = self.memory.read_c_str(name)?;
+                    let name_ptr = args[0].read_ptr(&self.memory)?;
+                    let name = self.memory.read_c_str(name_ptr)?;
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
                 self.write_value(Value::ByVal(PrimVal::new(0)), dest, dest_ty)?;
