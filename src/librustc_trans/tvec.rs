@@ -15,16 +15,13 @@ use llvm::ValueRef;
 use common::*;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'blk, 'tcx, F>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                     data_ptr: ValueRef,
-                                     unit_ty: Ty<'tcx>,
-                                     len: ValueRef,
-                                     f: F)
-                                     -> BlockAndBuilder<'blk, 'tcx>
-    where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>, ValueRef)
-{
-    let fcx = bcx.fcx();
-
+pub fn slice_for_each<'blk, 'tcx, F>(
+    bcx: &BlockAndBuilder<'blk, 'tcx>,
+    data_ptr: ValueRef,
+    unit_ty: Ty<'tcx>,
+    len: ValueRef,
+    f: F
+) -> BlockAndBuilder<'blk, 'tcx> where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>, ValueRef) {
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx(), unit_ty);
     let add = |bcx: &BlockAndBuilder, a, b| if zst {
@@ -33,9 +30,9 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         bcx.inbounds_gep(a, &[b])
     };
 
-    let body_bcx = fcx.build_new_block("slice_loop_body");
-    let next_bcx = fcx.build_new_block("slice_loop_next");
-    let header_bcx = fcx.build_new_block("slice_loop_header");
+    let body_bcx = bcx.fcx().build_new_block("slice_loop_body");
+    let next_bcx = bcx.fcx().build_new_block("slice_loop_next");
+    let header_bcx = bcx.fcx().build_new_block("slice_loop_header");
 
     let start = if zst {
         C_uint(bcx.ccx(), 0usize)
@@ -51,13 +48,7 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
     f(&body_bcx, if zst { data_ptr } else { current });
-    // FIXME(simulacrum): The code below is identical to the closure (add) above, but using the
-    // closure doesn't compile due to body_bcx still being borrowed when dropped.
-    let next = if zst {
-        body_bcx.add(current, C_uint(bcx.ccx(), 1usize))
-    } else {
-        body_bcx.inbounds_gep(current, &[C_uint(bcx.ccx(), 1usize)])
-    };
+    let next = add(&body_bcx, current, C_uint(bcx.ccx(), 1usize));
     body_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
     body_bcx.br(header_bcx.llbb());
     next_bcx
