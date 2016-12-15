@@ -387,7 +387,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let mut self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
+    let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
 
@@ -401,10 +401,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let llfn = callee.reify(bcx.ccx());
     let llret;
-    if self_scope.is_some() && !bcx.sess().no_landing_pads() {
+    if let Some(landing_pad) = self_scope.as_ref().and_then(|c| c.landing_pad) {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad(self_scope.as_mut().unwrap());
-
         llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {

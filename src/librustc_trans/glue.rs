@@ -238,7 +238,7 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
     // might well consider changing below to more direct code.
     // Issue #23611: schedule cleanup of contents, re-inspecting the
     // discriminant (if any) in case of variant swap in drop code.
-    let mut contents_scope = if !shallow_drop {
+    let contents_scope = if !shallow_drop {
         bcx.fcx().schedule_drop_adt_contents(v0, t)
     } else {
         None
@@ -269,10 +269,8 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
     let callee = Callee::def(bcx.ccx(), dtor_did, vtbl.substs);
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
     let llret;
-    if contents_scope.is_some() && !bcx.sess().no_landing_pads() {
+    if let Some(landing_pad) = contents_scope.as_ref().and_then(|c| c.landing_pad) {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        let landing_pad = bcx.fcx().get_landing_pad(contents_scope.as_mut().unwrap());
-
         llret = bcx.invoke(callee.reify(bcx.ccx()), args, normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {
