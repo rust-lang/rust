@@ -74,24 +74,44 @@ pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
 
-/// An iterator over a BTreeSet's items.
+/// An iterator over a `BTreeSet`'s items.
+///
+/// This structure is created by the [`iter`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`iter`]: struct.BTreeSet.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
-/// An owning iterator over a BTreeSet's items.
+/// An owning iterator over a `BTreeSet`'s items.
+///
+/// This structure is created by the `into_iter` method on [`BTreeSet`]
+/// [`BTreeSet`] (provided by the `IntoIterator` trait).
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
-/// An iterator over a sub-range of BTreeSet's items.
+/// An iterator over a sub-range of `BTreeSet`'s items.
+///
+/// This structure is created by the [`range`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`range`]: struct.BTreeSet.html#method.range
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
+///
+/// This structure is created by the [`difference`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`difference`]: struct.BTreeSet.html#method.difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -99,6 +119,12 @@ pub struct Difference<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
+///
+/// This structure is created by the [`symmetric_difference`] method on
+/// [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -106,6 +132,11 @@ pub struct SymmetricDifference<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set intersection (in-order).
+///
+/// This structure is created by the [`intersection`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`intersection`]: struct.BTreeSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -113,6 +144,11 @@ pub struct Intersection<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set union (in-order).
+///
+/// This structure is created by the [`union`] method on [`BTreeSet`].
+///
+/// [`BTreeSet`]: struct.BTreeSet.html
+/// [`union`]: struct.BTreeSet.html#method.union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
@@ -120,7 +156,7 @@ pub struct Union<'a, T: 'a> {
 }
 
 impl<T: Ord> BTreeSet<T> {
-    /// Makes a new BTreeSet with a reasonable choice of B.
+    /// Makes a new `BTreeSet` with a reasonable choice of B.
     ///
     /// # Examples
     ///
@@ -137,21 +173,32 @@ impl<T: Ord> BTreeSet<T> {
 }
 
 impl<T> BTreeSet<T> {
-    /// Gets an iterator over the BTreeSet's contents.
+    /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
+    /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
     ///
-    /// for x in set.iter() {
-    ///     println!("{}", x);
-    /// }
+    /// Values returned by the iterator are returned in ascending order:
     ///
-    /// let v: Vec<_> = set.iter().cloned().collect();
-    /// assert_eq!(v, [1, 2, 3, 4]);
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<usize> = [3, 1, 2].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
