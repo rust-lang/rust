@@ -12,7 +12,6 @@
 
 use llvm;
 use llvm::ValueRef;
-use base::*;
 use common::*;
 use rustc::ty::Ty;
 
@@ -24,7 +23,6 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                      -> BlockAndBuilder<'blk, 'tcx>
     where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>, ValueRef)
 {
-    let _icx = push_ctxt("tvec::slice_for_each");
     let fcx = bcx.fcx();
 
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)

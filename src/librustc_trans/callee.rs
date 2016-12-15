@@ -249,8 +249,6 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     // then adapt the self type
     let llfn_closure_kind = ccx.tcx().closure_kind(def_id);
 
-    let _icx = push_ctxt("trans_closure_adapter_shim");
-
     debug!("trans_closure_adapter_shim(llfn_closure_kind={:?}, \
            trait_closure_kind={:?}, llfn={:?})",
            llfn_closure_kind, trait_closure_kind, Value(llfn));
@@ -450,7 +448,6 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     bare_fn_ty: Ty<'tcx>)
     -> ValueRef
 {
-    let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
     // Normalize the type for better caching.
@@ -715,7 +712,6 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         _ => bug!("expected fn pointer callee, found {:?}", callee)
     };
 
-    let _icx = push_ctxt("invoke_");
     let llret = bcx.call(llfn, &llargs[..], lpad);
     fn_ty.apply_attrs_callsite(llret);
 

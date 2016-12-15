@@ -95,8 +95,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
 
-    let _icx = push_ctxt("trans_intrinsic_call");
-
     let (def_id, substs, fty) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs, ref fty) => (def_id, substs, fty),
         _ => bug!("expected fn item type, found {}", callee_ty)

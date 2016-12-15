@@ -127,18 +127,6 @@ impl Drop for _InsnCtxt {
     }
 }
 
-pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
-    debug!("new InsnCtxt: {}", s);
-    TASK_LOCAL_INSN_KEY.with(|slot| {
-        if let Some(ctx) = slot.borrow_mut().as_mut() {
-            ctx.push(s)
-        }
-    });
-    _InsnCtxt {
-        _cannot_construct_outside_of_this_module: (),
-    }
-}
-
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
@@ -200,8 +188,6 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                   size: ValueRef,
                                   align: ValueRef)
                                   -> ValueRef {
-    let _icx = push_ctxt("malloc_raw_exchange");
-
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
     let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).reify(bcx.ccx());
@@ -568,8 +554,6 @@ pub fn with_cond<'blk, 'tcx, F>(
 ) -> BlockAndBuilder<'blk, 'tcx>
     where F: FnOnce(BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx>
 {
-    let _icx = push_ctxt("with_cond");
-
     if common::const_to_opt_uint(val) == Some(0) {
         return bcx;
     }
@@ -599,11 +583,6 @@ impl Lifetime {
             return;
         }
 
-        let _icx = push_ctxt(match self {
-            Lifetime::Start => "lifetime_start",
-            Lifetime::End => "lifetime_end"
-        });
-
         let size = machine::llsize_of_alloc(b.ccx, val_ty(ptr).element_type());
         if size == 0 {
             return;
@@ -624,7 +603,6 @@ pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
                                src: ValueRef,
                                n_bytes: ValueRef,
                                align: u32) {
-    let _icx = push_ctxt("call_memcpy");
     let ccx = b.ccx;
     let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
@@ -640,7 +618,6 @@ pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
 pub fn memcpy_ty<'blk, 'tcx>(
     bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
 ) {
-    let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
 
     if type_is_zero_size(ccx, t) {
@@ -661,7 +638,6 @@ pub fn memcpy_ty<'blk, 'tcx>(
 }
 
 pub fn init_zero_mem<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
-    let _icx = push_ctxt("init_zero_mem");
     let bcx = cx;
     memfill(bcx, llptr, t, 0);
 }
@@ -672,7 +648,6 @@ pub fn init_zero_mem<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, llptr: ValueR
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
 fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte: u8) {
-    let _icx = push_ctxt("memfill");
     let ccx = b.ccx;
     let llty = type_of::type_of(ccx, ty);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
@@ -704,7 +679,6 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 }
 
 pub fn alloca(cx: &BlockAndBuilder, ty: Type, name: &str) -> ValueRef {
-    let _icx = push_ctxt("alloca");
     DebugLoc::None.apply(cx.fcx());
     cx.fcx().alloca(ty, name)
 }
@@ -806,8 +780,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// Ties up the llstaticallocas -> llloadenv -> lltop edges,
     /// and builds the return block.
     pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
-        let _icx = push_ctxt("FunctionContext::finish");
-
         self.build_return_block(ret_cx);
 
         DebugLoc::None.apply(self);
@@ -889,8 +861,6 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // and to allow finding the last function before LLVM aborts from
     // release builds.
     info!("trans_instance({})", instance);
-
-    let _icx = push_ctxt("trans_instance");
 
     let fn_ty = ccx.tcx().item_type(instance.def);
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
