@@ -828,6 +828,12 @@ impl Child {
 /// this function at a known point where there are no more destructors left
 /// to run.
 ///
+/// ## Platform-specific behavior
+///
+/// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
+/// will be visible to a parent process inspecting the exit code. On most
+/// Unix-like platforms, only the eight least-significant bits are considered.
+///
 /// # Examples
 ///
 /// ```
@@ -835,6 +841,17 @@ impl Child {
 ///
 /// process::exit(0);
 /// ```
+///
+/// Due to [platform-specific behavior], the exit code for this example will be
+/// `0` on Linux, but `256` on Windows:
+///
+/// ```no_run
+/// use std::process;
+///
+/// process::exit(0x0f00);
+/// ```
+///
+/// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
     ::sys_common::cleanup();
