@@ -520,8 +520,7 @@ macro_rules! unimplemented {
 /// into libsyntax itself.
 ///
 /// For more information, see documentation for `std`'s macros.
-#[cfg(dox)]
-pub mod builtin {
+mod builtin {
     /// The core macro for formatted string creation & output.
     ///
     /// For more information, see the documentation for [`std::format_args!`].
@@ -529,6 +528,7 @@ pub mod builtin {
     /// [`std::format_args!`]: ../std/macro.format_args.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
         /* compiler built-in */
     }) }
@@ -540,6 +540,7 @@ pub mod builtin {
     /// [`std::env!`]: ../std/macro.env.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
 
     /// Optionally inspect an environment variable at compile time.
@@ -549,6 +550,7 @@ pub mod builtin {
     /// [`std::option_env!`]: ../std/macro.option_env.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
 
     /// Concatenate identifiers into one identifier.
@@ -558,6 +560,7 @@ pub mod builtin {
     /// [`std::concat_idents!`]: ../std/macro.concat_idents.html
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! concat_idents {
         ($($e:ident),*) => ({ /* compiler built-in */ })
     }
@@ -569,6 +572,7 @@ pub mod builtin {
     /// [`std::concat!`]: ../std/macro.concat.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the line number on which it was invoked.
@@ -578,6 +582,7 @@ pub mod builtin {
     /// [`std::line!`]: ../std/macro.line.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the column number on which it was invoked.
@@ -587,6 +592,7 @@ pub mod builtin {
     /// [`std::column!`]: ../std/macro.column.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the file name from which it was invoked.
@@ -596,6 +602,7 @@ pub mod builtin {
     /// [`std::file!`]: ../std/macro.file.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
     /// A macro which stringifies its argument.
@@ -605,6 +612,7 @@ pub mod builtin {
     /// [`std::stringify!`]: ../std/macro.stringify.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! stringify { ($t:tt) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
@@ -614,6 +622,7 @@ pub mod builtin {
     /// [`std::include_str!`]: ../std/macro.include_str.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
 
     /// Includes a file as a reference to a byte array.
@@ -623,6 +632,7 @@ pub mod builtin {
     /// [`std::include_bytes!`]: ../std/macro.include_bytes.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
 
     /// Expands to a string that represents the current module path.
@@ -632,6 +642,7 @@ pub mod builtin {
     /// [`std::module_path!`]: ../std/macro.module_path.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
     /// Boolean evaluation of configuration flags.
@@ -641,6 +652,7 @@ pub mod builtin {
     /// [`std::cfg!`]: ../std/macro.cfg.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Parse a file as an expression or an item according to the context.
@@ -650,5 +662,6 @@ pub mod builtin {
     /// [`std::include!`]: ../std/macro.include.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
+    #[cfg(dox)]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
 }

@@ -1222,8 +1222,8 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
                                obligation,
                                &closure_type.sig,
                                util::TupleArgumentsFlag::No)
-        .with_addl_obligations(obligations)
         .with_addl_obligations(vtable.nested)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
