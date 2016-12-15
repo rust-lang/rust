@@ -34,7 +34,6 @@ pub mod condvar;
 pub mod io;
 pub mod memchr;
 pub mod mutex;
-pub mod net;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;
@@ -43,6 +42,12 @@ pub mod thread_info;
 pub mod thread_local;
 pub mod util;
 pub mod wtf8;
+
+#[cfg(target_os = "redox")]
+pub use sys::net;
+
+#[cfg(not(target_os = "redox"))]
+pub mod net;
 
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
 #[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
