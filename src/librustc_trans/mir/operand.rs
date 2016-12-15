@@ -244,17 +244,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn store_operand(&mut self,
                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                          lldest: ValueRef,
-                         operand: OperandRef<'tcx>)
-    {
-        debug!("store_operand: operand={:?} lldest={:?}", operand, lldest);
-        self.store_operand_direct(bcx, lldest, operand)
-    }
-
-    pub fn store_operand_direct(&mut self,
-                                bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                                lldest: ValueRef,
-                                operand: OperandRef<'tcx>)
-    {
+                         operand: OperandRef<'tcx>) {
+        debug!("store_operand: operand={:?}", operand);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
         if common::type_is_zero_size(bcx.ccx(), operand.ty) {
