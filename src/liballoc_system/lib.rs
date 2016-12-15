@@ -19,6 +19,7 @@
             issue = "27783")]
 #![feature(allocator)]
 #![feature(staged_api)]
+#![cfg_attr(target_os = "redox", feature(libc))]
 #![cfg_attr(unix, feature(libc))]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
@@ -71,7 +72,49 @@ pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
     imp::usable_size(size, align)
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "redox")]
+mod imp {
+    extern crate libc;
+
+    use core::cmp;
+    use core::ptr;
+    use MIN_ALIGN;
+
+    pub unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
+        libc::malloc(size as libc::size_t) as *mut u8
+    }
+
+    pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
+        if align <= MIN_ALIGN {
+            libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
+        } else {
+            let new_ptr = allocate(size, align);
+            if !new_ptr.is_null() {
+                ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
+                deallocate(ptr, old_size, align);
+            }
+            new_ptr
+        }
+    }
+
+    pub unsafe fn reallocate_inplace(_ptr: *mut u8,
+                                     old_size: usize,
+                                     _size: usize,
+                                     _align: usize)
+                                     -> usize {
+        old_size
+    }
+
+    pub unsafe fn deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
+        libc::free(ptr as *mut libc::c_void)
+    }
+
+    pub fn usable_size(size: usize, _align: usize) -> usize {
+        size
+    }
+}
+
+#[cfg(any(unix))]
 mod imp {
     extern crate libc;
 
