@@ -536,10 +536,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let offset = ptr.offset as usize;
         match alloc.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                if self.relocations(ptr, size as u64)?.count() != 0 {
+                if self.relocations(ptr, (size + 1) as u64)?.count() != 0 {
                     return Err(EvalError::ReadPointerAsBytes);
                 }
-                self.check_defined(ptr, size as u64)?;
+                self.check_defined(ptr, (size + 1) as u64)?;
                 Ok(&alloc.bytes[offset..offset + size])
             },
             None => Err(EvalError::UnterminatedCString(ptr)),
