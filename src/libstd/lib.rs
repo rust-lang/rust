@@ -423,6 +423,11 @@ pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
 
+// Reexport the start module on platforms that provide it
+#[unstable(feature = "start_fn", issue="0")]
+#[cfg(target_os = "redox")]
+pub use sys::start::*;
+
 pub mod f32;
 pub mod f64;
 
