@@ -11,7 +11,6 @@ use syntax::codemap::Span;
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(Abi, &'tcx FnSig<'tcx>, &'tcx BareFnTy<'tcx>),
     NoMirFor(String),
-    UnterminatedCString(Pointer),
     DanglingPointerDeref,
     InvalidMemoryAccess,
     InvalidFunctionPointer,
@@ -120,8 +119,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to deallocate frozen memory",
             EvalError::Layout(_) =>
                 "rustc layout computation failed",
-            EvalError::UnterminatedCString(_) =>
-                "attempted to get length of a null terminated string, but no null found before end of allocation",
         }
     }
 
