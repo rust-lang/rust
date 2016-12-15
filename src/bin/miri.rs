@@ -10,7 +10,7 @@ extern crate syntax;
 #[macro_use] extern crate log;
 
 use rustc::session::Session;
-use rustc_driver::{CompilerCalls, Compilation};
+use rustc_driver::CompilerCalls;
 use rustc_driver::driver::{CompileState, CompileController};
 use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
