@@ -126,6 +126,7 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
+    prefix: Option<String>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
@@ -238,6 +239,7 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
+        config.prefix = build.prefix;
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
