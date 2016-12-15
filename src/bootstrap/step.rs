@@ -458,7 +458,7 @@ pub fn build_rules(build: &Build) -> Rules {
     for (krate, path, default) in krates("test_shim") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest"))
-             .default(default && build.config.docs)
+             .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
