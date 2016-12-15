@@ -23,6 +23,9 @@ compiler_builtins = { path = "../libcompiler_builtins" }
 std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
 
+[replace]
+"core:0.0.0" = { path = "../libcore" }
+
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.27"

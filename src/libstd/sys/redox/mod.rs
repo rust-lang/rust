@@ -10,8 +10,6 @@
 
 #![allow(dead_code, missing_docs, bad_style)]
 
-pub extern crate syscall;
-
 use io::{self, ErrorKind};
 
 pub mod args;
@@ -33,7 +31,9 @@ pub mod process;
 pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
+pub mod start;
 pub mod stdio;
+pub mod syscall;
 pub mod thread;
 pub mod thread_local;
 pub mod time;

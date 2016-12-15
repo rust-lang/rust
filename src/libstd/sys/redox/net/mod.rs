@@ -20,9 +20,10 @@ use vec::{IntoIter, Vec};
 
 use self::dns::{Dns, DnsQuery};
 
-pub extern crate libc as netc;
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;
+
+pub mod netc;
 
 mod dns;
 mod tcp;

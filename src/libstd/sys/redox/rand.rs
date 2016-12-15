@@ -9,15 +9,19 @@
 // except according to those terms.
 
 use io;
-use libc;
 use rand::Rng;
 
-pub struct OsRng;
+// FIXME: Use rand:
+pub struct OsRng {
+    state: [u64; 2]
+}
 
 impl OsRng {
     /// Create a new `OsRng`.
     pub fn new() -> io::Result<OsRng> {
-        Ok(OsRng)
+        Ok(OsRng {
+            state: [0xBADF00D1, 0xDEADBEEF]
+        })
     }
 }
 
@@ -26,7 +30,20 @@ impl Rng for OsRng {
         self.next_u64() as u32
     }
     fn next_u64(&mut self) -> u64 {
-        unsafe { libc::random() }
+        // Store the first and second part.
+        let mut x = self.state[0];
+        let y = self.state[1];
+
+        // Put the second part into the first slot.
+        self.state[0] = y;
+        // Twist the first slot.
+        x ^= x << 23;
+        // Update the second slot.
+        self.state[1] = x ^ y ^ (x >> 17) ^ (y >> 26);
+
+        // Generate the final integer.
+        self.state[1].wrapping_add(y)
+
     }
     fn fill_bytes(&mut self, buf: &mut [u8]) {
         for chunk in buf.chunks_mut(8) {
