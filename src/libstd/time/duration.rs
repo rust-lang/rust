@@ -89,6 +89,16 @@ impl Duration {
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
+    /// Returns the number of whole milliseconds represented by this duration.
+    ///
+    /// Returns `None` if the operation would overflow.
+    #[unstable(feature = "duration_as_millis", reason = "newly added")]
+    pub fn as_millis(&self) -> Option<u64> {
+        self.secs.checked_mul(MILLIS_PER_SEC).and_then(|millis| {
+            millis.checked_add((self.nanos / NANOS_PER_MILLI) as u64)
+        })
+    }
+
     /// Returns the nanosecond precision represented by this duration.
     ///
     /// This method does **not** return the length of the duration when
@@ -323,6 +333,15 @@ mod tests {
         assert_eq!(Duration::from_secs(1).as_secs(), 1);
         assert_eq!(Duration::from_millis(999).as_secs(), 0);
         assert_eq!(Duration::from_millis(1001).as_secs(), 1);
+    }
+
+    #[test]
+    fn millis() {
+        assert_eq!(Duration::new(0, 0).as_millis(), Some(0));
+        assert_eq!(Duration::new(0, 5).as_millis(), Some(0));
+        assert_eq!(Duration::from_secs(1).as_millis(), Some(1_000));
+        assert_eq!(Duration::from_millis(999).as_millis(), Some(999));
+        assert_eq!(Duration::from_millis(1001).as_millis(), Some(1001));
     }
 
     #[test]
