@@ -19,15 +19,9 @@ using namespace llvm::object;
 struct RustArchiveMember {
   const char *filename;
   const char *name;
-  Archive::Child child;
+  Archive::Child *child;
 
-  RustArchiveMember(): filename(NULL), name(NULL),
-#if LLVM_VERSION_GE(3, 8)
-    child(NULL, NULL, NULL)
-#else
-    child(NULL, NULL)
-#endif
-  {}
+  RustArchiveMember(): filename(NULL), name(NULL), child(NULL){ }
   ~RustArchiveMember() {}
 };
 
@@ -212,7 +206,7 @@ LLVMRustArchiveMemberNew(char *Filename, char *Name,
     Member->filename = Filename;
     Member->name = Name;
     if (child)
-        Member->child = *child;
+        Member->child = child;
     return Member;
 }
 
@@ -253,9 +247,9 @@ LLVMRustWriteArchive(char *Dst,
 #endif
     } else {
 #if LLVM_VERSION_LE(3, 8)
-      Members.push_back(NewArchiveIterator(Member->child, Member->name));
+      Members.push_back(NewArchiveIterator(*Member->child, Member->name));
 #else
-      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
+      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(*Member->child, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
