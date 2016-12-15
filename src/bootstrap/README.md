@@ -42,6 +42,15 @@ The script accepts commands, flags, and arguments to determine what to do:
   ./x.py build --stage 0 src/libtest
   ```
 
+  If files are dirty that would normally be rebuilt from stage 0, that can be
+  overidden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
+  that belong to stage n or earlier:
+
+  ```
+  # keep old build products for stage 0 and build stage 1
+  ./x.py build --keep-stage 0 --stage 1
+  ```
+
 * `test` - a command for executing unit tests. Like the `build` command this
   will execute the entire test suite by default, and otherwise it can be used to
   select which test suite is run:

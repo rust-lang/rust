@@ -29,6 +29,7 @@ use step;
 pub struct Flags {
     pub verbose: bool,
     pub stage: Option<u32>,
+    pub keep_stage: Option<u32>,
     pub build: String,
     pub host: Vec<String>,
     pub target: Vec<String>,
@@ -68,6 +69,7 @@ impl Flags {
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
         opts.optopt("", "stage", "stage to build", "N");
+        opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -257,6 +259,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
         Flags {
             verbose: m.opt_present("v"),
             stage: m.opt_str("stage").map(|j| j.parse().unwrap()),
+            keep_stage: m.opt_str("keep-stage").map(|j| j.parse().unwrap()),
             build: m.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()
             }),
