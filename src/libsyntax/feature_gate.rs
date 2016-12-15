@@ -323,7 +323,7 @@ declare_features! (
     (active, abi_ptx, "1.15.0", None),
 
     // The `i128` type
-    (active, i128_type, "1.15.0", Some(35118)),
+    (active, i128_type, "1.16.0", Some(35118)),
 );
 
 declare_features! (
