@@ -12,7 +12,6 @@ use attributes;
 use llvm::{ValueRef, get_params};
 use rustc::traits;
 use abi::FnType;
-use base::*;
 use callee::Callee;
 use common::*;
 use consts;
@@ -64,7 +63,6 @@ pub fn get_virtual_method<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                    callee: Callee<'tcx>)
                                    -> ValueRef {
-    let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
 
     debug!("trans_object_shim({:?})", callee);
@@ -109,7 +107,6 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             -> ValueRef
 {
     let tcx = ccx.tcx();
-    let _icx = push_ctxt("meth::get_vtable");
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 

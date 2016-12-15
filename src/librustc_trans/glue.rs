@@ -40,8 +40,6 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                            size: ValueRef,
                                            align: ValueRef)
                                            -> BlockAndBuilder<'blk, 'tcx> {
-    let _icx = push_ctxt("trans_exchange_free");
-
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
     Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
@@ -133,7 +131,6 @@ pub fn call_drop_glue<'blk, 'tcx>(
 ) {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
-    let _icx = push_ctxt("drop_ty");
     if bcx.fcx().type_needs_drop(t) {
         let ccx = bcx.ccx();
         let g = if skip_dtor {
@@ -401,8 +398,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
 
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
     // NB: v0 is an *alias* of type t here, not a direct value.
-    let _icx = push_ctxt("make_drop_glue");
-
     // Only drop the value when it ... well, we used to check for
     // non-null, (and maybe we need to continue doing so), but we now
     // must definitely check for special bit-patterns corresponding to
@@ -472,14 +467,11 @@ fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
                                   av: ValueRef,
                                   t: Ty<'tcx>)
                                   -> BlockAndBuilder<'blk, 'tcx> {
-    let _icx = push_ctxt("drop_structural_ty");
-
     fn iter_variant<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
                                 t: Ty<'tcx>,
                                 av: adt::MaybeSizedValue,
                                 variant: &'tcx ty::VariantDef,
                                 substs: &Substs<'tcx>) {
-        let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
