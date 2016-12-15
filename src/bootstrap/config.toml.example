@@ -70,7 +70,7 @@
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 #rustc = "/path/to/bin/rustc"
 
-# Instead of installing installing to /usr/local, install to this path instead.
+# Instead of installing to /usr/local, install to this path instead.
 #prefix = "/path/to/install"
 
 # Flag to specify whether any documentation is built. If false, rustdoc and
