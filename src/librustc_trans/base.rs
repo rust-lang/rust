@@ -23,8 +23,6 @@
 //!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-#![allow(non_camel_case_types)]
-
 use super::CrateTranslation;
 use super::ModuleLlvm;
 use super::ModuleSource;
