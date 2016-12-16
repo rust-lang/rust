@@ -49,7 +49,6 @@ use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
 use common::*;
-use debuginfo::DebugLoc;
 use glue;
 use base;
 use machine;
@@ -595,8 +594,6 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         return bcx.struct_gep(ptr_val, ix);
     }
 
-    let dbloc = DebugLoc::None;
-
     // We need to get the pointer manually now.
     // We do this by casting to a *i8, then offsetting it by the appropriate amount.
     // We do this instead of, say, simply adjusting the pointer from the result of a GEP
@@ -627,7 +624,6 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     //   (unaligned offset + (align - 1)) & -align
 
     // Calculate offset
-    dbloc.apply(bcx.fcx());
     let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx(), 1u64));
     let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
                          bcx.neg(align));

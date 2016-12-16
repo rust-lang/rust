@@ -20,7 +20,6 @@ use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, BlockAndBuilder, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
-use debuginfo::DebugLoc;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
@@ -115,9 +114,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug!("trans_block: terminator: {:?}", terminator);
 
         let span = terminator.source_info.span;
-        let debug_loc = self.debug_loc(terminator.source_info);
-        debug_loc.apply_to_bcx(&bcx);
-        debug_loc.apply(bcx.fcx());
+        let (scope, debug_span) = self.debug_loc(terminator.source_info);
+        bcx.set_source_location(scope, debug_span);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
@@ -329,7 +327,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // After this point, bcx is the block for the call to panic.
                 bcx = panic_block;
-                debug_loc.apply_to_bcx(&bcx);
+                bcx.set_source_location(scope, debug_span);
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
@@ -605,7 +603,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bug!("Cannot use direct operand with an intrinsic call")
                         };
 
-                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest, debug_loc);
+                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest, debug_span);
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
@@ -645,7 +643,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let ret_bcx = self.build_block(target);
                         ret_bcx.at_start(|ret_bcx| {
-                            debug_loc.apply_to_bcx(ret_bcx);
+                            bcx.set_source_location(scope, debug_span);
                             let op = OperandRef {
                                 val: Immediate(invokeret),
                                 ty: sig.output(),
@@ -885,7 +883,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             CleanupKind::Funclet => {
                 bcx.set_personality_fn(self.fcx.eh_personality());
-                DebugLoc::None.apply_to_bcx(&bcx);
                 let cleanup_pad = bcx.cleanup_pad(None, &[]);
                 funclets[bb] = Funclet::msvc(cleanup_pad);
             }
