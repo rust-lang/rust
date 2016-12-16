@@ -119,7 +119,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         bcx.call(llfn, &[], None);
         return;
     } else if name == "unreachable" {
-        // FIXME: do nothing?
         return;
     }
 
