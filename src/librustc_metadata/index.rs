@@ -70,7 +70,7 @@ impl<'tcx> LazySeq<Index> {
                index,
                words.len());
 
-        let position = u32::from_le(words[index]);
+        let position = u32::from_le(words[index].get());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None
@@ -84,7 +84,7 @@ impl<'tcx> LazySeq<Index> {
                                bytes: &'a [u8])
                                -> impl Iterator<Item = (DefIndex, Lazy<Entry<'tcx>>)> + 'a {
         let words = &bytes_to_words(&bytes[self.position..])[..self.len];
-        words.iter().enumerate().filter_map(|(index, &position)| {
+        words.iter().map(|word| word.get()).enumerate().filter_map(|(index, position)| {
             if position == u32::MAX {
                 None
             } else {
@@ -95,8 +95,16 @@ impl<'tcx> LazySeq<Index> {
     }
 }
 
-fn bytes_to_words(b: &[u8]) -> &[u32] {
-    unsafe { slice::from_raw_parts(b.as_ptr() as *const u32, b.len() / 4) }
+#[repr(packed)]
+#[derive(Copy, Clone)]
+struct Unaligned<T>(T);
+
+impl<T> Unaligned<T> {
+    fn get(self) -> T { self.0 }
+}
+
+fn bytes_to_words(b: &[u8]) -> &[Unaligned<u32>] {
+    unsafe { slice::from_raw_parts(b.as_ptr() as *const Unaligned<u32>, b.len() / 4) }
 }
 
 fn words_to_bytes(w: &[u32]) -> &[u8] {
