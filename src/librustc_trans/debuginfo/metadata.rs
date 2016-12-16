@@ -1309,7 +1309,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 // Creates MemberDescriptions for the fields of a single enum variant.
 struct VariantMemberDescriptionFactory<'tcx> {
     // Cloned from the layout::Struct describing the variant.
-    offsets: Vec<layout::Size>,
+    offsets: &'tcx [layout::Size],
     args: Vec<(String, Ty<'tcx>)>,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
@@ -1346,7 +1346,7 @@ enum EnumDiscriminantInfo {
 // full RecursiveTypeDescription.
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
-                                   struct_def: &layout::Struct,
+                                   struct_def: &'tcx layout::Struct,
                                    variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
@@ -1430,7 +1430,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
-            offsets: struct_def.offsets.clone(),
+            offsets: &struct_def.offsets[..],
             args: args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {
