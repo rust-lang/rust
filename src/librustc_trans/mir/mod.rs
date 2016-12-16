@@ -468,9 +468,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                use base::*;
-                use common::*;
-                let alloc = alloca(bcx, val_ty(llval), "__debuginfo_env_ptr");
+                let alloc = bcx.fcx().alloca(common::val_ty(llval), "__debuginfo_env_ptr");
                 bcx.store(llval, alloc);
                 alloc
             } else {

@@ -828,7 +828,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             slot
         } else {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            let slot = base::alloca(bcx, llretty, "personalityslot");
+            let slot = bcx.fcx().alloca(llretty, "personalityslot");
             self.llpersonalityslot = Some(slot);
             Lifetime::Start.call(bcx, slot);
             slot

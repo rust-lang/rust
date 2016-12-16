@@ -645,11 +645,7 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                             ty: Ty<'tcx>,
                             name: &str) -> ValueRef {
     assert!(!ty.has_param_types());
-    alloca(bcx, type_of::type_of(bcx.ccx(), ty), name)
-}
-
-pub fn alloca(cx: &BlockAndBuilder, ty: Type, name: &str) -> ValueRef {
-    cx.fcx().alloca(ty, name)
+    bcx.fcx().alloca(type_of::type_of(bcx.ccx(), ty), name)
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {

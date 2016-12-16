@@ -306,7 +306,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
 
-    owned_builder: OwnedBuilder<'a, 'tcx>,
+    alloca_builder: OwnedBuilder<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
@@ -358,7 +358,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             param_substs: param_substs,
             ccx: ccx,
             debug_context: debug_context,
-            owned_builder: OwnedBuilder::new_with_ccx(ccx),
+            alloca_builder: OwnedBuilder::new_with_ccx(ccx),
         }
     }
 
@@ -374,23 +374,22 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             llvm::LLVMGetFirstInstruction(entry_bcx.llbb())
         }));
 
-        self.owned_builder.builder.position_at_start(entry_bcx.llbb());
+        self.alloca_builder.builder.position_at_start(entry_bcx.llbb());
 
         if !self.fn_ty.ret.is_ignore() && !skip_retptr {
             // We normally allocate the llretslotptr, unless we
             // have been instructed to skip it for immediate return
             // values, or there is nothing to return at all.
 
-            // We create an alloca to hold a pointer of type `ret.original_ty`
-            // which will hold the pointer to the right alloca which has the
-            // final ret value
-            let llty = self.fn_ty.ret.memory_ty(self.ccx);
             // But if there are no nested returns, we skip the indirection
             // and have a single retslot
             let slot = if self.fn_ty.ret.is_indirect() {
                 get_param(self.llfn, 0)
             } else {
-                self.alloca(llty, "sret_slot")
+                // We create an alloca to hold a pointer of type `ret.original_ty`
+                // which will hold the pointer to the right alloca which has the
+                // final ret value
+                self.alloca(self.fn_ty.ret.memory_ty(self.ccx), "sret_slot")
             };
 
             self.llretslotptr.set(Some(slot));
@@ -514,7 +513,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
-        self.owned_builder.builder.alloca(ty, name)
+        self.alloca_builder.builder.dynamic_alloca(ty, name)
     }
 }
 
