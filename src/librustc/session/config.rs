@@ -1480,6 +1480,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                                                  s));
             }
         };
+        if kind == cstore::NativeStaticNobundle && !nightly_options::is_nightly_build() {
+            early_error(error_format, &format!("the library kind 'static-nobundle' is only \
+                                                accepted on the nightly compiler"));
+        }
         let mut name_parts = name.splitn(2, ':');
         let name = name_parts.next().unwrap();
         let new_name = name_parts.next();

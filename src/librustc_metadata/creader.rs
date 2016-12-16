@@ -111,6 +111,13 @@ fn register_native_lib(sess: &Session,
                                        GateIssue::Language,
                                        "is feature gated");
     }
+    if lib.kind == cstore::NativeStaticNobundle && !sess.features.borrow().static_nobundle {
+        feature_gate::emit_feature_err(&sess.parse_sess,
+                                       "static_nobundle",
+                                       span.unwrap(),
+                                       GateIssue::Language,
+                                       "kind=\"static-nobundle\" is feature gated");
+    }
     cstore.add_used_library(lib);
 }
 
