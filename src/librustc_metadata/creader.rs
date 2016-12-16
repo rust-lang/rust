@@ -300,7 +300,7 @@ impl<'a> CrateLoader<'a> {
         let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
-            key_map: metadata.load_key_map(crate_root.index),
+            def_path_table: crate_root.def_path_table.decode(&metadata),
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
             }),

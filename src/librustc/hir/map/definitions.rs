@@ -193,7 +193,7 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker)
     CrateRoot,
-    
+
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
 
@@ -241,6 +241,10 @@ impl Definitions {
             node_to_def_index: NodeMap(),
             def_index_to_node: vec![],
         }
+    }
+
+    pub fn def_path_table(&self) -> &DefPathTable {
+        &self.table
     }
 
     /// Get the number of definitions.
