@@ -303,9 +303,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // error reporting and symbol generation.
     pub span: Option<Span>,
 
-    // The arena that blocks are allocated from.
-    //pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
-
     // The arena that landing pads are allocated from.
     pub funclet_arena: TypedArena<Funclet>,
 
