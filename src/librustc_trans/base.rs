@@ -657,11 +657,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
     // Builds the return block for a function.
     pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
-        if self.llretslotptr.get().is_none() || self.fn_ty.ret.is_indirect() {
+        if self.llretslotptr.is_none() || self.fn_ty.ret.is_indirect() {
             return ret_cx.ret_void();
         }
 
-        let retslot = self.llretslotptr.get().unwrap();
+        let retslot = self.llretslotptr.unwrap();
         let retptr = Value(retslot);
         let llty = self.fn_ty.ret.original_ty;
         match (retptr.get_dominating_store(ret_cx), self.fn_ty.ret.cast) {
@@ -751,7 +751,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)));
+    let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)), true);
 
     if fcx.mir.is_none() {
         bug!("attempted translation of `{}` w/o MIR", instance);
@@ -774,11 +774,11 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None);
-    let bcx = fcx.init(false);
+    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None, false);
+    let bcx = fcx.get_entry_block();
 
     if !fcx.fn_ty.ret.is_ignore() {
-        let dest = fcx.llretslotptr.get().unwrap();
+        let dest = fcx.llretslotptr.unwrap();
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;

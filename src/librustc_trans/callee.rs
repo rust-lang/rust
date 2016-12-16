@@ -347,8 +347,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
-    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None);
-    let mut bcx = fcx.init(false);
+    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, false);
+    let mut bcx = fcx.get_entry_block();
 
     // the first argument (`self`) will be the (by value) closure env.
 
@@ -378,8 +378,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         llargs[self_idx] = llenv;
     }
 
-    let dest = fcx.llretslotptr.get();
-
     let callee = Callee {
         data: Fn(llreffn),
         ty: llref_fn_ty
@@ -392,7 +390,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
 
     let first_llarg = if fn_ty.ret.is_indirect() {
-        dest
+        fcx.llretslotptr
     } else {
         None
     };
@@ -411,7 +409,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     fn_ty.apply_attrs_callsite(llret);
 
     if !fn_ty.ret.is_indirect() {
-        if let Some(llretslot) = dest {
+        if let Some(llretslot) = fcx.llretslotptr {
             fn_ty.ret.store(&bcx, llret, llretslot);
         }
     }
@@ -521,8 +519,8 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
-    let bcx = fcx.init(false);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
+    let bcx = fcx.get_entry_block();
 
     let llargs = get_params(fcx.llfn);
 
@@ -536,13 +534,11 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     });
 
-    let dest = fcx.llretslotptr.get();
-
     let callee = Callee {
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], dest, None).0;
+    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], fcx.llretslotptr, None).0;
     fcx.finish(&bcx);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
