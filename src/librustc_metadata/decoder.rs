@@ -839,12 +839,9 @@ impl<'a, 'tcx> CrateMetadata {
         if self.is_proc_macro(id) { return None; }
         let item_doc = self.entry(id);
         let item_did = self.local_def_id(id);
-        let parent_def_id = self.local_def_id(self.def_key(id).parent.unwrap());
-        let mut parent_def_path = self.def_path(id).unwrap();
-        parent_def_path.data.pop();
         item_doc.ast.map(|ast| {
             let ast = ast.decode(self);
-            decode_inlined_item(self, tcx, parent_def_path, parent_def_id, ast, item_did)
+            decode_inlined_item(self, tcx, ast, item_did)
         })
     }
 

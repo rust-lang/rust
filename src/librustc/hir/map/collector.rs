@@ -11,7 +11,6 @@
 use super::*;
 
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::def_id::DefId;
 use middle::cstore::InlinedItem;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
@@ -47,8 +46,6 @@ impl<'ast> NodeCollector<'ast> {
     pub fn extend(krate: &'ast Crate,
                   parent: &'ast InlinedItem,
                   parent_node: NodeId,
-                  parent_def_path: DefPath,
-                  parent_def_id: DefId,
                   map: Vec<MapEntry<'ast>>)
                   -> NodeCollector<'ast> {
         let mut collector = NodeCollector {
@@ -58,7 +55,6 @@ impl<'ast> NodeCollector<'ast> {
             ignore_nested_items: true
         };
 
-        assert_eq!(parent_def_path.krate, parent_def_id.krate);
         collector.insert_entry(parent_node, RootInlinedParent(parent));
 
         collector

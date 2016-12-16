@@ -13,7 +13,7 @@ use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
-                            DisambiguatedDefPathData, InlinedRootPath};
+                            DisambiguatedDefPathData};
 
 use dep_graph::{DepGraph, DepNode};
 
@@ -945,8 +945,6 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
 /// Used for items loaded from external crate that are being inlined into this
 /// crate.
 pub fn map_decoded_item<'ast>(map: &Map<'ast>,
-                              parent_def_path: DefPath,
-                              parent_def_id: DefId,
                               ii: InlinedItem,
                               ii_parent_id: NodeId)
                               -> &'ast InlinedItem {
@@ -954,18 +952,9 @@ pub fn map_decoded_item<'ast>(map: &Map<'ast>,
 
     let ii = map.forest.inlined_items.alloc(ii);
 
-    let defs = &mut *map.definitions.borrow_mut();
-    let mut def_collector = DefCollector::extend(ii_parent_id,
-                                                 parent_def_path.clone(),
-                                                 parent_def_id,
-                                                 defs);
-    def_collector.walk_item(ii, map.krate());
-
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
                                               ii_parent_id,
-                                              parent_def_path,
-                                              parent_def_id,
                                               mem::replace(&mut *map.map.borrow_mut(), vec![]));
     ii.visit(&mut collector);
     *map.map.borrow_mut() = collector.map;
