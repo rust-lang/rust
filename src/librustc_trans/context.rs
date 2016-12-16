@@ -315,38 +315,6 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
     }
 }
 
-/// The iterator produced by `CrateContext::maybe_iter`.
-pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccxs: &'a [LocalCrateContext<'tcx>],
-    index: usize,
-    single: bool,
-    origin: usize,
-}
-
-impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
-    type Item = (CrateContext<'a, 'tcx>, bool);
-
-    fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {
-        if self.index >= self.local_ccxs.len() {
-            return None;
-        }
-
-        let index = self.index;
-        self.index += 1;
-        if self.single {
-            self.index = self.local_ccxs.len();
-        }
-
-        let ccx = CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: self.local_ccxs
-        };
-        Some((ccx, index == self.origin))
-    }
-}
-
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
         Some(ref s) => &s[..],
@@ -702,24 +670,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared
     }
 
-    pub fn local(&self) -> &'b LocalCrateContext<'tcx> {
+    fn local(&self) -> &'b LocalCrateContext<'tcx> {
         &self.local_ccxs[self.index]
-    }
-
-    /// Either iterate over only `self`, or iterate over all `CrateContext`s in
-    /// the `SharedCrateContext`.  The iterator produces `(ccx, is_origin)`
-    /// pairs, where `is_origin` is `true` if `ccx` is `self` and `false`
-    /// otherwise.  This method is useful for avoiding code duplication in
-    /// cases where it may or may not be necessary to translate code into every
-    /// context.
-    pub fn maybe_iter(&self, iter_all: bool) -> CrateContextMaybeIterator<'b, 'tcx> {
-        CrateContextMaybeIterator {
-            shared: self.shared,
-            index: if iter_all { 0 } else { self.index },
-            single: !iter_all,
-            origin: self.index,
-            local_ccxs: self.local_ccxs,
-        }
     }
 
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
