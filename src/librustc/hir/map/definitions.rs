@@ -15,8 +15,6 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
-
-
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -56,6 +54,37 @@ impl DefPathTable {
     #[inline(always)]
     pub fn contains_key(&self, key: &DefKey) -> bool {
         self.key_to_index.contains_key(key)
+    }
+
+    pub fn retrace_path(&self,
+                        path_data: &[DisambiguatedDefPathData])
+                        -> Option<DefIndex> {
+        let root_key = DefKey {
+            parent: None,
+            disambiguated_data: DisambiguatedDefPathData {
+                data: DefPathData::CrateRoot,
+                disambiguator: 0,
+            },
+        };
+
+        let root_index = self.key_to_index
+                             .get(&root_key)
+                             .expect("no root key?")
+                             .clone();
+
+        debug!("retrace_path: root_index={:?}", root_index);
+
+        let mut index = root_index;
+        for data in path_data {
+            let key = DefKey { parent: Some(index), disambiguated_data: data.clone() };
+            debug!("retrace_path: key={:?}", key);
+            match self.key_to_index.get(&key) {
+                Some(&i) => index = i,
+                None => return None,
+            }
+        }
+
+        Some(index)
     }
 }
 
