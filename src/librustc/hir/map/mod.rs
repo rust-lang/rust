@@ -29,7 +29,7 @@ use hir::*;
 use hir::print as pprust;
 
 use arena::TypedArena;
-use std::cell::{RefCell, Ref};
+use std::cell::RefCell;
 use std::io;
 use std::mem;
 
@@ -221,7 +221,7 @@ pub struct Map<'ast> {
     /// plain old integers.
     map: RefCell<Vec<MapEntry<'ast>>>,
 
-    definitions: RefCell<Definitions>,
+    definitions: Definitions,
 
     /// All NodeIds that are numerically greater or equal to this value come
     /// from inlined items.
@@ -392,16 +392,16 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn num_local_def_ids(&self) -> usize {
-        self.definitions.borrow().len()
+        self.definitions.len()
     }
 
-    pub fn definitions(&self) -> Ref<Definitions> {
-        self.definitions.borrow()
+    pub fn definitions(&self) -> &Definitions {
+        &self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
         assert!(def_id.is_local());
-        self.definitions.borrow().def_key(def_id.index)
+        self.definitions.def_key(def_id.index)
     }
 
     pub fn def_path_from_id(&self, id: NodeId) -> Option<DefPath> {
@@ -412,11 +412,11 @@ impl<'ast> Map<'ast> {
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
-        self.definitions.borrow().def_path(def_id.index)
+        self.definitions.def_path(def_id.index)
     }
 
     pub fn def_index_for_def_key(&self, def_key: DefKey) -> Option<DefIndex> {
-        self.definitions.borrow().def_index_for_def_key(def_key)
+        self.definitions.def_index_for_def_key(def_key)
     }
 
     pub fn local_def_id(&self, node: NodeId) -> DefId {
@@ -427,11 +427,11 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
-        self.definitions.borrow().opt_local_def_id(node)
+        self.definitions.opt_local_def_id(node)
     }
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        self.definitions.borrow().as_local_node_id(def_id)
+        self.definitions.as_local_node_id(def_id)
     }
 
     fn entry_count(&self) -> usize {
@@ -940,7 +940,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
-        definitions: RefCell::new(definitions),
+        definitions: definitions,
         local_node_id_watermark: local_node_id_watermark,
         local_def_id_watermark: local_def_id_watermark,
     }
