@@ -59,7 +59,7 @@ pub enum PrimVal {
 
     /// An undefined `PrimVal`, for representing values that aren't safe to examine, but are safe
     /// to copy around, just like undefined bytes in an `Allocation`.
-    Undefined,
+    Undef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -123,7 +123,7 @@ impl PrimVal {
         match *self {
             PrimVal::Bytes(b) => b,
             PrimVal::Ptr(p) => p.offset,
-            PrimVal::Undefined => panic!(".bits()() on PrimVal::Undefined"),
+            PrimVal::Undef => panic!(".bits()() on PrimVal::Undef"),
         }
     }
 
