@@ -653,7 +653,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// and builds the return block.
     pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
         self.build_return_block(ret_cx);
-        self.cleanup();
     }
 
     // Builds the return block for a function.

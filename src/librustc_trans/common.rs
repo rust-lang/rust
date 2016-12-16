@@ -283,7 +283,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // the function, due to LLVM's quirks.
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
-    pub alloca_insert_pt: Cell<Option<ValueRef>>,
+    alloca_insert_pt: Option<ValueRef>,
 
     // When working with landingpad-based exceptions this value is alloca'd and
     // later loaded when using the resume instruction. This ends up being
@@ -347,35 +347,37 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             debuginfo::empty_function_debug_context(ccx)
         };
 
-        FunctionContext {
+        let mut fcx = FunctionContext {
             mir: mir,
             llfn: llfndecl,
             llretslotptr: Cell::new(None),
             param_env: ccx.tcx().empty_parameter_environment(),
-            alloca_insert_pt: Cell::new(None),
+            alloca_insert_pt: None,
             landingpad_alloca: Cell::new(None),
             fn_ty: fn_ty,
             param_substs: param_substs,
             ccx: ccx,
             debug_context: debug_context,
             alloca_builder: OwnedBuilder::new_with_ccx(ccx),
-        }
+        };
+
+        let val = {
+            let entry_bcx = fcx.build_new_block("entry-block");
+            let val = entry_bcx.load(C_null(Type::i8p(ccx)));
+            fcx.alloca_builder.builder.position_at_start(entry_bcx.llbb());
+            val
+        };
+
+        // Use a dummy instruction as the insertion point for all allocas.
+        // This is later removed in the drop of FunctionContext.
+        fcx.alloca_insert_pt = Some(val);
+
+        fcx
     }
 
     /// Performs setup on a newly created function, creating the entry
     /// scope block and allocating space for the return pointer.
     pub fn init(&'a self, skip_retptr: bool) -> BlockAndBuilder<'a, 'tcx> {
-        let entry_bcx = self.build_new_block("entry-block");
-
-        // Use a dummy instruction as the insertion point for all allocas.
-        // This is later removed in FunctionContext::cleanup.
-        self.alloca_insert_pt.set(Some(unsafe {
-            entry_bcx.load(C_null(Type::i8p(self.ccx)));
-            llvm::LLVMGetFirstInstruction(entry_bcx.llbb())
-        }));
-
-        self.alloca_builder.builder.position_at_start(entry_bcx.llbb());
-
         if !self.fn_ty.ret.is_ignore() && !skip_retptr {
             // We normally allocate the llretslotptr, unless we
             // have been instructed to skip it for immediate return
@@ -395,17 +397,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             self.llretslotptr.set(Some(slot));
         }
 
-        entry_bcx
+        BlockAndBuilder::new(unsafe {
+            llvm::LLVMGetFirstBasicBlock(self.llfn)
+        }, self)
     }
 
     pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.mir.as_ref().map(Ref::clone).expect("fcx.mir was empty")
-    }
-
-    pub fn cleanup(&self) {
-        unsafe {
-            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.get().unwrap());
-        }
     }
 
     pub fn new_block(&'a self, name: &str) -> BasicBlockRef {
@@ -517,6 +515,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> Drop for FunctionContext<'a, 'tcx> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
+        }
+    }
+}
 
 pub struct OwnedBuilder<'blk, 'tcx: 'blk> {
     builder: Builder<'blk, 'tcx>

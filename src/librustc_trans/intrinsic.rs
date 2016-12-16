@@ -967,7 +967,6 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let fcx = FunctionContext::new(ccx, llfn, fn_ty, None);
     trans(fcx.init(true));
-    fcx.cleanup();
     llfn
 }
 

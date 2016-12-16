@@ -710,6 +710,7 @@ extern "C" {
 
     // Operations on instructions
     pub fn LLVMGetInstructionParent(Inst: ValueRef) -> BasicBlockRef;
+    pub fn LLVMGetFirstBasicBlock(Fn: ValueRef) -> BasicBlockRef;
     pub fn LLVMGetFirstInstruction(BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMInstructionEraseFromParent(Inst: ValueRef);
 
