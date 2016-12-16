@@ -17,7 +17,6 @@ use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use base;
-use builder::Builder;
 use common::BuilderRef_res;
 use debuginfo;
 use declare;
@@ -729,10 +728,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.shared.tcx.sess
-    }
-
-    pub fn builder<'a>(&'a self) -> Builder<'a, 'tcx> {
-        Builder::new(self)
     }
 
     pub fn raw_builder<'a>(&'a self) -> BuilderRef {
