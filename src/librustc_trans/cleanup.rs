@@ -99,7 +99,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         custom_scope: Option<CleanupScope<'tcx>>
     ) {
         if let Some(scope) = custom_scope {
-            scope.cleanup.trans(bcx.funclet(), &bcx);
+            scope.cleanup.trans(None, &bcx);
         }
     }
 

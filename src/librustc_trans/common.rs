@@ -42,7 +42,6 @@ use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::hir;
 
-use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::borrow::Cow;
 use std::iter;
@@ -304,9 +303,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // error reporting and symbol generation.
     pub span: Option<Span>,
 
-    // The arena that landing pads are allocated from.
-    pub funclet_arena: TypedArena<Funclet>,
-
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -364,7 +360,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             fn_ty: fn_ty,
             param_substs: param_substs,
             span: None,
-            funclet_arena: TypedArena::new(),
             ccx: ccx,
             debug_context: debug_context,
             owned_builder: OwnedBuilder::new_with_ccx(ccx),
@@ -564,10 +559,6 @@ pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
     // The block pointing to this one in the function's digraph.
     llbb: BasicBlockRef,
 
-    // If this block part of a landing pad, then this is `Some` indicating what
-    // kind of landing pad its in, otherwise this is none.
-    funclet: Option<&'blk Funclet>,
-
     // The function context for the function to which this block is
     // attached.
     fcx: &'blk FunctionContext<'blk, 'tcx>,
@@ -582,7 +573,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         owned_builder.builder.position_at_end(llbb);
         BlockAndBuilder {
             llbb: llbb,
-            funclet: None,
             fcx: fcx,
             owned_builder: owned_builder,
         }
@@ -616,19 +606,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.fcx.mir()
-    }
-
-    pub fn set_funclet(&mut self, funclet: Option<Funclet>) {
-        self.funclet = funclet.map(|p| &*self.fcx().funclet_arena.alloc(p));
-    }
-
-    pub fn set_funclet_ref(&mut self, funclet: Option<&'blk Funclet>) {
-        // FIXME: use an IVar?
-        self.funclet = funclet;
-    }
-
-    pub fn funclet(&self) -> Option<&'blk Funclet> {
-        self.funclet
     }
 }
 
