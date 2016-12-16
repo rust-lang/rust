@@ -197,7 +197,7 @@ impl<'tcx> CleanupScope<'tcx> {
             let addr = match fcx.landingpad_alloca.get() {
                 Some(addr) => addr,
                 None => {
-                    let addr = base::alloca(&pad_bcx, common::val_ty(llretval), "");
+                    let addr = pad_bcx.fcx().alloca(common::val_ty(llretval), "");
                     Lifetime::Start.call(&pad_bcx, addr);
                     fcx.landingpad_alloca.set(Some(addr));
                     addr

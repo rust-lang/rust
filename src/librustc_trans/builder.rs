@@ -462,7 +462,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn dynamic_alloca(&self, ty: Type, name: &str) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
             if name.is_empty() {
