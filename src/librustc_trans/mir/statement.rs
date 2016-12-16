@@ -25,9 +25,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                            -> BlockAndBuilder<'bcx, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
-        let debug_loc = self.debug_loc(statement.source_info);
-        debug_loc.apply_to_bcx(&bcx);
-        debug_loc.apply(bcx.fcx());
+        let (scope, span) = self.debug_loc(statement.source_info);
+        bcx.set_source_location(scope, span);
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 if let mir::Lvalue::Local(index) = *lvalue {

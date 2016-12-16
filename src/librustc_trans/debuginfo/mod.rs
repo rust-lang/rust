@@ -27,7 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::{CrateContext, FunctionContext, BlockAndBuilder};
+use common::{CrateContext, BlockAndBuilder};
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
@@ -55,6 +55,7 @@ pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::extend_scope_to_file;
+pub use self::source_loc::set_source_location;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -505,21 +506,5 @@ pub fn declare_local<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             source_loc::set_debug_location(cx, None, UnknownLocation);
         }
         _ => { /* nothing to do */ }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum DebugLoc {
-    ScopeAt(DIScope, Span),
-    None
-}
-
-impl DebugLoc {
-    pub fn apply(self, fcx: &FunctionContext) {
-        source_loc::set_source_location(fcx, None, self);
-    }
-
-    pub fn apply_to_bcx(self, bcx: &BlockAndBuilder) {
-        source_loc::set_source_location(bcx.fcx(), Some(bcx), self);
     }
 }

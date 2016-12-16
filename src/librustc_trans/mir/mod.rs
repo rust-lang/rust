@@ -10,16 +10,18 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
+use llvm::debuginfo::DIScope;
 use rustc::ty;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
 use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
-use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind, FunctionDebugContext};
+use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
+use machine;
 use type_of;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
 use syntax::symbol::keywords;
 
 use std::cell::Ref;
@@ -88,15 +90,12 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
 }
 
 impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
-    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> DebugLoc {
+    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
         match self.fcx.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
             FunctionDebugContext::FunctionWithoutDebugInfo => {
-                // Can't return DebugLoc::None here because intrinsic::trans_intrinsic_call()
-                // relies on debug location to obtain span of the call site.
-                return DebugLoc::ScopeAt(self.scopes[source_info.scope].scope_metadata,
-                                         source_info.span);
+                return (self.scopes[source_info.scope].scope_metadata, source_info.span);
             }
             FunctionDebugContext::RegularContext(_) =>{}
         }
@@ -109,8 +108,8 @@ impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
             self.fcx.ccx.sess().opts.debugging_opts.debug_macros {
 
             let scope_metadata = self.scope_metadata_for_loc(source_info.scope,
-                                                             source_info.span.lo);
-            DebugLoc::ScopeAt(scope_metadata, source_info.span)
+                source_info.span.lo);
+            (scope_metadata, source_info.span)
         } else {
             let cm = self.fcx.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
@@ -125,7 +124,7 @@ impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
             }
             let scope_metadata = self.scope_metadata_for_loc(source_info.scope, span.lo);
             // Use span of the outermost call site, while keeping the original lexical scope
-            DebugLoc::ScopeAt(scope_metadata, span)
+            (scope_metadata, span)
         }
     }
 
@@ -236,14 +235,10 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
                 let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
-                    let dbg_loc = mircx.debug_loc(source_info);
-                    if let DebugLoc::ScopeAt(scope, span) = dbg_loc {
-                        declare_local(&bcx, name, ty, scope,
-                            VariableAccess::DirectVariable { alloca: lvalue.llval },
-                            VariableKind::LocalVariable, span);
-                    } else {
-                        panic!("Unexpected");
-                    }
+                    let (scope, span) = mircx.debug_loc(source_info);
+                    declare_local(&bcx, name, ty, scope,
+                        VariableAccess::DirectVariable { alloca: lvalue.llval },
+                        VariableKind::LocalVariable, span);
                 }
                 LocalRef::Lvalue(lvalue)
             } else {
@@ -312,7 +307,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         }
     }
 
-    DebugLoc::None.apply(fcx);
     fcx.cleanup();
 }
 

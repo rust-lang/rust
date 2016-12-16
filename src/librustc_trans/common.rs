@@ -16,6 +16,7 @@ use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef, get_param};
+use llvm::debuginfo::DIScope;
 use monomorphize::Instance;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -576,6 +577,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
             fcx: fcx,
             owned_builder: owned_builder,
         }
+    }
+
+    pub fn set_source_location(&self, scope: DIScope, sp: Span) {
+        debuginfo::set_source_location(self.fcx(), self, scope, sp)
     }
 
     pub fn at_start<F, R>(&self, f: F) -> R

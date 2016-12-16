@@ -18,7 +18,6 @@ use abi::{Abi, FnType};
 use adt;
 use base::*;
 use common::*;
-use debuginfo::DebugLoc;
 use declare;
 use glue;
 use type_of;
@@ -31,7 +30,7 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 
 use rustc::session::Session;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::cmp::Ordering;
 use std::iter;
@@ -90,7 +89,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                             fn_ty: &FnType,
                                             llargs: &[ValueRef],
                                             llresult: ValueRef,
-                                            call_debug_location: DebugLoc) {
+                                            span: Span) {
     let fcx = bcx.fcx();
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
@@ -104,14 +103,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id).as_str();
-
-    let span = match call_debug_location {
-        DebugLoc::ScopeAt(_, span) => span,
-        DebugLoc::None => {
-            span_bug!(fcx.span.unwrap_or(DUMMY_SP),
-                      "intrinsic `{}` called with missing span", name);
-        }
-    };
 
     // These are the only intrinsic functions that diverge.
     if name == "abort" {

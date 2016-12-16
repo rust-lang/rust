@@ -11,8 +11,8 @@
 use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
-use super::metadata::{UNKNOWN_COLUMN_NUMBER};
-use super::{FunctionDebugContext, DebugLoc};
+use super::metadata::UNKNOWN_COLUMN_NUMBER;
+use super::FunctionDebugContext;
 
 use llvm;
 use llvm::debuginfo::DIScope;
@@ -21,41 +21,30 @@ use common::{CrateContext, FunctionContext};
 
 use libc::c_uint;
 use std::ptr;
-use syntax_pos::Pos;
+use syntax_pos::{Span, Pos};
 
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
-pub fn set_source_location(fcx: &FunctionContext,
-                           builder: Option<&Builder>,
-                           debug_loc: DebugLoc) {
-    let builder = builder.map(|b| b.llbuilder);
+pub fn set_source_location(fcx: &FunctionContext, builder: &Builder, scope: DIScope, span: Span) {
+    let builder = builder.llbuilder;
     let function_debug_context = match fcx.debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, builder, UnknownLocation);
+            set_debug_location(fcx.ccx, Some(builder), UnknownLocation);
             return;
         }
         FunctionDebugContext::RegularContext(ref data) => data
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        let (scope, span) = match debug_loc {
-            DebugLoc::ScopeAt(scope, span) => (scope, span),
-            DebugLoc::None => {
-                set_debug_location(fcx.ccx, builder, UnknownLocation);
-                return;
-            }
-        };
-
-        debug!("set_source_location: {}",
-               fcx.ccx.sess().codemap().span_to_string(span));
+        debug!("set_source_location: {}", fcx.ccx.sess().codemap().span_to_string(span));
         let loc = span_start(fcx.ccx, span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };
-    set_debug_location(fcx.ccx, builder, dbg_loc);
+    set_debug_location(fcx.ccx, Some(builder), dbg_loc);
 }
 
 /// Enables emitting source locations for the given functions.
