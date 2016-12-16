@@ -664,7 +664,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                llfndecl: ValueRef,
                fn_ty: FnType,
                definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>)
-               //block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         let (param_substs, def_id) = match definition {
             Some((instance, ..)) => {
@@ -708,7 +707,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             fn_ty: fn_ty,
             param_substs: param_substs,
             span: None,
-            //block_arena: block_arena,
             funclet_arena: TypedArena::new(),
             ccx: ccx,
             debug_context: debug_context,
