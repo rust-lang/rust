@@ -2111,9 +2111,23 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <ul class='item-list' id='implementors-list'>
     ")?;
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
-        for i in implementors {
+        for k in implementors.iter() {
             write!(w, "<li><code>")?;
-            fmt_impl_for_trait_page(&i.impl_, w)?;
+            // If there's already another implementor that has the same abbridged name, use the
+            // full path, for example in `std::iter::ExactSizeIterator`
+            let mut dissambiguate = false;
+            for l in implementors.iter() {
+                match (k.impl_.for_.clone(), l.impl_.for_.clone()) {
+                    (clean::Type::ResolvedPath {path: path_a, ..},
+                     clean::Type::ResolvedPath {path: path_b, ..}) => {
+                        if k.def_id != l.def_id && path_a.last_name() == path_b.last_name() {
+                            dissambiguate = true;
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            fmt_impl_for_trait_page(&k.impl_, w, dissambiguate)?;
             writeln!(w, "</code></li>")?;
         }
     }
