@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `m`
+  --> $DIR/macro_path_as_generic_bound.rs:17:6
+   |
+17 | foo!(m::m2::A);
+   | -----^^^^^^^^--
+   | |    |
+   | |    Use of undeclared type or module `m`
+   | in this macro invocation
+
+error: cannot continue compilation due to previous error
+
