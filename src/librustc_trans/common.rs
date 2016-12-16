@@ -276,7 +276,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // immediate, this points to an alloca in the function. Otherwise, it's a
     // pointer to the hidden first parameter of the function. After function
     // construction, this should always be Some.
-    pub llretslotptr: Cell<Option<ValueRef>>,
+    pub llretslotptr: Option<ValueRef>,
 
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -311,13 +311,14 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Create a function context for the given function.
-    /// Beware that you must call `fcx.init` before doing anything with the returned function
-    /// context.
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>,
-               llfndecl: ValueRef,
-               fn_ty: FnType,
-               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>)
-               -> FunctionContext<'a, 'tcx> {
+    /// Call FunctionContext::get_entry_block for the first entry block.
+    pub fn new(
+        ccx: &'a CrateContext<'a, 'tcx>,
+        llfndecl: ValueRef,
+        fn_ty: FnType,
+        definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
+        skip_retptr: bool,
+    ) -> FunctionContext<'a, 'tcx> {
         let (param_substs, def_id) = match definition {
             Some((instance, ..)) => {
                 validate_substs(instance.substs);
@@ -350,7 +351,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let mut fcx = FunctionContext {
             mir: mir,
             llfn: llfndecl,
-            llretslotptr: Cell::new(None),
+            llretslotptr: None,
             param_env: ccx.tcx().empty_parameter_environment(),
             alloca_insert_pt: None,
             landingpad_alloca: Cell::new(None),
@@ -372,31 +373,28 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // This is later removed in the drop of FunctionContext.
         fcx.alloca_insert_pt = Some(val);
 
-        fcx
-    }
-
-    /// Performs setup on a newly created function, creating the entry
-    /// scope block and allocating space for the return pointer.
-    pub fn init(&'a self, skip_retptr: bool) -> BlockAndBuilder<'a, 'tcx> {
-        if !self.fn_ty.ret.is_ignore() && !skip_retptr {
-            // We normally allocate the llretslotptr, unless we
-            // have been instructed to skip it for immediate return
-            // values, or there is nothing to return at all.
-
+        // We normally allocate the llretslotptr, unless we
+        // have been instructed to skip it for immediate return
+        // values, or there is nothing to return at all.
+        if !fcx.fn_ty.ret.is_ignore() && !skip_retptr {
             // But if there are no nested returns, we skip the indirection
             // and have a single retslot
-            let slot = if self.fn_ty.ret.is_indirect() {
-                get_param(self.llfn, 0)
+            let slot = if fcx.fn_ty.ret.is_indirect() {
+                get_param(fcx.llfn, 0)
             } else {
                 // We create an alloca to hold a pointer of type `ret.original_ty`
                 // which will hold the pointer to the right alloca which has the
                 // final ret value
-                self.alloca(self.fn_ty.ret.memory_ty(self.ccx), "sret_slot")
+                fcx.alloca(fcx.fn_ty.ret.memory_ty(ccx), "sret_slot")
             };
 
-            self.llretslotptr.set(Some(slot));
+            fcx.llretslotptr = Some(slot);
         }
 
+        fcx
+    }
+
+    pub fn get_entry_block(&'a self) -> BlockAndBuilder<'a, 'tcx> {
         BlockAndBuilder::new(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn)
         }, self)
