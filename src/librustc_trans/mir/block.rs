@@ -468,7 +468,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         return;
                     }
 
-                    let ptr =  self.trans_operand(&bcx, &args[0]);
+                    let ptr = self.trans_operand(&bcx, &args[0]);
                     let (llval, llextra) = match ptr.val {
                         Immediate(llptr) => (llptr, ptr::null_mut()),
                         Pair(llptr, llextra) => (llptr, llextra),
