@@ -182,7 +182,7 @@ impl<'tcx> LocalRef<'tcx> {
 
 pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let bcx = fcx.init(true);
-    let mir = bcx.mir();
+    let mir = fcx.mir();
 
     // Analyze the temps to determine which must be lvalues
     // FIXME

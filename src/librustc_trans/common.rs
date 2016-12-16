@@ -269,7 +269,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub llfn: ValueRef,
 
     // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
-    pub param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParameterEnvironment<'tcx>,
 
     // A pointer to where to store the return value. If the return type is
     // immediate, this points to an alloca in the function. Otherwise, it's a
@@ -314,8 +314,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Create a function context for the given function.
-    /// Beware that you must call `fcx.init` or `fcx.bind_args`
-    /// before doing anything with the returned function context.
+    /// Beware that you must call `fcx.init` before doing anything with the returned function
+    /// context.
     pub fn new(ccx: &'a CrateContext<'a, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
@@ -602,10 +602,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     pub fn llbb(&self) -> BasicBlockRef {
         self.llbb
-    }
-
-    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.fcx.mir()
     }
 }
 
