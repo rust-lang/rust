@@ -557,8 +557,6 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
-        if fields.len() == 0 {return Ok(ret)};
-
         // Anything with ReprExtern or ReprPacked doesn't optimize.
         // Neither do  1-member and 2-member structs.
         // In addition, code in trans assume that 2-element structs can become pairs.
@@ -590,9 +588,9 @@ impl<'a, 'gcx, 'tcx> Struct {
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         if optimize {
-            let start = if let StructKind::EnumVariant = kind {1} else {0};
+            let start = if let StructKind::EnumVariant = kind { 1 } else { 0 };
             let end = if let StructKind::MaybeUnsizedUnivariant = kind {
-                fields.len()-1
+                fields.len() - 1
             } else {
                 fields.len()
             };
@@ -717,12 +715,12 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
-    /// The tuple is `(path, source_path)1,
+    /// The tuple is `(path, source_path)`,
     /// where `path` is in memory order and `source_path` in source order.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
     fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  ty: Ty<'gcx>)
-                                  -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>> {
+                               ty: Ty<'gcx>)
+                               -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
             (&Scalar { non_zero: true, .. }, _) |
@@ -792,7 +790,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    // / Returns Some((path, source_path)) on success.
+    /// Returns Some((path, source_path)) on success.
     /// `path` is translated to memory order. `source_path` is not.
     fn non_zero_field_paths<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                   fields: I,
@@ -1363,7 +1361,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         for i in variant.offsets.iter_mut() {
                             // The first field is the discrimminant, at offset 0.
                             // These aren't in order, and we need to skip it.
-                            if *i <= old_ity_size && *i > Size::from_bytes(0){
+                            if *i <= old_ity_size && *i > Size::from_bytes(0) {
                                 *i = new_ity_size;
                             }
                         }
