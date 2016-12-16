@@ -330,6 +330,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
 ]
 
