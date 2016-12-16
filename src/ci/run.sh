@@ -26,17 +26,13 @@ if [ "$NO_VENDOR" = "" ]; then
   ENABLE_VENDOR=--enable-vendor
 fi
 
-if [ "$NO_CCACHE" = "" ]; then
-  ENABLE_CCACHE=--enable-ccache
-fi
-
 set -ex
 
 $SRC/configure \
   --disable-manage-submodules \
   --enable-debug-assertions \
   --enable-quiet-tests \
-  $ENABLE_CCACHE \
+  --enable-sccache \
   $ENABLE_VENDOR \
   $ENABLE_LLVM_ASSERTIONS \
   $RUST_CONFIGURE_ARGS
