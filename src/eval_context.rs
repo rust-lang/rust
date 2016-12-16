@@ -172,7 +172,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::Pointer(ptr), PrimVal::from_uint(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_uint(s.len() as u64)))
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -196,7 +196,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.memory.allocate(bs.len() as u64, 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                PrimVal::Pointer(ptr)
+                PrimVal::Ptr(ptr)
             }
 
             Struct(_)    => unimplemented!(),
@@ -563,12 +563,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let (raw_ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
-                let ptr = PrimVal::Pointer(raw_ptr);
+                let ptr = PrimVal::Ptr(raw_ptr);
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
                     LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_uint(len)),
-                    LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Pointer(vtable)),
+                    LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
@@ -578,7 +578,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 let ptr = self.alloc_ptr(ty)?;
-                self.write_primval(dest, PrimVal::Pointer(ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
@@ -617,7 +617,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
                             let fn_ty = self.tcx.erase_regions(&fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx,def_id, substs, fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::Pointer(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
                     },
@@ -629,7 +629,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let (def_id, substs, _, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx, def_id, substs, unsafe_fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::Pointer(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
                     },
@@ -1150,23 +1150,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::Pointer)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::Ptr)?,
             ty::TyBox(ty) |
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 let p = self.memory.read_ptr(ptr)?;
                 if self.type_is_sized(ty) {
-                    PrimVal::Pointer(p)
+                    PrimVal::Ptr(p)
                 } else {
                     trace!("reading fat pointer extra of type {}", ty);
                     let extra = ptr.offset(self.memory.pointer_size());
                     let extra = match self.tcx.struct_tail(ty).sty {
-                        ty::TyDynamic(..) => PrimVal::Pointer(self.memory.read_ptr(extra)?),
+                        ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
                         ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
-                    return Ok(Some(Value::ByValPair(PrimVal::Pointer(p), extra)));
+                    return Ok(Some(Value::ByValPair(PrimVal::Ptr(p), extra)));
                 }
             }
 
@@ -1225,7 +1225,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
                         let len = PrimVal::from_uint(length as u64);
-                        let ptr = PrimVal::Pointer(ptr);
+                        let ptr = PrimVal::Ptr(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
                     (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
@@ -1239,8 +1239,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let trait_ref = self.tcx.erase_regions(&trait_ref);
                         let vtable = self.get_vtable(trait_ref)?;
                         let ptr = src.read_ptr(&self.memory)?;
-                        let ptr = PrimVal::Pointer(ptr);
-                        let extra = PrimVal::Pointer(vtable);
+                        let ptr = PrimVal::Ptr(ptr);
+                        let extra = PrimVal::Ptr(vtable);
                         self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)?;
                     },
 

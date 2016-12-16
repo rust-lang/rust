@@ -47,7 +47,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64();
                 let new_ptr = ptr.signed_offset(offset);
-                self.write_primval(dest, PrimVal::Pointer(new_ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 
             "assume" => {
@@ -292,7 +292,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.signed_offset(offset * pointee_size);
-                self.write_primval(dest, PrimVal::Pointer(result_ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Ptr(result_ptr), dest_ty)?;
             }
 
             "overflowing_sub" => {

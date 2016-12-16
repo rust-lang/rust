@@ -43,19 +43,22 @@ pub enum Value {
     ByValPair(PrimVal, PrimVal),
 }
 
-/// A `PrimVal` represents an immediate, primitive value existing outside of an allocation. It is
-/// considered to be like a
+/// A `PrimVal` represents an immediate, primitive value existing outside of a
+/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
+/// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
+/// of a simple value, a pointer into another `Allocation`, or be undefined.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PrimVal {
+    /// The raw bytes of a simple value.
     Bytes(u64),
 
-    // FIXME(solson): Rename this variant to Ptr.
-    // FIXME(solson): Outdated comment, pulled from `relocations` field I deleted.
-    /// This field is initialized when the `PrimVal` represents a pointer into an `Allocation`. An
-    /// `Allocation` in the `memory` module has a list of relocations, but a `PrimVal` is only
-    /// large enough to contain one, hence the `Option`.
-    Pointer(Pointer),
+    /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
+    /// relocations, but a `PrimVal` is only large enough to contain one, so we just represent the
+    /// relocation and its associated offset together as a `Pointer` here.
+    Ptr(Pointer),
 
+    /// An undefined `PrimVal`, for representing values that aren't safe to examine, but are safe
+    /// to copy around, just like undefined bytes in an `Allocation`.
     Undefined,
 }
 
@@ -119,7 +122,7 @@ impl PrimVal {
     pub fn bits(&self) -> u64 {
         match *self {
             PrimVal::Bytes(b) => b,
-            PrimVal::Pointer(p) => p.offset,
+            PrimVal::Ptr(p) => p.offset,
             PrimVal::Undefined => panic!(".bits()() on PrimVal::Undefined"),
         }
     }
@@ -127,7 +130,7 @@ impl PrimVal {
     // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
     // stick around with this name.
     pub fn relocation(&self) -> Option<AllocId> {
-        if let PrimVal::Pointer(ref p) = *self {
+        if let PrimVal::Ptr(ref p) = *self {
             Some(p.alloc_id)
         } else {
             None

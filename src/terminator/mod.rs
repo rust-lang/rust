@@ -336,7 +336,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.value_to_primval(args[0], usize)?.to_u64();
                 let align = self.value_to_primval(args[1], usize)?.to_u64();
                 let ptr = self.memory.allocate(size, align)?;
-                self.write_primval(dest, PrimVal::Pointer(ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
 
             "__rust_deallocate" => {
@@ -352,7 +352,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.value_to_primval(args[2], usize)?.to_u64();
                 let align = self.value_to_primval(args[3], usize)?.to_u64();
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
-                self.write_primval(dest, PrimVal::Pointer(new_ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 
             "memcmp" => {
@@ -527,7 +527,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 ptr
                             },
                         };
-                        args[0].0 = Value::ByVal(PrimVal::Pointer(ptr));
+                        args[0].0 = Value::ByVal(PrimVal::Ptr(ptr));
                         args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
 
@@ -550,7 +550,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id) as u64;
                 if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
                     let (self_ptr, vtable) = first_arg.expect_ptr_vtable_pair(&self.memory)?;
-                    *first_arg = Value::ByVal(PrimVal::Pointer(self_ptr));
+                    *first_arg = Value::ByVal(PrimVal::Ptr(self_ptr));
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
@@ -633,7 +633,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 // run drop impl before the fields' drop impls
                 if let Some(drop_def_id) = adt_def.destructor() {
-                    drop.push((drop_def_id, Value::ByVal(PrimVal::Pointer(adt_ptr)), substs));
+                    drop.push((drop_def_id, Value::ByVal(PrimVal::Ptr(adt_ptr)), substs));
                 }
                 let layout = self.type_layout(ty)?;
                 let fields = match *layout {
@@ -701,7 +701,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let (def_id, substs, _abi, sig) = self.memory.get_fn(drop_fn.alloc_id)?;
                     let real_ty = sig.inputs()[0];
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
-                    drop.push((def_id, Value::ByVal(PrimVal::Pointer(ptr)), substs));
+                    drop.push((def_id, Value::ByVal(PrimVal::Ptr(ptr)), substs));
                 } else {
                     // just a sanity check
                     assert_eq!(drop_fn.offset, 0);

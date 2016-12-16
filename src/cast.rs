@@ -69,7 +69,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar if v as u8 as u64 == v => Ok(PrimVal::Bytes(v)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
-            TyRawPtr(_) => Ok(PrimVal::Pointer(Pointer::from_int(v))),
+            TyRawPtr(_) => Ok(PrimVal::Ptr(Pointer::from_int(v))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
@@ -94,7 +94,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             TyRef(..) | TyRawPtr(_) | TyFnPtr(_) | TyInt(_) | TyUint(_) =>
-                Ok(PrimVal::Pointer(ptr)),
+                Ok(PrimVal::Ptr(ptr)),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }
