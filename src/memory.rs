@@ -587,18 +587,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         val: PrimVal,
         kind: PrimValKind,
     ) -> EvalResult<'tcx, ()> {
-        if let Some(alloc_id) = val.relocation {
-            return self.write_ptr(dest, Pointer::new(alloc_id, val.bits));
+        if let Some(alloc_id) = val.relocation() {
+            return self.write_ptr(dest, Pointer::new(alloc_id, val.bits()));
         }
 
         use value::PrimValKind::*;
         let (size, bits) = match kind {
-            I8 | U8 | Bool         => (1, val.bits as u8  as u64),
-            I16 | U16              => (2, val.bits as u16 as u64),
-            I32 | U32 | F32 | Char => (4, val.bits as u32 as u64),
-            I64 | U64 | F64        => (8, val.bits),
+            I8 | U8 | Bool         => (1, val.bits() as u8  as u64),
+            I16 | U16              => (2, val.bits() as u16 as u64),
+            I32 | U32 | F32 | Char => (4, val.bits() as u32 as u64),
+            I64 | U64 | F64        => (8, val.bits()),
             // int -> ptr transmutes are handled here
-            FnPtr | Ptr            => return self.write_usize(dest, val.bits),
+            FnPtr | Ptr            => return self.write_usize(dest, val.bits()),
         };
 
         self.write_uint(dest, bits, size)

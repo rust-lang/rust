@@ -47,7 +47,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64();
                 let new_ptr = ptr.signed_offset(offset);
-                self.write_primval(dest, PrimVal::from_ptr(new_ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Pointer(new_ptr), dest_ty)?;
             }
 
             "assume" => {
@@ -171,7 +171,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let adt_ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.write_primval(dest, PrimVal::new(discr_val), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
             }
 
             "drop_in_place" => {
@@ -235,16 +235,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Value::ByRef(ptr)
                         },
                         None => match this.ty_to_primval_kind(dest_ty) {
-                            Ok(_) => Value::ByVal(PrimVal::new(0)),
+                            Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
                                 this.memory.write_repeat(ptr, 0, size)?;
                                 Value::ByRef(ptr)
                             }
                         },
-                        Some(Value::ByVal(_)) => Value::ByVal(PrimVal::new(0)),
+                        Some(Value::ByVal(_)) => Value::ByVal(PrimVal::Bytes(0)),
                         Some(Value::ByValPair(..)) =>
-                            Value::ByValPair(PrimVal::new(0), PrimVal::new(0)),
+                            Value::ByValPair(PrimVal::Bytes(0), PrimVal::Bytes(0)),
                     };
                     Ok(Some(zero_val))
                 };
@@ -292,7 +292,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.signed_offset(offset * pointee_size);
-                self.write_primval(dest, PrimVal::from_ptr(result_ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Pointer(result_ptr), dest_ty)?;
             }
 
             "overflowing_sub" => {
@@ -361,7 +361,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::new(n), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
             }
 
             "transmute" => {
@@ -507,18 +507,18 @@ macro_rules! integer_intrinsic {
 
         use value::PrimValKind::*;
         let bits = match $kind {
-            I8 => (val.bits as i8).$method() as u64,
-            U8 => (val.bits as u8).$method() as u64,
-            I16 => (val.bits as i16).$method() as u64,
-            U16 => (val.bits as u16).$method() as u64,
-            I32 => (val.bits as i32).$method() as u64,
-            U32 => (val.bits as u32).$method() as u64,
-            I64 => (val.bits as i64).$method() as u64,
-            U64 => (val.bits as u64).$method() as u64,
+            I8 => (val.bits() as i8).$method() as u64,
+            U8 => (val.bits() as u8).$method() as u64,
+            I16 => (val.bits() as i16).$method() as u64,
+            U16 => (val.bits() as u16).$method() as u64,
+            I32 => (val.bits() as i32).$method() as u64,
+            U32 => (val.bits() as u32).$method() as u64,
+            I64 => (val.bits() as i64).$method() as u64,
+            U64 => (val.bits() as u64).$method() as u64,
             _ => bug!("invalid `{}` argument: {:?}", $name, val),
         };
 
-        PrimVal::new(bits)
+        PrimVal::Bytes(bits)
     });
 }
 

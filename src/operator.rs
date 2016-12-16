@@ -66,7 +66,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 macro_rules! overflow {
     ($op:ident, $l:expr, $r:expr) => ({
         let (val, overflowed) = $l.$op($r);
-        let primval = PrimVal::new(val as u64);
+        let primval = PrimVal::Bytes(val as u64);
         Ok((primval, overflowed))
     })
 }
@@ -112,7 +112,7 @@ macro_rules! float_arithmetic {
         let l = $from_bits($l);
         let r = $from_bits($r);
         let bits = $to_bits(l $float_op r);
-        PrimVal::new(bits)
+        PrimVal::Bytes(bits)
     })
 }
 
@@ -148,7 +148,7 @@ pub fn binary_op<'tcx>(
         return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
     }
 
-    let (l, r) = (left.bits, right.bits);
+    let (l, r) = (left.bits(), right.bits());
 
     // These ops can have an RHS with a different numeric type.
     if bin_op == Shl || bin_op == Shr {
@@ -165,7 +165,7 @@ pub fn binary_op<'tcx>(
 
         // Cast to `u32` because `overflowing_sh{l,r}` only take `u32`, then apply the bitmask
         // to ensure it's within the valid shift value range.
-        let r = (right.bits as u32) & (type_bits - 1);
+        let r = (right.bits() as u32) & (type_bits - 1);
 
         return match bin_op {
             Shl => int_shift!(left_kind, overflowing_shl, l, r),
@@ -213,9 +213,9 @@ pub fn binary_op<'tcx>(
         (Gt, _) => PrimVal::from_bool(l >  r),
         (Ge, _) => PrimVal::from_bool(l >= r),
 
-        (BitOr,  _) => PrimVal::new(l | r),
-        (BitAnd, _) => PrimVal::new(l & r),
-        (BitXor, _) => PrimVal::new(l ^ r),
+        (BitOr,  _) => PrimVal::Bytes(l | r),
+        (BitAnd, _) => PrimVal::Bytes(l & r),
+        (BitXor, _) => PrimVal::Bytes(l ^ r),
 
         (Add, k) if k.is_int() => return int_arithmetic!(k, overflowing_add, l, r),
         (Sub, k) if k.is_int() => return int_arithmetic!(k, overflowing_sub, l, r),
@@ -254,25 +254,25 @@ pub fn unary_op<'tcx>(
     use value::PrimValKind::*;
 
     let bits = match (un_op, val_kind) {
-        (Not, Bool) => !bits_to_bool(val.bits) as u64,
+        (Not, Bool) => !bits_to_bool(val.bits()) as u64,
 
-        (Not, U8)  => !(val.bits as u8) as u64,
-        (Not, U16) => !(val.bits as u16) as u64,
-        (Not, U32) => !(val.bits as u32) as u64,
-        (Not, U64) => !val.bits,
+        (Not, U8)  => !(val.bits() as u8) as u64,
+        (Not, U16) => !(val.bits() as u16) as u64,
+        (Not, U32) => !(val.bits() as u32) as u64,
+        (Not, U64) => !val.bits(),
 
-        (Not, I8)  => !(val.bits as i8) as u64,
-        (Not, I16) => !(val.bits as i16) as u64,
-        (Not, I32) => !(val.bits as i32) as u64,
-        (Not, I64) => !(val.bits as i64) as u64,
+        (Not, I8)  => !(val.bits() as i8) as u64,
+        (Not, I16) => !(val.bits() as i16) as u64,
+        (Not, I32) => !(val.bits() as i32) as u64,
+        (Not, I64) => !(val.bits() as i64) as u64,
 
-        (Neg, I8)  => -(val.bits as i8) as u64,
-        (Neg, I16) => -(val.bits as i16) as u64,
-        (Neg, I32) => -(val.bits as i32) as u64,
-        (Neg, I64) => -(val.bits as i64) as u64,
+        (Neg, I8)  => -(val.bits() as i8) as u64,
+        (Neg, I16) => -(val.bits() as i16) as u64,
+        (Neg, I32) => -(val.bits() as i32) as u64,
+        (Neg, I64) => -(val.bits() as i64) as u64,
 
-        (Neg, F32) => f32_to_bits(-bits_to_f32(val.bits)),
-        (Neg, F64) => f64_to_bits(-bits_to_f64(val.bits)),
+        (Neg, F32) => f32_to_bits(-bits_to_f32(val.bits())),
+        (Neg, F64) => f64_to_bits(-bits_to_f64(val.bits())),
 
         _ => {
             let msg = format!("unimplemented unary op: {:?}, {:?}", un_op, val);
@@ -280,5 +280,5 @@ pub fn unary_op<'tcx>(
         }
     };
 
-    Ok(PrimVal::new(bits))
+    Ok(PrimVal::Bytes(bits))
 }

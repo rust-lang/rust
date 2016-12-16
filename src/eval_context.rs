@@ -172,7 +172,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::from_ptr(ptr), PrimVal::from_uint(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::Pointer(ptr), PrimVal::from_uint(s.len() as u64)))
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -180,7 +180,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::ConstFloat;
 
         let primval = match *const_val {
-            Integral(const_int) => PrimVal::new(const_int.to_u64_unchecked()),
+            Integral(const_int) => PrimVal::Bytes(const_int.to_u64_unchecked()),
 
             Float(ConstFloat::F32(f)) => PrimVal::from_f32(f),
             Float(ConstFloat::F64(f)) => PrimVal::from_f64(f),
@@ -196,7 +196,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.memory.allocate(bs.len() as u64, 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                PrimVal::from_ptr(ptr)
+                PrimVal::Pointer(ptr)
             }
 
             Struct(_)    => unimplemented!(),
@@ -315,14 +315,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                        .expect("global should have been cached (freeze)");
                 match global_value.data.expect("global should have been initialized") {
                     Value::ByRef(ptr) => self.memory.freeze(ptr.alloc_id)?,
-                    Value::ByVal(val) => if let Some(alloc_id) = val.relocation {
+                    Value::ByVal(val) => if let Some(alloc_id) = val.relocation() {
                         self.memory.freeze(alloc_id)?;
                     },
                     Value::ByValPair(a, b) => {
-                        if let Some(alloc_id) = a.relocation {
+                        if let Some(alloc_id) = a.relocation() {
                             self.memory.freeze(alloc_id)?;
                         }
-                        if let Some(alloc_id) = b.relocation {
+                        if let Some(alloc_id) = b.relocation() {
                             self.memory.freeze(alloc_id)?;
                         }
                     },
@@ -500,7 +500,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let n = adt_def.variants[variant].disr_val.to_u64_unchecked();
-                            self.write_primval(dest, PrimVal::new(n), dest_ty)?;
+                            self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
                         }
@@ -563,12 +563,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let (raw_ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
-                let ptr = PrimVal::from_ptr(raw_ptr);
+                let ptr = PrimVal::Pointer(raw_ptr);
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
                     LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_uint(len)),
-                    LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::from_ptr(vtable)),
+                    LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Pointer(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
@@ -578,7 +578,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 let ptr = self.alloc_ptr(ty)?;
-                self.write_primval(dest, PrimVal::from_ptr(ptr), dest_ty)?;
+                self.write_primval(dest, PrimVal::Pointer(ptr), dest_ty)?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
@@ -617,7 +617,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
                             let fn_ty = self.tcx.erase_regions(&fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx,def_id, substs, fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::from_ptr(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::Pointer(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
                     },
@@ -629,7 +629,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let (def_id, substs, _, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx, def_id, substs, unsafe_fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::from_ptr(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::Pointer(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
                     },
@@ -1093,10 +1093,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         match ty.sty {
-            ty::TyBool if val.bits > 1 => Err(EvalError::InvalidBool),
+            ty::TyBool if val.bits() > 1 => Err(EvalError::InvalidBool),
 
-            ty::TyChar if ::std::char::from_u32(val.bits as u32).is_none()
-                => Err(EvalError::InvalidChar(val.bits as u32 as u64)),
+            ty::TyChar if ::std::char::from_u32(val.bits() as u32).is_none()
+                => Err(EvalError::InvalidChar(val.bits() as u32 as u64)),
 
             _ => Ok(()),
         }
@@ -1150,23 +1150,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_ptr)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::Pointer)?,
             ty::TyBox(ty) |
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 let p = self.memory.read_ptr(ptr)?;
                 if self.type_is_sized(ty) {
-                    PrimVal::from_ptr(p)
+                    PrimVal::Pointer(p)
                 } else {
                     trace!("reading fat pointer extra of type {}", ty);
                     let extra = ptr.offset(self.memory.pointer_size());
                     let extra = match self.tcx.struct_tail(ty).sty {
-                        ty::TyDynamic(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
+                        ty::TyDynamic(..) => PrimVal::Pointer(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
                         ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
-                    return Ok(Some(Value::ByValPair(PrimVal::from_ptr(p), extra)));
+                    return Ok(Some(Value::ByValPair(PrimVal::Pointer(p), extra)));
                 }
             }
 
@@ -1225,7 +1225,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
                         let len = PrimVal::from_uint(length as u64);
-                        let ptr = PrimVal::from_ptr(ptr);
+                        let ptr = PrimVal::Pointer(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
                     (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
@@ -1239,8 +1239,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let trait_ref = self.tcx.erase_regions(&trait_ref);
                         let vtable = self.get_vtable(trait_ref)?;
                         let ptr = src.read_ptr(&self.memory)?;
-                        let ptr = PrimVal::from_ptr(ptr);
-                        let extra = PrimVal::from_ptr(vtable);
+                        let ptr = PrimVal::Pointer(ptr);
+                        let extra = PrimVal::Pointer(vtable);
                         self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)?;
                     },
 
@@ -1301,12 +1301,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                     Value::ByVal(val) => {
                         trace!("frame[{}] {:?}: {:?}", frame, local, val);
-                        if let Some(alloc_id) = val.relocation { allocs.push(alloc_id); }
+                        if let Some(alloc_id) = val.relocation() { allocs.push(alloc_id); }
                     }
                     Value::ByValPair(val1, val2) => {
                         trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, val1, val2);
-                        if let Some(alloc_id) = val1.relocation { allocs.push(alloc_id); }
-                        if let Some(alloc_id) = val2.relocation { allocs.push(alloc_id); }
+                        if let Some(alloc_id) = val1.relocation() { allocs.push(alloc_id); }
+                        if let Some(alloc_id) = val2.relocation() { allocs.push(alloc_id); }
                     }
                 }
             }

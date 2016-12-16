@@ -46,13 +46,17 @@ pub enum Value {
 /// A `PrimVal` represents an immediate, primitive value existing outside of an allocation. It is
 /// considered to be like a
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PrimVal {
-    pub bits: u64,
+pub enum PrimVal {
+    Bytes(u64),
 
+    // FIXME(solson): Rename this variant to Ptr.
+    // FIXME(solson): Outdated comment, pulled from `relocations` field I deleted.
     /// This field is initialized when the `PrimVal` represents a pointer into an `Allocation`. An
     /// `Allocation` in the `memory` module has a list of relocations, but a `PrimVal` is only
     /// large enough to contain one, hence the `Option`.
-    pub relocation: Option<AllocId>,
+    Pointer(Pointer),
+
+    Undefined,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -110,56 +114,64 @@ impl<'a, 'tcx: 'a> Value {
 }
 
 impl PrimVal {
-    pub fn new(bits: u64) -> Self {
-        PrimVal { bits: bits, relocation: None }
+    // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
+    // stick around with this name.
+    pub fn bits(&self) -> u64 {
+        match *self {
+            PrimVal::Bytes(b) => b,
+            PrimVal::Pointer(p) => p.offset,
+            PrimVal::Undefined => panic!(".bits()() on PrimVal::Undefined"),
+        }
     }
 
-    pub fn new_with_relocation(bits: u64, alloc_id: AllocId) -> Self {
-        PrimVal { bits: bits, relocation: Some(alloc_id) }
-    }
-
-    pub fn from_ptr(ptr: Pointer) -> Self {
-        PrimVal::new_with_relocation(ptr.offset as u64, ptr.alloc_id)
+    // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
+    // stick around with this name.
+    pub fn relocation(&self) -> Option<AllocId> {
+        if let PrimVal::Pointer(ref p) = *self {
+            Some(p.alloc_id)
+        } else {
+            None
+        }
     }
 
     pub fn from_bool(b: bool) -> Self {
-        PrimVal::new(b as u64)
+        PrimVal::Bytes(b as u64)
     }
 
     pub fn from_char(c: char) -> Self {
-        PrimVal::new(c as u64)
+        PrimVal::Bytes(c as u64)
     }
 
     pub fn from_f32(f: f32) -> Self {
-        PrimVal::new(f32_to_bits(f))
+        PrimVal::Bytes(f32_to_bits(f))
     }
 
     pub fn from_f64(f: f64) -> Self {
-        PrimVal::new(f64_to_bits(f))
+        PrimVal::Bytes(f64_to_bits(f))
     }
 
     pub fn from_uint(n: u64) -> Self {
-        PrimVal::new(n)
+        PrimVal::Bytes(n)
     }
 
     pub fn from_int(n: i64) -> Self {
-        PrimVal::new(n as u64)
+        PrimVal::Bytes(n as u64)
     }
 
     pub fn to_f32(self) -> f32 {
-        assert!(self.relocation.is_none());
-        bits_to_f32(self.bits)
+        assert!(self.relocation().is_none());
+        bits_to_f32(self.bits())
     }
 
     pub fn to_f64(self) -> f64 {
-        assert!(self.relocation.is_none());
-        bits_to_f64(self.bits)
+        assert!(self.relocation().is_none());
+        bits_to_f64(self.bits())
     }
 
     pub fn to_ptr(self) -> Pointer {
-        self.relocation.map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits)
-        }).unwrap_or_else(|| Pointer::from_int(self.bits))
+        self.relocation().map(|alloc_id| {
+            Pointer::new(alloc_id, self.bits())
+        }).unwrap_or_else(|| Pointer::from_int(self.bits()))
     }
 
     pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
@@ -170,24 +182,24 @@ impl PrimVal {
         if let Some(ptr) = self.try_as_ptr() {
             return ptr.to_int().expect("non abstract ptr") as u64;
         }
-        self.bits
+        self.bits()
     }
 
     pub fn to_i64(self) -> i64 {
         if let Some(ptr) = self.try_as_ptr() {
             return ptr.to_int().expect("non abstract ptr") as i64;
         }
-        self.bits as i64
+        self.bits() as i64
     }
 
     pub fn try_as_ptr(self) -> Option<Pointer> {
-        self.relocation.map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits)
+        self.relocation().map(|alloc_id| {
+            Pointer::new(alloc_id, self.bits())
         })
     }
 
     pub fn try_as_bool<'tcx>(self) -> EvalResult<'tcx, bool> {
-        match self.bits {
+        match self.bits() {
             0 => Ok(false),
             1 => Ok(true),
             _ => Err(EvalError::InvalidBool),
