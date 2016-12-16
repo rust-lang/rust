@@ -341,7 +341,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                              def: DefKey)
                              -> Option<DefIndex> {
         let cdata = self.get_crate_data(cnum);
-        cdata.key_map.get(&def).cloned()
+        cdata.def_path_table.def_index_for_def_key(&def)
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

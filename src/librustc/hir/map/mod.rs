@@ -29,7 +29,7 @@ use hir::*;
 use hir::print as pprust;
 
 use arena::TypedArena;
-use std::cell::RefCell;
+use std::cell::{RefCell, Ref};
 use std::io;
 use std::mem;
 
@@ -393,6 +393,10 @@ impl<'ast> Map<'ast> {
 
     pub fn num_local_def_ids(&self) -> usize {
         self.definitions.borrow().len()
+    }
+
+    pub fn definitions(&self) -> Ref<Definitions> {
+        self.definitions.borrow()
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {

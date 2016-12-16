@@ -12,12 +12,10 @@
 
 use astencode::decode_inlined_item;
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
-use index::Index;
 use schema::*;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::{DefKey, DefPathData};
-use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
@@ -456,14 +454,6 @@ impl<'a, 'tcx> MetadataBlob {
         Lazy::with_position(pos).decode(self)
     }
 
-    /// Go through each item in the metadata and create a map from that
-    /// item's def-key to the item's DefIndex.
-    pub fn load_key_map(&self, index: LazySeq<Index>) -> FxHashMap<DefKey, DefIndex> {
-        index.iter_enumerated(self.raw_bytes())
-            .map(|(index, item)| (item.decode(self).def_key.decode(self), index))
-            .collect()
-    }
-
     pub fn list_crate_metadata(&self, out: &mut io::Write) -> io::Result<()> {
         write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
@@ -543,9 +533,8 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    fn item_name(&self, item: &Entry<'tcx>) -> ast::Name {
-        item.def_key
-            .decode(self)
+    fn item_name(&self, item_index: DefIndex) -> ast::Name {
+        self.def_key(item_index)
             .disambiguated_data
             .data
             .get_opt_name()
@@ -594,12 +583,12 @@ impl<'a, 'tcx> CrateMetadata {
 
         (ty::VariantDef {
             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
-            name: self.item_name(item),
+            name: self.item_name(index),
             fields: item.children.decode(self).map(|index| {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
-                    name: self.item_name(&f),
+                    name: self.item_name(index),
                     vis: f.visibility
                 }
             }).collect(),
@@ -771,7 +760,7 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
                                     def: def,
-                                    name: self.item_name(&self.entry(child_index)),
+                                    name: self.item_name(child_index),
                                 });
                             }
                         }
@@ -783,7 +772,7 @@ impl<'a, 'tcx> CrateMetadata {
                     _ => {}
                 }
 
-                let def_key = child.def_key.decode(self);
+                let def_key = self.def_key(child_index);
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
                     callback(def::Export {
@@ -886,7 +875,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_associated_item(&self, id: DefIndex) -> Option<ty::AssociatedItem> {
         let item = self.entry(id);
         let parent_and_name = || {
-            let def_key = item.def_key.decode(self);
+            let def_key = self.def_key(id);
             (self.local_def_id(def_key.parent.unwrap()),
              def_key.disambiguated_data.data.get_opt_name().unwrap())
         };
@@ -963,7 +952,7 @@ impl<'a, 'tcx> CrateMetadata {
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
         let mut item = self.entry(node_id);
-        let def_key = item.def_key.decode(self);
+        let def_key = self.def_key(node_id);
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
@@ -974,7 +963,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id)
             .children
             .decode(self)
-            .map(|index| self.item_name(&self.entry(index)))
+            .map(|index| self.item_name(index))
             .collect()
     }
 
@@ -1036,7 +1025,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_trait_of_item(&self, id: DefIndex) -> Option<DefId> {
-        self.entry(id).def_key.decode(self).parent.and_then(|parent_index| {
+        self.def_key(id).parent.and_then(|parent_index| {
             match self.entry(parent_index).kind {
                 EntryKind::Trait(_) => Some(self.local_def_id(parent_index)),
                 _ => None,
@@ -1082,7 +1071,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
         let entry = self.entry(id);
         match entry.kind {
-            EntryKind::MacroDef(macro_def) => (self.item_name(&entry), macro_def.decode(self)),
+            EntryKind::MacroDef(macro_def) => (self.item_name(id), macro_def.decode(self)),
             _ => bug!(),
         }
     }
@@ -1135,20 +1124,8 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn def_key(&self, id: DefIndex) -> hir_map::DefKey {
-        debug!("def_key: id={:?}", id);
-        if self.is_proc_macro(id) {
-            let name = self.proc_macros.as_ref().unwrap()[id.as_usize() - 1].0;
-            hir_map::DefKey {
-                parent: Some(CRATE_DEF_INDEX),
-                disambiguated_data: hir_map::DisambiguatedDefPathData {
-                    data: hir_map::DefPathData::MacroDef(name.as_str()),
-                    disambiguator: 0,
-                },
-            }
-        } else {
-            self.entry(id).def_key.decode(self)
-        }
+    pub fn def_key(&self, index: DefIndex) -> DefKey {
+        self.def_path_table.def_key(index)
     }
 
     // Returns the path leading to the thing with this `id`. Note that
