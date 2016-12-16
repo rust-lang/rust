@@ -32,7 +32,7 @@ use std::hash::Hash;
 
 use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
-use super::hasher::IchHasher;
+use super::IchHasher;
 
 const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
     "cfg",
