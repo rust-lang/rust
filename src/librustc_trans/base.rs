@@ -37,7 +37,7 @@ use back::symbol_export::{self, ExportedSymbols};
 use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
+use middle::lang_items::StartFnLangItem;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -167,33 +167,6 @@ pub fn get_meta(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
 pub fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
     bcx.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
-
-fn require_alloc_fn<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem
-) -> DefId {
-    match bcx.tcx().lang_items.require(it) {
-        Ok(id) => id,
-        Err(s) => {
-            bcx.sess().fatal(&format!("allocation of `{}` {}", info_ty, s));
-        }
-    }
-}
-
-// malloc_raw_dyn allocates a box to contain a given type, but with a potentially dynamic size.
-//
-// MIR requires that ExchangeMallocFnLangItem cannot unwind.
-pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                  llty_ptr: Type,
-                                  info_ty: Ty<'tcx>,
-                                  size: ValueRef,
-                                  align: ValueRef)
-                                  -> ValueRef {
-    // Allocate space:
-    let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
-    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).reify(bcx.ccx());
-    bcx.pointercast(bcx.call(r, &[size, align], None), llty_ptr)
-}
-
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
                                 signed: bool)
