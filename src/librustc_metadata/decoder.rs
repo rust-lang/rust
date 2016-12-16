@@ -14,8 +14,7 @@ use astencode::decode_inlined_item;
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
-use rustc::hir::map as hir_map;
-use rustc::hir::map::{DefKey, DefPathData};
+use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
@@ -567,7 +566,7 @@ impl<'a, 'tcx> CrateMetadata {
         ty::TraitDef::new(self.local_def_id(item_id),
                           data.unsafety,
                           data.paren_sugar,
-                          self.def_path(item_id).unwrap().deterministic_hash(tcx))
+                          self.def_path(item_id).deterministic_hash(tcx))
     }
 
     fn get_variant(&self,
@@ -1128,16 +1127,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.def_path_table.def_key(index)
     }
 
-    // Returns the path leading to the thing with this `id`. Note that
-    // some def-ids don't wind up in the metadata, so `def_path` sometimes
-    // returns `None`
-    pub fn def_path(&self, id: DefIndex) -> Option<hir_map::DefPath> {
+    // Returns the path leading to the thing with this `id`.
+    pub fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(id={:?})", id);
-        if self.is_proc_macro(id) || self.maybe_entry(id).is_some() {
-            Some(hir_map::DefPath::make(self.cnum, id, |parent| self.def_key(parent)))
-        } else {
-            None
-        }
+        DefPath::make(self.cnum, id, |parent| self.def_path_table.def_key(parent))
     }
 
     /// Imports the codemap from an external crate into the codemap of the crate

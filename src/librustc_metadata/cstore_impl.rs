@@ -358,7 +358,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).def_key(def.index)
     }
 
-    fn relative_def_path(&self, def: DefId) -> Option<DefPath> {
+    fn def_path(&self, def: DefId) -> DefPath {
         // See `Note` above in `def_key()` for why this read is
         // commented out:
         //
