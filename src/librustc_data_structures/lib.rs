@@ -44,6 +44,8 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 
+extern crate rustc_i128;
+
 pub use rustc_serialize::hex::ToHex;
 
 pub mod array_vec;
