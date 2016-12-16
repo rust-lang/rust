@@ -15,7 +15,8 @@
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef};
+use llvm::{True, False, Bool, OperandBundleDef, get_param};
+use monomorphize::Instance;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -311,18 +312,109 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
+
+    owned_builder: OwnedBuilder<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
+    /// Create a function context for the given function.
+    /// Beware that you must call `fcx.init` or `fcx.bind_args`
+    /// before doing anything with the returned function context.
+    pub fn new(ccx: &'a CrateContext<'a, 'tcx>,
+               llfndecl: ValueRef,
+               fn_ty: FnType,
+               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>)
+               -> FunctionContext<'a, 'tcx> {
+        let (param_substs, def_id) = match definition {
+            Some((instance, ..)) => {
+                validate_substs(instance.substs);
+                (instance.substs, Some(instance.def))
+            }
+            None => (ccx.tcx().intern_substs(&[]), None)
+        };
+
+        let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
+
+        debug!("FunctionContext::new({})", definition.map_or(String::new(), |d| d.0.to_string()));
+
+        let no_debug = if let Some(id) = local_id {
+            ccx.tcx().map.attrs(id).iter().any(|item| item.check_name("no_debug"))
+        } else if let Some(def_id) = def_id {
+            ccx.sess().cstore.item_attrs(def_id).iter().any(|item| item.check_name("no_debug"))
+        } else {
+            false
+        };
+
+        let mir = def_id.map(|id| ccx.tcx().item_mir(id));
+
+        let debug_context = if let (false, Some((instance, sig, abi)), &Some(ref mir)) =
+                (no_debug, definition, &mir) {
+            debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl, mir)
+        } else {
+            debuginfo::empty_function_debug_context(ccx)
+        };
+
+        FunctionContext {
+            mir: mir,
+            llfn: llfndecl,
+            llretslotptr: Cell::new(None),
+            param_env: ccx.tcx().empty_parameter_environment(),
+            alloca_insert_pt: Cell::new(None),
+            landingpad_alloca: Cell::new(None),
+            fn_ty: fn_ty,
+            param_substs: param_substs,
+            span: None,
+            funclet_arena: TypedArena::new(),
+            ccx: ccx,
+            debug_context: debug_context,
+            owned_builder: OwnedBuilder::new_with_ccx(ccx),
+        }
+    }
+
+    /// Performs setup on a newly created function, creating the entry
+    /// scope block and allocating space for the return pointer.
+    pub fn init(&'a self, skip_retptr: bool) -> BlockAndBuilder<'a, 'tcx> {
+        let entry_bcx = self.build_new_block("entry-block");
+
+        // Use a dummy instruction as the insertion point for all allocas.
+        // This is later removed in FunctionContext::cleanup.
+        self.alloca_insert_pt.set(Some(unsafe {
+            entry_bcx.load(C_null(Type::i8p(self.ccx)));
+            llvm::LLVMGetFirstInstruction(entry_bcx.llbb())
+        }));
+
+        self.owned_builder.builder.position_at_start(entry_bcx.llbb());
+
+        if !self.fn_ty.ret.is_ignore() && !skip_retptr {
+            // We normally allocate the llretslotptr, unless we
+            // have been instructed to skip it for immediate return
+            // values, or there is nothing to return at all.
+
+            // We create an alloca to hold a pointer of type `ret.original_ty`
+            // which will hold the pointer to the right alloca which has the
+            // final ret value
+            let llty = self.fn_ty.ret.memory_ty(self.ccx);
+            // But if there are no nested returns, we skip the indirection
+            // and have a single retslot
+            let slot = if self.fn_ty.ret.is_indirect() {
+                get_param(self.llfn, 0)
+            } else {
+                self.alloca(llty, "sret_slot")
+            };
+
+            self.llretslotptr.set(Some(slot));
+        }
+
+        entry_bcx
+    }
+
     pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.mir.as_ref().map(Ref::clone).expect("fcx.mir was empty")
     }
 
     pub fn cleanup(&self) {
         unsafe {
-            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
-                                                     .get()
-                                                     .unwrap());
+            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.get().unwrap());
         }
     }
 
@@ -431,9 +523,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
-        let b = self.ccx.builder();
-        b.position_before(self.alloca_insert_pt.get().unwrap());
-        b.alloca(ty, name)
+        self.owned_builder.builder.alloca(ty, name)
     }
 }
 
