@@ -16,3 +16,4 @@ serialize = { path = "../libserialize" }
 log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+rustc_i128 = { path = "../librustc_i128" }

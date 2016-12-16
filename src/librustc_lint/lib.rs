@@ -47,6 +47,8 @@ extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
 
+extern crate rustc_i128;
+
 pub use rustc::lint;
 pub use rustc::middle;
 pub use rustc::session;

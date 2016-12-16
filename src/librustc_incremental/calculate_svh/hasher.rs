@@ -14,6 +14,7 @@ use rustc_data_structures::blake2b::Blake2bHasher;
 use rustc::ty::util::ArchIndependentHasher;
 use ich::Fingerprint;
 use rustc_serialize::leb128::write_unsigned_leb128;
+use rustc_i128::{u128};
 
 #[derive(Debug)]
 pub struct IchHasher {
@@ -43,7 +44,7 @@ impl IchHasher {
     }
 
     #[inline]
-    fn write_uleb128(&mut self, value: u64) {
+    fn write_uleb128(&mut self, value: u128) {
         let len = write_unsigned_leb128(&mut self.leb128_helper, 0, value);
         self.state.write(&self.leb128_helper[0..len]);
         self.bytes_hashed += len as u64;
@@ -68,21 +69,21 @@ impl Hasher for IchHasher {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.write_uleb128(i as u64);
+        self.write_uleb128(i as u128);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.write_uleb128(i as u64);
+        self.write_uleb128(i as u128);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.write_uleb128(i);
+        self.write_uleb128(i as u128);
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.write_uleb128(i as u64);
+        self.write_uleb128(i as u128);
     }
 }

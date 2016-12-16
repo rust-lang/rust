@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_i128::{i128, u128};
+
 #[inline]
 pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8) {
     if *position == vec.len() {
@@ -19,7 +21,7 @@ pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8) {
     *position += 1;
 }
 
-pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value: u64) -> usize {
+pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value: u128) -> usize {
     let mut position = start_position;
     loop {
         let mut byte = (value & 0x7F) as u8;
@@ -39,14 +41,14 @@ pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value
 }
 
 #[inline]
-pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) {
+pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u128, usize) {
     let mut result = 0;
     let mut shift = 0;
     let mut position = start_position;
     loop {
         let byte = data[position];
         position += 1;
-        result |= ((byte & 0x7F) as u64) << shift;
+        result |= ((byte & 0x7F) as u128) << shift;
         if (byte & 0x80) == 0 {
             break;
         }
@@ -57,14 +59,13 @@ pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) 
 }
 
 
-pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: i64) -> usize {
+pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: i128) -> usize {
     let mut position = start_position;
-
     loop {
-        let mut byte = (value as u8) & 0x7f;
+        let mut byte = (value & 0x7f) as u8;
         value >>= 7;
         let more = !((((value == 0) && ((byte & 0x40) == 0)) ||
-                      ((value == -1) && ((byte & 0x40) != 0))));
+                      ((value == !0) && ((byte & 0x40) != 0))));
         if more {
             byte |= 0x80; // Mark this byte to show that more bytes will follow.
         }
@@ -80,7 +81,7 @@ pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: 
 }
 
 #[inline]
-pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
+pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
     let mut result = 0;
     let mut shift = 0;
     let mut position = start_position;
@@ -89,7 +90,7 @@ pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
     loop {
         byte = data[position];
         position += 1;
-        result |= ((byte & 0x7F) as i64) << shift;
+        result |= ((byte & 0x7F) as i128) << shift;
         shift += 7;
 
         if (byte & 0x80) == 0 {
@@ -99,7 +100,7 @@ pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
 
     if (shift < 64) && ((byte & 0x40) != 0) {
         // sign extend
-        result |= -(1i64 << shift);
+        result |= -(1 << shift);
     }
 
     (result, position - start_position)
@@ -127,22 +128,13 @@ fn test_unsigned_leb128() {
 
 #[test]
 fn test_signed_leb128() {
-    let mut values = Vec::new();
-
-    let mut i = -500;
-    while i < 500 {
-        values.push(i * 123457i64);
-        i += 1;
-    }
-
+    let values: Vec<_> = (-500..500).map(|i| i * 0x12345789ABCDEF).collect();
     let mut stream = Vec::new();
-
     for &x in &values {
         let pos = stream.len();
         let bytes_written = write_signed_leb128(&mut stream, pos, x);
         assert_eq!(stream.len(), pos + bytes_written);
     }
-
     let mut pos = 0;
     for &x in &values {
         let (value, bytes_read) = read_signed_leb128(&mut stream, pos);

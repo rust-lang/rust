@@ -28,6 +28,8 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;
 
+use rustc_i128::u128;
+
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 #[macro_use]
@@ -557,18 +559,20 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> a
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
             "i32" => ast::LitIntType::Signed(ast::IntTy::I32),
             "i64" => ast::LitIntType::Signed(ast::IntTy::I64),
+            "i128" => ast::LitIntType::Signed(ast::IntTy::I128),
             "usize" => ast::LitIntType::Unsigned(ast::UintTy::Us),
             "u8"  => ast::LitIntType::Unsigned(ast::UintTy::U8),
             "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
             "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
             "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
+            "u128" => ast::LitIntType::Unsigned(ast::UintTy::U128),
             suf => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
                 if looks_like_width_suffix(&['i', 'u'], suf) {
                     sd.struct_span_err(sp, &format!("invalid width `{}` for integer literal",
                                              &suf[1..]))
-                      .help("valid widths are 8, 16, 32 and 64")
+                      .help("valid widths are 8, 16, 32, 64 and 128")
                       .emit();
                 } else {
                     sd.struct_span_err(sp, &format!("invalid suffix `{}` for numeric literal", suf))
@@ -585,7 +589,7 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> a
     debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \
            string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
-    match u64::from_str_radix(s, base) {
+    match u128::from_str_radix(s, base) {
         Ok(r) => ast::LitKind::Int(r, ty),
         Err(_) => {
             // small bases are lexed as if they were base 10, e.g, the string

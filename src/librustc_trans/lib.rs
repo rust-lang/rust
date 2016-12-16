@@ -57,6 +57,7 @@ extern crate rustc_const_eval;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
+extern crate rustc_i128;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
