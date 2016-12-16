@@ -300,10 +300,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // substitutions used.
     pub param_substs: &'tcx Substs<'tcx>,
 
-    // The source span and nesting context where this function comes from, for
-    // error reporting and symbol generation.
-    pub span: Option<Span>,
-
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -360,7 +356,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             landingpad_alloca: Cell::new(None),
             fn_ty: fn_ty,
             param_substs: param_substs,
-            span: None,
             ccx: ccx,
             debug_context: debug_context,
             owned_builder: OwnedBuilder::new_with_ccx(ccx),

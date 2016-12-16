@@ -372,7 +372,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()),
                               arg_ty, scope, variable_access,
                               VariableKind::ArgumentVariable(arg_index + 1),
-                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+                              DUMMY_SP);
             });
 
             return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
@@ -444,7 +444,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
                               scope, VariableAccess::DirectVariable { alloca: llval },
                               VariableKind::ArgumentVariable(arg_index + 1),
-                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+                              DUMMY_SP);
                 return;
             }
 
@@ -513,7 +513,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 };
                 declare_local(bcx, decl.debug_name, ty, scope, variable_access,
                               VariableKind::CapturedVariable,
-                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+                              DUMMY_SP);
             }
         });
         LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty)))
