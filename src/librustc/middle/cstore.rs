@@ -341,7 +341,7 @@ pub trait CrateStore<'tcx> {
                     path_data: &[DisambiguatedDefPathData])
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
-    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
+    fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -510,7 +510,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
 
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
-    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
+    fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
