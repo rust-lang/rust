@@ -13,6 +13,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
 use rustc::mir;
+use middle::lang_items::ExchangeMallocFnLangItem;
 
 use asm;
 use base;
@@ -449,7 +450,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llalign = C_uint(bcx.ccx(), align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
-                let val = base::malloc_raw_dyn(&bcx, llty_ptr, box_ty, llsize, llalign);
+
+                // Allocate space:
+                let def_id = match bcx.tcx().lang_items.require(ExchangeMallocFnLangItem) {
+                    Ok(id) => id,
+                    Err(s) => {
+                        bcx.sess().fatal(&format!("allocation of `{}` {}", box_ty, s));
+                    }
+                };
+                let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
+                    .reify(bcx.ccx());
+                let val = bcx.pointercast(bcx.call(r, &[llsize, llalign], None), llty_ptr);
+
                 let operand = OperandRef {
                     val: OperandValue::Immediate(val),
                     ty: box_ty,

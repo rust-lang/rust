@@ -327,8 +327,6 @@ language_item_table! {
     PanicBoundsCheckFnLangItem,      "panic_bounds_check",      panic_bounds_check_fn;
     PanicFmtLangItem,                "panic_fmt",               panic_fmt;
 
-    // ExchangeMallocFnLangItem cannot unwind, or MIR trans will break. See note
-    // on `malloc_raw_dyn` in librustc_trans/base.rs.
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
