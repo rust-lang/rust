@@ -186,7 +186,8 @@ impl fold::Folder for EntryPointCleaner {
         // Remove any #[main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let folded = match entry::entry_point_type(&folded, self.depth) {
+        let folded = match entry::entry_point_type(&folded, self.depth) {            
+            EntryPointType::ImportedMain => unimplemented!(), // FIXME
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>

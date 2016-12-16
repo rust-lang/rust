@@ -1114,6 +1114,11 @@ pub struct Resolver<'a> {
 
     // Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
+
+    // Track function imported as main in root namespace
+    pub defined_as_main: Option<DefId>,
+
+    main_directive_id: Option<NodeId>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1289,6 +1294,8 @@ impl<'a> Resolver<'a> {
             macro_exports: Vec::new(),
             invocations: invocations,
             name_already_seen: FxHashMap(),
+            defined_as_main: None,
+            main_directive_id: None,
         }
     }
 

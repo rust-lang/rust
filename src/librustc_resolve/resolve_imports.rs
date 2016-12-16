@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, Module, PerNS};
-use Namespace::{self, TypeNS, MacroNS};
+use Namespace::{self, TypeNS, MacroNS, ValueNS};
 use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError, ToNameBinding};
 use Resolver;
 use {names_to_string, module_to_string};
@@ -301,11 +301,17 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    pub fn try_define<T>(&mut self, module: Module<'a>, name: Name, ns: Namespace, binding: T)
+    pub fn try_define<T>(&mut self, directive_id: Option<NodeId>, module: Module<'a>, name: Name, ns: Namespace, binding: T)
                          -> Result<(), &'a NameBinding<'a>>
         where T: ToNameBinding<'a>
     {
         let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
+        if ns == ValueNS && module.parent.is_none() && name == Name::intern("main") {
+            if let Def::Fn(def_id) = binding.def() {
+                self.defined_as_main = Some(def_id);
+                self.main_directive_id = directive_id;
+            }
+        }
         self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
@@ -374,7 +380,7 @@ impl<'a> Resolver<'a> {
         for directive in module.glob_importers.borrow_mut().iter() {
             if self.is_accessible_from(binding.vis, directive.parent) {
                 let imported_binding = self.import(binding, directive);
-                let _ = self.try_define(directive.parent, name, ns, imported_binding);
+                let _ = self.try_define(Some(directive.id), directive.parent, name, ns, imported_binding);
             }
         }
 
@@ -388,7 +394,7 @@ impl<'a> Resolver<'a> {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
             self.per_ns(|this, ns| {
-                let _ = this.try_define(directive.parent, target, ns, dummy_binding.clone());
+                let _ = this.try_define(Some(directive.id), directive.parent, target, ns, dummy_binding.clone());
             });
         }
     }
@@ -533,7 +539,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 Ok(binding) => {
                     let imported_binding = this.import(binding, directive);
-                    let conflict = this.try_define(directive.parent, target, ns, imported_binding);
+                    let conflict = this.try_define(Some(directive.id), directive.parent, target, ns,
+                                                   imported_binding);
                     if let Err(old_binding) = conflict {
                         let binding = &this.import(binding, directive);
                         this.report_conflict(directive.parent, target, ns, binding, old_binding);
@@ -705,7 +712,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         for ((name, ns), binding) in bindings {
             if binding.pseudo_vis() == ty::Visibility::Public || self.is_accessible(binding.vis) {
                 let imported_binding = self.import(binding, directive);
-                let _ = self.try_define(directive.parent, name, ns, imported_binding);
+                let _ = self.try_define(Some(directive.id), directive.parent, name, ns, imported_binding);
             }
         }
 

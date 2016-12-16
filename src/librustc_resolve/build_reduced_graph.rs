@@ -80,7 +80,7 @@ impl<'b> Resolver<'b> {
         where T: ToNameBinding<'b>,
     {
         let binding = def.to_name_binding();
-        if let Err(old_binding) = self.try_define(parent, name, ns, binding.clone()) {
+        if let Err(old_binding) = self.try_define(None, parent, name, ns, binding.clone()) {
             self.report_conflict(parent, name, ns, old_binding, &binding);
         }
     }
