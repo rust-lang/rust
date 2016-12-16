@@ -165,7 +165,7 @@ fn target_from_json(jtarget: &Json) -> Target {
     let kinds = jtarget.get("kind").unwrap().as_array().unwrap();
     let kind = match kinds[0].as_string().unwrap() {
         "bin" => TargetKind::Bin,
-        "lib" | "dylib" | "staticlib" => TargetKind::Lib,
+        "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
         "test" => TargetKind::Test,
         "example" => TargetKind::Example,
         "bench" => TargetKind::Bench,
