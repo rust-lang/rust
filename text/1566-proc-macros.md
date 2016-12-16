@@ -85,7 +85,7 @@ The value returned replaces the macro use.
 Attribute-like:
 
 ```
-#[prco_macro_attribute]
+#[proc_macro_attribute]
 pub fn foo(Option<TokenStream>, TokenStream) -> TokenStream;
 ```
 
