@@ -248,6 +248,23 @@ impl Write for Vec<u8> {
     }
 
     #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+        struct Adaptor<'a>(&'a mut Vec<u8>);
+
+        impl<'a> fmt::Write for Adaptor<'a> {
+            #[inline]
+            fn write_str(&mut self, s: &str) -> fmt::Result {
+                self.0.extend_from_slice(s.as_bytes());
+                Ok(())
+            }
+        }
+
+        let mut output = Adaptor(self);
+        fmt::write(&mut output, fmt)
+            .map_err(|_| Error::new(ErrorKind::Other, "formatter error"))
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 

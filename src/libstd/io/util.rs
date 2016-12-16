@@ -10,7 +10,8 @@
 
 #![allow(missing_copy_implementations)]
 
-use io::{self, Read, Write, ErrorKind, BufRead};
+use io::{self, Read, Write, Error, ErrorKind, BufRead};
+use fmt;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -161,8 +162,25 @@ pub fn sink() -> Sink { Sink { _priv: () } }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Sink {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+        struct SinkAdapter;
+        impl fmt::Write for SinkAdapter {
+            fn write_str(&mut self, _: &str) -> fmt::Result {
+                Ok(())
+            }
+        }
+
+        let mut a = SinkAdapter;
+        fmt::write(&mut a, fmt)
+            .map_err(|_| Error::new(ErrorKind::Other, "formatter error"))
+    }
 }
 
 #[cfg(test)]
