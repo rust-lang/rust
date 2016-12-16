@@ -12,7 +12,7 @@ use hir::map::definitions::*;
 
 use hir;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use hir::def_id::{CRATE_DEF_INDEX, DefIndex};
 
 use middle::cstore::InlinedItem;
 
@@ -45,25 +45,6 @@ impl<'a> DefCollector<'a> {
             parent_def: None,
             visit_macro_invoc: None,
         }
-    }
-
-    pub fn extend(parent_node: NodeId,
-                  parent_def_path: DefPath,
-                  parent_def_id: DefId,
-                  definitions: &'a mut Definitions)
-                  -> Self {
-        let mut collector = DefCollector::new(definitions);
-
-        assert_eq!(parent_def_path.krate, parent_def_id.krate);
-        let root_path = Box::new(InlinedRootPath {
-            data: parent_def_path.data,
-            def_id: parent_def_id,
-        });
-
-        let def = collector.create_def(parent_node, DefPathData::InlinedRoot(root_path));
-        collector.parent_def = Some(def);
-
-        collector
     }
 
     pub fn collect_root(&mut self) {

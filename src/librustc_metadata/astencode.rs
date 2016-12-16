@@ -102,8 +102,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
 /// ast-map.
 pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
                                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     parent_def_path: ast_map::DefPath,
-                                     parent_did: DefId,
                                      ast: Ast<'tcx>,
                                      orig_did: DefId)
                                      -> &'tcx InlinedItem {
@@ -120,16 +118,8 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
     let ii = ast.item.decode((cdata, tcx, id_ranges));
     let item_node_id = tcx.sess.next_node_id();
     let ii = ast_map::map_decoded_item(&tcx.map,
-                                       parent_def_path,
-                                       parent_did,
                                        ii,
                                        item_node_id);
-
-    let inlined_did = tcx.map.local_def_id(item_node_id);
-    let ty = tcx.item_type(orig_did);
-    let generics = tcx.item_generics(orig_did);
-    tcx.item_types.borrow_mut().insert(inlined_did, ty);
-    tcx.generics.borrow_mut().insert(inlined_did, generics);
 
     for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
         match entry {

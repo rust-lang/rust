@@ -57,15 +57,6 @@ impl DefPathTable {
     pub fn contains_key(&self, key: &DefKey) -> bool {
         self.key_to_index.contains_key(key)
     }
-
-    /// Returns the path from the crate root to `index`. The root
-    /// nodes are not included in the path (i.e., this will be an
-    /// empty vector for the crate root). For an inlined item, this
-    /// will be the path of the item in the external crate (but the
-    /// path will begin with the path to the external crate).
-    pub fn def_path(&self, index: DefIndex) -> DefPath {
-        DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
-    }
 }
 
 
@@ -136,12 +127,11 @@ impl DefPath {
         self.krate == LOCAL_CRATE
     }
 
-    pub fn make<FN>(start_krate: CrateNum,
+    pub fn make<FN>(krate: CrateNum,
                     start_index: DefIndex,
                     mut get_key: FN) -> DefPath
         where FN: FnMut(DefIndex) -> DefKey
     {
-        let mut krate = start_krate;
         let mut data = vec![];
         let mut index = Some(start_index);
         loop {
@@ -152,13 +142,6 @@ impl DefPath {
             match key.disambiguated_data.data {
                 DefPathData::CrateRoot => {
                     assert!(key.parent.is_none());
-                    break;
-                }
-                DefPathData::InlinedRoot(ref p) => {
-                    assert!(key.parent.is_none());
-                    assert!(!p.def_id.is_local());
-                    data.extend(p.data.iter().cloned().rev());
-                    krate = p.def_id.krate;
                     break;
                 }
                 _ => {
@@ -203,31 +186,6 @@ impl DefPath {
     }
 }
 
-/// Root of an inlined item. We track the `DefPath` of the item within
-/// the original crate but also its def-id. This is kind of an
-/// augmented version of a `DefPath` that includes a `DefId`. This is
-/// all sort of ugly but the hope is that inlined items will be going
-/// away soon anyway.
-///
-/// Some of the constraints that led to the current approach:
-///
-/// - I don't want to have a `DefId` in the main `DefPath` because
-///   that gets serialized for incr. comp., and when reloaded the
-///   `DefId` is no longer valid. I'd rather maintain the invariant
-///   that every `DefId` is valid, and a potentially outdated `DefId` is
-///   represented as a `DefPath`.
-///   - (We don't serialize def-paths from inlined items, so it's ok to have one here.)
-/// - We need to be able to extract the def-id from inline items to
-///   make the symbol name. In theory we could retrace it from the
-///   data, but the metadata doesn't have the required indices, and I
-///   don't want to write the code to create one just for this.
-/// - It may be that we don't actually need `data` at all. We'll have
-///   to see about that.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct InlinedRootPath {
-    pub data: Vec<DisambiguatedDefPathData>,
-    pub def_id: DefId,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
@@ -235,9 +193,7 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker)
     CrateRoot,
-    /// An inlined root
-    InlinedRoot(Box<InlinedRootPath>),
-
+    
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
 
@@ -345,10 +301,7 @@ impl Definitions {
                 data,
                 self.table.def_key(self.node_to_def_index[&node_id]));
 
-        assert!(parent.is_some() ^ match data {
-            DefPathData::CrateRoot | DefPathData::InlinedRoot(_) => true,
-            _ => false,
-        });
+        assert!(parent.is_some() ^ (data == DefPathData::CrateRoot));
 
         // Find a unique DefKey. This basically means incrementing the disambiguator
         // until we get no match.
@@ -393,7 +346,6 @@ impl DefPathData {
 
             Impl |
             CrateRoot |
-            InlinedRoot(_) |
             Misc |
             ClosureExpr |
             StructCtor |
@@ -419,9 +371,6 @@ impl DefPathData {
 
             // note that this does not show up in user printouts
             CrateRoot => "{{root}}",
-
-            // note that this does not show up in user printouts
-            InlinedRoot(_) => "{{inlined-root}}",
 
             Impl => "{{impl}}",
             Misc => "{{?}}",
