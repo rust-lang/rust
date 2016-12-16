@@ -31,6 +31,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_type: libc::c_short,
             pub l_whence: libc::c_short,
@@ -53,6 +54,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_start: libc::off_t,
             pub l_len: libc::off_t,
@@ -76,6 +78,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_start: libc::off_t,
             pub l_len: libc::off_t,
@@ -98,6 +101,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_type: libc::c_short,
             pub l_whence: libc::c_short,
@@ -119,6 +123,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_start: libc::off_t,
             pub l_len: libc::off_t,
@@ -141,6 +146,7 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct flock {
             pub l_type: libc::c_short,
             pub l_whence: libc::c_short,
