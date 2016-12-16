@@ -25,7 +25,6 @@ docker \
   -t rust-ci \
   "`dirname "$script"`/$image"
 
-mkdir -p $HOME/.ccache
 mkdir -p $HOME/.cargo
 mkdir -p $root_dir/obj
 
@@ -35,8 +34,9 @@ exec docker \
   --volume "$root_dir/obj:/checkout/obj" \
   --workdir /checkout/obj \
   --env SRC=/checkout \
-  --env CCACHE_DIR=/ccache \
-  --volume "$HOME/.ccache:/ccache" \
+  --env SCCACHE_BUCKET=$SCCACHE_BUCKET \
+  --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
   --env CARGO_HOME=/cargo \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
