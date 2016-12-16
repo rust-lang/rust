@@ -306,8 +306,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
             block.delete();
         }
     }
-
-    fcx.cleanup();
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
