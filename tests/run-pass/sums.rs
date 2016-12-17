@@ -47,8 +47,6 @@ fn two_nones() -> (Option<i16>, Option<i16>) {
     (None, None)
 }
 
-// FIXME(solson): Casts inside PartialEq fails on 32-bit.
-#[cfg(target_pointer_width = "64")]
 fn main() {
     assert_eq!(two_nones(), (None, None));
     assert_eq!(match_opt_some(), 13);
@@ -59,6 +57,3 @@ fn main() {
     assert_eq!(return_true(), MyBool::True(()));
     assert_eq!(return_unit(), Unit::Unit(()));
 }
-
-#[cfg(not(target_pointer_width = "64"))]
-fn main() {}
