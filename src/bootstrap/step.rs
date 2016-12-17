@@ -258,12 +258,6 @@ pub fn build_rules(build: &Build) -> Rules {
               "incremental");
         suite("check-ui", "src/test/ui", "ui", "ui");
         suite("check-pretty", "src/test/pretty", "pretty", "pretty");
-        suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
-              "run-pass");
-        suite("check-pretty-rfail", "src/test/run-pass/pretty", "pretty",
-              "run-fail");
-        suite("check-pretty-valgrind", "src/test/run-pass-valgrind", "pretty",
-              "run-pass-valgrind");
     }
 
     if build.config.build.contains("msvc") {
@@ -308,10 +302,6 @@ pub fn build_rules(build: &Build) -> Rules {
               "compile-fail", "compile-fail-fulldeps");
         suite("check-rmake", "src/test/run-make", "run-make", "run-make");
         suite("check-rustdoc", "src/test/rustdoc", "rustdoc", "rustdoc");
-        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps",
-              "pretty", "run-pass-fulldeps");
-        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps",
-              "pretty", "run-fail-fulldeps");
     }
 
     for (krate, path, _default) in krates("std_shim") {
