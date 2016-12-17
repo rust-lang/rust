@@ -98,18 +98,8 @@ impl ArgAttributes {
         self
     }
 
-    pub fn unset(&mut self, attr: ArgAttribute) -> &mut Self {
-        self.regular = self.regular - attr;
-        self
-    }
-
     pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
         self.dereferenceable_bytes = bytes;
-        self
-    }
-
-    pub fn unset_dereferenceable(&mut self) -> &mut Self {
-        self.dereferenceable_bytes = 0;
         self
     }
 
