@@ -480,24 +480,6 @@ pub fn to_immediate(bcx: &BlockAndBuilder, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub fn with_cond<'blk, 'tcx, F>(
-    bcx: BlockAndBuilder<'blk, 'tcx>, val: ValueRef, f: F
-) -> BlockAndBuilder<'blk, 'tcx>
-    where F: FnOnce(BlockAndBuilder<'blk, 'tcx>) -> BlockAndBuilder<'blk, 'tcx>
-{
-    if common::const_to_opt_uint(val) == Some(0) {
-        return bcx;
-    }
-
-    let fcx = bcx.fcx();
-    let next_cx = fcx.build_new_block("next");
-    let cond_cx = fcx.build_new_block("cond");
-    bcx.cond_br(val, cond_cx.llbb(), next_cx.llbb());
-    let after_cx = f(cond_cx);
-    after_cx.br(next_cx.llbb());
-    next_cx
-}
-
 pub enum Lifetime { Start, End }
 
 impl Lifetime {
