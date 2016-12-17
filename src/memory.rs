@@ -587,21 +587,36 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         val: PrimVal,
         kind: PrimValKind,
     ) -> EvalResult<'tcx, ()> {
-        if let Some(alloc_id) = val.relocation() {
-            return self.write_ptr(dest, Pointer::new(alloc_id, val.bits()));
-        }
-
         use value::PrimValKind::*;
-        let (size, bits) = match kind {
-            I8 | U8 | Bool         => (1, val.bits() as u8  as u64),
-            I16 | U16              => (2, val.bits() as u16 as u64),
-            I32 | U32 | F32 | Char => (4, val.bits() as u32 as u64),
-            I64 | U64 | F64        => (8, val.bits()),
-            // int -> ptr transmutes are handled here
-            FnPtr | Ptr            => return self.write_usize(dest, val.bits()),
+        let size = match kind {
+            I8 | U8 | Bool         => 1,
+            I16 | U16              => 2,
+            I32 | U32 | F32 | Char => 4,
+            I64 | U64 | F64        => 8,
+            Ptr | FnPtr            => self.pointer_size(),
         };
 
-        self.write_uint(dest, bits, size)
+        match val {
+            PrimVal::Ptr(ptr) => {
+                assert_eq!(size, self.pointer_size());
+                self.write_ptr(dest, ptr)
+            }
+
+            PrimVal::Bytes(bytes) => {
+                // We need to mask here, or the byteorder crate can die when given a u64 larger
+                // than fits in an integer of the requested size.
+                let mask = match size {
+                    1 => 0xff,
+                    2 => 0xffff,
+                    4 => 0xffffffff,
+                    8 => 0xffffffffffffffff,
+                    _ => bug!("unexpected PrimVal size"),
+                };
+                self.write_uint(dest, bytes & mask, size)
+            }
+
+            PrimVal::Undef => self.mark_definedness(dest, size, false),
+        }
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<'tcx, bool> {
