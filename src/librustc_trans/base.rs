@@ -89,40 +89,6 @@ use rustc::hir;
 use rustc::ty::layout::{self, Layout};
 use syntax::ast;
 
-thread_local! {
-    static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
-        RefCell::new(None)
-    }
-}
-
-pub fn with_insn_ctxt<F>(blk: F)
-    where F: FnOnce(&[&'static str])
-{
-    TASK_LOCAL_INSN_KEY.with(move |slot| {
-        slot.borrow().as_ref().map(move |s| blk(s));
-    })
-}
-
-pub fn init_insn_ctxt() {
-    TASK_LOCAL_INSN_KEY.with(|slot| {
-        *slot.borrow_mut() = Some(Vec::new());
-    });
-}
-
-pub struct _InsnCtxt {
-    _cannot_construct_outside_of_this_module: (),
-}
-
-impl Drop for _InsnCtxt {
-    fn drop(&mut self) {
-        TASK_LOCAL_INSN_KEY.with(|slot| {
-            if let Some(ctx) = slot.borrow_mut().as_mut() {
-                ctx.pop();
-            }
-        })
-    }
-}
-
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
@@ -144,10 +110,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
             let iend = self.ccx.stats().n_llvm_insns.get();
-            self.ccx
-                .stats()
-                .fn_stats
-                .borrow_mut()
+            self.ccx.stats().fn_stats.borrow_mut()
                 .push((self.name.take().unwrap(), iend - self.istart));
             self.ccx.stats().n_fns.set(self.ccx.stats().n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
