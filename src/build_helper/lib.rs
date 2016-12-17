@@ -47,6 +47,8 @@ pub fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
         None
     } else if target.contains("musl") {
         Some(PathBuf::from("ar"))
+    } else if target.contains("openbsd") {
+        Some(PathBuf::from("ar"))
     } else {
         let parent = cc.parent().unwrap();
         let file = cc.file_name().unwrap().to_str().unwrap();
