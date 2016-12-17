@@ -46,15 +46,6 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
         .call(bcx, &args, None, None).0
 }
 
-pub fn trans_exchange_free<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
-                                       v: ValueRef,
-                                       size: u64,
-                                       align: u32)
-                                       -> BlockAndBuilder<'blk, 'tcx> {
-    let ccx = cx.ccx();
-    trans_exchange_free_dyn(cx, v, C_uint(ccx, size), C_uint(ccx, align))
-}
-
 pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                                           ptr: ValueRef,
                                           content_ty: Ty<'tcx>)
@@ -66,19 +57,18 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     // `Box<ZeroSizeType>` does not allocate.
     if content_size != 0 {
         let content_align = align_of(bcx.ccx(), content_ty);
-        trans_exchange_free(bcx, ptr, content_size, content_align)
+        let ccx = bcx.ccx();
+        trans_exchange_free_dyn(bcx, ptr, C_uint(ccx, content_size), C_uint(ccx, content_align))
     } else {
         bcx
     }
 }
 
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 ty: Ty<'tcx>) -> bool {
+pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 
-pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     assert!(t.is_normalized_for_trans());
 
     let t = tcx.erase_regions(&t);
@@ -182,8 +172,7 @@ impl<'tcx> DropGlueKind<'tcx> {
     }
 }
 
-fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                g: DropGlueKind<'tcx>) -> ValueRef {
+fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'tcx>) -> ValueRef {
     let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     match ccx.drop_glues().borrow().get(&g) {
         Some(&(glue, _)) => glue,
