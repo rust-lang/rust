@@ -32,6 +32,14 @@ pub struct Builder<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
+impl<'blk, 'tcx> Drop for Builder<'blk, 'tcx> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMDisposeBuilder(self.llbuilder);
+        }
+    }
+}
+
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 pub fn noname() -> *const c_char {
@@ -40,9 +48,13 @@ pub fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>) -> Builder<'a, 'tcx> {
+    pub fn with_ccx(ccx: &'a CrateContext<'a, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe {
+            llvm::LLVMCreateBuilderInContext(ccx.llcx())
+        };
         Builder {
-            llbuilder: ccx.raw_builder(),
+            llbuilder: llbuilder,
             ccx: ccx,
         }
     }
