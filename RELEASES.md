@@ -68,7 +68,7 @@ Libraries
 * [The internal memory layout of `HashMap` is more cache-friendly, for
   significant improvements in some operations][36692]
 * [`HashMap` uses less memory on 32-bit architectures][36595]
-* [Impl `Add<{str, Cow<str>}>` for `Cow<str>`][36595]
+* [Impl `Add<{str, Cow<str>}>` for `Cow<str>`][36430]
 
 Cargo
 -----
@@ -84,10 +84,27 @@ Tooling
 -------
 
 * [rustup is the recommended Rust installation method][1.14rustup]
-* This release includes [experimental support for WebAssembly][1.14wasm]
-* This release includes builds for ARM Linux running MUSL libc. Add the
-  `arm-unknown-linux-musleabi`, `arm-unknown-linux-musleabihf`, and
-  `armv7-unknown-linux-musleabihf` targets via `rustup target add`.
+* This release includes host (rustc) builds for Linux on MIPS, PowerPC, and
+  S390x. These are [tier 2] platforms and may have major defects. Follow the
+  instructions on the website to install, or add the targets to an existing
+  installation with `rustup target add`. The new target triples are:
+  - `mips-unknown-linux-gnu`
+  - `mipsel-unknown-linux-gnu`
+  - `mips64-unknown-linux-gnuabi64`
+  - `mips64el-unknown-linux-gnuabi64 `
+  - `powerpc-unknown-linux-gnu`
+  - `powerpc64-unknown-linux-gnu`
+  - `powerpc64le-unknown-linux-gnu`
+  - `s390x-unknown-linux-gnu `
+* This release includes target (std) builds for ARM Linux running MUSL
+  libc. These are [tier 2] platforms and may have major defects. Add the
+  following triples to an existing rustup installation with `rustup target add`:
+  - `arm-unknown-linux-musleabi`
+  - `arm-unknown-linux-musleabihf`
+  - `armv7-unknown-linux-musleabihf`
+* This release includes [experimental support for WebAssembly][1.14wasm], via
+  the `wasm32-unknown-emscripten` target. This target is known to have major
+  defects. Please test, report, and fix.
 * rustup no longer installs documentation by default. Run `rustup
   component add rust-docs` to install.
 * [Fix line stepping in debugger][37310]
@@ -96,7 +113,7 @@ Tooling
 Misc
 ----
 
-* [Disable jemalloc on aarch64/powerpc][37392]
+* [Disable jemalloc on aarch64/powerpc/mips][37392]
 * [Add support for Fuchsia OS][37313]
 * [Detect local-rebuild by only MAJOR.MINOR version][37273]
 
@@ -125,8 +142,10 @@ Compatibility Notes
   work but never have. For now they are forbidden.
 * [Enforce the shadowing restrictions from RFC 1560 for today's macros][36767]
 
+[tier 2]: https://forge.rust-lang.org/platform-support.html
 [1.14rustup]: https://internals.rust-lang.org/t/beta-testing-rustup-rs/3316/204
 [1.14wasm]: https://users.rust-lang.org/t/compiling-to-the-web-with-rust-and-emscripten/7627
+[36430]: https://github.com/rust-lang/rust/pull/36430
 [36595]: https://github.com/rust-lang/rust/pull/36595
 [36595]: https://github.com/rust-lang/rust/pull/36595
 [36692]: https://github.com/rust-lang/rust/pull/36692
