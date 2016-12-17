@@ -24,7 +24,6 @@ use type_of;
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
 use syntax::symbol::keywords;
 
-use std::cell::Ref;
 use std::iter;
 
 use basic_block::BasicBlock;
@@ -41,7 +40,7 @@ use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
 pub struct MirContext<'bcx, 'tcx:'bcx> {
-    mir: Ref<'tcx, mir::Mir<'tcx>>,
+    mir: &'bcx mir::Mir<'tcx>,
 
     /// Function context
     fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
@@ -179,10 +178,7 @@ impl<'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'blk, 'tcx: 'blk>(
-    fcx: &'blk FunctionContext<'blk, 'tcx>,
-    mir: Ref<'tcx, Mir<'tcx>>
-) {
+pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>, mir: &'blk Mir<'tcx>) {
     let bcx = fcx.get_entry_block();
 
     // Analyze the temps to determine which must be lvalues
@@ -201,10 +197,10 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(fcx, Ref::clone(&mir));
+    let scopes = debuginfo::create_mir_scopes(fcx, mir);
 
     let mut mircx = MirContext {
-        mir: Ref::clone(&mir),
+        mir: mir,
         fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,

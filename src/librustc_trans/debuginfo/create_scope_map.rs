@@ -19,7 +19,6 @@ use rustc::mir::{Mir, VisibilityScope};
 
 use libc::c_uint;
 use std::ptr;
-use std::cell::Ref;
 
 use syntax_pos::Pos;
 
@@ -47,7 +46,7 @@ impl MirDebugScope {
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes<'tcx>(
     fcx: &FunctionContext,
-    mir: Ref<'tcx, Mir<'tcx>>,
+    mir: &'tcx Mir<'tcx>,
 ) -> IndexVec<VisibilityScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
