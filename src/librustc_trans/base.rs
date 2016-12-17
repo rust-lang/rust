@@ -752,11 +752,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)), true);
 
-    if fcx.mir.is_none() {
-        bug!("attempted translation of `{}` w/o MIR", instance);
-    }
-
-    mir::trans_mir(&fcx);
+    mir::trans_mir(&fcx, ccx.tcx().item_mir(instance.def));
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

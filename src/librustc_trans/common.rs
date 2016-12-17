@@ -22,7 +22,6 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::infer::TransNormalize;
-use rustc::mir::Mir;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -48,7 +47,6 @@ use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 use std::ffi::CString;
-use std::cell::Ref;
 
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
@@ -237,9 +235,6 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
 
 // Function context. Every LLVM function we create will have one of these.
 pub struct FunctionContext<'a, 'tcx: 'a> {
-    // The MIR for this function.
-    pub mir: Option<Ref<'tcx, Mir<'tcx>>>,
-
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
     // instructions for this function that will go in the .text
@@ -318,7 +313,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         };
 
         let mut fcx = FunctionContext {
-            mir: mir,
             llfn: llfndecl,
             llretslotptr: None,
             param_env: ccx.tcx().empty_parameter_environment(),
@@ -366,10 +360,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         BlockAndBuilder::new(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn)
         }, self)
-    }
-
-    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.mir.as_ref().map(Ref::clone).expect("fcx.mir was empty")
     }
 
     pub fn new_block(&'a self, name: &str) -> BasicBlockRef {

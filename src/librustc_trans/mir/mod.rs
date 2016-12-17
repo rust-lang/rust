@@ -12,7 +12,7 @@ use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
 use rustc::ty;
-use rustc::mir;
+use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
@@ -179,9 +179,11 @@ impl<'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
+pub fn trans_mir<'blk, 'tcx: 'blk>(
+    fcx: &'blk FunctionContext<'blk, 'tcx>,
+    mir: Ref<'tcx, Mir<'tcx>>
+) {
     let bcx = fcx.get_entry_block();
-    let mir = fcx.mir();
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
@@ -199,7 +201,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(fcx);
+    let scopes = debuginfo::create_mir_scopes(fcx, Ref::clone(&mir));
 
     let mut mircx = MirContext {
         mir: Ref::clone(&mir),
