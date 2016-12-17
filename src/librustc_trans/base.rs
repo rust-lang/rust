@@ -79,7 +79,6 @@ use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use libc::c_uint;
 use std::ffi::{CStr, CString};
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::str;
 use std::i32;

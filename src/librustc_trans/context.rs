@@ -15,7 +15,6 @@ use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
-use base;
 use debuginfo;
 use declare;
 use glue::DropGlueKind;

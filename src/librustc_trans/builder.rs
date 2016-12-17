@@ -14,12 +14,10 @@ use llvm;
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
-use base;
 use common::*;
 use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
-use util::nodemap::FxHashMap;
 use libc::{c_uint, c_char};
 
 use std::borrow::Cow;
