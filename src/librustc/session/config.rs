@@ -928,6 +928,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print some statistics about MIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
           "encode MIR of all functions into the crate metadata"),
+    osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
+          "pass `-install_name @rpath/...` to the OSX linker"),
 }
 
 pub fn default_lib_output() -> CrateType {

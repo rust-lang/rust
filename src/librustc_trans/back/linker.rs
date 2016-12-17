@@ -207,7 +207,12 @@ impl<'a> Linker for GnuLinker<'a> {
         if self.sess.target.target.options.is_like_osx {
             self.cmd.args(&["-dynamiclib", "-Wl,-dylib"]);
 
-            if self.sess.opts.cg.rpath {
+            // Note that the `osx_rpath_install_name` option here is a hack
+            // purely to support rustbuild right now, we should get a more
+            // principled solution at some point to force the compiler to pass
+            // the right `-Wl,-install_name` with an `@rpath` in it.
+            if self.sess.opts.cg.rpath ||
+               self.sess.opts.debugging_opts.osx_rpath_install_name {
                 let mut v = OsString::from("-Wl,-install_name,@rpath/");
                 v.push(out_filename.file_name().unwrap());
                 self.cmd.arg(&v);
