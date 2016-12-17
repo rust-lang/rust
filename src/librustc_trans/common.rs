@@ -235,12 +235,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
     }
 }
 
-pub fn validate_substs(substs: &Substs) {
-    assert!(!substs.needs_infer());
-}
-
-// Function context.  Every LLVM function we create will have one of
-// these.
+// Function context. Every LLVM function we create will have one of these.
 pub struct FunctionContext<'a, 'tcx: 'a> {
     // The MIR for this function.
     pub mir: Option<Ref<'tcx, Mir<'tcx>>>,
@@ -303,7 +298,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     ) -> FunctionContext<'a, 'tcx> {
         let (param_substs, def_id) = match definition {
             Some((instance, ..)) => {
-                validate_substs(instance.substs);
+                assert!(!instance.substs.needs_infer());
                 (instance.substs, Some(instance.def))
             }
             None => (ccx.tcx().intern_substs(&[]), None)
