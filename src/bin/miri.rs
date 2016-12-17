@@ -10,7 +10,7 @@ extern crate syntax;
 #[macro_use] extern crate log;
 
 use rustc::session::Session;
-use rustc_driver::CompilerCalls;
+use rustc_driver::{Compilation, CompilerCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
@@ -21,6 +21,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = CompileController::basic();
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
+        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }
