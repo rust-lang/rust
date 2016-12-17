@@ -158,6 +158,15 @@ fn main() {
         // to change a flag in a binary?
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
+
+                // Note that we need to take one extra step on OSX to also pass
+                // `-Wl,-instal_name,@rpath/...` to get things to work right. To
+                // do that we pass a weird flag to the compiler to get it to do
+                // so. Note that this is definitely a hack, and we should likely
+                // flesh out rpath support more fully in the future.
+                if stage != "0" {
+                    cmd.arg("-Z").arg("osx-rpath-install-name");
+                }
                 Some("-Wl,-rpath,@loader_path/../lib")
             } else if !target.contains("windows") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
