@@ -67,7 +67,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         contents.truncate(0);
-        t!(t!(File::open(file)).read_to_string(&mut contents));
+        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
