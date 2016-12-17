@@ -137,11 +137,11 @@ impl<'tcx> PrimVal {
         }
     }
 
-    pub fn from_uint(n: u64) -> Self {
+    pub fn from_u64(n: u64) -> Self {
         PrimVal::Bytes(n)
     }
 
-    pub fn from_int(n: i64) -> Self {
+    pub fn from_i64(n: i64) -> Self {
         PrimVal::Bytes(n as u64)
     }
 

@@ -172,7 +172,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_uint(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u64(s.len() as u64)))
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -465,7 +465,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                self.write_primval(dest, PrimVal::from_int(0), dest_ty)?;
+                                self.write_primval(dest, PrimVal::from_i64(0), dest_ty)?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -557,7 +557,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
-                self.write_primval(dest, PrimVal::from_uint(len), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u64(len), dest_ty)?;
             }
 
             Ref(_, _, ref lvalue) => {
@@ -567,7 +567,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
-                    LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_uint(len)),
+                    LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_u64(len)),
                     LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     I64 => 8,
                     Is => self.memory.pointer_size(),
                 };
-                PrimVal::from_int(self.memory.read_int(ptr, size)?)
+                PrimVal::from_i64(self.memory.read_int(ptr, size)?)
             }
 
             ty::TyUint(uint_ty) => {
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     U64 => 8,
                     Us => self.memory.pointer_size(),
                 };
-                PrimVal::from_uint(self.memory.read_uint(ptr, size)?)
+                PrimVal::from_u64(self.memory.read_uint(ptr, size)?)
             }
 
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
@@ -1163,7 +1163,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
-                        ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
+                        ty::TyStr => PrimVal::from_u64(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
                     return Ok(Some(Value::ByValPair(PrimVal::Ptr(p), extra)));
@@ -1175,9 +1175,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
                     if signed {
-                        PrimVal::from_int(self.memory.read_int(ptr, size)?)
+                        PrimVal::from_i64(self.memory.read_int(ptr, size)?)
                     } else {
-                        PrimVal::from_uint(self.memory.read_uint(ptr, size)?)
+                        PrimVal::from_u64(self.memory.read_uint(ptr, size)?)
                     }
                 } else {
                     return Ok(None);
@@ -1224,7 +1224,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
-                        let len = PrimVal::from_uint(length as u64);
+                        let len = PrimVal::from_u64(length as u64);
                         let ptr = PrimVal::Ptr(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }

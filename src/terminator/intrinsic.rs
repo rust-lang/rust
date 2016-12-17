@@ -259,7 +259,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.type_align(elem_ty)?;
-                let align_val = PrimVal::from_uint(elem_align as u64);
+                let align_val = PrimVal::from_u64(elem_align as u64);
                 self.write_primval(dest, align_val, dest_ty)?;
             }
 
@@ -267,7 +267,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let layout = self.type_layout(ty)?;
                 let align = layout.align(&self.tcx.data_layout).pref();
-                let align_val = PrimVal::from_uint(align);
+                let align_val = PrimVal::from_u64(align);
                 self.write_primval(dest, align_val, dest_ty)?;
             }
 
@@ -336,20 +336,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // .expect("size_of intrinsic called on unsized value")
                 // see https://github.com/rust-lang/rust/pull/37708
                 let size = self.type_size(ty)?.unwrap_or(!0) as u64;
-                self.write_primval(dest, PrimVal::from_uint(size), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u64(size), dest_ty)?;
             }
 
             "size_of_val" => {
                 let ty = substs.type_at(0);
                 let (size, _) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                self.write_primval(dest, PrimVal::from_uint(size), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u64(size), dest_ty)?;
             }
 
             "min_align_of_val" |
             "align_of_val" => {
                 let ty = substs.type_at(0);
                 let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                self.write_primval(dest, PrimVal::from_uint(align), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u64(align), dest_ty)?;
             }
 
             "type_name" => {
