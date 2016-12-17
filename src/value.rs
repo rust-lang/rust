@@ -6,25 +6,25 @@ use std::mem::transmute;
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 
-pub(super) fn bits_to_f32(bits: u64) -> f32 {
-    unsafe { transmute::<u32, f32>(bits as u32) }
+pub(super) fn bytes_to_f32(bytes: u64) -> f32 {
+    unsafe { transmute::<u32, f32>(bytes as u32) }
 }
 
-pub(super) fn bits_to_f64(bits: u64) -> f64 {
-    unsafe { transmute::<u64, f64>(bits) }
+pub(super) fn bytes_to_f64(bytes: u64) -> f64 {
+    unsafe { transmute::<u64, f64>(bytes) }
 }
 
-pub(super) fn f32_to_bits(f: f32) -> u64 {
+pub(super) fn f32_to_bytes(f: f32) -> u64 {
     unsafe { transmute::<f32, u32>(f) as u64 }
 }
 
-pub(super) fn f64_to_bits(f: f64) -> u64 {
+pub(super) fn f64_to_bytes(f: f64) -> u64 {
     unsafe { transmute::<f64, u64>(f) }
 }
 
-pub(super) fn bits_to_bool(n: u64) -> bool {
+pub(super) fn bytes_to_bool(n: u64) -> bool {
     // FIXME(solson): Can we reach here due to user error?
-    debug_assert!(n == 0 || n == 1, "bits interpreted as bool were {}", n);
+    debug_assert!(n == 0 || n == 1, "bytes interpreted as bool were {}", n);
     n & 1 == 1
 }
 
@@ -126,11 +126,11 @@ impl<'tcx> PrimVal {
     }
 
     pub fn from_f32(f: f32) -> Self {
-        PrimVal::Bytes(f32_to_bits(f))
+        PrimVal::Bytes(f32_to_bytes(f))
     }
 
     pub fn from_f64(f: f64) -> Self {
-        PrimVal::Bytes(f64_to_bits(f))
+        PrimVal::Bytes(f64_to_bytes(f))
     }
 
     pub fn from_bool(b: bool) -> Self {
@@ -166,11 +166,11 @@ impl<'tcx> PrimVal {
     }
 
     pub fn to_f32(self) -> EvalResult<'tcx, f32> {
-        self.to_bytes().map(bits_to_f32)
+        self.to_bytes().map(bytes_to_f32)
     }
 
     pub fn to_f64(self) -> EvalResult<'tcx, f64> {
-        self.to_bytes().map(bits_to_f64)
+        self.to_bytes().map(bytes_to_f64)
     }
 
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {

@@ -9,11 +9,11 @@ use value::{
     PrimVal,
     PrimValKind,
     Value,
-    bits_to_f32,
-    bits_to_f64,
-    f32_to_bits,
-    f64_to_bits,
-    bits_to_bool,
+    bytes_to_f32,
+    bytes_to_f64,
+    f32_to_bytes,
+    f64_to_bytes,
+    bytes_to_bool,
 };
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -108,23 +108,23 @@ macro_rules! int_shift {
 }
 
 macro_rules! float_arithmetic {
-    ($from_bits:ident, $to_bits:ident, $float_op:tt, $l:expr, $r:expr) => ({
-        let l = $from_bits($l);
-        let r = $from_bits($r);
-        let bits = $to_bits(l $float_op r);
-        PrimVal::Bytes(bits)
+    ($from_bytes:ident, $to_bytes:ident, $float_op:tt, $l:expr, $r:expr) => ({
+        let l = $from_bytes($l);
+        let r = $from_bytes($r);
+        let bytes = $to_bytes(l $float_op r);
+        PrimVal::Bytes(bytes)
     })
 }
 
 macro_rules! f32_arithmetic {
     ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(bits_to_f32, f32_to_bits, $float_op, $l, $r)
+        float_arithmetic!(bytes_to_f32, f32_to_bytes, $float_op, $l, $r)
     )
 }
 
 macro_rules! f64_arithmetic {
     ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(bits_to_f64, f64_to_bits, $float_op, $l, $r)
+        float_arithmetic!(bytes_to_f64, f64_to_bytes, $float_op, $l, $r)
     )
 }
 
@@ -202,19 +202,19 @@ pub fn binary_op<'tcx>(
     }
 
     let val = match (bin_op, left_kind) {
-        (Eq, F32) => PrimVal::from_bool(bits_to_f32(l) == bits_to_f32(r)),
-        (Ne, F32) => PrimVal::from_bool(bits_to_f32(l) != bits_to_f32(r)),
-        (Lt, F32) => PrimVal::from_bool(bits_to_f32(l) <  bits_to_f32(r)),
-        (Le, F32) => PrimVal::from_bool(bits_to_f32(l) <= bits_to_f32(r)),
-        (Gt, F32) => PrimVal::from_bool(bits_to_f32(l) >  bits_to_f32(r)),
-        (Ge, F32) => PrimVal::from_bool(bits_to_f32(l) >= bits_to_f32(r)),
+        (Eq, F32) => PrimVal::from_bool(bytes_to_f32(l) == bytes_to_f32(r)),
+        (Ne, F32) => PrimVal::from_bool(bytes_to_f32(l) != bytes_to_f32(r)),
+        (Lt, F32) => PrimVal::from_bool(bytes_to_f32(l) <  bytes_to_f32(r)),
+        (Le, F32) => PrimVal::from_bool(bytes_to_f32(l) <= bytes_to_f32(r)),
+        (Gt, F32) => PrimVal::from_bool(bytes_to_f32(l) >  bytes_to_f32(r)),
+        (Ge, F32) => PrimVal::from_bool(bytes_to_f32(l) >= bytes_to_f32(r)),
 
-        (Eq, F64) => PrimVal::from_bool(bits_to_f64(l) == bits_to_f64(r)),
-        (Ne, F64) => PrimVal::from_bool(bits_to_f64(l) != bits_to_f64(r)),
-        (Lt, F64) => PrimVal::from_bool(bits_to_f64(l) <  bits_to_f64(r)),
-        (Le, F64) => PrimVal::from_bool(bits_to_f64(l) <= bits_to_f64(r)),
-        (Gt, F64) => PrimVal::from_bool(bits_to_f64(l) >  bits_to_f64(r)),
-        (Ge, F64) => PrimVal::from_bool(bits_to_f64(l) >= bits_to_f64(r)),
+        (Eq, F64) => PrimVal::from_bool(bytes_to_f64(l) == bytes_to_f64(r)),
+        (Ne, F64) => PrimVal::from_bool(bytes_to_f64(l) != bytes_to_f64(r)),
+        (Lt, F64) => PrimVal::from_bool(bytes_to_f64(l) <  bytes_to_f64(r)),
+        (Le, F64) => PrimVal::from_bool(bytes_to_f64(l) <= bytes_to_f64(r)),
+        (Gt, F64) => PrimVal::from_bool(bytes_to_f64(l) >  bytes_to_f64(r)),
+        (Ge, F64) => PrimVal::from_bool(bytes_to_f64(l) >= bytes_to_f64(r)),
 
         (Add, F32) => f32_arithmetic!(+, l, r),
         (Sub, F32) => f32_arithmetic!(-, l, r),
@@ -278,7 +278,7 @@ pub fn unary_op<'tcx>(
     let bytes = val.to_bytes()?;
 
     let result_bytes = match (un_op, val_kind) {
-        (Not, Bool) => !bits_to_bool(bytes) as u64,
+        (Not, Bool) => !bytes_to_bool(bytes) as u64,
 
         (Not, U8)  => !(bytes as u8) as u64,
         (Not, U16) => !(bytes as u16) as u64,
@@ -295,8 +295,8 @@ pub fn unary_op<'tcx>(
         (Neg, I32) => -(bytes as i32) as u64,
         (Neg, I64) => -(bytes as i64) as u64,
 
-        (Neg, F32) => f32_to_bits(-bits_to_f32(bytes)),
-        (Neg, F64) => f64_to_bits(-bits_to_f64(bytes)),
+        (Neg, F32) => f32_to_bytes(-bytes_to_f32(bytes)),
+        (Neg, F64) => f64_to_bytes(-bytes_to_f64(bytes)),
 
         _ => {
             let msg = format!("unimplemented unary op: {:?}, {:?}", un_op, val);
