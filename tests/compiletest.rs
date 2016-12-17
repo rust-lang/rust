@@ -36,10 +36,17 @@ fn miri_pass(path: &str, target: &str) {
     compiletest::run_tests(&config);
 }
 
+fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
+    let mut path = path.into();
+    path.push("lib");
+    path.metadata().map(|m| m.is_dir()).unwrap_or(false)
+}
+
 fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
-    for target in std::fs::read_dir(format!("{}/lib/rustlib/", sysroot)).unwrap() {
-        let target = target.unwrap().file_name().into_string().unwrap();
-        if !target.contains("-") { continue; }
+    for entry in std::fs::read_dir(format!("{}/lib/rustlib/", sysroot)).unwrap() {
+        let entry = entry.unwrap();
+        if !is_target_dir(entry.path()) { continue; }
+        let target = entry.file_name().into_string().unwrap();
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "running tests for target {}", target).unwrap();
         f(target);
