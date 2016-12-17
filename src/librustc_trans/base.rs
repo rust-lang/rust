@@ -49,7 +49,7 @@ use session::{self, DataTypeKind, Session};
 use abi::{self, Abi, FnType};
 use adt;
 use attributes;
-use builder::{Builder, noname};
+use builder::Builder;
 use callee::{Callee};
 use common::{BlockAndBuilder, C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
@@ -80,7 +80,6 @@ use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::RefCell;
-use std::ptr;
 use std::rc::Rc;
 use std::str;
 use std::i32;
@@ -870,9 +869,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
-        config::EntryMain => {
-            create_entry_fn(ccx, span, main_llfn, true);
-        }
+        config::EntryMain => create_entry_fn(ccx, span, main_llfn, true),
         config::EntryStart => create_entry_fn(ccx, span, main_llfn, false),
         config::EntryNone => {}    // Do nothing.
     }
@@ -897,47 +894,27 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         attributes::set_frame_pointer_elimination(ccx, llfn);
 
         let llbb = unsafe {
-            llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, "top\0".as_ptr() as *const _)
+            let name = CString::new("top").unwrap();
+            llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, name.as_ptr())
         };
-        let bld = ccx.raw_builder();
-        unsafe {
-            llvm::LLVMPositionBuilderAtEnd(bld, llbb);
+        let bld = Builder::with_ccx(ccx);
+        bld.position_at_end(llbb);
 
-            debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
+        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
 
-            let (start_fn, args) = if use_start_lang_item {
-                let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
-                    Ok(id) => id,
-                    Err(s) => ccx.sess().fatal(&s)
-                };
-                let empty_substs = ccx.tcx().intern_substs(&[]);
-                let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
-                let args = {
-                    let opaque_rust_main =
-                        llvm::LLVMBuildPointerCast(bld,
-                                                   rust_main,
-                                                   Type::i8p(ccx).to_ref(),
-                                                   "rust_main\0".as_ptr() as *const _);
+        let (start_fn, args) = if use_start_lang_item {
+            let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
+            let empty_substs = ccx.tcx().intern_substs(&[]);
+            let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
+            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()), get_param(llfn, 0),
+                get_param(llfn, 1)])
+        } else {
+            debug!("using user-defined start fn");
+            (rust_main, vec![get_param(llfn, 0 as c_uint), get_param(llfn, 1 as c_uint)])
+        };
 
-                    vec![opaque_rust_main, get_param(llfn, 0), get_param(llfn, 1)]
-                };
-                (start_fn, args)
-            } else {
-                debug!("using user-defined start fn");
-                let args = vec![get_param(llfn, 0 as c_uint), get_param(llfn, 1 as c_uint)];
-
-                (rust_main, args)
-            };
-
-            let result = llvm::LLVMRustBuildCall(bld,
-                                                 start_fn,
-                                                 args.as_ptr(),
-                                                 args.len() as c_uint,
-                                                 ptr::null_mut(),
-                                                 noname());
-
-            llvm::LLVMBuildRet(bld, result);
-        }
+        let result = bld.call(start_fn, &args, None);
+        bld.ret(result);
     }
 }
 

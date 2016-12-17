@@ -14,7 +14,7 @@
 
 use session::Session;
 use llvm;
-use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
+use llvm::{ValueRef, BasicBlockRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef, get_param};
 use llvm::debuginfo::DIScope;
 use monomorphize::Instance;
@@ -232,24 +232,6 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
                 bug!("cannot get field types from the type {:?}", ty);
             }
         }
-    }
-}
-
-pub struct BuilderRef_res {
-    pub b: BuilderRef,
-}
-
-impl Drop for BuilderRef_res {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMDisposeBuilder(self.b);
-        }
-    }
-}
-
-pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
-    BuilderRef_res {
-        b: b
     }
 }
 
