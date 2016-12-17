@@ -31,8 +31,8 @@ impl LintPass for IdentityOp {
     }
 }
 
-impl LateLintPass for IdentityOp {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if in_macro(cx, e.span) {
             return;
         }

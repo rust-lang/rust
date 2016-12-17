@@ -109,8 +109,8 @@ impl LintPass for CopyAndPaste {
     }
 }
 
-impl LateLintPass for CopyAndPaste {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if !in_macro(cx, expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
@@ -254,7 +254,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatKind::Binding(_, ref ident, ref as_pat) => {
+            PatKind::Binding(_, _, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
                     v.insert(cx.tcx.tables().pat_ty(pat));
                 }

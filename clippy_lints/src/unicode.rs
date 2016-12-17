@@ -68,8 +68,8 @@ impl LintPass for Unicode {
     }
 }
 
-impl LateLintPass for Unicode {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprLit(ref lit) = expr.node {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span)

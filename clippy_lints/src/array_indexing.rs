@@ -55,8 +55,8 @@ impl LintPass for ArrayIndexing {
     }
 }
 
-impl LateLintPass for ArrayIndexing {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         if let hir::ExprIndex(ref array, ref index) = e.node {
             // Array with known size can be checked statically
             let ty = cx.tcx.tables().expr_ty(array);

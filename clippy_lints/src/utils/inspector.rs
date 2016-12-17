@@ -36,15 +36,15 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         if !has_attr(&item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
         if !has_attr(&item.attrs) {
             return;
         }
@@ -68,33 +68,33 @@ impl LateLintPass for Pass {
         }
     }
 /*
-    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
         if !has_attr(&item.attrs) {
             return;
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext, var: &hir::Variant, _: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
         if !has_attr(&var.node.attrs) {
             return;
         }
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
         if !has_attr(&field.attrs) {
             return;
         }
     }
 */
 
-    fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if !has_attr(&expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
-    fn check_arm(&mut self, cx: &LateContext, arm: &hir::Arm) {
+    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
         if !has_attr(&arm.attrs) {
             return;
         }
@@ -109,7 +109,7 @@ impl LateLintPass for Pass {
         print_expr(cx, &arm.body, 1);
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, stmt: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
         if !has_attr(stmt.node.attrs()) {
             return;
         }
@@ -120,7 +120,7 @@ impl LateLintPass for Pass {
     }
 /*
 
-    fn check_foreign_item(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
         if !has_attr(&item.attrs) {
             return;
         }
@@ -275,11 +275,14 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}index expr:", ind);
             print_expr(cx, idx, indent + 1);
         },
-        hir::ExprPath(ref sel, ref path) => {
-            println!("{}Path, {}", ind, ty);
-            println!("{}self: {:?}", ind, sel);
+        hir::ExprPath(hir::QPath::Resolved(ref ty, ref path)) => {
+            println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
         },
+        hir::ExprPath(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+            println!("{}Relative Path, {:?}", ind, ty);
+            println!("{}seg: {:?}", ind, seg);
+        }
         hir::ExprAddrOf(ref muta, ref e) => {
             println!("{}AddrOf, {}", ind, ty);
             println!("mutability: {:?}", muta);
@@ -354,7 +357,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("weird extern crate without a crate id");
             }
         }
-        hir::ItemUse(ref path) => println!("{:?}", path.node),
+        hir::ItemUse(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
         hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemFn(..) => {
@@ -383,13 +386,11 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("trait has no default impl");
             }
         },
-        hir::ItemDefaultImpl(_, ref trait_ref) => {
-            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
-            println!("default impl for `{}`", cx.tcx.item_path_str(trait_did));
+        hir::ItemDefaultImpl(_, ref _trait_ref) => {
+            println!("default impl");
         },
-        hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
-            println!("impl of trait `{}`", cx.tcx.item_path_str(trait_did));
+        hir::ItemImpl(_, _, _, Some(ref _trait_ref), _, _) => {
+            println!("trait impl");
         },
         hir::ItemImpl(_, _, _, None, _, _) => {
             println!("impl");
@@ -402,7 +403,7 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
     println!("{}+", ind);
     match pat.node {
         hir::PatKind::Wild => println!("{}Wild", ind),
-        hir::PatKind::Binding(ref mode, ref name, ref inner) => {
+        hir::PatKind::Binding(ref mode, _, ref name, ref inner) => {
             println!("{}Binding", ind);
             println!("{}mode: {:?}", ind, mode);
             println!("{}name: {}", ind, name.node);
@@ -434,10 +435,13 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, field, indent + 1);
             }
         },
-        hir::PatKind::Path(ref sel, ref path) => {
-            println!("{}Path", ind);
-            println!("{}self: {:?}", ind, sel);
+        hir::PatKind::Path(hir::QPath::Resolved(ref ty, ref path)) => {
+            println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
+        },
+        hir::PatKind::Path(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+            println!("{}Relative Path, {:?}", ind, ty);
+            println!("{}seg: {:?}", ind, seg);
         },
         hir::PatKind::Tuple(ref pats, opt_dots_position) => {
             println!("{}Tuple", ind);

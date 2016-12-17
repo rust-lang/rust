@@ -82,12 +82,12 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_crate(&mut self, _: &LateContext, _: &Crate) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         self.spans.clear();
     }
 
-    fn check_block(&mut self, cx: &LateContext, block: &Block) {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
@@ -106,19 +106,19 @@ impl LateLintPass for Pass {
         }}
     }
 
-    fn check_block_post(&mut self, _: &LateContext, block: &Block) {
+    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if self.last.map_or(false, |id| block.id == id) {
             self.last = None;
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
+            let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
-            let Some(def) = cx.tcx.def_map.borrow().get(&fun.id),
         ], {
-            let def_id = def.full_def().def_id();
+            let def_id = cx.tcx.tables().qpath_def(qpath, fun.id).def_id();
             if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);

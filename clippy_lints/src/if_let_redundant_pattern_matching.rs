@@ -42,8 +42,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
 
         if let ExprMatch(ref op, ref arms, MatchSource::IfLetDesugar{..}) = expr.node {
 
@@ -63,7 +63,7 @@ impl LateLintPass for Pass {
                         }
                     }
 
-                    PatKind::Path(_, ref path) if match_path(path, &paths::OPTION_NONE) => {
+                    PatKind::Path(ref path) if match_path(path, &paths::OPTION_NONE) => {
                         "is_none()"
                     }
 

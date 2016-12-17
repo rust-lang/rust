@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet};
+use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet, last_path_segment};
 use utils::sugg;
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -84,11 +84,11 @@ impl LintPass for Transmute {
     }
 }
 
-impl LateLintPass for Transmute {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprCall(ref path_expr, ref args) = e.node {
-            if let ExprPath(None, ref path) = path_expr.node {
-                let def_id = cx.tcx.expect_def(path_expr.id).def_id();
+            if let ExprPath(ref qpath) = path_expr.node {
+                let def_id = cx.tcx.tables().qpath_def(qpath, path_expr.id).def_id();
 
                 if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tcx.tables().expr_ty(&args[0]);
@@ -173,7 +173,7 @@ impl LateLintPass for Transmute {
                                 let arg = if from_pty.ty == to_rty.ty {
                                     arg
                                 } else {
-                                    arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, path, to_rty.ty)))
+                                    arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_rty.ty)))
                                 };
 
                                 db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
@@ -190,9 +190,9 @@ impl LateLintPass for Transmute {
 /// Get the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is not available , use
 /// the type's `ToString` implementation. In weird cases it could lead to types with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext, path: &Path, to_rty: ty::Ty) -> String {
+fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: ty::Ty) -> String {
+    let seg = last_path_segment(path);
     if_let_chain!{[
-        let Some(seg) = path.segments.last(),
         let PathParameters::AngleBracketedParameters(ref ang) = seg.parameters,
         let Some(to_ty) = ang.types.get(1),
         let TyRptr(_, ref to_ty) = to_ty.node,

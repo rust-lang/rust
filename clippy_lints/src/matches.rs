@@ -129,8 +129,8 @@ impl LintPass for MatchPass {
     }
 }
 
-impl LateLintPass for MatchPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -210,8 +210,8 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
             }
             path.to_string()
         }
-        PatKind::Binding(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
-        PatKind::Path(None, ref path) => path.to_string(),
+        PatKind::Binding(BindByValue(MutImmutable), _, ident, None) => ident.node.to_string(),
+        PatKind::Path(ref path) => path.to_string(),
         _ => return,
     };
 

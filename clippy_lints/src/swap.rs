@@ -50,8 +50,8 @@ impl LintPass for Swap {
     }
 }
 
-impl LateLintPass for Swap {
-    fn check_block(&mut self, cx: &LateContext, block: &Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
     }
@@ -65,7 +65,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             let StmtDecl(ref tmp, _) = w[0].node,
             let DeclLocal(ref tmp) = tmp.node,
             let Some(ref tmp_init) = tmp.init,
-            let PatKind::Binding(_, ref tmp_name, None) = tmp.pat.node,
+            let PatKind::Binding(_, _, ref tmp_name, None) = tmp.pat.node,
 
             // foo() = bar();
             let StmtSemi(ref first, _) = w[1].node,
@@ -74,7 +74,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             // bar() = t;
             let StmtSemi(ref second, _) = w[2].node,
             let ExprAssign(ref lhs2, ref rhs2) = second.node,
-            let ExprPath(None, ref rhs2) = rhs2.node,
+            let ExprPath(QPath::Resolved(None, ref rhs2)) = rhs2.node,
             rhs2.segments.len() == 1,
 
             tmp_name.node.as_str() == rhs2.segments[0].name.as_str(),

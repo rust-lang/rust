@@ -2,7 +2,7 @@ use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
+use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, NestedVisitorMap};
 use rustc::hir::map::Node::NodeBlock;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
@@ -16,7 +16,7 @@ use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg,
             in_external_macro, is_refutable, span_help_and_lint, is_integer_literal,
-            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty};
+            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty, last_path_segment};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -307,8 +307,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
@@ -366,33 +366,32 @@ impl LateLintPass for Pass {
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
-            if let (&PatKind::TupleStruct(ref path, ref pat_args, _),
+            if let (&PatKind::TupleStruct(ref qpath, ref pat_args, _),
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
-                if let Some(lhs_constructor) = path.segments.last() {
-                    if &*method_name.node.as_str() == "next" &&
-                       match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                       &*lhs_constructor.name.as_str() == "Some" &&
-                       !is_refutable(cx, &pat_args[0]) &&
-                       !is_iterator_used_after_while_let(cx, iter_expr) {
-                        let iterator = snippet(cx, method_args[0].span, "_");
-                        let loop_var = snippet(cx, pat_args[0].span, "_");
-                        span_lint_and_then(cx,
-                                           WHILE_LET_ON_ITERATOR,
-                                           expr.span,
-                                           "this loop could be written as a `for` loop",
-                                           |db| {
-                        db.span_suggestion(expr.span,
-                                           "try",
-                                           format!("for {} in {} {{ .. }}", loop_var, iterator));
-                        });
-                    }
+                let lhs_constructor = last_path_segment(qpath);
+                if &*method_name.node.as_str() == "next" &&
+                   match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                   &*lhs_constructor.name.as_str() == "Some" &&
+                   !is_refutable(cx, &pat_args[0]) &&
+                   !is_iterator_used_after_while_let(cx, iter_expr) {
+                    let iterator = snippet(cx, method_args[0].span, "_");
+                    let loop_var = snippet(cx, pat_args[0].span, "_");
+                    span_lint_and_then(cx,
+                                       WHILE_LET_ON_ITERATOR,
+                                       expr.span,
+                                       "this loop could be written as a `for` loop",
+                                       |db| {
+                    db.span_suggestion(expr.span,
+                                       "try",
+                                       format!("for {} in {} {{ .. }}", loop_var, iterator));
+                    });
                 }
             }
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1 && &*method.node.as_str() == "collect" &&
@@ -408,7 +407,13 @@ impl LateLintPass for Pass {
     }
 }
 
-fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+fn check_for_loop<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr,
+) {
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
@@ -418,13 +423,19 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
-fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+fn check_for_loop_range<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr,
+) {
     if let Some(higher::Range { start: Some(start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
-        if let PatKind::Binding(_, ref ident, _) = pat.node {
+        if let PatKind::Binding(_, def_id, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
-                var: cx.tcx.expect_def(pat.id).def_id(),
+                var: def_id,
                 indexed: HashMap::new(),
                 nonindex: false,
             };
@@ -510,7 +521,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
         let ExprMethodCall(method, _, ref len_args) = expr.node,
         len_args.len() == 1,
         &*method.node.as_str() == "len",
-        let ExprPath(_, ref path) = len_args[0].node,
+        let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node,
         path.segments.len() == 1,
         &path.segments[0].name == var
     ], {
@@ -647,7 +658,12 @@ fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     }
 }
 
-fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, expr: &Expr) {
+fn check_for_loop_explicit_counter<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr,
+) {
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
         cx: cx,
@@ -692,14 +708,20 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 }
 
 /// Check for the `FOR_KV_MAP` lint.
-fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+fn check_for_loop_over_map_kv<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr,
+) {
     let pat_span = pat.span;
 
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
             let (new_pat_span, kind) = match (&pat[0].node, &pat[1].node) {
-                (key, _) if pat_is_wild(key, body) => (pat[1].span, "value"),
-                (_, value) if pat_is_wild(value, body) => (pat[0].span, "key"),
+                (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value"),
+                (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key"),
                 _ => return,
             };
 
@@ -729,13 +751,18 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
-fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
+fn pat_is_wild<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx PatKind,
+    body: &'tcx Expr,
+) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(_, ident, None) if ident.node.as_str().starts_with('_') => {
+        PatKind::Binding(_, _, ident, None) if ident.node.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
+                cx: cx,
             };
             walk_expr(&mut visitor, body);
             !visitor.used
@@ -744,14 +771,15 @@ fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     }
 }
 
-struct UsedVisitor {
+struct UsedVisitor<'a, 'tcx: 'a> {
     var: ast::Name, // var to look for
     used: bool, // has the var been used otherwise?
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a> Visitor<'a> for UsedVisitor {
-    fn visit_expr(&mut self, expr: &Expr) {
-        if let ExprPath(None, ref path) = expr.node {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
             if path.segments.len() == 1 && path.segments[0].name == self.var {
                 self.used = true;
                 return;
@@ -760,31 +788,35 @@ impl<'a> Visitor<'a> for UsedVisitor {
 
         walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
-struct VarVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>, // context reference
+struct VarVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>, // context reference
     var: DefId, // var name to look for as index
     indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
     nonindex: bool, // has the var been used otherwise?
 }
 
-impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
-        if let ExprPath(None, ref path) = expr.node {
-            if path.segments.len() == 1 && self.cx.tcx.expect_def(expr.id).def_id() == self.var {
-                // we are referencing our variable! now check if it's as an index
-                if_let_chain! {[
-                    let Some(parexpr) = get_parent_expr(self.cx, expr),
-                    let ExprIndex(ref seqexpr, _) = parexpr.node,
-                    let ExprPath(None, ref seqvar) = seqexpr.node,
-                    seqvar.segments.len() == 1
-                ], {
-                    let def_map = self.cx.tcx.def_map.borrow();
-                    if let Some(def) = def_map.get(&seqexpr.id) {
-                        match def.base_def {
+impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprPath(ref qpath) = expr.node {
+            if let QPath::Resolved(None, ref path) = *qpath {
+                if path.segments.len() == 1 && self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id() == self.var {
+                    // we are referencing our variable! now check if it's as an index
+                    if_let_chain! {[
+                        let Some(parexpr) = get_parent_expr(self.cx, expr),
+                        let ExprIndex(ref seqexpr, _) = parexpr.node,
+                        let ExprPath(ref seqpath) = seqexpr.node,
+                        let QPath::Resolved(None, ref seqvar) = *seqpath,
+                        seqvar.segments.len() == 1
+                    ], {
+                        let def = self.cx.tcx.tables().qpath_def(seqpath, seqexpr.id);
+                        match def {
                             Def::Local(..) | Def::Upvar(..) => {
-                                let def_id = def.base_def.def_id();
+                                let def_id = def.def_id();
                                 let node_id = self.cx.tcx.map.as_local_node_id(def_id).unwrap();
 
                                 let extent = self.cx.tcx.region_maps.var_scope(node_id);
@@ -797,18 +829,21 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                             }
                             _ => (),
                         }
-                    }
-                }}
-                // we are not indexing anything, record that
-                self.nonindex = true;
-                return;
+                    }}
+                    // we are not indexing anything, record that
+                    self.nonindex = true;
+                    return;
+                }
             }
         }
         walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
-fn is_iterator_used_after_while_let(cx: &LateContext, iter_expr: &Expr) -> bool {
+fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, iter_expr: &'tcx Expr) -> bool {
     let def_id = match var_def_id(cx, iter_expr) {
         Some(id) => id,
         None => return false,
@@ -826,16 +861,16 @@ fn is_iterator_used_after_while_let(cx: &LateContext, iter_expr: &Expr) -> bool 
     visitor.var_used_after_while_let
 }
 
-struct VarUsedAfterLoopVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>,
+struct VarUsedAfterLoopVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
     def_id: NodeId,
     iter_expr_id: NodeId,
     past_while_let: bool,
     var_used_after_while_let: bool,
 }
 
-impl<'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         if self.past_while_let {
             if Some(self.def_id) == var_def_id(self.cx, expr) {
                 self.var_used_after_while_let = true;
@@ -844,6 +879,9 @@ impl<'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
             self.past_while_let = true;
         }
         walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 
@@ -935,15 +973,15 @@ enum VarState {
 }
 
 /// Scan a for loop for variables that are incremented exactly once.
-struct IncrementVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>, // context reference
+struct IncrementVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>, // context reference
     states: HashMap<NodeId, VarState>, // incremented variables
     depth: u32, // depth of conditional expressions
     done: bool,
 }
 
-impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         if self.done {
             return;
         }
@@ -984,12 +1022,15 @@ impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
         }
         walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
 /// Check whether a variable is initialized to zero at the start of a loop.
-struct InitializeVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>, // context reference
-    end_expr: &'v Expr, // the for loop. Stop scanning here.
+struct InitializeVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>, // context reference
+    end_expr: &'tcx Expr, // the for loop. Stop scanning here.
     var_id: NodeId,
     state: VarState,
     name: Option<Name>,
@@ -997,12 +1038,12 @@ struct InitializeVisitor<'v, 't: 'v> {
     past_loop: bool,
 }
 
-impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
-    fn visit_decl(&mut self, decl: &'v Decl) {
+impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
+    fn visit_decl(&mut self, decl: &'tcx Decl) {
         // Look for declarations of the variable
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
-                if let PatKind::Binding(_, ref ident, _) = local.pat.node {
+                if let PatKind::Binding(_, _, ref ident, _) = local.pat.node {
                     self.name = Some(ident.node);
 
                     self.state = if let Some(ref init) = local.init {
@@ -1020,7 +1061,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         walk_decl(self, decl);
     }
 
-    fn visit_expr(&mut self, expr: &'v Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         if self.state == VarState::DontWarn {
             return;
         }
@@ -1068,11 +1109,15 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         }
         walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
-    if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
-        if let Def::Local(def_id) = path_res.base_def {
+    if let ExprPath(ref qpath) = expr.node {
+        let path_res = cx.tcx.tables().qpath_def(qpath, expr.id);
+        if let Def::Local(def_id) = path_res {
             let node_id = cx.tcx.map.as_local_node_id(def_id).expect("That DefId should be valid");
             return Some(node_id);
         }

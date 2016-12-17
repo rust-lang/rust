@@ -69,7 +69,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
         match (&left.node, &right.node) {
             (&ExprAddrOf(l_mut, ref le), &ExprAddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
-            (&ExprAgain(li), &ExprAgain(ri)) => both(&li, &ri, |l, r| l.node.as_str() == r.node.as_str()),
+            (&ExprAgain(li), &ExprAgain(ri)) => both(&li, &ri, |l, r| l.name.as_str() == r.name.as_str()),
             (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
@@ -82,7 +82,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 })
             }
             (&ExprBreak(li, ref le), &ExprBreak(ri, ref re)) =>
-                both(&li, &ri, |l, r| l.node.as_str() == r.node.as_str())
+                both(&li, &ri, |l, r| l.name.as_str() == r.name.as_str())
                 && both(le, re, |l, r| self.eq_expr(l, r)),
             (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
             (&ExprCall(ref l_fun, ref l_args), &ExprCall(ref r_fun, ref r_args)) => {
@@ -101,12 +101,13 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             }
             (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
             (&ExprLoop(ref lb, ref ll, ref lls), &ExprLoop(ref rb, ref rl, ref rls)) => {
-                self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str()) && lls == rls
+                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str())
             }
             (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
                 ls == rs && self.eq_expr(le, re) &&
                 over(la, ra, |l, r| {
-                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
+                    self.eq_expr(&l.body, &r.body) &&
+                    both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
                     over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
                 })
             }
@@ -118,11 +119,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             }
             (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => self.eq_expr(le, re) && self.eq_expr(ll, rl),
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
-            (&ExprPath(ref l_qself, ref l_subpath), &ExprPath(ref r_qself, ref r_subpath)) => {
-                both(l_qself, r_qself, |l, r| self.eq_qself(l, r)) && self.eq_path(l_subpath, r_subpath)
-            }
+            (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),
             (&ExprStruct(ref l_path, ref lf, ref lo), &ExprStruct(ref r_path, ref rf, ref ro)) => {
-                self.eq_path(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r)) &&
+                self.eq_qpath(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r)) &&
                 over(lf, rf, |l, r| self.eq_field(l, r))
             }
             (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -153,14 +152,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
-                self.eq_path(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
+                self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             }
-            (&PatKind::Binding(ref lb, ref li, ref lp), &PatKind::Binding(ref rb, ref ri, ref rp)) => {
+            (&PatKind::Binding(ref lb, _, ref li, ref lp), &PatKind::Binding(ref rb, _, ref ri, ref rp)) => {
                 lb == rb && li.node.as_str() == ri.node.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
             }
-            (&PatKind::Path(ref ql, ref l), &PatKind::Path(ref qr, ref r)) => {
-                both(ql, qr, |ql, qr| self.eq_qself(ql, qr)) && self.eq_path(l, r)
-            }
+            (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_qpath(l, r),
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
             (&PatKind::Tuple(ref l, ls), &PatKind::Tuple(ref r, rs)) => {
                 ls == rs && over(l, r, |l, r| self.eq_pat(l, r))
@@ -174,6 +171,18 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 both(li, ri, |l, r| self.eq_pat(l, r))
             }
             (&PatKind::Wild, &PatKind::Wild) => true,
+            _ => false,
+        }
+    }
+
+    fn eq_qpath(&self, left: &QPath, right: &QPath) -> bool {
+        match (left, right) {
+            (&QPath::Resolved(ref lty, ref lpath), &QPath::Resolved(ref rty, ref rpath)) => {
+                both(lty, rty, |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
+            },
+            (&QPath::TypeRelative(ref lty, ref lseg), &QPath::TypeRelative(ref rty, ref rseg)) => {
+                self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
+            },
             _ => false,
         }
     }
@@ -208,10 +217,6 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         self.eq_path_parameters(&left.parameters, &right.parameters)
     }
 
-    fn eq_qself(&self, left: &QSelf, right: &QSelf) -> bool {
-        left.ty.node == right.ty.node && left.position == right.position
-    }
-
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
@@ -222,9 +227,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(&*l_rmut.ty, &*r_rmut.ty)
             }
-            (&TyPath(ref lq, ref l_path), &TyPath(ref rq, ref r_path)) => {
-                both(lq, rq, |l, r| self.eq_qself(l, r)) && self.eq_path(l_path, r_path)
-            }
+            (&TyPath(ref l), &TyPath(ref r)) => self.eq_qpath(l, r),
             (&TyTup(ref l), &TyTup(ref r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyInfer, &TyInfer) => true,
             _ => false,
@@ -318,7 +321,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = ExprAgain;
                 c.hash(&mut self.s);
                 if let Some(i) = i {
-                    self.hash_name(&i.node);
+                    self.hash_name(&i.name);
                 }
             }
             ExprAssign(ref l, ref r) => {
@@ -350,7 +353,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprBreak;
                 c.hash(&mut self.s);
                 if let Some(i) = i {
-                    self.hash_name(&i.node);
+                    self.hash_name(&i.name);
                 }
                 if let Some(ref j) = *j {
                     self.hash_expr(&*j);
@@ -373,11 +376,11 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 // TODO: _ty
             }
-            ExprClosure(cap, _, ref e, _) => {
+            ExprClosure(cap, _, eid, _) => {
                 let c: fn(_, _, _, _) -> _ = ExprClosure;
                 c.hash(&mut self.s);
                 cap.hash(&mut self.s);
-                self.hash_expr(e);
+                self.hash_expr(self.cx.tcx.map.expr(eid));
             }
             ExprField(ref e, ref f) => {
                 let c: fn(_, _) -> _ = ExprField;
@@ -409,14 +412,13 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
                 l.hash(&mut self.s);
             }
-            ExprLoop(ref b, ref i, ref j) => {
+            ExprLoop(ref b, ref i, _) => {
                 let c: fn(_, _, _) -> _ = ExprLoop;
                 c.hash(&mut self.s);
                 self.hash_block(b);
                 if let Some(i) = *i {
                     self.hash_name(&i.node);
                 }
-                j.hash(&mut self.s);
             }
             ExprMatch(ref e, ref arms, ref s) => {
                 let c: fn(_, _, _) -> _ = ExprMatch;
@@ -452,16 +454,16 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             }
-            ExprPath(ref _qself, ref subpath) => {
-                let c: fn(_, _) -> _ = ExprPath;
+            ExprPath(ref qpath) => {
+                let c: fn(_) -> _ = ExprPath;
                 c.hash(&mut self.s);
-                self.hash_path(subpath);
+                self.hash_qpath(qpath);
             }
             ExprStruct(ref path, ref fields, ref expr) => {
                 let c: fn(_, _, _) -> _ = ExprStruct;
                 c.hash(&mut self.s);
 
-                self.hash_path(path);
+                self.hash_qpath(path);
 
                 for f in fields {
                     self.hash_name(&f.name.node);
@@ -524,6 +526,18 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_name(&mut self, n: &Name) {
         n.as_str().hash(&mut self.s);
+    }
+
+    pub fn hash_qpath(&mut self, p: &QPath) {
+        match *p {
+            QPath::Resolved(_, ref path) => {
+                self.hash_path(path);
+            }
+            QPath::TypeRelative(_, ref path) => {
+                self.hash_name(&path.name);
+            }
+        }
+        //self.cx.tcx.tables().qpath_def(p, id).hash(&mut self.s);
     }
 
     pub fn hash_path(&mut self, p: &Path) {

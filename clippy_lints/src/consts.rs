@@ -1,7 +1,7 @@
 #![allow(cast_possible_truncation)]
 
 use rustc::lint::LateContext;
-use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def::Def;
 use rustc_const_eval::lookup_const_by_id;
 use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::hir::*;
@@ -10,7 +10,7 @@ use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{FloatTy, LitIntType, LitKind, StrStyle, UintTy, IntTy};
+use syntax::ast::{FloatTy, LitIntType, LitKind, StrStyle, UintTy, IntTy, NodeId};
 use syntax::ptr::P;
 
 #[derive(Debug, Copy, Clone)]
@@ -252,7 +252,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
     fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
-            ExprPath(_, _) => self.fetch_path(e),
+            ExprPath(ref qpath) => self.fetch_path(qpath, e.id),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
@@ -285,21 +285,22 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// lookup a possibly constant expression from a ExprPath
-    fn fetch_path(&mut self, e: &Expr) -> Option<Constant> {
+    fn fetch_path(&mut self, qpath: &QPath, id: NodeId) -> Option<Constant> {
         if let Some(lcx) = self.lcx {
-            let mut maybe_id = None;
-            if let Some(&PathResolution { base_def: Def::Const(id), .. }) = lcx.tcx.def_map.borrow().get(&e.id) {
-                maybe_id = Some(id);
-            }
-            // separate if lets to avoid double borrowing the def_map
-            if let Some(id) = maybe_id {
-                if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, id, None) {
-                    let ret = self.expr(const_expr);
-                    if ret.is_some() {
-                        self.needed_resolution = true;
+            let def = lcx.tcx.tables().qpath_def(qpath, id);
+            match def {
+                Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+                    let substs = Some(lcx.tcx.tables().node_id_item_substs(id)
+                        .unwrap_or_else(|| lcx.tcx.intern_substs(&[])));
+                    if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
+                        let ret = self.expr(const_expr);
+                        if ret.is_some() {
+                            self.needed_resolution = true;
+                        }
+                        return ret;
                     }
-                    return ret;
-                }
+                },
+                _ => {},
             }
         }
         None

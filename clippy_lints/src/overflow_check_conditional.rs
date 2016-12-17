@@ -29,15 +29,15 @@ impl LintPass for OverflowCheckConditional {
     }
 }
 
-impl LateLintPass for OverflowCheckConditional {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain! {[
             let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
             let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = first.node,
-            let Expr_::ExprPath(_,ref path1) = ident1.node,
-            let Expr_::ExprPath(_, ref path2) = ident2.node,
-            let Expr_::ExprPath(_, ref path3) = second.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path1)) = ident1.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path2)) = ident2.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path3)) = second.node,
             &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
             cx.tcx.tables().expr_ty(ident1).is_integral(),
             cx.tcx.tables().expr_ty(ident2).is_integral()
@@ -57,9 +57,9 @@ impl LateLintPass for OverflowCheckConditional {
         if_let_chain! {[
             let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
             let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = second.node,
-            let Expr_::ExprPath(_,ref path1) = ident1.node,
-            let Expr_::ExprPath(_, ref path2) = ident2.node,
-            let Expr_::ExprPath(_, ref path3) = first.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path1)) = ident1.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path2)) = ident2.node,
+            let Expr_::ExprPath(QPath::Resolved(_, ref path3)) = first.node,
             &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
             cx.tcx.tables().expr_ty(ident1).is_integral(),
             cx.tcx.tables().expr_ty(ident2).is_integral()

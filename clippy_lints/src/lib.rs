@@ -9,6 +9,7 @@
 #![feature(repeat_str)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
+#![allow(needless_lifetimes)]
 
 #[macro_use]
 extern crate syntax;
@@ -256,7 +257,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
-    reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
+    reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
     reg.register_late_lint_pass(box assign_ops::AssignOps);

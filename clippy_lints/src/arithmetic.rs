@@ -47,8 +47,8 @@ impl LintPass for Arithmetic {
     }
 }
 
-impl LateLintPass for Arithmetic {
-    fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if self.span.is_some() {
             return;
         }
@@ -82,7 +82,7 @@ impl LateLintPass for Arithmetic {
         }
     }
 
-    fn check_expr_post(&mut self, _: &LateContext, expr: &hir::Expr) {
+    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if Some(expr.span) == self.span {
             self.span = None;
         }

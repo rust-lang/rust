@@ -59,8 +59,8 @@ impl LintPass for LenZero {
     }
 }
 
-impl LateLintPass for LenZero {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if in_macro(cx, item.span) {
             return;
         }
@@ -72,7 +72,7 @@ impl LateLintPass for LenZero {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_macro(cx, expr.span) {
             return;
         }
@@ -188,7 +188,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if &*item.name.as_str() == "is_empty" {
                 let ty = cx.tcx.item_type(item.def_id).fn_sig().skip_binder();
-                ty.inputs.len() == 1
+                ty.inputs().len() == 1
             } else {
                 false
             }
@@ -208,7 +208,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     let ty = &walk_ptrs_ty(cx.tcx.tables().expr_ty(expr));
     match ty.sty {
-        ty::TyTrait(_) => {
+        ty::TyDynamic(..) => {
             cx.tcx
               .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
               .any(|item| is_is_empty(cx, &item))

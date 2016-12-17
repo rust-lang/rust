@@ -56,8 +56,8 @@ impl LintPass for NeedlessBool {
     }
 }
 
-impl LateLintPass for NeedlessBool {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             let reduce = |ret, not| {
@@ -116,8 +116,8 @@ impl LintPass for BoolComparison {
     }
 }
 
-impl LateLintPass for BoolComparison {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
         if let ExprBinary(Spanned { node: BiEq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {

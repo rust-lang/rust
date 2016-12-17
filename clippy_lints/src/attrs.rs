@@ -81,8 +81,8 @@ impl LintPass for AttrPass {
     }
 }
 
-impl LateLintPass for AttrPass {
-    fn check_attribute(&mut self, cx: &LateContext, attr: &Attribute) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
+    fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let MetaItemKind::List(ref items) = attr.value.node {
             if items.is_empty() || attr.name() != "deprecated" {
                 return;
@@ -99,13 +99,13 @@ impl LateLintPass for AttrPass {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
         match item.node {
             ItemExternCrate(_) |
-            ItemUse(_) => {
+            ItemUse(_, _) => {
                 for attr in &item.attrs {
                     if let MetaItemKind::List(ref lint_list) = attr.value.node {
                         match &*attr.name().as_str() {
@@ -113,7 +113,7 @@ impl LateLintPass for AttrPass {
                                 // whitelist `unused_imports`
                                 for lint in lint_list {
                                     if is_word(lint, "unused_imports") {
-                                        if let ItemUse(_) = item.node {
+                                        if let ItemUse(_, _) = item.node {
                                             return;
                                         }
                                     }
@@ -138,13 +138,13 @@ impl LateLintPass for AttrPass {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
@@ -152,8 +152,8 @@ impl LateLintPass for AttrPass {
 }
 
 fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
-    if let ItemFn(_, _, _, _, _, ref expr) = item.node {
-        is_relevant_expr(cx, expr)
+    if let ItemFn(_, _, _, _, _, eid) = item.node {
+        is_relevant_expr(cx, cx.tcx.map.expr(eid))
     } else {
         false
     }
@@ -161,7 +161,7 @@ fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
 
 fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, ref expr) => is_relevant_expr(cx, expr),
+        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
         _ => false,
     }
 }
@@ -169,7 +169,7 @@ fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
 fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
     match item.node {
         MethodTraitItem(_, None) => true,
-        MethodTraitItem(_, Some(ref expr)) => is_relevant_expr(cx, expr),
+        MethodTraitItem(_, Some(eid)) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
         _ => false,
     }
 }
@@ -193,8 +193,8 @@ fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
         ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
         ExprRet(None) | ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
-            if let ExprPath(..) = path_expr.node {
-                let fun_id = resolve_node(cx, path_expr.id).expect("function should be resolved").def_id();
+            if let ExprPath(ref qpath) = path_expr.node {
+                let fun_id = resolve_node(cx, qpath, path_expr.id).def_id();
                 !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
             } else {
                 true

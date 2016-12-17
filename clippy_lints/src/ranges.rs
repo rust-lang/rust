@@ -46,8 +46,8 @@ impl LintPass for StepByZero {
     }
 }
 
-impl LateLintPass for StepByZero {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) = expr.node {
             let name = &*name.as_str();
 
@@ -73,15 +73,15 @@ impl LateLintPass for StepByZero {
                     let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
                     &*len_name.as_str() == "len" && len_args.len() == 1,
                     // .iter() and .len() called on same Path
-                    let ExprPath(_, Path { segments: ref iter_path, .. }) = iter_args[0].node,
-                    let ExprPath(_, Path { segments: ref len_path, .. }) = len_args[0].node,
-                    iter_path == len_path
+                    let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node,
+                    let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node,
+                    iter_path.segments == len_path.segments
                  ], {
-                    span_lint(cx,
-                              RANGE_ZIP_WITH_LEN,
-                              expr.span,
-                              &format!("It is more idiomatic to use {}.iter().enumerate()",
-                                       snippet(cx, iter_args[0].span, "_")));
+                     span_lint(cx,
+                               RANGE_ZIP_WITH_LEN,
+                               expr.span,
+                               &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                        snippet(cx, iter_args[0].span, "_")));
                 }}
             }
         }

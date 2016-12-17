@@ -57,27 +57,26 @@ impl LintPass for LetIfSeq {
     }
 }
 
-impl LateLintPass for LetIfSeq {
-    fn check_block(&mut self, cx: &LateContext, block: &hir::Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
         let mut it = block.stmts.iter().peekable();
         while let Some(stmt) = it.next() {
             if_let_chain! {[
                 let Some(expr) = it.peek(),
                 let hir::StmtDecl(ref decl, _) = stmt.node,
                 let hir::DeclLocal(ref decl) = decl.node,
-                let hir::PatKind::Binding(mode, ref name, None) = decl.pat.node,
-                let Some(def) = cx.tcx.def_map.borrow().get(&decl.pat.id),
+                let hir::PatKind::Binding(mode, def_id, ref name, None) = decl.pat.node,
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,
-                !used_in_expr(cx, def.full_def().def_id(), cond),
-                let Some(value) = check_assign(cx, def.full_def().def_id(), then),
-                !used_in_expr(cx, def.full_def().def_id(), value),
+                !used_in_expr(cx, def_id, cond),
+                let Some(value) = check_assign(cx, def_id, then),
+                !used_in_expr(cx, def_id, value),
             ], {
                 let span = codemap::mk_sp(stmt.span.lo, if_.span.hi);
 
                 let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                     if let hir::ExprBlock(ref else_) = else_.node {
-                        if let Some(default) = check_assign(cx, def.full_def().def_id(), else_) {
+                        if let Some(default) = check_assign(cx, def_id, else_) {
                             (else_.stmts.len() > 1, default)
                         } else if let Some(ref default) = decl.init {
                             (true, &**default)
@@ -134,29 +133,34 @@ struct UsedVisitor<'a, 'tcx: 'a> {
     used: bool,
 }
 
-impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UsedVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'v hir::Expr) {
+impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_let_chain! {[
-            let hir::ExprPath(None, _) = expr.node,
-            let Some(def) = self.cx.tcx.def_map.borrow().get(&expr.id),
-            self.id == def.full_def().def_id(),
+            let hir::ExprPath(ref qpath) = expr.node,
+            self.id == self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id(),
         ], {
             self.used = true;
             return;
         }}
         hir::intravisit::walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
+        hir::intravisit::NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
-fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::Block) -> Option<&'e hir::Expr> {
+fn check_assign<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    decl: hir::def_id::DefId,
+    block: &'tcx hir::Block,
+) -> Option<&'tcx hir::Expr> {
     if_let_chain! {[
         block.expr.is_none(),
         let Some(expr) = block.stmts.iter().last(),
         let hir::StmtSemi(ref expr, _) = expr.node,
         let hir::ExprAssign(ref var, ref value) = expr.node,
-        let hir::ExprPath(None, _) = var.node,
-        let Some(def) = cx.tcx.def_map.borrow().get(&var.id),
-        decl == def.full_def().def_id(),
+        let hir::ExprPath(ref qpath) = var.node,
+        decl == cx.tcx.tables().qpath_def(qpath, var.id).def_id(),
     ], {
         let mut v = UsedVisitor {
             cx: cx,
@@ -178,7 +182,11 @@ fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::
     None
 }
 
-fn used_in_expr(cx: &LateContext, id: hir::def_id::DefId, expr: &hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    id: hir::def_id::DefId,
+    expr: &'tcx hir::Expr,
+) -> bool {
     let mut v = UsedVisitor {
         cx: cx,
         id: id,

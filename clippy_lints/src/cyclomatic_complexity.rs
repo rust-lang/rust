@@ -4,7 +4,7 @@ use rustc::cfg::CFG;
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_expr};
+use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use syntax::ast::Attribute;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -42,7 +42,7 @@ impl LintPass for CyclomaticComplexity {
 }
 
 impl CyclomaticComplexity {
-    fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, expr: &Expr, span: Span) {
+    fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr, span: Span) {
         if in_macro(cx, span) {
             return;
         }
@@ -60,7 +60,7 @@ impl CyclomaticComplexity {
             divergence: 0,
             short_circuits: 0,
             returns: 0,
-            tcx: &cx.tcx,
+            cx: cx,
         };
         helper.visit_expr(expr);
         let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
@@ -90,45 +90,45 @@ impl CyclomaticComplexity {
     }
 }
 
-impl LateLintPass for CyclomaticComplexity {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if let ItemFn(_, _, _, _, _, ref expr) = item.node {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        if let ItemFn(_, _, _, _, _, eid) = item.node {
             if !attr::contains_name(&item.attrs, "test") {
-                self.check(cx, expr, item.span);
+                self.check(cx, cx.tcx.map.expr(eid), item.span);
             }
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if let ImplItemKind::Method(_, ref expr) = item.node {
-            self.check(cx, expr, item.span);
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
+        if let ImplItemKind::Method(_, eid) = item.node {
+            self.check(cx, cx.tcx.map.expr(eid), item.span);
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
-        if let MethodTraitItem(_, Some(ref expr)) = item.node {
-            self.check(cx, expr, item.span);
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
+        if let MethodTraitItem(_, Some(eid)) = item.node {
+            self.check(cx, cx.tcx.map.expr(eid), item.span);
         }
     }
 
-    fn enter_lint_attrs(&mut self, cx: &LateContext, attrs: &[Attribute]) {
+    fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
-    fn exit_lint_attrs(&mut self, cx: &LateContext, attrs: &[Attribute]) {
+    fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
 }
 
-struct CCHelper<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+struct CCHelper<'a, 'tcx: 'a> {
     match_arms: u64,
     divergence: u64,
     returns: u64,
     short_circuits: u64, // && and ||
-    tcx: &'a ty::TyCtxt<'a, 'gcx, 'tcx>,
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
-    fn visit_expr(&mut self, e: &'a Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
+    fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
             ExprMatch(_, ref arms, _) => {
                 walk_expr(self, e);
@@ -139,10 +139,10 @@ impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
             }
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
-                let ty = self.tcx.tables().node_id_to_type(callee.id);
+                let ty = self.cx.tcx.tables().node_id_to_type(callee.id);
                 match ty.sty {
                     ty::TyFnDef(_, _, ty) |
-                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output.sty == ty::TyNever => {
+                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output().sty == ty::TyNever => {
                         self.divergence += 1;
                     }
                     _ => (),
@@ -159,6 +159,9 @@ impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
             ExprRet(_) => self.returns += 1,
             _ => walk_expr(self, e),
         }
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
     }
 }
 

@@ -384,7 +384,7 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 }
 
 /// Return the indentation before `span` if there are nothing but `[ \t]` before it on its line.
-fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
+fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().codemap().lookup_char_pos(span.lo);
     if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
         if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
@@ -403,7 +403,7 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
 }
 
 /// Convenience extension trait for `DiagnosticBuilder`.
-pub trait DiagnosticBuilderExt<T: LintContext> {
+pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     /// Suggests to add an attribute to an item.
     ///
     /// Correctly handles indentation of the attribute and item.
@@ -430,7 +430,7 @@ pub trait DiagnosticBuilderExt<T: LintContext> {
     fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str);
 }
 
-impl<'a, 'b, T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder<'b> {
+impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
     fn suggest_item_with_attr<D: Display+?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D) {
         if let Some(indent) = indentation(cx, item) {
             let span = Span {

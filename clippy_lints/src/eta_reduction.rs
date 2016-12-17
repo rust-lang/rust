@@ -33,8 +33,8 @@ impl LintPass for EtaPass {
     }
 }
 
-impl LateLintPass for EtaPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
             ExprCall(_, ref args) |
             ExprMethodCall(_, _, ref args) => {
@@ -48,7 +48,8 @@ impl LateLintPass for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, ref ex, _) = expr.node {
+    if let ExprClosure(_, ref decl, eid, _) = expr.node {
+        let ex = cx.tcx.map.expr(eid);
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there
@@ -65,16 +66,16 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 ty::TyFnDef(_, _, fn_ty) |
                 ty::TyFnPtr(fn_ty) => {
                     if fn_ty.unsafety == Unsafety::Unsafe ||
-                       fn_ty.sig.skip_binder().output.sty == ty::TyNever {
+                       fn_ty.sig.skip_binder().output().sty == ty::TyNever {
                         return;
                     }
                 }
                 _ => (),
             }
             for (a1, a2) in decl.inputs.iter().zip(args) {
-                if let PatKind::Binding(_, ident, _) = a1.pat.node {
+                if let PatKind::Binding(_, _, ident, _) = a1.pat.node {
                     // XXXManishearth Should I be checking the binding mode here?
-                    if let ExprPath(None, ref p) = a2.node {
+                    if let ExprPath(QPath::Resolved(None, ref p)) = a2.node {
                         if p.segments.len() != 1 {
                             // If it's a proper path, it can't be a local variable
                             return;

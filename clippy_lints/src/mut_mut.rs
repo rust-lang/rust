@@ -31,12 +31,12 @@ impl LintPass for MutMut {
     }
 }
 
-impl LateLintPass for MutMut {
-    fn check_block(&mut self, cx: &LateContext, block: &hir::Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {
         intravisit::walk_block(&mut MutVisitor { cx: cx }, block);
     }
 
-    fn check_ty(&mut self, cx: &LateContext, ty: &hir::Ty) {
+    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty) {
         use rustc::hir::intravisit::Visitor;
 
         MutVisitor { cx: cx }.visit_ty(ty);
@@ -47,8 +47,8 @@ pub struct MutVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for MutVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'v hir::Expr) {
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if in_external_macro(self.cx, expr.span) {
             return;
         }
@@ -74,7 +74,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for MutVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         if let hir::TyRptr(_, hir::MutTy { ty: ref pty, mutbl: hir::MutMutable }) = ty.node {
             if let hir::TyRptr(_, hir::MutTy { mutbl: hir::MutMutable, .. }) = pty.node {
                 span_lint(self.cx, MUT_MUT, ty.span, "generally you want to avoid `&mut &mut _` if possible");
@@ -83,5 +83,8 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for MutVisitor<'a, 'tcx> {
         }
 
         intravisit::walk_ty(self, ty);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }

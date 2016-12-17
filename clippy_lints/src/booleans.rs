@@ -53,13 +53,15 @@ impl LintPass for NonminimalBool {
     }
 }
 
-impl LateLintPass for NonminimalBool {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        NonminimalBoolVisitor(cx).visit_item(item)
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        NonminimalBoolVisitor { cx: cx }.visit_item(item)
     }
 }
 
-struct NonminimalBoolVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
+struct NonminimalBoolVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+}
 
 use quine_mc_cluskey::Bool;
 struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
@@ -308,7 +310,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     fn bool_expr(&self, e: &Expr) {
         let mut h2q = Hir2Qmm {
             terminals: Vec::new(),
-            cx: self.0,
+            cx: self.cx,
         };
         if let Ok(expr) = h2q.run(e) {
 
@@ -343,7 +345,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         continue 'simplified;
                     }
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
-                        span_lint_and_then(self.0,
+                        span_lint_and_then(self.cx,
                                            LOGIC_BUG,
                                            e.span,
                                            "this boolean expression contains a logic bug",
@@ -353,7 +355,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                           outer expression");
                             db.span_suggestion(e.span,
                                                "it would look like the following",
-                                               suggest(self.0, suggestion, &h2q.terminals));
+                                               suggest(self.cx, suggestion, &h2q.terminals));
                         });
                         // don't also lint `NONMINIMAL_BOOL`
                         return;
@@ -370,13 +372,13 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             }
             if !improvements.is_empty() {
-                span_lint_and_then(self.0,
+                span_lint_and_then(self.cx,
                                    NONMINIMAL_BOOL,
                                    e.span,
                                    "this boolean expression can be simplified",
                                    |db| {
                     for suggestion in &improvements {
-                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                        db.span_suggestion(e.span, "try", suggest(self.cx, suggestion, &h2q.terminals));
                     }
                 });
             }
@@ -384,15 +386,15 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for NonminimalBoolVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, e: &'v Expr) {
-        if in_macro(self.0, e.span) {
+impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, e: &'tcx Expr) {
+        if in_macro(self.cx, e.span) {
             return;
         }
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => {
-                if self.0.tcx.tables.borrow().node_types[&inner.id].is_bool() {
+                if self.cx.tcx.tables.borrow().node_types[&inner.id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);
@@ -400,5 +402,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for NonminimalBoolVisitor<'a, 'tcx> {
             }
             _ => walk_expr(self, e),
         }
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
