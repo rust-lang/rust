@@ -63,6 +63,16 @@ pub fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
     }
 }
 
+pub fn make(host: &str) -> PathBuf {
+    if host.contains("bitrig") || host.contains("dragonfly") ||
+        host.contains("freebsd") || host.contains("netbsd") ||
+        host.contains("openbsd") {
+        PathBuf::from("gmake")
+    } else {
+        PathBuf::from("make")
+    }
+}
+
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
