@@ -38,15 +38,8 @@ fn miri_pass(path: &str, target: &str) {
 
 fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
     for target in std::fs::read_dir(format!("{}/lib/rustlib/", sysroot)).unwrap() {
-        let target = target.unwrap();
-        if !target.metadata().unwrap().is_dir() {
-            continue;
-        }
-        let target = target.file_name().into_string().unwrap();
-        match &*target {
-            "etc" | "src" => continue,
-            _ => {},
-        }
+        let target = target.unwrap().file_name().into_string().unwrap();
+        if !target.contains("-") { continue; }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "running tests for target {}", target).unwrap();
         f(target);
