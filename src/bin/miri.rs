@@ -10,7 +10,7 @@ extern crate syntax;
 #[macro_use] extern crate log;
 
 use rustc::session::Session;
-use rustc_driver::{CompilerCalls, Compilation};
+use rustc_driver::CompilerCalls;
 use rustc_driver::driver::{CompileState, CompileController};
 use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
@@ -21,7 +21,6 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = CompileController::basic();
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }
@@ -35,14 +34,16 @@ fn after_analysis(state: &mut CompileState) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    let (entry_node_id, _) = state.session.entry_fn.borrow()
-        .expect("no main or start function found");
-    let entry_def_id = tcx.map.local_def_id(entry_node_id);
-    let limits = resource_limits_from_attributes(state);
-    miri::run_mir_passes(tcx);
-    miri::eval_main(tcx, entry_def_id, limits);
+    if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
+        let entry_def_id = tcx.map.local_def_id(entry_node_id);
+        let limits = resource_limits_from_attributes(state);
+        miri::run_mir_passes(tcx);
+        miri::eval_main(tcx, entry_def_id, limits);
 
-    state.session.abort_if_errors();
+        state.session.abort_if_errors();
+    } else {
+        println!("no main function found, assuming auxiliary build");
+    }
 }
 
 fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits {
@@ -134,6 +135,7 @@ fn main() {
         args.push(sysroot_flag);
         args.push(find_sysroot());
     }
+    args.push("-Zalways-encode-mir".to_owned());
 
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls, None, None);
 }

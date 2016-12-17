@@ -530,6 +530,22 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
+    pub fn read_c_str(&self, ptr: Pointer) -> EvalResult<'tcx, &[u8]> {
+        let alloc = self.get(ptr.alloc_id)?;
+        assert_eq!(ptr.offset as usize as u64, ptr.offset);
+        let offset = ptr.offset as usize;
+        match alloc.bytes[offset..].iter().position(|&c| c == 0) {
+            Some(size) => {
+                if self.relocations(ptr, (size + 1) as u64)?.count() != 0 {
+                    return Err(EvalError::ReadPointerAsBytes);
+                }
+                self.check_defined(ptr, (size + 1) as u64)?;
+                Ok(&alloc.bytes[offset..offset + size])
+            },
+            None => Err(EvalError::UnterminatedCString(ptr)),
+        }
+    }
+
     pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
         self.get_bytes(ptr, size, 1)
     }

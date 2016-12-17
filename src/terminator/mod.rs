@@ -90,7 +90,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr();
                         let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        if abi != bare_fn_ty.abi || sig != bare_fn_ty.sig.skip_binder() {
+                        let bare_sig = self.tcx.erase_late_bound_regions_and_normalize(&bare_fn_ty.sig);
+                        let bare_sig = self.tcx.erase_regions(&bare_sig);
+                        // transmuting function pointers in miri is fine as long as the number of
+                        // arguments and the abi don't change.
+                        // FIXME: also check the size of the arguments' type and the return type
+                        // Didn't get it to work, since that triggers an assertion in rustc which
+                        // checks whether the type has escaping regions
+                        if abi != bare_fn_ty.abi ||
+                           sig.variadic != bare_sig.variadic ||
+                           sig.inputs().len() != bare_sig.inputs().len() {
                             return Err(EvalError::FunctionPointerTyMismatch(abi, sig, bare_fn_ty));
                         }
                         self.eval_fn_call(def_id, substs, bare_fn_ty, destination, args,
@@ -189,7 +198,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use syntax::abi::Abi;
         match fn_ty.abi {
             Abi::RustIntrinsic => {
-                let ty = fn_ty.sig.0.output;
+                let ty = fn_ty.sig.0.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = destination.unwrap();
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
@@ -197,7 +206,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Abi::C => {
-                let ty = fn_ty.sig.0.output;
+                let ty = fn_ty.sig.0.output();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
                 self.goto_block(target);
@@ -320,11 +329,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             .collect();
         let args = args_res?;
 
-        if link_name.starts_with("pthread_") {
-            warn!("ignoring C ABI call: {}", link_name);
-            return Ok(());
-        }
-
         let usize = self.tcx.types.usize;
 
         match &link_name[..] {
@@ -370,6 +374,37 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 self.write_primval(dest, PrimVal::new(result as u64), dest_ty)?;
             }
+
+            "memchr" => {
+                let ptr = args[0].read_ptr(&self.memory)?;
+                let val = self.value_to_primval(args[1], usize)?.to_u64() as u8;
+                let num = self.value_to_primval(args[2], usize)?.to_u64();
+                if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
+                    let new_ptr = ptr.offset(idx as u64);
+                    self.write_value(Value::ByVal(PrimVal::from_ptr(new_ptr)), dest, dest_ty)?;
+                } else {
+                    self.write_value(Value::ByVal(PrimVal::new(0)), dest, dest_ty)?;
+                }
+            }
+
+            "getenv" => {
+                {
+                    let name_ptr = args[0].read_ptr(&self.memory)?;
+                    let name = self.memory.read_c_str(name_ptr)?;
+                    info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
+                }
+                self.write_value(Value::ByVal(PrimVal::new(0)), dest, dest_ty)?;
+            }
+
+            // unix panic code inside libstd will read the return value of this function
+            "pthread_rwlock_rdlock" => {
+                self.write_primval(dest, PrimVal::new(0), dest_ty)?;
+            }
+
+            link_name if link_name.starts_with("pthread_") => {
+                warn!("ignoring C ABI call: {}", link_name);
+                return Ok(());
+            },
 
             _ => {
                 return Err(EvalError::Unimplemented(format!("can't call C ABI function: {}", link_name)));
@@ -520,7 +555,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
                     let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                    *first_ty = sig.inputs[0];
+                    *first_ty = sig.inputs()[0];
                     Ok((def_id, substs, Vec::new()))
                 } else {
                     Err(EvalError::VtableForArgumentlessMethod)
@@ -664,7 +699,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
                     let (def_id, substs, _abi, sig) = self.memory.get_fn(drop_fn.alloc_id)?;
-                    let real_ty = sig.inputs[0];
+                    let real_ty = sig.inputs()[0];
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
                     drop.push((def_id, Value::ByVal(PrimVal::from_ptr(ptr)), substs));
                 } else {
