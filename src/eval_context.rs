@@ -315,15 +315,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                        .expect("global should have been cached (freeze)");
                 match global_value.data.expect("global should have been initialized") {
                     Value::ByRef(ptr) => self.memory.freeze(ptr.alloc_id)?,
-                    Value::ByVal(val) => if let Some(alloc_id) = val.relocation() {
-                        self.memory.freeze(alloc_id)?;
+                    Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
+                        self.memory.freeze(ptr.alloc_id)?;
                     },
-                    Value::ByValPair(a, b) => {
-                        if let Some(alloc_id) = a.relocation() {
-                            self.memory.freeze(alloc_id)?;
+                    Value::ByValPair(val1, val2) => {
+                        if let PrimVal::Ptr(ptr) = val1 {
+                            self.memory.freeze(ptr.alloc_id)?;
                         }
-                        if let Some(alloc_id) = b.relocation() {
-                            self.memory.freeze(alloc_id)?;
+                        if let PrimVal::Ptr(ptr) = val2 {
+                            self.memory.freeze(ptr.alloc_id)?;
                         }
                     },
                 }
@@ -1301,12 +1301,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                     Value::ByVal(val) => {
                         trace!("frame[{}] {:?}: {:?}", frame, local, val);
-                        if let Some(alloc_id) = val.relocation() { allocs.push(alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
                     }
                     Value::ByValPair(val1, val2) => {
                         trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, val1, val2);
-                        if let Some(alloc_id) = val1.relocation() { allocs.push(alloc_id); }
-                        if let Some(alloc_id) = val2.relocation() { allocs.push(alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
                     }
                 }
             }

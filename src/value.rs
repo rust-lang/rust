@@ -4,7 +4,7 @@
 use std::mem::transmute;
 
 use error::{EvalError, EvalResult};
-use memory::{AllocId, Memory, Pointer};
+use memory::{Memory, Pointer};
 
 pub(super) fn bits_to_f32(bits: u64) -> f32 {
     unsafe { transmute::<u32, f32>(bits as u32) }
@@ -124,16 +124,6 @@ impl<'tcx> PrimVal {
             PrimVal::Bytes(b) => b,
             PrimVal::Ptr(p) => p.offset,
             PrimVal::Undef => panic!(".bits()() on PrimVal::Undef"),
-        }
-    }
-
-    // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
-    // stick around with this name.
-    pub fn relocation(self) -> Option<AllocId> {
-        if let PrimVal::Ptr(ref p) = self {
-            Some(p.alloc_id)
-        } else {
-            None
         }
     }
 
