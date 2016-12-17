@@ -42,7 +42,7 @@ impl<'blk, 'tcx> Drop for Builder<'blk, 'tcx> {
 
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
-pub fn noname() -> *const c_char {
+fn noname() -> *const c_char {
     static CNULL: c_char = 0;
     &CNULL
 }
@@ -59,50 +59,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn count_insn(&self, category: &str) {
+    fn count_insn(&self, category: &str) {
         if self.ccx.sess().trans_stats() {
-            self.ccx.stats().n_llvm_insns.set(self.ccx
-                                                .stats()
-                                                .n_llvm_insns
-                                                .get() + 1);
+            self.ccx.stats().n_llvm_insns.set(self.ccx.stats().n_llvm_insns.get() + 1);
         }
-        self.ccx.count_llvm_insn();
         if self.ccx.sess().count_llvm_insns() {
-            base::with_insn_ctxt(|v| {
-                let mut h = self.ccx.stats().llvm_insns.borrow_mut();
-
-                // Build version of path with cycles removed.
-
-                // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = FxHashMap();
-                let len = v.len();
-                let mut i = 0;
-                while i < len {
-                    mm.insert(v[i], i);
-                    i += 1;
-                }
-
-                // Pass 2: concat strings for each elt, skipping
-                // forwards over any cycles by advancing to rightmost
-                // occurrence of each element in path.
-                let mut s = String::from(".");
-                i = 0;
-                while i < len {
-                    i = mm[v[i]];
-                    s.push('/');
-                    s.push_str(v[i]);
-                    i += 1;
-                }
-
-                s.push('/');
-                s.push_str(category);
-
-                let n = match h.get(&s) {
-                    Some(&n) => n,
-                    _ => 0
-                };
-                h.insert(s, n+1);
-            })
+            let mut h = self.ccx.stats().llvm_insns.borrow_mut();
+            *h.entry(category.to_string()).or_insert(0) += 1;
         }
     }
 

@@ -149,11 +149,6 @@ pub struct LocalCrateContext<'tcx> {
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
 
-    /// Number of LLVM instructions translated into this `LocalCrateContext`.
-    /// This is used to perform some basic load-balancing to keep all LLVM
-    /// contexts around the same size.
-    n_llvm_insns: Cell<usize>,
-
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
 
@@ -608,7 +603,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
-                n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
                 symbol_map: symbol_map,
                 local_gen_sym_counter: Cell::new(0),
@@ -633,10 +627,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
             local_ccx.int_type = int_type;
             local_ccx.opaque_vec_type = opaque_vec_type;
             local_ccx.str_slice_type = str_slice_ty;
-
-            if shared.tcx.sess.count_llvm_insns() {
-                base::init_insn_ctxt()
-            }
 
             local_ccx
         }
@@ -839,10 +829,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FxHashMap<&'static str, ValueRef>> {
         &self.local().intrinsics
-    }
-
-    pub fn count_llvm_insn(&self) {
-        self.local().n_llvm_insns.set(self.local().n_llvm_insns.get() + 1);
     }
 
     pub fn obj_size_bound(&self) -> u64 {
