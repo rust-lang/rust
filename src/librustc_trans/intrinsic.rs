@@ -116,32 +116,32 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let llret_ty = type_of::type_of(ccx, ret_ty);
 
     let simple = get_simple_intrinsic(ccx, name);
-    let llval = match (simple, name) {
-        (Some(llfn), _) => {
-            bcx.call(llfn, &llargs, None)
+    let llval = match name {
+        _ if simple.is_some() => {
+            bcx.call(simple.unwrap(), &llargs, None)
         }
-        (_, "likely") => {
+        "likely" => {
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             bcx.call(expect, &[llargs[0], C_bool(ccx, true)], None)
         }
-        (_, "unlikely") => {
+        "unlikely" => {
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             bcx.call(expect, &[llargs[0], C_bool(ccx, false)], None)
         }
-        (_, "try") => {
+        "try" => {
             try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult);
             C_nil(ccx)
         }
-        (_, "breakpoint") => {
+        "breakpoint" => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
             bcx.call(llfn, &[], None)
         }
-        (_, "size_of") => {
+        "size_of" => {
             let tp_ty = substs.type_at(0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
         }
-        (_, "size_of_val") => {
+        "size_of_val" => {
             let tp_ty = substs.type_at(0);
             if !type_is_sized(tcx, tp_ty) {
                 let (llsize, _) =
@@ -152,11 +152,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                 C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
             }
         }
-        (_, "min_align_of") => {
+        "min_align_of" => {
             let tp_ty = substs.type_at(0);
             C_uint(ccx, type_of::align_of(ccx, tp_ty))
         }
-        (_, "min_align_of_val") => {
+        "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
             if !type_is_sized(tcx, tp_ty) {
                 let (_, llalign) =
@@ -166,20 +166,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                 C_uint(ccx, type_of::align_of(ccx, tp_ty))
             }
         }
-        (_, "pref_align_of") => {
+        "pref_align_of" => {
             let tp_ty = substs.type_at(0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty))
         }
-        (_, "type_name") => {
+        "type_name" => {
             let tp_ty = substs.type_at(0);
             let ty_name = Symbol::intern(&tp_ty.to_string()).as_str();
             C_str_slice(ccx, ty_name)
         }
-        (_, "type_id") => {
+        "type_id" => {
             C_u64(ccx, ccx.tcx().type_id_hash(substs.type_at(0)))
         }
-        (_, "init") => {
+        "init" => {
             let ty = substs.type_at(0);
             if !type_is_zero_size(ccx, ty) {
                 // Just zero out the stack slot.
@@ -191,26 +191,26 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             C_nil(ccx)
         }
         // Effectively no-ops
-        (_, "uninit") | (_, "forget") => {
+        "uninit" | "forget" => {
             C_nil(ccx)
         }
-        (_, "needs_drop") => {
+        "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
             C_bool(ccx, bcx.fcx().type_needs_drop(tp_ty))
         }
-        (_, "offset") => {
+        "offset" => {
             let ptr = llargs[0];
             let offset = llargs[1];
             bcx.inbounds_gep(ptr, &[offset])
         }
-        (_, "arith_offset") => {
+        "arith_offset" => {
             let ptr = llargs[0];
             let offset = llargs[1];
             bcx.gep(ptr, &[offset])
         }
 
-        (_, "copy_nonoverlapping") => {
+        "copy_nonoverlapping" => {
             copy_intrinsic(bcx,
                            false,
                            false,
@@ -219,7 +219,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[0],
                            llargs[2])
         }
-        (_, "copy") => {
+        "copy" => {
             copy_intrinsic(bcx,
                            true,
                            false,
@@ -228,11 +228,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[0],
                            llargs[2])
         }
-        (_, "write_bytes") => {
+        "write_bytes" => {
             memset_intrinsic(bcx, false, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
 
-        (_, "volatile_copy_nonoverlapping_memory") => {
+        "volatile_copy_nonoverlapping_memory" => {
             copy_intrinsic(bcx,
                            false,
                            true,
@@ -241,7 +241,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[1],
                            llargs[2])
         }
-        (_, "volatile_copy_memory") => {
+        "volatile_copy_memory" => {
             copy_intrinsic(bcx,
                            true,
                            true,
@@ -250,10 +250,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[1],
                            llargs[2])
         }
-        (_, "volatile_set_memory") => {
+        "volatile_set_memory" => {
             memset_intrinsic(bcx, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
-        (_, "volatile_load") => {
+        "volatile_load" => {
             let tp_ty = substs.type_at(0);
             let mut ptr = llargs[0];
             if let Some(ty) = fn_ty.ret.cast {
@@ -265,7 +265,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             }
             to_immediate(bcx, load, tp_ty)
         },
-        (_, "volatile_store") => {
+        "volatile_store" => {
             let tp_ty = substs.type_at(0);
             if type_is_fat_ptr(bcx.tcx(), tp_ty) {
                 bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
@@ -285,10 +285,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             C_nil(ccx)
         },
 
-        (_, "ctlz") | (_, "cttz") | (_, "ctpop") | (_, "bswap") |
-        (_, "add_with_overflow") | (_, "sub_with_overflow") | (_, "mul_with_overflow") |
-        (_, "overflowing_add") | (_, "overflowing_sub") | (_, "overflowing_mul") |
-        (_, "unchecked_div") | (_, "unchecked_rem") => {
+        "ctlz" | "cttz" | "ctpop" | "bswap" |
+        "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
+        "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "unchecked_div" | "unchecked_rem" => {
             let sty = &arg_tys[0].sty;
             match int_type_width_signed(sty, ccx) {
                 Some((width, signed)) =>
@@ -340,8 +340,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             }
 
         },
-        (_, "fadd_fast") | (_, "fsub_fast") | (_, "fmul_fast") | (_, "fdiv_fast") |
-        (_, "frem_fast") => {
+        "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
             let sty = &arg_tys[0].sty;
             match float_type_width(sty) {
                 Some(_width) =>
@@ -364,7 +363,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
         },
 
-        (_, "discriminant_value") => {
+        "discriminant_value" => {
             let val_ty = substs.type_at(0);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
@@ -374,7 +373,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                 _ => C_null(llret_ty)
             }
         }
-        (_, name) if name.starts_with("simd_") => {
+        name if name.starts_with("simd_") => {
             generic_simd_intrinsic(bcx, name,
                                    callee_ty,
                                    &llargs,
@@ -383,7 +382,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
-        (_, name) if name.starts_with("atomic_") => {
+        name if name.starts_with("atomic_") => {
             use llvm::AtomicOrdering::*;
 
             let split: Vec<&str> = name.split('_').collect();
@@ -501,7 +500,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
         }
 
-        (..) => {
+        _ => {
             let intr = match Intrinsic::find(&name) {
                 Some(intr) => intr,
                 None => bug!("unknown intrinsic '{}'", name),
