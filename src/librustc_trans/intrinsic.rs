@@ -180,10 +180,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             C_u64(ccx, ccx.tcx().type_id_hash(substs.type_at(0)))
         }
         (_, "init") => {
-            let tp_ty = substs.type_at(0);
-            if !type_is_zero_size(ccx, tp_ty) {
-                // Just zero out the stack slot. (See comment on base::memzero for explanation)
-                init_zero_mem(bcx, llresult, tp_ty);
+            let ty = substs.type_at(0);
+            if !type_is_zero_size(ccx, ty) {
+                // Just zero out the stack slot.
+                // If we store a zero constant, LLVM will drown in vreg allocation for large data
+                // structures, and the generated code will be awful. (A telltale sign of this is
+                // large quantities of `mov [byte ptr foo],0` in the generated code.)
+                memset_intrinsic(bcx, false, ty, llresult, C_u8(ccx, 0), C_uint(ccx, 1usize));
             }
             C_nil(ccx)
         }
@@ -226,12 +229,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[2])
         }
         (_, "write_bytes") => {
-            memset_intrinsic(bcx,
-                             false,
-                             substs.type_at(0),
-                             llargs[0],
-                             llargs[1],
-                             llargs[2])
+            memset_intrinsic(bcx, false, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
 
         (_, "volatile_copy_nonoverlapping_memory") => {
@@ -253,12 +251,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                            llargs[2])
         }
         (_, "volatile_set_memory") => {
-            memset_intrinsic(bcx,
-                             true,
-                             substs.type_at(0),
-                             llargs[0],
-                             llargs[1],
-                             llargs[2])
+            memset_intrinsic(bcx, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         (_, "volatile_load") => {
             let tp_ty = substs.type_at(0);
@@ -710,32 +703,20 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         None)
 }
 
-fn memset_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                volatile: bool,
-                                tp_ty: Ty<'tcx>,
-                                dst: ValueRef,
-                                val: ValueRef,
-                                count: ValueRef)
-                                -> ValueRef {
+fn memset_intrinsic<'blk, 'tcx>(
+    bcx: &BlockAndBuilder<'blk, 'tcx>,
+    volatile: bool,
+    ty: Ty<'tcx>,
+    dst: ValueRef,
+    val: ValueRef,
+    count: ValueRef
+) -> ValueRef {
     let ccx = bcx.ccx();
-    let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
+    let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
+    let lltp_ty = type_of::type_of(ccx, ty);
     let size = machine::llsize_of(ccx, lltp_ty);
-    let int_size = machine::llbitsize_of_real(ccx, ccx.int_type());
-
-    let name = format!("llvm.memset.p0i8.i{}", int_size);
-
-    let dst_ptr = bcx.pointercast(dst, Type::i8p(ccx));
-    let llfn = ccx.get_intrinsic(&name);
-
-    bcx.call(
-        llfn,
-        &[dst_ptr,
-        val,
-        bcx.mul(size, count),
-        align,
-        C_bool(ccx, volatile)],
-        None)
+    let dst = bcx.pointercast(dst, Type::i8p(ccx));
+    call_memset(bcx, dst, val, bcx.mul(size, count), align, volatile)
 }
 
 fn count_zeros_intrinsic(bcx: &BlockAndBuilder,

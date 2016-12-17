@@ -53,7 +53,7 @@ use builder::Builder;
 use callee::{Callee};
 use common::{BlockAndBuilder, C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_u64, C_u8, C_undef};
+use common::{C_struct_in_context, C_u64, C_undef};
 use common::{CrateContext, FunctionContext};
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
@@ -550,38 +550,17 @@ pub fn memcpy_ty<'blk, 'tcx>(
     }
 }
 
-pub fn init_zero_mem<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
-    let bcx = cx;
-    memfill(bcx, llptr, t, 0);
-}
-
-// Always use this function instead of storing a constant byte to the memory
-// in question. e.g. if you store a zero constant, LLVM will drown in vreg
-// allocation for large data structures, and the generated code will be
-// awful. (A telltale sign of this is large quantities of
-// `mov [byte ptr foo],0` in the generated code.)
-fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte: u8) {
-    let ccx = b.ccx;
-    let llty = type_of::type_of(ccx, ty);
-    let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
-    let llzeroval = C_u8(ccx, byte);
-    let size = machine::llsize_of(ccx, llty);
-    let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
-    call_memset(b, llptr, llzeroval, size, align, false);
-}
-
 pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
                                ptr: ValueRef,
                                fill_byte: ValueRef,
                                size: ValueRef,
                                align: ValueRef,
-                               volatile: bool) {
-    let ccx = b.ccx;
-    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
+                               volatile: bool) -> ValueRef {
+    let ptr_width = &b.ccx.sess().target.target.target_pointer_width[..];
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-    let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
-    let volatile = C_bool(ccx, volatile);
-    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
+    let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
+    let volatile = C_bool(b.ccx, volatile);
+    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
 pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
