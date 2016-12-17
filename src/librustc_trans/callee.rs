@@ -398,7 +398,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let llfn = callee.reify(bcx.ccx());
     let llret;
-    if let Some(landing_pad) = self_scope.as_ref().and_then(|c| c.landing_pad) {
+    if let Some(landing_pad) = self_scope.landing_pad {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
         llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
@@ -416,7 +416,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     if fn_ret.0.is_never() {
         bcx.unreachable();
     }
-    fcx.trans_scope(&bcx, self_scope);
+    self_scope.trans(&bcx);
     fcx.finish(&bcx);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);

@@ -32,6 +32,7 @@ use type_of::{type_of, sizing_type_of, align_of};
 use type_::Type;
 use value::Value;
 use Disr;
+use cleanup::CleanupScope;
 
 use syntax_pos::DUMMY_SP;
 
@@ -224,7 +225,7 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
     let contents_scope = if !shallow_drop {
         bcx.fcx().schedule_drop_adt_contents(v0, t)
     } else {
-        None
+        CleanupScope::noop()
     };
 
     let (sized_args, unsized_args);
@@ -252,7 +253,7 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
     let callee = Callee::def(bcx.ccx(), dtor_did, vtbl.substs);
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
     let llret;
-    if let Some(landing_pad) = contents_scope.as_ref().and_then(|c| c.landing_pad) {
+    if let Some(landing_pad) = contents_scope.landing_pad {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
         llret = bcx.invoke(callee.reify(bcx.ccx()), args, normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
@@ -260,7 +261,7 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
         llret = bcx.call(callee.reify(bcx.ccx()), args, None);
     }
     fn_ty.apply_attrs_callsite(llret);
-    bcx.fcx().trans_scope(&bcx, contents_scope);
+    contents_scope.trans(&bcx);
     bcx
 }
 
