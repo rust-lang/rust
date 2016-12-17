@@ -27,11 +27,10 @@ use syntax_pos::{Span, Pos};
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(fcx: &FunctionContext, builder: &Builder, scope: DIScope, span: Span) {
-    let builder = builder.llbuilder;
     let function_debug_context = match fcx.debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, Some(builder), UnknownLocation);
+            set_debug_location(fcx.ccx, builder, UnknownLocation);
             return;
         }
         FunctionDebugContext::RegularContext(ref data) => data
@@ -44,7 +43,7 @@ pub fn set_source_location(fcx: &FunctionContext, builder: &Builder, scope: DISc
     } else {
         UnknownLocation
     };
-    set_debug_location(fcx.ccx, Some(builder), dbg_loc);
+    set_debug_location(fcx.ccx, builder, dbg_loc);
 }
 
 /// Enables emitting source locations for the given functions.
@@ -80,14 +79,8 @@ impl InternalDebugLocation {
 }
 
 pub fn set_debug_location(cx: &CrateContext,
-                          builder: Option<llvm::BuilderRef>,
+                          builder: &Builder,
                           debug_location: InternalDebugLocation) {
-    if builder.is_none() {
-        if debug_location == debug_context(cx).current_debug_location.get() {
-            return;
-        }
-    }
-
     let metadata_node = match debug_location {
         KnownLocation { scope, line, .. } => {
             // Always set the column to zero like Clang and GCC
@@ -109,12 +102,7 @@ pub fn set_debug_location(cx: &CrateContext,
         }
     };
 
-    if builder.is_none() {
-        debug_context(cx).current_debug_location.set(debug_location);
-    }
-
-    let builder = builder.unwrap_or_else(|| cx.raw_builder());
     unsafe {
-        llvm::LLVMSetCurrentDebugLocation(builder, metadata_node);
+        llvm::LLVMSetCurrentDebugLocation(builder.llbuilder, metadata_node);
     }
 }

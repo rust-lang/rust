@@ -13,37 +13,26 @@
 use llvm;
 
 use common::{C_bytes, CrateContext, C_i32};
+use builder::Builder;
 use declare;
 use type_::Type;
 use session::config::NoDebugInfo;
 
-use std::ffi::CString;
 use std::ptr;
 use syntax::attr;
 
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) {
+pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, builder: &Builder) {
     if needs_gdb_debug_scripts_section(ccx) {
-        let empty = CString::new("").unwrap();
-        let gdb_debug_scripts_section_global =
-            get_or_insert_gdb_debug_scripts_section_global(ccx);
+        let gdb_debug_scripts_section_global = get_or_insert_gdb_debug_scripts_section_global(ccx);
+        // Load just the first byte as that's all that's necessary to force
+        // LLVM to keep around the reference to the global.
+        let indices = [C_i32(ccx, 0), C_i32(ccx, 0)];
+        let element = builder.inbounds_gep(gdb_debug_scripts_section_global, &indices);
+        let volative_load_instruction = builder.volatile_load(element);
         unsafe {
-            // Load just the first byte as that's all that's necessary to force
-            // LLVM to keep around the reference to the global.
-            let indices = [C_i32(ccx, 0), C_i32(ccx, 0)];
-            let element =
-                llvm::LLVMBuildInBoundsGEP(ccx.raw_builder(),
-                                           gdb_debug_scripts_section_global,
-                                           indices.as_ptr(),
-                                           indices.len() as ::libc::c_uint,
-                                           empty.as_ptr());
-            let volative_load_instruction =
-                llvm::LLVMBuildLoad(ccx.raw_builder(),
-                                    element,
-                                    empty.as_ptr());
-            llvm::LLVMSetVolatile(volative_load_instruction, llvm::True);
             llvm::LLVMSetAlignment(volative_load_instruction, 1);
         }
     }

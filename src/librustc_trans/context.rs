@@ -9,15 +9,13 @@
 // except according to those terms.
 
 use llvm;
-use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig,
-                       WorkProduct};
+use llvm::{ContextRef, ModuleRef, ValueRef};
+use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use base;
-use common::BuilderRef_res;
 use debuginfo;
 use declare;
 use glue::DropGlueKind;
@@ -139,7 +137,6 @@ pub struct LocalCrateContext<'tcx> {
     int_type: Type,
     opaque_vec_type: Type,
     str_slice_type: Type,
-    builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
     closure_vals: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
@@ -605,7 +602,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
-                builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 closure_vals: RefCell::new(FxHashMap()),
                 dbg_cx: dbg_cx,
                 eh_personality: Cell::new(None),
@@ -680,10 +676,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.shared.tcx.sess
-    }
-
-    pub fn raw_builder<'a>(&'a self) -> BuilderRef {
-        self.local().builder.b
     }
 
     pub fn get_intrinsic(&self, key: &str) -> ValueRef {
