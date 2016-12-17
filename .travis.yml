@@ -27,19 +27,19 @@ matrix:
     # OSX builders
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin
+        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
       os: osx
       install: brew install ccache
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--target=i686-apple-darwin
+        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
       os: osx
       install: brew install ccache
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin --disable-rustbuild
+        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
       install: brew install ccache
