@@ -66,11 +66,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         def_id,
                         self.tcx.item_path_str(def_id));
 
-                assert!(!self.tcx.map.is_inlined_def_id(def_id),
-                        "cannot hash HIR for inlined def-id {:?} => {:?}",
-                        def_id,
-                        self.tcx.item_path_str(def_id));
-
                 Some(self.incremental_hashes_map[dep_node])
             }
 
