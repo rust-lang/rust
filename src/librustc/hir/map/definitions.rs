@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! For each definition, we track the following data.  A definition
 //! here is defined somewhat circularly as "something with a def-id",
 //! but it generally corresponds to things like structs, enums, etc.
@@ -26,6 +25,10 @@ use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
+/// The DefPathTable maps DefIndexes to DefKeys and vice versa.
+/// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
+/// stores the DefIndex of its parent.
+/// There is one DefPathTable for each crate.
 #[derive(Clone)]
 pub struct DefPathTable {
     index_to_key: Vec<DefKey>,
@@ -110,7 +113,9 @@ impl Decodable for DefPathTable {
 }
 
 
-/// The definition table containing node definitions
+/// The definition table containing node definitions.
+/// It holds the DefPathTable for local DefIds/DefPaths and it also stores a
+/// mapping from NodeIds to local DefIds.
 #[derive(Clone)]
 pub struct Definitions {
     table: DefPathTable,
