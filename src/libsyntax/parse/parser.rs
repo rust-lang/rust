@@ -4174,7 +4174,7 @@ impl<'a> Parser<'a> {
                     }));
                     self.bump();
                 }
-                token::ModSep | token::Ident(..) => {
+                _ if self.token.is_path_start() || self.token.is_keyword(keywords::For) => {
                     let poly_trait_ref = self.parse_poly_trait_ref()?;
                     let modifier = if ate_question {
                         TraitBoundModifier::Maybe
