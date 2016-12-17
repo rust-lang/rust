@@ -35,21 +35,18 @@ use Disr;
 
 use syntax_pos::DUMMY_SP;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
+pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                            v: ValueRef,
                                            size: ValueRef,
-                                           align: ValueRef)
-                                           -> BlockAndBuilder<'blk, 'tcx> {
+                                           align: ValueRef) {
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
-    Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
-        .call(bcx, &args, None, None).0
+    Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).call(&bcx, &args, None, None)
 }
 
-pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
+pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                           ptr: ValueRef,
-                                          content_ty: Ty<'tcx>)
-                                          -> BlockAndBuilder<'blk, 'tcx> {
+                                          content_ty: Ty<'tcx>) {
     assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
@@ -58,9 +55,7 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     if content_size != 0 {
         let content_align = align_of(bcx.ccx(), content_ty);
         let ccx = bcx.ccx();
-        trans_exchange_free_dyn(bcx, ptr, C_uint(ccx, content_size), C_uint(ccx, content_align))
-    } else {
-        bcx
+        trans_exchange_free_dyn(bcx, ptr, C_uint(ccx, content_size), C_uint(ccx, content_align));
     }
 }
 
@@ -410,14 +405,23 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
                     llsize,
                     C_uint(bcx.ccx(), 0u64),
                 );
-                with_cond(bcx, needs_free, |bcx| {
-                    trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
-                })
+                if const_to_opt_uint(needs_free) == Some(0) {
+                    bcx
+                } else {
+                    let fcx = bcx.fcx();
+                    let next_cx = fcx.build_new_block("next");
+                    let cond_cx = fcx.build_new_block("cond");
+                    bcx.cond_br(needs_free, cond_cx.llbb(), next_cx.llbb());
+                    trans_exchange_free_dyn(&cond_cx, llbox, llsize, llalign);
+                    cond_cx.br(next_cx.llbb());
+                    next_cx
+                }
             } else {
                 let llval = v0;
                 let llbox = bcx.load(llval);
                 drop_ty(&bcx, llbox, content_ty);
-                trans_exchange_free_ty(bcx, llbox, content_ty)
+                trans_exchange_free_ty(&bcx, llbox, content_ty);
+                bcx
             }
         }
         ty::TyDynamic(..) => {

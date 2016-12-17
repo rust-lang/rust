@@ -82,12 +82,10 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
     let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
-    let mut bcx = fcx.get_entry_block();
+    let bcx = fcx.get_entry_block();
 
     let llargs = get_params(fcx.llfn);
-    bcx = callee.call(bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], fcx.llretslotptr,
-        None).0;
-
+    callee.call(&bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], fcx.llretslotptr, None);
     fcx.finish(&bcx);
 
     llfn

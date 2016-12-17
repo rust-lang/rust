@@ -189,11 +189,10 @@ impl<'tcx> Callee<'tcx> {
     /// For non-lang items, `dest` is always Some, and hence the result is written
     /// into memory somewhere. Nonetheless we return the actual return value of the
     /// function.
-    pub fn call<'a, 'blk>(self, bcx: BlockAndBuilder<'blk, 'tcx>,
+    pub fn call<'a, 'blk>(self, bcx: &BlockAndBuilder<'blk, 'tcx>,
                           args: &[ValueRef],
                           dest: Option<ValueRef>,
-                          lpad: Option<&'blk llvm::OperandBundleDef>)
-                          -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
+                          lpad: Option<&'blk llvm::OperandBundleDef>) {
         trans_call_inner(bcx, self, args, dest, lpad)
     }
 
@@ -538,7 +537,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    let bcx = callee.call(bcx, &llargs[(self_idx + 1)..], fcx.llretslotptr, None).0;
+    callee.call(&bcx, &llargs[(self_idx + 1)..], fcx.llretslotptr, None);
     fcx.finish(&bcx);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
@@ -648,12 +647,11 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // ______________________________________________________________________
 // Translating calls
 
-fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
+fn trans_call_inner<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                     callee: Callee<'tcx>,
                                     args: &[ValueRef],
-                                    opt_llretslot: Option<ValueRef>,
-                                    lpad: Option<&'blk llvm::OperandBundleDef>)
-                                    -> (BlockAndBuilder<'blk, 'tcx>, ValueRef) {
+                                    dest: Option<ValueRef>,
+                                    lpad: Option<&'blk llvm::OperandBundleDef>) {
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while
@@ -661,61 +659,52 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     // cleaned up. If no panic occurs, the values are handed off to
     // the callee, and hence none of the cleanups in this temporary
     // scope will ever execute.
-    let fcx = &bcx.fcx();
-    let ccx = fcx.ccx;
-
+    let ccx = bcx.ccx();
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
-    let mut callee = match callee.data {
-        NamedTupleConstructor(_) | Intrinsic => {
-            bug!("{:?} calls should not go through Callee::call", callee);
-        }
-        f => f
-    };
-
     // If there no destination, return must be direct, with no cast.
-    if opt_llretslot.is_none() {
+    if dest.is_none() {
         assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
     }
 
     let mut llargs = Vec::new();
 
     if fn_ty.ret.is_indirect() {
-        let mut llretslot = opt_llretslot.unwrap();
-        if let Some(ty) = fn_ty.ret.cast {
-            llretslot = bcx.pointercast(llretslot, ty.ptr_to());
-        }
+        let dest = dest.unwrap();
+        let llretslot = if let Some(ty) = fn_ty.ret.cast {
+            bcx.pointercast(dest, ty.ptr_to())
+        } else {
+            dest
+        };
         llargs.push(llretslot);
     }
 
-    match callee {
+    let llfn = match callee.data {
+        NamedTupleConstructor(_) | Intrinsic => {
+            bug!("{:?} calls should not go through Callee::call", callee);
+        }
         Virtual(idx) => {
             llargs.push(args[0]);
 
             let fn_ptr = meth::get_virtual_method(&bcx, args[1], idx);
             let llty = fn_ty.llvm_type(&bcx.ccx()).ptr_to();
-            callee = Fn(bcx.pointercast(fn_ptr, llty));
             llargs.extend_from_slice(&args[2..]);
+            bcx.pointercast(fn_ptr, llty)
         }
-        _ => llargs.extend_from_slice(args)
-    }
-
-    let llfn = match callee {
-        Fn(f) => f,
-        _ => bug!("expected fn pointer callee, found {:?}", callee)
+        Fn(f) => {
+            llargs.extend_from_slice(args);
+            f
+        }
     };
 
     let llret = bcx.call(llfn, &llargs[..], lpad);
     fn_ty.apply_attrs_callsite(llret);
 
     // If the function we just called does not use an outpointer,
-    // store the result into the rust outpointer. Cast the outpointer
-    // type to match because some ABIs will use a different type than
-    // the Rust type. e.g., a {u32,u32} struct could be returned as
-    // u64.
+    // store the result into the Rust outpointer.
     if !fn_ty.ret.is_indirect() {
-        if let Some(llretslot) = opt_llretslot {
+        if let Some(llretslot) = dest {
             fn_ty.ret.store(&bcx, llret, llretslot);
         }
     }
@@ -723,6 +712,4 @@ fn trans_call_inner<'a, 'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
     if fn_ret.0.is_never() {
         bcx.unreachable();
     }
-
-    (bcx, llret)
 }
