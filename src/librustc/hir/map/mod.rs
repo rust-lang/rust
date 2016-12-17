@@ -226,17 +226,9 @@ pub struct Map<'ast> {
     /// All NodeIds that are numerically greater or equal to this value come
     /// from inlined items.
     local_node_id_watermark: NodeId,
-
-    /// All def-indices that are numerically greater or equal to this value come
-    /// from inlined items.
-    local_def_id_watermark: usize,
 }
 
 impl<'ast> Map<'ast> {
-    pub fn is_inlined_def_id(&self, id: DefId) -> bool {
-        id.is_local() && id.index.as_usize() >= self.local_def_id_watermark
-    }
-
     pub fn is_inlined_node_id(&self, id: NodeId) -> bool {
         id >= self.local_node_id_watermark
     }
@@ -262,7 +254,6 @@ impl<'ast> Map<'ast> {
                     EntryItem(_, item) => {
                         assert_eq!(id, item.id);
                         let def_id = self.local_def_id(id);
-                        assert!(!self.is_inlined_def_id(def_id));
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
@@ -278,7 +269,6 @@ impl<'ast> Map<'ast> {
 
                     EntryImplItem(_, item) => {
                         let def_id = self.local_def_id(id);
-                        assert!(!self.is_inlined_def_id(def_id));
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
@@ -934,7 +924,6 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
     }
 
     let local_node_id_watermark = NodeId::new(map.len());
-    let local_def_id_watermark = definitions.len();
 
     Map {
         forest: forest,
@@ -942,7 +931,6 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
         map: RefCell::new(map),
         definitions: definitions,
         local_node_id_watermark: local_node_id_watermark,
-        local_def_id_watermark: local_def_id_watermark,
     }
 }
 
