@@ -155,14 +155,12 @@ impl<'tcx> CleanupScope<'tcx> {
         }
     }
 
-    /// Creates a landing pad for the top scope, if one does not exist. The
-    /// landing pad will perform all cleanups necessary for an unwind and then
-    /// `resume` to continue error propagation:
+    /// Creates a landing pad for the top scope. The landing pad will perform all cleanups necessary
+    /// for an unwind and then `resume` to continue error propagation:
     ///
     ///     landing_pad -> ... cleanups ... -> [resume]
     ///
-    /// (The cleanups and resume instruction are created by
-    /// `trans_cleanups_to_exit_scope()`, not in this function itself.)
+    /// This should only be called once per function, as it creates an alloca for the landingpad.
     fn get_landing_pad<'a>(fcx: &FunctionContext<'a, 'tcx>, drop_val: &DropValue<'tcx>)
         -> BasicBlockRef {
         debug!("get_landing_pad");
@@ -171,6 +169,7 @@ impl<'tcx> CleanupScope<'tcx> {
 
         let llpersonality = pad_bcx.fcx().eh_personality();
 
+        let resume_bcx = fcx.build_new_block("resume");
         let val = if base::wants_msvc_seh(fcx.ccx.sess()) {
             // A cleanup pad requires a personality function to be specified, so
             // we do that here explicitly (happens implicitly below through
@@ -179,6 +178,7 @@ impl<'tcx> CleanupScope<'tcx> {
             // exceptions.
             pad_bcx.set_personality_fn(llpersonality);
             let llretval = pad_bcx.cleanup_pad(None, &[]);
+            resume_bcx.cleanup_ret(resume_bcx.cleanup_pad(None, &[]), None);
             UnwindKind::CleanupPad(llretval)
         } else {
             // The landing pad return type (the type being propagated). Not sure
@@ -194,37 +194,19 @@ impl<'tcx> CleanupScope<'tcx> {
             // The landing pad block is a cleanup
             pad_bcx.set_cleanup(llretval);
 
-            let addr = match fcx.landingpad_alloca.get() {
-                Some(addr) => addr,
-                None => {
-                    let addr = pad_bcx.fcx().alloca(common::val_ty(llretval), "");
-                    Lifetime::Start.call(&pad_bcx, addr);
-                    fcx.landingpad_alloca.set(Some(addr));
-                    addr
-                }
-            };
+            let addr = pad_bcx.fcx().alloca(common::val_ty(llretval), "");
+            Lifetime::Start.call(&pad_bcx, addr);
             pad_bcx.store(llretval, addr);
+            let lp = resume_bcx.load(addr);
+            Lifetime::End.call(&resume_bcx, addr);
+            if !resume_bcx.sess().target.target.options.custom_unwind_resume {
+                resume_bcx.resume(lp);
+            } else {
+                let exc_ptr = resume_bcx.extract_value(lp, 0);
+                resume_bcx.call(fcx.eh_unwind_resume().reify(fcx.ccx), &[exc_ptr], None);
+            }
             UnwindKind::LandingPad
         };
-
-        // Generate a block that will resume unwinding to the calling function
-        let bcx = fcx.build_new_block("resume");
-        match val {
-            UnwindKind::LandingPad => {
-                let addr = fcx.landingpad_alloca.get().unwrap();
-                let lp = bcx.load(addr);
-                Lifetime::End.call(&bcx, addr);
-                if !bcx.sess().target.target.options.custom_unwind_resume {
-                    bcx.resume(lp);
-                } else {
-                    let exc_ptr = bcx.extract_value(lp, 0);
-                    bcx.call(bcx.fcx().eh_unwind_resume().reify(bcx.ccx()), &[exc_ptr], None);
-                }
-            }
-            UnwindKind::CleanupPad(_) => {
-                bcx.cleanup_ret(bcx.cleanup_pad(None, &[]), None);
-            }
-        }
 
         let mut cleanup = fcx.build_new_block("clean_custom_");
 
@@ -232,7 +214,7 @@ impl<'tcx> CleanupScope<'tcx> {
         drop_val.trans(val.get_funclet(&cleanup).as_ref(), &cleanup);
 
         // Insert instruction into cleanup block to branch to the exit
-        val.branch(&mut cleanup, bcx.llbb());
+        val.branch(&mut cleanup, resume_bcx.llbb());
 
         // Branch into the cleanup block
         val.branch(&mut pad_bcx, cleanup.llbb());

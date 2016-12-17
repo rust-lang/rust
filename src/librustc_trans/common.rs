@@ -48,7 +48,7 @@ use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 use std::ffi::CString;
-use std::cell::{Cell, Ref};
+use std::cell::Ref;
 
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
@@ -262,14 +262,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Option<ValueRef>,
 
-    // When working with landingpad-based exceptions this value is alloca'd and
-    // later loaded when using the resume instruction. This ends up being
-    // critical to chaining landing pads and resuing already-translated
-    // cleanups.
-    //
-    // Note that for cleanuppad-based exceptions this is not used.
-    pub landingpad_alloca: Cell<Option<ValueRef>>,
-
     // Describes the return/argument LLVM types and their ABI handling.
     pub fn_ty: FnType,
 
@@ -331,7 +323,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             llretslotptr: None,
             param_env: ccx.tcx().empty_parameter_environment(),
             alloca_insert_pt: None,
-            landingpad_alloca: Cell::new(None),
             fn_ty: fn_ty,
             param_substs: param_substs,
             ccx: ccx,
