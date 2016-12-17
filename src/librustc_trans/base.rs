@@ -696,7 +696,8 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)), true);
 
-    mir::trans_mir(&fcx, ccx.tcx().item_mir(instance.def));
+    let mir = ccx.tcx().item_mir(instance.def);
+    mir::trans_mir(&fcx, &mir);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

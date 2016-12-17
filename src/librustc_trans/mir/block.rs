@@ -38,14 +38,13 @@ use super::lvalue::{LvalueRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-use std::cell::Ref as CellRef;
 use std::ptr;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock,
         funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
         let mut bcx = self.build_block(bb);
-        let data = &CellRef::clone(&self.mir)[bb];
+        let data = &self.mir[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
