@@ -17,14 +17,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         use value::PrimValKind::*;
         match kind {
-            F32 => self.cast_float(val.to_f32() as f64, dest_ty),
-            F64 => self.cast_float(val.to_f64(), dest_ty),
+            F32 => self.cast_float(val.to_f32()? as f64, dest_ty),
+            F64 => self.cast_float(val.to_f64()?, dest_ty),
 
             I8 | I16 | I32 | I64 => self.cast_signed_int(val.bits() as i64, dest_ty),
 
             Bool | Char | U8 | U16 | U32 | U64 => self.cast_int(val.bits(), dest_ty, false),
 
-            FnPtr | Ptr => self.cast_ptr(val.to_ptr(), dest_ty),
+            FnPtr | Ptr => self.cast_ptr(val.to_ptr()?, dest_ty),
         }
     }
 

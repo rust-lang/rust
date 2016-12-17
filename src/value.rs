@@ -78,7 +78,7 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
-            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.to_ptr()),
+            ByVal(ptr) | ByValPair(ptr, _) => ptr.to_ptr(),
         }
     }
 
@@ -94,7 +94,7 @@ impl<'a, 'tcx: 'a> Value {
                 Ok((ptr, vtable))
             }
 
-            ByValPair(ptr, vtable) => Ok((ptr.to_ptr(), vtable.to_ptr())),
+            ByValPair(ptr, vtable) => Ok((ptr.to_ptr()?, vtable.to_ptr()?)),
 
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
@@ -109,18 +109,18 @@ impl<'a, 'tcx: 'a> Value {
                 Ok((ptr, len))
             },
             ByValPair(ptr, val) => {
-                Ok((ptr.to_ptr(), val.try_as_uint()?))
+                Ok((ptr.to_ptr()?, val.to_u64()?))
             },
             _ => unimplemented!(),
         }
     }
 }
 
-impl PrimVal {
+impl<'tcx> PrimVal {
     // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
     // stick around with this name.
-    pub fn bits(&self) -> u64 {
-        match *self {
+    pub fn bits(self) -> u64 {
+        match self {
             PrimVal::Bytes(b) => b,
             PrimVal::Ptr(p) => p.offset,
             PrimVal::Undef => panic!(".bits()() on PrimVal::Undef"),
@@ -129,28 +129,12 @@ impl PrimVal {
 
     // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
     // stick around with this name.
-    pub fn relocation(&self) -> Option<AllocId> {
-        if let PrimVal::Ptr(ref p) = *self {
+    pub fn relocation(self) -> Option<AllocId> {
+        if let PrimVal::Ptr(ref p) = self {
             Some(p.alloc_id)
         } else {
             None
         }
-    }
-
-    pub fn from_bool(b: bool) -> Self {
-        PrimVal::Bytes(b as u64)
-    }
-
-    pub fn from_char(c: char) -> Self {
-        PrimVal::Bytes(c as u64)
-    }
-
-    pub fn from_f32(f: f32) -> Self {
-        PrimVal::Bytes(f32_to_bits(f))
-    }
-
-    pub fn from_f64(f: f64) -> Self {
-        PrimVal::Bytes(f64_to_bits(f))
     }
 
     pub fn from_uint(n: u64) -> Self {
@@ -161,48 +145,56 @@ impl PrimVal {
         PrimVal::Bytes(n as u64)
     }
 
-    pub fn to_f32(self) -> f32 {
-        assert!(self.relocation().is_none());
-        bits_to_f32(self.bits())
+    pub fn from_f32(f: f32) -> Self {
+        PrimVal::Bytes(f32_to_bits(f))
     }
 
-    pub fn to_f64(self) -> f64 {
-        assert!(self.relocation().is_none());
-        bits_to_f64(self.bits())
+    pub fn from_f64(f: f64) -> Self {
+        PrimVal::Bytes(f64_to_bits(f))
     }
 
-    pub fn to_ptr(self) -> Pointer {
-        self.relocation().map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits())
-        }).unwrap_or_else(|| Pointer::from_int(self.bits()))
+    pub fn from_bool(b: bool) -> Self {
+        PrimVal::Bytes(b as u64)
     }
 
-    pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
-        self.to_ptr().to_int()
+    pub fn from_char(c: char) -> Self {
+        PrimVal::Bytes(c as u64)
     }
 
-    pub fn to_u64(self) -> u64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as u64;
+    fn to_bytes(self) -> EvalResult<'tcx, u64> {
+        match self {
+            PrimVal::Bytes(b) => Ok(b),
+            PrimVal::Ptr(p) => p.to_int(),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
-        self.bits()
     }
 
-    pub fn to_i64(self) -> i64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as i64;
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+        match self {
+            PrimVal::Bytes(b) => Ok(Pointer::from_int(b)),
+            PrimVal::Ptr(p) => Ok(p),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
-        self.bits() as i64
     }
 
-    pub fn try_as_ptr(self) -> Option<Pointer> {
-        self.relocation().map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits())
-        })
+    pub fn to_u64(self) -> EvalResult<'tcx, u64> {
+        self.to_bytes()
     }
 
-    pub fn try_as_bool<'tcx>(self) -> EvalResult<'tcx, bool> {
-        match self.bits() {
+    pub fn to_i64(self) -> EvalResult<'tcx, i64> {
+        self.to_bytes().map(|b| b as i64)
+    }
+
+    pub fn to_f32(self) -> EvalResult<'tcx, f32> {
+        self.to_bytes().map(bits_to_f32)
+    }
+
+    pub fn to_f64(self) -> EvalResult<'tcx, f64> {
+        self.to_bytes().map(bits_to_f64)
+    }
+
+    pub fn to_bool(self) -> EvalResult<'tcx, bool> {
+        match self.to_bytes()? {
             0 => Ok(false),
             1 => Ok(true),
             _ => Err(EvalError::InvalidBool),

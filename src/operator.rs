@@ -142,8 +142,8 @@ pub fn binary_op<'tcx>(
     // If the pointers are into the same allocation, fall through to the more general match
     // later, which will do comparisons on the `bits` fields, which are the pointer offsets
     // in this case.
-    let left_ptr = left.to_ptr();
-    let right_ptr = right.to_ptr();
+    let left_ptr = left.to_ptr()?;
+    let right_ptr = right.to_ptr()?;
     if left_ptr.alloc_id != right_ptr.alloc_id {
         return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
     }

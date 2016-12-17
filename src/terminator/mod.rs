@@ -38,7 +38,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Goto { target } => self.goto_block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
-                let cond_val = self.eval_operand_to_primval(cond)?.try_as_bool()?;
+                let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
                 self.goto_block(if cond_val { then_target } else { else_target });
             }
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
-                        let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr();
+                        let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
                         let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         let bare_sig = self.tcx.erase_late_bound_regions_and_normalize(&bare_fn_ty.sig);
                         let bare_sig = self.tcx.erase_regions(&bare_sig);
@@ -132,7 +132,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
-                let cond_val = self.eval_operand_to_primval(cond)?.try_as_bool()?;
+                let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
@@ -141,10 +141,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let span = terminator.source_info.span;
                             let len = self.eval_operand_to_primval(len)
                                 .expect("can't eval len")
-                                .to_u64();
+                                .to_u64()?;
                             let index = self.eval_operand_to_primval(index)
                                 .expect("can't eval index")
-                                .to_u64();
+                                .to_u64()?;
                             Err(EvalError::ArrayIndexOutOfBounds(span, len, index))
                         },
                         mir::AssertMessage::Math(ref err) =>
@@ -333,8 +333,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match &link_name[..] {
             "__rust_allocate" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64();
-                let align = self.value_to_primval(args[1], usize)?.to_u64();
+                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
                 let ptr = self.memory.allocate(size, align)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
@@ -342,15 +342,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "__rust_deallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
                 // FIXME: insert sanity check for size and align?
-                let _old_size = self.value_to_primval(args[1], usize)?.to_u64();
-                let _align = self.value_to_primval(args[2], usize)?.to_u64();
+                let _old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let _align = self.value_to_primval(args[2], usize)?.to_u64()?;
                 self.memory.deallocate(ptr)?;
             },
 
             "__rust_reallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
-                let size = self.value_to_primval(args[2], usize)?.to_u64();
-                let align = self.value_to_primval(args[3], usize)?.to_u64();
+                let size = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[3], usize)?.to_u64()?;
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
@@ -358,7 +358,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "memcmp" => {
                 let left = args[0].read_ptr(&self.memory)?;
                 let right = args[1].read_ptr(&self.memory)?;
-                let n = self.value_to_primval(args[2], usize)?.to_u64();
+                let n = self.value_to_primval(args[2], usize)?.to_u64()?;
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -377,13 +377,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "memchr" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
-                let val = self.value_to_primval(args[1], usize)?.to_u64() as u8;
-                let num = self.value_to_primval(args[2], usize)?.to_u64();
+                let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
+                let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
                     let new_ptr = ptr.offset(idx as u64);
-                    self.write_value(Value::ByVal(PrimVal::from_ptr(new_ptr)), dest, dest_ty)?;
+                    self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
                 } else {
-                    self.write_value(Value::ByVal(PrimVal::new(0)), dest, dest_ty)?;
+                    self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
                 }
             }
 
@@ -393,12 +393,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let name = self.memory.read_c_str(name_ptr)?;
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
-                self.write_value(Value::ByVal(PrimVal::new(0)), dest, dest_ty)?;
+                self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
             }
 
             // unix panic code inside libstd will read the return value of this function
             "pthread_rwlock_rdlock" => {
-                self.write_primval(dest, PrimVal::new(0), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
 
             link_name if link_name.starts_with("pthread_") => {
@@ -594,14 +594,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("follow_by_ref_value can't result in ByRef"),
                     Value::ByVal(ptr) => {
                         assert!(self.type_is_sized(contents_ty));
-                        let contents_ptr = ptr.to_ptr();
+                        let contents_ptr = ptr.to_ptr()?;
                         self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
                     },
                     Value::ByValPair(prim_ptr, extra) => {
-                        let ptr = prim_ptr.to_ptr();
+                        let ptr = prim_ptr.to_ptr()?;
                         let extra = match self.tcx.struct_tail(contents_ty).sty {
-                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()),
-                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
+                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()?),
+                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.to_u64()?),
                             _ => bug!("invalid fat pointer type: {}", ty),
                         };
                         self.drop(

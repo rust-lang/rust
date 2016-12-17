@@ -279,7 +279,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
-                let n = self.value_to_primval(n_ptr, usize)?.to_u64();
+                let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
                 assert!(n < len);
                 let ptr = base_ptr.offset(n * elem_size);
                 (ptr, LvalueExtra::None)
