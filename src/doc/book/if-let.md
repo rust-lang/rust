@@ -1,7 +1,9 @@
 % if let
 
-`if let` allows you to combine `if` and `let` together to reduce the overhead
-of certain kinds of pattern matches.
+`if let` is a figurative combination of `if` and `let`.  `if let` does not literally 
+mean `if` + `let` to the compiler; it has its own special meaning,which was added for 
+convenience and as a way to reduce the overhead of certain kinds of pattern matches.
+
 
 For example, let’s say we have some sort of `Option<T>`. We want to call a function
 on it if it’s `Some<T>`, but do nothing if it’s `None`. That looks like this:
