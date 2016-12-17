@@ -53,7 +53,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 for (index, const_val) in values.iter().enumerate() {
                     let val = self.const_to_value(const_val)?;
                     let prim = self.value_to_primval(val, discr_ty)?;
-                    if discr_prim.bits() == prim.bits() {
+                    if discr_prim.to_bytes()? == prim.to_bytes()? {
                         target_block = targets[index];
                         break;
                     }

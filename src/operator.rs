@@ -139,16 +139,38 @@ pub fn binary_op<'tcx>(
     use rustc::mir::BinOp::*;
     use value::PrimValKind::*;
 
-    // If the pointers are into the same allocation, fall through to the more general match
-    // later, which will do comparisons on the `bits` fields, which are the pointer offsets
-    // in this case.
-    let left_ptr = left.to_ptr()?;
-    let right_ptr = right.to_ptr()?;
-    if left_ptr.alloc_id != right_ptr.alloc_id {
-        return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
+    // FIXME(solson): Temporary hack. It will go away when we get rid of Pointer's ability to store
+    // plain bytes, and leave that to PrimVal::Bytes.
+    fn normalize(val: PrimVal) -> PrimVal {
+        if let PrimVal::Ptr(ptr) = val {
+            if let Ok(bytes) = ptr.to_int() {
+                return PrimVal::Bytes(bytes);
+            }
+        }
+        val
     }
+    let (left, right) = (normalize(left), normalize(right));
 
-    let (l, r) = (left.bits(), right.bits());
+    let (l, r) = match (left, right) {
+        (PrimVal::Bytes(left_bytes), PrimVal::Bytes(right_bytes)) => (left_bytes, right_bytes),
+
+        (PrimVal::Ptr(left_ptr), PrimVal::Ptr(right_ptr)) => {
+            if left_ptr.alloc_id == right_ptr.alloc_id {
+                // If the pointers are into the same allocation, fall through to the more general
+                // match later, which will do comparisons on the pointer offsets.
+                (left_ptr.offset, right_ptr.offset)
+            } else {
+                return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
+            }
+        }
+
+        (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) |
+        (PrimVal::Bytes(bytes), PrimVal::Ptr(ptr)) => {
+            return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes))?, false));
+        }
+
+        (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
+    };
 
     // These ops can have an RHS with a different numeric type.
     if bin_op == Shl || bin_op == Shr {
@@ -165,11 +187,11 @@ pub fn binary_op<'tcx>(
 
         // Cast to `u32` because `overflowing_sh{l,r}` only take `u32`, then apply the bitmask
         // to ensure it's within the valid shift value range.
-        let r = (right.bits() as u32) & (type_bits - 1);
+        let masked_shift_width = (r as u32) & (type_bits - 1);
 
         return match bin_op {
-            Shl => int_shift!(left_kind, overflowing_shl, l, r),
-            Shr => int_shift!(left_kind, overflowing_shr, l, r),
+            Shl => int_shift!(left_kind, overflowing_shl, l, masked_shift_width),
+            Shr => int_shift!(left_kind, overflowing_shr, l, masked_shift_width),
             _ => bug!("it has already been checked that this is a shift op"),
         };
     }
@@ -253,26 +275,28 @@ pub fn unary_op<'tcx>(
     use rustc::mir::UnOp::*;
     use value::PrimValKind::*;
 
-    let bits = match (un_op, val_kind) {
-        (Not, Bool) => !bits_to_bool(val.bits()) as u64,
+    let bytes = val.to_bytes()?;
 
-        (Not, U8)  => !(val.bits() as u8) as u64,
-        (Not, U16) => !(val.bits() as u16) as u64,
-        (Not, U32) => !(val.bits() as u32) as u64,
-        (Not, U64) => !val.bits(),
+    let result_bytes = match (un_op, val_kind) {
+        (Not, Bool) => !bits_to_bool(bytes) as u64,
 
-        (Not, I8)  => !(val.bits() as i8) as u64,
-        (Not, I16) => !(val.bits() as i16) as u64,
-        (Not, I32) => !(val.bits() as i32) as u64,
-        (Not, I64) => !(val.bits() as i64) as u64,
+        (Not, U8)  => !(bytes as u8) as u64,
+        (Not, U16) => !(bytes as u16) as u64,
+        (Not, U32) => !(bytes as u32) as u64,
+        (Not, U64) => !bytes,
 
-        (Neg, I8)  => -(val.bits() as i8) as u64,
-        (Neg, I16) => -(val.bits() as i16) as u64,
-        (Neg, I32) => -(val.bits() as i32) as u64,
-        (Neg, I64) => -(val.bits() as i64) as u64,
+        (Not, I8)  => !(bytes as i8) as u64,
+        (Not, I16) => !(bytes as i16) as u64,
+        (Not, I32) => !(bytes as i32) as u64,
+        (Not, I64) => !(bytes as i64) as u64,
 
-        (Neg, F32) => f32_to_bits(-bits_to_f32(val.bits())),
-        (Neg, F64) => f64_to_bits(-bits_to_f64(val.bits())),
+        (Neg, I8)  => -(bytes as i8) as u64,
+        (Neg, I16) => -(bytes as i16) as u64,
+        (Neg, I32) => -(bytes as i32) as u64,
+        (Neg, I64) => -(bytes as i64) as u64,
+
+        (Neg, F32) => f32_to_bits(-bits_to_f32(bytes)),
+        (Neg, F64) => f64_to_bits(-bits_to_f64(bytes)),
 
         _ => {
             let msg = format!("unimplemented unary op: {:?}, {:?}", un_op, val);
@@ -280,5 +304,5 @@ pub fn unary_op<'tcx>(
         }
     };
 
-    Ok(PrimVal::Bytes(bits))
+    Ok(PrimVal::Bytes(result_bytes))
 }

@@ -117,16 +117,6 @@ impl<'a, 'tcx: 'a> Value {
 }
 
 impl<'tcx> PrimVal {
-    // FIXME(solson): Remove this. It's a temporary function to aid refactoring, but it shouldn't
-    // stick around with this name.
-    pub fn bits(self) -> u64 {
-        match self {
-            PrimVal::Bytes(b) => b,
-            PrimVal::Ptr(p) => p.offset,
-            PrimVal::Undef => panic!(".bits()() on PrimVal::Undef"),
-        }
-    }
-
     pub fn from_u64(n: u64) -> Self {
         PrimVal::Bytes(n)
     }
@@ -151,7 +141,7 @@ impl<'tcx> PrimVal {
         PrimVal::Bytes(c as u64)
     }
 
-    fn to_bytes(self) -> EvalResult<'tcx, u64> {
+    pub fn to_bytes(self) -> EvalResult<'tcx, u64> {
         match self {
             PrimVal::Bytes(b) => Ok(b),
             PrimVal::Ptr(p) => p.to_int(),

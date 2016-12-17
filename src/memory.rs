@@ -77,8 +77,7 @@ impl Pointer {
 
     pub fn to_int<'tcx>(&self) -> EvalResult<'tcx, u64> {
         match self.alloc_id {
-            NEVER_ALLOC_ID |
-            ZST_ALLOC_ID => Ok(self.offset),
+            NEVER_ALLOC_ID => Ok(self.offset),
             _ => Err(EvalError::ReadPointerAsBytes),
         }
     }

@@ -1093,10 +1093,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         match ty.sty {
-            ty::TyBool if val.bits() > 1 => Err(EvalError::InvalidBool),
+            ty::TyBool if val.to_bytes()? > 1 => Err(EvalError::InvalidBool),
 
-            ty::TyChar if ::std::char::from_u32(val.bits() as u32).is_none()
-                => Err(EvalError::InvalidChar(val.bits() as u32 as u64)),
+            ty::TyChar if ::std::char::from_u32(val.to_bytes()? as u32).is_none()
+                => Err(EvalError::InvalidChar(val.to_bytes()? as u32 as u64)),
 
             _ => Ok(()),
         }

@@ -163,7 +163,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let num = self.value_to_primval(arg_vals[0], ty)?;
                 let kind = self.ty_to_primval_kind(ty)?;
-                let num = numeric_intrinsic(intrinsic_name, num, kind);
+                let num = numeric_intrinsic(intrinsic_name, num, kind)?;
                 self.write_primval(dest, num, ty)?;
             }
 
@@ -501,33 +501,40 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 }
 
-macro_rules! integer_intrinsic {
-    ($name:expr, $val:expr, $kind:expr, $method:ident) => ({
-        let val = $val;
+fn numeric_intrinsic<'tcx>(
+    name: &str,
+    val: PrimVal,
+    kind: PrimValKind
+) -> EvalResult<'tcx, PrimVal> {
+    macro_rules! integer_intrinsic {
+        ($name:expr, $val:expr, $kind:expr, $method:ident) => ({
+            let val = $val;
+            let bytes = val.to_bytes()?;
 
-        use value::PrimValKind::*;
-        let bits = match $kind {
-            I8 => (val.bits() as i8).$method() as u64,
-            U8 => (val.bits() as u8).$method() as u64,
-            I16 => (val.bits() as i16).$method() as u64,
-            U16 => (val.bits() as u16).$method() as u64,
-            I32 => (val.bits() as i32).$method() as u64,
-            U32 => (val.bits() as u32).$method() as u64,
-            I64 => (val.bits() as i64).$method() as u64,
-            U64 => (val.bits() as u64).$method() as u64,
-            _ => bug!("invalid `{}` argument: {:?}", $name, val),
-        };
+            use value::PrimValKind::*;
+            let result_bytes = match $kind {
+                I8 => (bytes as i8).$method() as u64,
+                U8 => (bytes as u8).$method() as u64,
+                I16 => (bytes as i16).$method() as u64,
+                U16 => (bytes as u16).$method() as u64,
+                I32 => (bytes as i32).$method() as u64,
+                U32 => (bytes as u32).$method() as u64,
+                I64 => (bytes as i64).$method() as u64,
+                U64 => bytes.$method() as u64,
+                _ => bug!("invalid `{}` argument: {:?}", $name, val),
+            };
 
-        PrimVal::Bytes(bits)
-    });
-}
+            PrimVal::Bytes(result_bytes)
+        });
+    }
 
-fn numeric_intrinsic(name: &str, val: PrimVal, kind: PrimValKind) -> PrimVal {
-    match name {
+    let result_val = match name {
         "bswap" => integer_intrinsic!("bswap", val, kind, swap_bytes),
         "ctlz"  => integer_intrinsic!("ctlz",  val, kind, leading_zeros),
         "ctpop" => integer_intrinsic!("ctpop", val, kind, count_ones),
         "cttz"  => integer_intrinsic!("cttz",  val, kind, trailing_zeros),
         _       => bug!("not a numeric intrinsic: {}", name),
-    }
+    };
+
+    Ok(result_val)
 }
