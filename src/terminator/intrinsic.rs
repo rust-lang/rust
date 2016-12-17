@@ -57,6 +57,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "atomic_load" |
+            "atomic_load_relaxed" |
             "atomic_load_acq" |
             "volatile_load" => {
                 let ty = substs.type_at(0);
