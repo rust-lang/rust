@@ -427,13 +427,14 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
-pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+pub fn C_big_integral(t: Type, u: u128, sign_extend: bool) -> ValueRef {
     if ::std::mem::size_of::<u128>() == 16 {
         unsafe {
             llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, &u as *const u128 as *const u64)
         }
     } else {
-        C_integral(t, u as u64, false)
+        // SNAP: remove after snapshot
+        C_integral(t, u as u64, sign_extend)
     }
 }
 
