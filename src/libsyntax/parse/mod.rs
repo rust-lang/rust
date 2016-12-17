@@ -222,14 +222,14 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser::new(sess, Box::new(srdr));
+    let mut p1 = Parser::new(sess, Box::new(srdr), None, false);
     panictry!(p1.parse_all_token_trees())
 }
 
 /// Given tts and the ParseSess, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
-    let mut p = Parser::new(sess, Box::new(trdr));
+    let mut p = Parser::new(sess, Box::new(trdr), None, false);
     p.check_unknown_macro_variable();
     p
 }

@@ -267,12 +267,11 @@ impl From<P<Expr>> for LhsExpr {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess, rdr: Box<Reader+'a>) -> Self {
-        Parser::new_with_doc_flag(sess, rdr, false)
-    }
-
-    pub fn new_with_doc_flag(sess: &'a ParseSess, rdr: Box<Reader+'a>, desugar_doc_comments: bool)
-                             -> Self {
+    pub fn new(sess: &'a ParseSess,
+               rdr: Box<Reader+'a>,
+               directory: Option<Directory>,
+               desugar_doc_comments: bool)
+               -> Self {
         let mut parser = Parser {
             reader: rdr,
             sess: sess,
@@ -298,7 +297,9 @@ impl<'a> Parser<'a> {
         let tok = parser.next_tok();
         parser.token = tok.tok;
         parser.span = tok.sp;
-        if parser.span != syntax_pos::DUMMY_SP {
+        if let Some(directory) = directory {
+            parser.directory = directory;
+        } else if parser.span != syntax_pos::DUMMY_SP {
             parser.directory.path = PathBuf::from(sess.codemap().span_to_filename(parser.span));
             parser.directory.path.pop();
         }
