@@ -306,7 +306,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
 
-    alloca_builder: OwnedBuilder<'a, 'tcx>,
+    alloca_builder: Builder<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
@@ -359,13 +359,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             param_substs: param_substs,
             ccx: ccx,
             debug_context: debug_context,
-            alloca_builder: OwnedBuilder::new_with_ccx(ccx),
+            alloca_builder: Builder::with_ccx(ccx),
         };
 
         let val = {
             let entry_bcx = fcx.build_new_block("entry-block");
             let val = entry_bcx.load(C_null(Type::i8p(ccx)));
-            fcx.alloca_builder.builder.position_at_start(entry_bcx.llbb());
+            fcx.alloca_builder.position_at_start(entry_bcx.llbb());
             val
         };
 
@@ -509,7 +509,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
-        self.alloca_builder.builder.dynamic_alloca(ty, name)
+        self.alloca_builder.dynamic_alloca(ty, name)
     }
 }
 
@@ -517,33 +517,6 @@ impl<'a, 'tcx> Drop for FunctionContext<'a, 'tcx> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
-        }
-    }
-}
-
-pub struct OwnedBuilder<'blk, 'tcx: 'blk> {
-    builder: Builder<'blk, 'tcx>
-}
-
-impl<'blk, 'tcx> OwnedBuilder<'blk, 'tcx> {
-    pub fn new_with_ccx(ccx: &'blk CrateContext<'blk, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe {
-            llvm::LLVMCreateBuilderInContext(ccx.llcx())
-        };
-        OwnedBuilder {
-            builder: Builder {
-                llbuilder: llbuilder,
-                ccx: ccx,
-            }
-        }
-    }
-}
-
-impl<'blk, 'tcx> Drop for OwnedBuilder<'blk, 'tcx> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMDisposeBuilder(self.builder.llbuilder);
         }
     }
 }
@@ -561,18 +534,18 @@ pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
     // attached.
     fcx: &'blk FunctionContext<'blk, 'tcx>,
 
-    owned_builder: OwnedBuilder<'blk, 'tcx>,
+    builder: Builder<'blk, 'tcx>,
 }
 
 impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     pub fn new(llbb: BasicBlockRef, fcx: &'blk FunctionContext<'blk, 'tcx>) -> Self {
-        let owned_builder = OwnedBuilder::new_with_ccx(fcx.ccx);
+        let builder = Builder::with_ccx(fcx.ccx);
         // Set the builder's position to this block's end.
-        owned_builder.builder.position_at_end(llbb);
+        builder.position_at_end(llbb);
         BlockAndBuilder {
             llbb: llbb,
             fcx: fcx,
-            owned_builder: owned_builder,
+            builder: builder,
         }
     }
 
@@ -610,7 +583,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {
     type Target = Builder<'blk, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.owned_builder.builder
+        &self.builder
     }
 }
 
