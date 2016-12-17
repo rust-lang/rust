@@ -10,18 +10,15 @@
 
 use llvm;
 use llvm::BasicBlockRef;
-use value::{Users, Value};
-use std::iter::{Filter, Map};
+use value::Value;
 
 #[derive(Copy, Clone)]
 pub struct BasicBlock(pub BasicBlockRef);
 
-pub type Preds = Map<Filter<Users, fn(&Value) -> bool>, fn(Value) -> BasicBlock>;
-
 /// Wrapper for LLVM BasicBlockRef
 impl BasicBlock {
     pub fn get(&self) -> BasicBlockRef {
-        let BasicBlock(v) = *self; v
+        self.0
     }
 
     pub fn as_value(self) -> Value {
@@ -30,16 +27,10 @@ impl BasicBlock {
         }
     }
 
-    pub fn pred_iter(self) -> Preds {
-        fn is_a_terminator_inst(user: &Value) -> bool { user.is_a_terminator_inst() }
-        let is_a_terminator_inst: fn(&Value) -> bool = is_a_terminator_inst;
-
-        fn get_parent(user: Value) -> BasicBlock { user.get_parent().unwrap() }
-        let get_parent: fn(Value) -> BasicBlock = get_parent;
-
+    pub fn pred_iter(self) -> impl Iterator<Item=BasicBlock> {
         self.as_value().user_iter()
-            .filter(is_a_terminator_inst)
-            .map(get_parent)
+            .filter(|user| user.is_a_terminator_inst())
+            .map(|user| user.get_parent().unwrap())
     }
 
     pub fn get_single_predecessor(self) -> Option<BasicBlock> {

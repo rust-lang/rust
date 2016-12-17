@@ -36,6 +36,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
+#![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
 
