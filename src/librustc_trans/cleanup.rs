@@ -29,7 +29,7 @@ use rustc::ty::Ty;
 
 pub struct CleanupScope<'tcx> {
     // Cleanup to run upon scope exit.
-    cleanup: DropValue<'tcx>,
+    cleanup: Option<DropValue<'tcx>>,
 
     // Computed on creation if compiling with landing pads (!sess.no_landing_pads)
     pub landing_pad: Option<BasicBlockRef>,
@@ -92,21 +92,11 @@ impl PartialEq for UnwindKind {
         }
     }
 }
-impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
-    pub fn trans_scope(
-        &self,
-        bcx: &BlockAndBuilder<'blk, 'tcx>,
-        custom_scope: Option<CleanupScope<'tcx>>
-    ) {
-        if let Some(scope) = custom_scope {
-            scope.cleanup.trans(None, &bcx);
-        }
-    }
 
-    /// Schedules a (deep) drop of `val`, which is a pointer to an instance of
-    /// `ty`
-    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> Option<CleanupScope<'tcx>> {
-        if !self.type_needs_drop(ty) { return None; }
+impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
+    /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
+    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
+        if !self.type_needs_drop(ty) { return CleanupScope::noop(); }
         let drop = DropValue {
             val: val,
             ty: ty,
@@ -115,7 +105,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         debug!("schedule_drop_mem(val={:?}, ty={:?}) skip_dtor={}", Value(val), ty, drop.skip_dtor);
 
-        Some(CleanupScope::new(self, drop))
+        CleanupScope::new(self, drop)
     }
 
     /// Issue #23611: Schedules a (deep) drop of the contents of
@@ -123,11 +113,10 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     /// `ty`. The scheduled code handles extracting the discriminant
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
-    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>)
-        -> Option<CleanupScope<'tcx>> {
+    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
-        if !self.type_needs_drop(ty) { return None; }
+        if !self.type_needs_drop(ty) { return CleanupScope::noop(); }
 
         let drop = DropValue {
             val: val,
@@ -138,20 +127,32 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_adt_contents(val={:?}, ty={:?}) skip_dtor={}",
                Value(val), ty, drop.skip_dtor);
 
-        Some(CleanupScope::new(self, drop))
+        CleanupScope::new(self, drop)
     }
-
 }
 
 impl<'tcx> CleanupScope<'tcx> {
     fn new<'a>(fcx: &FunctionContext<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
         CleanupScope {
-            cleanup: drop_val,
+            cleanup: Some(drop_val),
             landing_pad: if !fcx.ccx.sess().no_landing_pads() {
                 Some(CleanupScope::get_landing_pad(fcx, &drop_val))
             } else {
                 None
             },
+        }
+    }
+
+    pub fn noop() -> CleanupScope<'tcx> {
+        CleanupScope {
+            cleanup: None,
+            landing_pad: None,
+        }
+    }
+
+    pub fn trans<'a>(self, bcx: &'a BlockAndBuilder<'a, 'tcx>) {
+        if let Some(cleanup) = self.cleanup {
+            cleanup.trans(None, &bcx);
         }
     }
 
