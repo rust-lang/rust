@@ -774,7 +774,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 substs: substs,
                                 promoted: None,
                             };
-                            self.read_lvalue(Lvalue::Global(cid))?
+                            self.read_lvalue(Lvalue::Global(cid))
                         }
                     }
 
@@ -784,7 +784,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             substs: self.substs(),
                             promoted: Some(index),
                         };
-                        self.read_lvalue(Lvalue::Global(cid))?
+                        self.read_lvalue(Lvalue::Global(cid))
                     }
                 };
 

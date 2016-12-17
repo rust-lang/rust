@@ -1,12 +1,13 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, Ty};
 use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
-use error::{EvalError, EvalResult};
+use error::EvalResult;
+use eval_context::{EvalContext};
 use memory::Pointer;
-use eval_context::{EvalContext, Value};
+use value::{PrimVal, Value};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Lvalue<'tcx> {
@@ -117,23 +118,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
         let lvalue = self.eval_lvalue(lvalue)?;
-        self.read_lvalue(lvalue)
+        Ok(self.read_lvalue(lvalue))
     }
 
-    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>) -> Value {
         match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Ok(Value::ByRef(ptr))
+                Value::ByRef(ptr)
             }
             Lvalue::Local { frame, local } => {
-                self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
+                self.stack[frame].get_local(local).unwrap_or(Value::ByVal(PrimVal::Undef))
             }
-            Lvalue::Global(cid) => self.globals
-                                       .get(&cid)
-                                       .expect("global not cached")
-                                       .data
-                                       .ok_or(EvalError::ReadUndefBytes),
+            Lvalue::Global(cid) => {
+                self.globals
+                    .get(&cid)
+                    .expect("global not cached")
+                    .data
+                    .unwrap_or(Value::ByVal(PrimVal::Undef))
+            }
         }
     }
 

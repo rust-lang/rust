@@ -585,7 +585,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match ty.sty {
             // special case `Box` to deallocate the inner allocation
             ty::TyBox(contents_ty) => {
-                let val = self.read_lvalue(lval)?;
+                let val = self.read_lvalue(lval);
                 // we are going through the read_value path, because that already does all the
                 // checks for the trait object types. We'd only be repeating ourselves here.
                 let val = self.follow_by_ref_value(val, ty)?;
