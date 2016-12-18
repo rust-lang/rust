@@ -35,21 +35,53 @@ use time::SystemTime;
 ///
 /// # Examples
 ///
+/// Create a new file and write bytes to it:
+///
 /// ```no_run
-/// use std::io::prelude::*;
 /// use std::fs::File;
+/// use std::io::prelude::*;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut f = try!(File::create("foo.txt"));
-/// try!(f.write_all(b"Hello, world!"));
-///
-/// let mut f = try!(File::open("foo.txt"));
-/// let mut s = String::new();
-/// try!(f.read_to_string(&mut s));
-/// assert_eq!(s, "Hello, world!");
+/// let mut file = try!(File::create("foo.txt"));
+/// try!(file.write_all(b"Hello, world!"));
 /// # Ok(())
 /// # }
 /// ```
+///
+/// Read the contents of a file into a `String`:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::prelude::*;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let mut file = try!(File::open("foo.txt"));
+/// let mut contents = String::new();
+/// try!(file.read_to_string(&mut contents));
+/// assert_eq!(contents, "Hello, world!");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// It can be more efficient to read the contents of a file with a buffered
+/// [`Read`]er. This can be accomplished with [`BufReader<R>`]:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::BufReader;
+/// use std::io::prelude::*;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let file = try!(File::open("foo.txt"));
+/// let mut buf_reader = BufReader::new(file);
+/// let mut contents = String::new();
+/// try!(buf_reader.read_to_string(&mut contents));
+/// assert_eq!(contents, "Hello, world!");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// [`BufReader`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
