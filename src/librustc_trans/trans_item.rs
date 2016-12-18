@@ -184,7 +184,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                            linkage: llvm::Linkage,
                            symbol_name: &str) {
         let tcx = ccx.tcx();
-        assert_eq!(dg.ty(), glue::get_drop_glue_type(tcx, dg.ty()));
+        assert_eq!(dg.ty(), glue::get_drop_glue_type(ccx.shared(), dg.ty()));
         let t = dg.ty();
 
         let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(tcx.types.i8)), tcx.mk_nil(), false);

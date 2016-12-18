@@ -143,7 +143,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !type_is_sized(tcx, tp_ty) {
+            if !bcx.ccx().shared().type_is_sized(tp_ty) {
                 let (llsize, _) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llsize
@@ -158,7 +158,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !type_is_sized(tcx, tp_ty) {
+            if !bcx.ccx().shared().type_is_sized(tp_ty) {
                 let (_, llalign) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
@@ -197,7 +197,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            C_bool(ccx, bcx.fcx().type_needs_drop(tp_ty))
+            C_bool(ccx, bcx.ccx().shared().type_needs_drop(tp_ty))
         }
         "offset" => {
             let ptr = llargs[0];
@@ -243,7 +243,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            if type_is_fat_ptr(bcx.tcx(), tp_ty) {
+            if type_is_fat_ptr(bcx.ccx(), tp_ty) {
                 bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
                 bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
             } else {
@@ -551,7 +551,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bcx.fcx().type_needs_drop(arg_type));
+                        assert!(!bcx.ccx().shared().type_needs_drop(arg_type));
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {

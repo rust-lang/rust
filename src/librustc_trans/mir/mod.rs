@@ -374,7 +374,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 let dst = bcx.struct_gep(lltemp, i);
                 let arg = &fcx.fn_ty.args[idx];
                 idx += 1;
-                if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
+                if common::type_is_fat_ptr(bcx.ccx(), tupled_arg_ty) {
                     // We pass fat pointers as two words, but inside the tuple
                     // they are the two sub-fields of a single aggregate field.
                     let meta = &fcx.fn_ty.args[idx];
@@ -429,7 +429,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             }
             let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
             llarg_idx += 1;
-            let val = if common::type_is_fat_ptr(tcx, arg_ty) {
+            let val = if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
                 let meta = &fcx.fn_ty.args[idx];
                 idx += 1;
                 assert_eq!((meta.cast, meta.pad), (None, None));
@@ -446,7 +446,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
             let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
-            if common::type_is_fat_ptr(tcx, arg_ty) {
+            if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
                 // so make an alloca to store them in.
