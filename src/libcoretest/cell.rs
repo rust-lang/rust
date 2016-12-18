@@ -59,22 +59,22 @@ fn double_imm_borrow() {
 fn no_mut_then_imm_borrow() {
     let x = RefCell::new(0);
     let _b1 = x.borrow_mut();
-    assert_eq!(x.borrow_state(), BorrowState::Writing);
+    assert!(x.try_borrow().is_err());
 }
 
 #[test]
 fn no_imm_then_borrow_mut() {
     let x = RefCell::new(0);
     let _b1 = x.borrow();
-    assert_eq!(x.borrow_state(), BorrowState::Reading);
+    assert!(x.try_borrow_mut().is_err());
 }
 
 #[test]
 fn no_double_borrow_mut() {
     let x = RefCell::new(0);
-    assert_eq!(x.borrow_state(), BorrowState::Unused);
+    assert!(x.try_borrow().is_ok());
     let _b1 = x.borrow_mut();
-    assert_eq!(x.borrow_state(), BorrowState::Writing);
+    assert!(x.try_borrow().is_err());
 }
 
 #[test]
@@ -102,7 +102,8 @@ fn double_borrow_single_release_no_borrow_mut() {
     {
         let _b2 = x.borrow();
     }
-    assert_eq!(x.borrow_state(), BorrowState::Reading);
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_err());
 }
 
 #[test]
@@ -119,14 +120,18 @@ fn ref_clone_updates_flag() {
     let x = RefCell::new(0);
     {
         let b1 = x.borrow();
-        assert_eq!(x.borrow_state(), BorrowState::Reading);
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_err());
         {
             let _b2 = Ref::clone(&b1);
-            assert_eq!(x.borrow_state(), BorrowState::Reading);
+            assert!(x.try_borrow().is_ok());
+            assert!(x.try_borrow_mut().is_err());
         }
-        assert_eq!(x.borrow_state(), BorrowState::Reading);
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_err());
     }
-    assert_eq!(x.borrow_state(), BorrowState::Unused);
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
 }
 
 #[test]
@@ -134,15 +139,19 @@ fn ref_map_does_not_update_flag() {
     let x = RefCell::new(Some(5));
     {
         let b1: Ref<Option<u32>> = x.borrow();
-        assert_eq!(x.borrow_state(), BorrowState::Reading);
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_err());
         {
             let b2: Ref<u32> = Ref::map(b1, |o| o.as_ref().unwrap());
             assert_eq!(*b2, 5);
-            assert_eq!(x.borrow_state(), BorrowState::Reading);
+            assert!(x.try_borrow().is_ok());
+            assert!(x.try_borrow_mut().is_err());
         }
-        assert_eq!(x.borrow_state(), BorrowState::Unused);
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok());
     }
-    assert_eq!(x.borrow_state(), BorrowState::Unused);
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
 }
 
 #[test]
@@ -247,5 +256,3 @@ fn refcell_ref_coercion() {
         assert_eq!(&*coerced, comp);
     }
 }
-
-

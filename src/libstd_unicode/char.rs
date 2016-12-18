@@ -448,8 +448,6 @@ impl char {
     /// In both of these examples, 'ß' takes two bytes to encode.
     ///
     /// ```
-    /// #![feature(unicode)]
-    ///
     /// let mut b = [0; 2];
     ///
     /// let result = 'ß'.encode_utf8(&mut b);
@@ -462,7 +460,6 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
-    /// #![feature(unicode)]
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {
@@ -474,9 +471,7 @@ impl char {
     ///
     /// assert!(result.is_err());
     /// ```
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader",
-               issue = "27784")]
+    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         C::encode_utf8(self, dst)
@@ -495,8 +490,6 @@ impl char {
     /// In both of these examples, '𝕊' takes two `u16`s to encode.
     ///
     /// ```
-    /// #![feature(unicode)]
-    ///
     /// let mut b = [0; 2];
     ///
     /// let result = '𝕊'.encode_utf16(&mut b);
@@ -507,7 +500,6 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
-    /// #![feature(unicode)]
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {
@@ -519,9 +511,7 @@ impl char {
     ///
     /// assert!(result.is_err());
     /// ```
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader",
-               issue = "27784")]
+    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         C::encode_utf16(self, dst)

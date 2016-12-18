@@ -12,7 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut, BorrowState};
+use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
 use marker::PhantomData;
 use mem;
 use num::flt2dec;
@@ -1634,13 +1634,13 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        match self.borrow_state() {
-            BorrowState::Unused | BorrowState::Reading => {
+        match self.try_borrow() {
+            Ok(borrow) => {
                 f.debug_struct("RefCell")
-                    .field("value", &self.borrow())
+                    .field("value", &borrow)
                     .finish()
             }
-            BorrowState::Writing => {
+            Err(_) => {
                 f.debug_struct("RefCell")
                     .field("value", &"<borrowed>")
                     .finish()

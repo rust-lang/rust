@@ -393,6 +393,8 @@ pub struct RefCell<T: ?Sized> {
 /// An enumeration of values returned from the `state` method on a `RefCell<T>`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[unstable(feature = "borrow_state", issue = "27733")]
+#[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+#[allow(deprecated)]
 pub enum BorrowState {
     /// The cell is currently being read, there is at least one active `borrow`.
     Reading,
@@ -511,6 +513,8 @@ impl<T: ?Sized> RefCell<T> {
     /// }
     /// ```
     #[unstable(feature = "borrow_state", issue = "27733")]
+    #[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+    #[allow(deprecated)]
     #[inline]
     pub fn borrow_state(&self) -> BorrowState {
         match self.borrow.get() {
@@ -888,9 +892,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// `Ref::clone(...)`.  A `Clone` implementation or a method would interfere
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
-    #[unstable(feature = "cell_extras",
-               reason = "likely to be moved to a method, pending language changes",
-               issue = "27746")]
+    #[stable(feature = "cell_extras", since = "1.15.0")]
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref {

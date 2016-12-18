@@ -26,7 +26,6 @@
 #![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(cell_extras)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
