@@ -14,11 +14,13 @@
 // ignore-msvc
 // ignore-emscripten
 
+#[repr(C)]
 struct TwoU8s {
     one: u8,
     two: u8,
 }
 
+#[repr(C)]
 struct ManyInts {
     arg1: i8,
     arg2: i16,
@@ -28,6 +30,7 @@ struct ManyInts {
     arg6: TwoU8s,
 }
 
+#[repr(C)]
 struct Empty;
 
 #[link(name = "rust_test_helpers", kind = "static")]

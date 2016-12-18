@@ -9,9 +9,11 @@
 // except according to those terms.
 //
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Floats { a: f64, b: u8, c: f64 }
 
