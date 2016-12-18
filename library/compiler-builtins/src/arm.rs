@@ -1,5 +1,8 @@
 use core::intrinsics;
 
+#[cfg(feature = "mem")]
+use mem::{memcpy, memmove, memset};
+
 // NOTE This function and the ones below are implemented using assembly because they using a custom
 // calling convention which can't be implemented using a normal Rust function
 #[naked]
@@ -100,6 +103,7 @@ pub extern "C" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
     ::int::udiv::__udivsi3(a, b)
 }
 
+#[cfg(not(feature = "mem"))]
 extern "C" {
     fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
     fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;

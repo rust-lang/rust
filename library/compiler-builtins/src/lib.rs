@@ -11,7 +11,6 @@
 #![feature(asm)]
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
-#![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(staged_api)]
 #![no_builtins]
@@ -102,15 +101,15 @@ extern crate compiler_rt;
 #[cfg(test)]
 extern crate rand;
 
-#[cfg(feature = "weak")]
-extern crate rlibc;
-
 #[cfg(test)]
 #[macro_use]
 mod qc;
 
 pub mod int;
 pub mod float;
+
+#[cfg(feature = "mem")]
+pub mod mem;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;
