@@ -20,6 +20,7 @@ use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, BlockAndBuilder, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
+use debuginfo;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
@@ -114,7 +115,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let span = terminator.source_info.span;
         let (scope, debug_span) = self.debug_loc(terminator.source_info);
-        bcx.set_source_location(scope, debug_span);
+        debuginfo::set_source_location(self, &bcx, scope, debug_span);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
@@ -326,7 +327,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // After this point, bcx is the block for the call to panic.
                 bcx = panic_block;
-                bcx.set_source_location(scope, debug_span);
+                debuginfo::set_source_location(self, &bcx, scope, debug_span);
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
@@ -642,7 +643,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let ret_bcx = self.build_block(target);
                         ret_bcx.at_start(|ret_bcx| {
-                            bcx.set_source_location(scope, debug_span);
+                            debuginfo::set_source_location(self, &ret_bcx, scope, debug_span);
                             let op = OperandRef {
                                 val: Immediate(invokeret),
                                 ty: sig.output(),

@@ -28,6 +28,7 @@ use rustc::ty::subst::Substs;
 
 use abi::Abi;
 use common::{CrateContext, BlockAndBuilder};
+use mir::MirContext;
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
@@ -225,6 +226,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // This can be the case for functions inlined from another crate
     if span == syntax_pos::DUMMY_SP {
+        // FIXME(simulacrum): Probably can't happen; remove.
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
@@ -432,6 +434,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                               mir: &MirContext,
                                variable_name: ast::Name,
                                variable_type: Ty<'tcx>,
                                scope_metadata: DIScope,
@@ -493,7 +496,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx().debug_context.get_ref(span).source_locations_enabled.get());
+            assert!(!mir.debug_context.get_ref(span).source_locations_enabled.get());
             source_loc::set_debug_location(cx, bcx, UnknownLocation);
         }
         _ => { /* nothing to do */ }

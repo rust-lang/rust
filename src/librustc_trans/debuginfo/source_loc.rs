@@ -17,7 +17,8 @@ use super::FunctionDebugContext;
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use common::{CrateContext, FunctionContext};
+use common::CrateContext;
+use mir::MirContext;
 
 use libc::c_uint;
 use std::ptr;
@@ -26,24 +27,24 @@ use syntax_pos::{Span, Pos};
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
-pub fn set_source_location(fcx: &FunctionContext, builder: &Builder, scope: DIScope, span: Span) {
-    let function_debug_context = match fcx.debug_context {
+pub fn set_source_location(mir: &MirContext, builder: &Builder, scope: DIScope, span: Span) {
+    let function_debug_context = match mir.debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, builder, UnknownLocation);
+            set_debug_location(mir.ccx(), builder, UnknownLocation);
             return;
         }
         FunctionDebugContext::RegularContext(ref data) => data
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        debug!("set_source_location: {}", fcx.ccx.sess().codemap().span_to_string(span));
-        let loc = span_start(fcx.ccx, span);
+        debug!("set_source_location: {}", mir.ccx().sess().codemap().span_to_string(span));
+        let loc = span_start(mir.ccx(), span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };
-    set_debug_location(fcx.ccx, builder, dbg_loc);
+    set_debug_location(mir.ccx(), builder, dbg_loc);
 }
 
 /// Enables emitting source locations for the given functions.
@@ -52,8 +53,8 @@ pub fn set_source_location(fcx: &FunctionContext, builder: &Builder, scope: DISc
 /// they are disabled when beginning to translate a new function. This functions
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is translated.
-pub fn start_emitting_source_locations(fcx: &FunctionContext) {
-    match fcx.debug_context {
+pub fn start_emitting_source_locations(mir: &MirContext) {
+    match mir.debug_context {
         FunctionDebugContext::RegularContext(ref data) => {
             data.source_locations_enabled.set(true)
         },
