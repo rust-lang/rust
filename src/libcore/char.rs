@@ -327,9 +327,9 @@ pub trait CharExt {
     fn len_utf8(self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf16(self) -> usize;
-    #[unstable(feature = "unicode", issue = "27784")]
+    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     fn encode_utf8(self, dst: &mut [u8]) -> &mut str;
-    #[unstable(feature = "unicode", issue = "27784")]
+    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16];
 }
 

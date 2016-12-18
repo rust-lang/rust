@@ -1526,8 +1526,6 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(io_take_into_inner)]
-    ///
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1543,7 +1541,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "io_take_into_inner", issue = "23755")]
+    #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
     }

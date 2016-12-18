@@ -50,7 +50,7 @@ pub mod prelude {
     pub use super::fs::{PermissionsExt, OpenOptionsExt, MetadataExt, FileTypeExt};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::fs::DirEntryExt;
-    #[doc(no_inline)] #[unstable(feature = "file_offset", issue = "35918")]
+    #[doc(no_inline)] #[stable(feature = "file_offset", since = "1.15.0")]
     pub use super::fs::FileExt;
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::thread::JoinHandleExt;

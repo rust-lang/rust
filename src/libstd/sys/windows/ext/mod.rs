@@ -36,6 +36,6 @@ pub mod prelude {
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::fs::{OpenOptionsExt, MetadataExt};
-    #[doc(no_inline)] #[unstable(feature = "file_offset", issue = "35918")]
+    #[doc(no_inline)] #[stable(feature = "file_offset", since = "1.15.0")]
     pub use super::fs::FileExt;
 }
