@@ -16,7 +16,7 @@
 
 pub use self::CalleeData::*;
 
-use llvm::{self, ValueRef, get_params};
+use llvm::{self, ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -390,8 +390,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
 
-    let first_llarg = if fn_ty.ret.is_indirect() {
-        fcx.llretslotptr
+    let first_llarg = if fn_ty.ret.is_indirect() && !fcx.fn_ty.ret.is_ignore() {
+        Some(get_param(fcx.llfn, 0))
     } else {
         None
     };
@@ -409,17 +409,16 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     }
     fn_ty.apply_attrs_callsite(llret);
 
-    if !fn_ty.ret.is_indirect() {
-        if let Some(llretslot) = fcx.llretslotptr {
-            fn_ty.ret.store(&bcx, llret, llretslot);
-        }
-    }
-
     if fn_ret.0.is_never() {
         bcx.unreachable();
     }
     self_scope.trans(&bcx);
-    fcx.build_return_block(&bcx);
+
+    if fcx.fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        bcx.ret_void();
+    } else {
+        bcx.ret(llret);
+    }
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
@@ -539,9 +538,31 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-    callee.call(&bcx, &llargs[(self_idx + 1)..], fcx.llretslotptr, None);
-    fcx.build_return_block(&bcx);
 
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(ccx, &[]);
+
+    let mut args = Vec::new();
+
+    if fn_ty.ret.is_indirect() {
+        if !fn_ty.ret.is_ignore() {
+            args.push(get_param(fcx.llfn, 0));
+        }
+    }
+    args.extend_from_slice(&llargs[(self_idx + 1)..]);
+
+    let llret = bcx.call(llfnpointer, &args, None);
+    fn_ty.apply_attrs_callsite(llret);
+
+    if fn_ret.0.is_never() {
+        bcx.unreachable();
+    }
+
+    if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        bcx.ret_void();
+    } else {
+        bcx.ret(llret);
+    }
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
     llfn
