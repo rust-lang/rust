@@ -458,8 +458,8 @@ pub mod builtin {
 
     /// Parse a file as an expression or an item according to the context.
     ///
-    /// The file is located relative to the current file. (similarly to how
-    /// modules are found)
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found).
     ///
     /// Using this macro is often a bad idea, because if the file is
     /// parsed as an expression, it is going to be placed in the
