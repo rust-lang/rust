@@ -13,13 +13,13 @@ use llvm::ValueRef;
 use common::*;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'blk, 'tcx, F>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+pub fn slice_for_each<'a, 'tcx, F>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     data_ptr: ValueRef,
     unit_ty: Ty<'tcx>,
     len: ValueRef,
     f: F
-) -> BlockAndBuilder<'blk, 'tcx> where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>, ValueRef) {
+) -> BlockAndBuilder<'a, 'tcx> where F: FnOnce(&BlockAndBuilder<'a, 'tcx>, ValueRef) {
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx(), unit_ty);
     let add = |bcx: &BlockAndBuilder, a, b| if zst {

@@ -24,10 +24,12 @@ use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                    ia: &hir::InlineAsm,
-                                    outputs: Vec<(ValueRef, Ty<'tcx>)>,
-                                    mut inputs: Vec<ValueRef>) {
+pub fn trans_inline_asm<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    ia: &hir::InlineAsm,
+    outputs: Vec<(ValueRef, Ty<'tcx>)>,
+    mut inputs: Vec<ValueRef>
+) {
     let mut ext_constraints = vec![];
     let mut output_types = vec![];
 

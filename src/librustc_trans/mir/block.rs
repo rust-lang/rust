@@ -40,7 +40,7 @@ use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 use std::ptr;
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock,
         funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
         let mut bcx = self.build_block(bb);
@@ -669,7 +669,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     fn trans_argument(&mut self,
-                      bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                      bcx: &BlockAndBuilder<'a, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
                       fn_ty: &FnType,
@@ -745,7 +745,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     fn trans_arguments_untupled(&mut self,
-                                bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                                bcx: &BlockAndBuilder<'a, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
                                 fn_ty: &FnType,
@@ -821,7 +821,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     }
 
-    fn get_personality_slot(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> ValueRef {
+    fn get_personality_slot(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>) -> ValueRef {
         let ccx = bcx.ccx();
         if let Some(slot) = self.llpersonalityslot {
             slot
@@ -897,11 +897,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         })
     }
 
-    fn build_block(&self, bb: mir::BasicBlock) -> BlockAndBuilder<'bcx, 'tcx> {
+    fn build_block(&self, bb: mir::BasicBlock) -> BlockAndBuilder<'a, 'tcx> {
         BlockAndBuilder::new(self.blocks[bb], self.fcx)
     }
 
-    fn make_return_dest(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    fn make_return_dest(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
                         dest: &mir::Lvalue<'tcx>, fn_ret_ty: &ArgType,
                         llargs: &mut Vec<ValueRef>, is_intrinsic: bool) -> ReturnDest {
         // If the return is ignored, we can just return a do-nothing ReturnDest
@@ -946,7 +946,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    fn trans_transmute(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    fn trans_transmute(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
                        src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
         let mut val = self.trans_operand(bcx, src);
         if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
@@ -974,7 +974,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
-                    bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                    bcx: &BlockAndBuilder<'a, 'tcx>,
                     dest: ReturnDest,
                     ret_ty: ArgType,
                     op: OperandRef<'tcx>) {

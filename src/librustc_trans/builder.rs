@@ -30,7 +30,7 @@ pub struct Builder<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
-impl<'blk, 'tcx> Drop for Builder<'blk, 'tcx> {
+impl<'a, 'tcx> Drop for Builder<'a, 'tcx> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(self.llbuilder);

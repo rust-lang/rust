@@ -73,7 +73,7 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
     }
 }
 
-impl<'bcx, 'tcx> OperandRef<'tcx> {
+impl<'a, 'tcx> OperandRef<'tcx> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
@@ -85,7 +85,7 @@ impl<'bcx, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a Pair, we return an
     /// Immediate aggregate with the two values.
-    pub fn pack_if_pair(mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>)
+    pub fn pack_if_pair(mut self, bcx: &BlockAndBuilder<'a, 'tcx>)
                         -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
@@ -107,7 +107,7 @@ impl<'bcx, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a pair in an Immediate,
     /// we return a Pair with the two halves.
-    pub fn unpack_if_pair(mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>)
+    pub fn unpack_if_pair(mut self, bcx: &BlockAndBuilder<'a, 'tcx>)
                           -> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
@@ -134,9 +134,9 @@ impl<'bcx, 'tcx> OperandRef<'tcx> {
     }
 }
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_load(&mut self,
-                      bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                      bcx: &BlockAndBuilder<'a, 'tcx>,
                       llval: ValueRef,
                       ty: Ty<'tcx>)
                       -> OperandRef<'tcx>
@@ -165,7 +165,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_consume(&mut self,
-                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                         bcx: &BlockAndBuilder<'a, 'tcx>,
                          lvalue: &mir::Lvalue<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -217,7 +217,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_operand(&mut self,
-                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                         bcx: &BlockAndBuilder<'a, 'tcx>,
                          operand: &mir::Operand<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -242,7 +242,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn store_operand(&mut self,
-                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                         bcx: &BlockAndBuilder<'a, 'tcx>,
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>) {
         debug!("store_operand: operand={:?}", operand);

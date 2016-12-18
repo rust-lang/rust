@@ -189,10 +189,12 @@ impl<'tcx> Callee<'tcx> {
     /// For non-lang items, `dest` is always Some, and hence the result is written
     /// into memory somewhere. Nonetheless we return the actual return value of the
     /// function.
-    pub fn call<'a, 'blk>(self, bcx: &BlockAndBuilder<'blk, 'tcx>,
-                          args: &[ValueRef],
-                          dest: Option<ValueRef>,
-                          lpad: Option<&'blk llvm::OperandBundleDef>) {
+    pub fn call<'a>(self,
+        bcx: &BlockAndBuilder<'a, 'tcx>,
+        args: &[ValueRef],
+        dest: Option<ValueRef>,
+        lpad: Option<&'a llvm::OperandBundleDef>
+    ) {
         trans_call_inner(bcx, self, args, dest, lpad)
     }
 
@@ -647,11 +649,13 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // ______________________________________________________________________
 // Translating calls
 
-fn trans_call_inner<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                    callee: Callee<'tcx>,
-                                    args: &[ValueRef],
-                                    dest: Option<ValueRef>,
-                                    lpad: Option<&'blk llvm::OperandBundleDef>) {
+fn trans_call_inner<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    callee: Callee<'tcx>,
+    args: &[ValueRef],
+    dest: Option<ValueRef>,
+    lpad: Option<&'a llvm::OperandBundleDef>
+) {
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while

@@ -302,11 +302,12 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>
 
 /// Obtain a representation of the discriminant sufficient to translate
 /// destructuring; this may or may not involve the actual discriminant.
-pub fn trans_switch<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                t: Ty<'tcx>,
-                                scrutinee: ValueRef,
-                                range_assert: bool)
-                                -> (BranchKind, Option<ValueRef>) {
+pub fn trans_switch<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    t: Ty<'tcx>,
+    scrutinee: ValueRef,
+    range_assert: bool
+) -> (BranchKind, Option<ValueRef>) {
     let l = bcx.ccx().layout_of(t);
     match *l {
         layout::CEnum { .. } | layout::General { .. } |
@@ -329,10 +330,13 @@ pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
 }
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
-                                   scrutinee: ValueRef, cast_to: Option<Type>,
-                                   range_assert: bool)
-    -> ValueRef {
+pub fn trans_get_discr<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    t: Ty<'tcx>,
+    scrutinee: ValueRef,
+    cast_to: Option<Type>,
+    range_assert: bool
+) -> ValueRef {
     let (def, substs) = match t.sty {
         ty::TyAdt(ref def, substs) if def.adt_kind() == AdtKind::Enum => (def, substs),
         _ => bug!("{} is not an enum", t)
@@ -411,8 +415,7 @@ fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u
 /// discriminant-like value returned by `trans_switch`.
 ///
 /// This should ideally be less tightly tied to `_match`.
-pub fn trans_case<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>, value: Disr)
-                              -> ValueRef {
+pub fn trans_case<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, value: Disr) -> ValueRef {
     let l = bcx.ccx().layout_of(t);
     match *l {
         layout::CEnum { discr, .. }
@@ -432,8 +435,9 @@ pub fn trans_case<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>, va
 
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
-pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx>,
-                                   val: ValueRef, to: Disr) {
+pub fn trans_set_discr<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr
+) {
     let l = bcx.ccx().layout_of(t);
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
@@ -480,7 +484,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, t: Ty<'tcx
     }
 }
 
-fn target_sets_discr_via_memset<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>) -> bool {
+fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>) -> bool {
     bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
@@ -493,11 +497,13 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                           t: Ty<'tcx>,
-                                           val: MaybeSizedValue,
-                                           discr: Disr, ix: usize)
-                                           -> ValueRef {
+pub fn trans_field_ptr<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    t: Ty<'tcx>,
+    val: MaybeSizedValue,
+    discr: Disr,
+    ix: usize
+) -> ValueRef {
     let l = bcx.ccx().layout_of(t);
     debug!("trans_field_ptr on {} represented as {:#?}", t, l);
     // Note: if this ever needs to generate conditionals (e.g., if we
@@ -553,9 +559,15 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                st: &layout::Struct, fields: &Vec<Ty<'tcx>>, val: MaybeSizedValue,
-                                ix: usize, needs_cast: bool) -> ValueRef {
+fn struct_field_ptr<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    st: &layout::Struct,
+    fields: &Vec<Ty<'tcx>>,
+    val: MaybeSizedValue,
+    ix: usize,
+    needs_cast: bool
+) -> ValueRef {
+    let ccx = bcx.ccx();
     let fty = fields[ix];
     let ccx = bcx.ccx();
     let ll_fty = type_of::in_memory_type_of(ccx, fty);
