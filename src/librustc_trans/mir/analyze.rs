@@ -20,8 +20,7 @@ use common::{self, BlockAndBuilder};
 use glue;
 use super::rvalue;
 
-pub fn lvalue_locals<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx,'tcx>,
-                                 mir: &mir::Mir<'tcx>) -> BitVector {
+pub fn lvalue_locals<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, mir: &mir::Mir<'tcx>) -> BitVector {
     let mut analyzer = LocalAnalyzer::new(mir, &bcx);
 
     analyzer.visit_mir(mir);
@@ -55,17 +54,16 @@ pub fn lvalue_locals<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx,'tcx>,
     analyzer.lvalue_locals
 }
 
-struct LocalAnalyzer<'mir, 'bcx: 'mir, 'tcx: 'bcx> {
+struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
     mir: &'mir mir::Mir<'tcx>,
-    bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
+    bcx: &'mir BlockAndBuilder<'a, 'tcx>,
     lvalue_locals: BitVector,
     seen_assigned: BitVector
 }
 
-impl<'mir, 'bcx, 'tcx> LocalAnalyzer<'mir, 'bcx, 'tcx> {
-    fn new(mir: &'mir mir::Mir<'tcx>,
-           bcx: &'mir BlockAndBuilder<'bcx, 'tcx>)
-           -> LocalAnalyzer<'mir, 'bcx, 'tcx> {
+impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
+    fn new(mir: &'mir mir::Mir<'tcx>, bcx: &'mir BlockAndBuilder<'a, 'tcx>)
+           -> LocalAnalyzer<'mir, 'a, 'tcx> {
         LocalAnalyzer {
             mir: mir,
             bcx: bcx,
@@ -86,7 +84,7 @@ impl<'mir, 'bcx, 'tcx> LocalAnalyzer<'mir, 'bcx, 'tcx> {
     }
 }
 
-impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
+impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     lvalue: &mir::Lvalue<'tcx>,
@@ -199,7 +197,7 @@ pub enum CleanupKind {
     Internal { funclet: mir::BasicBlock }
 }
 
-pub fn cleanup_kinds<'bcx,'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {

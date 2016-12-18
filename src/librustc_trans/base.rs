@@ -160,13 +160,14 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                      lhs: ValueRef,
-                                      rhs: ValueRef,
-                                      t: Ty<'tcx>,
-                                      ret_ty: Type,
-                                      op: hir::BinOp_)
-                                      -> ValueRef {
+pub fn compare_simd_types<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    lhs: ValueRef,
+    rhs: ValueRef,
+    t: Ty<'tcx>,
+    ret_ty: Type,
+    op: hir::BinOp_
+) -> ValueRef {
     let signed = match t.sty {
         ty::TyFloat(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -216,11 +217,12 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                   src: ValueRef,
-                                   src_ty: Ty<'tcx>,
-                                   dst_ty: Ty<'tcx>)
-                                   -> (ValueRef, ValueRef) {
+pub fn unsize_thin_ptr<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    src: ValueRef,
+    src_ty: Ty<'tcx>,
+    dst_ty: Ty<'tcx>
+) -> (ValueRef, ValueRef) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyBox(a), &ty::TyBox(b)) |
@@ -240,11 +242,11 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                       src: ValueRef,
-                                       src_ty: Ty<'tcx>,
-                                       dst: ValueRef,
-                                       dst_ty: Ty<'tcx>) {
+pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                                     src: ValueRef,
+                                     src_ty: Ty<'tcx>,
+                                     dst: ValueRef,
+                                     dst_ty: Ty<'tcx>) {
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyBox(..), &ty::TyBox(..)) |
         (&ty::TyRef(..), &ty::TyRef(..)) |
@@ -420,9 +422,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'blk, 'tcx>(
-    cx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>
-) {
+pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
@@ -434,23 +434,19 @@ pub fn store_ty<'blk, 'tcx>(
     }
 }
 
-pub fn store_fat_ptr<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
-                                 data: ValueRef,
-                                 extra: ValueRef,
-                                 dst: ValueRef,
-                                 _ty: Ty<'tcx>) {
+pub fn store_fat_ptr<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>,
+                               data: ValueRef,
+                               extra: ValueRef,
+                               dst: ValueRef,
+                               _ty: Ty<'tcx>) {
     // FIXME: emit metadata
     cx.store(data, get_dataptr(cx, dst));
     cx.store(extra, get_meta(cx, dst));
 }
 
 pub fn load_fat_ptr<'a, 'tcx>(
-    b: &Builder<'a, 'tcx>,
-    src: ValueRef,
-    t: Ty<'tcx>)
-    -> (ValueRef, ValueRef)
-{
-
+    b: &Builder<'a, 'tcx>, src: ValueRef, t: Ty<'tcx>
+) -> (ValueRef, ValueRef) {
     let ptr = get_dataptr(b, src);
     let ptr = if t.is_region_ptr() || t.is_unique() {
         b.load_nonnull(ptr)
@@ -511,7 +507,7 @@ impl Lifetime {
     }
 }
 
-pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
+pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
                                dst: ValueRef,
                                src: ValueRef,
                                n_bytes: ValueRef,
@@ -528,8 +524,8 @@ pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
+pub fn memcpy_ty<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
 ) {
     let ccx = bcx.ccx();
 
@@ -550,7 +546,7 @@ pub fn memcpy_ty<'blk, 'tcx>(
     }
 }
 
-pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
+pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
                                ptr: ValueRef,
                                fill_byte: ValueRef,
                                size: ValueRef,
@@ -563,22 +559,20 @@ pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
-pub fn alloc_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                            ty: Ty<'tcx>,
-                            name: &str) -> ValueRef {
+pub fn alloc_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> ValueRef {
     assert!(!ty.has_param_types());
     bcx.fcx().alloca(type_of::type_of(bcx.ccx(), ty), name)
 }
 
-impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
+impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Ties up the llstaticallocas -> llloadenv -> lltop edges,
     /// and builds the return block.
-    pub fn finish(&'blk self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
+    pub fn finish(&'a self, ret_cx: &BlockAndBuilder<'a, 'tcx>) {
         self.build_return_block(ret_cx);
     }
 
     // Builds the return block for a function.
-    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'blk, 'tcx>) {
+    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'a, 'tcx>) {
         if self.llretslotptr.is_none() || self.fn_ty.ret.is_indirect() {
             return ret_cx.ret_void();
         }

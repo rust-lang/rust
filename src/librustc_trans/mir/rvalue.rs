@@ -33,12 +33,12 @@ use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
 use super::lvalue::{LvalueRef};
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
-                        bcx: BlockAndBuilder<'bcx, 'tcx>,
+                        bcx: BlockAndBuilder<'a, 'tcx>,
                         dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> BlockAndBuilder<'bcx, 'tcx>
+                        -> BlockAndBuilder<'a, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
                Value(dest.llval), rvalue);
@@ -175,9 +175,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_rvalue_operand(&mut self,
-                                bcx: BlockAndBuilder<'bcx, 'tcx>,
+                                bcx: BlockAndBuilder<'a, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
+                                -> (BlockAndBuilder<'a, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue),
                 "cannot trans {:?} to operand", rvalue);
@@ -483,7 +483,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_scalar_binop(&mut self,
-                              bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                              bcx: &BlockAndBuilder<'a, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
                               rhs: ValueRef,
@@ -558,7 +558,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_fat_ptr_binop(&mut self,
-                               bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                               bcx: &BlockAndBuilder<'a, 'tcx>,
                                op: mir::BinOp,
                                lhs_addr: ValueRef,
                                lhs_extra: ValueRef,
@@ -605,7 +605,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_scalar_checked_binop(&mut self,
-                                      bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                                      bcx: &BlockAndBuilder<'a, 'tcx>,
                                       op: mir::BinOp,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
@@ -662,9 +662,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 }
 
-pub fn rvalue_creates_operand<'bcx, 'tcx>(_mir: &mir::Mir<'tcx>,
-                                          _bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                                          rvalue: &mir::Rvalue<'tcx>) -> bool {
+pub fn rvalue_creates_operand<'a, 'tcx>(_mir: &mir::Mir<'tcx>,
+                                        _bcx: &BlockAndBuilder<'a, 'tcx>,
+                                        rvalue: &mir::Rvalue<'tcx>) -> bool {
     match *rvalue {
         mir::Rvalue::Ref(..) |
         mir::Rvalue::Len(..) |

@@ -18,11 +18,11 @@ use super::LocalRef;
 use super::super::adt;
 use super::super::disr::Disr;
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
-                           bcx: BlockAndBuilder<'bcx, 'tcx>,
+                           bcx: BlockAndBuilder<'a, 'tcx>,
                            statement: &mir::Statement<'tcx>)
-                           -> BlockAndBuilder<'bcx, 'tcx> {
+                           -> BlockAndBuilder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
         let (scope, span) = self.debug_loc(statement.source_info);
@@ -78,10 +78,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     fn trans_storage_liveness(&self,
-                              bcx: BlockAndBuilder<'bcx, 'tcx>,
+                              bcx: BlockAndBuilder<'a, 'tcx>,
                               lvalue: &mir::Lvalue<'tcx>,
                               intrinsic: base::Lifetime)
-                              -> BlockAndBuilder<'bcx, 'tcx> {
+                              -> BlockAndBuilder<'a, 'tcx> {
         if let mir::Lvalue::Local(index) = *lvalue {
             if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
                 intrinsic.call(&bcx, tr_lval.llval);

@@ -39,11 +39,11 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
-pub struct MirContext<'bcx, 'tcx:'bcx> {
-    mir: &'bcx mir::Mir<'tcx>,
+pub struct MirContext<'a, 'tcx:'a> {
+    mir: &'a mir::Mir<'tcx>,
 
     /// Function context
-    fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
+    fcx: &'a common::FunctionContext<'a, 'tcx>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -88,7 +88,7 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     scopes: IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
 }
 
-impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
         match self.fcx.debug_context {
@@ -152,7 +152,7 @@ enum LocalRef<'tcx> {
 }
 
 impl<'tcx> LocalRef<'tcx> {
-    fn new_operand<'bcx>(ccx: &CrateContext<'bcx, 'tcx>,
+    fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
                          ty: ty::Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
@@ -178,7 +178,7 @@ impl<'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>, mir: &'blk Mir<'tcx>) {
+pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<'tcx>) {
     let bcx = fcx.get_entry_block();
 
     // Analyze the temps to determine which must be lvalues
@@ -309,11 +309,11 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>, mir: 
 /// Produce, for each argument, a `ValueRef` pointing at the
 /// argument's value. As arguments are lvalues, these are always
 /// indirect.
-fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                              mir: &mir::Mir<'tcx>,
-                              scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
-                              lvalue_locals: &BitVector)
-                              -> Vec<LocalRef<'tcx>> {
+fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                            mir: &mir::Mir<'tcx>,
+                            scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
+                            lvalue_locals: &BitVector)
+                            -> Vec<LocalRef<'tcx>> {
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;

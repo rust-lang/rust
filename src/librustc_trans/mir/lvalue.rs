@@ -44,7 +44,7 @@ impl<'tcx> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
-    pub fn alloca<'bcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    pub fn alloca<'a>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         ty: Ty<'tcx>,
                         name: &str)
                         -> LvalueRef<'tcx>
@@ -67,9 +67,9 @@ impl<'tcx> LvalueRef<'tcx> {
     }
 }
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_lvalue(&mut self,
-                        bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                        bcx: &BlockAndBuilder<'a, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
                         -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
@@ -214,7 +214,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     // Perform an action using the given Lvalue.
     // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
     // is created first, then used as an operand to update the Lvalue.
-    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
@@ -255,7 +255,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     ///
     /// nmatsakis: is this still necessary? Not sure.
     fn prepare_index(&mut self,
-                     bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                     bcx: &BlockAndBuilder<'a, 'tcx>,
                      llindex: ValueRef)
                      -> ValueRef
     {

@@ -43,7 +43,7 @@ pub struct DropValue<'tcx> {
 }
 
 impl<'tcx> DropValue<'tcx> {
-    fn trans<'blk>(&self, funclet: Option<&'blk Funclet>, bcx: &BlockAndBuilder<'blk, 'tcx>) {
+    fn trans<'a>(&self, funclet: Option<&'a Funclet>, bcx: &BlockAndBuilder<'a, 'tcx>) {
         glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
     }
 }
@@ -93,7 +93,7 @@ impl PartialEq for UnwindKind {
     }
 }
 
-impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
+impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
     pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
         if !self.type_needs_drop(ty) { return CleanupScope::noop(); }

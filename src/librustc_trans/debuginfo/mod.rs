@@ -431,13 +431,13 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                 variable_name: ast::Name,
-                                 variable_type: Ty<'tcx>,
-                                 scope_metadata: DIScope,
-                                 variable_access: VariableAccess,
-                                 variable_kind: VariableKind,
-                                 span: Span) {
+pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                               variable_name: ast::Name,
+                               variable_type: Ty<'tcx>,
+                               scope_metadata: DIScope,
+                               variable_access: VariableAccess,
+                               variable_kind: VariableKind,
+                               span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
     let file = span_start(cx, span).file;

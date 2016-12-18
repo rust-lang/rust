@@ -84,12 +84,12 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                            callee_ty: Ty<'tcx>,
-                                            fn_ty: &FnType,
-                                            llargs: &[ValueRef],
-                                            llresult: ValueRef,
-                                            span: Span) {
+pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                                      callee_ty: Ty<'tcx>,
+                                      fn_ty: &FnType,
+                                      llargs: &[ValueRef],
+                                      llresult: ValueRef,
+                                      span: Span) {
     let fcx = bcx.fcx();
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
@@ -537,11 +537,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             // qux` to be converted into `foo, bar, baz, qux`, integer
             // arguments to be truncated as needed and pointers to be
             // cast.
-            fn modify_as_needed<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                            t: &intrinsics::Type,
-                                            arg_type: Ty<'tcx>,
-                                            llarg: ValueRef)
-                                            -> Vec<ValueRef>
+            fn modify_as_needed<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                                          t: &intrinsics::Type,
+                                          arg_type: Ty<'tcx>,
+                                          llarg: ValueRef)
+                                          -> Vec<ValueRef>
             {
                 match *t {
                     intrinsics::Type::Aggregate(true, ref contents) => {
@@ -642,14 +642,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn copy_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                              allow_overlap: bool,
-                              volatile: bool,
-                              tp_ty: Ty<'tcx>,
-                              dst: ValueRef,
-                              src: ValueRef,
-                              count: ValueRef)
-                              -> ValueRef {
+fn copy_intrinsic<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                            allow_overlap: bool,
+                            volatile: bool,
+                            tp_ty: Ty<'tcx>,
+                            dst: ValueRef,
+                            src: ValueRef,
+                            count: ValueRef)
+                            -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -677,8 +677,8 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         None)
 }
 
-fn memset_intrinsic<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+fn memset_intrinsic<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     volatile: bool,
     ty: Ty<'tcx>,
     dst: ValueRef,
@@ -693,8 +693,8 @@ fn memset_intrinsic<'blk, 'tcx>(
     call_memset(bcx, dst, val, bcx.mul(size, count), align, volatile)
 }
 
-fn try_intrinsic<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+fn try_intrinsic<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     func: ValueRef,
     data: ValueRef,
     local_ptr: ValueRef,
@@ -717,11 +717,11 @@ fn try_intrinsic<'blk, 'tcx>(
 // instructions are meant to work for all targets, as of the time of this
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
-fn trans_msvc_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                              func: ValueRef,
-                              data: ValueRef,
-                              local_ptr: ValueRef,
-                              dest: ValueRef) {
+fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                            func: ValueRef,
+                            data: ValueRef,
+                            local_ptr: ValueRef,
+                            dest: ValueRef) {
     let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
         let ccx = bcx.ccx();
 
@@ -820,11 +820,11 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
-fn trans_gnu_try<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                             func: ValueRef,
-                             data: ValueRef,
-                             local_ptr: ValueRef,
-                             dest: ValueRef) {
+fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                           func: ValueRef,
+                           data: ValueRef,
+                           local_ptr: ValueRef,
+                           dest: ValueRef) {
     let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
         let ccx = bcx.ccx();
 
@@ -928,8 +928,8 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
     span_err!(a, b, E0511, "{}", c);
 }
 
-fn generic_simd_intrinsic<'blk, 'tcx, 'a>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+fn generic_simd_intrinsic<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     name: &str,
     callee_ty: Ty<'tcx>,
     llargs: &[ValueRef],

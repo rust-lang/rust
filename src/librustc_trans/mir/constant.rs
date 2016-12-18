@@ -945,9 +945,9 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_constant(&mut self,
-                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                          bcx: &BlockAndBuilder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {

@@ -480,7 +480,7 @@ impl<'a, 'tcx> Drop for FunctionContext<'a, 'tcx> {
 }
 
 #[must_use]
-pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
+pub struct BlockAndBuilder<'a, 'tcx: 'a> {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
@@ -490,13 +490,13 @@ pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
 
     // The function context for the function to which this block is
     // attached.
-    fcx: &'blk FunctionContext<'blk, 'tcx>,
+    fcx: &'a FunctionContext<'a, 'tcx>,
 
-    builder: Builder<'blk, 'tcx>,
+    builder: Builder<'a, 'tcx>,
 }
 
-impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
-    pub fn new(llbb: BasicBlockRef, fcx: &'blk FunctionContext<'blk, 'tcx>) -> Self {
+impl<'a, 'tcx> BlockAndBuilder<'a, 'tcx> {
+    pub fn new(llbb: BasicBlockRef, fcx: &'a FunctionContext<'a, 'tcx>) -> Self {
         let builder = Builder::with_ccx(fcx.ccx);
         // Set the builder's position to this block's end.
         builder.position_at_end(llbb);
@@ -512,7 +512,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     }
 
     pub fn at_start<F, R>(&self, f: F) -> R
-        where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>) -> R
+        where F: FnOnce(&BlockAndBuilder<'a, 'tcx>) -> R
     {
         self.position_at_start(self.llbb);
         let r = f(self);
@@ -520,16 +520,16 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         r
     }
 
-    pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
+    pub fn ccx(&self) -> &'a CrateContext<'a, 'tcx> {
         self.fcx.ccx
     }
-    pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
+    pub fn fcx(&self) -> &'a FunctionContext<'a, 'tcx> {
         self.fcx
     }
-    pub fn tcx(&self) -> TyCtxt<'blk, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.fcx.ccx.tcx()
     }
-    pub fn sess(&self) -> &'blk Session {
+    pub fn sess(&self) -> &'a Session {
         self.fcx.ccx.sess()
     }
 
@@ -538,8 +538,8 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {
-    type Target = Builder<'blk, 'tcx>;
+impl<'a, 'tcx> Deref for BlockAndBuilder<'a, 'tcx> {
+    type Target = Builder<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.builder
     }
@@ -896,19 +896,20 @@ pub fn langcall(tcx: TyCtxt,
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                          lhs: ValueRef,
-                                          rhs: ValueRef) -> ValueRef {
+pub fn build_unchecked_lshift<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    lhs: ValueRef,
+    rhs: ValueRef
+) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs);
     bcx.shl(lhs, rhs)
 }
 
-pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                          lhs_t: Ty<'tcx>,
-                                          lhs: ValueRef,
-                                          rhs: ValueRef) -> ValueRef {
+pub fn build_unchecked_rshift<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
+) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs);
@@ -920,14 +921,13 @@ pub fn build_unchecked_rshift<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn shift_mask_rhs<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                              rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
     bcx.and(rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false))
 }
 
-pub fn shift_mask_val<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+pub fn shift_mask_val<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     llty: Type,
     mask_llty: Type,
     invert: bool

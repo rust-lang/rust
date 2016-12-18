@@ -36,18 +36,20 @@ use cleanup::CleanupScope;
 
 use syntax_pos::DUMMY_SP;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                           v: ValueRef,
-                                           size: ValueRef,
-                                           align: ValueRef) {
+pub fn trans_exchange_free_dyn<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    v: ValueRef,
+    size: ValueRef,
+    align: ValueRef
+) {
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
     Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[])).call(&bcx, &args, None, None)
 }
 
-pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                          ptr: ValueRef,
-                                          content_ty: Ty<'tcx>) {
+pub fn trans_exchange_free_ty<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>, ptr: ValueRef, content_ty: Ty<'tcx>
+) {
     assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
@@ -104,16 +106,16 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) ->
     }
 }
 
-fn drop_ty<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>, v: ValueRef, t: Ty<'tcx>) {
+fn drop_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, t: Ty<'tcx>) {
     call_drop_glue(bcx, v, t, false, None)
 }
 
-pub fn call_drop_glue<'blk, 'tcx>(
-    bcx: &BlockAndBuilder<'blk, 'tcx>,
+pub fn call_drop_glue<'a, 'tcx>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
     v: ValueRef,
     t: Ty<'tcx>,
     skip_dtor: bool,
-    funclet: Option<&'blk Funclet>,
+    funclet: Option<&'a Funclet>,
 ) {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
@@ -181,8 +183,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'t
     }
 }
 
-pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     g: DropGlueKind<'tcx>) {
+pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'tcx>) {
     let tcx = ccx.tcx();
     assert_eq!(g.ty(), get_drop_glue_type(tcx, g.ty()));
     let (llfn, fn_ty) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
@@ -203,11 +204,11 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(&bcx);
 }
 
-fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
-                                 t: Ty<'tcx>,
-                                 v0: ValueRef,
-                                 shallow_drop: bool)
-                                 -> BlockAndBuilder<'blk, 'tcx>
+fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
+                               t: Ty<'tcx>,
+                               v0: ValueRef,
+                               shallow_drop: bool)
+                               -> BlockAndBuilder<'a, 'tcx>
 {
     debug!("trans_custom_dtor t: {}", t);
     let tcx = bcx.tcx();
@@ -265,9 +266,9 @@ fn trans_custom_dtor<'blk, 'tcx>(mut bcx: BlockAndBuilder<'blk, 'tcx>,
     bcx
 }
 
-pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                         t: Ty<'tcx>, info: ValueRef)
-                                         -> (ValueRef, ValueRef) {
+pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                                       t: Ty<'tcx>, info: ValueRef)
+                                       -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
     if type_is_sized(bcx.tcx(), t) {
@@ -372,10 +373,10 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
-                              v0: ValueRef,
-                              g: DropGlueKind<'tcx>)
-                              -> BlockAndBuilder<'blk, 'tcx> {
+fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
+                            v0: ValueRef,
+                            g: DropGlueKind<'tcx>)
+                            -> BlockAndBuilder<'a, 'tcx> {
     let t = g.ty();
 
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
@@ -454,15 +455,15 @@ fn make_drop_glue<'blk, 'tcx>(bcx: BlockAndBuilder<'blk, 'tcx>,
 }
 
 // Iterates through the elements of a structural type, dropping them.
-fn drop_structural_ty<'blk, 'tcx>(cx: BlockAndBuilder<'blk, 'tcx>,
-                                  av: ValueRef,
-                                  t: Ty<'tcx>)
-                                  -> BlockAndBuilder<'blk, 'tcx> {
-    fn iter_variant<'blk, 'tcx>(cx: &BlockAndBuilder<'blk, 'tcx>,
-                                t: Ty<'tcx>,
-                                av: adt::MaybeSizedValue,
-                                variant: &'tcx ty::VariantDef,
-                                substs: &Substs<'tcx>) {
+fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
+                                av: ValueRef,
+                                t: Ty<'tcx>)
+                                -> BlockAndBuilder<'a, 'tcx> {
+    fn iter_variant<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>,
+                              t: Ty<'tcx>,
+                              av: adt::MaybeSizedValue,
+                              variant: &'tcx ty::VariantDef,
+                              substs: &Substs<'tcx>) {
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
