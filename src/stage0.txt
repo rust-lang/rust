@@ -2,7 +2,7 @@
 # compiler itself. For the rustbuild build system, this also describes the
 # relevant Cargo revision that we're using.
 #
-# Currently Rust always bootstrap from the previous stable release, and in our
+# Currently Rust always bootstraps from the previous stable release, and in our
 # train model this means that the master branch bootstraps from beta, beta
 # bootstraps from current stable, and stable bootstraps from the previous stable
 # release.
