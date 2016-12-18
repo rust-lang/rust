@@ -211,44 +211,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         }
 
         "copy_nonoverlapping" => {
-            copy_intrinsic(bcx,
-                           false,
-                           false,
-                           substs.type_at(0),
-                           llargs[1],
-                           llargs[0],
-                           llargs[2])
+            copy_intrinsic(bcx, false, false, substs.type_at(0), llargs[1], llargs[0], llargs[2])
         }
         "copy" => {
-            copy_intrinsic(bcx,
-                           true,
-                           false,
-                           substs.type_at(0),
-                           llargs[1],
-                           llargs[0],
-                           llargs[2])
+            copy_intrinsic(bcx, true, false, substs.type_at(0), llargs[1], llargs[0], llargs[2])
         }
         "write_bytes" => {
             memset_intrinsic(bcx, false, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
 
         "volatile_copy_nonoverlapping_memory" => {
-            copy_intrinsic(bcx,
-                           false,
-                           true,
-                           substs.type_at(0),
-                           llargs[0],
-                           llargs[1],
-                           llargs[2])
+            copy_intrinsic(bcx, false, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         "volatile_copy_memory" => {
-            copy_intrinsic(bcx,
-                           true,
-                           true,
-                           substs.type_at(0),
-                           llargs[0],
-                           llargs[1],
-                           llargs[2])
+            copy_intrinsic(bcx, true, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         "volatile_set_memory" => {
             memset_intrinsic(bcx, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
@@ -293,10 +269,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             match int_type_width_signed(sty, ccx) {
                 Some((width, signed)) =>
                     match name {
-                        "ctlz" => count_zeros_intrinsic(bcx, &format!("llvm.ctlz.i{}", width),
-                                                        llargs[0]),
-                        "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
-                                                        llargs[0]),
+                        "ctlz" | "cttz" => {
+                            let y = C_bool(bcx.ccx(), false);
+                            let llfn = ccx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
+                            bcx.call(llfn, &[llargs[0], y], None)
+                        }
                         "ctpop" => bcx.call(ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
                                         &llargs, None),
                         "bswap" => {
@@ -311,7 +288,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
                                                     &name[..3], width);
-                            with_overflow_intrinsic(bcx, &intrinsic, llargs[0], llargs[1], llresult)
+                            let llfn = bcx.ccx().get_intrinsic(&intrinsic);
+
+                            // Convert `i1` to a `bool`, and write it to the out parameter
+                            let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
+                            let result = bcx.extract_value(val, 0);
+                            let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(ccx));
+                            bcx.store(result, bcx.struct_gep(llresult, 0));
+                            bcx.store(overflow, bcx.struct_gep(llresult, 1));
+
+                            C_nil(bcx.ccx())
                         },
                         "overflowing_add" => bcx.add(llargs[0], llargs[1]),
                         "overflowing_sub" => bcx.sub(llargs[0], llargs[1]),
@@ -412,6 +398,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                 _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
             };
 
+            let invalid_monomorphization = |sty| {
+                span_invalid_monomorphization_error(tcx.sess, span,
+                    &format!("invalid monomorphization of `{}` intrinsic: \
+                              expected basic integer type, found `{}`", name, sty));
+            };
+
             match split[1] {
                 "cxchg" | "cxchgweak" => {
                     let sty = &substs.type_at(0).sty;
@@ -424,10 +416,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                         bcx.store(result, bcx.struct_gep(llresult, 0));
                         bcx.store(success, bcx.struct_gep(llresult, 1));
                     } else {
-                        span_invalid_monomorphization_error(
-                            tcx.sess, span,
-                            &format!("invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`", name, sty));
+                        invalid_monomorphization(sty);
                     }
                     C_nil(ccx)
                 }
@@ -437,10 +426,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                     if int_type_width_signed(sty, ccx).is_some() {
                         bcx.atomic_load(llargs[0], order)
                     } else {
-                        span_invalid_monomorphization_error(
-                            tcx.sess, span,
-                            &format!("invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`", name, sty));
+                        invalid_monomorphization(sty);
                         C_nil(ccx)
                     }
                 }
@@ -450,10 +436,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                     if int_type_width_signed(sty, ccx).is_some() {
                         bcx.atomic_store(llargs[1], llargs[0], order);
                     } else {
-                        span_invalid_monomorphization_error(
-                            tcx.sess, span,
-                            &format!("invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`", name, sty));
+                        invalid_monomorphization(sty);
                     }
                     C_nil(ccx)
                 }
@@ -489,15 +472,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                     if int_type_width_signed(sty, ccx).is_some() {
                         bcx.atomic_rmw(atom_op, llargs[0], llargs[1], order)
                     } else {
-                        span_invalid_monomorphization_error(
-                            tcx.sess, span,
-                            &format!("invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`", name, sty));
+                        invalid_monomorphization(sty);
                         C_nil(ccx)
                     }
                 }
             }
-
         }
 
         _ => {
@@ -529,18 +508,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                         *any_changes_needed |= llvm_elem.is_some();
 
                         let t = llvm_elem.as_ref().unwrap_or(t);
-                        let elem = one(ty_to_type(ccx, t,
-                                                  any_changes_needed));
+                        let elem = one(ty_to_type(ccx, t, any_changes_needed));
                         vec![elem.ptr_to()]
                     }
                     Vector(ref t, ref llvm_elem, length) => {
                         *any_changes_needed |= llvm_elem.is_some();
 
                         let t = llvm_elem.as_ref().unwrap_or(t);
-                        let elem = one(ty_to_type(ccx, t,
-                                                  any_changes_needed));
-                        vec![Type::vector(&elem,
-                                          length as u64)]
+                        let elem = one(ty_to_type(ccx, t, any_changes_needed));
+                        vec![Type::vector(&elem, length as u64)]
                     }
                     Aggregate(false, ref contents) => {
                         let elems = contents.iter()
@@ -585,8 +561,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
                         let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
-                        vec![bcx.pointercast(llarg,
-                                         llvm_elem.ptr_to())]
+                        vec![bcx.pointercast(llarg, llvm_elem.ptr_to())]
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
                         let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
@@ -716,33 +691,6 @@ fn memset_intrinsic<'blk, 'tcx>(
     let size = machine::llsize_of(ccx, lltp_ty);
     let dst = bcx.pointercast(dst, Type::i8p(ccx));
     call_memset(bcx, dst, val, bcx.mul(size, count), align, volatile)
-}
-
-fn count_zeros_intrinsic(bcx: &BlockAndBuilder,
-                         name: &str,
-                         val: ValueRef)
-                         -> ValueRef {
-    let y = C_bool(bcx.ccx(), false);
-    let llfn = bcx.ccx().get_intrinsic(&name);
-    bcx.call(llfn, &[val, y], None)
-}
-
-fn with_overflow_intrinsic<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
-                                       name: &str,
-                                       a: ValueRef,
-                                       b: ValueRef,
-                                       out: ValueRef)
-                                       -> ValueRef {
-    let llfn = bcx.ccx().get_intrinsic(&name);
-
-    // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = bcx.call(llfn, &[a, b], None);
-    let result = bcx.extract_value(val, 0);
-    let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx()));
-    bcx.store(result, bcx.struct_gep(out, 0));
-    bcx.store(overflow, bcx.struct_gep(out, 1));
-
-    C_nil(bcx.ccx())
 }
 
 fn try_intrinsic<'blk, 'tcx>(
