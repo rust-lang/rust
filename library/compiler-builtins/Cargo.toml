@@ -8,12 +8,6 @@ version = "0.1.0"
 rustc-cfg = "0.2.0"
 gcc = "0.3.36"
 
-[dependencies]
-
-[dependencies.rlibc]
-git = "https://github.com/alexcrichton/rlibc"
-optional = true
-
 [dev-dependencies]
 quickcheck = "0.3.1"
 rand = "0.3.14"
@@ -26,7 +20,8 @@ c = []
 # Mark this crate as the #![compiler_builtins] crate
 compiler-builtins = []
 default = ["compiler-builtins"]
+# Include implementations of memory operations like memcpy
+mem = []
 rustbuild = ["compiler-builtins"]
-weak = ["rlibc/weak"]
 
 [workspace]
