@@ -8,25 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(dead_code)]
+#![deny(dead_code)]
 
-macro_rules! foo {
-    ($x:tt) => (type Alias = $x<i32>;)
-}
+type Used = u8;
+type Unused = u8; //~ ERROR type alias is never used
 
-foo!(Box);
+fn id(x: Used) -> Used { x }
 
-macro_rules! bar {
-    ($x:tt) => {
-        macro_rules! baz {
-            ($x:tt, $y:tt) => { ($x, $y) }
-        }
-    }
-}
-
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    bar!($y);
-    let _: (i8, i16) = baz!(0i8, 0i16);
+fn main() {
+    id(0);
 }

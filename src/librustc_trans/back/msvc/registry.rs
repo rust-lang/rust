@@ -12,7 +12,7 @@ use std::io;
 use std::ffi::{OsString, OsStr};
 use std::os::windows::prelude::*;
 use std::ptr;
-use libc::{c_void, c_long};
+use libc::c_long;
 
 pub type DWORD = u32;
 type LPCWSTR = *const u16;
@@ -38,8 +38,6 @@ pub enum __HKEY__ {}
 pub type HKEY = *mut __HKEY__;
 pub type PHKEY = *mut HKEY;
 pub type REGSAM = DWORD;
-pub type LPWSTR = *mut u16;
-pub type PFILETIME = *mut c_void;
 
 #[link(name = "advapi32")]
 extern "system" {
