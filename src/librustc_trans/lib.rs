@@ -96,7 +96,6 @@ mod asm;
 mod assert_module_sources;
 mod attributes;
 mod base;
-mod basic_block;
 mod builder;
 mod cabi_aarch64;
 mod cabi_arm;

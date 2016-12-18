@@ -25,7 +25,7 @@ use attributes;
 use base;
 use base::*;
 use common::{
-    self, BlockAndBuilder, CrateContext, FunctionContext, SharedCrateContext
+    self, CrateContext, FunctionContext, SharedCrateContext
 };
 use consts;
 use declare;
@@ -176,26 +176,6 @@ impl<'tcx> Callee<'tcx> {
         }
         fn_ty.adjust_for_abi(ccx, abi, &sig);
         fn_ty
-    }
-
-    /// This behemoth of a function translates function calls. Unfortunately, in
-    /// order to generate more efficient LLVM output at -O0, it has quite a complex
-    /// signature (refactoring this into two functions seems like a good idea).
-    ///
-    /// In particular, for lang items, it is invoked with a dest of None, and in
-    /// that case the return value contains the result of the fn. The lang item must
-    /// not return a structural type or else all heck breaks loose.
-    ///
-    /// For non-lang items, `dest` is always Some, and hence the result is written
-    /// into memory somewhere. Nonetheless we return the actual return value of the
-    /// function.
-    pub fn call<'a>(self,
-        bcx: &BlockAndBuilder<'a, 'tcx>,
-        args: &[ValueRef],
-        dest: Option<ValueRef>,
-        lpad: Option<&'a llvm::OperandBundleDef>
-    ) {
-        trans_call_inner(bcx, self, args, dest, lpad)
     }
 
     /// Turn the callee into a function pointer.
@@ -665,76 +645,4 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.instances().borrow_mut().insert(instance, llfn);
 
     (llfn, fn_ty)
-}
-
-// ______________________________________________________________________
-// Translating calls
-
-fn trans_call_inner<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
-    callee: Callee<'tcx>,
-    args: &[ValueRef],
-    dest: Option<ValueRef>,
-    lpad: Option<&'a llvm::OperandBundleDef>
-) {
-    // Introduce a temporary cleanup scope that will contain cleanups
-    // for the arguments while they are being evaluated. The purpose
-    // this cleanup is to ensure that, should a panic occur while
-    // evaluating argument N, the values for arguments 0...N-1 are all
-    // cleaned up. If no panic occurs, the values are handed off to
-    // the callee, and hence none of the cleanups in this temporary
-    // scope will ever execute.
-    let ccx = bcx.ccx();
-    let fn_ret = callee.ty.fn_ret();
-    let fn_ty = callee.direct_fn_type(ccx, &[]);
-
-    // If there no destination, return must be direct, with no cast.
-    if dest.is_none() {
-        assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
-    }
-
-    let mut llargs = Vec::new();
-
-    if fn_ty.ret.is_indirect() {
-        let dest = dest.unwrap();
-        let llretslot = if let Some(ty) = fn_ty.ret.cast {
-            bcx.pointercast(dest, ty.ptr_to())
-        } else {
-            dest
-        };
-        llargs.push(llretslot);
-    }
-
-    let llfn = match callee.data {
-        NamedTupleConstructor(_) | Intrinsic => {
-            bug!("{:?} calls should not go through Callee::call", callee);
-        }
-        Virtual(idx) => {
-            llargs.push(args[0]);
-
-            let fn_ptr = meth::get_virtual_method(&bcx, args[1], idx);
-            let llty = fn_ty.llvm_type(&bcx.ccx()).ptr_to();
-            llargs.extend_from_slice(&args[2..]);
-            bcx.pointercast(fn_ptr, llty)
-        }
-        Fn(f) => {
-            llargs.extend_from_slice(args);
-            f
-        }
-    };
-
-    let llret = bcx.call(llfn, &llargs[..], lpad);
-    fn_ty.apply_attrs_callsite(llret);
-
-    // If the function we just called does not use an outpointer,
-    // store the result into the Rust outpointer.
-    if !fn_ty.ret.is_indirect() {
-        if let Some(llretslot) = dest {
-            fn_ty.ret.store(&bcx, llret, llretslot);
-        }
-    }
-
-    if fn_ret.0.is_never() {
-        bcx.unreachable();
-    }
 }

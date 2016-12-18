@@ -26,8 +26,6 @@ use syntax::symbol::keywords;
 
 use std::iter;
 
-use basic_block::BasicBlock;
-
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -296,12 +294,12 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
     // Remove blocks that haven't been visited, or have no
     // predecessors.
     for bb in mir.basic_blocks().indices() {
-        let block = mircx.blocks[bb];
-        let block = BasicBlock(block);
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("trans_mir: block {:?} was not visited", bb);
-            block.delete();
+            unsafe {
+                llvm::LLVMDeleteBasicBlock(mircx.blocks[bb]);
+            }
         }
     }
 }
