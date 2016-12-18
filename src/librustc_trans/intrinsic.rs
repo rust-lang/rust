@@ -893,7 +893,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, true);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     trans(fcx.get_entry_block());
     llfn
 }

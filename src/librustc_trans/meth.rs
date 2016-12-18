@@ -81,7 +81,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     let bcx = fcx.get_entry_block();
 
     let llargs = get_params(fcx.llfn);
