@@ -71,16 +71,6 @@ impl UnwindKind {
             }
         }
     }
-
-    fn get_funclet(&self, bcx: &BlockAndBuilder) -> Option<Funclet> {
-        match *self {
-            UnwindKind::CleanupPad(_) => {
-                let pad = bcx.cleanup_pad(None, &[]);
-                Funclet::msvc(pad)
-            },
-            UnwindKind::LandingPad => Funclet::gnu(),
-        }
-    }
 }
 
 impl PartialEq for UnwindKind {
@@ -212,7 +202,11 @@ impl<'tcx> CleanupScope<'tcx> {
         let mut cleanup = fcx.build_new_block("clean_custom_");
 
         // Insert cleanup instructions into the cleanup block
-        drop_val.trans(val.get_funclet(&cleanup).as_ref(), &cleanup);
+        let funclet = match val {
+            UnwindKind::CleanupPad(_) => Funclet::msvc(cleanup.cleanup_pad(None, &[])),
+            UnwindKind::LandingPad => Funclet::gnu(),
+        };
+        drop_val.trans(funclet.as_ref(), &cleanup);
 
         // Insert instruction into cleanup block to branch to the exit
         val.branch(&mut cleanup, resume_bcx.llbb());
