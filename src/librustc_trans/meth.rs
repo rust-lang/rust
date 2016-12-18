@@ -86,7 +86,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     let llargs = get_params(fcx.llfn);
     callee.call(&bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], fcx.llretslotptr, None);
-    fcx.finish(&bcx);
+    fcx.build_return_block(&bcx);
 
     llfn
 }
