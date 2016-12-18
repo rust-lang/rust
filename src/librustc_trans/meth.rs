@@ -85,8 +85,24 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let bcx = fcx.get_entry_block();
 
     let llargs = get_params(fcx.llfn);
-    callee.call(&bcx, &llargs[fcx.fn_ty.ret.is_indirect() as usize..], fcx.llretslotptr, None);
-    fcx.build_return_block(&bcx);
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(ccx, &[]);
+
+    let mut args = Vec::new();
+
+    args.extend_from_slice(&llargs);
+    let llret = bcx.call(callee.reify(ccx), &args, None);
+    fn_ty.apply_attrs_callsite(llret);
+
+    if fn_ret.0.is_never() {
+        bcx.unreachable();
+    }
+
+    if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        bcx.ret_void();
+    } else {
+        bcx.ret(llret);
+    }
 
     llfn
 }

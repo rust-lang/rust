@@ -564,68 +564,6 @@ pub fn alloc_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, ty: Ty<'tcx>, name: &
     bcx.fcx().alloca(type_of::type_of(bcx.ccx(), ty), name)
 }
 
-impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    // Builds the return block for a function.
-    pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'a, 'tcx>) {
-        if self.llretslotptr.is_none() || self.fn_ty.ret.is_indirect() {
-            return ret_cx.ret_void();
-        }
-
-        let retslot = self.llretslotptr.unwrap();
-        let retptr = Value(retslot);
-        let llty = self.fn_ty.ret.original_ty;
-        match (retptr.get_dominating_store(ret_cx), self.fn_ty.ret.cast) {
-            // If there's only a single store to the ret slot, we can directly return
-            // the value that was stored and omit the store and the alloca.
-            // However, we only want to do this when there is no cast needed.
-            (Some(s), None) => {
-                let mut retval = s.get_operand(0).unwrap().get();
-                s.erase_from_parent();
-
-                if retptr.has_no_uses() {
-                    retptr.erase_from_parent();
-                }
-
-                if self.fn_ty.ret.is_indirect() {
-                    ret_cx.store(retval, get_param(self.llfn, 0));
-                    ret_cx.ret_void()
-                } else {
-                    if llty == Type::i1(self.ccx) {
-                        retval = ret_cx.trunc(retval, llty);
-                    }
-                    ret_cx.ret(retval)
-                }
-            }
-            (_, cast_ty) if self.fn_ty.ret.is_indirect() => {
-                // Otherwise, copy the return value to the ret slot.
-                assert_eq!(cast_ty, None);
-                let llsz = llsize_of(self.ccx, self.fn_ty.ret.ty);
-                let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
-                call_memcpy(&ret_cx, get_param(self.llfn, 0),
-                            retslot, llsz, llalign as u32);
-                ret_cx.ret_void()
-            }
-            (_, Some(cast_ty)) => {
-                let load = ret_cx.load(ret_cx.pointercast(retslot, cast_ty.ptr_to()));
-                let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
-                unsafe {
-                    llvm::LLVMSetAlignment(load, llalign);
-                }
-                ret_cx.ret(load)
-            }
-            (_, None) => {
-                let retval = if llty == Type::i1(self.ccx) {
-                    let val = ret_cx.load_range_assert(retslot, 0, 2, llvm::False);
-                    ret_cx.trunc(val, llty)
-                } else {
-                    ret_cx.load(retslot)
-                };
-                ret_cx.ret(retval)
-            }
-        }
-    }
-}
-
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
@@ -683,9 +621,17 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None, false);
     let bcx = fcx.get_entry_block();
-
     if !fcx.fn_ty.ret.is_ignore() {
-        let dest = fcx.llretslotptr.unwrap();
+        // But if there are no nested returns, we skip the indirection
+        // and have a single retslot
+        let dest = if fcx.fn_ty.ret.is_indirect() {
+            get_param(fcx.llfn, 0)
+        } else {
+            // We create an alloca to hold a pointer of type `ret.original_ty`
+            // which will hold the pointer to the right alloca which has the
+            // final ret value
+            fcx.alloca(fcx.fn_ty.ret.memory_ty(ccx), "sret_slot")
+        };
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
@@ -703,9 +649,32 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
         adt::trans_set_discr(&bcx, sig.output(), dest, disr);
-    }
 
-    fcx.build_return_block(&bcx);
+        if fcx.fn_ty.ret.is_indirect() {
+            bcx.ret_void();
+            return;
+        }
+
+        if let Some(cast_ty) = fcx.fn_ty.ret.cast {
+            let load = bcx.load(bcx.pointercast(dest, cast_ty.ptr_to()));
+            let llalign = llalign_of_min(fcx.ccx, fcx.fn_ty.ret.ty);
+            unsafe {
+                llvm::LLVMSetAlignment(load, llalign);
+            }
+            bcx.ret(load)
+        } else {
+            let llty = fcx.fn_ty.ret.original_ty;
+            let retval = if llty == Type::i1(fcx.ccx) {
+                let val = bcx.load_range_assert(dest, 0, 2, llvm::False);
+                bcx.trunc(val, llty)
+            } else {
+                bcx.load(dest)
+            };
+            bcx.ret(retval)
+        }
+    } else {
+        bcx.ret_void();
+    }
 }
 
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {

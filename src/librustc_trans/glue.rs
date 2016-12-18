@@ -201,7 +201,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     // type, so we don't need to explicitly cast the function parameter.
 
     let bcx = make_drop_glue(bcx, get_param(llfn, 0), g);
-    fcx.build_return_block(&bcx);
+    bcx.ret_void();
 }
 
 fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
