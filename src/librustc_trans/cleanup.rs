@@ -86,7 +86,7 @@ impl PartialEq for UnwindKind {
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
     pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
-        if !self.type_needs_drop(ty) { return CleanupScope::noop(); }
+        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
         let drop = DropValue {
             val: val,
             ty: ty,
@@ -106,7 +106,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
-        if !self.type_needs_drop(ty) { return CleanupScope::noop(); }
+        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
 
         let drop = DropValue {
             val: val,

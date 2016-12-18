@@ -48,21 +48,16 @@ use std::ffi::CString;
 
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 pub use context::{CrateContext, SharedCrateContext};
 
-/// Is the type's representation size known at compile time?
-pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx, &tcx.empty_parameter_environment(), DUMMY_SP)
-}
-
-pub fn type_is_fat_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyBox(ty) => {
-            !type_is_sized(tcx, ty)
+            !ccx.shared().type_is_sized(ty)
         }
         _ => {
             false
@@ -74,14 +69,13 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     use machine::llsize_of_alloc;
     use type_of::sizing_type_of;
 
-    let tcx = ccx.tcx();
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
         ty.is_simd();
-    if simple && !type_is_fat_ptr(tcx, ty) {
+    if simple && !type_is_fat_ptr(ccx, ty) {
         return true;
     }
-    if !type_is_sized(tcx, ty) {
+    if !ccx.shared().type_is_sized(ty) {
         return false;
     }
     match ty.sty {
@@ -239,9 +233,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // section of the executable we're generating.
     pub llfn: ValueRef,
 
-    // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
-    param_env: ty::ParameterEnvironment<'tcx>,
-
     // A pointer to where to store the return value. If the return type is
     // immediate, this points to an alloca in the function. Otherwise, it's a
     // pointer to the hidden first parameter of the function. After function
@@ -289,7 +280,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let mut fcx = FunctionContext {
             llfn: llfndecl,
             llretslotptr: None,
-            param_env: ccx.tcx().empty_parameter_environment(),
             alloca_insert_pt: None,
             fn_ty: fn_ty,
             param_substs: param_substs,
@@ -356,12 +346,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         monomorphize::apply_param_substs(self.ccx.shared(),
                                          self.param_substs,
                                          value)
-    }
-
-    /// This is the same as `common::type_needs_drop`, except that it
-    /// may use or update caches within this `FunctionContext`.
-    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        self.ccx.tcx().type_needs_drop_given_env(ty, &self.param_env)
     }
 
     pub fn eh_personality(&self) -> ValueRef {

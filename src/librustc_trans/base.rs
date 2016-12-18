@@ -232,7 +232,7 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(common::type_is_sized(bcx.tcx(), a));
+            assert!(bcx.ccx().shared().type_is_sized(a));
             let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), b).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx(), a, b, None))
         }
@@ -252,7 +252,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         (&ty::TyRef(..), &ty::TyRef(..)) |
         (&ty::TyRef(..), &ty::TyRawPtr(..)) |
         (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
-            let (base, info) = if common::type_is_fat_ptr(bcx.tcx(), src_ty) {
+            let (base, info) = if common::type_is_fat_ptr(bcx.ccx(), src_ty) {
                 // fat-ptr to fat-ptr unsize preserves the vtable
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
@@ -412,8 +412,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False)
-    } else if (t.is_region_ptr() || t.is_unique()) &&
-              !common::type_is_fat_ptr(ccx.tcx(), t) {
+    } else if (t.is_region_ptr() || t.is_unique()) && !common::type_is_fat_ptr(ccx, t) {
         b.load_nonnull(ptr)
     } else {
         b.load(ptr)
@@ -425,7 +424,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
 pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
-    if common::type_is_fat_ptr(cx.tcx(), t) {
+    if common::type_is_fat_ptr(cx.ccx(), t) {
         let lladdr = cx.extract_value(v, abi::FAT_PTR_ADDR);
         let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
         store_fat_ptr(cx, lladdr, llextra, dst, t);
@@ -538,7 +537,7 @@ pub fn memcpy_ty<'a, 'tcx>(
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
-    } else if common::type_is_fat_ptr(bcx.tcx(), t) {
+    } else if common::type_is_fat_ptr(bcx.ccx(), t) {
         let (data, extra) = load_fat_ptr(bcx, src, t);
         store_fat_ptr(bcx, data, extra, dst, t);
     } else {
@@ -639,7 +638,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
-            if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+            if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
                 let meta = &fcx.fn_ty.args[arg_idx];
                 arg_idx += 1;
                 arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));

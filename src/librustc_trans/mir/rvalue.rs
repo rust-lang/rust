@@ -55,7 +55,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, cast_ty) => {
                 let cast_ty = bcx.fcx().monomorphize(&cast_ty);
 
-                if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
+                if common::type_is_fat_ptr(bcx.ccx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
@@ -208,7 +208,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::CastKind::Unsize => {
                         // unsize targets other than to a fat pointer currently
                         // can't be operands.
-                        assert!(common::type_is_fat_ptr(bcx.tcx(), cast_ty));
+                        assert!(common::type_is_fat_ptr(bcx.ccx(), cast_ty));
 
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
@@ -234,11 +234,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if common::type_is_fat_ptr(bcx.tcx(), operand.ty) => {
+                    mir::CastKind::Misc if common::type_is_fat_ptr(bcx.ccx(), operand.ty) => {
                         let ll_cast_ty = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let ll_from_ty = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         if let OperandValue::Pair(data_ptr, meta_ptr) = operand.val {
-                            if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
+                            if common::type_is_fat_ptr(bcx.ccx(), cast_ty) {
                                 let ll_cft = ll_cast_ty.field_types();
                                 let ll_fft = ll_from_ty.field_types();
                                 let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
@@ -358,7 +358,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // Note: lvalues are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                let operand = if common::type_is_sized(bcx.tcx(), ty) {
+                let operand = if bcx.ccx().shared().type_is_sized(ty) {
                     OperandRef {
                         val: OperandValue::Immediate(tr_lvalue.llval),
                         ty: ref_ty,
@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs = self.trans_operand(&bcx, lhs);
                 let rhs = self.trans_operand(&bcx, rhs);
-                let llresult = if common::type_is_fat_ptr(bcx.tcx(), lhs.ty) {
+                let llresult = if common::type_is_fat_ptr(bcx.ccx(), lhs.ty) {
                     match (lhs.val, rhs.val) {
                         (OperandValue::Pair(lhs_addr, lhs_extra),
                          OperandValue::Pair(rhs_addr, rhs_extra)) => {

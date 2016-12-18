@@ -208,7 +208,7 @@ use syntax::abi::Abi;
 use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
-use common::{fulfill_obligation, type_is_sized};
+use common::fulfill_obligation;
 use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -337,7 +337,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
         TransItem::Static(node_id) => {
             let def_id = scx.tcx().map.local_def_id(node_id);
             let ty = scx.tcx().item_type(def_id);
-            let ty = glue::get_drop_glue_type(scx.tcx(), ty);
+            let ty = glue::get_drop_glue_type(scx, ty);
             neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
 
             recursion_depth_reset = None;
@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                       self.param_substs,
                                                       &ty);
             assert!(ty.is_normalized_for_trans());
-            let ty = glue::get_drop_glue_type(self.scx.tcx(), ty);
+            let ty = glue::get_drop_glue_type(self.scx, ty);
             self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
         }
 
@@ -678,7 +678,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                             let operand_ty = monomorphize::apply_param_substs(self.scx,
                                                                               self.param_substs,
                                                                               &mt.ty);
-                            let ty = glue::get_drop_glue_type(tcx, operand_ty);
+                            let ty = glue::get_drop_glue_type(self.scx, operand_ty);
                             self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                         } else {
                             bug!("Has the drop_in_place() intrinsic's signature changed?")
@@ -804,17 +804,17 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 let field_type = monomorphize::apply_param_substs(scx,
                                                                   substs,
                                                                   &field_type);
-                let field_type = glue::get_drop_glue_type(scx.tcx(), field_type);
+                let field_type = glue::get_drop_glue_type(scx, field_type);
 
-                if glue::type_needs_drop(scx.tcx(), field_type) {
+                if scx.type_needs_drop(field_type) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(field_type)));
                 }
             }
         }
         ty::TyClosure(def_id, substs) => {
             for upvar_ty in substs.upvar_tys(def_id, scx.tcx()) {
-                let upvar_ty = glue::get_drop_glue_type(scx.tcx(), upvar_ty);
-                if glue::type_needs_drop(scx.tcx(), upvar_ty) {
+                let upvar_ty = glue::get_drop_glue_type(scx, upvar_ty);
+                if scx.type_needs_drop(upvar_ty) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));
                 }
             }
@@ -822,15 +822,15 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyBox(inner_type)      |
         ty::TySlice(inner_type)    |
         ty::TyArray(inner_type, _) => {
-            let inner_type = glue::get_drop_glue_type(scx.tcx(), inner_type);
-            if glue::type_needs_drop(scx.tcx(), inner_type) {
+            let inner_type = glue::get_drop_glue_type(scx, inner_type);
+            if scx.type_needs_drop(inner_type) {
                 output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
             }
         }
         ty::TyTuple(args) => {
             for arg in args {
-                let arg = glue::get_drop_glue_type(scx.tcx(), arg);
-                if glue::type_needs_drop(scx.tcx(), arg) {
+                let arg = glue::get_drop_glue_type(scx, arg);
+                if scx.type_needs_drop(arg) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(arg)));
                 }
             }
@@ -969,7 +969,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             let (inner_source, inner_target) = (a, b);
 
-            if !type_is_sized(scx.tcx(), inner_source) {
+            if !scx.type_is_sized(inner_source) {
                 (inner_source, inner_target)
             } else {
                 scx.tcx().struct_lockstep_tails(inner_source, inner_target)
@@ -1051,7 +1051,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
             output.extend(methods);
         }
         // Also add the destructor
-        let dg_type = glue::get_drop_glue_type(scx.tcx(), impl_ty);
+        let dg_type = glue::get_drop_glue_type(scx, impl_ty);
         output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));
     }
 }
@@ -1097,7 +1097,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                                def_id_to_string(self.scx.tcx(), def_id));
 
                         let ty = self.scx.tcx().item_type(def_id);
-                        let ty = glue::get_drop_glue_type(self.scx.tcx(), ty);
+                        let ty = glue::get_drop_glue_type(self.scx, ty);
                         self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                     }
                 }

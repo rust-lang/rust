@@ -245,15 +245,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let ty = bcx.fcx().monomorphize(&ty);
 
                 // Double check for necessity to drop
-                if !glue::type_needs_drop(bcx.tcx(), ty) {
+                if !bcx.ccx().shared().type_needs_drop(ty) {
                     funclet_br(self, bcx, target);
                     return;
                 }
 
                 let lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
-                let is_sized = common::type_is_sized(bcx.tcx(), ty);
+                let drop_ty = glue::get_drop_glue_type(bcx.ccx().shared(), ty);
+                let is_sized = bcx.ccx().shared().type_is_sized(ty);
                 let llvalue = if is_sized {
                     if drop_ty != ty {
                         bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
@@ -461,7 +461,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
 
                     // Double check for necessity to drop
-                    if !glue::type_needs_drop(bcx.tcx(), ty) {
+                    if !bcx.ccx().shared().type_needs_drop(ty) {
                         funclet_br(self, bcx, target);
                         return;
                     }
@@ -474,8 +474,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
 
                     let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                    let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
-                    let is_sized = common::type_is_sized(bcx.tcx(), ty);
+                    let drop_ty = glue::get_drop_glue_type(bcx.ccx().shared(), ty);
+                    let is_sized = bcx.ccx().shared().type_is_sized(ty);
                     let llvalue = if is_sized {
                         if drop_ty != ty {
                             bcx.pointercast(llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
@@ -678,7 +678,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       callee: &mut CalleeData) {
         if let Pair(a, b) = op.val {
             // Treat the values in a fat pointer separately.
-            if common::type_is_fat_ptr(bcx.tcx(), op.ty) {
+            if common::type_is_fat_ptr(bcx.ccx(), op.ty) {
                 let (ptr, meta) = (a, b);
                 if *next_idx == 0 {
                     if let Virtual(idx) = *callee {
@@ -766,7 +766,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let ptr = adt::trans_field_ptr(bcx, tuple.ty, base, Disr(0), n);
-                    let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
+                    let val = if common::type_is_fat_ptr(bcx.ccx(), ty) {
                         let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
                         Pair(lldata, llextra)
                     } else {

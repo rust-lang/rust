@@ -420,7 +420,7 @@ impl FnType {
         let ret_ty = sig.output();
         let mut ret = arg_of(ret_ty, true);
 
-        if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
+        if !type_is_fat_ptr(ccx, ret_ty) {
             // The `noalias` attribute on the return value is useful to a
             // function ptr caller.
             if let ty::TyBox(_) = ret_ty.sty {
@@ -485,7 +485,7 @@ impl FnType {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if type_is_fat_ptr(ccx.tcx(), ty) {
+            if type_is_fat_ptr(ccx, ty) {
                 let original_tys = arg.original_ty.field_types();
                 let sizing_tys = arg.ty.field_types();
                 assert_eq!((original_tys.len(), sizing_tys.len()), (2, 2));
@@ -558,7 +558,7 @@ impl FnType {
             };
             // Fat pointers are returned by-value.
             if !self.ret.is_ignore() {
-                if !type_is_fat_ptr(ccx.tcx(), sig.output()) {
+                if !type_is_fat_ptr(ccx, sig.output()) {
                     fixup(&mut self.ret);
                 }
             }

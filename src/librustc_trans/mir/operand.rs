@@ -143,7 +143,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
-        let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
+        let val = if common::type_is_fat_ptr(bcx.ccx(), ty) {
             let (lldata, llextra) = base::load_fat_ptr(bcx, llval, ty);
             OperandValue::Pair(lldata, llextra)
         } else if common::type_is_imm_pair(bcx.ccx(), ty) {

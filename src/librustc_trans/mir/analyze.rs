@@ -17,7 +17,6 @@ use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common::{self, BlockAndBuilder};
-use glue;
 use super::rvalue;
 
 pub fn lvalue_locals<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, mir: &mir::Mir<'tcx>) -> BitVector {
@@ -37,7 +36,7 @@ pub fn lvalue_locals<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, mir: &mir::Mir<'
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
             assert!(common::type_is_immediate(bcx.ccx(), ty) ||
-                    common::type_is_fat_ptr(bcx.tcx(), ty));
+                    common::type_is_fat_ptr(bcx.ccx(), ty));
         } else if common::type_is_imm_pair(bcx.ccx(), ty) {
             // We allow pairs and uses of any of their 2 fields.
         } else {
@@ -172,7 +171,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     let ty = self.bcx.fcx().monomorphize(&ty.to_ty(self.bcx.tcx()));
 
                     // Only need the lvalue if we're actually dropping it.
-                    if glue::type_needs_drop(self.bcx.tcx(), ty) {
+                    if self.bcx.ccx().shared().type_needs_drop(ty) {
                         self.mark_as_lvalue(index);
                     }
                 }

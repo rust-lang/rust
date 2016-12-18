@@ -293,7 +293,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>
                              sizing: bool, dst: bool) -> Vec<Type> {
     let fields = variant.field_index_by_increasing_offset().map(|i| fields[i as usize]);
     if sizing {
-        fields.filter(|ty| !dst || type_is_sized(cx.tcx(), *ty))
+        fields.filter(|ty| !dst || cx.shared().type_is_sized(*ty))
             .map(|ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
         fields.map(|ty| type_of::in_memory_type_of(cx, ty)).collect()
@@ -586,7 +586,8 @@ fn struct_field_ptr<'a, 'tcx>(
     //   * First field - Always aligned properly
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
-    if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed || type_is_sized(bcx.tcx(), fty) {
+    if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
+        bcx.ccx().shared().type_is_sized(fty) {
         return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
     }
 

@@ -19,7 +19,7 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, AdtKind, Ty, TypeFoldable};
 use adt;
 use base::*;
 use callee::Callee;
@@ -63,7 +63,7 @@ pub fn trans_exchange_free_dyn<'a, 'tcx>(
 pub fn trans_exchange_free_ty<'a, 'tcx>(
     bcx: &BlockAndBuilder<'a, 'tcx>, ptr: ValueRef, content_ty: Ty<'tcx>
 ) {
-    assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
+    assert!(bcx.ccx().shared().type_is_sized(content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
 
@@ -75,18 +75,14 @@ pub fn trans_exchange_free_ty<'a, 'tcx>(
     }
 }
 
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
-}
-
-pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     assert!(t.is_normalized_for_trans());
 
-    let t = tcx.erase_regions(&t);
+    let t = scx.tcx().erase_regions(&t);
 
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
-    if !type_is_sized(tcx, t) {
+    if !scx.type_is_sized(t) {
         return t;
     }
 
@@ -99,17 +95,16 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) ->
     // returned `tcx.types.i8` does not appear unsound. The impact on
     // code quality is unknown at this time.)
 
-    if !type_needs_drop(tcx, t) {
-        return tcx.types.i8;
+    if !scx.type_needs_drop(t) {
+        return scx.tcx().types.i8;
     }
     match t.sty {
-        ty::TyBox(typ) if !type_needs_drop(tcx, typ)
-                         && type_is_sized(tcx, typ) => {
-            tcx.infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
+        ty::TyBox(typ) if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) => {
+            scx.tcx().infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
                 let layout = t.layout(&infcx).unwrap();
-                if layout.size(&tcx.data_layout).bytes() == 0 {
+                if layout.size(&scx.tcx().data_layout).bytes() == 0 {
                     // `Box<ZeroSizeType>` does not allocate.
-                    tcx.types.i8
+                    scx.tcx().types.i8
                 } else {
                     t
                 }
@@ -132,7 +127,7 @@ pub fn call_drop_glue<'a, 'tcx>(
 ) {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
-    if bcx.fcx().type_needs_drop(t) {
+    if bcx.ccx().shared().type_needs_drop(t) {
         let ccx = bcx.ccx();
         let g = if skip_dtor {
             DropGlueKind::TyContents(t)
@@ -140,7 +135,7 @@ pub fn call_drop_glue<'a, 'tcx>(
             DropGlueKind::Ty(t)
         };
         let glue = get_drop_glue_core(ccx, g);
-        let glue_type = get_drop_glue_type(ccx.tcx(), t);
+        let glue_type = get_drop_glue_type(ccx.shared(), t);
         let ptr = if glue_type != t {
             bcx.pointercast(v, type_of(ccx, glue_type).ptr_to())
         } else {
@@ -184,7 +179,7 @@ impl<'tcx> DropGlueKind<'tcx> {
 }
 
 fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'tcx>) -> ValueRef {
-    let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
+    let g = g.map_ty(|t| get_drop_glue_type(ccx.shared(), t));
     match ccx.drop_glues().borrow().get(&g) {
         Some(&(glue, _)) => glue,
         None => {
@@ -197,8 +192,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'t
 }
 
 pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKind<'tcx>) {
-    let tcx = ccx.tcx();
-    assert_eq!(g.ty(), get_drop_glue_type(tcx, g.ty()));
+    assert_eq!(g.ty(), get_drop_glue_type(ccx.shared(), g.ty()));
     let (llfn, fn_ty) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
     let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
@@ -243,7 +237,7 @@ fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
     };
 
     let (sized_args, unsized_args);
-    let args: &[ValueRef] = if type_is_sized(tcx, t) {
+    let args: &[ValueRef] = if bcx.ccx().shared().type_is_sized(t) {
         sized_args = [v0];
         &sized_args
     } else {
@@ -284,7 +278,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
-    if type_is_sized(bcx.tcx(), t) {
+    if bcx.ccx().shared().type_is_sized(t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
         let size = llsize_of_alloc(bcx.ccx(), sizing_type);
         let align = align_of(bcx.ccx(), t);
@@ -405,7 +399,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
             // special. It may move to library and have Drop impl. As
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
-            if !type_is_sized(bcx.tcx(), content_ty) {
+            if !bcx.ccx().shared().type_is_sized(content_ty) {
                 let llval = get_dataptr(&bcx, v0);
                 let llbox = bcx.load(llval);
                 drop_ty(&bcx, v0, content_ty);
@@ -458,7 +452,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
             bcx
         }
         _ => {
-            if bcx.fcx().type_needs_drop(t) {
+            if bcx.ccx().shared().type_needs_drop(t) {
                 drop_structural_ty(bcx, v0, t)
             } else {
                 bcx
@@ -485,7 +479,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
         }
     }
 
-    let value = if type_is_sized(cx.tcx(), t) {
+    let value = if cx.ccx().shared().type_is_sized(t) {
         adt::MaybeSizedValue::sized(av)
     } else {
         // FIXME(#36457) -- we should pass unsized values as two arguments
@@ -525,7 +519,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
                     let llfld_a = adt::trans_field_ptr(&cx, t, value, Disr::from(discr), i);
 
-                    let val = if type_is_sized(cx.tcx(), field_ty) {
+                    let val = if cx.ccx().shared().type_is_sized(field_ty) {
                         llfld_a
                     } else {
                         // FIXME(#36457) -- we should pass unsized values as two arguments
