@@ -97,6 +97,7 @@ pub fn mingw(build: &Build, host: &str) {
     let name = format!("rust-mingw-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, host));
     let _ = fs::remove_dir_all(&image);
+    t!(fs::create_dir_all(&image));
 
     // The first argument to the script is a "temporary directory" which is just
     // thrown away (this contains the runtime DLLs included in the rustc package
