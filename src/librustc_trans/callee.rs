@@ -419,7 +419,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         bcx.unreachable();
     }
     self_scope.trans(&bcx);
-    fcx.finish(&bcx);
+    fcx.build_return_block(&bcx);
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
@@ -540,7 +540,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         ty: bare_fn_ty
     };
     callee.call(&bcx, &llargs[(self_idx + 1)..], fcx.llretslotptr, None);
-    fcx.finish(&bcx);
+    fcx.build_return_block(&bcx);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 

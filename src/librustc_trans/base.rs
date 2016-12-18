@@ -565,12 +565,6 @@ pub fn alloc_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, ty: Ty<'tcx>, name: &
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    /// Ties up the llstaticallocas -> llloadenv -> lltop edges,
-    /// and builds the return block.
-    pub fn finish(&'a self, ret_cx: &BlockAndBuilder<'a, 'tcx>) {
-        self.build_return_block(ret_cx);
-    }
-
     // Builds the return block for a function.
     pub fn build_return_block(&self, ret_cx: &BlockAndBuilder<'a, 'tcx>) {
         if self.llretslotptr.is_none() || self.fn_ty.ret.is_indirect() {
@@ -711,7 +705,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         adt::trans_set_discr(&bcx, sig.output(), dest, disr);
     }
 
-    fcx.finish(&bcx);
+    fcx.build_return_block(&bcx);
 }
 
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
