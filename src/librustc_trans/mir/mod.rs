@@ -18,11 +18,13 @@ use session::config::FullDebugInfo;
 use base;
 use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
+use monomorphize::Instance;
 use machine;
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
 use syntax::symbol::keywords;
+use syntax::abi::Abi;
 
 use std::iter;
 
@@ -38,7 +40,9 @@ use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
 pub struct MirContext<'a, 'tcx:'a> {
-    mir: &'a mir::Mir<'tcx>,
+    pub mir: &'a mir::Mir<'tcx>,
+
+    pub debug_context: debuginfo::FunctionDebugContext,
 
     /// Function context
     fcx: &'a common::FunctionContext<'a, 'tcx>,
@@ -89,7 +93,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
-        match self.fcx.debug_context {
+        match self.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
             FunctionDebugContext::FunctionWithoutDebugInfo => {
                 return (self.scopes[source_info.scope].scope_metadata, source_info.span);
@@ -142,6 +146,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             scope_metadata
         }
     }
+
+    pub fn ccx(&self) -> &'a CrateContext<'a, 'tcx> {
+        self.fcx.ccx
+    }
 }
 
 enum LocalRef<'tcx> {
@@ -176,7 +184,26 @@ impl<'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<'tcx>) {
+pub fn trans_mir<'a, 'tcx: 'a>(
+    fcx: &'a FunctionContext<'a, 'tcx>,
+    mir: &'a Mir<'tcx>,
+    instance: Instance<'tcx>,
+    sig: &ty::FnSig<'tcx>,
+    abi: Abi,
+) {
+    let def_id = instance.def;
+    let local_id = fcx.ccx.tcx().map.as_local_node_id(def_id);
+    let no_debug = if let Some(id) = local_id {
+        fcx.ccx.tcx().map.attrs(id).iter().any(|item| item.check_name("no_debug"))
+    } else {
+        fcx.ccx.sess().cstore.item_attrs(def_id).iter().any(|item| item.check_name("no_debug"))
+    };
+
+    let debug_context = if !no_debug {
+        debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir)
+    } else {
+        debuginfo::empty_function_debug_context(fcx.ccx)
+    };
     let bcx = fcx.get_entry_block();
 
     // Analyze the temps to determine which must be lvalues
@@ -195,7 +222,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(fcx, mir);
+    let scopes = debuginfo::create_mir_scopes(fcx, mir, &debug_context);
 
     let mut mircx = MirContext {
         mir: mir,
@@ -207,11 +234,12 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
         landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
         scopes: scopes,
         locals: IndexVec::new(),
+        debug_context: debug_context,
     };
 
     // Allocate variable and temp allocas
     mircx.locals = {
-        let args = arg_local_refs(&bcx, &mir, &mircx.scopes, &lvalue_locals);
+        let args = arg_local_refs(&bcx, &mircx, &mircx.scopes, &lvalue_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -232,7 +260,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
                 let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
                     let (scope, span) = mircx.debug_loc(source_info);
-                    declare_local(&bcx, name, ty, scope,
+                    declare_local(&bcx, &mircx, name, ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
                 }
@@ -270,7 +298,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(fcx);
+    debuginfo::start_emitting_source_locations(&mircx);
 
     let mut visited = BitVector::new(mir.basic_blocks().len());
 
@@ -308,10 +336,11 @@ pub fn trans_mir<'a, 'tcx: 'a>(fcx: &'a FunctionContext<'a, 'tcx>, mir: &'a Mir<
 /// argument's value. As arguments are lvalues, these are always
 /// indirect.
 fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
-                            mir: &mir::Mir<'tcx>,
+                            mircx: &MirContext<'a, 'tcx>,
                             scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
                             lvalue_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
+    let mir = mircx.mir;
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
@@ -363,7 +392,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 let variable_access = VariableAccess::DirectVariable {
                     alloca: lltemp
                 };
-                declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()),
+                declare_local(bcx, mircx, arg_decl.name.unwrap_or(keywords::Invalid.name()),
                               arg_ty, scope, variable_access,
                               VariableKind::ArgumentVariable(arg_index + 1),
                               DUMMY_SP);
@@ -435,7 +464,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         arg_scope.map(|scope| {
             // Is this a regular argument?
             if arg_index > 0 || mir.upvar_decls.is_empty() {
-                declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
+                declare_local(bcx, mircx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
                               scope, VariableAccess::DirectVariable { alloca: llval },
                               VariableKind::ArgumentVariable(arg_index + 1),
                               DUMMY_SP);
@@ -503,7 +532,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                     alloca: env_ptr,
                     address_operations: &ops
                 };
-                declare_local(bcx, decl.debug_name, ty, scope, variable_access,
+                declare_local(bcx, mircx, decl.debug_name, ty, scope, variable_access,
                               VariableKind::CapturedVariable,
                               DUMMY_SP);
             }

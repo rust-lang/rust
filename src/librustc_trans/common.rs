@@ -16,7 +16,6 @@ use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef, get_param};
-use llvm::debuginfo::DIScope;
 use monomorphize::Instance;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -30,7 +29,6 @@ use base;
 use builder::Builder;
 use callee::Callee;
 use consts;
-use debuginfo;
 use declare;
 use machine;
 use monomorphize;
@@ -267,9 +265,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
-    // Used and maintained by the debuginfo module.
-    pub debug_context: debuginfo::FunctionDebugContext,
-
     alloca_builder: Builder<'a, 'tcx>,
 }
 
@@ -283,33 +278,12 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
         skip_retptr: bool,
     ) -> FunctionContext<'a, 'tcx> {
-        let (param_substs, def_id) = match definition {
+        let param_substs = match definition {
             Some((instance, ..)) => {
                 assert!(!instance.substs.needs_infer());
-                (instance.substs, Some(instance.def))
+                instance.substs
             }
-            None => (ccx.tcx().intern_substs(&[]), None)
-        };
-
-        let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
-
-        debug!("FunctionContext::new({})", definition.map_or(String::new(), |d| d.0.to_string()));
-
-        let no_debug = if let Some(id) = local_id {
-            ccx.tcx().map.attrs(id).iter().any(|item| item.check_name("no_debug"))
-        } else if let Some(def_id) = def_id {
-            ccx.sess().cstore.item_attrs(def_id).iter().any(|item| item.check_name("no_debug"))
-        } else {
-            false
-        };
-
-        let mir = def_id.map(|id| ccx.tcx().item_mir(id));
-
-        let debug_context = if let (false, Some((instance, sig, abi)), &Some(ref mir)) =
-                (no_debug, definition, &mir) {
-            debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl, mir)
-        } else {
-            debuginfo::empty_function_debug_context(ccx)
+            None => ccx.tcx().intern_substs(&[])
         };
 
         let mut fcx = FunctionContext {
@@ -320,7 +294,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             fn_ty: fn_ty,
             param_substs: param_substs,
             ccx: ccx,
-            debug_context: debug_context,
             alloca_builder: Builder::with_ccx(ccx),
         };
 
@@ -505,10 +478,6 @@ impl<'a, 'tcx> BlockAndBuilder<'a, 'tcx> {
             fcx: fcx,
             builder: builder,
         }
-    }
-
-    pub fn set_source_location(&self, scope: DIScope, sp: Span) {
-        debuginfo::set_source_location(self.fcx(), self, scope, sp)
     }
 
     pub fn at_start<F, R>(&self, f: F) -> R

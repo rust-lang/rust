@@ -44,7 +44,7 @@ impl MirDebugScope {
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir)
+pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir, debug_context: &FunctionDebugContext)
     -> IndexVec<VisibilityScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
@@ -53,7 +53,7 @@ pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir)
     };
     let mut scopes = IndexVec::from_elem(null_scope, &mir.visibility_scopes);
 
-    let fn_metadata = match fcx.debug_context {
+    let fn_metadata = match *debug_context {
         FunctionDebugContext::RegularContext(ref data) => data.fn_metadata,
         FunctionDebugContext::DebugInfoDisabled |
         FunctionDebugContext::FunctionWithoutDebugInfo => {
