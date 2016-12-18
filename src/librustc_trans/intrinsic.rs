@@ -76,6 +76,7 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
         "roundf32" => "llvm.round.f32",
         "roundf64" => "llvm.round.f64",
         "assume" => "llvm.assume",
+        "abort" => "llvm.trap",
         _ => return None
     };
     Some(ccx.get_intrinsic(&llvm_name))
@@ -90,8 +91,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                                       llargs: &[ValueRef],
                                       llresult: ValueRef,
                                       span: Span) {
-    let fcx = bcx.fcx();
-    let ccx = fcx.ccx;
+    let ccx = bcx.ccx();
     let tcx = bcx.tcx();
 
     let (def_id, substs, fty) = match callee_ty.sty {
@@ -104,15 +104,6 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id).as_str();
 
-    // These are the only intrinsic functions that diverge.
-    if name == "abort" {
-        let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        bcx.call(llfn, &[], None);
-        return;
-    } else if name == "unreachable" {
-        return;
-    }
-
     let llret_ty = type_of::type_of(ccx, ret_ty);
 
     let simple = get_simple_intrinsic(ccx, name);
@@ -120,6 +111,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         _ if simple.is_some() => {
             bcx.call(simple.unwrap(), &llargs, None)
         }
+        "unreachable" => {
+            return;
+        },
         "likely" => {
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             bcx.call(expect, &[llargs[0], C_bool(ccx, true)], None)
@@ -628,8 +622,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         }
     };
 
-    if val_ty(llval) != Type::void(ccx) &&
-       machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
+    if val_ty(llval) != Type::void(ccx) && machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
         if let Some(ty) = fn_ty.ret.cast {
             let ptr = bcx.pointercast(llresult, ty.ptr_to());
             let store = bcx.store(llval, ptr);
