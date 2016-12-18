@@ -222,7 +222,7 @@ impl From<EnumData> for Option<Def> {
                 children: data.variants.into_iter().map(|id| From::from(id)).collect(),
                 decl_id: None,
                 docs: data.docs,
-                sig: None,
+                sig: Some(From::from(data.sig)),
             }),
             _ => None,
         }
@@ -242,7 +242,7 @@ impl From<TupleVariantData> for Option<Def> {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         })
     }
 }
@@ -259,7 +259,7 @@ impl From<StructVariantData> for Option<Def> {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         })
     }
 }
@@ -297,7 +297,7 @@ impl From<TraitData> for Option<Def> {
                 parent: None,
                 decl_id: None,
                 docs: data.docs,
-                sig: None,
+                sig: Some(From::from(data.sig)),
             }),
             _ => None,
         }
@@ -317,7 +317,7 @@ impl From<FunctionData> for Option<Def> {
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
                 docs: data.docs,
-                sig: None,
+                sig: Some(From::from(data.sig)),
             }),
             _ => None,
         }
@@ -337,7 +337,7 @@ impl From<MethodData> for Option<Def> {
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: data.decl_id.map(|id| From::from(id)),
                 docs: data.docs,
-                sig: None,
+                sig: Some(From::from(data.sig)),
             }),
             _ => None,
         }
@@ -374,7 +374,7 @@ impl From<ModData> for Option<Def> {
                 parent: None,
                 decl_id: None,
                 docs: data.docs,
-                sig: None,
+                sig: Some(From::from(data.sig)),
             }),
             _ => None,
         }
@@ -394,7 +394,7 @@ impl From<TypeDefData> for Option<Def> {
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
                 docs: String::new(),
-                sig: None,
+                sig: data.sig.map(|s| From::from(s)),
             }),
             _ => None,
         }

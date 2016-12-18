@@ -414,7 +414,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let name = name.to_string();
         let text = self.span_utils.signature_string_for_span(span);
-        println!("text: `{}`, name: `{}`", text, name);
         let ident_start = text.find(&name).unwrap();
         let ident_end = ident_start + name.len();
         let sig = Signature {
