@@ -44,10 +44,8 @@ impl MirDebugScope {
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes<'tcx>(
-    fcx: &FunctionContext,
-    mir: &'tcx Mir<'tcx>,
-) -> IndexVec<VisibilityScope, MirDebugScope> {
+pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir)
+    -> IndexVec<VisibilityScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
         file_start_pos: BytePos(0),
