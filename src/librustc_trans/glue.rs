@@ -195,7 +195,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     assert_eq!(g.ty(), get_drop_glue_type(ccx.shared(), g.ty()));
     let (llfn, fn_ty) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     let bcx = fcx.get_entry_block();
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);

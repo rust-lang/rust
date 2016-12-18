@@ -328,7 +328,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
-    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, false);
+    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty);
     let mut bcx = fcx.get_entry_block();
 
     // the first argument (`self`) will be the (by value) closure env.
@@ -499,7 +499,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty, None, false);
+    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     let bcx = fcx.get_entry_block();
 
     let llargs = get_params(fcx.llfn);

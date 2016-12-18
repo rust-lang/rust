@@ -598,7 +598,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, lldecl, fn_ty, Some((instance, &sig, abi)), true);
+    let fcx = FunctionContext::new(ccx, lldecl, fn_ty);
 
     let mir = ccx.tcx().item_mir(instance.def);
     mir::trans_mir(&fcx, &mir, instance, &sig, abi);
@@ -618,7 +618,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None, false);
+    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty);
     let bcx = fcx.get_entry_block();
     if !fcx.fn_ty.ret.is_ignore() {
         // But if there are no nested returns, we skip the indirection

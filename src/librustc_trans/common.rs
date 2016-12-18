@@ -15,8 +15,7 @@
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef, get_param};
-use monomorphize::Instance;
+use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -230,12 +229,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // section of the executable we're generating.
     pub llfn: ValueRef,
 
-    // A pointer to where to store the return value. If the return type is
-    // immediate, this points to an alloca in the function. Otherwise, it's a
-    // pointer to the hidden first parameter of the function. After function
-    // construction, this should always be Some.
-    pub llretslotptr: Option<ValueRef>,
-
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
@@ -259,11 +252,9 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         ccx: &'a CrateContext<'a, 'tcx>,
         llfndecl: ValueRef,
         fn_ty: FnType,
-        skip_retptr: bool,
     ) -> FunctionContext<'a, 'tcx> {
         let mut fcx = FunctionContext {
             llfn: llfndecl,
-            llretslotptr: None,
             alloca_insert_pt: None,
             fn_ty: fn_ty,
             ccx: ccx,
@@ -280,24 +271,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // Use a dummy instruction as the insertion point for all allocas.
         // This is later removed in the drop of FunctionContext.
         fcx.alloca_insert_pt = Some(val);
-
-        // We normally allocate the llretslotptr, unless we
-        // have been instructed to skip it for immediate return
-        // values, or there is nothing to return at all.
-        if !fcx.fn_ty.ret.is_ignore() && !skip_retptr {
-            // But if there are no nested returns, we skip the indirection
-            // and have a single retslot
-            let slot = if fcx.fn_ty.ret.is_indirect() {
-                get_param(fcx.llfn, 0)
-            } else {
-                // We create an alloca to hold a pointer of type `ret.original_ty`
-                // which will hold the pointer to the right alloca which has the
-                // final ret value
-                fcx.alloca(fcx.fn_ty.ret.memory_ty(ccx), "sret_slot")
-            };
-
-            fcx.llretslotptr = Some(slot);
-        }
 
         fcx
     }
