@@ -24,6 +24,7 @@ use syntax_pos::DUMMY_SP;
 use std::cmp;
 use std::fmt;
 use std::i64;
+use std::iter;
 
 /// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -415,7 +416,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hint: attr::ReprAttr, min: i64, max: i64)
+    fn repr_discr(tcx: TyCtxt, ty: Ty, hints: &[attr::ReprAttr], min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -424,34 +425,41 @@ impl Integer {
         let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u64, max as u64));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
-        let at_least = match hint {
-            attr::ReprInt(ity) => {
-                let discr = Integer::from_attr(&tcx.data_layout, ity);
-                let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
-                if discr < fit {
-                    bug!("Integer::repr_discr: `#[repr]` hint too small for \
-                          discriminant range of enum `{}", ty)
+        let mut min_from_extern = None;
+        let min_default = I8;
+
+        for &r in hints.iter() {
+            match r {
+                attr::ReprInt(ity) => {
+                    let discr = Integer::from_attr(&tcx.data_layout, ity);
+                    let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
+                    if discr < fit {
+                        bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                              discriminant range of enum `{}", ty)
+                    }
+                    return (discr, ity.is_signed());
                 }
-                return (discr, ity.is_signed());
-            }
-            attr::ReprExtern => {
-                match &tcx.sess.target.target.arch[..] {
-                    // WARNING: the ARM EABI has two variants; the one corresponding
-                    // to `at_least == I32` appears to be used on Linux and NetBSD,
-                    // but some systems may use the variant corresponding to no
-                    // lower bound.  However, we don't run on those yet...?
-                    "arm" => I32,
-                    _ => I32,
+                attr::ReprExtern => {
+                    match &tcx.sess.target.target.arch[..] {
+                        // WARNING: the ARM EABI has two variants; the one corresponding
+                        // to `at_least == I32` appears to be used on Linux and NetBSD,
+                        // but some systems may use the variant corresponding to no
+                        // lower bound.  However, we don't run on those yet...?
+                        "arm" => min_from_extern = Some(I32),
+                        _ => min_from_extern = Some(I32),
+                    }
+                }
+                attr::ReprAny => {},
+                attr::ReprPacked => {
+                    bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
+                }
+                attr::ReprSimd => {
+                    bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
                 }
             }
-            attr::ReprAny => I8,
-            attr::ReprPacked => {
-                bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
-            }
-            attr::ReprSimd => {
-                bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
-            }
-        };
+        }
+
+        let at_least = min_from_extern.unwrap_or(min_default);
 
         // If there are no negative values, we can use the unsigned fit.
         if min >= 0 {
@@ -511,70 +519,158 @@ pub struct Struct {
     /// If true, the size is exact, otherwise it's only a lower bound.
     pub sized: bool,
 
-    /// Offsets for the first byte of each field.
+    /// Offsets for the first byte of each field, ordered to match the source definition order.
+    /// This vector does not go in increasing order.
     /// FIXME(eddyb) use small vector optimization for the common case.
     pub offsets: Vec<Size>,
+
+    /// Maps source order field indices to memory order indices, depending how fields were permuted.
+    /// FIXME (camlorn) also consider small vector  optimization here.
+    pub memory_index: Vec<u32>,
 
     pub min_size: Size,
 }
 
+// Info required to optimize struct layout.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+enum StructKind {
+    // A tuple, closure, or univariant which cannot be coerced to unsized.
+    AlwaysSizedUnivariant,
+    // A univariant, the last field of which may be coerced to unsized.
+    MaybeUnsizedUnivariant,
+    // A univariant, but part of an enum.
+    EnumVariant,
+}
+
 impl<'a, 'gcx, 'tcx> Struct {
-    pub fn new(dl: &TargetDataLayout, packed: bool) -> Struct {
-        Struct {
+    // FIXME(camlorn): reprs need a better representation to deal with multiple reprs on one type.
+    fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
+                  reprs: &[attr::ReprAttr], kind: StructKind,
+                  scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
+        let packed = reprs.contains(&attr::ReprPacked);
+        let mut ret = Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             packed: packed,
             sized: true,
             offsets: vec![],
+            memory_index: vec![],
             min_size: Size::from_bytes(0),
+        };
+
+        // Anything with ReprExtern or ReprPacked doesn't optimize.
+        // Neither do  1-member and 2-member structs.
+        // In addition, code in trans assume that 2-element structs can become pairs.
+        // It's easier to just short-circuit here.
+        let mut can_optimize = fields.len() > 2 || StructKind::EnumVariant == kind;
+        if can_optimize {
+            // This exhaustive match makes new reprs force the adder to modify this function.
+            // Otherwise, things can silently break.
+            // Note the inversion, return true to stop optimizing.
+            can_optimize = !reprs.iter().any(|r| {
+                match *r {
+                    attr::ReprAny | attr::ReprInt(_) => false,
+                    attr::ReprExtern | attr::ReprPacked => true,
+                    attr::ReprSimd => bug!("Simd  vectors should be represented as layout::Vector")
+                }
+            });
         }
-    }
 
-    /// Extend the Struct with more fields.
-    pub fn extend<I>(&mut self, dl: &TargetDataLayout,
-                     fields: I,
-                     scapegoat: Ty<'gcx>)
-                     -> Result<(), LayoutError<'gcx>>
-    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
-        self.offsets.reserve(fields.size_hint().0);
+        let (optimize, sort_ascending) = match kind {
+            StructKind::AlwaysSizedUnivariant => (can_optimize, false),
+            StructKind::MaybeUnsizedUnivariant => (can_optimize, false),
+            StructKind::EnumVariant => {
+                assert!(fields.len() >= 1, "Enum variants must have discriminants.");
+                (can_optimize && fields[0].size(dl).bytes() == 1, true)
+            }
+        };
 
-        let mut offset = self.min_size;
+        ret.offsets = vec![Size::from_bytes(0); fields.len()];
+        let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-        for field in fields {
-            if !self.sized {
-                bug!("Struct::extend: field #{} of `{}` comes after unsized field",
-                     self.offsets.len(), scapegoat);
+        if optimize {
+            let start = if let StructKind::EnumVariant = kind { 1 } else { 0 };
+            let end = if let StructKind::MaybeUnsizedUnivariant = kind {
+                fields.len() - 1
+            } else {
+                fields.len()
+            };
+            if end > start {
+                let optimizing  = &mut inverse_memory_index[start..end];
+                if sort_ascending {
+                    optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
+                } else {
+                    optimizing.sort_by(| &a, &b | {
+                        let a = fields[a as usize].align(dl).abi();
+                        let b = fields[b as usize].align(dl).abi();
+                        b.cmp(&a)
+                    });
+                }
+            }
+        }
+
+        // inverse_memory_index holds field indices by increasing memory offset.
+        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
+        // We now write field offsets to the corresponding offset slot;
+        // field 5 with offset 0 puts 0 in offsets[5].
+        // At the bottom of this function, we use inverse_memory_index to produce memory_index.
+
+        if let StructKind::EnumVariant = kind {
+            assert_eq!(inverse_memory_index[0], 0,
+              "Enum variant discriminants must have the lowest offset.");
+        }
+
+        let mut offset = Size::from_bytes(0);
+
+        for i in inverse_memory_index.iter() {
+            let field = fields[*i as usize];
+            if !ret.sized {
+                bug!("Struct::new: field #{} of `{}` comes after unsized field",
+                     ret.offsets.len(), scapegoat);
             }
 
-            let field = field?;
             if field.is_unsized() {
-                self.sized = false;
+                ret.sized = false;
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            if !self.packed {
+            if !ret.packed {
                 let align = field.align(dl);
-                self.align = self.align.max(align);
+                ret.align = ret.align.max(align);
                 offset = offset.abi_align(align);
             }
 
-            self.offsets.push(offset);
-
-            debug!("Struct::extend offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
+            debug!("Struct::new offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
+            ret.offsets[*i as usize] = offset;
 
             offset = offset.checked_add(field.size(dl), dl)
                            .map_or(Err(LayoutError::SizeOverflow(scapegoat)), Ok)?;
         }
 
-        debug!("Struct::extend min_size: {:?}", offset);
 
-        self.min_size = offset;
+        debug!("Struct::new min_size: {:?}", offset);
+        ret.min_size = offset;
 
-        Ok(())
+        // As stated above, inverse_memory_index holds field indices by increasing offset.
+        // This makes it an already-sorted view of the offsets vec.
+        // To invert it, consider:
+        // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
+        // Field 5 would be the first element, so memory_index is i:
+        // Note: if we didn't optimize, it's already right.
+
+        if optimize {
+            ret.memory_index = vec![0; inverse_memory_index.len()];
+
+            for i in 0..inverse_memory_index.len() {
+                ret.memory_index[inverse_memory_index[i] as usize]  = i as u32;
+            }
+        } else {
+            ret.memory_index = inverse_memory_index;
+        }
+
+        Ok(ret)
     }
 
-    /// Get the size without trailing alignment padding.
-
-    /// Get the size with trailing aligment padding.
+    /// Get the size with trailing alignment padding.
     pub fn stride(&self) -> Size {
         self.min_size.abi_align(self.align)
     }
@@ -592,18 +688,45 @@ impl<'a, 'gcx, 'tcx> Struct {
         Ok(true)
     }
 
+    /// Get indices of the tys that made this struct by increasing offset.
+    #[inline]
+    pub fn field_index_by_increasing_offset<'b>(&'b self) -> impl iter::Iterator<Item=usize>+'b {
+        let mut inverse_small = [0u8; 64];
+        let mut inverse_big = vec![];
+        let use_small = self.memory_index.len() <= inverse_small.len();
+
+        // We have to write this logic twice in order to keep the array small.
+        if use_small {
+            for i in 0..self.memory_index.len() {
+                inverse_small[self.memory_index[i] as usize] = i as u8;
+            }
+        } else {
+            inverse_big = vec![0; self.memory_index.len()];
+            for i in 0..self.memory_index.len() {
+                inverse_big[self.memory_index[i] as usize] = i as u32;
+            }
+        }
+
+        (0..self.memory_index.len()).map(move |i| {
+            if use_small { inverse_small[i] as usize }
+            else { inverse_big[i] as usize }
+        })
+    }
+
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
+    /// The tuple is `(path, source_path)`,
+    /// where `path` is in memory order and `source_path` in source order.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
-    pub fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  ty: Ty<'gcx>)
-                                  -> Result<Option<FieldPath>, LayoutError<'gcx>> {
+    fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                               ty: Ty<'gcx>)
+                               -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
             (&Scalar { non_zero: true, .. }, _) |
-            (&CEnum { non_zero: true, .. }, _) => Ok(Some(vec![])),
+            (&CEnum { non_zero: true, .. }, _) => Ok(Some((vec![], vec![]))),
             (&FatPointer { non_zero: true, .. }, _) => {
-                Ok(Some(vec![FAT_PTR_ADDR as u32]))
+                Ok(Some((vec![FAT_PTR_ADDR as u32], vec![FAT_PTR_ADDR as u32])))
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
@@ -614,10 +737,11 @@ impl<'a, 'gcx, 'tcx> Struct {
                     // FIXME(eddyb) also allow floating-point types here.
                     Scalar { value: Int(_), non_zero: false } |
                     Scalar { value: Pointer, non_zero: false } => {
-                        Ok(Some(vec![0]))
+                        Ok(Some((vec![0], vec![0])))
                     }
                     FatPointer { non_zero: false, .. } => {
-                        Ok(Some(vec![FAT_PTR_ADDR as u32, 0]))
+                        let tmp = vec![FAT_PTR_ADDR as u32, 0];
+                        Ok(Some((tmp.clone(), tmp)))
                     }
                     _ => Ok(None)
                 }
@@ -625,27 +749,30 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
-            (_, &ty::TyAdt(def, substs)) if def.is_struct() => {
-                Struct::non_zero_field_path(infcx, def.struct_variant().fields
+            (&Univariant { ref variant, .. }, &ty::TyAdt(def, substs)) if def.is_struct() => {
+                Struct::non_zero_field_paths(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
-                }))
+                }),
+                Some(&variant.memory_index[..]))
             }
 
             // Perhaps one of the upvars of this closure is non-zero
-            // Let's recurse and find out!
-            (_, &ty::TyClosure(def_id, ref substs)) => {
-                Struct::non_zero_field_path(infcx, substs.upvar_tys(def_id, tcx))
+            (&Univariant { ref variant, .. }, &ty::TyClosure(def, substs)) => {
+                let upvar_tys = substs.upvar_tys(def, tcx);
+                Struct::non_zero_field_paths(infcx, upvar_tys,
+                    Some(&variant.memory_index[..]))
             }
             // Can we use one of the fields in this tuple?
-            (_, &ty::TyTuple(tys)) => {
-                Struct::non_zero_field_path(infcx, tys.iter().cloned())
+            (&Univariant { ref variant, .. }, &ty::TyTuple(tys)) => {
+                Struct::non_zero_field_paths(infcx, tys.iter().cloned(),
+                    Some(&variant.memory_index[..]))
             }
 
             // Is this a fixed-size array of something non-zero
             // with at least one element?
             (_, &ty::TyArray(ety, d)) if d > 0 => {
-                Struct::non_zero_field_path(infcx, Some(ety).into_iter())
+                Struct::non_zero_field_paths(infcx, Some(ety).into_iter(), None)
             }
 
             (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
@@ -663,14 +790,23 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    pub fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  fields: I)
-                                  -> Result<Option<FieldPath>, LayoutError<'gcx>>
+    /// Returns Some((path, source_path)) on success.
+    /// `path` is translated to memory order. `source_path` is not.
+    fn non_zero_field_paths<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                  fields: I,
+                                  permutation: Option<&[u32]>)
+                                  -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'gcx>>
     where I: Iterator<Item=Ty<'gcx>> {
         for (i, ty) in fields.enumerate() {
-            if let Some(mut path) = Struct::non_zero_field_in_type(infcx, ty)? {
-                path.push(i as u32);
-                return Ok(Some(path));
+            if let Some((mut path, mut source_path)) = Struct::non_zero_field_in_type(infcx, ty)? {
+                source_path.push(i as u32);
+                let index = if let Some(p) = permutation {
+                    p[i] as usize
+                } else {
+                    i
+                };
+                path.push(index as u32);
+                return Ok(Some((path, source_path)));
             }
         }
         Ok(None)
@@ -723,7 +859,7 @@ impl<'a, 'gcx, 'tcx> Union {
         Ok(())
     }
 
-    /// Get the size with trailing aligment padding.
+    /// Get the size with trailing alignment padding.
     pub fn stride(&self) -> Size {
         self.min_size.abi_align(self.align)
     }
@@ -833,7 +969,9 @@ pub enum Layout {
         nndiscr: u64,
         nonnull: Struct,
         // N.B. There is a 0 at the start, for LLVM GEP through a pointer.
-        discrfield: FieldPath
+        discrfield: FieldPath,
+        // Like discrfield, but in source order. For debuginfo.
+        discrfield_source: FieldPath
     }
 }
 
@@ -887,6 +1025,7 @@ impl<'a, 'gcx, 'tcx> Layout {
         let dl = &tcx.data_layout;
         assert!(!ty.has_infer_types());
 
+
         let layout = match ty.sty {
             // Basic scalars.
             ty::TyBool => Scalar { value: Int(I1), non_zero: false },
@@ -908,7 +1047,11 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
 
             // The never type.
-            ty::TyNever => Univariant { variant: Struct::new(dl, false), non_zero: false },
+            ty::TyNever => Univariant {
+                variant: Struct::new(dl, &vec![], &[],
+                  StructKind::AlwaysSizedUnivariant, ty)?,
+                non_zero: false
+            },
 
             // Potentially-fat pointers.
             ty::TyBox(pointee) |
@@ -959,27 +1102,36 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Odd unit types.
             ty::TyFnDef(..) => {
                 Univariant {
-                    variant: Struct::new(dl, false),
+                    variant: Struct::new(dl, &vec![],
+                      &[], StructKind::AlwaysSizedUnivariant, ty)?,
                     non_zero: false
                 }
             }
             ty::TyDynamic(..) => {
-                let mut unit = Struct::new(dl, false);
+                let mut unit = Struct::new(dl, &vec![], &[],
+                  StructKind::AlwaysSizedUnivariant, ty)?;
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }
             }
 
             // Tuples and closures.
             ty::TyClosure(def_id, ref substs) => {
-                let mut st = Struct::new(dl, false);
                 let tys = substs.upvar_tys(def_id, tcx);
-                st.extend(dl, tys.map(|ty| ty.layout(infcx)), ty)?;
+                let st = Struct::new(dl,
+                    &tys.map(|ty| ty.layout(infcx))
+                      .collect::<Result<Vec<_>, _>>()?,
+                    &[],
+                    StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
             ty::TyTuple(tys) => {
-                let mut st = Struct::new(dl, false);
-                st.extend(dl, tys.iter().map(|ty| ty.layout(infcx)), ty)?;
+                // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked.
+                // See the univariant case below to learn how.
+                let st = Struct::new(dl,
+                    &tys.iter().map(|ty| ty.layout(infcx))
+                      .collect::<Result<Vec<_>, _>>()?,
+                    &[], StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
@@ -1003,16 +1155,16 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                let hint = *tcx.lookup_repr_hints(def.did).get(0)
-                    .unwrap_or(&attr::ReprAny);
+                let hints = &tcx.lookup_repr_hints(def.did)[..];
 
                 if def.variants.is_empty() {
                     // Uninhabitable; represent as unit
                     // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
+                    assert_eq!(hints.len(), 0);
 
                     return success(Univariant {
-                        variant: Struct::new(dl, false),
+                        variant: Struct::new(dl, &vec![],
+                          &hints[..], StructKind::AlwaysSizedUnivariant, ty)?,
                         non_zero: false
                     });
                 }
@@ -1027,7 +1179,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, hint, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..], min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1037,21 +1189,35 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if !def.is_enum() || def.variants.len() == 1 && hint == attr::ReprAny {
+                if !def.is_enum() || def.variants.len() == 1 && hints.is_empty() {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
+                    let kind = if def.is_enum() || def.variants[0].fields.len() == 0{
+                        StructKind::AlwaysSizedUnivariant
+                    } else {
+                        use middle::region::ROOT_CODE_EXTENT;
+                        let param_env = tcx.construct_parameter_environment(DUMMY_SP,
+                          def.did, ROOT_CODE_EXTENT);
+                        let fields = &def.variants[0].fields;
+                        let last_field = &fields[fields.len()-1];
+                        let always_sized = last_field.ty(tcx, param_env.free_substs)
+                          .is_sized(tcx, &param_env, DUMMY_SP);
+                        if !always_sized { StructKind::MaybeUnsizedUnivariant }
+                        else { StructKind::AlwaysSizedUnivariant }
+                    };
+
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
-                    });
+                    }).collect::<Result<Vec<_>, _>>()?;
                     let packed = tcx.lookup_packed(def.did);
                     let layout = if def.is_union() {
                         let mut un = Union::new(dl, packed);
-                        un.extend(dl, fields, ty)?;
+                        un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
-                        let mut st = Struct::new(dl, packed);
-                        st.extend(dl, fields, ty)?;
+                        let st = Struct::new(dl, &fields, &hints[..],
+                          kind, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
@@ -1073,7 +1239,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
-                if variants.len() == 2 && hint == attr::ReprAny {
+                if variants.len() == 2 && hints.is_empty() {
                     // Nullable pointer optimization
                     for discr in 0..2 {
                         let other_fields = variants[1 - discr].iter().map(|ty| {
@@ -1082,9 +1248,11 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if !Struct::would_be_zero_sized(dl, other_fields)? {
                             continue;
                         }
-                        let path = Struct::non_zero_field_path(infcx,
-                            variants[discr].iter().cloned())?;
-                        let mut path = if let Some(p) = path { p } else { continue };
+                        let paths = Struct::non_zero_field_paths(infcx,
+                            variants[discr].iter().cloned(),
+                            None)?;
+                        let (mut path, mut path_source) = if let Some(p) = paths { p }
+                          else { continue };
 
                         // FIXME(eddyb) should take advantage of a newtype.
                         if path == &[0] && variants[discr].len() == 1 {
@@ -1101,14 +1269,25 @@ impl<'a, 'gcx, 'tcx> Layout {
                             });
                         }
 
+                        let st = Struct::new(dl,
+                            &variants[discr].iter().map(|ty| ty.layout(infcx))
+                              .collect::<Result<Vec<_>, _>>()?,
+                            &hints[..], StructKind::AlwaysSizedUnivariant, ty)?;
+
+                        // We have to fix the last element of path here.
+                        let mut i = *path.last().unwrap();
+                        i = st.memory_index[i as usize];
+                        *path.last_mut().unwrap() = i;
                         path.push(0); // For GEP through a pointer.
                         path.reverse();
-                        let mut st = Struct::new(dl, false);
-                        st.extend(dl, variants[discr].iter().map(|ty| ty.layout(infcx)), ty)?;
+                        path_source.push(0);
+                        path_source.reverse();
+
                         return success(StructWrappedNullablePointer {
                             nndiscr: discr as u64,
                             nonnull: st,
-                            discrfield: path
+                            discrfield: path,
+                            discrfield_source: path_source
                         });
                     }
                 }
@@ -1116,7 +1295,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, ty, hint, 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
 
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
@@ -1126,24 +1305,26 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 // Create the set of structs that represent each variant
                 // Use the minimum integer type we figured out above
-                let discr = Some(Scalar { value: Int(min_ity), non_zero: false });
+                let discr = Scalar { value: Int(min_ity), non_zero: false };
                 let mut variants = variants.into_iter().map(|fields| {
-                    let mut found_start = false;
-                    let fields = fields.into_iter().map(|field| {
-                        let field = field.layout(infcx)?;
-                        if !found_start {
-                            // Find the first field we can't move later
-                            // to make room for a larger discriminant.
-                            let field_align = field.align(dl);
-                            if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
-                                start_align = start_align.min(field_align);
-                                found_start = true;
-                            }
+                    let mut fields = fields.into_iter().map(|field| {
+                        field.layout(infcx)
+                    }).collect::<Result<Vec<_>, _>>()?;
+                    fields.insert(0, &discr);
+                    let st = Struct::new(dl,
+                        &fields,
+                        &hints[..], StructKind::EnumVariant, ty)?;
+                    // Find the first field we can't move later
+                    // to make room for a larger discriminant.
+                    // It is important to skip the first field.
+                    for i in st.field_index_by_increasing_offset().skip(1) {
+                        let field = fields[i];
+                        let field_align = field.align(dl);
+                        if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
+                            start_align = start_align.min(field_align);
+                            break;
                         }
-                        Ok(field)
-                    });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
+                    }
                     size = cmp::max(size, st.min_size);
                     align = align.max(st.align);
                     Ok(st)
@@ -1177,11 +1358,12 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let old_ity_size = Int(min_ity).size(dl);
                     let new_ity_size = Int(ity).size(dl);
                     for variant in &mut variants {
-                        for offset in &mut variant.offsets[1..] {
-                            if *offset > old_ity_size {
-                                break;
+                        for i in variant.offsets.iter_mut() {
+                            // The first field is the discrimminant, at offset 0.
+                            // These aren't in order, and we need to skip it.
+                            if *i <= old_ity_size && *i > Size::from_bytes(0) {
+                                *i = new_ity_size;
                             }
-                            *offset = new_ity_size;
                         }
                         // We might be making the struct larger.
                         if variant.min_size <= old_ity_size {

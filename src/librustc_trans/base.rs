@@ -827,7 +827,9 @@ pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
         }
     }
     DebugLoc::None.apply(cx.fcx);
-    Alloca(cx, ty, name)
+    let result = Alloca(cx, ty, name);
+    debug!("alloca({:?}) = {:?}", name, result);
+    result
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
@@ -1868,7 +1870,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         match **layout {
             Layout::StructWrappedNullablePointer { nonnull: ref variant_layout,
                                                    nndiscr,
-                                                   discrfield: _ } => {
+                                                   discrfield: _,
+                                                   discrfield_source: _ } => {
                 debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
                        ty, nndiscr, variant_layout);
                 let variant_def = &adt_def.variants[nndiscr as usize];

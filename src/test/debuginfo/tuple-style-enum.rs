@@ -19,15 +19,15 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, __0 = 0, __1 = 31868, __2 = 31868, __3 = 31868, __4 = 31868}, {RUST$ENUM$DISR = Case1, __0 = 0, __1 = 2088533116, __2 = 2088533116}, {RUST$ENUM$DISR = Case1, __0 = 0, __1 = 8970181431921507452}}
+// gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, __0 = 0, __1 = 31868, __2 = 31868, __3 = 31868, __4 = 31868}, {RUST$ENUM$DISR = Case1, [...]}, {RUST$ENUM$DISR = Case1, [...]}}
 // gdbr-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
 
 // gdb-command:print case2
-// gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, __0 = 0, __1 = 4369, __2 = 4369, __3 = 4369, __4 = 4369}, {RUST$ENUM$DISR = Case2, __0 = 0, __1 = 286331153, __2 = 286331153}, {RUST$ENUM$DISR = Case2, __0 = 0, __1 = 1229782938247303441}}
+// gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, [...]}, {RUST$ENUM$DISR = Case2, __0 = 0, __1 = 286331153, __2 = 286331153}, {RUST$ENUM$DISR = Case2, [...]}}
 // gdbr-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
 
 // gdb-command:print case3
-// gdbg-check:$3 = {{RUST$ENUM$DISR = Case3, __0 = 0, __1 = 22873, __2 = 22873, __3 = 22873, __4 = 22873}, {RUST$ENUM$DISR = Case3, __0 = 0, __1 = 1499027801, __2 = 1499027801}, {RUST$ENUM$DISR = Case3, __0 = 0, __1 = 6438275382588823897}}
+// gdbg-check:$3 = {{RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, [...]}, {RUST$ENUM$DISR = Case3, __0 = 0, __1 = 6438275382588823897}}
 // gdbr-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
 
 // gdb-command:print univariant

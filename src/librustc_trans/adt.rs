@@ -151,14 +151,14 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         | layout::UntaggedUnion { .. } | layout::RawNullablePointer { .. } => { }
         layout::Univariant { ..}
         | layout::StructWrappedNullablePointer { .. } => {
-            let (nonnull_variant, packed) = match *l {
-                layout::Univariant { ref variant, .. } => (0, variant.packed),
+            let (nonnull_variant_index, nonnull_variant, packed) = match *l {
+                layout::Univariant { ref variant, .. } => (0, variant, variant.packed),
                 layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } =>
-                    (nndiscr, nonnull.packed),
+                    (nndiscr, nonnull, nonnull.packed),
                 _ => unreachable!()
             };
-            let fields = compute_fields(cx, t, nonnull_variant as usize, true);
-            llty.set_struct_body(&struct_llfields(cx, &fields, false, false),
+            let fields = compute_fields(cx, t, nonnull_variant_index as usize, true);
+            llty.set_struct_body(&struct_llfields(cx, &fields, nonnull_variant, false, false),
                                  packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
@@ -188,7 +188,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, nndiscr as usize, false);
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, &fields, sizing, dst),
+                    Type::struct_(cx, &struct_llfields(cx, &fields, nonnull, sizing, dst),
                                   nonnull.packed)
                 }
                 Some(name) => {
@@ -203,7 +203,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, 0, true);
             match name {
                 None => {
-                    let fields = struct_llfields(cx, &fields, sizing, dst);
+                    let fields = struct_llfields(cx, &fields, &variant, sizing, dst);
                     Type::struct_(cx, &fields, variant.packed)
                 }
                 Some(name) => {
@@ -291,12 +291,14 @@ fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
 
 
 fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>,
+                             variant: &layout::Struct,
                              sizing: bool, dst: bool) -> Vec<Type> {
+    let fields = variant.field_index_by_increasing_offset().map(|i| fields[i as usize]);
     if sizing {
-        fields.iter().filter(|&ty| !dst || type_is_sized(cx.tcx(), *ty))
-            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
+        fields.filter(|ty| !dst || type_is_sized(cx.tcx(), *ty))
+            .map(|ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
-        fields.iter().map(|&ty| type_of::in_memory_type_of(cx, ty)).collect()
+        fields.map(|ty| type_of::in_memory_type_of(cx, ty)).collect()
     }
 }
 
@@ -564,16 +566,16 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
                                 st: &layout::Struct, fields: &Vec<Ty<'tcx>>, val: MaybeSizedValue,
                                 ix: usize, needs_cast: bool) -> ValueRef {
-    let ccx = bcx.ccx();
     let fty = fields[ix];
+    let ccx = bcx.ccx();
     let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
     if bcx.is_unreachable() {
         return C_undef(ll_fty.ptr_to());
     }
 
     let ptr_val = if needs_cast {
-        let fields = fields.iter().map(|&ty| {
-            type_of::in_memory_type_of(ccx, ty)
+        let fields = st.field_index_by_increasing_offset().map(|i| {
+            type_of::in_memory_type_of(ccx, fields[i])
         }).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, &fields[..], st.packed);
         bcx.pointercast(val.value, real_ty.ptr_to())
@@ -585,15 +587,15 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     //   * First field - Always aligned properly
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
-    if ix == 0 || st.packed || type_is_sized(bcx.tcx(), fty) {
-        return bcx.struct_gep(ptr_val, ix);
+    if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed || type_is_sized(bcx.tcx(), fty) {
+        return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
     }
 
     // If the type of the last field is [T] or str, then we don't need to do
     // any adjusments
     match fty.sty {
         ty::TySlice(..) | ty::TyStr => {
-            return bcx.struct_gep(ptr_val, ix);
+            return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
         }
         _ => ()
     }
@@ -755,8 +757,12 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // offset of current value
     let mut offset = 0;
     let mut cfields = Vec::new();
-    let offsets = st.offsets.iter().map(|i| i.bytes());
-    for (&val, target_offset) in vals.iter().zip(offsets) {
+    cfields.reserve(st.offsets.len()*2);
+
+    let parts = st.field_index_by_increasing_offset().map(|i| {
+        (&vals[i], st.offsets[i].bytes())
+    });
+    for (&val, target_offset) in parts {
         if offset < target_offset {
             cfields.push(padding(ccx, target_offset - offset));
             offset = target_offset;
@@ -807,14 +813,11 @@ pub fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     let l = ccx.layout_of(t);
     match *l {
         layout::CEnum { .. } => bug!("element access in C-like enum const"),
-        layout::Univariant { .. } | layout::Vector { .. } => const_struct_field(val, ix),
+        layout::Univariant { ref variant, .. } => {
+            const_struct_field(val, variant.memory_index[ix] as usize)
+        }
+        layout::Vector { .. } => const_struct_field(val, ix),
         layout::UntaggedUnion { .. } => const_struct_field(val, 0),
-        layout::General { .. } => const_struct_field(val, ix + 1),
-        layout::RawNullablePointer { .. } => {
-            assert_eq!(ix, 0);
-            val
-        },
-        layout::StructWrappedNullablePointer{ .. } => const_struct_field(val, ix),
         _ => bug!("{} does not have fields.", t)
     }
 }

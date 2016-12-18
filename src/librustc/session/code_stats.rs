@@ -142,7 +142,12 @@ impl CodeStats {
                 max_variant_size = cmp::max(max_variant_size, size);
 
                 let mut min_offset = discr_size;
-                for field in fields {
+
+                // We want to print fields by increasing offset.
+                let mut fields = fields.clone();
+                fields.sort_by_key(|f| f.offset);
+
+                for field in fields.iter() {
                     let FieldInfo { ref name, offset, size, align } = *field;
 
                     // Include field alignment in output only if it caused padding injection
