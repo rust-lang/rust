@@ -470,11 +470,26 @@ pub mod builtin {
     ///
     /// # Examples
     ///
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'my_str.in':
+    ///
     /// ```ignore
-    /// fn foo() {
-    ///     include!("/path/to/a/file")
+    /// "Hello World!"
+    /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore
+    /// fn main() {
+    ///     let my_str = include!("my_str.in");
+    ///     println!("{}", my_str);
     /// }
     /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "Hello
+    /// World!".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
