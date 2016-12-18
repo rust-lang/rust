@@ -20,10 +20,8 @@ use monomorphize::Instance;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::infer::TransNormalize;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
-use rustc::ty::subst::Substs;
 use abi::{Abi, FnType};
 use base;
 use builder::Builder;
@@ -37,7 +35,6 @@ use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::Layout;
 use rustc::traits::{self, SelectionContext, Reveal};
-use rustc::ty::fold::TypeFoldable;
 use rustc::hir;
 
 use libc::{c_uint, c_char};
@@ -249,10 +246,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Describes the return/argument LLVM types and their ABI handling.
     pub fn_ty: FnType,
 
-    // If this function is being monomorphized, this contains the type
-    // substitutions used.
-    pub param_substs: &'tcx Substs<'tcx>,
-
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -266,23 +259,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         ccx: &'a CrateContext<'a, 'tcx>,
         llfndecl: ValueRef,
         fn_ty: FnType,
-        definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
         skip_retptr: bool,
     ) -> FunctionContext<'a, 'tcx> {
-        let param_substs = match definition {
-            Some((instance, ..)) => {
-                assert!(!instance.substs.needs_infer());
-                instance.substs
-            }
-            None => ccx.tcx().intern_substs(&[])
-        };
-
         let mut fcx = FunctionContext {
             llfn: llfndecl,
             llretslotptr: None,
             alloca_insert_pt: None,
             fn_ty: fn_ty,
-            param_substs: param_substs,
             ccx: ccx,
             alloca_builder: Builder::with_ccx(ccx),
         };
@@ -338,14 +321,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     pub fn build_new_block(&'a self, name: &str) -> BlockAndBuilder<'a, 'tcx> {
         BlockAndBuilder::new(self.new_block(name), self)
-    }
-
-    pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx>
-    {
-        monomorphize::apply_param_substs(self.ccx.shared(),
-                                         self.param_substs,
-                                         value)
     }
 
     pub fn eh_personality(&self) -> ValueRef {

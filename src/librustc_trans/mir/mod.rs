@@ -14,11 +14,14 @@ use llvm::debuginfo::DIScope;
 use rustc::ty;
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
+use rustc::ty::subst::Substs;
+use rustc::infer::TransNormalize;
+use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
 use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
-use monomorphize::Instance;
+use monomorphize::{self, Instance};
 use machine;
 use type_of;
 
@@ -88,9 +91,17 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
+
+    /// If this function is being monomorphized, this contains the type substitutions used.
+    param_substs: &'tcx Substs<'tcx>,
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T: TransNormalize<'tcx> {
+        monomorphize::apply_param_substs(self.fcx.ccx.shared(), self.param_substs, value)
+    }
+
     pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
@@ -207,8 +218,6 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let bcx = fcx.get_entry_block();
 
     // Analyze the temps to determine which must be lvalues
-    // FIXME
-    let lvalue_locals = analyze::lvalue_locals(&bcx, &mir);
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
     // Allocate a `Block` for every basic block
@@ -235,7 +244,13 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         scopes: scopes,
         locals: IndexVec::new(),
         debug_context: debug_context,
+        param_substs: {
+            assert!(!instance.substs.needs_infer());
+            instance.substs
+        },
     };
+
+    let lvalue_locals = analyze::lvalue_locals(&bcx, &mircx);
 
     // Allocate variable and temp allocas
     mircx.locals = {
@@ -243,7 +258,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let ty = bcx.fcx().monomorphize(&decl.ty);
+            let ty = mircx.monomorphize(&decl.ty);
 
             if let Some(name) = decl.name {
                 // User variable
@@ -356,7 +371,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
-        let arg_ty = bcx.fcx().monomorphize(&arg_decl.ty);
+        let arg_ty = mircx.monomorphize(&arg_decl.ty);
 
         if Some(local) == mir.spread_arg {
             // This argument (e.g. the last argument in the "rust-call" ABI)
