@@ -103,7 +103,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let ptr = self.trans_consume(bcx, base);
                 let projected_ty = LvalueTy::from_ty(ptr.ty)
                     .projection_ty(tcx, &mir::ProjectionElem::Deref);
-                let projected_ty = bcx.fcx().monomorphize(&projected_ty);
+                let projected_ty = self.monomorphize(&projected_ty);
                 let (llptr, llextra) = match ptr.val {
                     OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
                     OperandValue::Pair(llptr, llextra) => (llptr, llextra),
@@ -118,7 +118,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
-                let projected_ty = bcx.fcx().monomorphize(&projected_ty);
+                let projected_ty = self.monomorphize(&projected_ty);
 
                 let project_index = |llindex| {
                     let element = if let ty::TySlice(_) = tr_base.ty.to_ty(tcx).sty {
@@ -274,6 +274,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         let tcx = self.fcx.ccx.tcx();
         let lvalue_ty = lvalue.ty(&self.mir, tcx);
-        self.fcx.monomorphize(&lvalue_ty.to_ty(tcx))
+        self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }

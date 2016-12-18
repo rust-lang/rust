@@ -242,7 +242,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
-                let ty = bcx.fcx().monomorphize(&ty);
+                let ty = self.monomorphize(&ty);
 
                 // Double check for necessity to drop
                 if !bcx.ccx().shared().type_needs_drop(ty) {
@@ -522,7 +522,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let extra_args = &args[sig.inputs().len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     let op_ty = op_arg.ty(&self.mir, bcx.tcx());
-                    bcx.fcx().monomorphize(&op_ty)
+                    self.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
                 let fn_ty = callee.direct_fn_type(bcx.ccx(), &extra_args);
 
