@@ -356,6 +356,7 @@ impl FnType {
             SysV64 => llvm::X86_64_SysV,
             Aapcs => llvm::ArmAapcsCallConv,
             PtxKernel => llvm::PtxKernel,
+            Msp430Interrupt => llvm::Msp430Intr,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
