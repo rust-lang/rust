@@ -502,15 +502,15 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     let bcx = fcx.get_entry_block();
 
-    let llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(fcx.llfn);
 
-    let self_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let self_arg = llargs.remove(fcx.fn_ty.ret.is_indirect() as usize);
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {
-            bcx.load(llargs[self_idx])
+            bcx.load(self_arg)
         } else {
-            llargs[self_idx]
+            self_arg
         }
     });
 
@@ -522,16 +522,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
-    let mut args = Vec::new();
-
-    if fn_ty.ret.is_indirect() {
-        if !fn_ty.ret.is_ignore() {
-            args.push(get_param(fcx.llfn, 0));
-        }
-    }
-    args.extend_from_slice(&llargs[(self_idx + 1)..]);
-
-    let llret = bcx.call(llfnpointer, &args, None);
+    let llret = bcx.call(llfnpointer, &llargs, None);
     fn_ty.apply_attrs_callsite(llret);
 
     if fn_ret.0.is_never() {

@@ -12,7 +12,7 @@ use attributes;
 use llvm::{ValueRef, get_params};
 use rustc::traits;
 use abi::FnType;
-use callee::Callee;
+use callee::{Callee, CalleeData};
 use common::*;
 use consts;
 use declare;
@@ -84,14 +84,20 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let fcx = FunctionContext::new(ccx, llfn, fn_ty);
     let bcx = fcx.get_entry_block();
 
-    let llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(fcx.llfn);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
-    let mut args = Vec::new();
-
-    args.extend_from_slice(&llargs);
-    let llret = bcx.call(callee.reify(ccx), &args, None);
+    let fn_ptr = match callee.data {
+        CalleeData::Virtual(idx) => {
+            let fn_ptr = get_virtual_method(&bcx,
+                llargs.remove(fn_ty.ret.is_indirect() as usize + 1), idx);
+            let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+            bcx.pointercast(fn_ptr, llty)
+        },
+        _ => bug!("trans_object_shim called with non-virtual callee"),
+    };
+    let llret = bcx.call(fn_ptr, &llargs, None);
     fn_ty.apply_attrs_callsite(llret);
 
     if fn_ret.0.is_never() {
