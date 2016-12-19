@@ -2,7 +2,7 @@
 # compiler itself. For the rustbuild build system, this also describes the
 # relevant Cargo revision that we're using.
 #
-# Currently Rust always bootstrap from the previous stable release, and in our
+# Currently Rust always bootstraps from the previous stable release, and in our
 # train model this means that the master branch bootstraps from beta, beta
 # bootstraps from current stable, and stable bootstraps from the previous stable
 # release.
@@ -12,5 +12,5 @@
 # tarball for a stable release you'll likely see `1.x.0-$date` where `1.x.0` was
 # released on `$date`
 
-rustc: beta-2016-11-16
+rustc: beta-2016-12-16
 cargo: nightly-2016-11-16
