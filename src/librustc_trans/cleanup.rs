@@ -203,8 +203,8 @@ impl<'tcx> CleanupScope<'tcx> {
 
         // Insert cleanup instructions into the cleanup block
         let funclet = match val {
-            UnwindKind::CleanupPad(_) => Funclet::msvc(cleanup.cleanup_pad(None, &[])),
-            UnwindKind::LandingPad => Funclet::gnu(),
+            UnwindKind::CleanupPad(_) => Some(Funclet::new(cleanup.cleanup_pad(None, &[]))),
+            UnwindKind::LandingPad => None,
         };
         drop_val.trans(funclet.as_ref(), &cleanup);
 

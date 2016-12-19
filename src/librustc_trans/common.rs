@@ -466,15 +466,11 @@ pub struct Funclet {
 }
 
 impl Funclet {
-    pub fn gnu() -> Option<Funclet> {
-        None
-    }
-
-    pub fn msvc(cleanuppad: ValueRef) -> Option<Funclet> {
-        Some(Funclet {
+    pub fn new(cleanuppad: ValueRef) -> Funclet {
+        Funclet {
             cleanuppad: cleanuppad,
             operand: OperandBundleDef::new("funclet", &[cleanuppad]),
-        })
+        }
     }
 
     pub fn cleanuppad(&self) -> ValueRef {
