@@ -103,6 +103,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         monomorphize::apply_param_substs(self.fcx.ccx.shared(), self.param_substs, value)
     }
 
+    pub fn set_debug_loc(&mut self, bcx: &BlockAndBuilder, source_info: mir::SourceInfo) {
+        let (scope, span) = self.debug_loc(source_info);
+        debuginfo::set_source_location(&self.debug_context, bcx, scope, span);
+    }
+
     pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
@@ -120,9 +125,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             source_info.span.expn_id == COMMAND_LINE_EXPN ||
             self.fcx.ccx.sess().opts.debugging_opts.debug_macros {
 
-            let scope_metadata = self.scope_metadata_for_loc(source_info.scope,
-                source_info.span.lo);
-            (scope_metadata, source_info.span)
+            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
+            (scope, source_info.span)
         } else {
             let cm = self.fcx.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
@@ -135,9 +139,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     break;
                 }
             }
-            let scope_metadata = self.scope_metadata_for_loc(source_info.scope, span.lo);
+            let scope = self.scope_metadata_for_loc(source_info.scope, span.lo);
             // Use span of the outermost call site, while keeping the original lexical scope
-            (scope_metadata, span)
+            (scope, span)
         }
     }
 
