@@ -300,25 +300,23 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mircx.debug_context);
 
-    let mut funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
-        IndexVec::from_elem(None, mir.basic_blocks());
-
     // If false, all funclets should be None (which is the default)
-    if base::wants_msvc_seh(fcx.ccx.sess()) {
-        for (bb, cleanup_kind) in mircx.cleanup_kinds.iter_enumerated() {
-            let bcx = mircx.build_block(bb);
-            match *cleanup_kind {
-                CleanupKind::Internal { .. } => {
-                    bcx.set_personality_fn(fcx.eh_personality());
-                }
-                CleanupKind::Funclet => {
-                    bcx.set_personality_fn(fcx.eh_personality());
-                    funclets[bb] = Funclet::msvc(bcx.cleanup_pad(None, &[]));
-                }
-                _ => {}
+    let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
+    mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
+        let bcx = mircx.build_block(bb);
+        match *cleanup_kind {
+            _ if !base::wants_msvc_seh(fcx.ccx.sess()) => None,
+            CleanupKind::Internal { .. } => {
+                bcx.set_personality_fn(fcx.eh_personality());
+                None
             }
+            CleanupKind::Funclet => {
+                bcx.set_personality_fn(fcx.eh_personality());
+                Funclet::msvc(bcx.cleanup_pad(None, &[]))
+            }
+            _ => None
         }
-    }
+    }).collect();
 
     let rpo = traversal::reverse_postorder(&mir);
     let mut visited = BitVector::new(mir.basic_blocks().len());
