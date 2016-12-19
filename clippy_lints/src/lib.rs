@@ -116,6 +116,7 @@ pub mod precedence;
 pub mod print;
 pub mod ptr;
 pub mod ranges;
+pub mod reference;
 pub mod regex;
 pub mod returns;
 pub mod serde;
@@ -267,6 +268,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
+    reg.register_early_lint_pass(box reference::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -432,6 +434,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ptr::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
+        reference::DEREF_ADDROF,
         regex::INVALID_REGEX,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,
