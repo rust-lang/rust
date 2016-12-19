@@ -40,7 +40,7 @@ use util::push_exe_path;
 pub struct Config {
     pub ccache: Option<String>,
     pub ninja: bool,
-    pub verbose: bool,
+    pub verbose: usize,
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
@@ -503,6 +503,14 @@ impl Config {
                 _ => {}
             }
         }
+    }
+
+    pub fn verbose(&self) -> bool {
+        self.verbose > 0
+    }
+
+    pub fn very_verbose(&self) -> bool {
+        self.verbose > 1
     }
 }
 

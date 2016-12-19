@@ -116,6 +116,42 @@ compiler. What actually happens when you invoke rustbuild is:
 The goal of each stage is to (a) leverage Cargo as much as possible and failing
 that (b) leverage Rust as much as possible!
 
+## Incremental builds
+
+You can configure rustbuild to use incremental compilation. Because
+incremental is new and evolving rapidly, if you want to use it, it is
+recommended that you replace the snapshot with a locally installed
+nightly build of rustc. You will want to keep this up to date.
+
+To follow this course of action, first thing you will want to do is to
+install a nightly, presumably using `rustup`. You will then want to
+configure your directory to use this build, like so:
+
+```
+# configure to use local rust instead of downloding a beta.
+# `--local-rust-root` is optional here. If elided, we will
+# use whatever rustc we find on your PATH.
+> configure --enable-rustbuild --local-rust-root=~/.cargo/ --enable-local-rebuild
+```
+
+After that, you can use the `--incremental` flag to actually do
+incremental builds:
+
+```
+> ../x.py build --incremental
+```
+
+The `--incremental` flag will store incremental compilation artifacts
+in `build/stage0-incremental`. Note that we only use incremental
+compilation for the stage0 -> stage1 compilation -- this is because
+the stage1 compiler is changing, and we don't try to cache and reuse
+incremental artifacts across different versions of the compiler. For
+this reason, `--incremental` defaults to `--stage 1` (though you can
+manually select a higher stage, if you prefer).
+
+You can always drop the `--incremental` to build as normal (but you
+will still be using the local nightly as your bootstrap).
+
 ## Directory Layout
 
 This build system houses all output under the `build` directory, which looks

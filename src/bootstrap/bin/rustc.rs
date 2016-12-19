@@ -29,6 +29,9 @@ extern crate bootstrap;
 
 use std::env;
 use std::ffi::OsString;
+use std::io;
+use std::io::prelude::*;
+use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 
@@ -40,6 +43,11 @@ fn main() {
         .find(|w| &*w[0] == "--target")
         .and_then(|w| w[1].to_str());
     let version = args.iter().find(|w| &**w == "-vV");
+
+    let verbose = match env::var("RUSTC_VERBOSE") {
+        Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
+        Err(_) => 0,
+    };
 
     // Build scripts always use the snapshot compiler which is guaranteed to be
     // able to produce an executable, whereas intermediate compilers may not
@@ -93,6 +101,15 @@ fn main() {
         // cross compiling.
         if let Ok(s) = env::var("RUSTC_FLAGS") {
             cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
+        }
+
+        // Pass down incremental directory, if any.
+        if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
+            cmd.arg(format!("-Zincremental={}", dir));
+
+            if verbose > 0 {
+                cmd.arg("-Zincremental-info");
+            }
         }
 
         // If we're compiling specifically the `panic_abort` crate then we pass
@@ -176,7 +193,17 @@ fn main() {
             if let Some(rpath) = rpath {
                 cmd.arg("-C").arg(format!("link-args={}", rpath));
             }
+
+            if let Ok(s) = env::var("RUSTFLAGS") {
+                for flag in s.split_whitespace() {
+                    cmd.arg(flag);
+                }
+            }
         }
+    }
+
+    if verbose > 1 {
+        writeln!(&mut io::stderr(), "rustc command: {:?}", cmd).unwrap();
     }
 
     // Actually run the compiler!
