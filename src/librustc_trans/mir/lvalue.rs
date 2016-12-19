@@ -140,7 +140,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
                         };
                         let discr = discr as u64;
-                        let is_sized = self.ccx().shared().type_is_sized(projected_ty.to_ty(tcx));
+                        let is_sized = self.fcx.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
                         let base = if is_sized {
                             adt::MaybeSizedValue::sized(tr_base.llval)
                         } else {
