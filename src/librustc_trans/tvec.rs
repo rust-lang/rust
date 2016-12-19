@@ -47,7 +47,7 @@ pub fn slice_for_each<'a, 'tcx, F>(
 
     f(&body_bcx, if zst { data_ptr } else { current });
     let next = add(&body_bcx, current, C_uint(bcx.ccx(), 1usize));
-    body_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
+    header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
     body_bcx.br(header_bcx.llbb());
     next_bcx
 }
