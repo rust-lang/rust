@@ -28,7 +28,6 @@ use rustc::ty::subst::Substs;
 
 use abi::Abi;
 use common::{CrateContext, BlockAndBuilder};
-use mir::MirContext;
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
@@ -434,7 +433,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
-                               mir: &MirContext,
+                               dbg_context: &FunctionDebugContext,
                                variable_name: ast::Name,
                                variable_type: Ty<'tcx>,
                                scope_metadata: DIScope,
@@ -476,7 +475,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                     align as u64,
                 )
             };
-            source_loc::set_debug_location(cx, bcx,
+            source_loc::set_debug_location(bcx,
                 InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
             unsafe {
                 let debug_loc = llvm::LLVMGetCurrentDebugLocation(bcx.llbuilder);
@@ -496,8 +495,8 @@ pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!mir.debug_context.get_ref(span).source_locations_enabled.get());
-            source_loc::set_debug_location(cx, bcx, UnknownLocation);
+            assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
+            source_loc::set_debug_location(bcx, UnknownLocation);
         }
         _ => { /* nothing to do */ }
     }

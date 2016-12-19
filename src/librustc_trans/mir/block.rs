@@ -115,7 +115,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let span = terminator.source_info.span;
         let (scope, debug_span) = self.debug_loc(terminator.source_info);
-        debuginfo::set_source_location(self, &bcx, scope, debug_span);
+        debuginfo::set_source_location(&self.debug_context, &bcx, scope, debug_span);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
@@ -327,7 +327,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // After this point, bcx is the block for the call to panic.
                 bcx = panic_block;
-                debuginfo::set_source_location(self, &bcx, scope, debug_span);
+                debuginfo::set_source_location(&self.debug_context, &bcx, scope, debug_span);
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
@@ -643,7 +643,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let ret_bcx = self.build_block(target);
                         ret_bcx.at_start(|ret_bcx| {
-                            debuginfo::set_source_location(self, &ret_bcx, scope, debug_span);
+                            debuginfo::set_source_location(&self.debug_context,
+                                &ret_bcx, scope, debug_span);
                             let op = OperandRef {
                                 val: Immediate(invokeret),
                                 ty: sig.output(),
