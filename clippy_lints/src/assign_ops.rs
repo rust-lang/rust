@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
+use syntax::ast;
 use utils::{span_lint_and_then, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
 use utils::{higher, sugg};
 
@@ -135,6 +136,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         } else {
                                             return; // useless if the trait doesn't exist
                                         };
+                                        // check that we are not inside an `impl AssignOp` of this exact operation
+                                        let parent_fn = cx.tcx.map.get_parent(e.id);
+                                        let parent_impl = cx.tcx.map.get_parent(parent_fn);
+                                        // the crate node is the only one that is not in the map
+                                        if parent_impl != ast::CRATE_NODE_ID {
+                                            if let hir::map::Node::NodeItem(item) = cx.tcx.map.get(parent_impl) {
+                                                if let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
+                                                    if trait_ref.path.def.def_id() == trait_id {
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                        }
                                         implements_trait($cx, $ty, trait_id, vec![$rty])
                                     },)*
                                     _ => false,
