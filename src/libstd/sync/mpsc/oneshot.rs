@@ -39,7 +39,8 @@ use self::MyUpgrade::*;
 
 use sync::mpsc::Receiver;
 use sync::mpsc::blocking::{self, SignalToken};
-use core::mem;
+use cell::UnsafeCell;
+use ptr;
 use sync::atomic::{AtomicUsize, Ordering};
 use time::Instant;
 
@@ -57,10 +58,10 @@ pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked thread as well)
     state: AtomicUsize,
     // One-shot data slot location
-    data: Option<T>,
+    data: UnsafeCell<Option<T>>,
     // when used for the second time, a oneshot channel must be upgraded, and
     // this contains the slot for the upgrade
-    upgrade: MyUpgrade<T>,
+    upgrade: UnsafeCell<MyUpgrade<T>>,
 }
 
 pub enum Failure<T> {
@@ -90,42 +91,44 @@ enum MyUpgrade<T> {
 impl<T> Packet<T> {
     pub fn new() -> Packet<T> {
         Packet {
-            data: None,
-            upgrade: NothingSent,
+            data: UnsafeCell::new(None),
+            upgrade: UnsafeCell::new(NothingSent),
             state: AtomicUsize::new(EMPTY),
         }
     }
 
-    pub fn send(&mut self, t: T) -> Result<(), T> {
-        // Sanity check
-        match self.upgrade {
-            NothingSent => {}
-            _ => panic!("sending on a oneshot that's already sent on "),
-        }
-        assert!(self.data.is_none());
-        self.data = Some(t);
-        self.upgrade = SendUsed;
-
-        match self.state.swap(DATA, Ordering::SeqCst) {
-            // Sent the data, no one was waiting
-            EMPTY => Ok(()),
-
-            // Couldn't send the data, the port hung up first. Return the data
-            // back up the stack.
-            DISCONNECTED => {
-                self.state.swap(DISCONNECTED, Ordering::SeqCst);
-                self.upgrade = NothingSent;
-                Err(self.data.take().unwrap())
+    pub fn send(&self, t: T) -> Result<(), T> {
+        unsafe {
+            // Sanity check
+            match *self.upgrade.get() {
+                NothingSent => {}
+                _ => panic!("sending on a oneshot that's already sent on "),
             }
+            assert!((*self.data.get()).is_none());
+            ptr::write(self.data.get(), Some(t));
+            ptr::write(self.upgrade.get(), SendUsed);
 
-            // Not possible, these are one-use channels
-            DATA => unreachable!(),
+            match self.state.swap(DATA, Ordering::SeqCst) {
+                // Sent the data, no one was waiting
+                EMPTY => Ok(()),
 
-            // There is a thread waiting on the other end. We leave the 'DATA'
-            // state inside so it'll pick it up on the other end.
-            ptr => unsafe {
-                SignalToken::cast_from_usize(ptr).signal();
-                Ok(())
+                // Couldn't send the data, the port hung up first. Return the data
+                // back up the stack.
+                DISCONNECTED => {
+                    self.state.swap(DISCONNECTED, Ordering::SeqCst);
+                    ptr::write(self.upgrade.get(), NothingSent);
+                    Err((&mut *self.data.get()).take().unwrap())
+                }
+
+                // Not possible, these are one-use channels
+                DATA => unreachable!(),
+
+                // There is a thread waiting on the other end. We leave the 'DATA'
+                // state inside so it'll pick it up on the other end.
+                ptr => {
+                    SignalToken::cast_from_usize(ptr).signal();
+                    Ok(())
+                }
             }
         }
     }
@@ -133,13 +136,15 @@ impl<T> Packet<T> {
     // Just tests whether this channel has been sent on or not, this is only
     // safe to use from the sender.
     pub fn sent(&self) -> bool {
-        match self.upgrade {
-            NothingSent => false,
-            _ => true,
+        unsafe {
+            match *self.upgrade.get() {
+                NothingSent => false,
+                _ => true,
+            }
         }
     }
 
-    pub fn recv(&mut self, deadline: Option<Instant>) -> Result<T, Failure<T>> {
+    pub fn recv(&self, deadline: Option<Instant>) -> Result<T, Failure<T>> {
         // Attempt to not block the thread (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(Ordering::SeqCst) == EMPTY {
@@ -167,73 +172,77 @@ impl<T> Packet<T> {
         self.try_recv()
     }
 
-    pub fn try_recv(&mut self) -> Result<T, Failure<T>> {
-        match self.state.load(Ordering::SeqCst) {
-            EMPTY => Err(Empty),
+    pub fn try_recv(&self) -> Result<T, Failure<T>> {
+        unsafe {
+            match self.state.load(Ordering::SeqCst) {
+                EMPTY => Err(Empty),
 
-            // We saw some data on the channel, but the channel can be used
-            // again to send us an upgrade. As a result, we need to re-insert
-            // into the channel that there's no data available (otherwise we'll
-            // just see DATA next time). This is done as a cmpxchg because if
-            // the state changes under our feet we'd rather just see that state
-            // change.
-            DATA => {
-                self.state.compare_and_swap(DATA, EMPTY, Ordering::SeqCst);
-                match self.data.take() {
-                    Some(data) => Ok(data),
-                    None => unreachable!(),
+                // We saw some data on the channel, but the channel can be used
+                // again to send us an upgrade. As a result, we need to re-insert
+                // into the channel that there's no data available (otherwise we'll
+                // just see DATA next time). This is done as a cmpxchg because if
+                // the state changes under our feet we'd rather just see that state
+                // change.
+                DATA => {
+                    self.state.compare_and_swap(DATA, EMPTY, Ordering::SeqCst);
+                    match (&mut *self.data.get()).take() {
+                        Some(data) => Ok(data),
+                        None => unreachable!(),
+                    }
                 }
-            }
 
-            // There's no guarantee that we receive before an upgrade happens,
-            // and an upgrade flags the channel as disconnected, so when we see
-            // this we first need to check if there's data available and *then*
-            // we go through and process the upgrade.
-            DISCONNECTED => {
-                match self.data.take() {
-                    Some(data) => Ok(data),
-                    None => {
-                        match mem::replace(&mut self.upgrade, SendUsed) {
-                            SendUsed | NothingSent => Err(Disconnected),
-                            GoUp(upgrade) => Err(Upgraded(upgrade))
+                // There's no guarantee that we receive before an upgrade happens,
+                // and an upgrade flags the channel as disconnected, so when we see
+                // this we first need to check if there's data available and *then*
+                // we go through and process the upgrade.
+                DISCONNECTED => {
+                    match (&mut *self.data.get()).take() {
+                        Some(data) => Ok(data),
+                        None => {
+                            match ptr::replace(self.upgrade.get(), SendUsed) {
+                                SendUsed | NothingSent => Err(Disconnected),
+                                GoUp(upgrade) => Err(Upgraded(upgrade))
+                            }
                         }
                     }
                 }
-            }
 
-            // We are the sole receiver; there cannot be a blocking
-            // receiver already.
-            _ => unreachable!()
+                // We are the sole receiver; there cannot be a blocking
+                // receiver already.
+                _ => unreachable!()
+            }
         }
     }
 
     // Returns whether the upgrade was completed. If the upgrade wasn't
     // completed, then the port couldn't get sent to the other half (it will
     // never receive it).
-    pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
-        let prev = match self.upgrade {
-            NothingSent => NothingSent,
-            SendUsed => SendUsed,
-            _ => panic!("upgrading again"),
-        };
-        self.upgrade = GoUp(up);
+    pub fn upgrade(&self, up: Receiver<T>) -> UpgradeResult {
+        unsafe {
+            let prev = match *self.upgrade.get() {
+                NothingSent => NothingSent,
+                SendUsed => SendUsed,
+                _ => panic!("upgrading again"),
+            };
+            ptr::write(self.upgrade.get(), GoUp(up));
 
-        match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
-            // If the channel is empty or has data on it, then we're good to go.
-            // Senders will check the data before the upgrade (in case we
-            // plastered over the DATA state).
-            DATA | EMPTY => UpSuccess,
+            match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
+                // If the channel is empty or has data on it, then we're good to go.
+                // Senders will check the data before the upgrade (in case we
+                // plastered over the DATA state).
+                DATA | EMPTY => UpSuccess,
 
-            // If the other end is already disconnected, then we failed the
-            // upgrade. Be sure to trash the port we were given.
-            DISCONNECTED => { self.upgrade = prev; UpDisconnected }
+                // If the other end is already disconnected, then we failed the
+                // upgrade. Be sure to trash the port we were given.
+                DISCONNECTED => { ptr::replace(self.upgrade.get(), prev); UpDisconnected }
 
-            // If someone's waiting, we gotta wake them up
-            ptr => UpWoke(unsafe { SignalToken::cast_from_usize(ptr) })
+                // If someone's waiting, we gotta wake them up
+                ptr => UpWoke(SignalToken::cast_from_usize(ptr))
+            }
         }
     }
 
-    pub fn drop_chan(&mut self) {
+    pub fn drop_chan(&self) {
         match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
             DATA | DISCONNECTED | EMPTY => {}
 
@@ -244,7 +253,7 @@ impl<T> Packet<T> {
         }
     }
 
-    pub fn drop_port(&mut self) {
+    pub fn drop_port(&self) {
         match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
             // An empty channel has nothing to do, and a remotely disconnected
             // channel also has nothing to do b/c we're about to run the drop
@@ -254,7 +263,7 @@ impl<T> Packet<T> {
             // There's data on the channel, so make sure we destroy it promptly.
             // This is why not using an arc is a little difficult (need the box
             // to stay valid while we take the data).
-            DATA => { self.data.take().unwrap(); }
+            DATA => unsafe { (&mut *self.data.get()).take().unwrap(); },
 
             // We're the only ones that can block on this port
             _ => unreachable!()
@@ -267,62 +276,66 @@ impl<T> Packet<T> {
 
     // If Ok, the value is whether this port has data, if Err, then the upgraded
     // port needs to be checked instead of this one.
-    pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
-        match self.state.load(Ordering::SeqCst) {
-            EMPTY => Ok(false), // Welp, we tried
-            DATA => Ok(true),   // we have some un-acquired data
-            DISCONNECTED if self.data.is_some() => Ok(true), // we have data
-            DISCONNECTED => {
-                match mem::replace(&mut self.upgrade, SendUsed) {
-                    // The other end sent us an upgrade, so we need to
-                    // propagate upwards whether the upgrade can receive
-                    // data
-                    GoUp(upgrade) => Err(upgrade),
+    pub fn can_recv(&self) -> Result<bool, Receiver<T>> {
+        unsafe {
+            match self.state.load(Ordering::SeqCst) {
+                EMPTY => Ok(false), // Welp, we tried
+                DATA => Ok(true),   // we have some un-acquired data
+                DISCONNECTED if (*self.data.get()).is_some() => Ok(true), // we have data
+                DISCONNECTED => {
+                    match ptr::replace(self.upgrade.get(), SendUsed) {
+                        // The other end sent us an upgrade, so we need to
+                        // propagate upwards whether the upgrade can receive
+                        // data
+                        GoUp(upgrade) => Err(upgrade),
 
-                    // If the other end disconnected without sending an
-                    // upgrade, then we have data to receive (the channel is
-                    // disconnected).
-                    up => { self.upgrade = up; Ok(true) }
+                        // If the other end disconnected without sending an
+                        // upgrade, then we have data to receive (the channel is
+                        // disconnected).
+                        up => { ptr::write(self.upgrade.get(), up); Ok(true) }
+                    }
                 }
+                _ => unreachable!(), // we're the "one blocker"
             }
-            _ => unreachable!(), // we're the "one blocker"
         }
     }
 
     // Attempts to start selection on this port. This can either succeed, fail
     // because there is data, or fail because there is an upgrade pending.
-    pub fn start_selection(&mut self, token: SignalToken) -> SelectionResult<T> {
-        let ptr = unsafe { token.cast_to_usize() };
-        match self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) {
-            EMPTY => SelSuccess,
-            DATA => {
-                drop(unsafe { SignalToken::cast_from_usize(ptr) });
-                SelCanceled
-            }
-            DISCONNECTED if self.data.is_some() => {
-                drop(unsafe { SignalToken::cast_from_usize(ptr) });
-                SelCanceled
-            }
-            DISCONNECTED => {
-                match mem::replace(&mut self.upgrade, SendUsed) {
-                    // The other end sent us an upgrade, so we need to
-                    // propagate upwards whether the upgrade can receive
-                    // data
-                    GoUp(upgrade) => {
-                        SelUpgraded(unsafe { SignalToken::cast_from_usize(ptr) }, upgrade)
-                    }
+    pub fn start_selection(&self, token: SignalToken) -> SelectionResult<T> {
+        unsafe {
+            let ptr = token.cast_to_usize();
+            match self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) {
+                EMPTY => SelSuccess,
+                DATA => {
+                    drop(SignalToken::cast_from_usize(ptr));
+                    SelCanceled
+                }
+                DISCONNECTED if (*self.data.get()).is_some() => {
+                    drop(SignalToken::cast_from_usize(ptr));
+                    SelCanceled
+                }
+                DISCONNECTED => {
+                    match ptr::replace(self.upgrade.get(), SendUsed) {
+                        // The other end sent us an upgrade, so we need to
+                        // propagate upwards whether the upgrade can receive
+                        // data
+                        GoUp(upgrade) => {
+                            SelUpgraded(SignalToken::cast_from_usize(ptr), upgrade)
+                        }
 
-                    // If the other end disconnected without sending an
-                    // upgrade, then we have data to receive (the channel is
-                    // disconnected).
-                    up => {
-                        self.upgrade = up;
-                        drop(unsafe { SignalToken::cast_from_usize(ptr) });
-                        SelCanceled
+                        // If the other end disconnected without sending an
+                        // upgrade, then we have data to receive (the channel is
+                        // disconnected).
+                        up => {
+                            ptr::write(self.upgrade.get(), up);
+                            drop(SignalToken::cast_from_usize(ptr));
+                            SelCanceled
+                        }
                     }
                 }
+                _ => unreachable!(), // we're the "one blocker"
             }
-            _ => unreachable!(), // we're the "one blocker"
         }
     }
 
@@ -330,7 +343,7 @@ impl<T> Packet<T> {
     // blocked thread will no longer be visible to any other threads.
     //
     // The return value indicates whether there's data on this port.
-    pub fn abort_selection(&mut self) -> Result<bool, Receiver<T>> {
+    pub fn abort_selection(&self) -> Result<bool, Receiver<T>> {
         let state = match self.state.load(Ordering::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
@@ -356,16 +369,16 @@ impl<T> Packet<T> {
             //
             // We then need to check to see if there was an upgrade requested,
             // and if so, the upgraded port needs to have its selection aborted.
-            DISCONNECTED => {
-                if self.data.is_some() {
+            DISCONNECTED => unsafe {
+                if (*self.data.get()).is_some() {
                     Ok(true)
                 } else {
-                    match mem::replace(&mut self.upgrade, SendUsed) {
+                    match ptr::replace(self.upgrade.get(), SendUsed) {
                         GoUp(port) => Err(port),
                         _ => Ok(true),
                     }
                 }
-            }
+            },
 
             // We woke ourselves up from select.
             ptr => unsafe {
