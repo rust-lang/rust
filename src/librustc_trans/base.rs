@@ -662,14 +662,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
             bcx.ret(load)
         } else {
-            let llty = fcx.fn_ty.ret.original_ty;
-            let retval = if llty == Type::i1(fcx.ccx) {
-                let val = bcx.load_range_assert(dest, 0, 2, llvm::False);
-                bcx.trunc(val, llty)
-            } else {
-                bcx.load(dest)
-            };
-            bcx.ret(retval)
+            bcx.ret(bcx.load(dest))
         }
     } else {
         bcx.ret_void();
