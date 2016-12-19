@@ -81,7 +81,7 @@ def verify(path, sha_path, verbose):
     with open(path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
     with open(sha_path, "r") as f:
-        expected, _ = f.readline().split()
+        expected = f.readline().split()[0]
     verified = found == expected
     if not verified:
         print("invalid checksum:\n"
@@ -146,7 +146,7 @@ class RustBuild(object):
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
-        cargo_cache = os.path.join(cache_dst, self.stage0_cargo_date())
+        cargo_cache = os.path.join(cache_dst, self.stage0_cargo_rev())
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
         if not os.path.exists(cargo_cache):
@@ -179,21 +179,17 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             self.print_what_it_means_to_bootstrap()
-            channel = self.stage0_cargo_channel()
-            filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
+            filename = "cargo-nightly-{}.tar.gz".format(self.build)
+            url = "https://s3.amazonaws.com/rust-lang-ci/cargo-builds/" + self.stage0_cargo_rev()
             tarball = os.path.join(cargo_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.stage0_cargo_date())
+                f.write(self.stage0_cargo_rev())
 
-    def stage0_cargo_date(self):
-        return self._cargo_date
-
-    def stage0_cargo_channel(self):
-        return self._cargo_channel
+    def stage0_cargo_rev(self):
+        return self._cargo_rev
 
     def stage0_rustc_date(self):
         return self._rustc_date
@@ -217,7 +213,7 @@ class RustBuild(object):
         if not os.path.exists(self.cargo_stamp()) or self.clean:
             return True
         with open(self.cargo_stamp(), 'r') as f:
-            return self.stage0_cargo_date() != f.read()
+            return self.stage0_cargo_rev() != f.read()
 
     def bin_root(self):
         return os.path.join(self.build_dir, self.build, "stage0")
@@ -469,7 +465,7 @@ def main():
 
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
-    rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
+    rb._cargo_rev = data['cargo']
 
     start_time = time()
 
