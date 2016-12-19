@@ -257,7 +257,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
                 if !lvalue_locals.contains(local.index()) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bcx.ccx(), ty);
+                    return LocalRef::new_operand(bcx.ccx, ty);
                 }
 
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
@@ -283,7 +283,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bcx.ccx(), ty)
+                    LocalRef::new_operand(bcx.ccx, ty)
                 }
             }
         };
@@ -382,7 +382,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 let dst = bcx.struct_gep(lltemp, i);
                 let arg = &fcx.fn_ty.args[idx];
                 idx += 1;
-                if common::type_is_fat_ptr(bcx.ccx(), tupled_arg_ty) {
+                if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
                     // We pass fat pointers as two words, but inside the tuple
                     // they are the two sub-fields of a single aggregate field.
                     let meta = &fcx.fn_ty.args[idx];
@@ -431,7 +431,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                   !arg.is_indirect() && arg.cast.is_none() &&
                   arg_scope.is_none() {
             if arg.is_ignore() {
-                return LocalRef::new_operand(bcx.ccx(), arg_ty);
+                return LocalRef::new_operand(bcx.ccx, arg_ty);
             }
 
             // We don't have to cast or keep the argument in the alloca.
@@ -442,7 +442,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             }
             let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
             llarg_idx += 1;
-            let val = if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
+            let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 let meta = &fcx.fn_ty.args[idx];
                 idx += 1;
                 assert_eq!((meta.cast, meta.pad), (None, None));
@@ -459,7 +459,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
             let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
-            if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
+            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
                 // so make an alloca to store them in.
@@ -517,7 +517,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 llval
             };
 
-            let layout = bcx.ccx().layout_of(closure_ty);
+            let layout = bcx.ccx.layout_of(closure_ty);
             let offsets = match *layout {
                 layout::Univariant { ref variant, .. } => &variant.offsets[..],
                 _ => bug!("Closures are only supposed to be Univariant")
@@ -525,7 +525,6 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
                 let byte_offset_of_var_in_env = offsets[i].bytes();
-
 
                 let ops = unsafe {
                     [llvm::LLVMRustDIBuilderCreateOpDeref(),

@@ -126,7 +126,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     } else {
                         let exc_ptr = bcx.extract_value(lp, 0);
                         bcx.call(
-                            bcx.fcx().eh_unwind_resume().reify(bcx.ccx()),
+                            bcx.fcx().eh_unwind_resume().reify(bcx.ccx),
                             &[exc_ptr],
                             cleanup_bundle,
                         );
@@ -185,7 +185,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let discr = base::to_immediate(&bcx, discr, switch_ty);
                 let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
-                    let val = Const::from_constval(bcx.ccx(), value.clone(), switch_ty);
+                    let val = Const::from_constval(bcx.ccx, value.clone(), switch_ty);
                     let llbb = llblock(self, *target);
                     bcx.add_case(switch, val.llval, llbb)
                 }
@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         Ref(llval) => llval
                     };
                     let load = bcx.load(bcx.pointercast(llslot, cast_ty.ptr_to()));
-                    let llalign = llalign_of_min(bcx.ccx(), ret.ty);
+                    let llalign = llalign_of_min(bcx.ccx, ret.ty);
                     unsafe {
                         llvm::LLVMSetAlignment(load, llalign);
                     }
@@ -239,18 +239,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let ty = self.monomorphize(&ty);
 
                 // Double check for necessity to drop
-                if !bcx.ccx().shared().type_needs_drop(ty) {
+                if !bcx.ccx.shared().type_needs_drop(ty) {
                     funclet_br(self, bcx, target);
                     return;
                 }
 
                 let lvalue = self.trans_lvalue(&bcx, location);
-                let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                let drop_ty = glue::get_drop_glue_type(bcx.ccx().shared(), ty);
-                let is_sized = bcx.ccx().shared().type_is_sized(ty);
+                let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
+                let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
+                let is_sized = bcx.ccx.shared().type_is_sized(ty);
                 let llvalue = if is_sized {
                     if drop_ty != ty {
-                        bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                        bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to())
                     } else {
                         lvalue.llval
                     }
@@ -291,7 +291,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // NOTE: Unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
-                if !bcx.ccx().check_overflow() {
+                if !bcx.ccx.check_overflow() {
                     use rustc_const_math::ConstMathErr::Overflow;
                     use rustc_const_math::Op::Neg;
 
@@ -307,8 +307,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 // Pass the condition through llvm.expect for branch hinting.
-                let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-                let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx(), expected)], None);
+                let expect = bcx.ccx.get_intrinsic(&"llvm.expect.i1");
+                let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx, expected)], None);
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);
@@ -326,8 +326,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
                 let filename = Symbol::intern(&loc.file.name).as_str();
-                let filename = C_str_slice(bcx.ccx(), filename);
-                let line = C_u32(bcx.ccx(), loc.line as u32);
+                let filename = C_str_slice(bcx.ccx, filename);
+                let line = C_u32(bcx.ccx, loc.line as u32);
 
                 // Put together the arguments to the panic entry point.
                 let (lang_item, args, const_err) = match *msg {
@@ -344,9 +344,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             })
                         });
 
-                        let file_line = C_struct(bcx.ccx(), &[filename, line], false);
-                        let align = llalign_of_min(bcx.ccx(), common::val_ty(file_line));
-                        let file_line = consts::addr_of(bcx.ccx(),
+                        let file_line = C_struct(bcx.ccx, &[filename, line], false);
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(file_line));
+                        let file_line = consts::addr_of(bcx.ccx,
                                                         file_line,
                                                         align,
                                                         "panic_bounds_check_loc");
@@ -356,12 +356,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = Symbol::intern(err.description()).as_str();
-                        let msg_str = C_str_slice(bcx.ccx(), msg_str);
-                        let msg_file_line = C_struct(bcx.ccx(),
+                        let msg_str = C_str_slice(bcx.ccx, msg_str);
+                        let msg_file_line = C_struct(bcx.ccx,
                                                      &[msg_str, filename, line],
                                                      false);
-                        let align = llalign_of_min(bcx.ccx(), common::val_ty(msg_file_line));
-                        let msg_file_line = consts::addr_of(bcx.ccx(),
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line));
+                        let msg_file_line = consts::addr_of(bcx.ccx,
                                                             msg_file_line,
                                                             align,
                                                             "panic_loc");
@@ -385,9 +385,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
-                let callee = Callee::def(bcx.ccx(), def_id,
-                    bcx.ccx().empty_substs_for_def_id(def_id));
-                let llfn = callee.reify(bcx.ccx());
+                let callee = Callee::def(bcx.ccx, def_id,
+                    bcx.ccx.empty_substs_for_def_id(def_id));
+                let llfn = callee.reify(bcx.ccx);
 
                 // Translate the actual panic invoke/call.
                 if let Some(unwind) = cleanup {
@@ -412,7 +412,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let (mut callee, abi, sig) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs, f) => {
-                        (Callee::def(bcx.ccx(), def_id, substs), f.abi, &f.sig)
+                        (Callee::def(bcx.ccx, def_id, substs), f.abi, &f.sig)
                     }
                     ty::TyFnPtr(f) => {
                         (Callee {
@@ -455,7 +455,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
 
                     // Double check for necessity to drop
-                    if !bcx.ccx().shared().type_needs_drop(ty) {
+                    if !bcx.ccx.shared().type_needs_drop(ty) {
                         funclet_br(self, bcx, target);
                         return;
                     }
@@ -467,12 +467,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         Ref(_) => bug!("Deref of by-Ref type {:?}", ptr.ty)
                     };
 
-                    let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                    let drop_ty = glue::get_drop_glue_type(bcx.ccx().shared(), ty);
-                    let is_sized = bcx.ccx().shared().type_is_sized(ty);
+                    let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
+                    let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
+                    let is_sized = bcx.ccx.shared().type_is_sized(ty);
                     let llvalue = if is_sized {
                         if drop_ty != ty {
-                            bcx.pointercast(llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                            bcx.pointercast(llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to())
                         } else {
                             llval
                         }
@@ -518,7 +518,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let op_ty = op_arg.ty(&self.mir, bcx.tcx());
                     self.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
-                let fn_ty = callee.direct_fn_type(bcx.ccx(), &extra_args);
+                let fn_ty = callee.direct_fn_type(bcx.ccx, &extra_args);
 
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
@@ -579,7 +579,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let fn_ptr = match callee.data {
                     NamedTupleConstructor(_) => {
                         // FIXME translate this like mir::Rvalue::Aggregate.
-                        callee.reify(bcx.ccx())
+                        callee.reify(bcx.ccx)
                     }
                     Intrinsic => {
                         use intrinsic::trans_intrinsic_call;
@@ -673,12 +673,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       callee: &mut CalleeData) {
         if let Pair(a, b) = op.val {
             // Treat the values in a fat pointer separately.
-            if common::type_is_fat_ptr(bcx.ccx(), op.ty) {
+            if common::type_is_fat_ptr(bcx.ccx, op.ty) {
                 let (ptr, meta) = (a, b);
                 if *next_idx == 0 {
                     if let Virtual(idx) = *callee {
                         let llfn = meth::get_virtual_method(bcx, meta, idx);
-                        let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+                        let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
                         *callee = Fn(bcx.pointercast(llfn, llty));
                     }
                 }
@@ -722,13 +722,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if arg.original_ty == Type::i1(bcx.ccx()) {
+            if arg.original_ty == Type::i1(bcx.ccx) {
                 // We store bools as i8 so we need to truncate to i1.
                 llval = bcx.load_range_assert(llval, 0, 2, llvm::False);
                 llval = bcx.trunc(llval, arg.original_ty);
             } else if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()));
-                let llalign = llalign_of_min(bcx.ccx(), arg.ty);
+                let llalign = llalign_of_min(bcx.ccx, arg.ty);
                 unsafe {
                     llvm::LLVMSetAlignment(llval, llalign);
                 }
@@ -761,7 +761,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let ptr = adt::trans_field_ptr(bcx, tuple.ty, base, Disr(0), n);
-                    let val = if common::type_is_fat_ptr(bcx.ccx(), ty) {
+                    let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
                         let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
                         Pair(lldata, llextra)
                     } else {
@@ -777,7 +777,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             }
             Immediate(llval) => {
-                let l = bcx.ccx().layout_of(tuple.ty);
+                let l = bcx.ccx.layout_of(tuple.ty);
                 let v = if let layout::Univariant { ref variant, .. } = *l {
                     variant
                 } else {
@@ -786,8 +786,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let mut elem = bcx.extract_value(llval, v.memory_index[n] as usize);
                     // Truncate bools to i1, if needed
-                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
-                        elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
+                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx) {
+                        elem = bcx.trunc(elem, Type::i1(bcx.ccx));
                     }
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
@@ -802,8 +802,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let mut elem = elems[n];
                     // Truncate bools to i1, if needed
-                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
-                        elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
+                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx) {
+                        elem = bcx.trunc(elem, Type::i1(bcx.ccx));
                     }
                     // Pair is always made up of immediates
                     let op = OperandRef {
@@ -818,7 +818,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn get_personality_slot(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>) -> ValueRef {
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
         if let Some(slot) = self.llpersonalityslot {
             slot
         } else {
@@ -847,7 +847,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let bcx = self.fcx.build_new_block("cleanup");
         self.landing_pads[target_bb] = Some(bcx.llbb());
 
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
         let llpersonality = self.fcx.eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
         let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.fcx.llfn);
@@ -920,23 +920,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                        src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
         let mut val = self.trans_operand(bcx, src);
         if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
-            let llouttype = type_of::type_of(bcx.ccx(), dst.ty.to_ty(bcx.tcx()));
-            let out_type_size = llbitsize_of_real(bcx.ccx(), llouttype);
+            let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.tcx()));
+            let out_type_size = llbitsize_of_real(bcx.ccx, llouttype);
             if out_type_size != 0 {
                 // FIXME #19925 Remove this hack after a release cycle.
-                let f = Callee::def(bcx.ccx(), def_id, substs);
+                let f = Callee::def(bcx.ccx, def_id, substs);
                 let ty = match f.ty.sty {
                     ty::TyFnDef(.., f) => bcx.tcx().mk_fn_ptr(f),
                     _ => f.ty
                 };
                 val = OperandRef {
-                    val: Immediate(f.reify(bcx.ccx())),
+                    val: Immediate(f.reify(bcx.ccx)),
                     ty: ty
                 };
             }
         }
 
-        let llty = type_of::type_of(bcx.ccx(), val.ty);
+        let llty = type_of::type_of(bcx.ccx, val.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         self.store_operand(bcx, cast_ptr, val);
     }

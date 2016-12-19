@@ -308,7 +308,7 @@ pub fn trans_switch<'a, 'tcx>(
     scrutinee: ValueRef,
     range_assert: bool
 ) -> (BranchKind, Option<ValueRef>) {
-    let l = bcx.ccx().layout_of(t);
+    let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum { .. } | layout::General { .. } |
         layout::RawNullablePointer { .. } | layout::StructWrappedNullablePointer { .. } => {
@@ -343,7 +343,7 @@ pub fn trans_get_discr<'a, 'tcx>(
     };
 
     debug!("trans_get_discr t: {:?}", t);
-    let l = bcx.ccx().layout_of(t);
+    let l = bcx.ccx.layout_of(t);
 
     let val = match *l {
         layout::CEnum { discr, min, max, .. } => {
@@ -354,11 +354,11 @@ pub fn trans_get_discr<'a, 'tcx>(
             load_discr(bcx, discr, ptr, 0, def.variants.len() as u64 - 1,
                        range_assert)
         }
-        layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx(), 0),
+        layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
         layout::RawNullablePointer { nndiscr, .. } => {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
-            let llptrty = type_of::sizing_type_of(bcx.ccx(),
-                monomorphize::field_ty(bcx.ccx().tcx(), substs,
+            let llptrty = type_of::sizing_type_of(bcx.ccx,
+                monomorphize::field_ty(bcx.ccx.tcx(), substs,
                 &def.variants[nndiscr as usize].fields[0]));
             bcx.icmp(cmp, bcx.load(scrutinee), C_null(llptrty))
         }
@@ -390,7 +390,7 @@ fn struct_wrapped_nullable_bitdiscr(
 fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
               range_assert: bool)
     -> ValueRef {
-    let llty = Type::from_integer(bcx.ccx(), ity);
+    let llty = Type::from_integer(bcx.ccx, ity);
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = ity.size().bits();
     assert!(bits <= 64);
@@ -416,16 +416,16 @@ fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u
 ///
 /// This should ideally be less tightly tied to `_match`.
 pub fn trans_case<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, value: Disr) -> ValueRef {
-    let l = bcx.ccx().layout_of(t);
+    let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum { discr, .. }
         | layout::General { discr, .. }=> {
-            C_integral(Type::from_integer(bcx.ccx(), discr), value.0, true)
+            C_integral(Type::from_integer(bcx.ccx, discr), value.0, true)
         }
         layout::RawNullablePointer { .. } |
         layout::StructWrappedNullablePointer { .. } => {
             assert!(value == Disr(0) || value == Disr(1));
-            C_bool(bcx.ccx(), value != Disr(0))
+            C_bool(bcx.ccx, value != Disr(0))
         }
         _ => {
             bug!("{} does not have a discriminant. Represented as {:#?}", t, l);
@@ -438,15 +438,15 @@ pub fn trans_case<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, value:
 pub fn trans_set_discr<'a, 'tcx>(
     bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr
 ) {
-    let l = bcx.ccx().layout_of(t);
+    let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
             assert_discr_in_range(Disr(min), Disr(max), to);
-            bcx.store(C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
+            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
                   val);
         }
         layout::General{ discr, .. } => {
-            bcx.store(C_integral(Type::from_integer(bcx.ccx(), discr), to.0, true),
+            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
                   bcx.struct_gep(val, 0));
         }
         layout::Univariant { .. }
@@ -455,9 +455,9 @@ pub fn trans_set_discr<'a, 'tcx>(
             assert_eq!(to, Disr(0));
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = compute_fields(bcx.ccx(), t, nndiscr as usize, false)[0];
+            let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             if to.0 != nndiscr {
-                let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
+                let llptrty = type_of::sizing_type_of(bcx.ccx, nnty);
                 bcx.store(C_null(llptrty), val);
             }
         }
@@ -467,10 +467,10 @@ pub fn trans_set_discr<'a, 'tcx>(
                     // Issue #34427: As workaround for LLVM bug on
                     // ARM, use memset of 0 on whole struct rather
                     // than storing null to single target field.
-                    let llptr = bcx.pointercast(val, Type::i8(bcx.ccx()).ptr_to());
-                    let fill_byte = C_u8(bcx.ccx(), 0);
-                    let size = C_uint(bcx.ccx(), nonnull.stride().bytes());
-                    let align = C_i32(bcx.ccx(), nonnull.align.abi() as i32);
+                    let llptr = bcx.pointercast(val, Type::i8(bcx.ccx).ptr_to());
+                    let fill_byte = C_u8(bcx.ccx, 0);
+                    let size = C_uint(bcx.ccx, nonnull.stride().bytes());
+                    let align = C_i32(bcx.ccx, nonnull.align.abi() as i32);
                     base::call_memset(bcx, llptr, fill_byte, size, align, false);
                 } else {
                     let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
@@ -504,7 +504,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
     discr: Disr,
     ix: usize
 ) -> ValueRef {
-    let l = bcx.ccx().layout_of(t);
+    let l = bcx.ccx.layout_of(t);
     debug!("trans_field_ptr on {} represented as {:#?}", t, l);
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
@@ -513,7 +513,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
         layout::Univariant { ref variant, .. } => {
             assert_eq!(discr, Disr(0));
             struct_field_ptr(bcx, &variant,
-             &compute_fields(bcx.ccx(), t, 0, false),
+             &compute_fields(bcx.ccx, t, 0, false),
              val, ix, false)
         }
         layout::Vector { count, .. } => {
@@ -522,37 +522,37 @@ pub fn trans_field_ptr<'a, 'tcx>(
             bcx.struct_gep(val.value, ix)
         }
         layout::General { discr: d, ref variants, .. } => {
-            let mut fields = compute_fields(bcx.ccx(), t, discr.0 as usize, false);
-            fields.insert(0, d.to_ty(&bcx.ccx().tcx(), false));
+            let mut fields = compute_fields(bcx.ccx, t, discr.0 as usize, false);
+            fields.insert(0, d.to_ty(&bcx.ccx.tcx(), false));
             struct_field_ptr(bcx, &variants[discr.0 as usize],
              &fields,
              val, ix + 1, true)
         }
         layout::UntaggedUnion { .. } => {
-            let fields = compute_fields(bcx.ccx(), t, 0, false);
-            let ty = type_of::in_memory_type_of(bcx.ccx(), fields[ix]);
+            let fields = compute_fields(bcx.ccx, t, 0, false);
+            let ty = type_of::in_memory_type_of(bcx.ccx, fields[ix]);
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } |
         layout::StructWrappedNullablePointer { nndiscr,  .. } if discr.0 != nndiscr => {
-            let nullfields = compute_fields(bcx.ccx(), t, (1-nndiscr) as usize, false);
+            let nullfields = compute_fields(bcx.ccx, t, (1-nndiscr) as usize, false);
             // The unit-like case might have a nonzero number of unit-like fields.
             // (e.d., Result of Either with (), as one side.)
-            let ty = type_of::type_of(bcx.ccx(), nullfields[ix]);
-            assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
+            let ty = type_of::type_of(bcx.ccx, nullfields[ix]);
+            assert_eq!(machine::llsize_of_alloc(bcx.ccx, ty), 0);
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = compute_fields(bcx.ccx(), t, nndiscr as usize, false)[0];
+            let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             assert_eq!(ix, 0);
             assert_eq!(discr.0, nndiscr);
-            let ty = type_of::type_of(bcx.ccx(), nnty);
+            let ty = type_of::type_of(bcx.ccx, nnty);
             bcx.pointercast(val.value, ty.ptr_to())
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr.0, nndiscr);
             struct_field_ptr(bcx, &nonnull,
-             &compute_fields(bcx.ccx(), t, discr.0 as usize, false),
+             &compute_fields(bcx.ccx, t, discr.0 as usize, false),
              val, ix, false)
         }
         _ => bug!("element access in type without elements: {} represented as {:#?}", t, l)
@@ -568,7 +568,7 @@ fn struct_field_ptr<'a, 'tcx>(
     needs_cast: bool
 ) -> ValueRef {
     let fty = fields[ix];
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
 
     let ptr_val = if needs_cast {
         let fields = st.field_index_by_increasing_offset().map(|i| {
@@ -585,7 +585,7 @@ fn struct_field_ptr<'a, 'tcx>(
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
     if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
-        bcx.ccx().shared().type_is_sized(fty) {
+        bcx.ccx.shared().type_is_sized(fty) {
         return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
     }
 
@@ -624,7 +624,7 @@ fn struct_field_ptr<'a, 'tcx>(
 
 
     let offset = st.offsets[ix].bytes();
-    let unaligned_offset = C_uint(bcx.ccx(), offset);
+    let unaligned_offset = C_uint(bcx.ccx, offset);
 
     // Get the alignment of the field
     let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
@@ -635,18 +635,18 @@ fn struct_field_ptr<'a, 'tcx>(
     //   (unaligned offset + (align - 1)) & -align
 
     // Calculate offset
-    let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx(), 1u64));
+    let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx, 1u64));
     let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
                          bcx.neg(align));
 
     debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
 
     // Cast and adjust pointer
-    let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx()));
+    let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx));
     let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
     // Finally, cast back to the type expected
-    let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
+    let ll_fty = type_of::in_memory_type_of(bcx.ccx, fty);
     debug!("struct_field_ptr: Field type is {:?}", ll_fty);
     bcx.pointercast(byte_ptr, ll_fty.ptr_to())
 }

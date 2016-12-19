@@ -92,7 +92,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         CalleeData::Virtual(idx) => {
             let fn_ptr = get_virtual_method(&bcx,
                 llargs.remove(fn_ty.ret.is_indirect() as usize + 1), idx);
-            let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+            let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
             bcx.pointercast(fn_ptr, llty)
         },
         _ => bug!("trans_object_shim called with non-virtual callee"),

@@ -43,10 +43,10 @@ pub fn trans_exchange_free_dyn<'a, 'tcx>(
     align: ValueRef
 ) {
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
-    let args = [bcx.pointercast(v, Type::i8p(bcx.ccx())), size, align];
-    let callee = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]));
+    let args = [bcx.pointercast(v, Type::i8p(bcx.ccx)), size, align];
+    let callee = Callee::def(bcx.ccx, def_id, bcx.tcx().intern_substs(&[]));
 
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
     assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
@@ -58,14 +58,14 @@ pub fn trans_exchange_free_dyn<'a, 'tcx>(
 pub fn trans_exchange_free_ty<'a, 'tcx>(
     bcx: &BlockAndBuilder<'a, 'tcx>, ptr: ValueRef, content_ty: Ty<'tcx>
 ) {
-    assert!(bcx.ccx().shared().type_is_sized(content_ty));
-    let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
-    let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
+    assert!(bcx.ccx.shared().type_is_sized(content_ty));
+    let sizing_type = sizing_type_of(bcx.ccx, content_ty);
+    let content_size = llsize_of_alloc(bcx.ccx, sizing_type);
 
     // `Box<ZeroSizeType>` does not allocate.
     if content_size != 0 {
-        let content_align = align_of(bcx.ccx(), content_ty);
-        let ccx = bcx.ccx();
+        let content_align = align_of(bcx.ccx, content_ty);
+        let ccx = bcx.ccx;
         trans_exchange_free_dyn(bcx, ptr, C_uint(ccx, content_size), C_uint(ccx, content_align));
     }
 }
@@ -122,8 +122,8 @@ pub fn call_drop_glue<'a, 'tcx>(
 ) {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
-    if bcx.ccx().shared().type_needs_drop(t) {
-        let ccx = bcx.ccx();
+    if bcx.ccx.shared().type_needs_drop(t) {
+        let ccx = bcx.ccx;
         let g = if skip_dtor {
             DropGlueKind::TyContents(t)
         } else {
@@ -232,7 +232,7 @@ fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
     };
 
     let (sized_args, unsized_args);
-    let args: &[ValueRef] = if bcx.ccx().shared().type_is_sized(t) {
+    let args: &[ValueRef] = if bcx.ccx.shared().type_is_sized(t) {
         sized_args = [v0];
         &sized_args
     } else {
@@ -248,20 +248,20 @@ fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
         def_id: tcx.lang_items.drop_trait().unwrap(),
         substs: tcx.mk_substs_trait(t, &[])
     });
-    let vtbl = match fulfill_obligation(bcx.ccx().shared(), DUMMY_SP, trait_ref) {
+    let vtbl = match fulfill_obligation(bcx.ccx.shared(), DUMMY_SP, trait_ref) {
         traits::VtableImpl(data) => data,
         _ => bug!("dtor for {:?} is not an impl???", t)
     };
     let dtor_did = def.destructor().unwrap();
-    let callee = Callee::def(bcx.ccx(), dtor_did, vtbl.substs);
-    let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
+    let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
+    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let llret;
     if let Some(landing_pad) = contents_scope.landing_pad {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        llret = bcx.invoke(callee.reify(bcx.ccx()), args, normal_bcx.llbb(), landing_pad, None);
+        llret = bcx.invoke(callee.reify(bcx.ccx), args, normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {
-        llret = bcx.call(callee.reify(bcx.ccx()), args, None);
+        llret = bcx.call(callee.reify(bcx.ccx), args, None);
     }
     fn_ty.apply_attrs_callsite(llret);
     contents_scope.trans(&bcx);
@@ -273,19 +273,19 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
-    if bcx.ccx().shared().type_is_sized(t) {
-        let sizing_type = sizing_type_of(bcx.ccx(), t);
-        let size = llsize_of_alloc(bcx.ccx(), sizing_type);
-        let align = align_of(bcx.ccx(), t);
+    if bcx.ccx.shared().type_is_sized(t) {
+        let sizing_type = sizing_type_of(bcx.ccx, t);
+        let size = llsize_of_alloc(bcx.ccx, sizing_type);
+        let align = align_of(bcx.ccx, t);
         debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
                t, Value(info), size, align);
-        let size = C_uint(bcx.ccx(), size);
-        let align = C_uint(bcx.ccx(), align);
+        let size = C_uint(bcx.ccx, size);
+        let align = C_uint(bcx.ccx, align);
         return (size, align);
     }
     match t.sty {
         ty::TyAdt(def, substs) => {
-            let ccx = bcx.ccx();
+            let ccx = bcx.ccx;
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized,
             // and it also rounds up to alignment, which we want to avoid,
@@ -348,7 +348,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = bcx.sub(align, C_uint(bcx.ccx(), 1_u64));
+            let addend = bcx.sub(align, C_uint(bcx.ccx, 1_u64));
             let size = bcx.and(bcx.add(size, addend), bcx.neg(align));
 
             (size, align)
@@ -356,7 +356,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         ty::TyDynamic(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
-            let info = bcx.pointercast(info, Type::int(bcx.ccx()).ptr_to());
+            let info = bcx.pointercast(info, Type::int(bcx.ccx).ptr_to());
             let size_ptr = bcx.gepi(info, &[1]);
             let align_ptr = bcx.gepi(info, &[2]);
             (bcx.load(size_ptr), bcx.load(align_ptr))
@@ -365,11 +365,11 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             let unit_ty = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
-            let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
-            let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (bcx.mul(info, C_uint(bcx.ccx(), unit_size)),
-             C_uint(bcx.ccx(), unit_align))
+            let llunit_ty = sizing_type_of(bcx.ccx, unit_ty);
+            let unit_align = llalign_of_min(bcx.ccx, llunit_ty);
+            let unit_size = llsize_of_alloc(bcx.ccx, llunit_ty);
+            (bcx.mul(info, C_uint(bcx.ccx, unit_size)),
+             C_uint(bcx.ccx, unit_align))
         }
         _ => bug!("Unexpected unsized type, found {}", t)
     }
@@ -394,7 +394,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
             // special. It may move to library and have Drop impl. As
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
-            if !bcx.ccx().shared().type_is_sized(content_ty) {
+            if !bcx.ccx.shared().type_is_sized(content_ty) {
                 let llval = get_dataptr(&bcx, v0);
                 let llbox = bcx.load(llval);
                 drop_ty(&bcx, v0, content_ty);
@@ -407,7 +407,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
                 let needs_free = bcx.icmp(
                     llvm::IntNE,
                     llsize,
-                    C_uint(bcx.ccx(), 0u64),
+                    C_uint(bcx.ccx, 0u64),
                 );
                 if const_to_opt_uint(needs_free) == Some(0) {
                     bcx
@@ -437,7 +437,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
             let data_ptr = get_dataptr(&bcx, v0);
             let vtable_ptr = bcx.load(get_meta(&bcx, v0));
             let dtor = bcx.load(vtable_ptr);
-            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx()))], None);
+            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx))], None);
             bcx
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
@@ -447,7 +447,7 @@ fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
             bcx
         }
         _ => {
-            if bcx.ccx().shared().type_needs_drop(t) {
+            if bcx.ccx.shared().type_needs_drop(t) {
                 drop_structural_ty(bcx, v0, t)
             } else {
                 bcx

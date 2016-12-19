@@ -368,7 +368,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // to drop `self` when the body returns, or in case it unwinds.
     let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
     let fn_ret = callee.ty.fn_ret();
-    let fn_ty = callee.direct_fn_type(bcx.ccx(), &[]);
+    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
 
     let first_llarg = if fn_ty.ret.is_indirect() && !fcx.fn_ty.ret.is_ignore() {
         Some(get_param(fcx.llfn, 0))
@@ -378,7 +378,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llargs = first_llarg.into_iter().chain(llargs[self_idx..].iter().cloned())
         .collect::<Vec<_>>();
 
-    let llfn = callee.reify(bcx.ccx());
+    let llfn = callee.reify(bcx.ccx);
     let llret;
     if let Some(landing_pad) = self_scope.landing_pad {
         let normal_bcx = bcx.fcx().build_new_block("normal-return");

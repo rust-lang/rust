@@ -232,9 +232,9 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bcx.ccx().shared().type_is_sized(a));
-            let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), b).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx(), a, b, None))
+            assert!(bcx.ccx.shared().type_is_sized(a));
+            let ptr_ty = type_of::in_memory_type_of(bcx.ccx, b).ptr_to();
+            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -252,13 +252,13 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         (&ty::TyRef(..), &ty::TyRef(..)) |
         (&ty::TyRef(..), &ty::TyRawPtr(..)) |
         (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
-            let (base, info) = if common::type_is_fat_ptr(bcx.ccx(), src_ty) {
+            let (base, info) = if common::type_is_fat_ptr(bcx.ccx, src_ty) {
                 // fat-ptr to fat-ptr unsize preserves the vtable
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
                 let (base, info) = load_fat_ptr(bcx, src, src_ty);
-                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), dst_ty);
+                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
                 let base = bcx.pointercast(base, llcast_ty);
                 (base, info)
             } else {
@@ -283,7 +283,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
             let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
-                if type_is_zero_size(bcx.ccx(), dst_fty) {
+                if type_is_zero_size(bcx.ccx, dst_fty) {
                     continue;
                 }
 
@@ -460,8 +460,8 @@ pub fn load_fat_ptr<'a, 'tcx>(
 }
 
 pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
-    if val_ty(val) == Type::i1(bcx.ccx()) {
-        bcx.zext(val, Type::i8(bcx.ccx()))
+    if val_ty(val) == Type::i1(bcx.ccx) {
+        bcx.zext(val, Type::i8(bcx.ccx))
     } else {
         val
     }
@@ -469,7 +469,7 @@ pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
 
 pub fn to_immediate(bcx: &BlockAndBuilder, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
-        bcx.trunc(val, Type::i1(bcx.ccx()))
+        bcx.trunc(val, Type::i1(bcx.ccx))
     } else {
         val
     }
@@ -526,7 +526,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
 pub fn memcpy_ty<'a, 'tcx>(
     bcx: &BlockAndBuilder<'a, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
 ) {
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
 
     if type_is_zero_size(ccx, t) {
         return;
@@ -537,7 +537,7 @@ pub fn memcpy_ty<'a, 'tcx>(
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
-    } else if common::type_is_fat_ptr(bcx.ccx(), t) {
+    } else if common::type_is_fat_ptr(bcx.ccx, t) {
         let (data, extra) = load_fat_ptr(bcx, src, t);
         store_fat_ptr(bcx, data, extra, dst, t);
     } else {
@@ -560,7 +560,7 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
 
 pub fn alloc_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> ValueRef {
     assert!(!ty.has_param_types());
-    bcx.fcx().alloca(type_of::type_of(bcx.ccx(), ty), name)
+    bcx.fcx().alloca(type_of::type_of(bcx.ccx, ty), name)
 }
 
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
@@ -638,7 +638,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
-            if common::type_is_fat_ptr(bcx.ccx(), arg_ty) {
+            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 let meta = &fcx.fn_ty.args[arg_idx];
                 arg_idx += 1;
                 arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));
