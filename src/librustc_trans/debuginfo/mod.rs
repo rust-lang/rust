@@ -195,15 +195,6 @@ pub fn finalize(cx: &CrateContext) {
     };
 }
 
-/// Creates a function-specific debug context for a function w/o debuginfo.
-pub fn empty_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>) -> FunctionDebugContext {
-    if cx.sess().opts.debuginfo == NoDebugInfo {
-        FunctionDebugContext::DebugInfoDisabled
-    } else {
-        FunctionDebugContext::FunctionWithoutDebugInfo
-    }
-}
-
 /// Creates the function-specific debug context.
 ///
 /// Returns the FunctionDebugContext for the function which holds state needed
@@ -218,6 +209,12 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext::DebugInfoDisabled;
+    }
+
+    for attr in cx.tcx().get_attrs(instance.def).iter() {
+        if attr.check_name("no_debug") {
+            return FunctionDebugContext::FunctionWithoutDebugInfo;
+        }
     }
 
     let containing_scope = get_containing_scope(cx, instance);

@@ -199,22 +199,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     sig: &ty::FnSig<'tcx>,
     abi: Abi,
 ) {
-    let def_id = instance.def;
-    let local_id = fcx.ccx.tcx().map.as_local_node_id(def_id);
-    let no_debug = if let Some(id) = local_id {
-        fcx.ccx.tcx().map.attrs(id).iter().any(|item| item.check_name("no_debug"))
-    } else {
-        fcx.ccx.sess().cstore.item_attrs(def_id).iter().any(|item| item.check_name("no_debug"))
-    };
-
-    let debug_context = if !no_debug {
-        debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir)
-    } else {
-        debuginfo::empty_function_debug_context(fcx.ccx)
-    };
+    let debug_context =
+        debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir);
     let bcx = fcx.get_entry_block();
 
-    // Analyze the temps to determine which must be lvalues
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
     // Allocate a `Block` for every basic block
