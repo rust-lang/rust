@@ -1,5 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
+use rustc::ty::layout::Size;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
@@ -196,7 +197,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     RawNullablePointer { .. } => {
-                        assert_eq!(field.index(), 0);
+                        assert_eq!(field, 0);
                         return Ok(base);
                     }
 
@@ -205,6 +206,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     UntaggedUnion { .. } => return Ok(base),
+
+                    Vector { element, count } => {
+                        let field = field as u64;
+                        assert!(field < count);
+                        let elem_size = element.size(&self.tcx.data_layout).bytes();
+                        Size::from_bytes(field * elem_size)
+                    }
 
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };

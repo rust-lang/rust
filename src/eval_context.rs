@@ -465,7 +465,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                self.write_primval(dest, PrimVal::from_i64(0), dest_ty)?;
+                                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -1423,11 +1423,21 @@ pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
     passes.push_pass(Box::new(::rustc_mir::transform::simplify::SimplifyCfg::new("no-landing-pads")));
 
+    // From here on out, regions are gone.
     passes.push_pass(Box::new(::rustc_mir::transform::erase_regions::EraseRegions));
 
+    passes.push_pass(Box::new(::rustc_mir::transform::add_call_guards::AddCallGuards));
     passes.push_pass(Box::new(::rustc_borrowck::ElaborateDrops));
     passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
     passes.push_pass(Box::new(::rustc_mir::transform::simplify::SimplifyCfg::new("elaborate-drops")));
+
+    // No lifetime analysis based on borrowing can be done from here on out.
+    passes.push_pass(Box::new(::rustc_mir::transform::instcombine::InstCombine::new()));
+    passes.push_pass(Box::new(::rustc_mir::transform::deaggregator::Deaggregator));
+    passes.push_pass(Box::new(::rustc_mir::transform::copy_prop::CopyPropagation));
+
+    passes.push_pass(Box::new(::rustc_mir::transform::simplify::SimplifyLocals));
+    passes.push_pass(Box::new(::rustc_mir::transform::add_call_guards::AddCallGuards));
     passes.push_pass(Box::new(::rustc_mir::transform::dump_mir::Marker("PreMiri")));
 
     passes.run_passes(tcx);

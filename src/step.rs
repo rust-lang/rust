@@ -8,6 +8,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir;
+use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
 
 use error::{EvalResult, EvalError};
@@ -85,7 +86,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::StatementKind::*;
         match stmt.kind {
             Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
-            SetDiscriminant { .. } => unimplemented!(),
+
+            SetDiscriminant { ref lvalue, variant_index } => {
+                let dest = self.eval_lvalue(lvalue)?;
+                let dest_ty = self.lvalue_ty(lvalue);
+                let dest_layout = self.type_layout(dest_ty)?;
+
+                match *dest_layout {
+                    Layout::General { discr, ref variants, .. } => {
+                        let discr_size = discr.size().bytes();
+                        let discr_offset = variants[variant_index].offsets[0].bytes();
+
+                        // FIXME(solson)
+                        let dest = self.force_allocation(dest)?;
+                        let discr_dest = (dest.to_ptr()).offset(discr_offset);
+
+                        self.memory.write_uint(discr_dest, variant_index as u64, discr_size)?;
+                    }
+
+                    Layout::RawNullablePointer { nndiscr, .. } => {
+                        use value::PrimVal;
+                        if variant_index as u64 != nndiscr {
+                            self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                        }
+                    }
+
+                    _ => bug!("SetDiscriminant on {} represented as {:#?}", dest_ty, dest_layout),
+                }
+            }
 
             // Miri can safely ignore these. Only translation needs it.
             StorageLive(_) |
