@@ -113,6 +113,7 @@ pub struct Target {
 #[derive(RustcDecodable, Default)]
 struct TomlConfig {
     build: Option<Build>,
+    install: Option<Install>,
     llvm: Option<Llvm>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
@@ -126,7 +127,6 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
-    prefix: Option<String>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
@@ -134,6 +134,12 @@ struct Build {
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
+}
+
+/// TOML representation of various global install decisions.
+#[derive(RustcDecodable, Default, Clone)]
+struct Install {
+    prefix: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -239,7 +245,6 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
-        config.prefix = build.prefix;
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
@@ -247,6 +252,10 @@ impl Config {
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
         set(&mut config.vendor, build.vendor);
+
+        if let Some(ref install) = toml.install {
+            config.prefix = install.prefix.clone();
+        }
 
         if let Some(ref llvm) = toml.llvm {
             set(&mut config.ccache, llvm.ccache);
@@ -257,6 +266,7 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
+        
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
