@@ -22,8 +22,10 @@ pub use self::UpgradeResult::*;
 pub use self::SelectionResult::*;
 use self::Message::*;
 
+use cell::UnsafeCell;
 use core::cmp;
 use core::isize;
+use ptr;
 use thread;
 use time::Instant;
 
@@ -42,7 +44,7 @@ pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
 
     cnt: AtomicIsize, // How many items are on this channel
-    steals: isize, // How many times has a port received without blocking?
+    steals: UnsafeCell<isize>, // How many times has a port received without blocking?
     to_wake: AtomicUsize, // SignalToken for the blocked thread to wake up
 
     port_dropped: AtomicBool, // flag if the channel has been destroyed.
@@ -79,14 +81,14 @@ impl<T> Packet<T> {
             queue: unsafe { spsc::Queue::new(128) },
 
             cnt: AtomicIsize::new(0),
-            steals: 0,
+            steals: UnsafeCell::new(0),
             to_wake: AtomicUsize::new(0),
 
             port_dropped: AtomicBool::new(false),
         }
     }
 
-    pub fn send(&mut self, t: T) -> Result<(), T> {
+    pub fn send(&self, t: T) -> Result<(), T> {
         // If the other port has deterministically gone away, then definitely
         // must return the data back up the stack. Otherwise, the data is
         // considered as being sent.
@@ -99,7 +101,7 @@ impl<T> Packet<T> {
         Ok(())
     }
 
-    pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
+    pub fn upgrade(&self, up: Receiver<T>) -> UpgradeResult {
         // If the port has gone away, then there's no need to proceed any
         // further.
         if self.port_dropped.load(Ordering::SeqCst) { return UpDisconnected }
@@ -107,7 +109,7 @@ impl<T> Packet<T> {
         self.do_send(GoUp(up))
     }
 
-    fn do_send(&mut self, t: Message<T>) -> UpgradeResult {
+    fn do_send(&self, t: Message<T>) -> UpgradeResult {
         self.queue.push(t);
         match self.cnt.fetch_add(1, Ordering::SeqCst) {
             // As described in the mod's doc comment, -1 == wakeup
@@ -141,7 +143,7 @@ impl<T> Packet<T> {
     }
 
     // Consumes ownership of the 'to_wake' field.
-    fn take_to_wake(&mut self) -> SignalToken {
+    fn take_to_wake(&self) -> SignalToken {
         let ptr = self.to_wake.load(Ordering::SeqCst);
         self.to_wake.store(0, Ordering::SeqCst);
         assert!(ptr != 0);
@@ -151,13 +153,12 @@ impl<T> Packet<T> {
     // Decrements the count on the channel for a sleeper, returning the sleeper
     // back if it shouldn't sleep. Note that this is the location where we take
     // steals into account.
-    fn decrement(&mut self, token: SignalToken) -> Result<(), SignalToken> {
+    fn decrement(&self, token: SignalToken) -> Result<(), SignalToken> {
         assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
         let ptr = unsafe { token.cast_to_usize() };
         self.to_wake.store(ptr, Ordering::SeqCst);
 
-        let steals = self.steals;
-        self.steals = 0;
+        let steals = unsafe { ptr::replace(self.steals.get(), 0) };
 
         match self.cnt.fetch_sub(1 + steals, Ordering::SeqCst) {
             DISCONNECTED => { self.cnt.store(DISCONNECTED, Ordering::SeqCst); }
@@ -173,7 +174,7 @@ impl<T> Packet<T> {
         Err(unsafe { SignalToken::cast_from_usize(ptr) })
     }
 
-    pub fn recv(&mut self, deadline: Option<Instant>) -> Result<T, Failure<T>> {
+    pub fn recv(&self, deadline: Option<Instant>) -> Result<T, Failure<T>> {
         // Optimistic preflight check (scheduling is expensive).
         match self.try_recv() {
             Err(Empty) => {}
@@ -199,16 +200,16 @@ impl<T> Packet<T> {
             // a steal, so offset the decrement here (we already have our
             // "steal" factored into the channel count above).
             data @ Ok(..) |
-            data @ Err(Upgraded(..)) => {
-                self.steals -= 1;
+            data @ Err(Upgraded(..)) => unsafe {
+                *self.steals.get() -= 1;
                 data
-            }
+            },
 
             data => data,
         }
     }
 
-    pub fn try_recv(&mut self) -> Result<T, Failure<T>> {
+    pub fn try_recv(&self) -> Result<T, Failure<T>> {
         match self.queue.pop() {
             // If we stole some data, record to that effect (this will be
             // factored into cnt later on).
@@ -221,26 +222,26 @@ impl<T> Packet<T> {
             // a pretty slow operation, of swapping 0 into cnt, taking steals
             // down as much as possible (without going negative), and then
             // adding back in whatever we couldn't factor into steals.
-            Some(data) => {
-                if self.steals > MAX_STEALS {
+            Some(data) => unsafe {
+                if *self.steals.get() > MAX_STEALS {
                     match self.cnt.swap(0, Ordering::SeqCst) {
                         DISCONNECTED => {
                             self.cnt.store(DISCONNECTED, Ordering::SeqCst);
                         }
                         n => {
-                            let m = cmp::min(n, self.steals);
-                            self.steals -= m;
+                            let m = cmp::min(n, *self.steals.get());
+                            *self.steals.get() -= m;
                             self.bump(n - m);
                         }
                     }
-                    assert!(self.steals >= 0);
+                    assert!(*self.steals.get() >= 0);
                 }
-                self.steals += 1;
+                *self.steals.get() += 1;
                 match data {
                     Data(t) => Ok(t),
                     GoUp(up) => Err(Upgraded(up)),
                 }
-            }
+            },
 
             None => {
                 match self.cnt.load(Ordering::SeqCst) {
@@ -269,7 +270,7 @@ impl<T> Packet<T> {
         }
     }
 
-    pub fn drop_chan(&mut self) {
+    pub fn drop_chan(&self) {
         // Dropping a channel is pretty simple, we just flag it as disconnected
         // and then wakeup a blocker if there is one.
         match self.cnt.swap(DISCONNECTED, Ordering::SeqCst) {
@@ -279,7 +280,7 @@ impl<T> Packet<T> {
         }
     }
 
-    pub fn drop_port(&mut self) {
+    pub fn drop_port(&self) {
         // Dropping a port seems like a fairly trivial thing. In theory all we
         // need to do is flag that we're disconnected and then everything else
         // can take over (we don't have anyone to wake up).
@@ -309,7 +310,7 @@ impl<T> Packet<T> {
         // continue to fail while active senders send data while we're dropping
         // data, but eventually we're guaranteed to break out of this loop
         // (because there is a bounded number of senders).
-        let mut steals = self.steals;
+        let mut steals = unsafe { *self.steals.get() };
         while {
             let cnt = self.cnt.compare_and_swap(
                             steals, DISCONNECTED, Ordering::SeqCst);
@@ -332,7 +333,7 @@ impl<T> Packet<T> {
     // Tests to see whether this port can receive without blocking. If Ok is
     // returned, then that's the answer. If Err is returned, then the returned
     // port needs to be queried instead (an upgrade happened)
-    pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
+    pub fn can_recv(&self) -> Result<bool, Receiver<T>> {
         // We peek at the queue to see if there's anything on it, and we use
         // this return value to determine if we should pop from the queue and
         // upgrade this channel immediately. If it looks like we've got an
@@ -351,7 +352,7 @@ impl<T> Packet<T> {
     }
 
     // increment the count on the channel (used for selection)
-    fn bump(&mut self, amt: isize) -> isize {
+    fn bump(&self, amt: isize) -> isize {
         match self.cnt.fetch_add(amt, Ordering::SeqCst) {
             DISCONNECTED => {
                 self.cnt.store(DISCONNECTED, Ordering::SeqCst);
@@ -363,7 +364,7 @@ impl<T> Packet<T> {
 
     // Attempts to start selecting on this port. Like a oneshot, this can fail
     // immediately because of an upgrade.
-    pub fn start_selection(&mut self, token: SignalToken) -> SelectionResult<T> {
+    pub fn start_selection(&self, token: SignalToken) -> SelectionResult<T> {
         match self.decrement(token) {
             Ok(()) => SelSuccess,
             Err(token) => {
@@ -387,7 +388,7 @@ impl<T> Packet<T> {
     }
 
     // Removes a previous thread from being blocked in this port
-    pub fn abort_selection(&mut self,
+    pub fn abort_selection(&self,
                            was_upgrade: bool) -> Result<bool, Receiver<T>> {
         // If we're aborting selection after upgrading from a oneshot, then
         // we're guarantee that no one is waiting. The only way that we could
@@ -403,7 +404,7 @@ impl<T> Packet<T> {
         // this end. This is fine because we know it's a small bounded windows
         // of time until the data is actually sent.
         if was_upgrade {
-            assert_eq!(self.steals, 0);
+            assert_eq!(unsafe { *self.steals.get() }, 0);
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
             return Ok(true)
         }
@@ -444,8 +445,10 @@ impl<T> Packet<T> {
                     thread::yield_now();
                 }
             }
-            assert_eq!(self.steals, 0);
-            self.steals = steals;
+            unsafe {
+                assert_eq!(*self.steals.get(), 0);
+                *self.steals.get() = steals;
+            }
 
             // if we were previously positive, then there's surely data to
             // receive
