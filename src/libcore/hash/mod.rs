@@ -255,10 +255,44 @@ pub trait BuildHasher {
     fn build_hasher(&self) -> Self::Hasher;
 }
 
-/// A structure which implements `BuildHasher` for all `Hasher` types which also
-/// implement `Default`.
+/// The `BuildHasherDefault` structure is used in scenarios where one has a
+/// type that implements [`Hasher`] and [`Default`], but needs that type to
+/// implement [`BuildHasher`].
 ///
-/// This struct is 0-sized and does not need construction.
+/// This structure is zero-sized and does not need construction.
+///
+/// # Examples
+///
+/// Using `BuildHasherDefault` to specify a custom [`BuildHasher`] for
+/// [`HashMap`]:
+///
+/// ```
+/// use std::collections::HashMap;
+/// use std::hash::{BuildHasherDefault, Hasher};
+///
+/// #[derive(Default)]
+/// struct MyHasher;
+///
+/// impl Hasher for MyHasher {
+///     fn write(&mut self, bytes: &[u8]) {
+///         // Your hashing algorithm goes here!
+///        unimplemented!()
+///     }
+///
+///     fn finish(&self) -> u64 {
+///         // Your hashing algorithm goes here!
+///         unimplemented!()
+///     }
+/// }
+///
+/// type MyBuildHasher = BuildHasherDefault<MyHasher>;
+///
+/// let hash_map = HashMap::<u32, u32, MyBuildHasher>::default();
+/// ```
+///
+/// [`BuildHasher`]: trait.BuildHasher.html
+/// [`Default`]: ../default/trait.Default.html
+/// [`Hasher`]: trait.Hasher.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 
