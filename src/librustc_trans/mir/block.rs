@@ -863,32 +863,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         bcx.llbb()
     }
 
-    pub fn init_cpad(&mut self, bb: mir::BasicBlock,
-        funclets: &mut IndexVec<mir::BasicBlock, Option<Funclet>>) {
-        let bcx = self.build_block(bb);
-        let data = &self.mir[bb];
-        debug!("init_cpad({:?})", data);
-
-        match self.cleanup_kinds[bb] {
-            CleanupKind::NotCleanup => {
-                funclets[bb] = None;
-            }
-            _ if !base::wants_msvc_seh(bcx.sess()) => {
-                funclets[bb] = Funclet::gnu();
-            }
-            CleanupKind::Internal { funclet: _ } => {
-                // FIXME: is this needed?
-                bcx.set_personality_fn(self.fcx.eh_personality());
-                funclets[bb] = None;
-            }
-            CleanupKind::Funclet => {
-                bcx.set_personality_fn(self.fcx.eh_personality());
-                let cleanup_pad = bcx.cleanup_pad(None, &[]);
-                funclets[bb] = Funclet::msvc(cleanup_pad);
-            }
-        };
-    }
-
     fn unreachable_block(&mut self) -> BasicBlockRef {
         self.unreachable_block.unwrap_or_else(|| {
             let bl = self.fcx.build_new_block("unreachable");
@@ -898,7 +872,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         })
     }
 
-    fn build_block(&self, bb: mir::BasicBlock) -> BlockAndBuilder<'a, 'tcx> {
+    pub fn build_block(&self, bb: mir::BasicBlock) -> BlockAndBuilder<'a, 'tcx> {
         BlockAndBuilder::new(self.blocks[bb], self.fcx)
     }
 

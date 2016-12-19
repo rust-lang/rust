@@ -36,6 +36,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 pub use self::constant::trans_static_initializer;
 
+use self::analyze::CleanupKind;
 use self::lvalue::{LvalueRef};
 use rustc::mir::traversal;
 
@@ -315,18 +316,28 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mircx);
 
-    let mut visited = BitVector::new(mir.basic_blocks().len());
-
-    let mut rpo = traversal::reverse_postorder(&mir);
-
     let mut funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
         IndexVec::from_elem(None, mir.basic_blocks());
 
-    // Prepare each block for translation.
-    for (bb, _) in rpo.by_ref() {
-        mircx.init_cpad(bb, &mut funclets);
+    // If false, all funclets should be None (which is the default)
+    if base::wants_msvc_seh(fcx.ccx.sess()) {
+        for (bb, cleanup_kind) in mircx.cleanup_kinds.iter_enumerated() {
+            let bcx = mircx.build_block(bb);
+            match *cleanup_kind {
+                CleanupKind::Internal { .. } => {
+                    bcx.set_personality_fn(fcx.eh_personality());
+                }
+                CleanupKind::Funclet => {
+                    bcx.set_personality_fn(fcx.eh_personality());
+                    funclets[bb] = Funclet::msvc(bcx.cleanup_pad(None, &[]));
+                }
+                _ => {}
+            }
+        }
     }
-    rpo.reset();
+
+    let rpo = traversal::reverse_postorder(&mir);
+    let mut visited = BitVector::new(mir.basic_blocks().len());
 
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
