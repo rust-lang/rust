@@ -303,19 +303,15 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // If false, all funclets should be None (which is the default)
     let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
-        let bcx = mircx.build_block(bb);
-        match *cleanup_kind {
-            _ if !base::wants_msvc_seh(fcx.ccx.sess()) => None,
-            CleanupKind::Internal { .. } => {
-                bcx.set_personality_fn(fcx.eh_personality());
-                None
+        if let CleanupKind::Funclet = *cleanup_kind {
+            let bcx = mircx.build_block(bb);
+            bcx.set_personality_fn(fcx.eh_personality());
+            if base::wants_msvc_seh(fcx.ccx.sess()) {
+                return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
             }
-            CleanupKind::Funclet => {
-                bcx.set_personality_fn(fcx.eh_personality());
-                Funclet::msvc(bcx.cleanup_pad(None, &[]))
-            }
-            _ => None
         }
+
+        None
     }).collect();
 
     let rpo = traversal::reverse_postorder(&mir);
