@@ -112,7 +112,7 @@ macro_rules! print {
 /// # Examples
 ///
 /// ```
-/// println!();
+/// println!(); // prints just a newline
 /// println!("hello there!");
 /// println!("format {} arguments", "some");
 /// ```
