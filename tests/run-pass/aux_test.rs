@@ -1,9 +1,8 @@
 // aux-build:dep.rs
+// ignore-cross-compile
 
-// FIXME: Auxiliary builds are currently broken.
-// extern crate dep;
+extern crate dep;
 
 fn main() {
-    // FIXME: Auxiliary builds are currently broken.
-    // dep::foo();
+    dep::foo();
 }

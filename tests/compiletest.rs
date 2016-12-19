@@ -27,13 +27,20 @@ fn run_pass() {
     compiletest::run_tests(&config);
 }
 
-fn miri_pass(path: &str, target: &str) {
+fn miri_pass(path: &str, target: &str, host: &str) {
     let mut config = compiletest::default_config();
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.rustc_path = PathBuf::from("target/debug/miri");
+    // don't actually execute the final binary, it might be for other targets and we only care
+    // about running miri, not the binary.
+    config.runtool = Some("echo \"\" || ".to_owned());
+    if target == host {
+        std::env::set_var("MIRI_HOST_TARGET", "yes");
+    }
     compiletest::run_tests(&config);
+    std::env::set_var("MIRI_HOST_TARGET", "");
 }
 
 fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
@@ -65,10 +72,11 @@ fn compile_test() {
             .to_owned(),
     };
     run_pass();
+    let host = toolchain.unwrap().splitn(2, '-').skip(1).next().unwrap();
     for_all_targets(&sysroot, |target| {
-        miri_pass("tests/run-pass", &target);
+        miri_pass("tests/run-pass", &target, host);
         if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
-            miri_pass(&path, &target);
+            miri_pass(&path, &target, host);
         }
     });
     compile_fail(&sysroot);
