@@ -2110,24 +2110,27 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
     ")?;
+    let mut implementor_count: FxHashMap<String, usize> = FxHashMap();
+    for (_, implementors) in cache.implementors.iter() {
+        for implementor in implementors {
+            if let clean::Type::ResolvedPath {ref path, ..} = implementor.impl_.for_ {
+                *implementor_count.entry(path.last_name()).or_insert(0) += 1;
+            }
+        }
+    }
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
-        for k in implementors.iter() {
+        for implementor in implementors.iter() {
             write!(w, "<li><code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
-            let mut dissambiguate = false;
-            for l in implementors.iter() {
-                match (k.impl_.for_.clone(), l.impl_.for_.clone()) {
-                    (clean::Type::ResolvedPath {path: path_a, ..},
-                     clean::Type::ResolvedPath {path: path_b, ..}) => {
-                        if k.def_id != l.def_id && path_a.last_name() == path_b.last_name() {
-                            dissambiguate = true;
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            fmt_impl_for_trait_page(&k.impl_, w, dissambiguate)?;
+            let dissambiguate = if let clean::Type::ResolvedPath {
+                ref path, ..
+            } = implementor.impl_.for_ {
+                *implementor_count.get(&path.last_name()).unwrap_or(&0) > 1
+            } else {
+                false
+            };
+            fmt_impl_for_trait_page(&implementor.impl_, w, dissambiguate)?;
             writeln!(w, "</code></li>")?;
         }
     }
