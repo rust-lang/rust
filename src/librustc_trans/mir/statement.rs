@@ -11,7 +11,6 @@
 use rustc::mir;
 
 use base;
-use debuginfo;
 use common::{self, BlockAndBuilder};
 
 use super::MirContext;
@@ -26,8 +25,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                            -> BlockAndBuilder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
-        let (scope, span) = self.debug_loc(statement.source_info);
-        debuginfo::set_source_location(&self.debug_context, &bcx, scope, span);
+        self.set_debug_loc(&bcx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 if let mir::Lvalue::Local(index) = *lvalue {

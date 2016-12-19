@@ -102,20 +102,14 @@ pub enum FunctionDebugContext {
 }
 
 impl FunctionDebugContext {
-    fn get_ref<'a>(&'a self,
-                   span: Span)
-                   -> &'a FunctionDebugContextData {
+    fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData {
         match *self {
             FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
-                span_bug!(span,
-                          "{}",
-                          FunctionDebugContext::debuginfo_disabled_message());
+                span_bug!(span, "{}", FunctionDebugContext::debuginfo_disabled_message());
             }
             FunctionDebugContext::FunctionWithoutDebugInfo => {
-                span_bug!(span,
-                          "{}",
-                          FunctionDebugContext::should_be_ignored_message());
+                span_bug!(span, "{}", FunctionDebugContext::should_be_ignored_message());
             }
         }
     }

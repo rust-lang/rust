@@ -20,7 +20,6 @@ use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, BlockAndBuilder, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
-use debuginfo;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
@@ -113,8 +112,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_block: terminator: {:?}", terminator);
 
         let span = terminator.source_info.span;
-        let (scope, debug_span) = self.debug_loc(terminator.source_info);
-        debuginfo::set_source_location(&self.debug_context, &bcx, scope, debug_span);
+        self.set_debug_loc(&bcx, terminator.source_info);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
@@ -323,7 +321,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // After this point, bcx is the block for the call to panic.
                 bcx = panic_block;
-                debuginfo::set_source_location(&self.debug_context, &bcx, scope, debug_span);
+                self.set_debug_loc(&bcx, terminator.source_info);
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
@@ -599,7 +597,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bug!("Cannot use direct operand with an intrinsic call")
                         };
 
-                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest, debug_span);
+                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest,
+                            terminator.source_info.span);
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
@@ -639,8 +638,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let ret_bcx = self.build_block(target);
                         ret_bcx.at_start(|ret_bcx| {
-                            debuginfo::set_source_location(&self.debug_context,
-                                &ret_bcx, scope, debug_span);
+                            self.set_debug_loc(&ret_bcx, terminator.source_info);
                             let op = OperandRef {
                                 val: Immediate(invokeret),
                                 ty: sig.output(),
