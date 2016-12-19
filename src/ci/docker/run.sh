@@ -28,15 +28,23 @@ docker \
 mkdir -p $HOME/.cargo
 mkdir -p $root_dir/obj
 
+args=
+if [ "$SCCACHE_BUCKET" != "" ]; then
+    args="$args --env SCCACHE_BUCKET=$SCCACHE_BUCKET"
+    args="$args --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+    args="$args --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+else
+    mkdir -p $HOME/.cache/sccache
+    args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
+fi
+
 exec docker \
   run \
   --volume "$root_dir:/checkout:ro" \
   --volume "$root_dir/obj:/checkout/obj" \
   --workdir /checkout/obj \
   --env SRC=/checkout \
-  --env SCCACHE_BUCKET=$SCCACHE_BUCKET \
-  --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-  --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+  $args \
   --env CARGO_HOME=/cargo \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
