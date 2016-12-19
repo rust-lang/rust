@@ -258,7 +258,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     discr_size,
                                 )?;
                             },
-                            // FIXME: raw nullable pointer constructors
+                            Layout::StructWrappedNullablePointer { .. } |
+                            Layout::RawNullablePointer { .. } => {
+                                assert_eq!(args.len(), 1);
+                                let (val, ty) = args.pop().unwrap();
+                                self.write_value(val, lvalue, ty)?;
+                            },
                             _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
                         }
                         self.goto_block(target);
