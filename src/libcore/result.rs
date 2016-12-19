@@ -501,6 +501,8 @@ impl<T, E> Result<T, E> {
 
     /// Returns an iterator over the possibly contained value.
     ///
+    /// The iterator yields one value if the result is [`Ok`], otherwise none.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -512,6 +514,8 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter().next(), None);
     /// ```
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -519,6 +523,8 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns a mutable iterator over the possibly contained value.
+    ///
+    /// The iterator yields one value if the result is [`Ok`], otherwise none.
     ///
     /// # Examples
     ///
@@ -535,6 +541,8 @@ impl<T, E> Result<T, E> {
     /// let mut x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
@@ -848,6 +856,8 @@ impl<T, E> IntoIterator for Result<T, E> {
 
     /// Returns a consuming iterator over the possibly contained value.
     ///
+    /// The iterator yields one value if the result is [`Ok`], otherwise none.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -861,6 +871,8 @@ impl<T, E> IntoIterator for Result<T, E> {
     /// let v: Vec<u32> = x.into_iter().collect();
     /// assert_eq!(v, []);
     /// ```
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
     #[inline]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { inner: self.ok() }
@@ -893,8 +905,13 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 
 /// An iterator over a reference to the [`Ok`] variant of a [`Result`].
 ///
+/// The iterator yields one value if the result is [`Ok`], otherwise none.
+///
+/// Created by [`Result::iter`].
+///
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
+/// [`Result::iter`]: enum.Result.html#method.iter
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
@@ -934,8 +951,11 @@ impl<'a, T> Clone for Iter<'a, T> {
 
 /// An iterator over a mutable reference to the [`Ok`] variant of a [`Result`].
 ///
+/// Created by [`Result::iter_mut`].
+///
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
+/// [`Result::iter_mut`]: enum.Result.html#method.iter_mut
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
@@ -968,9 +988,12 @@ impl<'a, T> FusedIterator for IterMut<'a, T> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 
-/// An iterator over the value in a [`Ok`] variant of a [`Result`]. This struct is
-/// created by the [`into_iter`] method on [`Result`][`Result`] (provided by
-/// the [`IntoIterator`] trait).
+/// An iterator over the value in a [`Ok`] variant of a [`Result`].
+///
+/// The iterator yields one value if the result is [`Ok`], otherwise none.
+///
+/// This struct is created by the [`into_iter`] method on
+/// [`Result`][`Result`] (provided by the [`IntoIterator`] trait).
 ///
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
