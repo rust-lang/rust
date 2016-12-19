@@ -72,7 +72,14 @@ fn compile_test() {
             .to_owned(),
     };
     run_pass();
-    let host = toolchain.unwrap().splitn(2, '-').skip(1).next().unwrap();
+    let host = Path::new(&sysroot).file_name()
+                                  .unwrap()
+                                  .to_str()
+                                  .unwrap()
+                                  .splitn(2, '-')
+                                  .skip(1)
+                                  .next()
+                                  .unwrap();
     for_all_targets(&sysroot, |target| {
         miri_pass("tests/run-pass", &target, host);
         if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
