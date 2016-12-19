@@ -42,6 +42,7 @@ pub enum Abi {
     Win64,
     SysV64,
     PtxKernel,
+    Msp430Interrupt,
 
     // Multiplatform / generic ABIs
     Rust,
@@ -85,6 +86,7 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Abi::Win64, name: "win64", generic: false },
     AbiData {abi: Abi::SysV64, name: "sysv64", generic: false },
     AbiData {abi: Abi::PtxKernel, name: "ptx-kernel", generic: false },
+    AbiData {abi: Abi::Msp430Interrupt, name: "msp430-interrupt", generic: false },
 
     // Cross-platform ABIs
     AbiData {abi: Abi::Rust, name: "Rust", generic: true },
