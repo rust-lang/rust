@@ -567,10 +567,8 @@ fn struct_field_ptr<'a, 'tcx>(
     ix: usize,
     needs_cast: bool
 ) -> ValueRef {
-    let ccx = bcx.ccx();
     let fty = fields[ix];
     let ccx = bcx.ccx();
-    let ll_fty = type_of::in_memory_type_of(ccx, fty);
 
     let ptr_val = if needs_cast {
         let fields = st.field_index_by_increasing_offset().map(|i| {
