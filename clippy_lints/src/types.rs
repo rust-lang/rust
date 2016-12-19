@@ -757,7 +757,6 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
-    type Extr<'a> = ExtremeExpr<'a>;
 
     let normalized = normalize_comparison(op, lhs, rhs);
     let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
@@ -772,17 +771,17 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
     Some(match rel {
         Rel::Lt => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
-                (_, Some(r @ Extr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
+                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
+                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
                 _ => return None,
             }
         }
         Rel::Le => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
-                (Some(l @ Extr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
-                (_, Some(r @ Extr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
-                (_, Some(r @ Extr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
+                (Some(l @ ExtremeExpr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
+                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
+                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
+                (_, Some(r @ ExtremeExpr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
                 _ => return None,
             }
         }
