@@ -74,6 +74,7 @@ extern crate rustc_serialize;
 extern crate toml;
 
 use std::collections::HashMap;
+use std::cmp;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
@@ -497,6 +498,17 @@ impl Build {
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
 
+        // Ignore incremental modes except for stage0, since we're
+        // not guaranteeing correctness acros builds if the compiler
+        // is changing under your feet.`
+        if self.flags.incremental && compiler.stage == 0 {
+            let incr_dir = self.incremental_dir(compiler);
+            cargo.env("RUSTC_INCREMENTAL", incr_dir);
+        }
+
+        let verbose = cmp::max(self.config.verbose, self.flags.verbose);
+        cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
+
         // Specify some various options for build scripts used throughout
         // the build.
         //
@@ -516,7 +528,7 @@ impl Build {
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
-        if self.config.verbose || self.flags.verbose {
+        if self.config.verbose() || self.flags.verbose() {
             cargo.arg("-v");
         }
         // FIXME: cargo bench does not accept `--release`
@@ -628,6 +640,12 @@ impl Build {
         } else {
             self.out.join(compiler.host).join(format!("stage{}", compiler.stage))
         }
+    }
+
+    /// Get the directory for incremental by-products when using the
+    /// given compiler.
+    fn incremental_dir(&self, compiler: &Compiler) -> PathBuf {
+        self.out.join(compiler.host).join(format!("stage{}-incremental", compiler.stage))
     }
 
     /// Returns the libdir where the standard library and other artifacts are
@@ -768,7 +786,7 @@ impl Build {
 
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
-        if self.flags.verbose || self.config.verbose {
+        if self.flags.verbose() || self.config.verbose() {
             println!("{}", msg);
         }
     }
