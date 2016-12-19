@@ -166,7 +166,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             _ => {
-                assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue));
+                assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                 self.store_operand(&bcx, dest.llval, temp);
                 bcx
@@ -179,8 +179,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (BlockAndBuilder<'a, 'tcx>, OperandRef<'tcx>)
     {
-        assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue),
-                "cannot trans {:?} to operand", rvalue);
+        assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -662,9 +661,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 }
 
-pub fn rvalue_creates_operand<'a, 'tcx>(_mir: &mir::Mir<'tcx>,
-                                        _bcx: &BlockAndBuilder<'a, 'tcx>,
-                                        rvalue: &mir::Rvalue<'tcx>) -> bool {
+pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
     match *rvalue {
         mir::Rvalue::Ref(..) |
         mir::Rvalue::Len(..) |

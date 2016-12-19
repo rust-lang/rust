@@ -235,7 +235,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         },
     };
 
-    let lvalue_locals = analyze::lvalue_locals(&bcx, &mircx);
+    let lvalue_locals = analyze::lvalue_locals(&mircx);
 
     // Allocate variable and temp allocas
     mircx.locals = {
