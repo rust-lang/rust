@@ -264,6 +264,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_where_predicate(&mut self, predicate: &'v WherePredicate) {
         walk_where_predicate(self, predicate)
     }
+    fn visit_fn_decl(&mut self, fd: &'v FnDecl) {
+        walk_fn_decl(self, fd)
+    }
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: ExprId, s: Span, id: NodeId) {
         walk_fn(self, fk, fd, b, s, id)
     }
@@ -532,7 +535,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
         TyBareFn(ref function_declaration) => {
-            walk_fn_decl(visitor, &function_declaration.decl);
+            visitor.visit_fn_decl(&function_declaration.decl);
             walk_list!(visitor, visit_lifetime_def, &function_declaration.lifetimes);
         }
         TyPath(ref qpath) => {
@@ -661,7 +664,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
 
     match foreign_item.node {
         ForeignItemFn(ref function_declaration, ref generics) => {
-            walk_fn_decl(visitor, function_declaration);
+            visitor.visit_fn_decl(function_declaration);
             visitor.visit_generics(generics)
         }
         ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
@@ -765,7 +768,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
                                    _span: Span,
                                    id: NodeId) {
     visitor.visit_id(id);
-    walk_fn_decl(visitor, function_declaration);
+    visitor.visit_fn_decl(function_declaration);
     walk_fn_kind(visitor, function_kind);
     visitor.visit_body(body_id)
 }
@@ -777,7 +780,7 @@ pub fn walk_fn_with_body<'v, V: Visitor<'v>>(visitor: &mut V,
                                              _span: Span,
                                              id: NodeId) {
     visitor.visit_id(id);
-    walk_fn_decl(visitor, function_declaration);
+    visitor.visit_fn_decl(function_declaration);
     walk_fn_kind(visitor, function_kind);
     visitor.visit_expr(body)
 }
@@ -794,7 +797,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         MethodTraitItem(ref sig, None) => {
             visitor.visit_id(trait_item.id);
             visitor.visit_generics(&sig.generics);
-            walk_fn_decl(visitor, &sig.decl);
+            visitor.visit_fn_decl(&sig.decl);
         }
         MethodTraitItem(ref sig, Some(body_id)) => {
             visitor.visit_fn(FnKind::Method(trait_item.name,
