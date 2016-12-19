@@ -68,7 +68,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    empty_param_env: ty::ParameterEnvironment<'tcx>,
     stats: Stats,
     check_overflow: bool,
 
@@ -456,7 +456,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             export_map: export_map,
             exported_symbols: exported_symbols,
             link_meta: link_meta,
-            param_env: tcx.empty_parameter_environment(),
+            empty_param_env: tcx.empty_parameter_environment(),
             tcx: tcx,
             stats: Stats {
                 n_glues_created: Cell::new(0),
@@ -478,11 +478,11 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        self.tcx.type_needs_drop_given_env(ty, &self.param_env)
+        self.tcx.type_needs_drop_given_env(ty, &self.empty_param_env)
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, &self.param_env, DUMMY_SP)
+        ty.is_sized(self.tcx, &self.empty_param_env, DUMMY_SP)
     }
 
     pub fn metadata_llmod(&self) -> ModuleRef {
