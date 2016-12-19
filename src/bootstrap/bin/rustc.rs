@@ -30,7 +30,7 @@ extern crate bootstrap;
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
@@ -180,8 +180,19 @@ fn main() {
     }
 
     // Actually run the compiler!
-    std::process::exit(match cmd.status() {
-        Ok(s) => s.code().unwrap_or(1),
+    std::process::exit(match exec_cmd(&mut cmd) {
+        Ok(s) => s.code().unwrap_or(0xfe),
         Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
     })
+}
+
+#[cfg(unix)]
+fn exec_cmd(cmd: &mut Command) -> ::std::io::Result<ExitStatus> {
+    use std::os::unix::process::CommandExt;
+    Err(cmd.exec())
+}
+
+#[cfg(not(unix))]
+fn exec_cmd(cmd: &mut Command) -> ::std::io::Result<ExitStatus> {
+    cmd.status()
 }
