@@ -44,9 +44,9 @@ use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
 pub struct MirContext<'a, 'tcx:'a> {
-    pub mir: &'a mir::Mir<'tcx>,
+    mir: &'a mir::Mir<'tcx>,
 
-    pub debug_context: debuginfo::FunctionDebugContext,
+    debug_context: debuginfo::FunctionDebugContext,
 
     /// Function context
     fcx: &'a common::FunctionContext<'a, 'tcx>,
@@ -276,7 +276,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
                     let (scope, span) = mircx.debug_loc(source_info);
-                    declare_local(&bcx, &mircx, name, ty, scope,
+                    declare_local(&bcx, &mircx.debug_context, name, ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
                 }
@@ -314,7 +314,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(&mircx);
+    debuginfo::start_emitting_source_locations(&mircx.debug_context);
 
     let mut funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
         IndexVec::from_elem(None, mir.basic_blocks());
@@ -418,10 +418,15 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 let variable_access = VariableAccess::DirectVariable {
                     alloca: lltemp
                 };
-                declare_local(bcx, mircx, arg_decl.name.unwrap_or(keywords::Invalid.name()),
-                              arg_ty, scope, variable_access,
-                              VariableKind::ArgumentVariable(arg_index + 1),
-                              DUMMY_SP);
+                declare_local(
+                    bcx,
+                    &mircx.debug_context,
+                    arg_decl.name.unwrap_or(keywords::Invalid.name()),
+                    arg_ty, scope,
+                    variable_access,
+                    VariableKind::ArgumentVariable(arg_index + 1),
+                    DUMMY_SP
+                );
             });
 
             return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
@@ -490,10 +495,16 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         arg_scope.map(|scope| {
             // Is this a regular argument?
             if arg_index > 0 || mir.upvar_decls.is_empty() {
-                declare_local(bcx, mircx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
-                              scope, VariableAccess::DirectVariable { alloca: llval },
-                              VariableKind::ArgumentVariable(arg_index + 1),
-                              DUMMY_SP);
+                declare_local(
+                    bcx,
+                    &mircx.debug_context,
+                    arg_decl.name.unwrap_or(keywords::Invalid.name()),
+                    arg_ty,
+                    scope,
+                    VariableAccess::DirectVariable { alloca: llval },
+                    VariableKind::ArgumentVariable(arg_index + 1),
+                    DUMMY_SP
+                );
                 return;
             }
 
@@ -558,9 +569,16 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                     alloca: env_ptr,
                     address_operations: &ops
                 };
-                declare_local(bcx, mircx, decl.debug_name, ty, scope, variable_access,
-                              VariableKind::CapturedVariable,
-                              DUMMY_SP);
+                declare_local(
+                    bcx,
+                    &mircx.debug_context,
+                    decl.debug_name,
+                    ty,
+                    scope,
+                    variable_access,
+                    VariableKind::CapturedVariable,
+                    DUMMY_SP
+                );
             }
         });
         LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty)))

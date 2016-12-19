@@ -27,7 +27,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
         let (scope, span) = self.debug_loc(statement.source_info);
-        debuginfo::set_source_location(self, &bcx, scope, span);
+        debuginfo::set_source_location(&self.debug_context, &bcx, scope, span);
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 if let mir::Lvalue::Local(index) = *lvalue {
