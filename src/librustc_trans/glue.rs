@@ -47,17 +47,12 @@ pub fn trans_exchange_free_dyn<'a, 'tcx>(
     let callee = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]));
 
     let ccx = bcx.ccx();
-    let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
     assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
 
     let llret = bcx.call(callee.reify(ccx), &args[..], None);
     fn_ty.apply_attrs_callsite(llret);
-
-    if fn_ret.0.is_never() {
-        bcx.unreachable();
-    }
 }
 
 pub fn trans_exchange_free_ty<'a, 'tcx>(
