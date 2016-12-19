@@ -517,10 +517,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let operand = &operands[0];
                         let value = self.eval_operand(operand)?;
                         let value_ty = self.operand_ty(operand);
-
-                        // FIXME(solson)
-                        let dest = self.force_allocation(dest)?;
-
                         self.write_value(value, dest, value_ty)?;
                     }
 
