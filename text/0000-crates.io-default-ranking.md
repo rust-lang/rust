@@ -743,10 +743,13 @@ crates.io will be making to programmers of all experience levels.
 The community ranking of the 5 crates presented in the survey for which order
 people would try them out for parsing comes out to be:
 
-1. nom
-2. combine
-3. and 4. peg and lalrpop, in some order
-5. peresil
+1.) nom
+
+2.) combine
+
+3.) and 4.) peg and lalrpop, in some order
+
+5.) peresil
 
 This chart shows how many people ranked the crates in each slot:
 
