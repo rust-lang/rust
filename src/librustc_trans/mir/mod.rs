@@ -158,10 +158,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             scope_metadata
         }
     }
-
-    pub fn ccx(&self) -> &'a CrateContext<'a, 'tcx> {
-        self.fcx.ccx
-    }
 }
 
 enum LocalRef<'tcx> {
