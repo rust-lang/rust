@@ -11,7 +11,7 @@
 use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
-use syntax_pos::{Span, DUMMY_SP, Pos};
+use syntax_pos::{Span, DUMMY_SP};
 use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
@@ -659,23 +659,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_field_access(&self, sp: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
-        let field_span = Span {
-            lo: sp.lo - Pos::from_usize(ident.name.as_str().len()),
-            hi: sp.hi,
-            expn_id: sp.expn_id,
-        };
-
-        let id = Spanned { node: ident, span: field_span };
+        let id = Spanned { node: ident, span: sp };
         self.expr(sp, ast::ExprKind::Field(expr, id))
     }
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
-        let field_span = Span {
-            lo: sp.lo - Pos::from_usize(idx.to_string().len()),
-            hi: sp.hi,
-            expn_id: sp.expn_id,
-        };
-
-        let id = Spanned { node: idx, span: field_span };
+        let id = Spanned { node: idx, span: sp };
         self.expr(sp, ast::ExprKind::TupField(expr, id))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
