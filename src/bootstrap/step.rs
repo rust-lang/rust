@@ -499,7 +499,7 @@ pub fn build_rules(build: &Build) -> Rules {
     rules.dist("dist-src", "src")
          .default(true)
          .host(true)
-         .run(move |_| dist::rust_src(build));
+         .run(move |s| dist::rust_src(build, s.target));
     rules.dist("dist-docs", "src/doc")
          .default(true)
          .dep(|s| s.name("default:doc"))
