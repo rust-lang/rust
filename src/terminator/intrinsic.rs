@@ -227,14 +227,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "forget" => {}
 
             "init" => {
-                let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");;
-                let init = |this: &mut Self, val: Option<Value>| {
+                let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");
+                let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
-                        Some(Value::ByRef(ptr)) => {
+                        Value::ByRef(ptr) => {
                             this.memory.write_repeat(ptr, 0, size)?;
                             Value::ByRef(ptr)
                         },
-                        None => match this.ty_to_primval_kind(dest_ty) {
+                        // TODO(solson): Revisit this, it's fishy to check for Undef here.
+                        Value::ByVal(PrimVal::Undef) => match this.ty_to_primval_kind(dest_ty) {
                             Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
@@ -242,11 +243,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 Value::ByRef(ptr)
                             }
                         },
-                        Some(Value::ByVal(_)) => Value::ByVal(PrimVal::Bytes(0)),
-                        Some(Value::ByValPair(..)) =>
+                        Value::ByVal(_) => Value::ByVal(PrimVal::Bytes(0)),
+                        Value::ByValPair(..) =>
                             Value::ByValPair(PrimVal::Bytes(0), PrimVal::Bytes(0)),
                     };
-                    Ok(Some(zero_val))
+                    Ok(zero_val)
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
@@ -371,19 +372,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "uninit" => {
                 let size = dest_layout.size(&self.tcx.data_layout).bytes();
-                let uninit = |this: &mut Self, val: Option<Value>| {
+                let uninit = |this: &mut Self, val: Value| {
                     match val {
-                        Some(Value::ByRef(ptr)) => {
+                        Value::ByRef(ptr) => {
                             this.memory.mark_definedness(ptr, size, false)?;
-                            Ok(Some(Value::ByRef(ptr)))
+                            Ok(Value::ByRef(ptr))
                         },
-                        None => Ok(None),
-                        Some(_) => Ok(None),
+                        _ => Ok(Value::ByVal(PrimVal::Undef)),
                     }
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.mark_definedness(ptr, size, false)?,
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } =>
+                        self.memory.mark_definedness(ptr, size, false)?,
                     Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
                 }

@@ -55,7 +55,7 @@ pub struct GlobalId<'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Global<'tcx> {
-    pub(super) data: Option<Value>,
+    pub(super) value: Value,
     pub(super) mutable: bool,
     pub(super) ty: Ty<'tcx>,
 }
@@ -98,7 +98,7 @@ impl<'tcx> Lvalue<'tcx> {
 impl<'tcx> Global<'tcx> {
     pub(super) fn uninitialized(ty: Ty<'tcx>) -> Self {
         Global {
-            data: None,
+            value: Value::ByVal(PrimVal::Undef),
             mutable: true,
             ty: ty,
         }
@@ -109,7 +109,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::Lvalue::Local(index) = proj.base {
-                if let Some(Value::ByValPair(a, b)) = self.frame().get_local(index) {
+                if let Value::ByValPair(a, b) = self.frame().get_local(index) {
                     if let mir::ProjectionElem::Field(ref field, _) = proj.elem {
                         let val = [a, b][field.index()];
                         return Ok(Value::ByVal(val));
@@ -127,16 +127,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 assert_eq!(extra, LvalueExtra::None);
                 Value::ByRef(ptr)
             }
-            Lvalue::Local { frame, local } => {
-                self.stack[frame].get_local(local).unwrap_or(Value::ByVal(PrimVal::Undef))
-            }
-            Lvalue::Global(cid) => {
-                self.globals
-                    .get(&cid)
-                    .expect("global not cached")
-                    .data
-                    .unwrap_or(Value::ByVal(PrimVal::Undef))
-            }
+            Lvalue::Local { frame, local } => self.stack[frame].get_local(local),
+            Lvalue::Global(cid) => self.globals.get(&cid).expect("global not cached").value,
         }
     }
 

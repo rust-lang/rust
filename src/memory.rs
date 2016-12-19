@@ -11,7 +11,7 @@ use rustc::ty::layout::{self, TargetDataLayout};
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
-use value::{PrimVal, PrimValKind};
+use value::PrimVal;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -584,17 +584,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         &mut self,
         dest: Pointer,
         val: PrimVal,
-        kind: PrimValKind,
+        size: u64,
     ) -> EvalResult<'tcx, ()> {
-        use value::PrimValKind::*;
-        let size = match kind {
-            I8 | U8 | Bool         => 1,
-            I16 | U16              => 2,
-            I32 | U32 | F32 | Char => 4,
-            I64 | U64 | F64        => 8,
-            Ptr | FnPtr            => self.pointer_size(),
-        };
-
         match val {
             PrimVal::Ptr(ptr) => {
                 assert_eq!(size, self.pointer_size());
@@ -609,7 +600,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     2 => 0xffff,
                     4 => 0xffffffff,
                     8 => 0xffffffffffffffff,
-                    _ => bug!("unexpected PrimVal size"),
+                    _ => bug!("unexpected PrimVal::Bytes size"),
                 };
                 self.write_uint(dest, bytes & mask, size)
             }

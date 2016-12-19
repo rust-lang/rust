@@ -515,8 +515,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Value::ByRef(ptr) => ptr,
                             Value::ByVal(primval) => {
                                 let ptr = self.alloc_ptr(args[0].1)?;
-                                let kind = self.ty_to_primval_kind(args[0].1)?;
-                                self.memory.write_primval(ptr, primval, kind)?;
+                                let size = self.type_size(args[0].1)?.expect("closures are sized");
+                                self.memory.write_primval(ptr, primval, size)?;
                                 temporaries.push(ptr);
                                 ptr
                             },
