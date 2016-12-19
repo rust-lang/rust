@@ -2,7 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, Size};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -238,20 +238,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
                         let dest_layout = self.type_layout(dest_ty)?;
+                        let disr = v.disr_val.to_u128_unchecked();
                         match *dest_layout {
                             Layout::Univariant { ref variant, .. } => {
-                                assert_eq!(v.disr_val.to_u128_unchecked(), 0);
+                                assert_eq!(disr, 0);
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
 
-                                // FIXME: don't allocate for single or dual field structs
-                                let dest = self.force_allocation(lvalue)?.to_ptr();
-
-                                for (offset, (value, value_ty)) in offsets.into_iter().zip(args) {
-                                    let field_dest = dest.offset(offset);
-                                    self.write_value_to_ptr(value, field_dest, value_ty)?;
-                                }
+                                self.assign_fields(lvalue, offsets, args)?;
                             },
-                            // FIXME: enum variant constructors
+                            Layout::General { discr, ref variants, .. } => {
+                                // FIXME: report a proper error for invalid discriminants
+                                // right now we simply go into index out of bounds
+                                let discr_size = discr.size().bytes();
+                                self.assign_discr_and_fields(
+                                    lvalue,
+                                    variants[disr as usize].offsets.iter().cloned().map(Size::bytes),
+                                    args,
+                                    disr,
+                                    discr_size,
+                                )?;
+                            },
+                            // FIXME: raw nullable pointer constructors
                             _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
                         }
                         self.goto_block(target);
