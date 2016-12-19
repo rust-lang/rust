@@ -33,7 +33,7 @@ should be significant and should help make the decision between the crates in
 this category easier.
 
 [nom]: https://crates.io/crates/nom
-[peresil]: https://github.com/docopt/docopt.rs
+[peresil]: https://crates.io/crates/peresil
 
 This helps address the goal of "Rust should provide easy access to high quality
 crates" as stated in the [Rust 2017 Roadmap][roadmap].
