@@ -1677,18 +1677,40 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        for (i, c) in self[..].char_indices() {
-            if c == 'Σ' {
-                // Σ maps to σ, except at the end of a word where it maps to ς.
-                // This is the only conditional (contextual) but language-independent mapping
-                // in `SpecialCasing.txt`,
-                // so hard-code it rather than have a generic "condition" mechanism.
-                // See https://github.com/rust-lang/rust/issues/26035
-                map_uppercase_sigma(self, i, &mut s)
-            } else {
-                s.extend(c.to_lowercase());
+        let mut left = None;
+
+        // Try to collect slices of lower case characters to push into the
+        // result or extend with the lower case version if an upper case
+        // character is found.
+        for (i, ch) in self.char_indices() {
+            if !ch.is_lowercase() && ch.is_alphabetic() {
+                if let Some(offset) = left.take() {
+                    s.push_str(&self[offset..i]);
+                }
+
+                if ch == 'Σ' {
+                    // Σ maps to σ, except at the end of a word where it maps to ς.
+                    // This is the only conditional (contextual) but language-independent mapping
+                    // in `SpecialCasing.txt`,
+                    // so hard-code it rather than have a generic "condition" mechanism.
+                    // See https://github.com/rust-lang/rust/issues/26035
+
+                    map_uppercase_sigma(self, i, &mut s);
+                }
+                else {
+                    s.extend(ch.to_lowercase());
+                }
+            }
+            else if left.is_none() {
+                left = Some(i);
             }
         }
+
+        // Append any leftover upper case characters.
+        if let Some(offset) = left.take() {
+            s.push_str(&self[offset..]);
+        }
+
         return s;
 
         fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
@@ -1696,11 +1718,12 @@ impl str {
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
             let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev()) &&
-                                !case_ignoreable_then_cased(from[i + 2..].chars());
-            to.push_str(if is_word_final {
-                "ς"
+                               !case_ignoreable_then_cased(from[i + 2..].chars());
+
+            to.push(if is_word_final {
+                'ς'
             } else {
-                "σ"
+                'σ'
             });
         }
 
@@ -1740,7 +1763,29 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self.chars().flat_map(|c| c.to_uppercase()));
+        let mut left = None;
+
+        // Try to collect slices of upper case characters to push into the
+        // result or extend with the upper case version if a lower case
+        // character is found.
+        for (i, ch) in self.char_indices() {
+            if !ch.is_uppercase() && ch.is_alphabetic() {
+                if let Some(offset) = left.take() {
+                    s.push_str(&self[offset..i]);
+                }
+
+                s.extend(ch.to_uppercase());
+            }
+            else if left.is_none() {
+                left = Some(i);
+            }
+        }
+
+        // Append any leftover upper case characters.
+        if let Some(offset) = left.take() {
+            s.push_str(&self[offset..]);
+        }
+
         return s;
     }
 
