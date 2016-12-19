@@ -1,3 +1,10 @@
+#[allow(warnings)]
+#[cfg(target_pointer_width = "16")]
+type c_int = i16;
+#[allow(warnings)]
+#[cfg(not(target_pointer_width = "16"))]
+type c_int = i32;
+
 #[no_mangle]
 pub unsafe extern "C" fn memcpy(dest: *mut u8,
                                 src: *const u8,
@@ -35,7 +42,7 @@ pub unsafe extern "C" fn memmove(dest: *mut u8,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memset(s: *mut u8, c: i32, n: usize) -> *mut u8 {
+pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) -> *mut u8 {
     let mut i = 0;
     while i < n {
         *s.offset(i as isize) = c as u8;
