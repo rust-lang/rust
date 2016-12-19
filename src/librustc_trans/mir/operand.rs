@@ -89,14 +89,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                         -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
-            let llty = type_of::type_of(bcx.ccx(), self.ty);
+            let llty = type_of::type_of(bcx.ccx, self.ty);
             let mut llpair = common::C_undef(llty);
             let elems = [a, b];
             for i in 0..2 {
                 let mut elem = elems[i];
                 // Extend boolean i1's to i8.
-                if common::val_ty(elem) == Type::i1(bcx.ccx()) {
-                    elem = bcx.zext(elem, Type::i8(bcx.ccx()));
+                if common::val_ty(elem) == Type::i1(bcx.ccx) {
+                    elem = bcx.zext(elem, Type::i8(bcx.ccx));
                 }
                 llpair = bcx.insert_value(llpair, elem, i);
             }
@@ -111,19 +111,19 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                           -> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
-            if common::type_is_imm_pair(bcx.ccx(), self.ty) {
+            if common::type_is_imm_pair(bcx.ccx, self.ty) {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
                 let mut a = bcx.extract_value(llval, 0);
                 let mut b = bcx.extract_value(llval, 1);
 
-                let pair_fields = common::type_pair_fields(bcx.ccx(), self.ty);
+                let pair_fields = common::type_pair_fields(bcx.ccx, self.ty);
                 if let Some([a_ty, b_ty]) = pair_fields {
                     if a_ty.is_bool() {
-                        a = bcx.trunc(a, Type::i1(bcx.ccx()));
+                        a = bcx.trunc(a, Type::i1(bcx.ccx));
                     }
                     if b_ty.is_bool() {
-                        b = bcx.trunc(b, Type::i1(bcx.ccx()));
+                        b = bcx.trunc(b, Type::i1(bcx.ccx));
                     }
                 }
 
@@ -143,11 +143,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
-        let val = if common::type_is_fat_ptr(bcx.ccx(), ty) {
+        let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
             let (lldata, llextra) = base::load_fat_ptr(bcx, llval, ty);
             OperandValue::Pair(lldata, llextra)
-        } else if common::type_is_imm_pair(bcx.ccx(), ty) {
-            let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx(), ty).unwrap();
+        } else if common::type_is_imm_pair(bcx.ccx, ty) {
+            let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx, ty).unwrap();
             let a_ptr = bcx.struct_gep(llval, 0);
             let b_ptr = bcx.struct_gep(llval, 1);
 
@@ -155,7 +155,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 base::load_ty(bcx, a_ptr, a_ty),
                 base::load_ty(bcx, b_ptr, b_ty)
             )
-        } else if common::type_is_immediate(bcx.ccx(), ty) {
+        } else if common::type_is_immediate(bcx.ccx, ty) {
             OperandValue::Immediate(base::load_ty(bcx, llval, ty))
         } else {
             OperandValue::Ref(llval)
@@ -230,7 +230,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 let val = self.trans_constant(bcx, constant);
-                let operand = val.to_operand(bcx.ccx());
+                let operand = val.to_operand(bcx.ccx);
                 if let OperandValue::Ref(ptr) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
                     self.trans_load(bcx, ptr, operand.ty)
@@ -248,7 +248,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("store_operand: operand={:?}", operand);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
-        if common::type_is_zero_size(bcx.ccx(), operand.ty) {
+        if common::type_is_zero_size(bcx.ccx, operand.ty) {
             return;
         }
         match operand.val {

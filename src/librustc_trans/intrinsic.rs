@@ -91,7 +91,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                                       llargs: &[ValueRef],
                                       llresult: ValueRef,
                                       span: Span) {
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
     let tcx = bcx.tcx();
 
     let (def_id, substs, fty) = match callee_ty.sty {
@@ -137,7 +137,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !bcx.ccx().shared().type_is_sized(tp_ty) {
+            if !bcx.ccx.shared().type_is_sized(tp_ty) {
                 let (llsize, _) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llsize
@@ -152,7 +152,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !bcx.ccx().shared().type_is_sized(tp_ty) {
+            if !bcx.ccx.shared().type_is_sized(tp_ty) {
                 let (_, llalign) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
@@ -191,7 +191,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            C_bool(ccx, bcx.ccx().shared().type_needs_drop(tp_ty))
+            C_bool(ccx, bcx.ccx.shared().type_needs_drop(tp_ty))
         }
         "offset" => {
             let ptr = llargs[0];
@@ -237,7 +237,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            if type_is_fat_ptr(bcx.ccx(), tp_ty) {
+            if type_is_fat_ptr(bcx.ccx, tp_ty) {
                 bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
                 bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
             } else {
@@ -264,7 +264,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 Some((width, signed)) =>
                     match name {
                         "ctlz" | "cttz" => {
-                            let y = C_bool(bcx.ccx(), false);
+                            let y = C_bool(bcx.ccx, false);
                             let llfn = ccx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
                             bcx.call(llfn, &[llargs[0], y], None)
                         }
@@ -282,7 +282,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
                                                     &name[..3], width);
-                            let llfn = bcx.ccx().get_intrinsic(&intrinsic);
+                            let llfn = bcx.ccx.get_intrinsic(&intrinsic);
 
                             // Convert `i1` to a `bool`, and write it to the out parameter
                             let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
@@ -291,7 +291,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             bcx.store(result, bcx.struct_gep(llresult, 0));
                             bcx.store(overflow, bcx.struct_gep(llresult, 1));
 
-                            C_nil(bcx.ccx())
+                            C_nil(bcx.ccx)
                         },
                         "overflowing_add" => bcx.add(llargs[0], llargs[1]),
                         "overflowing_sub" => bcx.sub(llargs[0], llargs[1]),
@@ -406,7 +406,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         let val = bcx.atomic_cmpxchg(llargs[0], llargs[1], llargs[2], order,
                             failorder, weak);
                         let result = bcx.extract_value(val, 0);
-                        let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx()));
+                        let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
                         bcx.store(result, bcx.struct_gep(llresult, 0));
                         bcx.store(success, bcx.struct_gep(llresult, 1));
                     } else {
@@ -545,7 +545,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bcx.ccx().shared().type_needs_drop(arg_type));
+                        assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {
@@ -554,18 +554,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             .collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
-                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
                         vec![bcx.pointercast(llarg, llvm_elem.ptr_to())]
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
-                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
                         vec![bcx.bitcast(llarg, Type::vector(&llvm_elem, length as u64))]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer
                         // size than the C intrinsic's signature, so
                         // we have to trim it down here.
-                        vec![bcx.trunc(llarg, Type::ix(bcx.ccx(), llvm_width as u64))]
+                        vec![bcx.trunc(llarg, Type::ix(bcx.ccx, llvm_width as u64))]
                     }
                     _ => vec![llarg],
                 }
@@ -643,7 +643,7 @@ fn copy_intrinsic<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             src: ValueRef,
                             count: ValueRef)
                             -> ValueRef {
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
     let size = machine::llsize_of(ccx, lltp_ty);
@@ -678,7 +678,7 @@ fn memset_intrinsic<'a, 'tcx>(
     val: ValueRef,
     count: ValueRef
 ) -> ValueRef {
-    let ccx = bcx.ccx();
+    let ccx = bcx.ccx;
     let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
     let lltp_ty = type_of::type_of(ccx, ty);
     let size = machine::llsize_of(ccx, lltp_ty);
@@ -695,7 +695,7 @@ fn try_intrinsic<'a, 'tcx>(
 ) {
     if bcx.sess().no_landing_pads() {
         bcx.call(func, &[data], None);
-        bcx.store(C_null(Type::i8p(&bcx.ccx())), dest);
+        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest);
     } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, func, data, local_ptr, dest);
     } else {
@@ -716,7 +716,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             local_ptr: ValueRef,
                             dest: ValueRef) {
     let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
 
         bcx.set_personality_fn(bcx.fcx().eh_personality());
 
@@ -819,7 +819,7 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                            local_ptr: ValueRef,
                            dest: ValueRef) {
     let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
 
         // Translates the shims described above:
         //
@@ -947,7 +947,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         ($cond: expr, $($fmt: tt)*) => {
             if !$cond {
                 emit_error!($($fmt)*);
-                return C_nil(bcx.ccx())
+                return C_nil(bcx.ccx)
             }
         }
     }
@@ -1038,7 +1038,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                                     arg_idx, total_len);
                         None
                     }
-                    Some(idx) => Some(C_i32(bcx.ccx(), idx as i32)),
+                    Some(idx) => Some(C_i32(bcx.ccx, idx as i32)),
                 }
             })
             .collect();

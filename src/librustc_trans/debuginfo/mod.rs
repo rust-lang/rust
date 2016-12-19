@@ -431,7 +431,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                                variable_access: VariableAccess,
                                variable_kind: VariableKind,
                                span: Span) {
-    let cx: &CrateContext = bcx.ccx();
+    let cx = bcx.ccx;
 
     let file = span_start(cx, span).file;
     let filename = file.name.clone();

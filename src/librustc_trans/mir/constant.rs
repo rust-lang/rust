@@ -957,27 +957,27 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Literal::Item { def_id, substs } => {
                 // Shortcut for zero-sized types, including function item
                 // types, which would not work with MirConstContext.
-                if common::type_is_zero_size(bcx.ccx(), ty) {
-                    let llty = type_of::type_of(bcx.ccx(), ty);
+                if common::type_is_zero_size(bcx.ccx, ty) {
+                    let llty = type_of::type_of(bcx.ccx, ty);
                     return Const::new(C_null(llty), ty);
                 }
 
                 let substs = self.monomorphize(&substs);
                 let instance = Instance::new(def_id, substs);
-                MirConstContext::trans_def(bcx.ccx(), instance, IndexVec::new())
+                MirConstContext::trans_def(bcx.ccx, instance, IndexVec::new())
             }
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
-                MirConstContext::new(bcx.ccx(), mir, self.param_substs, IndexVec::new()).trans()
+                MirConstContext::new(bcx.ccx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
-                Ok(Const::from_constval(bcx.ccx(), value, ty))
+                Ok(Const::from_constval(bcx.ccx, value, ty))
             }
         };
 
         let result = result.unwrap_or_else(|_| {
             // We've errored, so we don't have to produce working code.
-            let llty = type_of::type_of(bcx.ccx(), ty);
+            let llty = type_of::type_of(bcx.ccx, ty);
             Const::new(C_undef(llty), ty)
         });
 

@@ -235,7 +235,7 @@ impl ArgType {
         if self.is_ignore() {
             return;
         }
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
         if self.is_indirect() {
             let llsz = llsize_of(ccx, self.ty);
             let llalign = llalign_of_min(ccx, self.ty);
