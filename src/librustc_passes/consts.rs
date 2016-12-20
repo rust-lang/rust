@@ -166,7 +166,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
         let qualif = self.with_mode(mode, |this| {
             let body = this.tcx.map.body(b);
-            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, body));
+            this.with_euv(Some(fn_id), |euv| euv.walk_fn(body));
             intravisit::walk_fn(this, fk, fd, b, s, fn_id);
             this.qualif
         });

@@ -158,6 +158,7 @@ trait TraitAddParameterToMethod {
 #[cfg(cfail1)]
 trait TraitChangeMethodParameterName {
     fn method(a: u32);
+    fn with_default(x: i32) {}
 }
 
 #[cfg(not(cfail1))]
@@ -166,11 +167,20 @@ trait TraitChangeMethodParameterName {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterName {
+    // FIXME(#38501) This should preferably always be clean.
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     fn method(b: u32);
+
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn with_default(y: i32) {}
 }
 
 
@@ -303,7 +313,7 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeModeSelfOwnToMut: Sized {
     #[rustc_dirty(label="Hir", cfg="cfail2")]

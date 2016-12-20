@@ -156,6 +156,7 @@ pub struct Function {
     pub whence: Span,
     pub generics: hir::Generics,
     pub abi: abi::Abi,
+    pub body: hir::BodyId,
 }
 
 pub struct Typedef {

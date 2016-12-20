@@ -41,7 +41,6 @@ mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     fn_id: NodeId,
-                                    decl: &hir::FnDecl,
                                     body: &hir::Body)
                                     -> (Vec<Loan<'tcx>>,
                                         move_data::MoveData<'tcx>) {
@@ -55,7 +54,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
     let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
-    euv::ExprUseVisitor::new(&mut glcx, &infcx).walk_fn(decl, body);
+    euv::ExprUseVisitor::new(&mut glcx, &infcx).walk_fn(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;

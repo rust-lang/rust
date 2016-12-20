@@ -43,39 +43,17 @@ struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, _expr: &'tcx hir::Expr) {
-        return // const, static and N in [T; N] - shouldn't contain anything
-    }
-
-    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::TraitItemKind::Const(..) = item.node {
-            return // nothing worth match checking in a constant
-        } else {
-            intravisit::walk_trait_item(self, item);
-        }
-    }
-
-    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(..) = item.node {
-            return // nothing worth match checking in a constant
-        } else {
-            intravisit::walk_impl_item(self, item);
-        }
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
                 b: hir::BodyId, s: Span, id: ast::NodeId) {
-        if let FnKind::Closure(..) = fk {
-            span_bug!(s, "check_match: closure outside of function")
-        }
+        intravisit::walk_fn(self, fk, fd, b, s, id);
 
         MatchVisitor {
             tcx: self.tcx,
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
-        }.visit_fn(fk, fd, b, s, id);
+        }.visit_body(self.tcx.map.body(b));
     }
 }
 
@@ -96,7 +74,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
@@ -119,13 +97,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         self.check_patterns(false, slice::ref_slice(&loc.pat));
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, n: ast::NodeId) {
-        intravisit::walk_fn(self, fk, fd, b, s, n);
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        intravisit::walk_body(self, body);
 
-        for input in &fd.inputs {
-            self.check_irrefutable(&input.pat, true);
-            self.check_patterns(false, slice::ref_slice(&input.pat));
+        for arg in &body.arguments {
+            self.check_irrefutable(&arg.pat, true);
+            self.check_patterns(false, slice::ref_slice(&arg.pat));
         }
     }
 }

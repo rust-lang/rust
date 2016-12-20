@@ -167,7 +167,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(ast_map::NodeTraitItem(trait_method)) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, ref default) => default.is_some(),
-                    hir::TraitItemKind::Method(_, ref body) => body.is_some(),
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => true,
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
                     hir::TraitItemKind::Type(..) => false,
                 }
             }
@@ -275,11 +276,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeTraitItem(trait_method) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, None) |
-                    hir::TraitItemKind::Method(_, None) => {
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
                     hir::TraitItemKind::Const(_, Some(body_id)) |
-                    hir::TraitItemKind::Method(_, Some(body_id)) => {
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}

@@ -140,7 +140,6 @@ pub struct NativeLibrary {
 pub struct InlinedItem {
     pub def_id: DefId,
     pub body: hir::Body,
-    pub const_fn_args: Vec<Option<DefId>>,
 }
 
 /// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
@@ -149,14 +148,6 @@ pub struct InlinedItem {
 pub struct InlinedItemRef<'a> {
     pub def_id: DefId,
     pub body: &'a hir::Body,
-    pub const_fn_args: Vec<Option<DefId>>,
-}
-
-fn get_fn_args(decl: &hir::FnDecl) -> Vec<Option<DefId>> {
-    decl.inputs.iter().map(|arg| match arg.pat.node {
-        hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
-        _ => None
-    }).collect()
 }
 
 impl<'a, 'tcx> InlinedItemRef<'tcx> {
@@ -164,16 +155,14 @@ impl<'a, 'tcx> InlinedItemRef<'tcx> {
                      item: &hir::Item,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
                      -> InlinedItemRef<'tcx> {
-        let (body_id, args) = match item.node {
-            hir::ItemFn(ref decl, _, _, _, _, body_id) =>
-                (body_id, get_fn_args(decl)),
-            hir::ItemConst(_, body_id) => (body_id, vec![]),
+        let body_id = match item.node {
+            hir::ItemFn(.., body_id) |
+            hir::ItemConst(_, body_id) => body_id,
             _ => bug!("InlinedItemRef::from_item wrong kind")
         };
         InlinedItemRef {
             def_id: def_id,
             body: tcx.map.body(body_id),
-            const_fn_args: args
         }
     }
 
@@ -181,9 +170,8 @@ impl<'a, 'tcx> InlinedItemRef<'tcx> {
                            item: &hir::TraitItem,
                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
                            -> InlinedItemRef<'tcx> {
-        let (body_id, args) = match item.node {
-            hir::TraitItemKind::Const(_, Some(body_id)) =>
-                (body_id, vec![]),
+        let body_id = match item.node {
+            hir::TraitItemKind::Const(_, Some(body_id)) => body_id,
             hir::TraitItemKind::Const(_, None) => {
                 bug!("InlinedItemRef::from_trait_item called for const without body")
             },
@@ -192,7 +180,6 @@ impl<'a, 'tcx> InlinedItemRef<'tcx> {
         InlinedItemRef {
             def_id: def_id,
             body: tcx.map.body(body_id),
-            const_fn_args: args
         }
     }
 
@@ -200,17 +187,14 @@ impl<'a, 'tcx> InlinedItemRef<'tcx> {
                           item: &hir::ImplItem,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
                           -> InlinedItemRef<'tcx> {
-        let (body_id, args) = match item.node {
-            hir::ImplItemKind::Method(ref sig, body_id) =>
-                (body_id, get_fn_args(&sig.decl)),
-            hir::ImplItemKind::Const(_, body_id) =>
-                (body_id, vec![]),
+        let body_id = match item.node {
+            hir::ImplItemKind::Method(_, body_id) |
+            hir::ImplItemKind::Const(_, body_id) => body_id,
             _ => bug!("InlinedItemRef::from_impl_item wrong kind")
         };
         InlinedItemRef {
             def_id: def_id,
             body: tcx.map.body(body_id),
-            const_fn_args: args
         }
     }
 

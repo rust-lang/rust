@@ -157,7 +157,6 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     fn analyze_closure(&mut self,
                        id: ast::NodeId,
                        span: Span,
-                       decl: &hir::FnDecl,
                        body: &hir::Body) {
         /*!
          * Analysis starting point.
@@ -172,7 +171,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true
                                                   });
-            euv.walk_fn(decl, body);
+            euv.walk_fn(body);
         }
 
         // Now that we've analyzed the closure, we know how each
@@ -505,7 +504,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
         let body = self.fcx.tcx.map.body(body);
         self.visit_body(body);
-        self.analyze_closure(id, span, decl, body);
+        self.analyze_closure(id, span, body);
     }
 }
 

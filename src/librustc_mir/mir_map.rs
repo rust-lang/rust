@@ -234,8 +234,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
             (self.tcx.item_type(def_id).fn_abi(), None)
         };
 
+        let body = self.tcx.map.body(body_id);
         let explicit_arguments =
-            decl.inputs
+            body.arguments
                 .iter()
                 .enumerate()
                 .map(|(index, arg)| {
@@ -244,7 +245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
         let arguments = implicit_argument.into_iter().chain(explicit_arguments);
         self.cx(MirSource::Fn(id)).build(|cx| {
-            build::construct_fn(cx, id, arguments, abi, fn_sig.output(), body_id)
+            build::construct_fn(cx, id, arguments, abi, fn_sig.output(), body)
         });
 
         intravisit::walk_fn(self, fk, decl, body_id, span, id);

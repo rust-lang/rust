@@ -389,7 +389,9 @@ impl<'ast> Map<'ast> {
     fn is_trait_item_body(&self, node_id: NodeId, item: &TraitItem) -> bool {
         match item.node {
             TraitItemKind::Const(_, Some(body)) |
-            TraitItemKind::Method(_, Some(body)) => body.node_id == node_id,
+            TraitItemKind::Method(_, TraitMethod::Provided(body)) => {
+                body.node_id == node_id
+            }
             _ => false
         }
     }

@@ -333,7 +333,7 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.node {
                         hir::TraitItemKind::Const(_, Some(_)) |
-                        hir::TraitItemKind::Method(_, Some(_)) => {
+                        hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
                             if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
                             }
@@ -573,11 +573,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         match trait_item.node {
             hir::TraitItemKind::Const(_, Some(body_id)) |
-            hir::TraitItemKind::Method(_, Some(body_id)) => {
+            hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
                 self.visit_nested_body(body_id)
             }
             hir::TraitItemKind::Const(_, None) |
-            hir::TraitItemKind::Method(_, None) |
+            hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
             hir::TraitItemKind::Type(..) => {}
         }
     }

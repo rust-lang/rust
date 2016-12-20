@@ -34,6 +34,7 @@ use std::io::Cursor;
 use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
+use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax_pos;
@@ -442,10 +443,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match trait_item.kind {
             ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::TraitItemKind::Method(ref sig, _) = ast_item.node {
+                let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
+                    let arg_names = match *m {
+                        hir::TraitMethod::Required(ref names) => {
+                            self.encode_fn_arg_names(names)
+                        }
+                        hir::TraitMethod::Provided(body) => {
+                            self.encode_fn_arg_names_for_body(body)
+                        }
+                    };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names: self.encode_fn_arg_names(&sig.decl),
+                        arg_names: arg_names
                     }
                 } else {
                     bug!()
@@ -518,10 +527,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
+                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
                         constness: sig.constness,
-                        arg_names: self.encode_fn_arg_names(&sig.decl),
+                        arg_names: self.encode_fn_arg_names_for_body(body),
                     }
                 } else {
                     bug!()
@@ -574,14 +583,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_fn_arg_names(&mut self, decl: &hir::FnDecl) -> LazySeq<ast::Name> {
-        self.lazy_seq(decl.inputs.iter().map(|arg| {
-            if let PatKind::Binding(_, _, ref path1, _) = arg.pat.node {
-                path1.node
-            } else {
-                Symbol::intern("")
+    fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
+                                    -> LazySeq<ast::Name> {
+        let _ignore = self.tcx.dep_graph.in_ignore();
+        let body = self.tcx.map.body(body_id);
+        self.lazy_seq(body.arguments.iter().map(|arg| {
+            match arg.pat.node {
+                PatKind::Binding(_, _, name, _) => name.node,
+                _ => Symbol::intern("")
             }
         }))
+    }
+
+    fn encode_fn_arg_names(&mut self, names: &[Spanned<ast::Name>])
+                           -> LazySeq<ast::Name> {
+        self.lazy_seq(names.iter().map(|name| name.node))
     }
 
     fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
@@ -619,10 +635,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
             hir::ItemConst(..) => EntryKind::Const,
-            hir::ItemFn(ref decl, _, constness, ..) => {
+            hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
                     constness: constness,
-                    arg_names: self.encode_fn_arg_names(&decl),
+                    arg_names: self.encode_fn_arg_names_for_body(body),
                 };
 
                 EntryKind::Fn(self.lazy(&data))
@@ -915,10 +931,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("writing foreign item {}", tcx.node_path_str(nitem.id));
 
         let kind = match nitem.node {
-            hir::ForeignItemFn(ref fndecl, _) => {
+            hir::ForeignItemFn(_, ref names, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
-                    arg_names: self.encode_fn_arg_names(&fndecl),
+                    arg_names: self.encode_fn_arg_names(names),
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }

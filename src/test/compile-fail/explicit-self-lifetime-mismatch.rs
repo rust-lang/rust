@@ -14,8 +14,8 @@ struct Foo<'a,'b> {
 }
 
 impl<'a,'b> Foo<'a,'b> {
-    fn bar(
-        self
+    fn bar(self:
+           Foo<'b,'a>
     //~^ ERROR mismatched method receiver
     //~| expected type `Foo<'a, 'b>`
     //~| found type `Foo<'b, 'a>`
@@ -24,7 +24,7 @@ impl<'a,'b> Foo<'a,'b> {
     //~| expected type `Foo<'a, 'b>`
     //~| found type `Foo<'b, 'a>`
     //~| lifetime mismatch
-            : Foo<'b,'a>) {}
+           ) {}
 }
 
 fn main() {}

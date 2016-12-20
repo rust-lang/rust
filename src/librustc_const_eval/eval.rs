@@ -870,18 +870,16 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
-          let (arg_defs, body) = match lookup_const_fn_by_id(tcx, did) {
-              Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), &ii.body),
-              Some(ConstFnNode::Local(fn_like)) =>
-                  (fn_like.decl().inputs.iter()
-                   .map(|arg| match arg.pat.node {
-                       hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
-                       _ => None
-                   }).collect(),
-                   tcx.map.body(fn_like.body())),
+          let body = match lookup_const_fn_by_id(tcx, did) {
+              Some(ConstFnNode::Inlined(ii)) => &ii.body,
+              Some(ConstFnNode::Local(fn_like)) => tcx.map.body(fn_like.body()),
               None => signal!(e, NonConstPath),
           };
-          let result = &body.value;
+
+          let arg_defs = body.arguments.iter().map(|arg| match arg.pat.node {
+               hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+               _ => None
+           }).collect::<Vec<_>>();
           assert_eq!(arg_defs.len(), args.len());
 
           let mut call_args = DefIdMap();
@@ -899,7 +897,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               }
           }
           debug!("const call({:?})", call_args);
-          eval_const_expr_partial(tcx, result, ty_hint, Some(&call_args))?
+          eval_const_expr_partial(tcx, &body.value, ty_hint, Some(&call_args))?
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
           Ok(val) => val,

@@ -1051,8 +1051,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
-                        hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
-                            Some((fn_decl, gen, unsafety, constness, item.name, item.span))
+                        hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, body) => {
+                            Some((fn_decl, gen, unsafety, constness, item.name, item.span, body))
                         }
                         _ => None,
                     }
@@ -1066,26 +1066,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             return;
                         }
                     }
-                    if let hir::ImplItemKind::Method(ref sig, _) = item.node {
+                    if let hir::ImplItemKind::Method(ref sig, body) = item.node {
                         Some((&sig.decl,
                               &sig.generics,
                               sig.unsafety,
                               sig.constness,
                               item.name,
-                              item.span))
+                              item.span,
+                              body))
                     } else {
                         None
                     }
                 },
                 ast_map::NodeTraitItem(item) => {
                     match item.node {
-                        hir::TraitItemKind::Method(ref sig, Some(_)) => {
+                        hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                             Some((&sig.decl,
                                   &sig.generics,
                                   sig.unsafety,
                                   sig.constness,
                                   item.name,
-                                  item.span))
+                                  item.span,
+                                  body))
                         }
                         _ => None,
                     }
@@ -1094,12 +1096,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             },
             None => None,
         };
-        let (fn_decl, generics, unsafety, constness, name, span)
+        let (fn_decl, generics, unsafety, constness, name, span, body)
                                     = node_inner.expect("expect item fn");
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, generics, same_regions, &life_giver);
         let (fn_decl, generics) = rebuilder.rebuild();
         self.give_expl_lifetime_param(
-            err, &fn_decl, unsafety, constness, name, &generics, span);
+            err, &fn_decl, unsafety, constness, name, &generics, span, body);
     }
 
     pub fn issue_32330_warnings(&self, span: Span, issue32330s: &[ty::Issue32330]) {
@@ -1375,23 +1377,14 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
     }
 
     fn rebuild_args_ty(&self,
-                       inputs: &[hir::Arg],
+                       inputs: &[P<hir::Ty>],
                        lifetime: hir::Lifetime,
                        anon_nums: &HashSet<u32>,
                        region_names: &HashSet<ast::Name>)
-                       -> hir::HirVec<hir::Arg> {
-        let mut new_inputs = Vec::new();
-        for arg in inputs {
-            let new_ty = self.rebuild_arg_ty_or_output(&arg.ty, lifetime,
-                                                       anon_nums, region_names);
-            let possibly_new_arg = hir::Arg {
-                ty: new_ty,
-                pat: arg.pat.clone(),
-                id: arg.id
-            };
-            new_inputs.push(possibly_new_arg);
-        }
-        new_inputs.into()
+                       -> hir::HirVec<P<hir::Ty>> {
+        inputs.iter().map(|arg_ty| {
+            self.rebuild_arg_ty_or_output(arg_ty, lifetime, anon_nums, region_names)
+        }).collect()
     }
 
     fn rebuild_output(&self, ty: &hir::FunctionRetTy,
@@ -1634,10 +1627,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 constness: hir::Constness,
                                 name: ast::Name,
                                 generics: &hir::Generics,
-                                span: Span) {
-        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, name, generics);
-        let msg = format!("consider using an explicit lifetime \
-                           parameter as shown: {}", suggested_fn);
+                                span: Span,
+                                body: hir::BodyId) {
+        let s = pprust::fn_decl_in_crate_to_string(self.tcx.map.krate(),
+                                                   decl,
+                                                   unsafety,
+                                                   constness,
+                                                   name,
+                                                   generics,
+                                                   body);
+        let msg = format!("consider using an explicit lifetime parameter as shown: {}", s);
         err.span_help(span, &msg[..]);
     }
 

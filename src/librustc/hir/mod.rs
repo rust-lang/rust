@@ -868,6 +868,7 @@ pub struct BodyId {
 /// The body of a function or constant value.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
+    pub arguments: HirVec<Arg>,
     pub value: Expr
 }
 
@@ -1102,6 +1103,16 @@ pub struct TraitItem {
     pub span: Span,
 }
 
+/// A trait method's body (or just argument names).
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum TraitMethod {
+    /// No default body in the trait, just a signature.
+    Required(HirVec<Spanned<Name>>),
+
+    /// Both signature and body are provided in the trait.
+    Provided(BodyId),
+}
+
 /// Represents a trait method or associated constant or type
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TraitItemKind {
@@ -1109,7 +1120,7 @@ pub enum TraitItemKind {
     /// must contain a value)
     Const(P<Ty>, Option<BodyId>),
     /// A method with an optional body
-    Method(MethodSig, Option<BodyId>),
+    Method(MethodSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     Type(TyParamBounds, Option<P<Ty>>),
@@ -1248,7 +1259,6 @@ pub struct InlineAsm {
 /// represents an argument in a function header
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Arg {
-    pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
 }
@@ -1256,7 +1266,7 @@ pub struct Arg {
 /// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
-    pub inputs: HirVec<Arg>,
+    pub inputs: HirVec<P<Ty>>,
     pub output: FunctionRetTy,
     pub variadic: bool,
 }
@@ -1639,7 +1649,7 @@ pub struct ForeignItem {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ForeignItem_ {
     /// A foreign function
-    ForeignItemFn(P<FnDecl>, Generics),
+    ForeignItemFn(P<FnDecl>, HirVec<Spanned<Name>>, Generics),
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     ForeignItemStatic(P<Ty>, bool),

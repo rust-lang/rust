@@ -1030,22 +1030,14 @@ pub struct Method {
     pub abi: Abi,
 }
 
-impl Clean<Method> for hir::MethodSig {
+impl<'a> Clean<Method> for (&'a hir::MethodSig, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
-        let decl = FnDecl {
-            inputs: Arguments {
-                values: self.decl.inputs.clean(cx),
-            },
-            output: self.decl.output.clean(cx),
-            variadic: false,
-            attrs: Attributes::default()
-        };
         Method {
-            generics: self.generics.clean(cx),
-            unsafety: self.unsafety,
-            constness: self.constness,
-            decl: decl,
-            abi: self.abi
+            generics: self.0.generics.clean(cx),
+            unsafety: self.0.unsafety,
+            constness: self.0.constness,
+            decl: (&*self.0.decl, self.1).clean(cx),
+            abi: self.0.abi
         }
     }
 }
@@ -1056,25 +1048,6 @@ pub struct TyMethod {
     pub decl: FnDecl,
     pub generics: Generics,
     pub abi: Abi,
-}
-
-impl Clean<TyMethod> for hir::MethodSig {
-    fn clean(&self, cx: &DocContext) -> TyMethod {
-        let decl = FnDecl {
-            inputs: Arguments {
-                values: self.decl.inputs.clean(cx),
-            },
-            output: self.decl.output.clean(cx),
-            variadic: false,
-            attrs: Attributes::default()
-        };
-        TyMethod {
-            unsafety: self.unsafety.clone(),
-            decl: decl,
-            generics: self.generics.clean(cx),
-            abi: self.abi
-        }
-    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1097,7 +1070,7 @@ impl Clean<Item> for doctree::Function {
             deprecation: self.depr.clean(cx),
             def_id: cx.tcx.map.local_def_id(self.id),
             inner: FunctionItem(Function {
-                decl: self.decl.clean(cx),
+                decl: (&self.decl, self.body).clean(cx),
                 generics: self.generics.clean(cx),
                 unsafety: self.unsafety,
                 constness: self.constness,
@@ -1130,14 +1103,47 @@ pub struct Arguments {
     pub values: Vec<Argument>,
 }
 
-impl Clean<FnDecl> for hir::FnDecl {
+impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], &'a [Spanned<ast::Name>]) {
+    fn clean(&self, cx: &DocContext) -> Arguments {
+        Arguments {
+            values: self.0.iter().enumerate().map(|(i, ty)| {
+                let mut name = self.1.get(i).map(|n| n.node.to_string())
+                                            .unwrap_or(String::new());
+                if name.is_empty() {
+                    name = "_".to_string();
+                }
+                Argument {
+                    name: name,
+                    type_: ty.clean(cx),
+                }
+            }).collect()
+        }
+    }
+}
+
+impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], hir::BodyId) {
+    fn clean(&self, cx: &DocContext) -> Arguments {
+        let body = cx.tcx.map.body(self.1);
+
+        Arguments {
+            values: self.0.iter().enumerate().map(|(i, ty)| {
+                Argument {
+                    name: name_from_pat(&body.arguments[i].pat),
+                    type_: ty.clean(cx),
+                }
+            }).collect()
+        }
+    }
+}
+
+impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
+    where (&'a [P<hir::Ty>], A): Clean<Arguments>
+{
     fn clean(&self, cx: &DocContext) -> FnDecl {
         FnDecl {
-            inputs: Arguments {
-                values: self.inputs.clean(cx),
-            },
-            output: self.output.clean(cx),
-            variadic: self.variadic,
+            inputs: (&self.0.inputs[..], self.1).clean(cx),
+            output: self.0.output.clean(cx),
+            variadic: self.0.variadic,
             attrs: Attributes::default()
         }
     }
@@ -1159,7 +1165,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
                 values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
-                        id: ast::CRATE_NODE_ID,
                         name: names.next().map_or("".to_string(), |name| name.to_string()),
                     }
                 }).collect(),
@@ -1172,7 +1177,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
 pub struct Argument {
     pub type_: Type,
     pub name: String,
-    pub id: ast::NodeId,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
@@ -1195,16 +1199,6 @@ impl Argument {
                 Some(SelfBorrowed(lifetime.clone(), mutability))
             }
             _ => Some(SelfExplicit(self.type_.clone()))
-        }
-    }
-}
-
-impl Clean<Argument> for hir::Arg {
-    fn clean(&self, cx: &DocContext) -> Argument {
-        Argument {
-            name: name_from_pat(&*self.pat),
-            type_: (self.ty.clean(cx)),
-            id: self.id
         }
     }
 }
@@ -1274,11 +1268,16 @@ impl Clean<Item> for hir::TraitItem {
                 AssociatedConstItem(ty.clean(cx),
                                     default.map(|e| print_const_expr(cx, e)))
             }
-            hir::TraitItemKind::Method(ref sig, Some(_)) => {
-                MethodItem(sig.clean(cx))
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+                MethodItem((sig, body).clean(cx))
             }
-            hir::TraitItemKind::Method(ref sig, None) => {
-                TyMethodItem(sig.clean(cx))
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+                TyMethodItem(TyMethod {
+                    unsafety: sig.unsafety.clone(),
+                    decl: (&*sig.decl, &names[..]).clean(cx),
+                    generics: sig.generics.clean(cx),
+                    abi: sig.abi
+                })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
@@ -1304,8 +1303,8 @@ impl Clean<Item> for hir::ImplItem {
                 AssociatedConstItem(ty.clean(cx),
                                     Some(print_const_expr(cx, expr)))
             }
-            hir::ImplItemKind::Method(ref sig, _) => {
-                MethodItem(sig.clean(cx))
+            hir::ImplItemKind::Method(ref sig, body) => {
+                MethodItem((sig, body).clean(cx))
             }
             hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
@@ -2343,7 +2342,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 type_params: Vec::new(),
                 where_predicates: Vec::new()
             },
-            decl: self.decl.clean(cx),
+            decl: (&*self.decl, &[][..]).clean(cx),
             abi: self.abi,
         }
     }
@@ -2641,9 +2640,9 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
 impl Clean<Item> for hir::ForeignItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ForeignItemFn(ref decl, ref generics) => {
+            hir::ForeignItemFn(ref decl, ref names, ref generics) => {
                 ForeignFunctionItem(Function {
-                    decl: decl.clean(cx),
+                    decl: (&**decl, &names[..]).clean(cx),
                     generics: generics.clean(cx),
                     unsafety: hir::Unsafety::Unsafe,
                     abi: Abi::Rust,

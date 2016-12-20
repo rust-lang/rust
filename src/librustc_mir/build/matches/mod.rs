@@ -729,7 +729,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             name: Some(name),
             source_info: Some(source_info),
         });
-        let extent = self.extent_of_innermost_scope();
+        let extent = self.hir.tcx().region_maps.var_scope(var_id);
         self.schedule_drop(source_info.span, extent, &Lvalue::Local(var), var_ty);
         self.var_indices.insert(var_id, var);
 

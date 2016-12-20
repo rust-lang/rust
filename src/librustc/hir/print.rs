@@ -20,7 +20,6 @@ use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
-use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 use errors;
 
@@ -267,10 +266,6 @@ pub fn where_clause_to_string(i: &hir::WhereClause) -> String {
     to_string(|s| s.print_where_clause(i))
 }
 
-pub fn fn_block_to_string(p: &hir::FnDecl) -> String {
-    to_string(|s| s.print_fn_block_args(p))
-}
-
 pub fn path_to_string(p: &hir::Path) -> String {
     to_string(|s| s.print_path(p, false))
 }
@@ -283,24 +278,35 @@ pub fn name_to_string(name: ast::Name) -> String {
     to_string(|s| s.print_name(name))
 }
 
-pub fn fun_to_string(decl: &hir::FnDecl,
-                     unsafety: hir::Unsafety,
-                     constness: hir::Constness,
-                     name: ast::Name,
-                     generics: &hir::Generics)
-                     -> String {
-    to_string(|s| {
-        s.head("")?;
-        s.print_fn(decl,
-                   unsafety,
-                   constness,
-                   Abi::Rust,
-                   Some(name),
-                   generics,
-                   &hir::Inherited)?;
-        s.end()?; // Close the head box
-        s.end() // Close the outer box
-    })
+pub fn fn_decl_in_crate_to_string(krate: &hir::Crate,
+                                  decl: &hir::FnDecl,
+                                  unsafety: hir::Unsafety,
+                                  constness: hir::Constness,
+                                  name: ast::Name,
+                                  generics: &hir::Generics,
+                                  body_id: hir::BodyId)
+                                  -> String {
+
+    let mut wr = Vec::new();
+    {
+        let mut s = rust_printer(Box::new(&mut wr), Some(krate));
+        (|s: &mut State| {
+            s.head("")?;
+            s.print_fn(decl,
+                       unsafety,
+                       constness,
+                       Abi::Rust,
+                       Some(name),
+                       generics,
+                       &hir::Inherited,
+                       &[],
+                       Some(body_id))?;
+            s.end()?; // Close the head box
+            s.end()?; // Close the outer box
+            eof(&mut s.s)
+        })(&mut s).unwrap();
+    }
+    String::from_utf8(wr).unwrap()
 }
 
 pub fn block_to_string(blk: &hir::Block) -> String {
@@ -315,10 +321,6 @@ pub fn block_to_string(blk: &hir::Block) -> String {
 
 pub fn variant_to_string(var: &hir::Variant) -> String {
     to_string(|s| s.print_variant(var))
-}
-
-pub fn arg_to_string(arg: &hir::Arg) -> String {
-    to_string(|s| s.print_arg(arg, false))
 }
 
 pub fn visibility_qualified(vis: &hir::Visibility, s: &str) -> String {
@@ -569,7 +571,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo)?;
         self.print_outer_attributes(&item.attrs)?;
         match item.node {
-            hir::ForeignItemFn(ref decl, ref generics) => {
+            hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl,
                               hir::Unsafety::Normal,
@@ -577,7 +579,9 @@ impl<'a> State<'a> {
                               Abi::Rust,
                               Some(item.name),
                               generics,
-                              &item.vis)?;
+                              &item.vis,
+                              arg_names,
+                              None)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
@@ -644,13 +648,14 @@ impl<'a> State<'a> {
         }
     }
 
+    fn maybe_body(&mut self, body_id: hir::BodyId) -> Option<&'a hir::Body> {
+        self.krate.map(|krate| krate.body(body_id))
+    }
+
     fn print_body_id(&mut self, body_id: hir::BodyId) -> io::Result<()> {
-        if let Some(krate) = self.krate {
-            let expr = &krate.body(body_id).value;
-            self.print_expr(expr)
-        } else {
-            Ok(())
-        }
+        self.maybe_body(body_id).map_or(Ok(()), |body| {
+            self.print_expr(&body.value)
+        })
     }
 
     /// Pretty-print an item
@@ -734,7 +739,9 @@ impl<'a> State<'a> {
                               abi,
                               Some(item.name),
                               typarams,
-                              &item.vis)?;
+                              &item.vis,
+                              &[],
+                              Some(body))?;
                 word(&mut self.s, " ")?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -995,7 +1002,9 @@ impl<'a> State<'a> {
     pub fn print_method_sig(&mut self,
                             name: ast::Name,
                             m: &hir::MethodSig,
-                            vis: &hir::Visibility)
+                            vis: &hir::Visibility,
+                            arg_names: &[Spanned<ast::Name>],
+                            body_id: Option<hir::BodyId>)
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.unsafety,
@@ -1003,7 +1012,9 @@ impl<'a> State<'a> {
                       m.abi,
                       Some(name),
                       &m.generics,
-                      vis)
+                      vis,
+                      arg_names,
+                      body_id)
     }
 
     pub fn print_trait_item_ref(&mut self, item_ref: &hir::TraitItemRef) -> io::Result<()> {
@@ -1025,19 +1036,17 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Const(ref ty, default) => {
                 self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
             }
-            hir::TraitItemKind::Method(ref sig, body) => {
-                if body.is_some() {
-                    self.head("")?;
-                }
-                self.print_method_sig(ti.name, sig, &hir::Inherited)?;
-                if let Some(body) = body {
-                    self.nbsp()?;
-                    self.end()?; // need to close a box
-                    self.end()?; // need to close a box
-                    self.print_body_id(body)?;
-                } else {
-                    word(&mut self.s, ";")?;
-                }
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
+                self.print_method_sig(ti.name, sig, &hir::Inherited, arg_names, None)?;
+                word(&mut self.s, ";")?;
+            }
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+                self.head("")?;
+                self.print_method_sig(ti.name, sig, &hir::Inherited, &[], Some(body))?;
+                self.nbsp()?;
+                self.end()?; // need to close a box
+                self.end()?; // need to close a box
+                self.print_body_id(body)?;
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.name,
@@ -1075,7 +1084,7 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Method(ref sig, body) => {
                 self.head("")?;
-                self.print_method_sig(ii.name, sig, &ii.vis)?;
+                self.print_method_sig(ii.name, sig, &ii.vis, &[], Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -1442,7 +1451,7 @@ impl<'a> State<'a> {
             hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span) => {
                 self.print_capture_clause(capture_clause)?;
 
-                self.print_fn_block_args(&decl)?;
+                self.print_closure_args(&decl, body)?;
                 space(&mut self.s)?;
 
                 // this is a bare expression
@@ -1966,7 +1975,9 @@ impl<'a> State<'a> {
                     abi: Abi,
                     name: Option<ast::Name>,
                     generics: &hir::Generics,
-                    vis: &hir::Visibility)
+                    vis: &hir::Visibility,
+                    arg_names: &[Spanned<ast::Name>],
+                    body_id: Option<hir::BodyId>)
                     -> io::Result<()> {
         self.print_fn_header_info(unsafety, constness, abi, vis)?;
 
@@ -1975,24 +1986,58 @@ impl<'a> State<'a> {
             self.print_name(name)?;
         }
         self.print_generics(generics)?;
-        self.print_fn_args_and_ret(decl)?;
-        self.print_where_clause(&generics.where_clause)
-    }
 
-    pub fn print_fn_args_and_ret(&mut self, decl: &hir::FnDecl) -> io::Result<()> {
         self.popen()?;
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false))?;
+        let mut i = 0;
+        // Make sure we aren't supplied *both* `arg_names` and `body_id`.
+        assert!(arg_names.is_empty() || body_id.is_none());
+        let args = body_id.and_then(|body_id| self.maybe_body(body_id))
+                          .map_or(&[][..], |body| &body.arguments[..]);
+        self.commasep(Inconsistent, &decl.inputs, |s, ty| {
+            s.ibox(indent_unit)?;
+            if let Some(name) = arg_names.get(i) {
+                word(&mut s.s, &name.node.as_str())?;
+                word(&mut s.s, ":")?;
+                space(&mut s.s)?;
+            } else if let Some(arg) = args.get(i) {
+                s.print_pat(&arg.pat)?;
+                word(&mut s.s, ":")?;
+                space(&mut s.s)?;
+            }
+            i += 1;
+            s.print_type(ty)?;
+            s.end()
+        })?;
         if decl.variadic {
             word(&mut self.s, ", ...")?;
         }
         self.pclose()?;
 
-        self.print_fn_output(decl)
+        self.print_fn_output(decl)?;
+        self.print_where_clause(&generics.where_clause)
     }
 
-    pub fn print_fn_block_args(&mut self, decl: &hir::FnDecl) -> io::Result<()> {
+    fn print_closure_args(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) -> io::Result<()> {
         word(&mut self.s, "|")?;
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, true))?;
+        let mut i = 0;
+        let args = self.maybe_body(body_id).map_or(&[][..], |body| &body.arguments[..]);
+        self.commasep(Inconsistent, &decl.inputs, |s, ty| {
+            s.ibox(indent_unit)?;
+
+            if let Some(arg) = args.get(i) {
+                s.print_pat(&arg.pat)?;
+            } else {
+                word(&mut s.s, "_")?;
+            }
+            i += 1;
+
+            if ty.node != hir::TyInfer {
+                word(&mut s.s, ":")?;
+                space(&mut s.s)?;
+                s.print_type(ty)?;
+            }
+            s.end()
+        })?;
         word(&mut self.s, "|")?;
 
         if let hir::DefaultReturn(..) = decl.output {
@@ -2164,27 +2209,6 @@ impl<'a> State<'a> {
         self.print_type(&mt.ty)
     }
 
-    pub fn print_arg(&mut self, input: &hir::Arg, is_closure: bool) -> io::Result<()> {
-        self.ibox(indent_unit)?;
-        match input.ty.node {
-            hir::TyInfer if is_closure => self.print_pat(&input.pat)?,
-            _ => {
-                let invalid = if let PatKind::Binding(_, _, name, _) = input.pat.node {
-                    name.node == keywords::Invalid.name()
-                } else {
-                    false
-                };
-                if !invalid {
-                    self.print_pat(&input.pat)?;
-                    word(&mut self.s, ":")?;
-                    space(&mut self.s)?;
-                }
-                self.print_type(&input.ty)?;
-            }
-        }
-        self.end()
-    }
-
     pub fn print_fn_output(&mut self, decl: &hir::FnDecl) -> io::Result<()> {
         if let hir::DefaultReturn(..) = decl.output {
             return Ok(());
@@ -2232,7 +2256,9 @@ impl<'a> State<'a> {
                       abi,
                       name,
                       &generics,
-                      &hir::Inherited)?;
+                      &hir::Inherited,
+                      &[],
+                      None)?;
         self.end()
     }
 

@@ -395,6 +395,10 @@ pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod, mod_node_i
 }
 
 pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body) {
+    for argument in &body.arguments {
+        visitor.visit_id(argument.id);
+        visitor.visit_pat(&argument.pat);
+    }
     visitor.visit_expr(&body.value);
 }
 
@@ -680,9 +684,12 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
     visitor.visit_name(foreign_item.span, foreign_item.name);
 
     match foreign_item.node {
-        ForeignItemFn(ref function_declaration, ref generics) => {
+        ForeignItemFn(ref function_declaration, ref names, ref generics) => {
+            visitor.visit_generics(generics);
             visitor.visit_fn_decl(function_declaration);
-            visitor.visit_generics(generics)
+            for name in names {
+                visitor.visit_name(name.span, name.node);
+            }
         }
         ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
     }
@@ -750,18 +757,8 @@ pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionR
 }
 
 pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl) {
-    for argument in &function_declaration.inputs {
-        visitor.visit_id(argument.id);
-        visitor.visit_pat(&argument.pat);
-        visitor.visit_ty(&argument.ty)
-    }
-    walk_fn_ret_ty(visitor, &function_declaration.output)
-}
-
-pub fn walk_fn_decl_nopat<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl) {
-    for argument in &function_declaration.inputs {
-        visitor.visit_id(argument.id);
-        visitor.visit_ty(&argument.ty)
+    for ty in &function_declaration.inputs {
+        visitor.visit_ty(ty)
     }
     walk_fn_ret_ty(visitor, &function_declaration.output)
 }
@@ -799,12 +796,15 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Method(ref sig, None) => {
+        TraitItemKind::Method(ref sig, TraitMethod::Required(ref names)) => {
             visitor.visit_id(trait_item.id);
             visitor.visit_generics(&sig.generics);
             visitor.visit_fn_decl(&sig.decl);
+            for name in names {
+                visitor.visit_name(name.span, name.node);
+            }
         }
-        TraitItemKind::Method(ref sig, Some(body_id)) => {
+        TraitItemKind::Method(ref sig, TraitMethod::Provided(body_id)) => {
             visitor.visit_fn(FnKind::Method(trait_item.name,
                                             sig,
                                             None,
@@ -1112,17 +1112,4 @@ impl<'a, 'ast> Visitor<'ast> for IdRangeComputingVisitor<'a, 'ast> {
     fn visit_id(&mut self, id: NodeId) {
         self.result.add(id);
     }
-}
-
-/// Computes the id range for a single fn body, ignoring nested items.
-pub fn compute_id_range_for_fn_body<'v>(fk: FnKind<'v>,
-                                        decl: &'v FnDecl,
-                                        body: BodyId,
-                                        sp: Span,
-                                        id: NodeId,
-                                        map: &map::Map<'v>)
-                                        -> IdRange {
-    let mut visitor = IdRangeComputingVisitor::new(map);
-    visitor.visit_fn(fk, decl, body, sp, id);
-    visitor.result()
 }

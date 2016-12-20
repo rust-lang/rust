@@ -62,7 +62,10 @@ impl MaybeFnLike for ast::Item {
 
 impl MaybeFnLike for ast::TraitItem {
     fn is_fn_like(&self) -> bool {
-        match self.node { ast::TraitItemKind::Method(_, Some(_)) => true, _ => false, }
+        match self.node {
+            ast::TraitItemKind::Method(_, ast::TraitMethod::Provided(_)) => true,
+            _ => false,
+        }
     }
 }
 
@@ -252,7 +255,7 @@ impl<'a> FnLikeNode<'a> {
                 _ => bug!("item FnLikeNode that is not fn-like"),
             },
             map::NodeTraitItem(ti) => match ti.node {
-                ast::TraitItemKind::Method(ref sig, Some(body)) => {
+                ast::TraitItemKind::Method(ref sig, ast::TraitMethod::Provided(body)) => {
                     method(ti.id, ti.name, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
