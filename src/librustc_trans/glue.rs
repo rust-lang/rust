@@ -49,8 +49,6 @@ pub fn trans_exchange_free_dyn<'a, 'tcx>(
     let ccx = bcx.ccx;
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 
-    assert!(!fn_ty.ret.is_indirect() && fn_ty.ret.cast.is_none());
-
     let llret = bcx.call(callee.reify(ccx), &args[..], None);
     fn_ty.apply_attrs_callsite(llret);
 }
