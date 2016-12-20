@@ -64,6 +64,8 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
+#![deny(warnings)]
+
 extern crate build_helper;
 extern crate cmake;
 extern crate filetime;
