@@ -421,17 +421,14 @@ impl<'a, 'tcx> BlockAndBuilder<'a, 'tcx> {
         r
     }
 
-    pub fn ccx(&self) -> &'a CrateContext<'a, 'tcx> {
-        self.fcx.ccx
-    }
     pub fn fcx(&self) -> &'a FunctionContext<'a, 'tcx> {
         self.fcx
     }
     pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.fcx.ccx.tcx()
+        self.ccx.tcx()
     }
     pub fn sess(&self) -> &'a Session {
-        self.fcx.ccx.sess()
+        self.ccx.sess()
     }
 
     pub fn llbb(&self) -> BasicBlockRef {

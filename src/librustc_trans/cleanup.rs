@@ -175,9 +175,7 @@ impl<'tcx> CleanupScope<'tcx> {
             // The landing pad return type (the type being propagated). Not sure
             // what this represents but it's determined by the personality
             // function and this is what the EH proposal example uses.
-            let llretty = Type::struct_(fcx.ccx,
-                                        &[Type::i8p(fcx.ccx), Type::i32(fcx.ccx)],
-                                        false);
+            let llretty = Type::struct_(fcx.ccx, &[Type::i8p(fcx.ccx), Type::i32(fcx.ccx)], false);
 
             // The only landing pad clause will be 'cleanup'
             let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1, pad_bcx.fcx().llfn);

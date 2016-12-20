@@ -48,8 +48,9 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     debug_context: debuginfo::FunctionDebugContext,
 
-    /// Function context
     fcx: &'a common::FunctionContext<'a, 'tcx>,
+
+    ccx: &'a CrateContext<'a, 'tcx>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -100,7 +101,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx> {
-        monomorphize::apply_param_substs(self.fcx.ccx.shared(), self.param_substs, value)
+        monomorphize::apply_param_substs(self.ccx.shared(), self.param_substs, value)
     }
 
     pub fn set_debug_loc(&mut self, bcx: &BlockAndBuilder, source_info: mir::SourceInfo) {
@@ -123,12 +124,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // (unless the crate is being compiled with `-Z debug-macros`).
         if source_info.span.expn_id == NO_EXPANSION ||
             source_info.span.expn_id == COMMAND_LINE_EXPN ||
-            self.fcx.ccx.sess().opts.debugging_opts.debug_macros {
+            self.ccx.sess().opts.debugging_opts.debug_macros {
 
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
             (scope, source_info.span)
         } else {
-            let cm = self.fcx.ccx.sess().codemap();
+            let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
             let mut span = source_info.span;
             while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
@@ -154,10 +155,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
-            let cm = self.fcx.ccx.sess().codemap();
-            debuginfo::extend_scope_to_file(self.fcx.ccx,
-                                            scope_metadata,
-                                            &cm.lookup_char_pos(pos).file)
+            let cm = self.ccx.sess().codemap();
+            debuginfo::extend_scope_to_file(self.ccx, scope_metadata, &cm.lookup_char_pos(pos).file)
         } else {
             scope_metadata
         }
@@ -225,6 +224,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let mut mircx = MirContext {
         mir: mir,
         fcx: fcx,
+        ccx: fcx.ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
         unreachable_block: None,

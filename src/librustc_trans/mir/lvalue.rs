@@ -140,7 +140,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
                         };
                         let discr = discr as u64;
-                        let is_sized = self.fcx.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
+                        let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
                         let base = if is_sized {
                             adt::MaybeSizedValue::sized(tr_base.llval)
                         } else {
@@ -272,7 +272,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
-        let tcx = self.fcx.ccx.tcx();
+        let tcx = self.ccx.tcx();
         let lvalue_ty = lvalue.ty(&self.mir, tcx);
         self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
