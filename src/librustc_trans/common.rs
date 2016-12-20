@@ -229,9 +229,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // section of the executable we're generating.
     pub llfn: ValueRef,
 
-    // These pub elements: "hoisted basic blocks" containing
-    // administrative activities that have to happen in only one place in
-    // the function, due to LLVM's quirks.
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Option<ValueRef>,
