@@ -13,6 +13,7 @@ fn test_single_line() {
 }
 
 #[test]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn test_block() {
     assert_eq!("\
 if x {
@@ -37,6 +38,7 @@ if x {
 }
 
 #[test]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn test_empty_line() {
     assert_eq!("\
 if x {
