@@ -58,7 +58,7 @@ pub struct DirEntry {
     data: c::WIN32_FIND_DATAW,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -79,6 +79,7 @@ pub struct OpenOptions {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { attrs: c::DWORD }
 
+#[derive(Debug)]
 pub struct DirBuilder;
 
 impl fmt::Debug for ReadDir {

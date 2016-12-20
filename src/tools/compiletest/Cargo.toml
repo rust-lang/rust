@@ -8,3 +8,4 @@ build = "build.rs"
 log = "0.3"
 env_logger = { version = "0.3.5", default-features = false }
 serialize = { path = "../../libserialize" }
+build_helper = { path = "../../build_helper" }

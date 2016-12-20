@@ -23,6 +23,7 @@
 //! `std::sys` from the standard library.
 
 #![allow(missing_docs)]
+#![allow(missing_debug_implementations)]
 
 use sync::Once;
 use sys;

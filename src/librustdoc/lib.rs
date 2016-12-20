@@ -259,10 +259,11 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let external_html = match ExternalHtml::load(
-            &matches.opt_strs("html-in-header"), &matches.opt_strs("html-before-content"),
+            &matches.opt_strs("html-in-header"),
+            &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content")) {
         Some(eh) => eh,
-        None => return 3
+        None => return 3,
     };
     let crate_name = matches.opt_str("crate-name");
     let playground_url = matches.opt_str("playground-url");

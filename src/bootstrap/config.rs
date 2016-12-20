@@ -113,6 +113,7 @@ pub struct Target {
 #[derive(RustcDecodable, Default)]
 struct TomlConfig {
     build: Option<Build>,
+    install: Option<Install>,
     llvm: Option<Llvm>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
@@ -133,6 +134,12 @@ struct Build {
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
+}
+
+/// TOML representation of various global install decisions.
+#[derive(RustcDecodable, Default, Clone)]
+struct Install {
+    prefix: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -258,6 +265,10 @@ impl Config {
         set(&mut config.submodules, build.submodules);
         set(&mut config.vendor, build.vendor);
 
+        if let Some(ref install) = toml.install {
+            config.prefix = install.prefix.clone();
+        }
+
         if let Some(ref llvm) = toml.llvm {
             match llvm.ccache {
                 Some(StringOrBool::String(ref s)) => {
@@ -275,6 +286,7 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
+
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);

@@ -22,8 +22,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc::dep_graph::DepNode;
-use rustc::hir::map as hir_map;
-use rustc::hir::map::DefKey;
+use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData};
 use rustc::mir::Mir;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
@@ -336,18 +335,20 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).is_no_builtins()
     }
 
-    fn def_index_for_def_key(&self,
-                             cnum: CrateNum,
-                             def: DefKey)
-                             -> Option<DefIndex> {
+    fn retrace_path(&self,
+                    cnum: CrateNum,
+                    path: &[DisambiguatedDefPathData])
+                    -> Option<DefId> {
         let cdata = self.get_crate_data(cnum);
-        cdata.key_map.get(&def).cloned()
+        cdata.def_path_table
+             .retrace_path(&path)
+             .map(|index| DefId { krate: cnum, index: index })
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
-    fn def_key(&self, def: DefId) -> hir_map::DefKey {
+    fn def_key(&self, def: DefId) -> DefKey {
         // Note: loading the def-key (or def-path) for a def-id is not
         // a *read* of its metadata. This is because the def-id is
         // really just an interned shorthand for a def-path, which is the
@@ -357,7 +358,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).def_key(def.index)
     }
 
-    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
+    fn def_path(&self, def: DefId) -> DefPath {
         // See `Note` above in `def_key()` for why this read is
         // commented out:
         //
@@ -418,8 +419,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
-            imported_from: None, // FIXME
-            allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
             attrs: attrs,
             body: body,
         })

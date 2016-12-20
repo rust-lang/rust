@@ -177,6 +177,7 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 /// panic!("Normal panic");
 /// ```
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+#[derive(Debug)]
 pub struct PanicInfo<'a> {
     payload: &'a (Any + Send),
     location: Location<'a>,
@@ -256,6 +257,7 @@ impl<'a> PanicInfo<'a> {
 ///
 /// panic!("Normal panic");
 /// ```
+#[derive(Debug)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
     file: &'a str,

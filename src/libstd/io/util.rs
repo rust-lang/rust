@@ -10,6 +10,7 @@
 
 #![allow(missing_copy_implementations)]
 
+use fmt;
 use io::{self, Read, Write, ErrorKind, BufRead};
 
 /// Copies the entire contents of a reader into a writer.
@@ -97,6 +98,13 @@ impl BufRead for Empty {
     fn consume(&mut self, _n: usize) {}
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Empty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Empty { .. }")
+    }
+}
+
 /// A reader which yields one byte over and over and over and over and over and...
 ///
 /// This struct is generally created by calling [`repeat()`][repeat]. Please
@@ -133,6 +141,13 @@ impl Read for Repeat {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Repeat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Repeat { .. }")
+    }
+}
+
 /// A writer which will move data into the void.
 ///
 /// This struct is generally created by calling [`sink()`][sink]. Please
@@ -163,6 +178,13 @@ pub fn sink() -> Sink { Sink { _priv: () } }
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Sink {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Sink { .. }")
+    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem::transmute;
-//~^ NOTE previous import of `transmute` here
+const x: () = {
+    return; //~ ERROR return statement outside of function body
+};
 
-fn transmute() {}
-//~^ ERROR a value named `transmute` has already been imported in this module
-//~| `transmute` already imported
-fn main() {
-}
+fn main() {}

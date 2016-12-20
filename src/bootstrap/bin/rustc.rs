@@ -25,6 +25,8 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
+#![deny(warnings)]
+
 extern crate bootstrap;
 
 use std::env;

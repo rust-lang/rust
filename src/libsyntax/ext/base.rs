@@ -217,8 +217,7 @@ pub trait IdentMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree>,
-                   attrs: Vec<ast::Attribute>)
+                   token_tree: Vec<tokenstream::TokenTree>)
                    -> Box<MacResult+'cx>;
 }
 
@@ -234,8 +233,7 @@ impl<F> IdentMacroExpander for F
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree>,
-                   _attrs: Vec<ast::Attribute>)
+                   token_tree: Vec<tokenstream::TokenTree>)
                    -> Box<MacResult+'cx>
     {
         (*self)(cx, sp, ident, token_tree)
@@ -520,7 +518,6 @@ pub trait Resolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
-    fn add_macro(&mut self, scope: Mark, def: ast::MacroDef, export: bool);
     fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
@@ -544,7 +541,6 @@ impl Resolver for DummyResolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
-    fn add_macro(&mut self, _scope: Mark, _def: ast::MacroDef, _export: bool) {}
     fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 

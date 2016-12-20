@@ -15,10 +15,9 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
-use abort_on_err;
-use driver::{self, Resolutions};
+use {abort_on_err, driver};
 
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
 use rustc::dep_graph::DepGraph;

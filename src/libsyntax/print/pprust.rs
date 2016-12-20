@@ -2349,7 +2349,9 @@ impl<'a> State<'a> {
 
             try!(self.print_ident(segment.identifier));
 
-            try!(self.print_path_parameters(&segment.parameters, colons_before_params));
+            if let Some(ref parameters) = segment.parameters {
+                try!(self.print_path_parameters(parameters, colons_before_params))
+            }
         }
 
         Ok(())
@@ -2373,7 +2375,10 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, "::"));
         let item_segment = path.segments.last().unwrap();
         try!(self.print_ident(item_segment.identifier));
-        self.print_path_parameters(&item_segment.parameters, colons_before_params)
+        match item_segment.parameters {
+            Some(ref parameters) => self.print_path_parameters(parameters, colons_before_params),
+            None => Ok(()),
+        }
     }
 
     fn print_path_parameters(&mut self,
@@ -2381,10 +2386,6 @@ impl<'a> State<'a> {
                              colons_before_params: bool)
                              -> io::Result<()>
     {
-        if parameters.is_empty() {
-            return Ok(());
-        }
-
         if colons_before_params {
             try!(word(&mut self.s, "::"))
         }

@@ -1496,10 +1496,10 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
 /// The algorithm identifies strictly descending and non-descending subsequences, which are called
 /// natural runs. There is a stack of pending runs yet to be merged. Each newly found run is pushed
 /// onto the stack, and then some pairs of adjacent runs are merged until these two invariants are
-/// satisfied, for every `i` in `0 .. runs.len() - 2`:
+/// satisfied:
 ///
-/// 1. `runs[i].len > runs[i + 1].len`
-/// 2. `runs[i].len > runs[i + 1].len + runs[i + 2].len`
+/// 1. for every `i` in `1..runs.len()`: `runs[i - 1].len > runs[i].len`
+/// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is `O(n log n)` worst-case.
 fn merge_sort<T, F>(v: &mut [T], mut compare: F)
