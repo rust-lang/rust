@@ -66,7 +66,7 @@ tidy:
 check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
 check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-gnu
+	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-musl
 
 
 .PHONY: dist
