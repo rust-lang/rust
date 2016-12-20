@@ -26,7 +26,7 @@ runtime-initialisation for global variables.
  - (Optionally adding a lint that warn about the possibility of resource leak)
 - Alloc instantiating structures with destructors in constant expressions,
 - Allow `const fn` to return types with destructors.
-- Disallow constant expressions resulting in destructors being called at runtime (i.e: a `drop(foo)` in a `const fn`).
+- Disallow constant expressions that require destructors to run during compile-time constant evaluation (i.e: a `drop(foo)` in a `const fn`).
 
 ## Examples
 Assuming that `RwLock` and `Vec` have `const fn new` methods, the following example is possible and avoids runtime validity checks.
