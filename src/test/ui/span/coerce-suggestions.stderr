@@ -18,7 +18,11 @@ error[E0308]: mismatched types
    |
    = note: expected type `&str`
    = note:    found type `std::string::String`
-   = help: try with `&String::new()`
+   = help: here are some functions which might fulfill your needs:
+ - .as_str()
+ - .trim()
+ - .trim_left()
+ - .trim_right()
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:30:10
@@ -28,7 +32,6 @@ error[E0308]: mismatched types
    |
    = note: expected type `&mut std::string::String`
    = note:    found type `&std::string::String`
-   = help: try with `&mut y`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:36:11
