@@ -280,7 +280,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
 
         Flags {
             verbose: m.opt_count("v"),
-            stage: m.opt_str("stage").map(|j| j.parse().unwrap()),
+            stage: stage,
             keep_stage: m.opt_str("keep-stage").map(|j| j.parse().unwrap()),
             build: m.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()

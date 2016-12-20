@@ -12,6 +12,8 @@
 //!
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
+#![deny(warnings)]
+
 extern crate bootstrap;
 
 use std::env;
