@@ -328,7 +328,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
-    let fcx = FunctionContext::new(ccx, lloncefn, fn_ty);
+    let orig_fn_ty = fn_ty;
+    let fcx = FunctionContext::new(ccx, lloncefn);
     let mut bcx = fcx.get_entry_block();
 
     let callee = Callee {
@@ -342,7 +343,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let idx = fn_ty.ret.is_indirect() as usize;
-    let env_arg = &fcx.fn_ty.args[0];
+    let env_arg = &orig_fn_ty.args[0];
     let llenv = if env_arg.is_indirect() {
         llargs[idx]
     } else {
@@ -494,12 +495,12 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
+    let fcx = FunctionContext::new(ccx, llfn);
     let bcx = fcx.get_entry_block();
 
     let mut llargs = get_params(fcx.llfn);
 
-    let self_arg = llargs.remove(fcx.fn_ty.ret.is_indirect() as usize);
+    let self_arg = llargs.remove(fn_ty.ret.is_indirect() as usize);
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {

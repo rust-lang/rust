@@ -598,10 +598,9 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, lldecl, fn_ty);
-
+    let fcx = FunctionContext::new(ccx, lldecl);
     let mir = ccx.tcx().item_mir(instance.def);
-    mir::trans_mir(&fcx, &mir, instance, &sig, abi);
+    mir::trans_mir(&fcx, fn_ty, &mir, instance, &sig, abi);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -618,28 +617,28 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, llfndecl, fn_ty);
+    let fcx = FunctionContext::new(ccx, llfndecl);
     let bcx = fcx.get_entry_block();
-    if !fcx.fn_ty.ret.is_ignore() {
+    if !fn_ty.ret.is_ignore() {
         // But if there are no nested returns, we skip the indirection
         // and have a single retslot
-        let dest = if fcx.fn_ty.ret.is_indirect() {
+        let dest = if fn_ty.ret.is_indirect() {
             get_param(fcx.llfn, 0)
         } else {
             // We create an alloca to hold a pointer of type `ret.original_ty`
             // which will hold the pointer to the right alloca which has the
             // final ret value
-            fcx.alloca(fcx.fn_ty.ret.memory_ty(ccx), "sret_slot")
+            fcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
         };
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
-        let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
+        let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
-            let arg = &fcx.fn_ty.args[arg_idx];
+            let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &fcx.fn_ty.args[arg_idx];
+                let meta = &fn_ty.args[arg_idx];
                 arg_idx += 1;
                 arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));
                 meta.store_fn_arg(&bcx, &mut llarg_idx, get_meta(&bcx, lldestptr));
@@ -649,14 +648,14 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         adt::trans_set_discr(&bcx, sig.output(), dest, disr);
 
-        if fcx.fn_ty.ret.is_indirect() {
+        if fn_ty.ret.is_indirect() {
             bcx.ret_void();
             return;
         }
 
-        if let Some(cast_ty) = fcx.fn_ty.ret.cast {
+        if let Some(cast_ty) = fn_ty.ret.cast {
             let load = bcx.load(bcx.pointercast(dest, cast_ty.ptr_to()));
-            let llalign = llalign_of_min(ccx, fcx.fn_ty.ret.ty);
+            let llalign = llalign_of_min(ccx, fn_ty.ret.ty);
             unsafe {
                 llvm::LLVMSetAlignment(load, llalign);
             }

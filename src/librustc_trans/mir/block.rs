@@ -192,7 +192,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Return => {
-                let ret = bcx.fcx().fn_ty.ret;
+                let ret = self.fn_ty.ret;
                 if ret.is_ignore() || ret.is_indirect() {
                     bcx.ret_void();
                     return;

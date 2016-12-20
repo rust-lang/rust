@@ -878,7 +878,6 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     -> ValueRef {
     let ccx = fcx.ccx;
     let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
-    let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
@@ -886,7 +885,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
+    let fcx = FunctionContext::new(ccx, llfn);
     trans(fcx.get_entry_block());
     llfn
 }
