@@ -1,3 +1,13 @@
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use super::arch::*;
 use super::data::{Stat, StatVfs, TimeSpec};
 use super::error::Result;
@@ -63,7 +73,8 @@ pub fn dup(fd: usize, buf: &[u8]) -> Result<usize> {
 
 /// Replace the current process with a new executable
 pub fn execve(path: &str, args: &[[usize; 2]]) -> Result<usize> {
-    unsafe { syscall4(SYS_EXECVE, path.as_ptr() as usize, path.len(), args.as_ptr() as usize, args.len()) }
+    unsafe { syscall4(SYS_EXECVE, path.as_ptr() as usize, path.len(),
+                                  args.as_ptr() as usize, args.len()) }
 }
 
 /// Exit the current process
@@ -116,8 +127,9 @@ pub fn ftruncate(fd: usize, len: usize) -> Result<usize> {
     unsafe { syscall2(SYS_FTRUNCATE, fd, len) }
 }
 
-/// Fast userspace mutex - TODO: Document
-pub unsafe fn futex(addr: *mut i32, op: usize, val: i32, val2: usize, addr2: *mut i32) -> Result<usize> {
+/// Fast userspace mutex
+pub unsafe fn futex(addr: *mut i32, op: usize, val: i32, val2: usize, addr2: *mut i32)
+                    -> Result<usize> {
     syscall5(SYS_FUTEX, addr as usize, op, (val as isize) as usize, val2, addr2 as usize)
 }
 
@@ -188,7 +200,8 @@ pub fn mkns(schemes: &[[usize; 2]]) -> Result<usize> {
 
 /// Sleep for the time specified in `req`
 pub fn nanosleep(req: &TimeSpec, rem: &mut TimeSpec) -> Result<usize> {
-    unsafe { syscall2(SYS_NANOSLEEP, req as *const TimeSpec as usize, rem as *mut TimeSpec as usize) }
+    unsafe { syscall2(SYS_NANOSLEEP, req as *const TimeSpec as usize,
+                                     rem as *mut TimeSpec as usize) }
 }
 
 /// Open a file

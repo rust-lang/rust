@@ -26,9 +26,8 @@
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 // Reexport the start module on platforms that provide it
-#[unstable(feature = "start_fn", issue="0")]
-#[cfg(target_os = "redox")]
-pub use sys::start::*;
+#[unstable(feature = "sys_rt", issue="0")]
+pub use sys::rt::*;
 
 #[cfg(not(test))]
 #[lang = "start"]
