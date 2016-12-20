@@ -130,6 +130,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             &[exc_ptr],
                             cleanup_bundle,
                         );
+                        bcx.unreachable();
                     }
                 }
             }

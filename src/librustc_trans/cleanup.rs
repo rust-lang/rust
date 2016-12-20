@@ -93,6 +93,7 @@ impl<'tcx> DropValue<'tcx> {
             } else {
                 let exc_ptr = resume_bcx.extract_value(lp, 0);
                 resume_bcx.call(fcx.eh_unwind_resume().reify(fcx.ccx), &[exc_ptr], None);
+                resume_bcx.unreachable();
             }
             UnwindKind::LandingPad
         };
