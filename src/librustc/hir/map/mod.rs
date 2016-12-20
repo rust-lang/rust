@@ -13,7 +13,7 @@ use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
-                            DisambiguatedDefPathData, InlinedRootPath};
+                            DisambiguatedDefPathData};
 
 use dep_graph::{DepGraph, DepNode};
 
@@ -221,22 +221,14 @@ pub struct Map<'ast> {
     /// plain old integers.
     map: RefCell<Vec<MapEntry<'ast>>>,
 
-    definitions: RefCell<Definitions>,
+    definitions: Definitions,
 
     /// All NodeIds that are numerically greater or equal to this value come
     /// from inlined items.
     local_node_id_watermark: NodeId,
-
-    /// All def-indices that are numerically greater or equal to this value come
-    /// from inlined items.
-    local_def_id_watermark: usize,
 }
 
 impl<'ast> Map<'ast> {
-    pub fn is_inlined_def_id(&self, id: DefId) -> bool {
-        id.is_local() && id.index.as_usize() >= self.local_def_id_watermark
-    }
-
     pub fn is_inlined_node_id(&self, id: NodeId) -> bool {
         id >= self.local_node_id_watermark
     }
@@ -262,7 +254,6 @@ impl<'ast> Map<'ast> {
                     EntryItem(_, item) => {
                         assert_eq!(id, item.id);
                         let def_id = self.local_def_id(id);
-                        assert!(!self.is_inlined_def_id(def_id));
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
@@ -278,7 +269,6 @@ impl<'ast> Map<'ast> {
 
                     EntryImplItem(_, item) => {
                         let def_id = self.local_def_id(id);
-                        assert!(!self.is_inlined_def_id(def_id));
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
@@ -392,12 +382,16 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn num_local_def_ids(&self) -> usize {
-        self.definitions.borrow().len()
+        self.definitions.len()
+    }
+
+    pub fn definitions(&self) -> &Definitions {
+        &self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
         assert!(def_id.is_local());
-        self.definitions.borrow().def_key(def_id.index)
+        self.definitions.def_key(def_id.index)
     }
 
     pub fn def_path_from_id(&self, id: NodeId) -> Option<DefPath> {
@@ -408,11 +402,11 @@ impl<'ast> Map<'ast> {
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
-        self.definitions.borrow().def_path(def_id.index)
+        self.definitions.def_path(def_id.index)
     }
 
     pub fn def_index_for_def_key(&self, def_key: DefKey) -> Option<DefIndex> {
-        self.definitions.borrow().def_index_for_def_key(def_key)
+        self.definitions.def_index_for_def_key(def_key)
     }
 
     pub fn local_def_id(&self, node: NodeId) -> DefId {
@@ -423,11 +417,11 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
-        self.definitions.borrow().opt_local_def_id(node)
+        self.definitions.opt_local_def_id(node)
     }
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        self.definitions.borrow().as_local_node_id(def_id)
+        self.definitions.as_local_node_id(def_id)
     }
 
     fn entry_count(&self) -> usize {
@@ -930,23 +924,19 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
     }
 
     let local_node_id_watermark = NodeId::new(map.len());
-    let local_def_id_watermark = definitions.len();
 
     Map {
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
-        definitions: RefCell::new(definitions),
+        definitions: definitions,
         local_node_id_watermark: local_node_id_watermark,
-        local_def_id_watermark: local_def_id_watermark,
     }
 }
 
 /// Used for items loaded from external crate that are being inlined into this
 /// crate.
 pub fn map_decoded_item<'ast>(map: &Map<'ast>,
-                              parent_def_path: DefPath,
-                              parent_def_id: DefId,
                               ii: InlinedItem,
                               ii_parent_id: NodeId)
                               -> &'ast InlinedItem {
@@ -954,18 +944,9 @@ pub fn map_decoded_item<'ast>(map: &Map<'ast>,
 
     let ii = map.forest.inlined_items.alloc(ii);
 
-    let defs = &mut *map.definitions.borrow_mut();
-    let mut def_collector = DefCollector::extend(ii_parent_id,
-                                                 parent_def_path.clone(),
-                                                 parent_def_id,
-                                                 defs);
-    def_collector.walk_item(ii, map.krate());
-
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
                                               ii_parent_id,
-                                              parent_def_path,
-                                              parent_def_id,
                                               mem::replace(&mut *map.map.borrow_mut(), vec![]));
     ii.visit(&mut collector);
     *map.map.borrow_mut() = collector.map;

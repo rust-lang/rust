@@ -418,7 +418,7 @@ to see something like:
 
     Hir(foo) -> Collect(bar)
     Collect(bar) -> TypeckItemBody(bar)
-    
+
 That first edge looks suspicious to you. So you set
 `RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and
 then observe the backtrace. Voila, bug fixed!
@@ -440,6 +440,4 @@ To achieve this, the HIR map will detect if the def-id originates in
 an inlined node and add a dependency to a suitable `MetaData` node
 instead. If you are reading a HIR node and are not sure if it may be
 inlined or not, you can use `tcx.map.read(node_id)` and it will detect
-whether the node is inlined or not and do the right thing.  You can
-also use `tcx.map.is_inlined_def_id()` and
-`tcx.map.is_inlined_node_id()` to test.
+whether the node is inlined or not and do the right thing.

@@ -136,6 +136,8 @@ pub struct PerfStats {
     pub incr_comp_bytes_hashed: Cell<u64>,
     // The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
+    // The accumulated time spent decoding def path tables from metadata
+    pub decode_def_path_tables_time: Cell<Duration>,
 }
 
 impl Session {
@@ -501,6 +503,8 @@ impl Session {
                  self.perf_stats.incr_comp_hashes_count.get());
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
+        println!("Total time spent decoding DefPath tables:      {}",
+                 duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get()));
     }
 }
 
@@ -635,6 +639,7 @@ pub fn build_session_(sopts: config::Options,
             incr_comp_hashes_count: Cell::new(0),
             incr_comp_bytes_hashed: Cell::new(0),
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
+            decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
         },
         code_stats: RefCell::new(CodeStats::new()),
     };

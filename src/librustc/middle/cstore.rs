@@ -25,7 +25,7 @@
 use hir::def::{self, Def};
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey};
+use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
 use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt};
@@ -336,12 +336,12 @@ pub trait CrateStore<'tcx> {
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
-    fn def_index_for_def_key(&self,
-                             cnum: CrateNum,
-                             def: DefKey)
-                             -> Option<DefIndex>;
-    fn def_key(&self, def: DefId) -> hir_map::DefKey;
-    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
+    fn retrace_path(&self,
+                    cnum: CrateNum,
+                    path_data: &[DisambiguatedDefPathData])
+                    -> Option<DefId>;
+    fn def_key(&self, def: DefId) -> DefKey;
+    fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -442,12 +442,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
-    fn def_index_for_def_key(&self,
-                             cnum: CrateNum,
-                             def: DefKey)
-                             -> Option<DefIndex> {
-        None
-    }
 
     // impl info
     fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId>
@@ -508,8 +502,15 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
-    fn def_key(&self, def: DefId) -> hir_map::DefKey { bug!("def_key") }
-    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
+    fn retrace_path(&self,
+                    cnum: CrateNum,
+                    path_data: &[DisambiguatedDefPathData])
+                    -> Option<DefId> {
+        None
+    }
+
+    fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
+    fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
