@@ -1358,7 +1358,7 @@ impl<'a> Resolver<'a> {
                     span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy: legacy,
                 });
                 if legacy {
-                    self.record_use(name, ns, b1, span);
+                    self.record_use(ident, ns, b1, span);
                 }
                 !legacy
             }

@@ -30,6 +30,8 @@
 //! inter-dependencies within `std` that will be a challenging goal to
 //! achieve.
 
+#![allow(missing_debug_implementations)]
+
 pub use self::imp::*;
 
 #[cfg(target_os = "redox")]

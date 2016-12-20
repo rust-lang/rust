@@ -33,7 +33,7 @@ use os::raw::c_long;
 pub type pthread_t = usize;
 
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
