@@ -43,15 +43,15 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
         ExpansionKind::Expr => Expansion::Expr(expr_placeholder()),
         ExpansionKind::OptExpr => Expansion::OptExpr(Some(expr_placeholder())),
         ExpansionKind::Items => Expansion::Items(SmallVector::one(P(ast::Item {
-            id: id, span: span, ident: ident, vis: vis, attrs: attrs,
+            id: id, span: span, ident: ident.dummy_spanned(), vis: vis, attrs: attrs,
             node: ast::ItemKind::Mac(mac_placeholder()),
         }))),
         ExpansionKind::TraitItems => Expansion::TraitItems(SmallVector::one(ast::TraitItem {
-            id: id, span: span, ident: ident, attrs: attrs,
+            id: id, span: span, ident: ident.dummy_spanned(), attrs: attrs,
             node: ast::TraitItemKind::Macro(mac_placeholder()),
         })),
         ExpansionKind::ImplItems => Expansion::ImplItems(SmallVector::one(ast::ImplItem {
-            id: id, span: span, ident: ident, vis: vis, attrs: attrs,
+            id: id, span: span, ident: ident.dummy_spanned(), vis: vis, attrs: attrs,
             node: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
         })),
@@ -175,7 +175,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
                 // Scope placeholder
                 if let ast::StmtKind::Item(ref item) = stmt.node {
                     if let ast::ItemKind::Mac(..) = item.node {
-                        macros.push(item.ident.ctxt.data().outer_mark);
+                        macros.push(item.ident.node.ctxt.data().outer_mark);
                         return None;
                     }
                 }
@@ -217,7 +217,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
 
 pub fn reconstructed_macro_rules(def: &ast::MacroDef) -> Expansion {
     Expansion::Items(SmallVector::one(P(ast::Item {
-        ident: def.ident,
+        ident: def.ident.dummy_spanned(),
         attrs: def.attrs.clone(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mac(ast::Mac {

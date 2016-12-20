@@ -609,7 +609,7 @@ mod tests {
     use super::*;
     use std::rc::Rc;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
-    use codemap::Spanned;
+    use codemap::{Spanned, dummy_spanned};
     use ast::{self, Ident, PatKind};
     use abi::Abi;
     use attr::first_attr_value_str_by_name;
@@ -833,7 +833,7 @@ mod tests {
         // this test depends on the intern order of "fn" and "i32"
         assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
                   Some(
-                      P(ast::Item{ident:Ident::from_str("a"),
+                      P(ast::Item{dummy_spanned(ident:Ident::from_str("a")),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {

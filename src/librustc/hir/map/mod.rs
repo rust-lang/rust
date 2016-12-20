@@ -707,7 +707,7 @@ impl<'ast> Map<'ast> {
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            NodeItem(i) => i.name,
+            NodeItem(i) => i.name.node,
             NodeForeignItem(i) => i.name,
             NodeImplItem(ii) => ii.name,
             NodeTraitItem(ti) => ti.name,
@@ -764,7 +764,7 @@ impl<'ast> Map<'ast> {
     pub fn span(&self, id: NodeId) -> Span {
         self.read(id); // reveals span from node
         match self.find_entry(id) {
-            Some(EntryItem(_, item)) => item.span,
+            Some(EntryItem(_, item)) => item.name.span,
             Some(EntryForeignItem(_, foreign_item)) => foreign_item.span,
             Some(EntryTraitItem(_, trait_method)) => trait_method.span,
             Some(EntryImplItem(_, impl_item)) => impl_item.span,
@@ -843,7 +843,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
                 match map.find(id) {
                     None => return None,
                     Some(NodeItem(item)) if item_is_mod(&item) =>
-                        return Some((id, item.name)),
+                        return Some((id, item.name.node)),
                     _ => {}
                 }
                 let parent = map.get_parent(id);
@@ -899,7 +899,7 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.name } }
+impl Named for Item { fn name(&self) -> Name { self.name.node } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for StructField { fn name(&self) -> Name { self.name } }

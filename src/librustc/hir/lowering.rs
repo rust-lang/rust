@@ -56,7 +56,7 @@ use std::mem;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ptr::P;
-use syntax::codemap::{self, respan, Spanned};
+use syntax::codemap::{self, dummy_spanned, respan, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::small_vector::SmallVector;
@@ -314,7 +314,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
         Spanned {
             node: hir::Variant_ {
-                name: v.node.name.name,
+                name: v.node.name.node.name,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node.disr_expr.as_ref().map(|e| P(self.lower_expr(e))),
@@ -798,7 +798,7 @@ impl<'a> LoweringContext<'a> {
                             path.span = span;
                             self.items.insert(import.id, hir::Item {
                                 id: import.id,
-                                name: import.rename.unwrap_or(ident).name,
+                                name: dummy_spanned(import.rename.unwrap_or(ident).name),
                                 attrs: attrs.clone(),
                                 node: hir::ItemUse(P(path), hir::UseKind::Single),
                                 vis: vis.clone(),
@@ -900,7 +900,7 @@ impl<'a> LoweringContext<'a> {
         self.with_parent_def(i.id, |this| {
             hir::TraitItem {
                 id: i.id,
-                name: i.ident.name,
+                name: i.ident.node.name,
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
@@ -930,7 +930,7 @@ impl<'a> LoweringContext<'a> {
         self.with_parent_def(i.id, |this| {
             hir::ImplItem {
                 id: i.id,
-                name: i.ident.name,
+                name: i.ident.node.name,
                 attrs: this.lower_attrs(&i.attrs),
                 vis: this.lower_visibility(&i.vis),
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
@@ -957,7 +957,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
             id: hir::ImplItemId { node_id: i.id },
-            name: i.ident.name,
+            name: i.ident.node.name,
             span: i.span,
             vis: self.lower_visibility(&i.vis),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
@@ -1004,11 +1004,11 @@ impl<'a> LoweringContext<'a> {
     }
 
     pub fn lower_item(&mut self, i: &Item) -> hir::Item {
-        let mut name = i.ident.name;
+        let mut name = i.spanned_symbol();
         let attrs = self.lower_attrs(&i.attrs);
         let mut vis = self.lower_visibility(&i.vis);
         let node = self.with_parent_def(i.id, |this| {
-            this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
+            this.lower_item_kind(i.id, &mut name.node, &attrs, &mut vis, &i.node)
         });
 
         hir::Item {

@@ -146,13 +146,13 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
-                DefPathData::TypeNs(i.ident.name.as_str()),
-            ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
+                DefPathData::TypeNs(i.ident.node.name.as_str()),
+            ItemKind::Mod(..) if i.ident.node == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }
-            ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_str()),
+            ItemKind::Mod(..) => DefPathData::Module(i.ident.node.name.as_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
-                DefPathData::ValueNs(i.ident.name.as_str()),
+                DefPathData::ValueNs(i.ident.node.name.as_str()),
             ItemKind::Mac(..) if i.id == DUMMY_NODE_ID => return, // Scope placeholder
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::Use(ref view_path) => {
@@ -176,9 +176,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             match i.node {
                 ItemKind::Enum(ref enum_definition, _) => {
                     for v in &enum_definition.variants {
-                        let variant_def_index =
-                            this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name.name.as_str()));
+                        let variant_def_index = this.create_def(
+                            v.node.data.id(),
+                            DefPathData::EnumVariant(v.node.name.node.name.as_str()));
                         this.with_parent(variant_def_index, |this| {
                             for (index, field) in v.node.data.fields().iter().enumerate() {
                                 let name = field.ident.map(|ident| ident.name)
@@ -231,8 +231,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
-                DefPathData::ValueNs(ti.ident.name.as_str()),
-            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name.as_str()),
+                DefPathData::ValueNs(ti.ident.node.name.as_str()),
+            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.node.name.as_str()),
             TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id, false),
         };
 
@@ -249,8 +249,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
-                DefPathData::ValueNs(ii.ident.name.as_str()),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name.as_str()),
+                DefPathData::ValueNs(ii.ident.node.name.as_str()),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.node.name.as_str()),
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id, false),
         };
 
@@ -349,9 +349,9 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
             hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) |
             hir::ItemTrait(..) | hir::ItemExternCrate(..) | hir::ItemMod(..) |
             hir::ItemForeignMod(..) | hir::ItemTy(..) =>
-                DefPathData::TypeNs(i.name.as_str()),
+                DefPathData::TypeNs(i.name.node.as_str()),
             hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) =>
-                DefPathData::ValueNs(i.name.as_str()),
+                DefPathData::ValueNs(i.name.node.as_str()),
             hir::ItemUse(..) => DefPathData::Misc,
         };
         let def = self.create_def(i.id, def_data);

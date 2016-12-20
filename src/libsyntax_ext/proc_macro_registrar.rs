@@ -228,7 +228,7 @@ impl<'a> Visitor<'a> for CollectCustomDerives<'a> {
             self.derives.push(CustomDerive {
                 span: item.span,
                 trait_name: trait_name,
-                function_name: item.ident,
+                function_name: item.ident.node,
                 attrs: proc_attrs,
             });
         } else {

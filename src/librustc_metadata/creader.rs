@@ -169,10 +169,10 @@ impl<'a> CrateLoader<'a> {
                                             Some(i.span));
                         name
                     }
-                    None => i.ident.name,
+                    None => i.ident.node.name,
                 };
                 Some(ExternCrateInfo {
-                    ident: i.ident.name,
+                    ident: i.ident.node.name,
                     name: name,
                     id: i.id,
                     dep_kind: if attr::contains_name(&i.attrs, "no_link") {

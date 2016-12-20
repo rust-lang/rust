@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
             ast::MetaItemKind::Word
         };
         let hi = self.prev_span.hi;
-        Ok(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) })
+        Ok(ast::MetaItem { name: ident.node.name, node: node, span: mk_sp(lo, hi) })
     }
 
     /// matches meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;

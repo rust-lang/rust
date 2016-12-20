@@ -114,8 +114,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
     fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let ident = i.ident;
-        if ident.name != keywords::Invalid.name() {
-            self.cx.path.push(ident);
+        if ident.node.name != keywords::Invalid.name() {
+            self.cx.path.push(ident.node);
         }
         debug!("current path: {}", path_name_i(&self.cx.path));
 
@@ -135,7 +135,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         should_panic: should_panic(&i, &self.cx)
                     };
                     self.cx.testfns.push(test);
-                    self.tests.push(i.ident);
+                    self.tests.push(i.ident.node);
                 }
             }
         }
@@ -163,7 +163,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             }
             item.node = ast::ItemKind::Mod(mod_folded);
         }
-        if ident.name != keywords::Invalid.name() {
+        if ident.node.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
         SmallVector::one(P(item))
@@ -254,7 +254,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
-        ident: sym.clone(),
+        ident: sym.clone().dummy_spanned(),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
@@ -471,7 +471,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
-        ident: ident,
+        ident: ident.dummy_spanned(),
         node: vi,
         attrs: vec![],
         vis: vis,
@@ -511,7 +511,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
                            dummy_spanned(ast::Constness::NotConst),
                            ::abi::Abi::Rust, ast::Generics::default(), main_body);
     let main = P(ast::Item {
-        ident: Ident::from_str("main"),
+        ident: Ident::from_str("main").dummy_spanned(),
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         node: main,
@@ -543,7 +543,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     let mut expander = cx.ext_cx.monotonic_expander();
     let item = expander.fold_item(P(ast::Item {
         id: ast::DUMMY_NODE_ID,
-        ident: mod_ident,
+        ident: mod_ident.dummy_spanned(),
         attrs: vec![],
         node: item_,
         vis: ast::Visibility::Public,
@@ -559,7 +559,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
 
         expander.fold_item(P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: keywords::Invalid.ident(),
+            ident: keywords::Invalid.ident().dummy_spanned(),
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Visibility::Inherited,

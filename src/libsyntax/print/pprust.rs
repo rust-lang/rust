@@ -1150,7 +1150,7 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, "as"));
                     try!(space(&mut self.s));
                 }
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end inner head-block
                 try!(self.end()); // end outer head-block
@@ -1167,7 +1167,7 @@ impl<'a> State<'a> {
                 if m == ast::Mutability::Mutable {
                     try!(self.word_space("mut"));
                 }
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.word_space(":"));
                 try!(self.print_type(&ty));
                 try!(space(&mut self.s));
@@ -1180,7 +1180,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Const(ref ty, ref expr) => {
                 try!(self.head(&visibility_qualified(&item.vis, "const")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.word_space(":"));
                 try!(self.print_type(&ty));
                 try!(space(&mut self.s));
@@ -1198,7 +1198,7 @@ impl<'a> State<'a> {
                     unsafety,
                     constness.node,
                     abi,
-                    Some(item.ident),
+                    Some(item.ident.node),
                     typarams,
                     &item.vis
                 ));
@@ -1207,7 +1207,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mod(ref _mod) => {
                 try!(self.head(&visibility_qualified(&item.vis, "mod")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.nbsp());
                 try!(self.bopen());
                 try!(self.print_mod(_mod, &item.attrs));
@@ -1224,7 +1224,7 @@ impl<'a> State<'a> {
                 try!(self.ibox(INDENT_UNIT));
                 try!(self.ibox(0));
                 try!(self.word_nbsp(&visibility_qualified(&item.vis, "type")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.print_generics(params));
                 try!(self.end()); // end the inner ibox
 
@@ -1239,18 +1239,18 @@ impl<'a> State<'a> {
                 try!(self.print_enum_def(
                     enum_definition,
                     params,
-                    item.ident,
+                    item.ident.node,
                     item.span,
                     &item.vis
                 ));
             }
             ast::ItemKind::Struct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(&item.vis, "struct")));
-                try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
+                try!(self.print_struct(&struct_def, generics, item.ident.node, item.span, true));
             }
             ast::ItemKind::Union(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(&item.vis, "union")));
-                try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
+                try!(self.print_struct(&struct_def, generics, item.ident.node, item.span, true));
             }
             ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 try!(self.head(""));
@@ -1309,7 +1309,7 @@ impl<'a> State<'a> {
                 try!(self.print_visibility(&item.vis));
                 try!(self.print_unsafety(unsafety));
                 try!(self.word_nbsp("trait"));
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.print_generics(generics));
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
@@ -1334,7 +1334,7 @@ impl<'a> State<'a> {
                 try!(self.print_visibility(&item.vis));
                 try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));
-                try!(self.print_ident(item.ident));
+                try!(self.print_ident(item.ident.node));
                 try!(self.cbox(INDENT_UNIT));
                 try!(self.popen());
                 try!(self.print_tts(&node.tts[..]));
@@ -1516,7 +1516,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
         try!(self.head(""));
         let generics = ast::Generics::default();
-        try!(self.print_struct(&v.node.data, &generics, v.node.name, v.span, false));
+        try!(self.print_struct(&v.node.data, &generics, v.node.name.node, v.span, false));
         match v.node.disr_expr {
             Some(ref d) => {
                 try!(space(&mut self.s));
@@ -1549,7 +1549,7 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref default) => {
-                try!(self.print_associated_const(ti.ident, &ty,
+                try!(self.print_associated_const(ti.ident.node, &ty,
                                             default.as_ref().map(|expr| &**expr),
                                             &ast::Visibility::Inherited));
             }
@@ -1557,7 +1557,7 @@ impl<'a> State<'a> {
                 if body.is_some() {
                     try!(self.head(""));
                 }
-                try!(self.print_method_sig(ti.ident, sig, &ast::Visibility::Inherited));
+                try!(self.print_method_sig(ti.ident.node, sig, &ast::Visibility::Inherited));
                 if let Some(ref body) = *body {
                     try!(self.nbsp());
                     try!(self.print_block_with_attrs(body, &ti.attrs));
@@ -1566,7 +1566,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::TraitItemKind::Type(ref bounds, ref default) => {
-                try!(self.print_associated_type(ti.ident, Some(bounds),
+                try!(self.print_associated_type(ti.ident.node, Some(bounds),
                                            default.as_ref().map(|ty| &**ty)));
             }
             ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
@@ -1594,16 +1594,16 @@ impl<'a> State<'a> {
         }
         match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
-                try!(self.print_associated_const(ii.ident, &ty, Some(&expr), &ii.vis));
+                try!(self.print_associated_const(ii.ident.node, &ty, Some(&expr), &ii.vis));
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 try!(self.head(""));
-                try!(self.print_method_sig(ii.ident, sig, &ii.vis));
+                try!(self.print_method_sig(ii.ident.node, sig, &ii.vis));
                 try!(self.nbsp());
                 try!(self.print_block_with_attrs(body, &ii.attrs));
             }
             ast::ImplItemKind::Type(ref ty) => {
-                try!(self.print_associated_type(ii.ident, None, Some(ty)));
+                try!(self.print_associated_type(ii.ident.node, None, Some(ty)));
             }
             ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemKind::Mac:
@@ -3107,7 +3107,7 @@ mod tests {
         let ident = ast::Ident::from_str("principal_skinner");
 
         let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
-            name: ident,
+            name: codemap::dummy_spanned(ident),
             attrs: Vec::new(),
             // making this up as I go.... ?
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),

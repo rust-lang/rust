@@ -220,7 +220,7 @@ pub fn walk_trait_ref<'a, V: Visitor<'a>>(visitor: &mut V, trait_ref: &'a TraitR
 
 pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_vis(&item.vis);
-    visitor.visit_ident(item.span, item.ident);
+    visitor.visit_ident(item.span, item.ident.node);
     match item.node {
         ItemKind::ExternCrate(opt_name) => {
             walk_opt_name(visitor, item.span, opt_name)
@@ -248,7 +248,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_expr(expr);
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
+            visitor.visit_fn(FnKind::ItemFn(item.ident.node, generics, unsafety,
                                             constness, abi, &item.vis, body),
                              declaration,
                              item.span,
@@ -284,7 +284,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::Struct(ref struct_definition, ref generics) |
         ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_variant_data(struct_definition, item.ident,
+            visitor.visit_variant_data(struct_definition, item.ident.node,
                                      generics, item.id, item.span);
         }
         ItemKind::Trait(_, ref generics, ref bounds, ref methods) => {
@@ -310,8 +310,8 @@ pub fn walk_variant<'a, V>(visitor: &mut V,
                            item_id: NodeId)
     where V: Visitor<'a>,
 {
-    visitor.visit_ident(variant.span, variant.node.name);
-    visitor.visit_variant_data(&variant.node.data, variant.node.name,
+    visitor.visit_ident(variant.span, variant.node.name.node);
+    visitor.visit_variant_data(&variant.node.data, variant.node.name.node,
                              generics, item_id, variant.span);
     walk_list!(visitor, visit_expr, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
@@ -553,7 +553,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
 }
 
 pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a TraitItem) {
-    visitor.visit_ident(trait_item.span, trait_item.ident);
+    visitor.visit_ident(trait_item.span, trait_item.ident.node);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     match trait_item.node {
         TraitItemKind::Const(ref ty, ref default) => {
@@ -565,7 +565,7 @@ pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a Trai
             walk_fn_decl(visitor, &sig.decl);
         }
         TraitItemKind::Method(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None, body),
+            visitor.visit_fn(FnKind::Method(trait_item.ident.node, sig, None, body),
                              &sig.decl, trait_item.span, trait_item.id);
         }
         TraitItemKind::Type(ref bounds, ref default) => {
@@ -580,7 +580,7 @@ pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a Trai
 
 pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplItem) {
     visitor.visit_vis(&impl_item.vis);
-    visitor.visit_ident(impl_item.span, impl_item.ident);
+    visitor.visit_ident(impl_item.span, impl_item.ident.node);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
     match impl_item.node {
         ImplItemKind::Const(ref ty, ref expr) => {
@@ -588,7 +588,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),
+            visitor.visit_fn(FnKind::Method(impl_item.ident.node, sig, Some(&impl_item.vis), body),
                              &sig.decl, impl_item.span, impl_item.id);
         }
         ImplItemKind::Type(ref ty) => {

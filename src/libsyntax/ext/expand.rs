@@ -201,7 +201,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             attrs: krate.attrs,
             span: krate.span,
             node: ast::ItemKind::Mod(krate.module),
-            ident: keywords::Invalid.ident(),
+            ident: keywords::Invalid.ident().dummy_spanned(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility::Public,
         })));
@@ -752,7 +752,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         self.collect(ExpansionKind::Items, InvocationKind::Bang {
                             mac: mac,
                             attrs: item.attrs,
-                            ident: Some(item.ident),
+                            ident: Some(item.ident.node),
                             span: item.span,
                         }).make_items()
                     }
@@ -760,13 +760,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == keywords::Invalid.ident() {
+                if item.ident.node == keywords::Invalid.ident() {
                     return noop_fold_item(item, self);
                 }
 
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
-                module.mod_path.push(item.ident);
+                module.mod_path.push(item.ident.node);
 
                 // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
                 // In the non-inline case, `inner` is never the dummy span (c.f. `parse_item_mod`).
@@ -778,7 +778,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         self.cx.current_expansion.directory_ownership = DirectoryOwnership::Owned;
                         module.directory.push(&*path.as_str());
                     } else {
-                        module.directory.push(&*item.ident.name.as_str());
+                        module.directory.push(&*item.ident.node.name.as_str());
                     }
                 } else {
                     let mut path =

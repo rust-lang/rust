@@ -14,6 +14,7 @@ use std::env;
 
 use ast;
 use ast::{Ident, Name};
+use codemap;
 use syntax_pos::Span;
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
@@ -227,7 +228,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     MacEager::items(SmallVector::many(vec![
         P(ast::Item {
-            ident: name.clone(),
+            ident: codemap::dummy_spanned(name.clone()),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             node: ast::ItemKind::Const(

@@ -234,7 +234,7 @@ pub trait AstBuilder {
                output: P<ast::Ty>,
                body: P<ast::Block>) -> P<ast::Item>;
 
-    fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant;
+    fn variant(&self, span: Span, name: ast::SpannedIdent, tys: Vec<P<ast::Ty>> ) -> ast::Variant;
     fn item_enum_poly(&self,
                       span: Span,
                       name: Ident,
@@ -992,7 +992,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
-            ident: name,
+            ident: name.dummy_spanned(),
             attrs: attrs,
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -1035,7 +1035,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             body)
     }
 
-    fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
+    fn variant(&self, span: Span, name: ast::SpannedIdent, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
         let fields: Vec<_> = tys.into_iter().map(|ty| {
             ast::StructField {
                 span: ty.span,
@@ -1157,7 +1157,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: keywords::Invalid.ident(),
+            ident: keywords::Invalid.ident().dummy_spanned(),
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis: vis,
