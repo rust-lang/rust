@@ -62,6 +62,8 @@ fn main() {
         println!("cargo:rustc-link-lib=magenta");
         println!("cargo:rustc-link-lib=mxio");
         println!("cargo:rustc-link-lib=launchpad"); // for std::process
+    } else if target.contains("redox") {
+        println!("cargo:rustc-link-lib=openlibm");
     }
 }
 
