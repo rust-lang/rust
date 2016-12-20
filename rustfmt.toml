@@ -3,3 +3,5 @@ ideal_width = 100
 fn_args_density = "Compressed"
 fn_call_width = 80
 fn_args_paren_newline = false
+closure_block_indent_threshold = -1
+match_block_trailing_comma = true

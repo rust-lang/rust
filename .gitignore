@@ -24,3 +24,6 @@ Cargo.lock
 
 # gh pages docs
 util/gh-pages/lints.json
+
+# rustfmt backups
+*.rs.bk
