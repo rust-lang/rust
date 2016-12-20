@@ -6,12 +6,16 @@ pub use self::flag::*;
 pub use self::number::*;
 pub use self::scheme::*;
 
+#[cfg(target_arch = "arm")]
+#[path="arch/arm.rs"]
+mod arch;
+
 #[cfg(target_arch = "x86")]
-#[path="x86.rs"]
+#[path="arch/x86.rs"]
 mod arch;
 
 #[cfg(target_arch = "x86_64")]
-#[path="x86_64.rs"]
+#[path="arch/x86_64.rs"]
 mod arch;
 
 /// Function definitions
