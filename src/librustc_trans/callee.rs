@@ -339,7 +339,9 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // the first argument (`self`) will be the (by value) closure env.
 
     let mut llargs = get_params(fcx.llfn);
-    let idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
+    let idx = fn_ty.ret.is_indirect() as usize;
     let env_arg = &fcx.fn_ty.args[0];
     let llenv = if env_arg.is_indirect() {
         llargs[idx]
@@ -354,7 +356,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Adjust llargs such that llargs[self_idx..] has the call arguments.
     // For zero-sized closures that means sneaking in a new argument.
     if env_arg.is_ignore() {
-        if fcx.fn_ty.ret.is_indirect() {
+        if fn_ty.ret.is_indirect() {
             llargs[0] = llenv;
         } else {
             llargs.insert(0, llenv);
@@ -366,8 +368,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
     let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
-    let fn_ret = callee.ty.fn_ret();
-    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
 
     if fn_ty.ret.is_indirect() {
         llargs.insert(0, get_param(fcx.llfn, 0));
@@ -388,7 +388,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     } else {
         self_scope.trans(&bcx);
 
-        if fcx.fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        if fn_ty.ret.is_indirect() || fn_ty.ret.is_ignore() {
             bcx.ret_void();
         } else {
             bcx.ret(llret);
@@ -513,17 +513,15 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         data: Fn(llfnpointer),
         ty: bare_fn_ty
     };
-
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
-
     let llret = bcx.call(llfnpointer, &llargs, None);
     fn_ty.apply_attrs_callsite(llret);
 
     if fn_ret.0.is_never() {
         bcx.unreachable();
     } else {
-        if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        if fn_ty.ret.is_indirect() || fn_ty.ret.is_ignore() {
             bcx.ret_void();
         } else {
             bcx.ret(llret);
