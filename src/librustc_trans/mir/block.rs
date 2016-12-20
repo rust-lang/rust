@@ -125,11 +125,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         bcx.resume(lp);
                     } else {
                         let exc_ptr = bcx.extract_value(lp, 0);
-                        bcx.call(
-                            bcx.fcx().eh_unwind_resume().reify(bcx.ccx),
-                            &[exc_ptr],
-                            cleanup_bundle,
-                        );
+                        bcx.call(bcx.ccx.eh_unwind_resume(), &[exc_ptr], cleanup_bundle);
                         bcx.unreachable();
                     }
                 }

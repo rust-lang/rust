@@ -21,10 +21,8 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
-use abi::Abi;
 use base;
 use builder::Builder;
-use callee::Callee;
 use consts;
 use declare;
 use machine;
@@ -283,37 +281,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     pub fn build_new_block(&'a self, name: &str) -> BlockAndBuilder<'a, 'tcx> {
         BlockAndBuilder::new(self.new_block(name), self)
-    }
-
-    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
-    // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> Callee<'tcx> {
-        use attributes;
-        let ccx = self.ccx;
-        let tcx = ccx.tcx();
-        assert!(ccx.sess().target.target.options.custom_unwind_resume);
-        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            return Callee::def(ccx, def_id, tcx.intern_substs(&[]));
-        }
-
-        let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::C,
-            sig: ty::Binder(tcx.mk_fn_sig(
-                iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
-                tcx.types.never,
-                false
-            )),
-        }));
-
-        let unwresume = ccx.eh_unwind_resume();
-        if let Some(llfn) = unwresume.get() {
-            return Callee::ptr(llfn, ty);
-        }
-        let llfn = declare::declare_fn(ccx, "rust_eh_unwind_resume", ty);
-        attributes::unwind(llfn, true);
-        unwresume.set(Some(llfn));
-        Callee::ptr(llfn, ty)
     }
 
     pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {

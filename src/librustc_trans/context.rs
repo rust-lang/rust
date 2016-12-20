@@ -12,6 +12,7 @@ use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
+use rustc::hir;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
@@ -38,12 +39,13 @@ use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::ptr;
+use std::iter;
 use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
-use abi::FnType;
+use abi::{Abi, FnType};
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -827,10 +829,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().dbg_cx
     }
 
-    pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local().eh_unwind_resume
-    }
-
     pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local().rust_try_fn
     }
@@ -951,6 +949,38 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
+    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
+    // otherwise declares it as an external function.
+    pub fn eh_unwind_resume(&self) -> ValueRef {
+        use attributes;
+        let unwresume = &self.local().eh_unwind_resume;
+        if let Some(llfn) = unwresume.get() {
+            return llfn;
+        }
+
+        let tcx = self.tcx();
+        assert!(self.sess().target.target.options.custom_unwind_resume);
+        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
+            let llfn = Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self);
+            unwresume.set(Some(llfn));
+            return llfn;
+        }
+
+        let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: hir::Unsafety::Unsafe,
+            abi: Abi::C,
+            sig: ty::Binder(tcx.mk_fn_sig(
+                iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
+                tcx.types.never,
+                false
+            )),
+        }));
+
+        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
+        attributes::unwind(llfn, true);
+        unwresume.set(Some(llfn));
+        llfn
+    }
 }
 
 pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'tcx>);

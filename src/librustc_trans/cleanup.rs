@@ -83,7 +83,7 @@ impl<'tcx> DropValue<'tcx> {
                 bcx.resume(llretval);
             } else {
                 let exc_ptr = bcx.extract_value(llretval, 0);
-                bcx.call(fcx.eh_unwind_resume().reify(fcx.ccx), &[exc_ptr], None);
+                bcx.call(bcx.ccx.eh_unwind_resume(), &[exc_ptr], None);
                 bcx.unreachable();
             }
         }
