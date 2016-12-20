@@ -102,12 +102,12 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     if fn_ret.0.is_never() {
         bcx.unreachable();
-    }
-
-    if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
-        bcx.ret_void();
     } else {
-        bcx.ret(llret);
+        if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+            bcx.ret_void();
+        } else {
+            bcx.ret(llret);
+        }
     }
 
     llfn
