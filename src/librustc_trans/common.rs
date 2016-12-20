@@ -21,7 +21,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
-use abi::{Abi, FnType};
+use abi::Abi;
 use base;
 use builder::Builder;
 use callee::Callee;
@@ -236,9 +236,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Option<ValueRef>,
 
-    // Describes the return/argument LLVM types and their ABI handling.
-    pub fn_ty: FnType,
-
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -248,15 +245,10 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Create a function context for the given function.
     /// Call FunctionContext::get_entry_block for the first entry block.
-    pub fn new(
-        ccx: &'a CrateContext<'a, 'tcx>,
-        llfndecl: ValueRef,
-        fn_ty: FnType,
-    ) -> FunctionContext<'a, 'tcx> {
+    pub fn new(ccx: &'a CrateContext<'a, 'tcx>, llfndecl: ValueRef) -> FunctionContext<'a, 'tcx> {
         let mut fcx = FunctionContext {
             llfn: llfndecl,
             alloca_insert_pt: None,
-            fn_ty: fn_ty,
             ccx: ccx,
             alloca_builder: Builder::with_ccx(ccx),
         };

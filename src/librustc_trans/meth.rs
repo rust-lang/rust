@@ -11,7 +11,6 @@
 use attributes;
 use llvm::{ValueRef, get_params};
 use rustc::traits;
-use abi::FnType;
 use callee::{Callee, CalleeData};
 use common::*;
 use consts;
@@ -63,25 +62,20 @@ pub fn get_virtual_method<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                    callee: Callee<'tcx>)
                                    -> ValueRef {
-    let tcx = ccx.tcx();
-
     debug!("trans_object_shim({:?})", callee);
 
-    let (sig, abi, function_name) = match callee.ty.sty {
-        ty::TyFnDef(def_id, substs, f) => {
+    let function_name = match callee.ty.sty {
+        ty::TyFnDef(def_id, substs, _) => {
             let instance = Instance::new(def_id, substs);
-            (&f.sig, f.abi, instance.symbol_name(ccx.shared()))
+            instance.symbol_name(ccx.shared())
         }
         _ => bug!()
     };
 
-    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let fcx = FunctionContext::new(ccx, llfn, fn_ty);
+    let fcx = FunctionContext::new(ccx, llfn);
     let bcx = fcx.get_entry_block();
 
     let mut llargs = get_params(fcx.llfn);
@@ -103,7 +97,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     if fn_ret.0.is_never() {
         bcx.unreachable();
     } else {
-        if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+        if fn_ty.ret.is_indirect() || fn_ty.ret.is_ignore() {
             bcx.ret_void();
         } else {
             bcx.ret(llret);

@@ -22,6 +22,7 @@ use base;
 use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
+use abi::FnType;
 use machine;
 use type_of;
 
@@ -51,6 +52,8 @@ pub struct MirContext<'a, 'tcx:'a> {
     fcx: &'a common::FunctionContext<'a, 'tcx>,
 
     ccx: &'a CrateContext<'a, 'tcx>,
+
+    fn_ty: FnType,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -197,6 +200,7 @@ impl<'tcx> LocalRef<'tcx> {
 
 pub fn trans_mir<'a, 'tcx: 'a>(
     fcx: &'a FunctionContext<'a, 'tcx>,
+    fn_ty: FnType,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: &ty::FnSig<'tcx>,
@@ -224,6 +228,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let mut mircx = MirContext {
         mir: mir,
         fcx: fcx,
+        fn_ty: fn_ty,
         ccx: fcx.ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
@@ -271,7 +276,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 LocalRef::Lvalue(lvalue)
             } else {
                 // Temporary or return pointer
-                if local == mir::RETURN_POINTER && fcx.fn_ty.ret.is_indirect() {
+                if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
                     let llretptr = llvm::get_param(fcx.llfn, 0);
                     LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
@@ -351,7 +356,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
-    let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let mut llarg_idx = mircx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
@@ -379,12 +384,12 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                 let dst = bcx.struct_gep(lltemp, i);
-                let arg = &fcx.fn_ty.args[idx];
+                let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
                 if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
                     // We pass fat pointers as two words, but inside the tuple
                     // they are the two sub-fields of a single aggregate field.
-                    let meta = &fcx.fn_ty.args[idx];
+                    let meta = &mircx.fn_ty.args[idx];
                     idx += 1;
                     arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, dst));
                     meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, dst));
@@ -413,7 +418,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
         }
 
-        let arg = &fcx.fn_ty.args[idx];
+        let arg = &mircx.fn_ty.args[idx];
         idx += 1;
         let llval = if arg.is_indirect() && bcx.sess().opts.debuginfo != FullDebugInfo {
             // Don't copy an indirect argument to an alloca, the caller
@@ -442,7 +447,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
             llarg_idx += 1;
             let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &fcx.fn_ty.args[idx];
+                let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
                 assert_eq!((meta.cast, meta.pad), (None, None));
                 let llmeta = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
@@ -462,7 +467,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
                 // so make an alloca to store them in.
-                let meta = &fcx.fn_ty.args[idx];
+                let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
                 arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, lltemp));
                 meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, lltemp));
