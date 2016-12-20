@@ -200,7 +200,80 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let bcx = make_drop_glue(bcx, get_param(llfn, 0), g);
+    // NB: v0 is an *alias* of type t here, not a direct value.
+    // Only drop the value when it ... well, we used to check for
+    // non-null, (and maybe we need to continue doing so), but we now
+    // must definitely check for special bit-patterns corresponding to
+    // the special dtor markings.
+    let v0 = get_param(llfn, 0);
+    let t = g.ty();
+
+    let skip_dtor = match g {
+        DropGlueKind::Ty(_) => false,
+        DropGlueKind::TyContents(_) => true
+    };
+
+    let bcx = match t.sty {
+        ty::TyBox(content_ty) => {
+            // Support for TyBox is built-in and its drop glue is
+            // special. It may move to library and have Drop impl. As
+            // a safe-guard, assert TyBox not used with TyContents.
+            assert!(!skip_dtor);
+            if !bcx.ccx.shared().type_is_sized(content_ty) {
+                let llval = get_dataptr(&bcx, v0);
+                let llbox = bcx.load(llval);
+                drop_ty(&bcx, v0, content_ty);
+                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
+                let info = get_meta(&bcx, v0);
+                let info = bcx.load(info);
+                let (llsize, llalign) = size_and_align_of_dst(&bcx, content_ty, info);
+
+                // `Box<ZeroSizeType>` does not allocate.
+                let needs_free = bcx.icmp(llvm::IntNE, llsize, C_uint(bcx.ccx, 0u64));
+                if const_to_opt_uint(needs_free) == Some(0) {
+                    bcx
+                } else {
+                    let next_cx = bcx.fcx().build_new_block("next");
+                    let cond_cx = bcx.fcx().build_new_block("cond");
+                    bcx.cond_br(needs_free, cond_cx.llbb(), next_cx.llbb());
+                    trans_exchange_free_dyn(&cond_cx, llbox, llsize, llalign);
+                    cond_cx.br(next_cx.llbb());
+                    next_cx
+                }
+            } else {
+                let llval = v0;
+                let llbox = bcx.load(llval);
+                drop_ty(&bcx, llbox, content_ty);
+                trans_exchange_free_ty(&bcx, llbox, content_ty);
+                bcx
+            }
+        }
+        ty::TyDynamic(..) => {
+            // No support in vtable for distinguishing destroying with
+            // versus without calling Drop::drop. Assert caller is
+            // okay with always calling the Drop impl, if any.
+            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
+            assert!(!skip_dtor);
+            let data_ptr = get_dataptr(&bcx, v0);
+            let vtable_ptr = bcx.load(get_meta(&bcx, v0));
+            let dtor = bcx.load(vtable_ptr);
+            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx))], None);
+            bcx
+        }
+        ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
+            trans_custom_dtor(bcx, t, v0, def.is_union())
+        }
+        ty::TyAdt(def, ..) if def.is_union() => {
+            bcx
+        }
+        _ => {
+            if bcx.ccx.shared().type_needs_drop(t) {
+                drop_structural_ty(bcx, v0, t)
+            } else {
+                bcx
+            }
+        }
+    };
     bcx.ret_void();
 }
 
@@ -370,87 +443,6 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
              C_uint(bcx.ccx, unit_align))
         }
         _ => bug!("Unexpected unsized type, found {}", t)
-    }
-}
-
-fn make_drop_glue<'a, 'tcx>(bcx: BlockAndBuilder<'a, 'tcx>,
-                            v0: ValueRef,
-                            g: DropGlueKind<'tcx>)
-                            -> BlockAndBuilder<'a, 'tcx> {
-    let t = g.ty();
-
-    let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
-    // NB: v0 is an *alias* of type t here, not a direct value.
-    // Only drop the value when it ... well, we used to check for
-    // non-null, (and maybe we need to continue doing so), but we now
-    // must definitely check for special bit-patterns corresponding to
-    // the special dtor markings.
-
-    match t.sty {
-        ty::TyBox(content_ty) => {
-            // Support for TyBox is built-in and its drop glue is
-            // special. It may move to library and have Drop impl. As
-            // a safe-guard, assert TyBox not used with TyContents.
-            assert!(!skip_dtor);
-            if !bcx.ccx.shared().type_is_sized(content_ty) {
-                let llval = get_dataptr(&bcx, v0);
-                let llbox = bcx.load(llval);
-                drop_ty(&bcx, v0, content_ty);
-                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
-                let info = get_meta(&bcx, v0);
-                let info = bcx.load(info);
-                let (llsize, llalign) = size_and_align_of_dst(&bcx, content_ty, info);
-
-                // `Box<ZeroSizeType>` does not allocate.
-                let needs_free = bcx.icmp(
-                    llvm::IntNE,
-                    llsize,
-                    C_uint(bcx.ccx, 0u64),
-                );
-                if const_to_opt_uint(needs_free) == Some(0) {
-                    bcx
-                } else {
-                    let fcx = bcx.fcx();
-                    let next_cx = fcx.build_new_block("next");
-                    let cond_cx = fcx.build_new_block("cond");
-                    bcx.cond_br(needs_free, cond_cx.llbb(), next_cx.llbb());
-                    trans_exchange_free_dyn(&cond_cx, llbox, llsize, llalign);
-                    cond_cx.br(next_cx.llbb());
-                    next_cx
-                }
-            } else {
-                let llval = v0;
-                let llbox = bcx.load(llval);
-                drop_ty(&bcx, llbox, content_ty);
-                trans_exchange_free_ty(&bcx, llbox, content_ty);
-                bcx
-            }
-        }
-        ty::TyDynamic(..) => {
-            // No support in vtable for distinguishing destroying with
-            // versus without calling Drop::drop. Assert caller is
-            // okay with always calling the Drop impl, if any.
-            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
-            assert!(!skip_dtor);
-            let data_ptr = get_dataptr(&bcx, v0);
-            let vtable_ptr = bcx.load(get_meta(&bcx, v0));
-            let dtor = bcx.load(vtable_ptr);
-            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx))], None);
-            bcx
-        }
-        ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
-            trans_custom_dtor(bcx, t, v0, def.is_union())
-        }
-        ty::TyAdt(def, ..) if def.is_union() => {
-            bcx
-        }
-        _ => {
-            if bcx.ccx.shared().type_needs_drop(t) {
-                drop_structural_ty(bcx, v0, t)
-            } else {
-                bcx
-            }
-        }
     }
 }
 
