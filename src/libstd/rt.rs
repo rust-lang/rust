@@ -22,10 +22,13 @@
             issue = "0")]
 #![doc(hidden)]
 
-
-
 // Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
+
+// Reexport the start module on platforms that provide it
+#[unstable(feature = "start_fn", issue="0")]
+#[cfg(target_os = "redox")]
+pub use sys::start::*;
 
 #[cfg(not(test))]
 #[lang = "start"]
