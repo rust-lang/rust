@@ -59,11 +59,11 @@ impl<'tcx> DropValue<'tcx> {
         bcx.set_personality_fn(llpersonality);
 
         if base::wants_msvc_seh(fcx.ccx.sess()) {
-            // Insert cleanup instructions into the cleanup block
-            let funclet = Some(Funclet::new(bcx.cleanup_pad(None, &[])));
+            let pad = bcx.cleanup_pad(None, &[]);
+            let funclet = Some(Funclet::new(pad));
             self.trans(funclet.as_ref(), &bcx);
 
-            bcx.cleanup_ret(bcx.cleanup_pad(None, &[]), None);
+            bcx.cleanup_ret(pad, None);
         } else {
             // The landing pad return type (the type being propagated). Not sure
             // what this represents but it's determined by the personality
