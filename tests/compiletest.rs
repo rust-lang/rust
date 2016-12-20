@@ -73,13 +73,13 @@ fn compile_test() {
     };
     run_pass();
     let host = Path::new(&sysroot).file_name()
-                                  .unwrap()
+                                  .expect("sysroot has no last par")
                                   .to_str()
-                                  .unwrap()
+                                  .expect("sysroot contains non utf8")
                                   .splitn(2, '-')
                                   .skip(1)
                                   .next()
-                                  .unwrap();
+                                  .expect("target dir not prefixed");
     for_all_targets(&sysroot, |target| {
         miri_pass("tests/run-pass", &target, host);
         if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
