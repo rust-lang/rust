@@ -721,7 +721,8 @@ impl Build {
     fn llvm_filecheck(&self, target: &str) -> PathBuf {
         let target_config = self.config.target_config.get(target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            s.parent().unwrap().join(exe("FileCheck", target))
+            let llvm_bindir = output(Command::new(s).arg("--bindir"));
+            Path::new(llvm_bindir.trim()).join(exe("FileCheck", target))
         } else {
             let base = self.llvm_out(&self.config.build).join("build");
             let exe = exe("FileCheck", target);
