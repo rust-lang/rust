@@ -46,105 +46,6 @@ impl<'tcx> DropValue<'tcx> {
     fn trans<'a>(&self, funclet: Option<&'a Funclet>, bcx: &BlockAndBuilder<'a, 'tcx>) {
         glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-enum UnwindKind {
-    LandingPad,
-    CleanupPad(ValueRef),
-}
-
-impl UnwindKind {
-    /// Generates a branch going from `bcx` to `to_llbb` where `self` is
-    /// the exit label attached to the start of `bcx`.
-    ///
-    /// Transitions from an exit label to other exit labels depend on the type
-    /// of label. For example with MSVC exceptions unwind exit labels will use
-    /// the `cleanupret` instruction instead of the `br` instruction.
-    fn branch(&self, bcx: &BlockAndBuilder, to_llbb: BasicBlockRef) {
-        match *self {
-            UnwindKind::CleanupPad(pad) => {
-                bcx.cleanup_ret(pad, Some(to_llbb));
-            }
-            UnwindKind::LandingPad => {
-                bcx.br(to_llbb);
-            }
-        }
-    }
-}
-
-impl PartialEq for UnwindKind {
-    fn eq(&self, label: &UnwindKind) -> bool {
-        match (*self, *label) {
-            (UnwindKind::LandingPad, UnwindKind::LandingPad) |
-            (UnwindKind::CleanupPad(..), UnwindKind::CleanupPad(..)) => true,
-            _ => false,
-        }
-    }
-}
-
-impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
-    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
-        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
-        let drop = DropValue {
-            val: val,
-            ty: ty,
-            skip_dtor: false,
-        };
-
-        debug!("schedule_drop_mem(val={:?}, ty={:?}) skip_dtor={}", Value(val), ty, drop.skip_dtor);
-
-        CleanupScope::new(self, drop)
-    }
-
-    /// Issue #23611: Schedules a (deep) drop of the contents of
-    /// `val`, which is a pointer to an instance of struct/enum type
-    /// `ty`. The scheduled code handles extracting the discriminant
-    /// and dropping the contents associated with that variant
-    /// *without* executing any associated drop implementation.
-    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
-        // `if` below could be "!contents_needs_drop"; skipping drop
-        // is just an optimization, so sound to be conservative.
-        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
-
-        let drop = DropValue {
-            val: val,
-            ty: ty,
-            skip_dtor: true,
-        };
-
-        debug!("schedule_drop_adt_contents(val={:?}, ty={:?}) skip_dtor={}",
-               Value(val), ty, drop.skip_dtor);
-
-        CleanupScope::new(self, drop)
-    }
-}
-
-impl<'tcx> CleanupScope<'tcx> {
-    fn new<'a>(fcx: &FunctionContext<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
-        CleanupScope {
-            cleanup: Some(drop_val),
-            landing_pad: if !fcx.ccx.sess().no_landing_pads() {
-                Some(CleanupScope::get_landing_pad(fcx, &drop_val))
-            } else {
-                None
-            },
-        }
-    }
-
-    pub fn noop() -> CleanupScope<'tcx> {
-        CleanupScope {
-            cleanup: None,
-            landing_pad: None,
-        }
-    }
-
-    pub fn trans<'a>(self, bcx: &'a BlockAndBuilder<'a, 'tcx>) {
-        if let Some(cleanup) = self.cleanup {
-            cleanup.trans(None, &bcx);
-        }
-    }
 
     /// Creates a landing pad for the top scope. The landing pad will perform all cleanups necessary
     /// for an unwind and then `resume` to continue error propagation:
@@ -152,8 +53,7 @@ impl<'tcx> CleanupScope<'tcx> {
     ///     landing_pad -> ... cleanups ... -> [resume]
     ///
     /// This should only be called once per function, as it creates an alloca for the landingpad.
-    fn get_landing_pad<'a>(fcx: &FunctionContext<'a, 'tcx>, drop_val: &DropValue<'tcx>)
-        -> BasicBlockRef {
+    fn get_landing_pad<'a>(&self, fcx: &FunctionContext<'a, 'tcx>) -> BasicBlockRef {
         debug!("get_landing_pad");
 
         let mut pad_bcx = fcx.build_new_block("unwind_custom_");
@@ -204,7 +104,7 @@ impl<'tcx> CleanupScope<'tcx> {
             UnwindKind::CleanupPad(_) => Some(Funclet::new(cleanup.cleanup_pad(None, &[]))),
             UnwindKind::LandingPad => None,
         };
-        drop_val.trans(funclet.as_ref(), &cleanup);
+        self.trans(funclet.as_ref(), &cleanup);
 
         // Insert instruction into cleanup block to branch to the exit
         val.branch(&mut cleanup, resume_bcx.llbb());
@@ -212,6 +112,95 @@ impl<'tcx> CleanupScope<'tcx> {
         // Branch into the cleanup block
         val.branch(&mut pad_bcx, cleanup.llbb());
 
-        return pad_bcx.llbb();
+        pad_bcx.llbb()
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum UnwindKind {
+    LandingPad,
+    CleanupPad(ValueRef),
+}
+
+impl UnwindKind {
+    /// Generates a branch going from `bcx` to `to_llbb` where `self` is
+    /// the exit label attached to the start of `bcx`.
+    ///
+    /// Transitions from an exit label to other exit labels depend on the type
+    /// of label. For example with MSVC exceptions unwind exit labels will use
+    /// the `cleanupret` instruction instead of the `br` instruction.
+    fn branch(&self, bcx: &BlockAndBuilder, to_llbb: BasicBlockRef) {
+        match *self {
+            UnwindKind::CleanupPad(pad) => {
+                bcx.cleanup_ret(pad, Some(to_llbb));
+            }
+            UnwindKind::LandingPad => {
+                bcx.br(to_llbb);
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
+    /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
+    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
+        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+        let drop = DropValue {
+            val: val,
+            ty: ty,
+            skip_dtor: false,
+        };
+
+        debug!("schedule_drop_mem(val={:?}, ty={:?}) skip_dtor={}", Value(val), ty, drop.skip_dtor);
+
+        CleanupScope::new(self, drop)
+    }
+
+    /// Issue #23611: Schedules a (deep) drop of the contents of
+    /// `val`, which is a pointer to an instance of struct/enum type
+    /// `ty`. The scheduled code handles extracting the discriminant
+    /// and dropping the contents associated with that variant
+    /// *without* executing any associated drop implementation.
+    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
+        // `if` below could be "!contents_needs_drop"; skipping drop
+        // is just an optimization, so sound to be conservative.
+        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+
+        let drop = DropValue {
+            val: val,
+            ty: ty,
+            skip_dtor: true,
+        };
+
+        debug!("schedule_drop_adt_contents(val={:?}, ty={:?}) skip_dtor={}",
+               Value(val), ty, drop.skip_dtor);
+
+        CleanupScope::new(self, drop)
+    }
+}
+
+impl<'tcx> CleanupScope<'tcx> {
+    fn new<'a>(fcx: &FunctionContext<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
+        CleanupScope {
+            cleanup: Some(drop_val),
+            landing_pad: if !fcx.ccx.sess().no_landing_pads() {
+                Some(drop_val.get_landing_pad(fcx))
+            } else {
+                None
+            },
+        }
+    }
+
+    pub fn noop() -> CleanupScope<'tcx> {
+        CleanupScope {
+            cleanup: None,
+            landing_pad: None,
+        }
+    }
+
+    pub fn trans<'a>(self, bcx: &'a BlockAndBuilder<'a, 'tcx>) {
+        if let Some(cleanup) = self.cleanup {
+            cleanup.trans(None, &bcx);
+        }
     }
 }
