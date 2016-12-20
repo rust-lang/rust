@@ -201,7 +201,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env: &infcx.parameter_environment
     };
-    euv::ExprUseVisitor::new(&mut clcx, &infcx).walk_fn(body);
+    euv::ExprUseVisitor::new(&mut clcx, &infcx).consume_body(body);
 }
 
 #[derive(PartialEq)]

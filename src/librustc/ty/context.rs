@@ -508,14 +508,6 @@ pub struct GlobalCtxt<'tcx> {
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
-    /// Cache used by const_eval when decoding external constants.
-    /// Contains `None` when the constant has been fetched but doesn't exist.
-    /// Constains `Some(expr_id, type)` otherwise.
-    /// `type` is `None` in case it's not a primitive type
-    pub extern_const_statics: RefCell<DefIdMap<Option<(NodeId, Option<Ty<'tcx>>)>>>,
-    /// Cache used by const_eval when decoding extern const fns
-    pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -537,8 +529,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Caches the representation hints for struct definitions.
     repr_hint_cache: RefCell<DepTrackingMap<maps::ReprHints<'tcx>>>,
 
-    /// Maps Expr NodeId's to their constant qualification.
-    pub const_qualif_map: RefCell<NodeMap<middle::const_qualif::ConstQualif>>,
+    /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
+    pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
@@ -787,13 +779,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             used_trait_imports: RefCell::new(NodeSet()),
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
-            extern_const_statics: RefCell::new(DefIdMap()),
-            extern_const_fns: RefCell::new(DefIdMap()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             repr_hint_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            const_qualif_map: RefCell::new(NodeMap()),
+            rvalue_promotable_to_static: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),

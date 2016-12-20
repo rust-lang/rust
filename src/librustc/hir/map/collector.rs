@@ -11,7 +11,6 @@
 use super::*;
 
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use middle::cstore::InlinedItem;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax_pos::Span;
@@ -21,7 +20,7 @@ pub struct NodeCollector<'ast> {
     /// The crate
     pub krate: &'ast Crate,
     /// The node map
-    pub map: Vec<MapEntry<'ast>>,
+    pub(super) map: Vec<MapEntry<'ast>>,
     /// The parent of this node
     pub parent_node: NodeId,
     /// If true, completely ignore nested items. We set this when loading
@@ -43,11 +42,11 @@ impl<'ast> NodeCollector<'ast> {
         collector
     }
 
-    pub fn extend(krate: &'ast Crate,
-                  parent: &'ast InlinedItem,
-                  parent_node: NodeId,
-                  map: Vec<MapEntry<'ast>>)
-                  -> NodeCollector<'ast> {
+    pub(super) fn extend(krate: &'ast Crate,
+                         parent: &'ast InlinedItem,
+                         parent_node: NodeId,
+                         map: Vec<MapEntry<'ast>>)
+                         -> NodeCollector<'ast> {
         let mut collector = NodeCollector {
             krate: krate,
             map: map,

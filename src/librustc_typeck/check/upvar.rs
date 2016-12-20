@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true
                                                   });
-            euv.walk_fn(body);
+            euv.consume_body(body);
         }
 
         // Now that we've analyzed the closure, we know how each
