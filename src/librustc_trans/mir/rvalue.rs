@@ -69,7 +69,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // so the (generic) MIR may not be able to expand it.
                 let operand = self.trans_operand(&bcx, source);
                 let operand = operand.pack_if_pair(&bcx);
-                match operand.val {
+                let llref = match operand.val {
                     OperandValue::Pair(..) => bug!(),
                     OperandValue::Immediate(llval) => {
                         // unsize from an immediate structure. We don't
@@ -81,16 +81,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         debug!("trans_rvalue: creating ugly alloca");
                         let lltemp = base::alloc_ty(&bcx, operand.ty, "__unsize_temp");
                         base::store_ty(&bcx, llval, lltemp, operand.ty);
-                        base::coerce_unsized_into(&bcx,
-                            lltemp, operand.ty,
-                            dest.llval, cast_ty);
+                        lltemp
                     }
-                    OperandValue::Ref(llref) => {
-                        base::coerce_unsized_into(&bcx,
-                            llref, operand.ty,
-                            dest.llval, cast_ty);
-                    }
-                }
+                    OperandValue::Ref(llref) => llref
+                };
+                base::coerce_unsized_into(&bcx, llref, operand.ty, dest.llval, cast_ty);
                 bcx
             }
 
