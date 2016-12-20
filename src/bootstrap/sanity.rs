@@ -143,7 +143,7 @@ pub fn check(build: &mut Build) {
     // Externally configured LLVM requires FileCheck to exist
     let filecheck = build.llvm_filecheck(&build.config.build);
     if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-        panic!("filecheck executable {:?} does not exist", filecheck);
+        panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
     for target in build.config.target.iter() {
