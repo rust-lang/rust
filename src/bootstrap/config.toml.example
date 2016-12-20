@@ -101,6 +101,14 @@
 #vendor = false
 
 # =============================================================================
+# General install configuration options
+# =============================================================================
+[install]
+
+# Instead of installing to /usr/local, install to this path instead.
+#prefix = "/path/to/install"
+
+# =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================
 [rust]
