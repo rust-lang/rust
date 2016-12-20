@@ -285,50 +285,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         BlockAndBuilder::new(self.new_block(name), self)
     }
 
-    pub fn eh_personality(&self) -> ValueRef {
-        // The exception handling personality function.
-        //
-        // If our compilation unit has the `eh_personality` lang item somewhere
-        // within it, then we just need to translate that. Otherwise, we're
-        // building an rlib which will depend on some upstream implementation of
-        // this function, so we just codegen a generic reference to it. We don't
-        // specify any of the types for the function, we just make it a symbol
-        // that LLVM can later use.
-        //
-        // Note that MSVC is a little special here in that we don't use the
-        // `eh_personality` lang item at all. Currently LLVM has support for
-        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
-        // *name of the personality function* to decide what kind of unwind side
-        // tables/landing pads to emit. It looks like Dwarf is used by default,
-        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
-        // an "exception", but for MSVC we want to force SEH. This means that we
-        // can't actually have the personality function be our standard
-        // `rust_eh_personality` function, but rather we wired it up to the
-        // CRT's custom personality function, which forces LLVM to consider
-        // landing pads as "landing pads for SEH".
-        let ccx = self.ccx;
-        let tcx = ccx.tcx();
-        match tcx.lang_items.eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
-                Callee::def(ccx, def_id, tcx.intern_substs(&[])).reify(ccx)
-            }
-            _ => {
-                if let Some(llpersonality) = ccx.eh_personality().get() {
-                    return llpersonality
-                }
-                let name = if base::wants_msvc_seh(ccx.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
-                let fty = Type::variadic_func(&[], &Type::i32(ccx));
-                let f = declare::declare_cfn(ccx, name, fty);
-                ccx.eh_personality().set(Some(f));
-                f
-            }
-        }
-    }
-
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
     pub fn eh_unwind_resume(&self) -> Callee<'tcx> {

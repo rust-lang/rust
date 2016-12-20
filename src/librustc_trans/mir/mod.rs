@@ -313,7 +313,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
             let bcx = mircx.build_block(bb);
-            bcx.set_personality_fn(fcx.eh_personality());
+            bcx.set_personality_fn(mircx.ccx.eh_personality());
             if base::wants_msvc_seh(fcx.ccx.sess()) {
                 return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
             }

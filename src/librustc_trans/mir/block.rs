@@ -848,7 +848,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         self.landing_pads[target_bb] = Some(bcx.llbb());
 
         let ccx = bcx.ccx;
-        let llpersonality = self.fcx.eh_personality();
+        let llpersonality = self.ccx.eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
         let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.fcx.llfn);
         bcx.set_cleanup(llretval);

@@ -16,6 +16,8 @@ use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
+use callee::Callee;
+use base;
 use declare;
 use glue::DropGlueKind;
 use monomorphize::Instance;
@@ -825,10 +827,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().dbg_cx
     }
 
-    pub fn eh_personality<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local().eh_personality
-    }
-
     pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local().eh_unwind_resume
     }
@@ -909,6 +907,50 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         base_n::push_str(idx as u64, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }
+
+    pub fn eh_personality(&self) -> ValueRef {
+        // The exception handling personality function.
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to translate that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
+        let tcx = self.tcx();
+        match tcx.lang_items.eh_personality() {
+            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
+                Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
+            }
+            _ => {
+                if let Some(llpersonality) = self.local().eh_personality.get() {
+                    return llpersonality
+                }
+                let name = if base::wants_msvc_seh(self.sess()) {
+                    "__CxxFrameHandler3"
+                } else {
+                    "rust_eh_personality"
+                };
+                let fty = Type::variadic_func(&[], &Type::i32(self));
+                let f = declare::declare_cfn(self, name, fty);
+                self.local().eh_personality.set(Some(f));
+                f
+            }
+        }
+    }
+
 }
 
 pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'tcx>);
