@@ -304,7 +304,6 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mircx.debug_context);
 
-    // If false, all funclets should be None (which is the default)
     let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
