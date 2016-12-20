@@ -47,6 +47,8 @@ pub fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
         None
     } else if target.contains("musl") {
         Some(PathBuf::from("ar"))
+    } else if target.contains("openbsd") {
+        Some(PathBuf::from("ar"))
     } else {
         let parent = cc.parent().unwrap();
         let file = cc.file_name().unwrap().to_str().unwrap();
@@ -58,6 +60,16 @@ pub fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
             }
         }
         Some(parent.join(file))
+    }
+}
+
+pub fn make(host: &str) -> PathBuf {
+    if host.contains("bitrig") || host.contains("dragonfly") ||
+        host.contains("freebsd") || host.contains("netbsd") ||
+        host.contains("openbsd") {
+        PathBuf::from("gmake")
+    } else {
+        PathBuf::from("make")
     }
 }
 

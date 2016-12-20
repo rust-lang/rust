@@ -87,6 +87,7 @@ dependencies = [
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
+ "build_helper 0.1.0",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
