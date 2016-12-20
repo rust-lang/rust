@@ -141,7 +141,7 @@ impl SocketAddr {
     ///
     /// A named address:
     ///
-    /// ```
+    /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
     /// let socket = UnixListener::bind("/tmp/sock").unwrap();
@@ -173,7 +173,7 @@ impl SocketAddr {
     ///
     /// With a pathname:
     ///
-    /// ```
+    /// ```no_run
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
@@ -186,7 +186,6 @@ impl SocketAddr {
     ///
     /// ```
     /// use std::os::unix::net::UnixDatagram;
-    /// use std::path::Path;
     ///
     /// let socket = UnixDatagram::unbound().unwrap();
     /// let addr = socket.local_addr().expect("Couldn't get local address");
@@ -624,7 +623,7 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
     /// let listener = match UnixListener::bind("/path/to/the/socket") {
