@@ -17,7 +17,9 @@ install:
   - nvm install stable
   - nvm use stable
   - npm install remark-cli remark-lint
-  - cargo install rustfmt
+  # || true, because we cache rustfmt and don't want to crash on the next travis run
+  # due to rustfmt already being installed
+  - (cargo install rustfmt || true)
 
 script:
  - remark -f README.md > /dev/null
