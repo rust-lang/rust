@@ -267,16 +267,18 @@ pub fn build_rules(build: &Build) -> Rules {
         // nothing to do for debuginfo tests
     } else if build.config.build.contains("apple") {
         rules.test("check-debuginfo", "src/test/debuginfo")
+             .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").host(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-lldb", "debuginfo"));
     } else {
         rules.test("check-debuginfo", "src/test/debuginfo")
+             .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").host(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
