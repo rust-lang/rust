@@ -542,11 +542,7 @@ impl String {
             unsafe { *xs.get_unchecked(i) }
         }
         fn safe_get(xs: &[u8], i: usize, total: usize) -> u8 {
-            if i >= total {
-                0
-            } else {
-                unsafe_get(xs, i)
-            }
+            if i >= total { 0 } else { unsafe_get(xs, i) }
         }
 
         let mut res = String::with_capacity(total);
@@ -976,7 +972,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0;4]).as_bytes()),
+            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
         }
     }
 
@@ -1935,7 +1931,7 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
 impl From<String> for Vec<u8> {
-    fn from(string : String) -> Vec<u8> {
+    fn from(string: String) -> Vec<u8> {
         string.into_bytes()
     }
 }

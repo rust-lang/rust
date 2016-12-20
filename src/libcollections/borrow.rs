@@ -63,7 +63,9 @@ pub trait ToOwned {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ToOwned for T where T: Clone {
+impl<T> ToOwned for T
+    where T: Clone
+{
     type Owned = T;
     fn to_owned(&self) -> T {
         self.clone()
@@ -117,17 +119,19 @@ pub enum Cow<'a, B: ?Sized + 'a>
 {
     /// Borrowed data.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Borrowed(#[stable(feature = "rust1", since = "1.0.0")] &'a B),
+    Borrowed(#[stable(feature = "rust1", since = "1.0.0")]
+             &'a B),
 
     /// Owned data.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Owned(
-        #[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned>::Owned
-    ),
+    Owned(#[stable(feature = "rust1", since = "1.0.0")]
+          <B as ToOwned>::Owned),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Clone for Cow<'a, B> where B: ToOwned {
+impl<'a, B: ?Sized> Clone for Cow<'a, B>
+    where B: ToOwned
+{
     fn clone(&self) -> Cow<'a, B> {
         match *self {
             Borrowed(b) => Borrowed(b),
@@ -139,7 +143,9 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B> where B: ToOwned {
     }
 }
 
-impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
+impl<'a, B: ?Sized> Cow<'a, B>
+    where B: ToOwned
+{
     /// Acquires a mutable reference to the owned form of the data.
     ///
     /// Clones the data if it is not already owned.
@@ -194,7 +200,9 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Deref for Cow<'a, B> where B: ToOwned {
+impl<'a, B: ?Sized> Deref for Cow<'a, B>
+    where B: ToOwned
+{
     type Target = B;
 
     fn deref(&self) -> &B {
@@ -209,7 +217,9 @@ impl<'a, B: ?Sized> Deref for Cow<'a, B> where B: ToOwned {
 impl<'a, B: ?Sized> Eq for Cow<'a, B> where B: Eq + ToOwned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Ord for Cow<'a, B> where B: Ord + ToOwned {
+impl<'a, B: ?Sized> Ord for Cow<'a, B>
+    where B: Ord + ToOwned
+{
     #[inline]
     fn cmp(&self, other: &Cow<'a, B>) -> Ordering {
         Ord::cmp(&**self, &**other)
@@ -228,7 +238,9 @@ impl<'a, 'b, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, C>> for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> PartialOrd for Cow<'a, B> where B: PartialOrd + ToOwned {
+impl<'a, B: ?Sized> PartialOrd for Cow<'a, B>
+    where B: PartialOrd + ToOwned
+{
     #[inline]
     fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
@@ -273,7 +285,9 @@ impl<'a, B: ?Sized> Default for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned {
+impl<'a, B: ?Sized> Hash for Cow<'a, B>
+    where B: Hash + ToOwned
+{
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
