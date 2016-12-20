@@ -276,7 +276,8 @@ impl<E: CLike> FromIterator<E> for EnumSet<E> {
     }
 }
 
-impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike
+impl<'a, E> IntoIterator for &'a EnumSet<E>
+    where E: CLike
 {
     type Item = E;
     type IntoIter = Iter<E>;
