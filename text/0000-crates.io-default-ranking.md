@@ -89,51 +89,6 @@ good as well:
 We detail how we propose to address each of these in turn, plus a rating of the
 five crates from the user research survey as examples.
 
-We'd like to provide a coarse binning of the scores in each category, to avoid
-over-analyzing the difference between, say, 72% and 78% and seeing significance
-where there isn't really one. We've considered using letter grades, but those
-often have emotional associations (F means you're a failure), when it should be
-just an indicator of reality and not a value judgment. So we're also proposing
-an option of an emoji scale and are open to other proposals:
-
-<table>
-    <tr>
-        <th>Percentage</th>
-        <th>Letter grade</th>
-        <th>Emoji</th>
-    </tr>
-    <tr>
-        <td>>= 90%</td>
-        <td>A</td>
-        <td>☀️</td>
-    </tr>
-    <tr>
-        <td>80-89%</td>
-        <td>B</td>
-        <td>🌤</td>
-    </tr>
-    <tr>
-        <td>70-79%</td>
-        <td>C</td>
-        <td>⛅️</td>
-    </tr>
-    <tr>
-        <td>60-69%</td>
-        <td>D</td>
-        <td>🌥</td>
-    </tr>
-    <tr>
-        <td>50-59%</td>
-        <td>E</td>
-        <td>☁️</td>
-    </tr>
-    <tr>
-        <td>&lt;= 49%</td>
-        <td>F</td>
-        <td>🌧</td>
-    </tr>
-</table>
-
 ### Ease of use
 
 By far, the most common attribute people said they considered in the survey was
@@ -282,53 +237,7 @@ and less of a popularity contest.
 
 ### Overall
 
-Since documentation/ease of use was such a highly mentioned factor in peoples' decisions, we propose that, instead of averagaing the three scores, we weight ease of use by 2x and divide by 4 instead of 3.
-
-<table>
-    <tr>
-        <th>Crate</th>
-        <th>Ease of use</th>
-        <th>Maintenance</th>
-        <th>Popularity</th>
-        <th>Overall</th>
-    </tr>
-    <tr>
-        <td>nom</td>
-        <td>92%, ☀️</td>
-        <td>78%, ⛅️</td>
-        <td>100%, ☀️</td>
-        <td>91%, ☀️</td>
-    </tr>
-    <tr>
-        <td>combine</td>
-        <td>103%, ☀️</td>
-        <td>68%, 🌥</td>
-        <td>60%, 🌥</td>
-        <td>84%, 🌤</td>
-    </tr>
-    <tr>
-        <td>peg</td>
-        <td>66%, 🌥</td>
-        <td>100%, ☀️</td>
-        <td>80%, 🌤</td>
-        <td>78%, ⛅️</td>
-    </tr>
-    <tr>
-        <td>lalrpop</td>
-        <td>80%, 🌤</td>
-        <td>53%, ☁️</td>
-        <td>40%, 🌧</td>
-        <td>63%, 🌥</td>
-    </tr>
-    <tr>
-        <td>peresil</td>
-        <td>105%, ☀️</td>
-        <td>3%, 🌧</td>
-        <td>20%, 🌧</td>
-        <td>58%, ☁️</td>
-    </tr>
-</table>
-
+(Combining the new proposals for an overall ranking is a work in progress)
 
 ## Out of scope
 
