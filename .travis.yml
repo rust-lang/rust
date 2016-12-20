@@ -24,7 +24,7 @@ install:
 script:
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
- - cargo fmt -- --write-mode=diff
+ - PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff
  - set -e
  - cargo build --features debugging
  - cargo test --features debugging
