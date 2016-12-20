@@ -718,7 +718,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
         let ccx = bcx.ccx;
 
-        bcx.set_personality_fn(bcx.fcx().eh_personality());
+        bcx.set_personality_fn(bcx.ccx.eh_personality());
 
         let normal = bcx.fcx().build_new_block("normal");
         let catchswitch = bcx.fcx().build_new_block("catchswitch");
@@ -855,7 +855,7 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         // rust_try ignores the selector.
         let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
                                     false);
-        let vals = catch.landing_pad(lpad_ty, bcx.fcx().eh_personality(), 1, catch.fcx().llfn);
+        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.fcx().llfn);
         catch.add_clause(vals, C_null(Type::i8p(ccx)));
         let ptr = catch.extract_value(vals, 0);
         catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()));

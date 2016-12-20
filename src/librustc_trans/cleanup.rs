@@ -58,7 +58,7 @@ impl<'tcx> DropValue<'tcx> {
 
         let mut pad_bcx = fcx.build_new_block("unwind_custom_");
 
-        let llpersonality = pad_bcx.fcx().eh_personality();
+        let llpersonality = pad_bcx.ccx.eh_personality();
 
         let resume_bcx = fcx.build_new_block("resume");
         let val = if base::wants_msvc_seh(fcx.ccx.sess()) {
