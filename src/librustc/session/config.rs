@@ -76,12 +76,14 @@ pub enum OutputType {
     Object,
     Exe,
     DepInfo,
+    Metadata,
 }
 
 impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
         match *self {
             OutputType::Exe |
+            OutputType::Metadata |
             OutputType::DepInfo => true,
             OutputType::Bitcode |
             OutputType::Assembly |
@@ -98,6 +100,7 @@ impl OutputType {
             OutputType::Object => "obj",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+            OutputType::Metadata => "metadata",
         }
     }
 
@@ -109,6 +112,7 @@ impl OutputType {
             OutputType::Object => "o",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
+            OutputType::Metadata => "metadata.o",
         }
     }
 }
@@ -1169,7 +1173,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info|metadata]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout", &print_opts.join("|")),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
@@ -1334,6 +1338,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     "obj" => OutputType::Object,
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
+                    "metadata" => OutputType::Metadata,
                     part => {
                         early_error(error_format, &format!("unknown emission type: `{}`",
                                                     part))

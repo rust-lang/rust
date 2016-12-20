@@ -210,7 +210,14 @@ pub fn link_binary(sess: &Session,
         for obj in object_filenames(trans, outputs) {
             remove(sess, &obj);
         }
-        remove(sess, &outputs.with_extension("metadata.o"));
+
+        // Only remove the metadata if the user didn't request it, or it got
+        // saved somewhere else
+        let metadata_temp = outputs.with_extension("metadata.o");
+        if !outputs.outputs.contains_key(&OutputType::Metadata) ||
+            outputs.path(OutputType::Metadata) != metadata_temp {
+            remove(sess, &metadata_temp);
+        }
     }
 
     out_filenames

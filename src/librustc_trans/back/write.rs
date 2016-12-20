@@ -717,6 +717,9 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
+            OutputType::Metadata => {
+                metadata_config.emit_obj = true;
+            },
             OutputType::DepInfo => {}
         }
     }
@@ -785,8 +788,10 @@ pub fn run_passes(sess: &Session,
 
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &Path| {
-        if let Err(e) = fs::copy(from, to) {
-            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+        if from != to {
+            if let Err(e) = fs::copy(from, to) {
+                sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+            }
         }
     };
 
@@ -853,6 +858,10 @@ pub fn run_passes(sess: &Session,
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
+            OutputType::Metadata => {
+                copy_gracefully(&crate_output.with_extension("metadata.o"),
+                                &crate_output.path(OutputType::Metadata));
+            },
             OutputType::Exe |
             OutputType::DepInfo => {}
         }
@@ -911,6 +920,17 @@ pub fn run_passes(sess: &Session,
             let path = crate_output.temp_path(OutputType::Bitcode,
                                               Some(&trans.metadata_module.name[..]));
             remove(sess, &path);
+        }
+
+        // If we don't plan on linking, then we remove the metadata object here.
+        // If the user requested metadata and specified an output path different to the default,
+        // then we can delete the original.
+        let metadata_temp = crate_output.temp_path(OutputType::Metadata, None);
+        if metadata_config.emit_obj &&
+            !needs_crate_object &&
+            crate_output.path(OutputType::Metadata) != metadata_temp {
+
+            remove(sess, &metadata_temp);
         }
     }
 
