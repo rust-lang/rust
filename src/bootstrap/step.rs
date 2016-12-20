@@ -496,7 +496,7 @@ pub fn build_rules(build: &Build) -> Rules {
     rules.dist("dist-src", "src")
          .default(true)
          .host(true)
-         .run(move |_| dist::rust_src(build));
+         .run(move |s| dist::rust_src(build, s.target));
     rules.dist("dist-docs", "src/doc")
          .default(true)
          .dep(|s| s.name("default:doc"))
@@ -820,7 +820,16 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             let hosts = if self.build.flags.host.len() > 0 {
                 &self.build.flags.host
             } else {
-                &self.build.config.host
+                if kind == Kind::Dist {
+                    // For 'dist' steps we only distribute artifacts built from
+                    // the build platform, so only consider that in the hosts
+                    // array.
+                    // NOTE: This relies on the fact that the build triple is
+                    // always placed first, as done in `config.rs`.
+                    &self.build.config.host[..1]
+                } else {
+                    &self.build.config.host
+                }
             };
             let targets = if self.build.flags.target.len() > 0 {
                 &self.build.flags.target
