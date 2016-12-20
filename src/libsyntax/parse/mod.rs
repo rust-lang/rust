@@ -634,12 +634,7 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
                         global: false,
-                        segments: vec![
-                            ast::PathSegment {
-                                identifier: Ident::from_str("a"),
-                                parameters: ast::PathParameters::none(),
-                            }
-                        ],
+                        segments: vec![Ident::from_str("a").into()],
                     }),
                     span: sp(0, 1),
                     attrs: ThinVec::new(),
@@ -651,19 +646,10 @@ mod tests {
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 6),
-                            global: true,
-                            segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("a"),
-                                    parameters: ast::PathParameters::none(),
-                                },
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("b"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                            ]
-                        }),
+                        span: sp(0, 6),
+                        global: true,
+                        segments: vec![Ident::from_str("a").into(), Ident::from_str("b").into()],
+                    }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
                    }))
@@ -772,12 +758,7 @@ mod tests {
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
                             global: false,
-                            segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("d"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                            ],
+                            segments: vec![Ident::from_str("d").into()],
                         }),
                         span:sp(7,8),
                         attrs: ThinVec::new(),
@@ -795,12 +776,7 @@ mod tests {
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
                                global:false,
-                               segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("b"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                               ],
+                               segments: vec![Ident::from_str("b").into()],
                             }),
                            span: sp(0,1),
                            attrs: ThinVec::new()})),
@@ -842,12 +818,7 @@ mod tests {
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        segments: vec![
-                                            ast::PathSegment {
-                                                identifier: Ident::from_str("i32"),
-                                                parameters: ast::PathParameters::none(),
-                                            }
-                                        ],
+                                        segments: vec![Ident::from_str("i32").into()],
                                         }),
                                         span:sp(10,13)
                                     }),
@@ -890,13 +861,7 @@ mod tests {
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
-                                                        segments: vec![
-                                                            ast::PathSegment {
-                                                                identifier: Ident::from_str("b"),
-                                                                parameters:
-                                                                ast::PathParameters::none(),
-                                                            }
-                                                        ],
+                                                        segments: vec![Ident::from_str("b").into()],
                                                       }),
                                                 span: sp(17,18),
                                                 attrs: ThinVec::new()})),

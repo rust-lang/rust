@@ -475,8 +475,6 @@ pub struct MacroDef {
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub imported_from: Option<Name>,
-    pub allow_internal_unstable: bool,
     pub body: HirVec<TokenTree>,
 }
 

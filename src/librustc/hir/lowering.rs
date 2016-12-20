@@ -433,13 +433,19 @@ impl<'a> LoweringContext<'a> {
                           segment: &PathSegment,
                           param_mode: ParamMode)
                           -> hir::PathSegment {
-        let parameters = match segment.parameters {
-            PathParameters::AngleBracketed(ref data) => {
-                let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
-                hir::AngleBracketedParameters(data)
+        let parameters = if let Some(ref parameters) = segment.parameters {
+            match **parameters {
+                PathParameters::AngleBracketed(ref data) => {
+                    let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
+                    hir::AngleBracketedParameters(data)
+                }
+                PathParameters::Parenthesized(ref data) => {
+                    hir::ParenthesizedParameters(self.lower_parenthesized_parameter_data(data))
+                }
             }
-            PathParameters::Parenthesized(ref data) =>
-                hir::ParenthesizedParameters(self.lower_parenthesized_parameter_data(data)),
+        } else {
+            let data = self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode);
+            hir::AngleBracketedParameters(data)
         };
 
         hir::PathSegment {
@@ -987,8 +993,6 @@ impl<'a> LoweringContext<'a> {
             attrs: self.lower_attrs(&m.attrs),
             id: m.id,
             span: m.span,
-            imported_from: m.imported_from.map(|x| x.name),
-            allow_internal_unstable: m.allow_internal_unstable,
             body: m.body.clone().into(),
         }
     }
