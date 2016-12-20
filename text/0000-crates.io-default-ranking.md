@@ -214,98 +214,44 @@ documentation was the desire to quickly find an example of how to use the crate.
 
 ### Maintenance
 
-- Last released version date: newer is better. This information is already
-  available in crates.io's database; could be stored in the database and
-  updated per-publish. Combined as follows, then reported as a percentage
-  relative to the most released crate.
-  - Number of releases in the last year - 10%
-  - Number of releases in the last 6 mo - 30%
-  - Number of releases in the last month - 60%
-  - Yanked versions are not counted.
+We can add an optional attribute to Cargo.toml that crate authors could use to
+self-report their maintenance intentions. The valid values would be along the
+lines of the following, and would influence the ranking in the order they're
+presented:
 
-- Stable version number
-  - >= 1.0.0 ranks higher than < 1.0.0
-  - >= 1.0.0 increases the maintenance score by 5%.
+- **Actively developed**, meaning new features are being added and bugs are
+  being fixed
+- **Passively maintained**, meaning there are no plans for new features, but
+  the maintainer intends to respond to issues that get filed
+- **As-is**, meaning the crate is feature complete, the maintainer does not
+  intend to continue working on it or providing support, but it works for the
+  purposes it was designed for
+- None, we don't display anything, since the maintainer has not chosen to
+  specify their intentions, potential crate users will need to investigate on
+  their own
+- **Experimental**, meaning the author wants to share it with the community but
+  is not intending to meet anyone's particular use case
+- **Looking for maintainer**, meaning the current maintainer would like to give
+  up the crate to someone else
 
-- Number of owners: more is better.
-  - A GitHub group owner would count as 1.
-  - Future improvement: count # of people in the github group at version
-    publish time
-  - >= 3 owners increases the maintenance score by 5%.
+These would be displayed as badges on lists of crates.
 
+These levels would not have any time commitments attached to them-- maintainers
+who would like to batch changes into releases every 6 months could report
+"actively developed" just as much as mantainers who like to release every 6
+weeks. This would need to be clearly communicated to set crate user
+expectations properly.
 
-We don't have the overall most actively released crate to compute a relative
-release score, so for this analysis we're using the one out of these five
-crates that has the most release activity, peg.
+This is also inherently a crate author's statement of current intentions, which
+may get out of sync with the reality of the crate's maintenance over time.
 
-<table>
-    <tr>
-        <th>Crate</th>
-        <th>Releases in last year</th>
-        <th>Releases in last 6 mo</th>
-        <th>Releases in last 1 mo</th>
-        <th>Release score</th>
-        <th>Relative Release score</th>
-        <th>Stable bonus</th>
-        <th># owners bonus</th>
-        <th>Overall Maintenance score</th>
-    </tr>
-    <tr>
-        <td>peg</td>
-        <td>13</td>
-        <td>7</td>
-        <td>1</td>
-        <td>4</td>
-        <td>100%</td>
-        <td>0%</td>
-        <td>0%</td>
-        <td>100%, ☀️</td>
-    </tr>
-    <tr>
-        <td>nom</td>
-        <td>8</td>
-        <td>3</td>
-        <td>2</td>
-        <td>2.9</td>
-        <td>73%</td>
-        <td>5%</td>
-        <td>0%</td>
-        <td>78%, ⛅️</td>
-    </tr>
-    <tr>
-        <td>combine</td>
-        <td>7</td>
-        <td>4</td>
-        <td>1</td>
-        <td>2.5</td>
-        <td>63%</td>
-        <td>5%</td>
-        <td>0%</td>
-        <td>68%, 🌥</td>
-    </tr>
-    <tr>
-        <td>lalrpop</td>
-        <td>6</td>
-        <td>3</td>
-        <td>1</td>
-        <td>2.1</td>
-        <td>53%</td>
-        <td>0%</td>
-        <td>0%</td>
-        <td>53%, ☁️</td>
-    </tr>
-    <tr>
-        <td>peresil</td>
-        <td>1</td>
-        <td>0</td>
-        <td>0</td>
-        <td>.1</td>
-        <td>3%</td>
-        <td>0%</td>
-        <td>0%</td>
-        <td>3%, 🌧</td>
-    </tr>
-</table>
+If I had to guess for the maintainers of the parsing crates, I would assume:
+
+* nom: actively developed
+* combine: actively developed
+* lalrpop: actively developed
+* peg: actively developed
+* peresil: passively maintained
 
 ### Quality
 
