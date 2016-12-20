@@ -385,13 +385,14 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     if fn_ret.0.is_never() {
         bcx.unreachable();
-    }
-    self_scope.trans(&bcx);
-
-    if fcx.fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
-        bcx.ret_void();
     } else {
-        bcx.ret(llret);
+        self_scope.trans(&bcx);
+
+        if fcx.fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+            bcx.ret_void();
+        } else {
+            bcx.ret(llret);
+        }
     }
 
     ccx.instances().borrow_mut().insert(method_instance, lloncefn);
@@ -521,13 +522,14 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
 
     if fn_ret.0.is_never() {
         bcx.unreachable();
+    } else {
+        if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
+            bcx.ret_void();
+        } else {
+            bcx.ret(llret);
+        }
     }
 
-    if fn_ty.ret.is_indirect() || fcx.fn_ty.ret.is_ignore() {
-        bcx.ret_void();
-    } else {
-        bcx.ret(llret);
-    }
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
     llfn
