@@ -43,14 +43,13 @@ use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet};
 
 use syntax::ext::hygiene::{Mark, SyntaxContext};
-use syntax::ast::{self, FloatTy};
-use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
+use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{Determined, Undetermined};
 use syntax::symbol::{Symbol, keywords};
@@ -771,8 +770,8 @@ pub struct ModuleData<'a> {
     parent: Option<Module<'a>>,
     kind: ModuleKind,
 
-    // The node id of the closest normal module (`mod`) ancestor (including this module).
-    normal_ancestor_id: Option<NodeId>,
+    // The def id of the closest normal module (`mod`) ancestor (including this module).
+    normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, Span)>>,
@@ -798,11 +797,11 @@ pub struct ModuleData<'a> {
 pub type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
-    fn new(parent: Option<Module<'a>>, kind: ModuleKind) -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind, normal_ancestor_id: DefId) -> Self {
         ModuleData {
             parent: parent,
             kind: kind,
-            normal_ancestor_id: None,
+            normal_ancestor_id: normal_ancestor_id,
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
@@ -811,7 +810,7 @@ impl<'a> ModuleData<'a> {
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
-            populated: Cell::new(true),
+            populated: Cell::new(normal_ancestor_id.is_local()),
         }
     }
 
@@ -848,7 +847,7 @@ impl<'a> ModuleData<'a> {
     }
 
     fn is_local(&self) -> bool {
-        self.normal_ancestor_id.is_some()
+        self.normal_ancestor_id.is_local()
     }
 }
 
@@ -1063,7 +1062,7 @@ pub struct Resolver<'a> {
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
 
-    // A map from nodes to modules, both normal (`mod`) modules and anonymous modules.
+    // A map from nodes to anonymous modules.
     // Anonymous modules are pseudo-modules that are implicitly created around items
     // contained within blocks.
     //
@@ -1077,7 +1076,8 @@ pub struct Resolver<'a> {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    module_map: NodeMap<Module<'a>>,
+    block_map: NodeMap<Module<'a>>,
+    module_map: FxHashMap<DefId, Module<'a>>,
     extern_crate_roots: FxHashMap<(CrateNum, bool /* MacrosOnly? */), Module<'a>>,
 
     pub make_glob_map: bool,
@@ -1153,15 +1153,12 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
-impl<'a> ty::NodeIdTree for Resolver<'a> {
-    fn is_descendant_of(&self, mut node: NodeId, ancestor: NodeId) -> bool {
-        while node != ancestor {
-            node = match self.module_map[&node].parent {
-                Some(parent) => parent.normal_ancestor_id.unwrap(),
-                None => return false,
-            }
-        }
-        true
+impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
+    fn parent(self, id: DefId) -> Option<DefId> {
+        match id.krate {
+            LOCAL_CRATE => self.definitions.def_key(id.index).parent,
+            _ => self.session.cstore.def_key(id).parent,
+        }.map(|index| DefId { index: index, ..id })
     }
 }
 
@@ -1202,14 +1199,14 @@ impl<'a> Resolver<'a> {
                crate_loader: &'a mut CrateLoader,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
-        let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
+        let root_def_id = DefId::local(CRATE_DEF_INDEX);
+        let root_module_kind = ModuleKind::Def(Def::Mod(root_def_id), keywords::Invalid.name());
         let graph_root = arenas.alloc_module(ModuleData {
-            normal_ancestor_id: Some(CRATE_NODE_ID),
             no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
-            ..ModuleData::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
+            ..ModuleData::new(None, root_module_kind, root_def_id)
         });
-        let mut module_map = NodeMap();
-        module_map.insert(CRATE_NODE_ID, graph_root);
+        let mut module_map = FxHashMap();
+        module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::new();
         DefCollector::new(&mut definitions).collect_root();
@@ -1254,6 +1251,7 @@ impl<'a> Resolver<'a> {
             export_map: NodeMap(),
             trait_map: NodeMap(),
             module_map: module_map,
+            block_map: NodeMap(),
             extern_crate_roots: FxHashMap(),
 
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -1324,12 +1322,9 @@ impl<'a> Resolver<'a> {
         self.crate_loader.postprocess(krate);
     }
 
-    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {
-        self.arenas.alloc_module(ModuleData {
-            normal_ancestor_id: if local { self.current_module.normal_ancestor_id } else { None },
-            populated: Cell::new(local),
-            ..ModuleData::new(Some(parent), kind)
-        })
+    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, normal_ancestor_id: DefId)
+                  -> Module<'a> {
+        self.arenas.alloc_module(ModuleData::new(Some(parent), kind, normal_ancestor_id))
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
@@ -1462,6 +1457,7 @@ impl<'a> Resolver<'a> {
     fn with_scope<F>(&mut self, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver)
     {
+        let id = self.definitions.local_def_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
@@ -1958,7 +1954,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving block) entering block");
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        let anonymous_module = self.module_map.get(&block.id).cloned(); // clones a reference
+        let anonymous_module = self.block_map.get(&block.id).cloned(); // clones a reference
 
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
@@ -2334,13 +2330,13 @@ impl<'a> Resolver<'a> {
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
 
             if i == 0 && ns == TypeNS && ident.name == keywords::SelfValue.name() {
-                module = Some(self.module_map[&self.current_module.normal_ancestor_id.unwrap()]);
+                module = Some(self.module_map[&self.current_module.normal_ancestor_id]);
                 continue
             } else if allow_super && ns == TypeNS && ident.name == keywords::Super.name() {
                 let current_module = if i == 0 { self.current_module } else { module.unwrap() };
-                let self_module = self.module_map[&current_module.normal_ancestor_id.unwrap()];
+                let self_module = self.module_map[&current_module.normal_ancestor_id];
                 if let Some(parent) = self_module.parent {
-                    module = Some(self.module_map[&parent.normal_ancestor_id.unwrap()]);
+                    module = Some(self.module_map[&parent.normal_ancestor_id]);
                     continue
                 } else {
                     let msg = "There are too many initial `super`s.".to_string();
@@ -3000,10 +2996,12 @@ impl<'a> Resolver<'a> {
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
         let (segments, span, id) = match *vis {
             ast::Visibility::Public => return ty::Visibility::Public,
-            ast::Visibility::Crate(_) => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
+            ast::Visibility::Crate(_) => {
+                return ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+            }
             ast::Visibility::Restricted { ref path, id } => (&path.segments, path.span, id),
             ast::Visibility::Inherited => {
-                return ty::Visibility::Restricted(self.current_module.normal_ancestor_id.unwrap());
+                return ty::Visibility::Restricted(self.current_module.normal_ancestor_id);
             }
         };
 
@@ -3012,7 +3010,7 @@ impl<'a> Resolver<'a> {
         let vis = match self.resolve_path(&path, None, Some(span)) {
             PathResult::Module(module) => {
                 path_resolution = PathResolution::new(module.def().unwrap());
-                ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
+                ty::Visibility::Restricted(module.normal_ancestor_id)
             }
             PathResult::Failed(msg, _) => {
                 self.session.span_err(span, &format!("failed to resolve module path. {}", msg));
@@ -3029,11 +3027,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
-        vis.is_accessible_from(self.current_module.normal_ancestor_id.unwrap(), self)
+        vis.is_accessible_from(self.current_module.normal_ancestor_id, self)
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
-        vis.is_accessible_from(module.normal_ancestor_id.unwrap(), self)
+        vis.is_accessible_from(module.normal_ancestor_id, self)
     }
 
     fn report_errors(&mut self) {

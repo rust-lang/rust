@@ -268,7 +268,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
-            visibility: enum_vis.simplify(),
+            visibility: self.lazy(&ty::Visibility::from_hir(enum_vis, enum_id, tcx)),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: self.lazy_seq(variant.fields.iter().map(|f| {
@@ -306,7 +306,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: EntryKind::Mod(self.lazy(&data)),
-            visibility: vis.simplify(),
+            visibility: self.lazy(&ty::Visibility::from_hir(vis, id, tcx)),
             span: self.lazy(&md.inner),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
@@ -323,30 +323,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             ast: None,
             mir: None
-        }
-    }
-}
-
-trait Visibility {
-    fn simplify(&self) -> ty::Visibility;
-}
-
-impl Visibility for hir::Visibility {
-    fn simplify(&self) -> ty::Visibility {
-        if *self == hir::Public {
-            ty::Visibility::Public
-        } else {
-            ty::Visibility::PrivateExternal
-        }
-    }
-}
-
-impl Visibility for ty::Visibility {
-    fn simplify(&self) -> ty::Visibility {
-        if *self == ty::Visibility::Public {
-            ty::Visibility::Public
-        } else {
-            ty::Visibility::PrivateExternal
         }
     }
 }
@@ -386,7 +362,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: EntryKind::Field,
-            visibility: field.vis.simplify(),
+            visibility: self.lazy(&field.vis),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(&variant_data.fields()[field_index].attrs),
             children: LazySeq::empty(),
@@ -419,7 +395,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
-            visibility: struct_vis.simplify(),
+            visibility: self.lazy(&ty::Visibility::from_hir(struct_vis, struct_id, tcx)),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -485,7 +461,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: kind,
-            visibility: trait_item.vis.simplify(),
+            visibility: self.lazy(&trait_item.vis),
             span: self.lazy(&ast_item.span),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
@@ -574,7 +550,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: kind,
-            visibility: impl_item.vis.simplify(),
+            visibility: self.lazy(&impl_item.vis),
             span: self.lazy(&ast_item.span),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
@@ -736,7 +712,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: kind,
-            visibility: item.vis.simplify(),
+            visibility: self.lazy(&ty::Visibility::from_hir(&item.vis, item.id, tcx)),
             span: self.lazy(&item.span),
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
@@ -849,7 +825,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::MacroDef(self.lazy(&MacroDef {
                 body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
             })),
-            visibility: ty::Visibility::Public,
+            visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&macro_def.span),
 
             attributes: self.encode_attributes(&macro_def.attrs),
@@ -950,7 +926,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: kind,
-            visibility: nitem.vis.simplify(),
+            visibility: self.lazy(&ty::Visibility::from_hir(&nitem.vis, nitem.id, tcx)),
             span: self.lazy(&nitem.span),
             attributes: self.encode_attributes(&nitem.attrs),
             children: LazySeq::empty(),
@@ -1032,7 +1008,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         Entry {
             kind: EntryKind::Type,
-            visibility: ty::Visibility::Public,
+            visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -1060,7 +1036,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: EntryKind::Closure(self.lazy(&data)),
-            visibility: ty::Visibility::Public,
+            visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: LazySeq::empty(),
