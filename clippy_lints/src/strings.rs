@@ -122,7 +122,7 @@ fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
         ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
-        }
+        },
         _ => false,
     }
 }

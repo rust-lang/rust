@@ -48,9 +48,10 @@ impl ReturnPass {
     fn check_block_return(&mut self, cx: &EarlyContext, block: &ast::Block) {
         if let Some(stmt) = block.stmts.last() {
             match stmt.node {
-                ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
+                ast::StmtKind::Expr(ref expr) |
+                ast::StmtKind::Semi(ref expr) => {
                     self.check_final_expr(cx, expr, Some(stmt.span));
-                }
+                },
                 _ => (),
             }
         }
@@ -65,24 +66,24 @@ impl ReturnPass {
                 if !expr.attrs.iter().any(attr_is_cfg) {
                     self.emit_return_lint(cx, span.expect("`else return` is not possible"), inner.span);
                 }
-            }
+            },
             // a whole block? check it!
             ast::ExprKind::Block(ref block) => {
                 self.check_block_return(cx, block);
-            }
+            },
             // an if/if let expr, check both exprs
             // note, if without else is going to be a type checking error anyways
             // (except for unit type functions) so we don't match it
             ast::ExprKind::If(_, ref ifblock, Some(ref elsexpr)) => {
                 self.check_block_return(cx, ifblock);
                 self.check_final_expr(cx, elsexpr, None);
-            }
+            },
             // a match expr, check all arms
             ast::ExprKind::Match(_, ref arms) => {
                 for arm in arms {
                     self.check_final_expr(cx, &arm.body, Some(arm.body.span));
                 }
-            }
+            },
             _ => (),
         }
     }
@@ -135,7 +136,8 @@ impl LintPass for ReturnPass {
 impl EarlyLintPass for ReturnPass {
     fn check_fn(&mut self, cx: &EarlyContext, kind: FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) {
         match kind {
-            FnKind::ItemFn(.., block) | FnKind::Method(.., block) => self.check_block_return(cx, block),
+            FnKind::ItemFn(.., block) |
+            FnKind::Method(.., block) => self.check_block_return(cx, block),
             FnKind::Closure(body) => self.check_final_expr(cx, body, None),
         }
     }
@@ -152,4 +154,3 @@ fn attr_is_cfg(attr: &ast::Attribute) -> bool {
         false
     }
 }
-

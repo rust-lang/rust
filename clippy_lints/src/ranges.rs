@@ -52,8 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
             let name = &*name.as_str();
 
             // Range with step_by(0).
-            if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) &&
-               is_integer_literal(&args[1], 0) {
+            if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) && is_integer_literal(&args[1], 0) {
                 span_lint(cx,
                           RANGE_STEP_BY_ZERO,
                           expr.span,
@@ -94,7 +93,6 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
     let ty = cx.tcx.tables().expr_ty(expr);
 
     // Note: `RangeTo`, `RangeToInclusive` and `RangeFull` don't have step_by
-    match_type(cx, ty, &paths::RANGE)
-        || match_type(cx, ty, &paths::RANGE_FROM)
-        || match_type(cx, ty, &paths::RANGE_INCLUSIVE)
+    match_type(cx, ty, &paths::RANGE) || match_type(cx, ty, &paths::RANGE_FROM) ||
+    match_type(cx, ty, &paths::RANGE_INCLUSIVE)
 }

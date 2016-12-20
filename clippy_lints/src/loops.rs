@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use syntax::ast;
 use utils::sugg;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg,
-            in_external_macro, is_refutable, span_help_and_lint, is_integer_literal,
-            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty, last_path_segment};
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
+            is_refutable, span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
+            walk_ptrs_ty, last_path_segment};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -334,8 +334,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     match *source {
                         MatchSource::Normal |
                         MatchSource::IfLetDesugar { .. } => {
-                            if arms.len() == 2 &&
-                               arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+                            if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
                                arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
                                is_break_expr(&arms[1].body) {
                                 if in_external_macro(cx, expr.span) {
@@ -358,7 +357,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                                        db.span_suggestion(expr.span, "try", sug);
                                                    });
                             }
-                        }
+                        },
                         _ => (),
                     }
                 }
@@ -370,10 +369,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if &*method_name.node.as_str() == "next" &&
-                   match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                   &*lhs_constructor.name.as_str() == "Some" &&
-                   !is_refutable(cx, &pat_args[0]) &&
+                if &*method_name.node.as_str() == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                   &*lhs_constructor.name.as_str() == "Some" && !is_refutable(cx, &pat_args[0]) &&
                    !is_iterator_used_after_while_let(cx, iter_expr) {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = snippet(cx, pat_args[0].span, "_");
@@ -382,10 +379,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                        expr.span,
                                        "this loop could be written as a `for` loop",
                                        |db| {
-                    db.span_suggestion(expr.span,
-                                       "try",
-                                       format!("for {} in {} {{ .. }}", loop_var, iterator));
-                    });
+                                           db.span_suggestion(expr.span,
+                                                              "try",
+                                                              format!("for {} in {} {{ .. }}", loop_var, iterator));
+                                       });
                 }
             }
         }
@@ -407,13 +404,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_for_loop<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    pat: &'tcx Pat,
-    arg: &'tcx Expr,
-    body: &'tcx Expr,
-    expr: &'tcx Expr,
-) {
+fn check_for_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr, body: &'tcx Expr,
+                            expr: &'tcx Expr) {
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
@@ -423,13 +415,8 @@ fn check_for_loop<'a, 'tcx>(
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
-fn check_for_loop_range<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    pat: &'tcx Pat,
-    arg: &'tcx Expr,
-    body: &'tcx Expr,
-    expr: &'tcx Expr,
-) {
+fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr, body: &'tcx Expr,
+                                  expr: &'tcx Expr) {
     if let Some(higher::Range { start: Some(start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, def_id, ref ident, _) = pat.node {
@@ -444,9 +431,9 @@ fn check_for_loop_range<'a, 'tcx>(
             // linting condition: we only indexed one variable
             if visitor.indexed.len() == 1 {
                 let (indexed, indexed_extent) = visitor.indexed
-                                                       .into_iter()
-                                                       .next()
-                                                       .unwrap_or_else(|| unreachable!() /* len == 1 */);
+                    .into_iter()
+                    .next()
+                    .unwrap_or_else(|| unreachable!() /* len == 1 */);
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
@@ -472,10 +459,8 @@ fn check_for_loop_range<'a, 'tcx>(
                             ast::RangeLimits::Closed => {
                                 let end = sugg::Sugg::hir(cx, end, "<count>");
                                 format!(".take({})", end + sugg::ONE)
-                            }
-                            ast::RangeLimits::HalfOpen => {
-                                format!(".take({})", snippet(cx, end.span, ".."))
-                            }
+                            },
+                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, end.span, "..")),
                         }
                     }
                 } else {
@@ -488,11 +473,11 @@ fn check_for_loop_range<'a, 'tcx>(
                                        expr.span,
                                        &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
                                        |db| {
-                        multispan_sugg(db, "consider using an iterator".to_string(), &[
+                                           multispan_sugg(db, "consider using an iterator".to_string(), &[
                             (pat.span, &format!("({}, <item>)", ident.node)),
                             (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
                         ]);
-                    });
+                                       });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
@@ -544,7 +529,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                 let (sup, eq) = match (start_idx, end_idx) {
                     (ConstVal::Integral(start_idx), ConstVal::Integral(end_idx)) => {
                         (start_idx > end_idx, start_idx == end_idx)
-                    }
+                    },
                     _ => (false, false),
                 };
 
@@ -562,15 +547,14 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                        expr.span,
                                        "this range is empty so this for loop will never run",
                                        |db| {
-                                           db.span_suggestion(arg.span,
-                                                              "consider using the following if \
-                                                               you are attempting to iterate \
-                                                               over this range in reverse",
-                                                              format!("({end}{dots}{start}).rev()",
+                        db.span_suggestion(arg.span,
+                                           "consider using the following if you are attempting to iterate over this \
+                                            range in reverse",
+                                           format!("({end}{dots}{start}).rev()",
                                                                       end=end_snippet,
                                                                       dots=dots,
                                                                       start=start_snippet));
-                                       });
+                    });
                 } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
                     // will never run.
@@ -608,11 +592,11 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        method_name));
                 }
             } else if &*method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                    let object = snippet(cx, args[0].span, "_");
-                    span_lint(cx,
-                              EXPLICIT_INTO_ITER_LOOP,
-                              expr.span,
-                              &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
+                let object = snippet(cx, args[0].span, "_");
+                span_lint(cx,
+                          EXPLICIT_INTO_ITER_LOOP,
+                          expr.span,
+                          &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
                                        object,
                                        object,
                                        method_name));
@@ -658,12 +642,8 @@ fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     }
 }
 
-fn check_for_loop_explicit_counter<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    arg: &'tcx Expr,
-    body: &'tcx Expr,
-    expr: &'tcx Expr,
-) {
+fn check_for_loop_explicit_counter<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx Expr, body: &'tcx Expr,
+                                             expr: &'tcx Expr) {
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
         cx: cx,
@@ -708,13 +688,8 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 }
 
 /// Check for the `FOR_KV_MAP` lint.
-fn check_for_loop_over_map_kv<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    pat: &'tcx Pat,
-    arg: &'tcx Expr,
-    body: &'tcx Expr,
-    expr: &'tcx Expr,
-) {
+fn check_for_loop_over_map_kv<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr,
+                                        body: &'tcx Expr, expr: &'tcx Expr) {
     let pat_span = pat.span;
 
     if let PatKind::Tuple(ref pat, _) = pat.node {
@@ -739,10 +714,10 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                                    &format!("you seem to want to iterate on a map's {}s", kind),
                                    |db| {
                     let map = sugg::Sugg::hir(cx, arg, "map");
-                    multispan_sugg(db, "use the corresponding method".into(), &[
-                        (pat_span, &snippet(cx, new_pat_span, kind)),
-                        (arg_span, &format!("{}.{}s()", map.maybe_par(), kind)),
-                    ]);
+                    multispan_sugg(db,
+                                   "use the corresponding method".into(),
+                                   &[(pat_span, &snippet(cx, new_pat_span, kind)),
+                                     (arg_span, &format!("{}.{}s()", map.maybe_par(), kind))]);
                 });
             }
         }
@@ -751,11 +726,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
-fn pat_is_wild<'a, 'tcx: 'a>(
-    cx: &LateContext<'a, 'tcx>,
-    pat: &'tcx PatKind,
-    body: &'tcx Expr,
-) -> bool {
+fn pat_is_wild<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
         PatKind::Binding(_, _, ident, None) if ident.node.as_str().starts_with('_') => {
@@ -766,7 +737,7 @@ fn pat_is_wild<'a, 'tcx: 'a>(
             };
             walk_expr(&mut visitor, body);
             !visitor.used
-        }
+        },
         _ => false,
     }
 }
@@ -938,10 +909,11 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
         Some(ref expr) if block.stmts.is_empty() => Some(expr),
         None if !block.stmts.is_empty() => {
             match block.stmts[0].node {
-                StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
+                StmtExpr(ref expr, _) |
+                StmtSemi(ref expr, _) => Some(expr),
                 StmtDecl(..) => None,
             }
-        }
+        },
         _ => None,
     }
 }
@@ -955,7 +927,7 @@ fn is_break_expr(expr: &Expr) -> bool {
                 Some(subexpr) => is_break_expr(subexpr),
                 None => false,
             }
-        }
+        },
         _ => false,
     }
 }
@@ -1004,7 +976,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                                 *state = VarState::DontWarn;
                             }
                         }
-                    }
+                    },
                     ExprAssign(ref lhs, _) if lhs.id == expr.id => *state = VarState::DontWarn,
                     ExprAddrOf(mutability, _) if mutability == MutMutable => *state = VarState::DontWarn,
                     _ => (),
@@ -1081,14 +1053,14 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                 match parent.node {
                     ExprAssignOp(_, ref lhs, _) if lhs.id == expr.id => {
                         self.state = VarState::DontWarn;
-                    }
+                    },
                     ExprAssign(ref lhs, ref rhs) if lhs.id == expr.id => {
                         self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
                             VarState::DontWarn
                         }
-                    }
+                    },
                     ExprAddrOf(mutability, _) if mutability == MutMutable => self.state = VarState::DontWarn,
                     _ => (),
                 }

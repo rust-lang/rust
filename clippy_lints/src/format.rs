@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     ], {
                         span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                     }}
-                }
+                },
                 // `format!("foo")` expansion contains `match () { () => [], }`
                 ExprMatch(ref matchee, _, _) => {
                     if let ExprTup(ref tup) = matchee.node {
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                         }
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -72,8 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.
 /// Public because it's shared with a lint in print.rs.
-pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr)
-                                         -> Option<Vec<InternedString>> {
+pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr) -> Option<Vec<InternedString>> {
     if_let_chain! {[
         let ExprBlock(ref block) = expr.node,
         block.stmts.len() == 1,

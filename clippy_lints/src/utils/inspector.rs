@@ -67,25 +67,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             hir::ImplItemKind::Type(_) => println!("associated type"),
         }
     }
-/*
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
-        if !has_attr(&item.attrs) {
-            return;
-        }
-    }
-
-    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
-        if !has_attr(&var.node.attrs) {
-            return;
-        }
-    }
-
-    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
-        if !has_attr(&field.attrs) {
-            return;
-        }
-    }
-*/
+    // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+    // if !has_attr(&item.attrs) {
+    // return;
+    // }
+    // }
+    //
+    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
+    // if !has_attr(&var.node.attrs) {
+    // return;
+    // }
+    // }
+    //
+    // fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
+    // if !has_attr(&field.attrs) {
+    // return;
+    // }
+    // }
+    //
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if !has_attr(&expr.attrs) {
@@ -115,17 +114,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         match stmt.node {
             hir::StmtDecl(ref decl, _) => print_decl(cx, decl),
-            hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
+            hir::StmtExpr(ref e, _) |
+            hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
         }
     }
-/*
-
-    fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
-        if !has_attr(&item.attrs) {
-            return;
-        }
-    }
-*/
+    // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
+    // if !has_attr(&item.attrs) {
+    // return;
+    // }
+    // }
+    //
 }
 
 fn has_attr(attrs: &[Attribute]) -> bool {
@@ -282,7 +280,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
         hir::ExprPath(hir::QPath::TypeRelative(ref ty, ref seg)) => {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
-        }
+        },
         hir::ExprAddrOf(ref muta, ref e) => {
             println!("{}AddrOf, {}", ind, ty);
             println!("mutability: {:?}", muta);
@@ -356,7 +354,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
             } else {
                 println!("weird extern crate without a crate id");
             }
-        }
+        },
         hir::ItemUse(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
         hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.item_type(did)),

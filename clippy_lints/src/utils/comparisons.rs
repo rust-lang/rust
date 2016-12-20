@@ -18,8 +18,7 @@ pub enum Rel {
 }
 
 /// Put the expression in the form  `lhs < rhs`, `lhs <= rhs`, `lhs == rhs` or `lhs != rhs`.
-pub fn normalize_comparison<'a>(op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
-                                -> Option<(Rel, &'a Expr, &'a Expr)> {
+pub fn normalize_comparison<'a>(op: BinOp_, lhs: &'a Expr, rhs: &'a Expr) -> Option<(Rel, &'a Expr, &'a Expr)> {
     match op {
         BinOp_::BiLt => Some((Rel::Lt, lhs, rhs)),
         BinOp_::BiLe => Some((Rel::Le, lhs, rhs)),

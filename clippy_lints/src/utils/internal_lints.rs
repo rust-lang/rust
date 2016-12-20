@@ -75,8 +75,8 @@ impl EarlyLintPass for Clippy {
                                     span_lint(cx,
                                               CLIPPY_LINTS_INTERNAL,
                                               item.span,
-                                              "this constant should be before the previous constant due to lexical ordering",
-                                    );
+                                              "this constant should be before the previous constant due to lexical \
+                                               ordering");
                                 }
                             }
                             last_name = Some(name);
@@ -110,7 +110,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
             } else if is_lint_array_type(ty) && item.vis == Visibility::Inherited && item.name == "ARRAY" {
-                let mut collector = LintCollector { output: &mut self.registered_lints, cx: cx };
+                let mut collector = LintCollector {
+                    output: &mut self.registered_lints,
+                    cx: cx,
+                };
                 collector.visit_expr(expr);
             }
         }

@@ -64,26 +64,21 @@ pub fn strip_doc_comment_decoration((comment, span): (String, Span)) -> Vec<(Str
     const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
-            return vec![(
-                comment[prefix.len()..].to_owned(),
-                Span { lo: span.lo + BytePos(prefix.len() as u32), ..span }
-            )];
+            return vec![(comment[prefix.len()..].to_owned(),
+                         Span { lo: span.lo + BytePos(prefix.len() as u32), ..span })];
         }
     }
 
     if comment.starts_with("/*") {
-        return comment[3..comment.len() - 2].lines().map(|line| {
-            let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
-            debug_assert_eq!(offset as u32 as usize, offset);
+        return comment[3..comment.len() - 2]
+            .lines()
+            .map(|line| {
+                let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
+                debug_assert_eq!(offset as u32 as usize, offset);
 
-            (
-                line.to_owned(),
-                Span {
-                    lo: span.lo + BytePos(offset as u32),
-                    ..span
-                }
-            )
-        }).collect();
+                (line.to_owned(), Span { lo: span.lo + BytePos(offset as u32), ..span })
+            })
+            .collect();
     }
 
     panic!("not a doc-comment: {}", comment);
@@ -299,16 +294,17 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
         match parser.next() {
             Some((new_line, c)) => {
                 match c {
-                    '#' if new_line => { // don’t warn on titles
+                    '#' if new_line => {
+                        // don’t warn on titles
                         parser.next_line();
-                    }
+                    },
                     '`' => {
                         if try!(check_block!(parser, '`', new_line)) {
                             continue;
                         }
 
                         try!(parser.jump_to('`')); // not a code block, just inline code
-                    }
+                    },
                     '~' => {
                         if try!(check_block!(parser, '~', new_line)) {
                             continue;
@@ -317,7 +313,7 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
                         // ~ does not introduce inline code, but two of them introduce
                         // strikethrough. Too bad for the consistency but we don't care about
                         // strikethrough.
-                    }
+                    },
                     '[' => {
                         // Check for a reference definition `[foo]:` at the beginning of a line
                         let mut link = true;
@@ -335,24 +331,24 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
 
                         parser.advance_begin();
                         parser.link = link;
-                    }
+                    },
                     ']' if parser.link => {
                         parser.link = false;
 
                         match parser.peek() {
                             Some('(') => {
                                 try!(parser.jump_to(')'));
-                            }
+                            },
                             Some('[') => {
                                 try!(parser.jump_to(']'));
-                            }
+                            },
                             Some(_) => continue,
                             None => return Err(()),
                         }
-                    }
+                    },
                     c if !is_path_char(c) => {
                         parser.advance_begin();
-                    }
+                    },
                     _ => {
                         if let Some((_, c)) = parser.find(|&(_, c)| !is_path_char(c)) {
                             parser.put_back(c);
@@ -361,10 +357,10 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
                         let (word, span) = parser.word();
                         check_word(cx, valid_idents, word, span);
                         parser.advance_begin();
-                    }
+                    },
                 }
 
-            }
+            },
             None => break,
         }
     }
@@ -386,8 +382,7 @@ fn check_word(cx: &EarlyContext, valid_idents: &[String], word: &str, span: Span
             s
         };
 
-        s.chars().all(char::is_alphanumeric) &&
-        s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1 &&
+        s.chars().all(char::is_alphanumeric) && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1 &&
         s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }
 

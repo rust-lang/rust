@@ -46,8 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
                             span_lint(cx,
                                       SERDE_API_MISUSE,
                                       span,
-                                      "you should not implement `visit_string` without also implementing `visit_str`",
-                            );
+                                      "you should not implement `visit_string` without also implementing `visit_str`");
                         }
                     }
                 }

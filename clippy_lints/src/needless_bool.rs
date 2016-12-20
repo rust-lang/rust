@@ -62,11 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             let reduce = |ret, not| {
                 let snip = Sugg::hir(cx, pred, "<predicate>");
-                let snip = if not {
-                    !snip
-                } else {
-                    snip
-                };
+                let snip = if not { !snip } else { snip };
 
                 let hint = if ret {
                     format!("return {}", snip)
@@ -89,14 +85,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                               NEEDLESS_BOOL,
                               e.span,
                               "this if-then-else expression will always return true");
-                }
+                },
                 (RetBool(false), RetBool(false)) |
                 (Bool(false), Bool(false)) => {
                     span_lint(cx,
                               NEEDLESS_BOOL,
                               e.span,
                               "this if-then-else expression will always return false");
-                }
+                },
                 (RetBool(true), RetBool(false)) => reduce(true, false),
                 (Bool(true), Bool(false)) => reduce(false, false),
                 (RetBool(false), RetBool(true)) => reduce(true, true),
@@ -130,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        |db| {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
-                }
+                },
                 (Other, Bool(true)) => {
                     let hint = snippet(cx, left_side.span, "..").into_owned();
                     span_lint_and_then(cx,
@@ -140,7 +136,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        |db| {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
-                }
+                },
                 (Bool(false), Other) => {
                     let hint = Sugg::hir(cx, right_side, "..");
                     span_lint_and_then(cx,
@@ -148,9 +144,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it as shown:", (!hint).to_string());
+                                           db.span_suggestion(e.span,
+                                                              "try simplifying it as shown:",
+                                                              (!hint).to_string());
                                        });
-                }
+                },
                 (Other, Bool(false)) => {
                     let hint = Sugg::hir(cx, left_side, "..");
                     span_lint_and_then(cx,
@@ -158,9 +156,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it as shown:", (!hint).to_string());
+                                           db.span_suggestion(e.span,
+                                                              "try simplifying it as shown:",
+                                                              (!hint).to_string());
                                        });
-                }
+                },
                 _ => (),
             }
         }
@@ -186,7 +186,7 @@ fn fetch_bool_block(block: &Block) -> Expression {
             } else {
                 Expression::Other
             }
-        }
+        },
         _ => Expression::Other,
     }
 }
@@ -200,13 +200,13 @@ fn fetch_bool_expr(expr: &Expr) -> Expression {
             } else {
                 Expression::Other
             }
-        }
+        },
         ExprRet(Some(ref expr)) => {
             match fetch_bool_expr(expr) {
                 Expression::Bool(value) => Expression::RetBool(value),
                 _ => Expression::Other,
             }
-        }
+        },
         _ => Expression::Other,
     }
 }

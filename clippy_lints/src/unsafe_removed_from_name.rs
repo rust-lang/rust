@@ -38,15 +38,14 @@ impl EarlyLintPass for UnsafeNameRemoval {
         if let ItemKind::Use(ref item_use) = item.node {
             match item_use.node {
                 ViewPath_::ViewPathSimple(ref name, ref path) => {
-                    unsafe_to_safe_check(
-                        path.segments
-                            .last()
-                            .expect("use paths cannot be empty")
-                            .identifier,
-                        *name,
-                        cx, &item.span
-                        );
-                }
+                    unsafe_to_safe_check(path.segments
+                                             .last()
+                                             .expect("use paths cannot be empty")
+                                             .identifier,
+                                         *name,
+                                         cx,
+                                         &item.span);
+                },
                 ViewPath_::ViewPathList(_, ref path_list_items) => {
                     for path_list_item in path_list_items.iter() {
                         let plid = path_list_item.node;
@@ -54,8 +53,8 @@ impl EarlyLintPass for UnsafeNameRemoval {
                             unsafe_to_safe_check(plid.name, rename, cx, &item.span);
                         };
                     }
-                }
-                ViewPath_::ViewPathGlob(_) => {}
+                },
+                ViewPath_::ViewPathGlob(_) => {},
             }
         }
     }
@@ -68,11 +67,7 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext, spa
         span_lint(cx,
                   UNSAFE_REMOVED_FROM_NAME,
                   *span,
-                  &format!(
-                "removed \"unsafe\" from the name of `{}` in use as `{}`",
-                old_str,
-                new_str
-            ));
+                  &format!("removed \"unsafe\" from the name of `{}` in use as `{}`", old_str, new_str));
     }
 }
 

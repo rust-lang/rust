@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
 fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>,
-                                hash_is_automatically_derived: bool) {
+                            hash_is_automatically_derived: bool) {
     if_let_chain! {[
         match_path_old(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
@@ -149,18 +149,18 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                         match field.ty(cx.tcx, substs).sty {
                             TypeVariants::TyArray(_, size) if size > 32 => {
                                 return;
-                            }
+                            },
                             TypeVariants::TyFnPtr(..) => {
                                 return;
-                            }
+                            },
                             TypeVariants::TyTuple(tys) if tys.len() > 12 => {
                                 return;
-                            }
+                            },
                             _ => (),
                         }
                     }
                 }
-            }
+            },
             _ => (),
         }
 

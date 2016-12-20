@@ -47,9 +47,10 @@ impl EarlyLintPass for ItemsAfterStatements {
         }
 
         // skip initial items
-        let stmts = item.stmts.iter()
-                              .map(|stmt| &stmt.node)
-                              .skip_while(|s| matches!(**s, StmtKind::Item(..)));
+        let stmts = item.stmts
+            .iter()
+            .map(|stmt| &stmt.node)
+            .skip_while(|s| matches!(**s, StmtKind::Item(..)));
 
         // lint on all further items
         for stmt in stmts {

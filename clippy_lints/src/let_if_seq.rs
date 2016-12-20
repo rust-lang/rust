@@ -149,11 +149,8 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     }
 }
 
-fn check_assign<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    decl: hir::def_id::DefId,
-    block: &'tcx hir::Block,
-) -> Option<&'tcx hir::Expr> {
+fn check_assign<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: hir::def_id::DefId, block: &'tcx hir::Block)
+                          -> Option<&'tcx hir::Expr> {
     if_let_chain! {[
         block.expr.is_none(),
         let Some(expr) = block.stmts.iter().last(),
@@ -182,11 +179,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx: 'a>(
-    cx: &LateContext<'a, 'tcx>,
-    id: hir::def_id::DefId,
-    expr: &'tcx hir::Expr,
-) -> bool {
+fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: hir::def_id::DefId, expr: &'tcx hir::Expr) -> bool {
     let mut v = UsedVisitor {
         cx: cx,
         id: id,

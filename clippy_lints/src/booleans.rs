@@ -94,14 +94,14 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                         BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
                         _ => (),
                     }
-                }
+                },
                 ExprLit(ref lit) => {
                     match lit.node {
                         LitKind::Bool(true) => return Ok(Bool::True),
                         LitKind::Bool(false) => return Ok(Bool::False),
                         _ => (),
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -129,7 +129,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                         BiLe => mk_expr(BiGt),
                         _ => continue,
                     }
-                }
+                },
                 _ => continue,
             };
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
@@ -156,17 +156,17 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             True => {
                 s.push_str("true");
                 s
-            }
+            },
             False => {
                 s.push_str("false");
                 s
-            }
+            },
             Not(ref inner) => {
                 match **inner {
                     And(_) | Or(_) => {
                         s.push('!');
                         recurse(true, cx, inner, terminals, s)
-                    }
+                    },
                     Term(n) => {
                         if let ExprBinary(binop, ref lhs, ref rhs) = terminals[n as usize].node {
                             let op = match binop.node {
@@ -179,7 +179,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                                 _ => {
                                     s.push('!');
                                     return recurse(true, cx, inner, terminals, s);
-                                }
+                                },
                             };
                             s.push_str(&snip(lhs));
                             s.push_str(op);
@@ -189,13 +189,13 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                             s.push('!');
                             recurse(false, cx, inner, terminals, s)
                         }
-                    }
+                    },
                     _ => {
                         s.push('!');
                         recurse(false, cx, inner, terminals, s)
-                    }
+                    },
                 }
-            }
+            },
             And(ref v) => {
                 if brackets {
                     s.push('(');
@@ -217,7 +217,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     s.push(')');
                 }
                 s
-            }
+            },
             Or(ref v) => {
                 if brackets {
                     s.push('(');
@@ -231,7 +231,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     s.push(')');
                 }
                 s
-            }
+            },
             Term(n) => {
                 if brackets {
                     if let ExprBinary(..) = terminals[n as usize].node {
@@ -245,7 +245,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     }
                 }
                 s
-            }
+            },
         }
     }
     recurse(false, cx, suggestion, terminals, String::new())
@@ -262,13 +262,13 @@ fn simple_negate(b: Bool) -> Bool {
                 *el = simple_negate(::std::mem::replace(el, True));
             }
             Or(v)
-        }
+        },
         Or(mut v) => {
             for el in &mut v {
                 *el = simple_negate(::std::mem::replace(el, True));
             }
             And(v)
-        }
+        },
         Not(inner) => *inner,
     }
 }
@@ -290,13 +290,13 @@ fn terminal_stats(b: &Bool) -> Stats {
                     _ => stats.negations += 1,
                 }
                 recurse(inner, stats);
-            }
+            },
             And(ref v) | Or(ref v) => {
                 stats.ops += v.len() - 1;
                 for inner in v {
                     recurse(inner, stats);
                 }
-            }
+            },
             Term(n) => stats.terminals[n as usize] += 1,
         }
     }
@@ -325,7 +325,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr.clone())).simplify() {
                 match simple {
-                    Bool::Not(_) | Bool::True | Bool::False => {}
+                    Bool::Not(_) | Bool::True | Bool::False => {},
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),
                 }
                 let simple_negated = simple_negate(simple);
@@ -399,7 +399,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                 } else {
                     walk_expr(self, e);
                 }
-            }
+            },
             _ => walk_expr(self, e),
         }
     }

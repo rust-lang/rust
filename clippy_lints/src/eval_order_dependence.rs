@@ -60,7 +60,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
-            ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => {
+            ExprAssign(ref lhs, _) |
+            ExprAssignOp(_, ref lhs, _) => {
                 if let ExprPath(ref qpath) = lhs.node {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
@@ -75,13 +76,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                         }
                     }
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
             StmtDecl(ref d, _) => {
                 if let DeclLocal(ref local) = d.node {
                     if let Local { init: Some(ref e), .. } = **local {
@@ -110,32 +112,29 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                     // make sure top level arm expressions aren't linted
                     self.maybe_walk_expr(&*arm.body);
                 }
-            }
+            },
             _ => walk_expr(self, e),
         }
     }
     fn report_diverging_sub_expr(&mut self, e: &Expr) {
-        span_lint(
-            self.cx,
-            DIVERGING_SUB_EXPRESSION,
-            e.span,
-            "sub-expression diverges",
-        );
+        span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprAgain(_) |
-            ExprBreak(_, _) |
-            ExprRet(_) => self.report_diverging_sub_expr(e),
-            ExprCall(ref func, _) => match self.cx.tcx.tables().expr_ty(func).sty {
-                ty::TyFnDef(_, _, fn_ty) |
-                ty::TyFnPtr(fn_ty) => if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&fn_ty.sig).output().sty {
-                    self.report_diverging_sub_expr(e);
-                },
-                _ => {},
+            ExprAgain(_) | ExprBreak(_, _) | ExprRet(_) => self.report_diverging_sub_expr(e),
+            ExprCall(ref func, _) => {
+                match self.cx.tcx.tables().expr_ty(func).sty {
+                    ty::TyFnDef(_, _, fn_ty) |
+                    ty::TyFnPtr(fn_ty) => {
+                        if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&fn_ty.sig).output().sty {
+                            self.report_diverging_sub_expr(e);
+                        }
+                    },
+                    _ => {},
+                }
             },
             ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(e.id);
@@ -195,7 +194,7 @@ fn check_for_unsequenced_reads(vis: &mut ReadVisitor) {
                 // We reached the top of the function, stop.
                 break;
             },
-            _ => { StopEarly::KeepGoing }
+            _ => StopEarly::KeepGoing,
         };
         match stop_early {
             StopEarly::Stop => break,
@@ -214,7 +213,7 @@ enum StopEarly {
     Stop,
 }
 
-fn check_expr<'a, 'tcx>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
+fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
     if expr.id == vis.last_expr.id {
         return StopEarly::KeepGoing;
     }
@@ -229,7 +228,7 @@ fn check_expr<'a, 'tcx>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> S
         ExprRepeat(_, _) |
         ExprStruct(_, _, _) => {
             walk_expr(vis, expr);
-        }
+        },
         ExprBinary(op, _, _) |
         ExprAssignOp(op, _, _) => {
             if op.node == BiAnd || op.node == BiOr {
@@ -238,7 +237,7 @@ fn check_expr<'a, 'tcx>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> S
             } else {
                 walk_expr(vis, expr);
             }
-        }
+        },
         ExprClosure(_, _, _, _) => {
             // Either
             //
@@ -252,10 +251,10 @@ fn check_expr<'a, 'tcx>(vis: & mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> S
             //
             // This is also the only place we need to stop early (grrr).
             return StopEarly::Stop;
-        }
+        },
         // All other expressions either have only one child or strictly
         // sequence the evaluation order of their sub-expressions.
-        _ => {}
+        _ => {},
     }
 
     vis.last_expr = expr;
@@ -276,7 +275,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
             };
             local.and_then(|local| local.init.as_ref())
                 .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr))
-        }
+        },
     }
 }
 

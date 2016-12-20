@@ -66,7 +66,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
                 Some(ref base) => has_no_effect(cx, base),
                 None => true,
             }
-        }
+        },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {
                 let def = cx.tcx.tables().qpath_def(qpath, callee.id);
@@ -80,7 +80,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             } else {
                 false
             }
-        }
+        },
         Expr_::ExprBlock(ref block) => {
             block.stmts.is_empty() &&
             if let Some(ref expr) = block.expr {
@@ -88,7 +88,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             } else {
                 false
             }
-        }
+        },
         _ => false,
     }
 }
@@ -148,7 +148,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         Expr_::ExprStruct(_, ref fields, ref base) => {
             Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
-        }
+        },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {
                 let def = cx.tcx.tables().qpath_def(qpath, callee.id);
@@ -162,7 +162,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
             } else {
                 None
             }
-        }
+        },
         Expr_::ExprBlock(ref block) => {
             if block.stmts.is_empty() {
                 block.expr.as_ref().and_then(|e| {
@@ -176,7 +176,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
             } else {
                 None
             }
-        }
+        },
         _ => None,
     }
 }

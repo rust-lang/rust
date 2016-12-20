@@ -168,9 +168,14 @@ pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
-                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX,
-                    ZERO_PREFIXED_LITERAL, BUILTIN_TYPE_SHADOW)
+        lint_array!(UNNEEDED_FIELD_PATTERN,
+                    DUPLICATE_UNDERSCORE_ARGUMENT,
+                    REDUNDANT_CLOSURE_CALL,
+                    DOUBLE_NEG,
+                    MIXED_CASE_HEX_LITERALS,
+                    UNSEPARATED_LITERAL_SUFFIX,
+                    ZERO_PREFIXED_LITERAL,
+                    BUILTIN_TYPE_SHADOW)
     }
 }
 
@@ -279,7 +284,7 @@ impl EarlyLintPass for MiscEarly {
                                            });
                     }
                 }
-            }
+            },
             ExprKind::Unary(UnOp::Neg, ref inner) => {
                 if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
                     span_lint(cx,
@@ -287,7 +292,7 @@ impl EarlyLintPass for MiscEarly {
                               expr.span,
                               "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
                 }
-            }
+            },
             ExprKind::Lit(ref lit) => {
                 if_let_chain! {[
                     let LitKind::Int(value, ..) = lit.node,
@@ -351,8 +356,8 @@ impl EarlyLintPass for MiscEarly {
                         prev = ch;
                     }
                 }}
-            }
-            _ => ()
+            },
+            _ => (),
         }
     }
 

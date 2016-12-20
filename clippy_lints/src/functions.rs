@@ -69,15 +69,8 @@ impl LintPass for Functions {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'a, 'tcx>,
-        kind: intravisit::FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr,
-        span: Span,
-        nodeid: ast::NodeId,
-    ) {
+    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, kind: intravisit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
+                expr: &'tcx hir::Expr, span: Span, nodeid: ast::NodeId) {
         use rustc::hir::map::Node::*;
 
         let is_impl = if let Some(NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
@@ -131,14 +124,8 @@ impl<'a, 'tcx> Functions {
         }
     }
 
-    fn check_raw_ptr(
-        &self,
-        cx: &LateContext<'a, 'tcx>,
-        unsafety: hir::Unsafety,
-        decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr,
-        nodeid: ast::NodeId,
-    ) {
+    fn check_raw_ptr(&self, cx: &LateContext<'a, 'tcx>, unsafety: hir::Unsafety, decl: &'tcx hir::FnDecl,
+                     expr: &'tcx hir::Expr, nodeid: ast::NodeId) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
             let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
 
@@ -178,7 +165,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprMethodCall(_, _, ref args) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let base_type = self.cx.tcx.tables.borrow().method_map[&method_call].ty;
@@ -188,7 +175,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprUnary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }

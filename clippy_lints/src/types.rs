@@ -6,8 +6,8 @@ use rustc::ty;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
-use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet,
-            span_help_and_lint, span_lint, opt_def_id, last_path_segment};
+use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
+            opt_def_id, last_path_segment};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -95,10 +95,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
                     }}
                 } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
-                                        LINKEDLIST,
-                                        ast_ty.span,
-                                        "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                                        "a VecDeque might work");
+                                       LINKEDLIST,
+                                       ast_ty.span,
+                                       "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                                       "a VecDeque might work");
                 }
             }
         }
@@ -141,7 +141,7 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
                           decl.span,
                           &format!("this let-binding has unit value. Consider omitting `let {} =`",
                                    snippet(cx, local.pat.span, "..")));
-            }
+            },
             _ => (),
         }
     }
@@ -211,8 +211,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
                                   &format!("{}-comparison of unit values detected. This will always be {}",
                                            op.as_str(),
                                            result));
-                    }
-                    _ => ()
+                    },
+                    _ => (),
                 }
             }
         }
@@ -336,11 +336,7 @@ fn is_isize_or_usize(typ: &ty::TyS) -> bool {
 }
 
 fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
-    let mantissa_nbits = if cast_to_f64 {
-        52
-    } else {
-        23
-    };
+    let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
     let from_nbits_str = if arch_dependent {
@@ -388,27 +384,27 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::
              ArchSuffix::None,
              to_nbits == from_nbits && cast_unsigned_to_signed,
              ArchSuffix::None)
-        }
+        },
         (true, false) => {
             (to_nbits <= 32,
              if to_nbits == 32 {
-                ArchSuffix::_64
-            } else {
-                ArchSuffix::None
-            },
+                 ArchSuffix::_64
+             } else {
+                 ArchSuffix::None
+             },
              to_nbits <= 32 && cast_unsigned_to_signed,
              ArchSuffix::_32)
-        }
+        },
         (false, true) => {
             (from_nbits == 64,
              ArchSuffix::_32,
              cast_unsigned_to_signed,
              if from_nbits == 64 {
-                ArchSuffix::_64
-            } else {
-                ArchSuffix::_32
-            })
-        }
+                 ArchSuffix::_64
+             } else {
+                 ArchSuffix::_32
+             })
+        },
     };
     if span_truncation {
         span_lint(cx,
@@ -463,7 +459,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
-                    }
+                    },
                     (false, true) => {
                         span_lint(cx,
                                   CAST_POSSIBLE_TRUNCATION,
@@ -475,7 +471,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                       expr.span,
                                       &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
-                    }
+                    },
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
                             span_lint(cx,
@@ -484,16 +480,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                       &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-                    }
+                    },
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty,
-                                                                                           &cast_to.sty) {
+                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) =
+                            (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx,
                                       CAST_POSSIBLE_TRUNCATION,
                                       expr.span,
                                       "casting f64 to f32 may truncate the value");
                         }
-                    }
+                    },
                 }
             }
         }
@@ -536,7 +532,8 @@ impl LintPass for TypeComplexityPass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, _: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, _: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span,
+                _: NodeId) {
         self.check_fndecl(cx, decl);
     }
 
@@ -629,10 +626,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
             TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
-            TyPath(..) |
-            TySlice(..) |
-            TyTup(..) |
-            TyArray(..) => (10 * self.nest, 1),
+            TyPath(..) | TySlice(..) | TyTup(..) | TyArray(..) => (10 * self.nest, 1),
 
             // "Sum" of trait bounds
             TyObjectSum(..) => (20 * self.nest, 0),
@@ -775,7 +769,7 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
                 (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
                 _ => return None,
             }
-        }
+        },
         Rel::Le => {
             match (lx, rx) {
                 (Some(l @ ExtremeExpr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
@@ -784,7 +778,7 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
                 (_, Some(r @ ExtremeExpr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
                 _ => return None,
             }
-        }
+        },
         Rel::Ne | Rel::Eq => return None,
     })
 }
@@ -864,7 +858,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                                      instead",
                                     snippet(cx, lhs.span, "lhs"),
                                     snippet(cx, rhs.span, "rhs"))
-                        }
+                        },
                     };
 
                     let help = format!("because {} is the {} value for this type, {}",
@@ -967,7 +961,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
                     IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
                 })
-            }
+            },
             TyUint(uint_ty) => {
                 Some(match uint_ty {
                     UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
@@ -976,7 +970,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
                     UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
                 })
-            }
+            },
             _ => None,
         }
     } else {
@@ -1001,7 +995,7 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
             } else {
                 None
             }
-        }
+        },
         Err(_) => None,
     }
 }
@@ -1036,14 +1030,14 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                     } else {
                         ub < norm_rhs_val
                     }
-                }
+                },
                 Rel::Le => {
                     if invert {
                         norm_rhs_val <= lb
                     } else {
                         ub <= norm_rhs_val
                     }
-                }
+                },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, span, lhs, true)
@@ -1054,14 +1048,14 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                     } else {
                         lb >= norm_rhs_val
                     }
-                }
+                },
                 Rel::Le => {
                     if invert {
                         norm_rhs_val > ub
                     } else {
                         lb > norm_rhs_val
                     }
-                }
+                },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, span, lhs, false)

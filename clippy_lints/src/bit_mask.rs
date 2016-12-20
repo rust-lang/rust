@@ -134,7 +134,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value | cmp_value != cmp_value {
                         span_lint(cx,
@@ -144,10 +144,10 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                                            mask_value,
                                            cmp_value));
                     }
-                }
+                },
                 _ => (),
             }
-        }
+        },
         BiLt | BiGe => {
             match bit_op {
                 BiBitAnd => {
@@ -161,7 +161,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value >= cmp_value {
                         span_lint(cx,
@@ -173,11 +173,11 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else {
                         check_ineffective_lt(cx, *span, mask_value, cmp_value, "|");
                     }
-                }
+                },
                 BiBitXor => check_ineffective_lt(cx, *span, mask_value, cmp_value, "^"),
                 _ => (),
             }
-        }
+        },
         BiLe | BiGt => {
             match bit_op {
                 BiBitAnd => {
@@ -191,7 +191,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value > cmp_value {
                         span_lint(cx,
@@ -203,11 +203,11 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else {
                         check_ineffective_gt(cx, *span, mask_value, cmp_value, "|");
                     }
-                }
+                },
                 BiBitXor => check_ineffective_gt(cx, *span, mask_value, cmp_value, "^"),
                 _ => (),
             }
-        }
+        },
         _ => (),
     }
 }
@@ -244,7 +244,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
             } else {
                 None
             }
-        }
+        },
         ExprPath(ref qpath) => {
             let def = cx.tcx.tables().qpath_def(qpath, lit.id);
             if let Def::Const(def_id) = def {
@@ -252,7 +252,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
             } else {
                 None
             }
-        }
+        },
         _ => None,
     }
 }

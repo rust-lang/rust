@@ -8,21 +8,20 @@ use syntax::{ast, codemap};
 use toml;
 
 /// Get the configuration file from arguments.
-pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>]) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
+pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>])
+                      -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
         if arg.name() == "conf_file" {
             return match arg.node {
                 ast::MetaItemKind::Word |
-                ast::MetaItemKind::List(_) => {
-                    Err(("`conf_file` must be a named value", arg.span))
-                }
+                ast::MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
                 ast::MetaItemKind::NameValue(ref value) => {
                     if let ast::LitKind::Str(ref file, _) = value.node {
                         Ok(Some(file.to_string().into()))
                     } else {
                         Err(("`conf_file` value must be a string", value.span))
                     }
-                }
+                },
             };
         }
     }
@@ -38,14 +37,12 @@ pub enum Error {
     /// The file is not valid TOML.
     Toml(Vec<toml::ParserError>),
     /// Type error.
-    Type(
-        /// The name of the key.
-        &'static str,
-        /// The expected type.
-        &'static str,
-        /// The type we got instead.
-        &'static str
-    ),
+    Type(/// The name of the key.
+         &'static str,
+         /// The expected type.
+         &'static str,
+         /// The type we got instead.
+         &'static str),
     /// There is an unknown key is the file.
     UnknownKey(String),
 }
@@ -66,10 +63,10 @@ impl fmt::Display for Error {
                 }
 
                 Ok(())
-            }
+            },
             Error::Type(key, expected, got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
-            }
+            },
             Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
         }
     }
@@ -196,7 +193,7 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
                     if e.kind() != io::ErrorKind::NotFound {
                         return Err(e);
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -231,11 +228,11 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
             }
 
             buf
-        }
+        },
         Err(err) => {
             errors.push(err.into());
             return (conf, errors);
-        }
+        },
     };
 
     let mut parser = toml::Parser::new(&file);

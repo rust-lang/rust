@@ -41,15 +41,8 @@ impl LintPass for UnusedLabel {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'a, 'tcx>,
-        kind: FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl,
-        body: &'tcx hir::Expr,
-        span: Span,
-        fn_id: ast::NodeId,
-    ) {
+    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, kind: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
+                body: &'tcx hir::Expr, span: Span, fn_id: ast::NodeId) {
         if in_macro(cx, span) {
             return;
         }
@@ -72,11 +65,11 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
             hir::ExprBreak(Some(label), _) |
             hir::ExprAgain(Some(label)) => {
                 self.labels.remove(&label.name.as_str());
-            }
+            },
             hir::ExprLoop(_, Some(label), _) |
             hir::ExprWhile(_, _, Some(label)) => {
                 self.labels.insert(label.node.as_str(), expr.span);
-            }
+            },
             _ => (),
         }
 

@@ -71,36 +71,32 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
                     if let Spanned { node: LitKind::Bool(lit), .. } = **span {
-                        if lit {
-                            Argument::True
-                        } else {
-                            Argument::False
-                        }
+                        if lit { Argument::True } else { Argument::False }
                     } else {
                         return; // The function is called with a literal
                                 // which is not a boolean literal. This is theoretically
                                 // possible, but not very likely.
                     }
-                }
+                },
                 _ => Argument::Unknown,
             };
 
             match &*name.node.as_str() {
                 "create" => {
                     options.push((OpenOption::Create, argument_option));
-                }
+                },
                 "append" => {
                     options.push((OpenOption::Append, argument_option));
-                }
+                },
                 "truncate" => {
                     options.push((OpenOption::Truncate, argument_option));
-                }
+                },
                 "read" => {
                     options.push((OpenOption::Read, argument_option));
-                }
+                },
                 "write" => {
                     options.push((OpenOption::Write, argument_option));
-                }
+                },
                 _ => (),
             }
 
@@ -111,11 +107,8 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
 
 fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
     let (mut create, mut append, mut truncate, mut read, mut write) = (false, false, false, false, false);
-    let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) = (false,
-                                                                                           false,
-                                                                                           false,
-                                                                                           false,
-                                                                                           false);
+    let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) =
+        (false, false, false, false, false);
     // This code is almost duplicated (oh, the irony), but I haven't found a way to unify it.
 
     for option in options {
@@ -130,7 +123,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
                     create = true
                 }
                 create_arg = create_arg || (arg == Argument::True);;
-            }
+            },
             (OpenOption::Append, arg) => {
                 if append {
                     span_lint(cx,
@@ -141,7 +134,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
                     append = true
                 }
                 append_arg = append_arg || (arg == Argument::True);;
-            }
+            },
             (OpenOption::Truncate, arg) => {
                 if truncate {
                     span_lint(cx,
@@ -152,7 +145,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
                     truncate = true
                 }
                 truncate_arg = truncate_arg || (arg == Argument::True);
-            }
+            },
             (OpenOption::Read, arg) => {
                 if read {
                     span_lint(cx,
@@ -163,7 +156,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
                     read = true
                 }
                 read_arg = read_arg || (arg == Argument::True);;
-            }
+            },
             (OpenOption::Write, arg) => {
                 if write {
                     span_lint(cx,
@@ -174,7 +167,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
                     write = true
                 }
                 write_arg = write_arg || (arg == Argument::True);;
-            }
+            },
         }
     }
 

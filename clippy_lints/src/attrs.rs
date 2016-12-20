@@ -120,12 +120,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                 }
                                 if let Some(mut sugg) = snippet_opt(cx, attr.span) {
                                     if sugg.len() > 1 {
-                                        span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
+                                        span_lint_and_then(cx,
+                                                           USELESS_ATTRIBUTE,
+                                                           attr.span,
                                                            "useless lint attribute",
                                                            |db| {
-                                            sugg.insert(1, '!');
-                                            db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
-                                        });
+                                                               sugg.insert(1, '!');
+                                                               db.span_suggestion(attr.span,
+                                                                                  "if you just forgot a `!`, use",
+                                                                                  sugg);
+                                                           });
                                     }
                                 }
                             },
@@ -181,7 +185,7 @@ fn is_relevant_block(cx: &LateContext, block: &Block) -> bool {
             StmtExpr(ref expr, _) |
             StmtSemi(ref expr, _) => {
                 return is_relevant_expr(cx, expr);
-            }
+            },
         }
     }
     block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, e))
@@ -191,7 +195,8 @@ fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(cx, block),
         ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
-        ExprRet(None) | ExprBreak(_, None) => false,
+        ExprRet(None) |
+        ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(ref qpath) = path_expr.node {
                 let fun_id = resolve_node(cx, qpath, path_expr.id).def_id();
@@ -199,7 +204,7 @@ fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
             } else {
                 true
             }
-        }
+        },
         _ => true,
     }
 }

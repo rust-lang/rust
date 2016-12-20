@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 }
                             }
                         }}
-                    }
+                    },
                     ExprPath(ref path) => {
                         if match_path(path, &paths::CLONE) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                                         type_name),
                                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
                         }
-                    }
+                    },
                     _ => (),
                 }
             }
@@ -91,7 +91,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
                                    parameters: PathParameters::none(),
                                }];
             !path.global && path.segments[..] == arg_segment
-        }
+        },
         _ => false,
     }
 }

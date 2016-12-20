@@ -123,7 +123,7 @@ fn to_const_range(start: Option<Option<ConstVal>>, end: Option<Option<ConstVal>>
             } else {
                 x
             }
-        }
+        },
         Some(_) => return None,
         None => array_size,
     };

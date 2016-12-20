@@ -8,10 +8,8 @@ use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
-use utils::{
-    get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
-    snippet, span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment
-};
+use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
+            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
@@ -167,7 +165,8 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, k: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, k: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span,
+                _: NodeId) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
             return;
@@ -236,23 +235,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if let Some(name) = get_item_name(cx, expr) {
                     let name = &*name.as_str();
                     if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                        name.ends_with("_eq") {
+                       name.ends_with("_eq") {
                         return;
                     }
                 }
-                span_lint_and_then(cx,
-                                   FLOAT_CMP,
-                                   expr.span,
-                                   "strict comparison of f32 or f64",
-                                   |db| {
-                                       let lhs = Sugg::hir(cx, left, "..");
-                                       let rhs = Sugg::hir(cx, right, "..");
+                span_lint_and_then(cx, FLOAT_CMP, expr.span, "strict comparison of f32 or f64", |db| {
+                    let lhs = Sugg::hir(cx, left, "..");
+                    let rhs = Sugg::hir(cx, right, "..");
 
-                                       db.span_suggestion(expr.span,
-                                                          "consider comparing them within some error",
-                                                          format!("({}).abs() < error", lhs - rhs));
-                                       db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
-                                   });
+                    db.span_suggestion(expr.span,
+                                       "consider comparing them within some error",
+                                       format!("({}).abs() < error", lhs - rhs));
+                    db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                });
             } else if op == BiRem && is_integer_literal(right, 1) {
                 span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
             }
@@ -274,7 +269,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 } else {
                     None
                 }
-            }
+            },
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
                 if name.starts_with('_') && !name.starts_with("__") {
@@ -282,7 +277,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 } else {
                     None
                 }
-            }
+            },
             _ => None,
         };
         if let Some(binding) = binding {
@@ -339,9 +334,8 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
             f64: ::std::f64::NEG_INFINITY,
         };
 
-        val.try_cmp(zero) == Ok(Ordering::Equal)
-            || val.try_cmp(infinity) == Ok(Ordering::Equal)
-            || val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+        val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
+        val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
     } else {
         false
     }
@@ -360,7 +354,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
             } else {
                 return;
             }
-        }
+        },
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
@@ -371,7 +365,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
             } else {
                 return;
             }
-        }
+        },
         _ => return,
     };
 
@@ -408,8 +402,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 }
 
 fn is_str_arg(cx: &LateContext, args: &[Expr]) -> bool {
-    args.len() == 1 &&
-        matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(&args[0])).sty, ty::TyStr)
+    args.len() == 1 && matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(&args[0])).sty, ty::TyStr)
 }
 
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea
@@ -430,22 +423,21 @@ fn is_used(cx: &LateContext, expr: &Expr) -> bool {
 /// `#[derive(...)`] or the like).
 fn in_attributes_expansion(cx: &LateContext, expr: &Expr) -> bool {
     cx.sess().codemap().with_expn_info(expr.span.expn_id, |info_opt| {
-        info_opt.map_or(false, |info| {
-            matches!(info.callee.format, ExpnFormat::MacroAttribute(_))
-        })
+        info_opt.map_or(false, |info| matches!(info.callee.format, ExpnFormat::MacroAttribute(_)))
     })
 }
 
 /// Test whether `def` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
-        def::Def::Local(id) | def::Def::Upvar(id, _, _) => {
+        def::Def::Local(id) |
+        def::Def::Upvar(id, _, _) => {
             if let Some(span) = cx.tcx.map.span_if_local(id) {
                 !in_macro(cx, span)
             } else {
                 true
             }
-        }
+        },
         _ => false,
     }
 }

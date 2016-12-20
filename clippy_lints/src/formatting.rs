@@ -62,7 +62,7 @@ impl EarlyLintPass for Formatting {
                 (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second)) |
                 (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Semi(ref second)) => {
                     check_consecutive_ifs(cx, first, second);
-                }
+                },
                 _ => (),
             }
         }

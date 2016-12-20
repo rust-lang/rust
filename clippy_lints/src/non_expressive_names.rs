@@ -88,7 +88,7 @@ impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         self.visit_pat(&field.node.pat);
                     }
                 }
-            }
+            },
             _ => walk_pat(self, pat),
         }
     }
