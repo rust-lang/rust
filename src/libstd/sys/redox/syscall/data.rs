@@ -51,6 +51,32 @@ impl DerefMut for Stat {
 
 #[derive(Copy, Clone, Debug, Default)]
 #[repr(packed)]
+pub struct StatVfs {
+    pub f_bsize: u32,
+    pub f_blocks: u64,
+    pub f_bfree: u64,
+    pub f_bavail: u64,
+}
+
+impl Deref for StatVfs {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        unsafe {
+            slice::from_raw_parts(self as *const StatVfs as *const u8, mem::size_of::<StatVfs>()) as &[u8]
+        }
+    }
+}
+
+impl DerefMut for StatVfs {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            slice::from_raw_parts_mut(self as *mut StatVfs as *mut u8, mem::size_of::<StatVfs>()) as &mut [u8]
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+#[repr(packed)]
 pub struct TimeSpec {
     pub tv_sec: i64,
     pub tv_nsec: i32,
