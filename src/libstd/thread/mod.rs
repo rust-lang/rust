@@ -216,6 +216,20 @@ pub use self::local::{LocalKey, LocalKeyState};
 
 /// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
+///
+/// # Examples
+///
+/// ```
+/// use std::thread;
+///
+/// let builder = thread::Builder::new();
+///
+/// let handler = builder.spawn(|| {
+///     // thread code
+/// }).unwrap();
+///
+/// handler.join().unwrap();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -228,6 +242,22 @@ pub struct Builder {
 impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new()
+    ///                               .name("foo".into())
+    ///                               .stack_size(10);
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     // thread code
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
@@ -241,7 +271,7 @@ impl Builder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new()
@@ -260,6 +290,14 @@ impl Builder {
     }
 
     /// Sets the size of the stack for the new thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new().stack_size(10);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
@@ -275,9 +313,26 @@ impl Builder {
     ///
     /// # Errors
     ///
-    /// Unlike the `spawn` free function, this method yields an
-    /// `io::Result` to capture any failure to create the thread at
+    /// Unlike the [`spawn`] free function, this method yields an
+    /// [`io::Result`] to capture any failure to create the thread at
     /// the OS level.
+    ///
+    /// [`spawn`]: ../../std/thread/fn.spawn.html
+    /// [`io::Result`]: ../../std/io/type.Result.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     // thread code
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
