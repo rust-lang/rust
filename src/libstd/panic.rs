@@ -14,6 +14,7 @@
 
 use any::Any;
 use cell::UnsafeCell;
+use fmt;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, Shared};
@@ -293,6 +294,15 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
 
     extern "rust-call" fn call_once(self, _args: ()) -> R {
         (self.0)()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("AssertUnwindSafe")
+            .field(&self.0)
+            .finish()
     }
 }
 

@@ -18,6 +18,7 @@ use sys::cvt;
 use sys_common::AsInner;
 use sys_common::io::read_to_end_uninitialized;
 
+#[derive(Debug)]
 pub struct FileDesc {
     fd: c_int,
 }

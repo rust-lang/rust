@@ -76,6 +76,7 @@ pub struct TcpListener(net_imp::TcpListener);
 /// [`incoming`]: struct.TcpListener.html#method.incoming
 /// [`TcpListener`]: struct.TcpListener.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Incoming<'a> { listener: &'a TcpListener }
 
 impl TcpStream {

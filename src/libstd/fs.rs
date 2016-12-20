@@ -140,7 +140,7 @@ pub struct DirEntry(fs_imp::DirEntry);
 ///             .create(true)
 ///             .open("foo.txt");
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
@@ -168,6 +168,7 @@ pub struct FileType(fs_imp::FileType);
 ///
 /// This builder also supports platform-specific options.
 #[stable(feature = "dir_builder", since = "1.6.0")]
+#[derive(Debug)]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
@@ -831,6 +832,21 @@ impl Metadata {
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
         self.0.created().map(FromInner::from_inner)
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Metadata {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Metadata")
+            .field("file_type", &self.file_type())
+            .field("is_dir", &self.is_dir())
+            .field("is_file", &self.is_file())
+            .field("permissions", &self.permissions())
+            .field("modified", &self.modified())
+            .field("accessed", &self.accessed())
+            .field("created", &self.created())
+            .finish()
     }
 }
 
