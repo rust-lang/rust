@@ -271,86 +271,17 @@ information, we would investigate these further.
 
 ### Popularity
 
-- Number of downloads weighted by time across all versions. Combined as
-  follows, then reported as a percentage relative to the most downloaded crate.
-  Can be calculated as part of the [update-downloads][] background job.
-  - Number of downloads in the last year - 10%
-  - Number of downloads in the last 6 mo - 30%
-  - Number of downloads in the last month - 60%
+- Number of downloads in the last 90 days, and the top, say, 10% most
+  downloaded would get a bump in ranking and a badge that says "frequently
+  downloaded". Can be calculated as part of the [update-downloads][] background
+  job.
 
 [update-downloads]: https://github.com/rust-lang/crates.io/blob/master/src/bin/update-downloads.rs
 
-
-Due to the data that the crates.io API currently exposes, we're approximating
-our proposed formula. We're using downloads over all time to approximate
-downloads in the last year, and downloads over the last 90 days to approximate
-downloads in the last 6 months.
-
-Since we don't have the overall most downloaded crate to compute a relative
-release score, for this analysis we're using the one out of these five
-crates that has the highest download score, nom.
-
-Given the exponential nature of popular crates' downloads, we think percentile
-is a more appropriate measure here. We are presenting both relative percentage
-and percentile here for your consideration.
-
-<table>
-    <tr>
-        <th>Crate</th>
-        <th>Downloads all time (~year)</th>
-        <th>Downloads in last 90 days (~6 mo)</th>
-        <th>Downloads in last 1 mo</th>
-        <th>Downloads score</th>
-        <th>Relative Downloads score %</th>
-        <th>Relative Downloads score percentile</th>
-    </tr>
-
-    <tr>
-        <td>nom</td>
-        <td>274,715</td>
-        <td>82,975</td>
-        <td>21,335</td>
-        <td>65165</td>
-        <td>100%, ☀️</td>
-        <td>100%, ☀️</td>
-    </tr>
-    <tr>
-        <td>peg</td>
-        <td>12,735</td>
-        <td>2,190</td>
-        <td>693</td>
-        <td>11301</td>
-        <td>17%, 🌧</td>
-        <td>80%, 🌤</td>
-    </tr>
-    <tr>
-        <td>combine</td>
-        <td>10,809</td>
-        <td>4,252</td>
-        <td>1,115</td>
-        <td>3026</td>
-        <td>5%, 🌧</td>
-        <td>60%, 🌥</td>
-    </tr>
-    <tr>
-        <td>lalrpop</td>
-        <td>7,108</td>
-        <td>1,928</td>
-        <td>796</td>
-        <td>1767</td>
-        <td>3%, 🌧</td>
-        <td>40%, 🌧</td>
-    </tr>
-    <tr>
-        <td>peresil</td>
-        <td>8,960</td>
-        <td>1,859</td>
-        <td>427</td>
-        <td>1710</td>
-        <td>3%, 🌧</td>
-        <td>20%, 🌧</td>
-    </tr>
-</table>
+With this proposal, out of the 5 parser crates assuming these are the only
+crates on crates.io, nom would be marked as "frequently downloaded" and the
+others would not. nom is currently ranked at #83 in the list of crates by
+number of downloads, which easily puts it in the top 10% out of 7,239 crates.
 
 ### Credibility
 
