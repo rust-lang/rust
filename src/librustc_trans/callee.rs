@@ -331,16 +331,21 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fcx = FunctionContext::new(ccx, lloncefn, fn_ty);
     let mut bcx = fcx.get_entry_block();
 
+    let callee = Callee {
+        data: Fn(llreffn),
+        ty: llref_fn_ty
+    };
+
     // the first argument (`self`) will be the (by value) closure env.
 
     let mut llargs = get_params(fcx.llfn);
-    let mut self_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let idx = fcx.fn_ty.ret.is_indirect() as usize;
     let env_arg = &fcx.fn_ty.args[0];
     let llenv = if env_arg.is_indirect() {
-        llargs[self_idx]
+        llargs[idx]
     } else {
         let scratch = alloc_ty(&bcx, closure_ty, "self");
-        let mut llarg_idx = self_idx;
+        let mut llarg_idx = idx;
         env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
         scratch
     };
@@ -349,20 +354,14 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Adjust llargs such that llargs[self_idx..] has the call arguments.
     // For zero-sized closures that means sneaking in a new argument.
     if env_arg.is_ignore() {
-        if self_idx > 0 {
-            self_idx -= 1;
-            llargs[self_idx] = llenv;
+        if fcx.fn_ty.ret.is_indirect() {
+            llargs[0] = llenv;
         } else {
             llargs.insert(0, llenv);
         }
     } else {
-        llargs[self_idx] = llenv;
+        llargs[idx] = llenv;
     }
-
-    let callee = Callee {
-        data: Fn(llreffn),
-        ty: llref_fn_ty
-    };
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
@@ -370,14 +369,9 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
 
-    let first_llarg = if fn_ty.ret.is_indirect() && !fcx.fn_ty.ret.is_ignore() {
-        Some(get_param(fcx.llfn, 0))
-    } else {
-        None
-    };
-    let llargs = first_llarg.into_iter().chain(llargs[self_idx..].iter().cloned())
-        .collect::<Vec<_>>();
-
+    if fn_ty.ret.is_indirect() {
+        llargs.insert(0, get_param(fcx.llfn, 0));
+    }
     let llfn = callee.reify(bcx.ccx);
     let llret;
     if let Some(landing_pad) = self_scope.landing_pad {
