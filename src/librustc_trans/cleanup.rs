@@ -18,12 +18,12 @@
 //! corresponds to a normal exit from a block (for example, an expression
 //! completing evaluation successfully without panic).
 
-use llvm::{BasicBlockRef, ValueRef};
+use llvm::BasicBlockRef;
 use base;
+use adt::MaybeSizedValue;
 use common::{BlockAndBuilder, FunctionContext, Funclet};
 use glue;
 use type_::Type;
-use value::Value;
 use rustc::ty::Ty;
 
 pub struct CleanupScope<'tcx> {
@@ -36,7 +36,7 @@ pub struct CleanupScope<'tcx> {
 
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
-    val: ValueRef,
+    val: MaybeSizedValue,
     ty: Ty<'tcx>,
     skip_dtor: bool,
 }
@@ -94,15 +94,13 @@ impl<'tcx> DropValue<'tcx> {
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
-    pub fn schedule_drop_mem(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
+    pub fn schedule_drop_mem(&self, val: MaybeSizedValue, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
         if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
         let drop = DropValue {
             val: val,
             ty: ty,
             skip_dtor: false,
         };
-
-        debug!("schedule_drop_mem(val={:?}, ty={:?}) skip_dtor={}", Value(val), ty, drop.skip_dtor);
 
         CleanupScope::new(self, drop)
     }
@@ -112,7 +110,8 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// `ty`. The scheduled code handles extracting the discriminant
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
-    pub fn schedule_drop_adt_contents(&self, val: ValueRef, ty: Ty<'tcx>) -> CleanupScope<'tcx> {
+    pub fn schedule_drop_adt_contents(&self, val: MaybeSizedValue, ty: Ty<'tcx>)
+        -> CleanupScope<'tcx> {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
         if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
@@ -122,9 +121,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             ty: ty,
             skip_dtor: true,
         };
-
-        debug!("schedule_drop_adt_contents(val={:?}, ty={:?}) skip_dtor={}",
-               Value(val), ty, drop.skip_dtor);
 
         CleanupScope::new(self, drop)
     }
