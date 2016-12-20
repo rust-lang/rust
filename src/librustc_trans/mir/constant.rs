@@ -18,7 +18,6 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::Substs;
@@ -36,7 +35,7 @@ use type_::Type;
 use value::Value;
 
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::fmt;
 use std::ptr;
@@ -238,24 +237,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
-                 mut instance: Instance<'tcx>,
+                 instance: Instance<'tcx>,
                  args: IndexVec<mir::Local, Const<'tcx>>)
                  -> Result<Const<'tcx>, ConstEvalErr> {
-        // Try to resolve associated constants.
-        if let Some(trait_id) = ccx.tcx().trait_of_item(instance.def) {
-            let trait_ref = ty::TraitRef::new(trait_id, instance.substs);
-            let trait_ref = ty::Binder(trait_ref);
-            let vtable = common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
-            if let traits::VtableImpl(vtable_impl) = vtable {
-                let name = ccx.tcx().item_name(instance.def);
-                let ac = ccx.tcx().associated_items(vtable_impl.impl_def_id)
-                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
-                if let Some(ac) = ac {
-                    instance = Instance::new(ac.def_id, vtable_impl.substs);
-                }
-            }
-        }
-
+        let instance = instance.resolve_const(ccx.shared());
         let mir = ccx.tcx().item_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }

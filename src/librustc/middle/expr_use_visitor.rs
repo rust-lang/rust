@@ -287,7 +287,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn walk_fn(&mut self, body: &hir::Body) {
+    pub fn consume_body(&mut self, body: &hir::Body) {
         for arg in &body.arguments {
             let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
 

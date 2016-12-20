@@ -11,11 +11,15 @@
 use common::*;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::traits;
 use rustc::ty::fold::{TypeFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::ppaux;
 use rustc::util::common::MemoizationMap;
+
+use syntax::codemap::DUMMY_SP;
+
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -30,14 +34,34 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-impl<'tcx> Instance<'tcx> {
+impl<'a, 'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
                -> Instance<'tcx> {
         assert!(substs.regions().all(|&r| r == ty::ReErased));
         Instance { def: def_id, substs: substs }
     }
-    pub fn mono<'a>(scx: &SharedCrateContext<'a, 'tcx>, def_id: DefId) -> Instance<'tcx> {
+
+    pub fn mono(scx: &SharedCrateContext<'a, 'tcx>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, scx.empty_substs_for_def_id(def_id))
+    }
+
+    /// For associated constants from traits, return the impl definition.
+    pub fn resolve_const(&self, scx: &SharedCrateContext<'a, 'tcx>) -> Self {
+        if let Some(trait_id) = scx.tcx().trait_of_item(self.def) {
+            let trait_ref = ty::TraitRef::new(trait_id, self.substs);
+            let trait_ref = ty::Binder(trait_ref);
+            let vtable = fulfill_obligation(scx, DUMMY_SP, trait_ref);
+            if let traits::VtableImpl(vtable_impl) = vtable {
+                let name = scx.tcx().item_name(self.def);
+                let ac = scx.tcx().associated_items(vtable_impl.impl_def_id)
+                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
+                if let Some(ac) = ac {
+                    return Instance::new(ac.def_id, vtable_impl.substs);
+                }
+            }
+        }
+
+        *self
     }
 }
 

@@ -42,7 +42,6 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
-use hir::intravisit::Visitor;
 use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
@@ -131,86 +130,6 @@ pub struct NativeLibrary {
     pub name: Symbol,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_items: Vec<DefIndex>,
-}
-
-/// The data we save and restore about an inlined item or method.  This is not
-/// part of the AST that we parse from a file, but it becomes part of the tree
-/// that we trans.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct InlinedItem {
-    pub def_id: DefId,
-    pub body: hir::Body,
-}
-
-/// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
-/// a crate; it then gets read as an InlinedItem.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, Hash, Debug)]
-pub struct InlinedItemRef<'a> {
-    pub def_id: DefId,
-    pub body: &'a hir::Body,
-}
-
-impl<'a, 'tcx> InlinedItemRef<'tcx> {
-    pub fn from_item(def_id: DefId,
-                     item: &hir::Item,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                     -> InlinedItemRef<'tcx> {
-        let body_id = match item.node {
-            hir::ItemFn(.., body_id) |
-            hir::ItemConst(_, body_id) => body_id,
-            _ => bug!("InlinedItemRef::from_item wrong kind")
-        };
-        InlinedItemRef {
-            def_id: def_id,
-            body: tcx.map.body(body_id),
-        }
-    }
-
-    pub fn from_trait_item(def_id: DefId,
-                           item: &hir::TraitItem,
-                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                           -> InlinedItemRef<'tcx> {
-        let body_id = match item.node {
-            hir::TraitItemKind::Const(_, Some(body_id)) => body_id,
-            hir::TraitItemKind::Const(_, None) => {
-                bug!("InlinedItemRef::from_trait_item called for const without body")
-            },
-            _ => bug!("InlinedItemRef::from_trait_item wrong kind")
-        };
-        InlinedItemRef {
-            def_id: def_id,
-            body: tcx.map.body(body_id),
-        }
-    }
-
-    pub fn from_impl_item(def_id: DefId,
-                          item: &hir::ImplItem,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> InlinedItemRef<'tcx> {
-        let body_id = match item.node {
-            hir::ImplItemKind::Method(_, body_id) |
-            hir::ImplItemKind::Const(_, body_id) => body_id,
-            _ => bug!("InlinedItemRef::from_impl_item wrong kind")
-        };
-        InlinedItemRef {
-            def_id: def_id,
-            body: tcx.map.body(body_id),
-        }
-    }
-
-    pub fn visit<V>(&self, visitor: &mut V)
-        where V: Visitor<'tcx>
-    {
-        visitor.visit_body(self.body);
-    }
-}
-
-impl InlinedItem {
-    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
-        where V: Visitor<'ast>
-    {
-        visitor.visit_body(&self.body);
-    }
 }
 
 pub enum LoadedMacro {
@@ -329,10 +248,9 @@ pub trait CrateStore<'tcx> {
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
-    fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<(&'tcx InlinedItem, ast::NodeId)>;
-    fn local_node_for_inlined_defid(&'tcx self, def_id: DefId) -> Option<ast::NodeId>;
-    fn defid_for_inlined_node(&'tcx self, node_id: ast::NodeId) -> Option<DefId>;
+    fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                               -> Option<&'tcx hir::Body>;
+    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
 
     fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
@@ -499,15 +417,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
-    fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<(&'tcx InlinedItem, ast::NodeId)> {
-        bug!("maybe_get_item_ast")
+    fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                               -> Option<&'tcx hir::Body> {
+        bug!("maybe_get_item_body")
     }
-    fn local_node_for_inlined_defid(&'tcx self, def_id: DefId) -> Option<ast::NodeId> {
-        bug!("local_node_for_inlined_defid")
-    }
-    fn defid_for_inlined_node(&'tcx self, node_id: ast::NodeId) -> Option<DefId> {
-        bug!("defid_for_inlined_node")
+    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
+        bug!("const_is_rvalue_promotable_to_static")
     }
 
     fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)

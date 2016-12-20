@@ -17,7 +17,6 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -139,21 +138,10 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.borrow().get(&def_id) {
-            Some(&None) => return None,
-            Some(&Some((expr_id, ty))) => {
-                return Some((tcx.map.expect_expr(expr_id), ty));
-            }
-            None => {}
-        }
-        let mut used_substs = false;
-        let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem { ref body, .. }, _)) => {
-                Some((&body.value, Some(tcx.sess.cstore.item_type(tcx, def_id))))
-            }
-            _ => None
-        };
-        let expr_ty = match tcx.sess.cstore.describe_def(def_id) {
+        let expr_ty = tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
+            (&body.value, Some(tcx.sess.cstore.item_type(tcx, def_id)))
+        });
+        match tcx.sess.cstore.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {
                 let trait_id = tcx.sess.cstore.trait_of_item(def_id);
                 // As mentioned in the comments above for in-crate
@@ -161,8 +149,6 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
                 if let Some(trait_id) = trait_id {
-                    used_substs = true;
-
                     if let Some(substs) = substs {
                         resolve_trait_associated_const(tcx, def_id, expr_ty, trait_id, substs)
                     } else {
@@ -174,70 +160,27 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             },
             Some(Def::Const(..)) => expr_ty,
             _ => None
-        };
-        // If we used the substitutions, particularly to choose an impl
-        // of a trait-associated const, don't cache that, because the next
-        // lookup with the same def_id may yield a different result.
-        if !used_substs {
-            tcx.extern_const_statics
-               .borrow_mut()
-               .insert(def_id, expr_ty.map(|(e, t)| (e.id, t)));
         }
-        expr_ty
     }
 }
 
-fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 def_id: DefId)
-                                                 -> Option<ast::NodeId> {
-    match tcx.extern_const_fns.borrow().get(&def_id) {
-        Some(&ast::DUMMY_NODE_ID) => return None,
-        Some(&fn_id) => return Some(fn_id),
-        None => {}
-    }
-
-    if !tcx.sess.cstore.is_const_fn(def_id) {
-        tcx.extern_const_fns.borrow_mut().insert(def_id, ast::DUMMY_NODE_ID);
-        return None;
-    }
-
-    let fn_id = tcx.sess.cstore.maybe_get_item_ast(tcx, def_id).map(|t| t.1);
-    tcx.extern_const_fns.borrow_mut().insert(def_id,
-                                             fn_id.unwrap_or(ast::DUMMY_NODE_ID));
-    fn_id
-}
-
-pub enum ConstFnNode<'tcx> {
-    Local(FnLikeNode<'tcx>),
-    Inlined(&'tcx InlinedItem)
-}
-
-pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                       -> Option<ConstFnNode<'tcx>>
+fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                                   -> Option<&'tcx hir::Body>
 {
-    let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        node_id
-    } else {
-        if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
-            if let ast_map::NodeInlinedItem(ii) = tcx.map.get(fn_id) {
-                return Some(ConstFnNode::Inlined(ii));
+    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+        FnLikeNode::from_node(tcx.map.get(node_id)).and_then(|fn_like| {
+            if fn_like.constness() == hir::Constness::Const {
+                Some(tcx.map.body(fn_like.body()))
             } else {
-                bug!("Got const fn from external crate, but it's not inlined")
+                None
             }
-        } else {
-            return None;
-        }
-    };
-
-    let fn_like = match FnLikeNode::from_node(tcx.map.get(fn_id)) {
-        Some(fn_like) => fn_like,
-        None => return None
-    };
-
-    if fn_like.constness() == hir::Constness::Const {
-        Some(ConstFnNode::Local(fn_like))
+        })
     } else {
-        None
+        if tcx.sess.cstore.is_const_fn(def_id) {
+            tcx.sess.cstore.maybe_get_item_body(tcx, def_id)
+        } else {
+            None
+        }
     }
 }
 
@@ -871,8 +814,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               callee => signal!(e, CallOn(callee)),
           };
           let body = match lookup_const_fn_by_id(tcx, did) {
-              Some(ConstFnNode::Inlined(ii)) => &ii.body,
-              Some(ConstFnNode::Local(fn_like)) => tcx.map.body(fn_like.body()),
+              Some(body) => body,
               None => signal!(e, NonConstPath),
           };
 

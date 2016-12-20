@@ -16,8 +16,7 @@ use cstore::CrateMetadata;
 use encoder::EncodeContext;
 use schema::*;
 
-use rustc::middle::cstore::{InlinedItem, InlinedItemRef};
-use rustc::middle::const_qualif::ConstQualif;
+use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt, Ty};
@@ -29,8 +28,9 @@ use rustc_serialize::Encodable;
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
     id_range: IdRange,
-    item: Lazy<InlinedItem>,
+    body: Lazy<hir::Body>,
     side_tables: LazySeq<(ast::NodeId, TableEntry<'tcx>)>,
+    pub rvalue_promotable_to_static: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -39,16 +39,17 @@ enum TableEntry<'tcx> {
     NodeType(Ty<'tcx>),
     ItemSubsts(ty::ItemSubsts<'tcx>),
     Adjustment(ty::adjustment::Adjustment<'tcx>),
-    ConstQualif(ConstQualif),
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    pub fn encode_inlined_item(&mut self, ii: InlinedItemRef<'tcx>) -> Lazy<Ast<'tcx>> {
-        let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
-        ii.visit(&mut id_visitor);
+    pub fn encode_body(&mut self, body: hir::BodyId) -> Lazy<Ast<'tcx>> {
+        let body = self.tcx.map.body(body);
 
-        let ii_pos = self.position();
-        ii.encode(self).unwrap();
+        let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
+        id_visitor.visit_body(body);
+
+        let body_pos = self.position();
+        body.encode(self).unwrap();
 
         let tables_pos = self.position();
         let tables_count = {
@@ -56,14 +57,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 ecx: self,
                 count: 0,
             };
-            ii.visit(&mut visitor);
+            visitor.visit_body(body);
             visitor.count
         };
 
+        let rvalue_promotable_to_static =
+            self.tcx.rvalue_promotable_to_static.borrow()[&body.value.id];
+
         self.lazy(&Ast {
             id_range: id_visitor.result(),
-            item: Lazy::with_position(ii_pos),
+            body: Lazy::with_position(body_pos),
             side_tables: LazySeq::with_position_and_length(tables_pos, tables_count),
+            rvalue_promotable_to_static: rvalue_promotable_to_static
         })
     }
 }
@@ -94,18 +99,17 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
         encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
         encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
         encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
-        encode(tcx.const_qualif_map.borrow().get(&id).cloned().map(TableEntry::ConstQualif));
     }
 }
 
-/// Decodes an item from its AST in the cdata's metadata and adds it to the
+/// Decodes an item's body from its AST in the cdata's metadata and adds it to the
 /// ast-map.
-pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     ast: Ast<'tcx>,
-                                     orig_did: DefId)
-                                     -> &'tcx InlinedItem {
-    debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
+pub fn decode_body<'a, 'tcx>(cdata: &CrateMetadata,
+                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             def_id: DefId,
+                             ast: Ast<'tcx>)
+                             -> &'tcx hir::Body {
+    debug!("> Decoding inlined fn: {}", tcx.item_path_str(def_id));
 
     let cnt = ast.id_range.max.as_usize() - ast.id_range.min.as_usize();
     let start = tcx.sess.reserve_node_ids(cnt);
@@ -114,12 +118,6 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
                          min: start,
                          max: ast::NodeId::new(start.as_usize() + cnt),
                      }];
-
-    let ii = ast.item.decode((cdata, tcx, id_ranges));
-    let item_node_id = tcx.sess.next_node_id();
-    let ii = ast_map::map_decoded_item(&tcx.map,
-                                       ii,
-                                       item_node_id);
 
     for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
         match entry {
@@ -135,11 +133,9 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
             TableEntry::Adjustment(adj) => {
                 tcx.tables.borrow_mut().adjustments.insert(id, adj);
             }
-            TableEntry::ConstQualif(qualif) => {
-                tcx.const_qualif_map.borrow_mut().insert(id, qualif);
-            }
         }
     }
 
-    ii
+    let body = ast.body.decode((cdata, tcx, id_ranges));
+    ast_map::map_decoded_body(&tcx.map, def_id, body, tcx.sess.next_node_id())
 }

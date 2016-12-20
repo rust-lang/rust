@@ -17,7 +17,6 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode};
 
-use middle::cstore::InlinedItem;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use syntax::abi::Abi;
@@ -26,6 +25,7 @@ use syntax::codemap::Spanned;
 use syntax_pos::Span;
 
 use hir::*;
+use hir::intravisit::Visitor;
 use hir::print as pprust;
 
 use arena::TypedArena;
@@ -37,6 +37,15 @@ pub mod blocks;
 mod collector;
 mod def_collector;
 pub mod definitions;
+
+/// The data we save and restore about an inlined item or method.  This is not
+/// part of the AST that we parse from a file, but it becomes part of the tree
+/// that we trans.
+#[derive(Debug)]
+struct InlinedItem {
+    def_id: DefId,
+    body: Body,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'ast> {
@@ -60,14 +69,12 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
     NodeTyParam(&'ast TyParam),
     NodeVisibility(&'ast Visibility),
-
-    NodeInlinedItem(&'ast InlinedItem),
 }
 
 /// Represents an entry and its parent NodeID.
 /// The odd layout is to bring down the total size.
 #[derive(Copy, Debug)]
-pub enum MapEntry<'ast> {
+enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
 
@@ -121,8 +128,6 @@ impl<'ast> MapEntry<'ast> {
             NodeLifetime(n) => EntryLifetime(p, n),
             NodeTyParam(n) => EntryTyParam(p, n),
             NodeVisibility(n) => EntryVisibility(p, n),
-
-            NodeInlinedItem(n) => RootInlinedParent(n),
         }
     }
 
@@ -171,9 +176,48 @@ impl<'ast> MapEntry<'ast> {
             EntryLifetime(_, n) => NodeLifetime(n),
             EntryTyParam(_, n) => NodeTyParam(n),
             EntryVisibility(_, n) => NodeVisibility(n),
-            RootInlinedParent(n) => NodeInlinedItem(n),
             _ => return None
         })
+    }
+
+    fn is_body_owner(self, node_id: NodeId) -> bool {
+        match self {
+            EntryItem(_, item) => {
+                match item.node {
+                    ItemConst(_, body) |
+                    ItemStatic(.., body) |
+                    ItemFn(_, _, _, _, _, body) => body.node_id == node_id,
+                    _ => false
+                }
+            }
+
+            EntryTraitItem(_, item) => {
+                match item.node {
+                    TraitItemKind::Const(_, Some(body)) |
+                    TraitItemKind::Method(_, TraitMethod::Provided(body)) => {
+                        body.node_id == node_id
+                    }
+                    _ => false
+                }
+            }
+
+            EntryImplItem(_, item) => {
+                match item.node {
+                    ImplItemKind::Const(_, body) |
+                    ImplItemKind::Method(_, body) => body.node_id == node_id,
+                    _ => false
+                }
+            }
+
+            EntryExpr(_, expr) => {
+                match expr.node {
+                    ExprClosure(.., body, _) => body.node_id == node_id,
+                    _ => false
+                }
+            }
+
+            _ => false
+        }
     }
 }
 
@@ -250,42 +294,19 @@ impl<'ast> Map<'ast> {
         if !self.is_inlined_node_id(id) {
             let mut last_expr = None;
             loop {
-                match map[id.as_usize()] {
-                    EntryItem(_, item) => {
-                        assert_eq!(id, item.id);
-                        let def_id = self.local_def_id(id);
-
+                let entry = map[id.as_usize()];
+                match entry {
+                    EntryItem(..) |
+                    EntryTraitItem(..) |
+                    EntryImplItem(..) => {
                         if let Some(last_id) = last_expr {
-                            // The body of the item may have a separate dep node
-                            if self.is_item_body(last_id, item) {
+                            // The body may have a separate dep node
+                            if entry.is_body_owner(last_id) {
+                                let def_id = self.local_def_id(id);
                                 return DepNode::HirBody(def_id);
                             }
                         }
-                        return DepNode::Hir(def_id);
-                    }
-
-                    EntryTraitItem(_, item) => {
-                        let def_id = self.local_def_id(id);
-
-                        if let Some(last_id) = last_expr {
-                            // The body of the item may have a separate dep node
-                            if self.is_trait_item_body(last_id, item) {
-                                return DepNode::HirBody(def_id);
-                            }
-                        }
-                        return DepNode::Hir(def_id);
-                    }
-
-                    EntryImplItem(_, item) => {
-                        let def_id = self.local_def_id(id);
-
-                        if let Some(last_id) = last_expr {
-                            // The body of the item may have a separate dep node
-                            if self.is_impl_item_body(last_id, item) {
-                                return DepNode::HirBody(def_id);
-                            }
-                        }
-                        return DepNode::Hir(def_id);
+                        return DepNode::Hir(self.local_def_id(id));
                     }
 
                     EntryVariant(p, v) => {
@@ -377,33 +398,6 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    fn is_item_body(&self, node_id: NodeId, item: &Item) -> bool {
-        match item.node {
-            ItemConst(_, body) |
-            ItemStatic(.., body) |
-            ItemFn(_, _, _, _, _, body) => body.node_id == node_id,
-            _ => false
-        }
-    }
-
-    fn is_trait_item_body(&self, node_id: NodeId, item: &TraitItem) -> bool {
-        match item.node {
-            TraitItemKind::Const(_, Some(body)) |
-            TraitItemKind::Method(_, TraitMethod::Provided(body)) => {
-                body.node_id == node_id
-            }
-            _ => false
-        }
-    }
-
-    fn is_impl_item_body(&self, node_id: NodeId, item: &ImplItem) -> bool {
-        match item.node {
-            ImplItemKind::Const(_, body) |
-            ImplItemKind::Method(_, body) => body.node_id == node_id,
-            _ => false
-        }
-    }
-
     pub fn num_local_def_ids(&self) -> usize {
         self.definitions.len()
     }
@@ -481,6 +475,23 @@ impl<'ast> Map<'ast> {
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.body(id)
+    }
+
+    /// Returns the `NodeId` that corresponds to the definition of
+    /// which this is the body of, i.e. a `fn`, `const` or `static`
+    /// item (possibly associated), or a closure, or the body itself
+    /// for embedded constant expressions (e.g. `N` in `[T; N]`).
+    pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
+        let parent = self.get_parent_node(node_id);
+        if self.map.borrow()[parent.as_usize()].is_body_owner(node_id) {
+            parent
+        } else {
+            node_id
+        }
+    }
+
+    pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
+        self.local_def_id(self.body_owner(id))
     }
 
     /// Get the attributes on the krate. This is preferable to
@@ -726,9 +737,9 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expect_inlined_item(&self, id: NodeId) -> &'ast InlinedItem {
+    pub fn expect_inlined_body(&self, id: NodeId) -> &'ast Body {
         match self.find_entry(id) {
-            Some(RootInlinedParent(inlined_item)) => inlined_item,
+            Some(RootInlinedParent(inlined_item)) => &inlined_item.body,
             _ => bug!("expected inlined item, found {}", self.node_to_string(id)),
         }
     }
@@ -969,24 +980,28 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
     }
 }
 
-/// Used for items loaded from external crate that are being inlined into this
+/// Used for bodies loaded from external crate that are being inlined into this
 /// crate.
-pub fn map_decoded_item<'ast>(map: &Map<'ast>,
-                              ii: InlinedItem,
-                              ii_parent_id: NodeId)
-                              -> &'ast InlinedItem {
+pub fn map_decoded_body<'ast>(map: &Map<'ast>,
+                              def_id: DefId,
+                              body: Body,
+                              parent_id: NodeId)
+                              -> &'ast Body {
     let _ignore = map.forest.dep_graph.in_ignore();
 
-    let ii = map.forest.inlined_items.alloc(ii);
+    let ii = map.forest.inlined_items.alloc(InlinedItem {
+        def_id: def_id,
+        body: body
+    });
 
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
-                                              ii_parent_id,
+                                              parent_id,
                                               mem::replace(&mut *map.map.borrow_mut(), vec![]));
-    ii.visit(&mut collector);
+    collector.visit_body(&ii.body);
     *map.map.borrow_mut() = collector.map;
 
-    ii
+    &ii.body
 }
 
 pub trait NodePrinter {
@@ -1016,8 +1031,6 @@ impl<'a> NodePrinter for pprust::State<'a> {
             // printing.
             NodeLocal(_)       => bug!("cannot print isolated Local"),
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
-
-            NodeInlinedItem(_) => bug!("cannot print inlined item"),
         }
     }
 }
@@ -1130,9 +1143,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)
-        }
-        Some(NodeInlinedItem(_)) => {
-            format!("inlined item {}", id_str)
         }
         None => {
             format!("unknown node{}", id_str)

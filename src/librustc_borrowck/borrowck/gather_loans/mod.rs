@@ -54,7 +54,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
     let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
-    euv::ExprUseVisitor::new(&mut glcx, &infcx).walk_fn(body);
+    euv::ExprUseVisitor::new(&mut glcx, &infcx).consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
