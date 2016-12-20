@@ -27,6 +27,7 @@ use base::*;
 use common::{
     self, CrateContext, FunctionContext, SharedCrateContext
 };
+use adt::MaybeSizedValue;
 use consts;
 use declare;
 use value::Value;
@@ -364,7 +365,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.schedule_drop_mem(llenv, closure_ty);
+    let self_scope = fcx.schedule_drop_mem(MaybeSizedValue::sized(llenv), closure_ty);
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
