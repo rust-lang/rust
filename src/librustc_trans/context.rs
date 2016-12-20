@@ -927,26 +927,26 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
+        if let Some(llpersonality) = self.local().eh_personality.get() {
+            return llpersonality
+        }
         let tcx = self.tcx();
-        match tcx.lang_items.eh_personality() {
+        let llfn = match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
                 Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
             }
             _ => {
-                if let Some(llpersonality) = self.local().eh_personality.get() {
-                    return llpersonality
-                }
                 let name = if base::wants_msvc_seh(self.sess()) {
                     "__CxxFrameHandler3"
                 } else {
                     "rust_eh_personality"
                 };
                 let fty = Type::variadic_func(&[], &Type::i32(self));
-                let f = declare::declare_cfn(self, name, fty);
-                self.local().eh_personality.set(Some(f));
-                f
+                declare::declare_cfn(self, name, fty)
             }
-        }
+        };
+        self.local().eh_personality.set(Some(llfn));
+        llfn
     }
 
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
