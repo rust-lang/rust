@@ -424,7 +424,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
 pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
-    if common::type_is_fat_ptr(cx.ccx(), t) {
+    if common::type_is_fat_ptr(cx.ccx, t) {
         let lladdr = cx.extract_value(v, abi::FAT_PTR_ADDR);
         let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
         store_fat_ptr(cx, lladdr, llextra, dst, t);
@@ -656,7 +656,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         if let Some(cast_ty) = fcx.fn_ty.ret.cast {
             let load = bcx.load(bcx.pointercast(dest, cast_ty.ptr_to()));
-            let llalign = llalign_of_min(fcx.ccx, fcx.fn_ty.ret.ty);
+            let llalign = llalign_of_min(ccx, fcx.fn_ty.ret.ty);
             unsafe {
                 llvm::LLVMSetAlignment(load, llalign);
             }

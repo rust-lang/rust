@@ -474,7 +474,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
         }
     }
 
-    let value = if cx.ccx().shared().type_is_sized(t) {
+    let value = if cx.ccx.shared().type_is_sized(t) {
         adt::MaybeSizedValue::sized(av)
     } else {
         // FIXME(#36457) -- we should pass unsized values as two arguments
@@ -493,7 +493,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
         }
         ty::TyArray(_, n) => {
             let base = get_dataptr(&cx, value.value);
-            let len = C_uint(cx.ccx(), n);
+            let len = C_uint(cx.ccx, n);
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, base, unit_ty, len, |bb, vv| drop_ty(bb, vv, unit_ty));
         }
@@ -514,7 +514,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
                     let llfld_a = adt::trans_field_ptr(&cx, t, value, Disr::from(discr), i);
 
-                    let val = if cx.ccx().shared().type_is_sized(field_ty) {
+                    let val = if cx.ccx.shared().type_is_sized(field_ty) {
                         llfld_a
                     } else {
                         // FIXME(#36457) -- we should pass unsized values as two arguments
@@ -530,8 +530,6 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                 bug!("Union in `glue::drop_structural_ty`");
             }
             AdtKind::Enum => {
-                let fcx = cx.fcx();
-                let ccx = fcx.ccx;
                 let n_variants = adt.variants.len();
 
                 // NB: we must hit the discriminant first so that structural
@@ -562,15 +560,15 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                         // from the outer function, and any other use case will only
                         // call this for an already-valid enum in which case the `ret
                         // void` will never be hit.
-                        let ret_void_cx = fcx.build_new_block("enum-iter-ret-void");
+                        let ret_void_cx = cx.fcx().build_new_block("enum-iter-ret-void");
                         ret_void_cx.ret_void();
                         let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
-                        let next_cx = fcx.build_new_block("enum-iter-next");
+                        let next_cx = cx.fcx().build_new_block("enum-iter-next");
 
                         for variant in &adt.variants {
                             let variant_cx_name = format!("enum-iter-variant-{}",
                                 &variant.disr_val.to_string());
-                            let variant_cx = fcx.build_new_block(&variant_cx_name);
+                            let variant_cx = cx.fcx().build_new_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
                             iter_variant(&variant_cx, t, value, variant, substs);
@@ -578,7 +576,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                         }
                         cx = next_cx;
                     }
-                    _ => ccx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
+                    _ => cx.ccx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
                 }
             }
         },

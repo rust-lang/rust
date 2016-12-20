@@ -33,13 +33,13 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
             ty.is_unique() ||
             ty.is_region_ptr() ||
             ty.is_simd() ||
-            common::type_is_zero_size(mircx.fcx.ccx, ty)
+            common::type_is_zero_size(mircx.ccx, ty)
         {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
-            assert!(common::type_is_immediate(mircx.fcx.ccx, ty) ||
-                    common::type_is_fat_ptr(mircx.fcx.ccx, ty));
-        } else if common::type_is_imm_pair(mircx.fcx.ccx, ty) {
+            assert!(common::type_is_immediate(mircx.ccx, ty) ||
+                    common::type_is_fat_ptr(mircx.ccx, ty));
+        } else if common::type_is_imm_pair(mircx.ccx, ty) {
             // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
@@ -112,7 +112,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     literal: mir::Literal::Item { def_id, .. }, ..
                 }),
                 ref args, ..
-            } if Some(def_id) == self.cx.fcx.ccx.tcx().lang_items.box_free_fn() => {
+            } if Some(def_id) == self.cx.ccx.tcx().lang_items.box_free_fn() => {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
@@ -135,10 +135,10 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         // Allow uses of projections of immediate pair fields.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::Lvalue::Local(_) = proj.base {
-                let ty = proj.base.ty(self.cx.mir, self.cx.fcx.ccx.tcx());
+                let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
 
-                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.fcx.ccx.tcx()));
-                if common::type_is_imm_pair(self.cx.fcx.ccx, ty) {
+                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+                if common::type_is_imm_pair(self.cx.ccx, ty) {
                     if let mir::ProjectionElem::Field(..) = proj.elem {
                         if let LvalueContext::Consume = context {
                             return;
@@ -166,11 +166,11 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 }
 
                 LvalueContext::Drop => {
-                    let ty = lvalue.ty(self.cx.mir, self.cx.fcx.ccx.tcx());
-                    let ty = self.cx.monomorphize(&ty.to_ty(self.cx.fcx.ccx.tcx()));
+                    let ty = lvalue.ty(self.cx.mir, self.cx.ccx.tcx());
+                    let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
                     // Only need the lvalue if we're actually dropping it.
-                    if self.cx.fcx.ccx.shared().type_needs_drop(ty) {
+                    if self.cx.ccx.shared().type_needs_drop(ty) {
                         self.mark_as_lvalue(index);
                     }
                 }

@@ -838,7 +838,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return block;
         }
 
-        if base::wants_msvc_seh(self.fcx.ccx.sess()) {
+        if base::wants_msvc_seh(self.ccx.sess()) {
             return self.blocks[target_bb];
         }
 
