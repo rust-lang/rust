@@ -80,7 +80,8 @@ evaluate crates, they are looking primarily for approximate signals of:
 - Maintenance
 - Quality
 
-Feeding those signals are related measures of:
+Cited as secondary signals that were used to infer that the primary signals are
+good as well:
 
 - Popularity
 - Credibility
