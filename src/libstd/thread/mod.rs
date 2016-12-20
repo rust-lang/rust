@@ -217,6 +217,7 @@ pub use self::local::{LocalKey, LocalKeyState};
 /// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
@@ -587,6 +588,13 @@ impl ThreadId {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ThreadId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ThreadId { .. }")
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +808,13 @@ impl<T> AsInner<imp::Thread> for JoinHandle<T> {
 
 impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread { self.0.native.unwrap() }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<T> fmt::Debug for JoinHandle<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("JoinHandle { .. }")
+    }
 }
 
 fn _assert_sync_and_send() {

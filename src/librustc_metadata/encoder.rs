@@ -16,6 +16,7 @@ use rustc::middle::cstore::{InlinedItemRef, LinkMeta};
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -233,13 +234,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Ok(())
     }
 
-    /// For every DefId that we create a metadata item for, we include a
-    /// serialized copy of its DefKey, which allows us to recreate a path.
-    fn encode_def_key(&mut self, def_id: DefId) -> Lazy<hir::map::DefKey> {
-        let tcx = self.tcx;
-        self.lazy(&tcx.map.def_key(def_id))
-    }
-
     fn encode_item_variances(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
         let tcx = self.tcx;
         self.lazy_seq(tcx.item_variances(def_id).iter().cloned())
@@ -276,7 +270,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Variant(self.lazy(&data)),
             visibility: enum_vis.simplify(),
             span: self.lazy(&tcx.def_span(def_id)),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: self.lazy_seq(variant.fields.iter().map(|f| {
                 assert!(f.did.is_local());
@@ -315,7 +308,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Mod(self.lazy(&data)),
             visibility: vis.simplify(),
             span: self.lazy(&md.inner),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
                 tcx.map.local_def_id(item_id.id).index
@@ -396,7 +388,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Field,
             visibility: field.vis.simplify(),
             span: self.lazy(&tcx.def_span(def_id)),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&variant_data.fields()[field_index].attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
@@ -430,7 +421,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Struct(self.lazy(&data)),
             visibility: struct_vis.simplify(),
             span: self.lazy(&tcx.def_span(def_id)),
-            def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
@@ -497,7 +487,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: kind,
             visibility: trait_item.vis.simplify(),
             span: self.lazy(&ast_item.span),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
@@ -587,7 +576,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: kind,
             visibility: impl_item.vis.simplify(),
             span: self.lazy(&ast_item.span),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
@@ -750,7 +738,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: kind,
             visibility: item.vis.simplify(),
             span: self.lazy(&item.span),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
                 hir::ItemForeignMod(ref fm) => {
@@ -858,14 +845,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
-        let def_id = self.tcx.map.local_def_id(macro_def.id);
         Entry {
             kind: EntryKind::MacroDef(self.lazy(&MacroDef {
                 body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
             })),
             visibility: ty::Visibility::Public,
             span: self.lazy(&macro_def.span),
-            def_key: self.encode_def_key(def_id),
 
             attributes: self.encode_attributes(&macro_def.attrs),
             children: LazySeq::empty(),
@@ -967,7 +952,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: kind,
             visibility: nitem.vis.simplify(),
             span: self.lazy(&nitem.span),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&nitem.attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
@@ -1050,7 +1034,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Type,
             visibility: ty::Visibility::Public,
             span: self.lazy(&tcx.def_span(def_id)),
-            def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
             stability: None,
@@ -1079,7 +1062,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             kind: EntryKind::Closure(self.lazy(&data)),
             visibility: ty::Visibility::Public,
             span: self.lazy(&tcx.def_span(def_id)),
-            def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: LazySeq::empty(),
             stability: None,
@@ -1179,6 +1161,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
             .map(|filemap| &**filemap))
     }
+
+    fn encode_def_path_table(&mut self) -> Lazy<DefPathTable> {
+        let definitions = self.tcx.map.definitions();
+        self.lazy(definitions.def_path_table())
+    }
 }
 
 struct ImplVisitor<'a, 'tcx: 'a> {
@@ -1276,6 +1263,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let codemap = self.encode_codemap();
         let codemap_bytes = self.position() - i;
 
+        // Encode DefPathTable
+        i = self.position();
+        let def_path_table = self.encode_def_path_table();
+        let def_path_table_bytes = self.position() - i;
+
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
         let impls = self.encode_impls();
@@ -1321,6 +1313,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items_missing: lang_items_missing,
             native_libraries: native_libraries,
             codemap: codemap,
+            def_path_table: def_path_table,
             impls: impls,
             exported_symbols: exported_symbols,
             index: index,
@@ -1343,6 +1336,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
+            println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
             println!("            zero bytes: {}", zero_bytes);

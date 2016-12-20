@@ -1068,6 +1068,14 @@ impl From<[u8; 16]> for Ipv6Addr {
     }
 }
 
+#[stable(feature = "ipv6_from_segments", since = "1.15.0")]
+impl From<[u16; 8]> for Ipv6Addr {
+    fn from(segments: [u16; 8]) -> Ipv6Addr {
+        let [a, b, c, d, e, f, g, h] = segments;
+        Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+}
+
 // Tests for this module
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
@@ -1413,8 +1421,26 @@ mod tests {
     }
 
     #[test]
-    fn ipv4_from_u32_slice() {
+    fn ipv4_from_octets() {
         assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
+    }
+
+    #[test]
+    fn ipv6_from_segments() {
+        let from_u16s = Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677,
+                                        0x8899, 0xaabb, 0xccdd, 0xeeff]);
+        let new = Ipv6Addr::new(0x0011, 0x2233, 0x4455, 0x6677,
+                                0x8899, 0xaabb, 0xccdd, 0xeeff);
+        assert_eq!(new, from_u16s);
+    }
+
+    #[test]
+    fn ipv6_from_octets() {
+        let from_u16s = Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677,
+                                        0x8899, 0xaabb, 0xccdd, 0xeeff]);
+        let from_u8s = Ipv6Addr::from([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                       0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
+        assert_eq!(from_u16s, from_u8s);
     }
 
     #[test]

@@ -17,6 +17,7 @@
                               crates.io should be used instead for the correct \
                               definitions")]
 #![allow(deprecated)]
+#![allow(missing_debug_implementations)]
 
 use os::raw::c_ulong;
 

@@ -142,20 +142,21 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     fn report_cast_error(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, e: CastError) {
         match e {
             CastError::NeedDeref => {
+                let error_span = self.span;
                 let cast_ty = fcx.ty_to_string(self.cast_ty);
-                let mut err = fcx.type_error_struct(self.cast_span,
+                let mut err = fcx.type_error_struct(error_span,
                                        |actual| {
                                            format!("casting `{}` as `{}` is invalid",
                                                    actual,
                                                    cast_ty)
                                        },
                                        self.expr_ty);
-                err.span_label(self.expr.span,
+                err.span_label(error_span,
                                &format!("cannot cast `{}` as `{}`",
                                         fcx.ty_to_string(self.expr_ty),
                                         cast_ty));
                 if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
-                    err.span_label(self.expr.span,
+                    err.span_help(self.expr.span,
                                    &format!("did you mean `*{}`?", snippet));
                 }
                 err.emit();

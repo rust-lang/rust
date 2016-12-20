@@ -1085,6 +1085,10 @@ fn run_work_multithreaded(sess: &Session,
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     let (pname, mut cmd, _) = get_linker(sess);
 
+    for arg in &sess.target.target.options.asm_args {
+        cmd.arg(arg);
+    }
+
     cmd.arg("-c").arg("-o").arg(&outputs.path(OutputType::Object))
                            .arg(&outputs.temp_path(OutputType::Assembly, None));
     debug!("{:?}", cmd);

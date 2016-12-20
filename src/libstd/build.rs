@@ -104,7 +104,7 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .env("AR", &ar)
                 .env("RANLIB", format!("{} s", ar.display()))
                 .env("CFLAGS", cflags));
-    run(Command::new("make")
+    run(Command::new(build_helper::make(host))
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
                 .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));

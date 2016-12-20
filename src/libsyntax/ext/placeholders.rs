@@ -12,9 +12,10 @@ use ast;
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
+use ext::hygiene::Mark;
 use fold::*;
 use ptr::P;
-use symbol::{Symbol, keywords};
+use symbol::keywords;
 use util::move_map::MoveMap;
 use util::small_vector::SmallVector;
 
@@ -68,10 +69,6 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     }
 }
 
-pub fn macro_scope_placeholder() -> Expansion {
-    placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
-}
-
 pub struct PlaceholderExpander<'a, 'b: 'a> {
     expansions: HashMap<ast::NodeId, Expansion>,
     cx: &'a mut ExtCtxt<'b>,
@@ -100,11 +97,12 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         match item.node {
-            // Scope placeholder
-            ast::ItemKind::Mac(_) if item.id == ast::DUMMY_NODE_ID => SmallVector::one(item),
-            ast::ItemKind::Mac(_) => self.remove(item.id).make_items(),
-            _ => noop_fold_item(item, self),
+            ast::ItemKind::Mac(ref mac) if !mac.node.path.segments.is_empty() => {}
+            ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
+            _ => {}
         }
+
+        noop_fold_item(item, self)
     }
 
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
@@ -172,10 +170,10 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
             block.stmts = block.stmts.move_flat_map(|mut stmt| {
                 remaining_stmts -= 1;
 
-                // Scope placeholder
+                // `macro_rules!` macro definition
                 if let ast::StmtKind::Item(ref item) = stmt.node {
-                    if let ast::ItemKind::Mac(..) = item.node {
-                        macros.push(item.ident.ctxt.data().outer_mark);
+                    if let ast::ItemKind::Mac(_) = item.node {
+                        macros.push(Mark::from_placeholder_id(item.id));
                         return None;
                     }
                 }
@@ -208,33 +206,13 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
         let mut module = noop_fold_mod(module, self);
         module.items = module.items.move_flat_map(|item| match item.node {
-            ast::ItemKind::Mac(_) => None, // remove scope placeholders from modules
+            ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => None, // remove macro definitions
             _ => Some(item),
         });
         module
     }
-}
 
-pub fn reconstructed_macro_rules(def: &ast::MacroDef) -> Expansion {
-    Expansion::Items(SmallVector::one(P(ast::Item {
-        ident: def.ident,
-        attrs: def.attrs.clone(),
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ItemKind::Mac(ast::Mac {
-            span: def.span,
-            node: ast::Mac_ {
-                path: ast::Path {
-                    span: DUMMY_SP,
-                    global: false,
-                    segments: vec![ast::PathSegment {
-                        identifier: ast::Ident::with_empty_ctxt(Symbol::intern("macro_rules")),
-                        parameters: ast::PathParameters::none(),
-                    }],
-                },
-                tts: def.body.clone(),
-            }
-        }),
-        vis: ast::Visibility::Inherited,
-        span: def.span,
-    })))
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        mac
+    }
 }

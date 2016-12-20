@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate build_helper;
+
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
@@ -2108,7 +2110,7 @@ actual:\n\
         }
         self.create_dir_racy(&tmpdir);
 
-        let mut cmd = Command::new("make");
+        let mut cmd = Command::new(build_helper::make(&self.config.host));
         cmd.current_dir(&self.testpaths.file)
            .env("TARGET", &self.config.target)
            .env("PYTHON", &self.config.docck_python)
@@ -2294,7 +2296,18 @@ actual:\n\
                 };
             }
             if !found {
-                panic!("ran out of mir dump output to match against");
+                let normalize_all = dumped_string.lines()
+                                                 .map(nocomment_mir_line)
+                                                 .filter(|l| !l.is_empty())
+                                                 .collect::<Vec<_>>()
+                                                 .join("\n");
+                panic!("ran out of mir dump output to match against.\n\
+                        Did not find expected line: {:?}\n\
+                        Expected:\n{}\n\
+                        Actual:\n{}",
+                        expected_line,
+                        expected_content.join("\n"),
+                        normalize_all);
             }
         }
     }
@@ -2439,11 +2452,14 @@ enum TargetLocation {
 }
 
 fn normalize_mir_line(line: &str) -> String {
-    let no_comments = if let Some(idx) = line.find("//") {
+    nocomment_mir_line(line).replace(char::is_whitespace, "")
+}
+
+fn nocomment_mir_line(line: &str) -> &str {
+    if let Some(idx) = line.find("//") {
         let (l, _) = line.split_at(idx);
-        l
+        l.trim_right()
     } else {
         line
-    };
-    no_comments.replace(char::is_whitespace, "")
+    }
 }

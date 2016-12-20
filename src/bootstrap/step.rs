@@ -267,16 +267,18 @@ pub fn build_rules(build: &Build) -> Rules {
         // nothing to do for debuginfo tests
     } else if build.config.build.contains("apple") {
         rules.test("check-debuginfo", "src/test/debuginfo")
+             .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").host(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-lldb", "debuginfo"));
     } else {
         rules.test("check-debuginfo", "src/test/debuginfo")
+             .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").host(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
@@ -455,7 +457,7 @@ pub fn build_rules(build: &Build) -> Rules {
     for (krate, path, default) in krates("test_shim") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest"))
-             .default(default && build.config.docs)
+             .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
@@ -496,7 +498,7 @@ pub fn build_rules(build: &Build) -> Rules {
     rules.dist("dist-src", "src")
          .default(true)
          .host(true)
-         .run(move |_| dist::rust_src(build));
+         .run(move |s| dist::rust_src(build, s.target));
     rules.dist("dist-docs", "src/doc")
          .default(true)
          .dep(|s| s.name("default:doc"))
@@ -820,7 +822,16 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             let hosts = if self.build.flags.host.len() > 0 {
                 &self.build.flags.host
             } else {
-                &self.build.config.host
+                if kind == Kind::Dist {
+                    // For 'dist' steps we only distribute artifacts built from
+                    // the build platform, so only consider that in the hosts
+                    // array.
+                    // NOTE: This relies on the fact that the build triple is
+                    // always placed first, as done in `config.rs`.
+                    &self.build.config.host[..1]
+                } else {
+                    &self.build.config.host
+                }
             };
             let targets = if self.build.flags.target.len() > 0 {
                 &self.build.flags.target

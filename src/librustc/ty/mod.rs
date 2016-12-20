@@ -17,7 +17,7 @@ pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
-use hir::map as ast_map;
+use hir::{map as ast_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -110,6 +110,13 @@ pub struct CrateAnalysis<'tcx> {
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
     pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
+}
+
+#[derive(Clone)]
+pub struct Resolutions {
+    pub freevars: FreevarMap,
+    pub trait_map: TraitMap,
+    pub maybe_unused_trait_imports: NodeSet,
 }
 
 #[derive(Copy, Clone)]
@@ -2241,40 +2248,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Convert a `DefId` into its fully expanded `DefPath` (every
     /// `DefId` is really just an interned def-path).
     ///
-    /// Note that if `id` is not local to this crate -- or is
-    /// inlined into this crate -- the result will be a non-local
-    /// `DefPath`.
-    ///
-    /// This function is only safe to use when you are sure that the
-    /// full def-path is accessible. Examples that are known to be
-    /// safe are local def-ids or items; see `opt_def_path` for more
-    /// details.
+    /// Note that if `id` is not local to this crate, the result will
+    //  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> ast_map::DefPath {
-        self.opt_def_path(id).unwrap_or_else(|| {
-            bug!("could not load def-path for {:?}", id)
-        })
-    }
-
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
-    /// `DefId` is really just an interned def-path).
-    ///
-    /// When going across crates, we do not save the full info for
-    /// every cross-crate def-id, and hence we may not always be able
-    /// to create a def-path. Therefore, this returns
-    /// `Option<DefPath>` to cover that possibility. It will always
-    /// return `Some` for local def-ids, however, as well as for
-    /// items. The problems arise with "minor" def-ids like those
-    /// associated with a pattern, `impl Trait`, or other internal
-    /// detail to a fn.
-    ///
-    /// Note that if `id` is not local to this crate -- or is
-    /// inlined into this crate -- the result will be a non-local
-    /// `DefPath`.
-    pub fn opt_def_path(self, id: DefId) -> Option<ast_map::DefPath> {
         if id.is_local() {
-            Some(self.map.def_path(id))
+            self.map.def_path(id)
         } else {
-            self.sess.cstore.relative_def_path(id)
+            self.sess.cstore.def_path(id)
         }
     }
 

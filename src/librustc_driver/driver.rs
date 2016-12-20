@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
-use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
+use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
@@ -20,7 +19,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Resolutions};
 use rustc::util::common::time;
 use rustc::util::nodemap::{NodeSet, NodeMap};
 use rustc_borrowck as borrowck;
@@ -58,13 +57,6 @@ use syntax;
 use syntax_ext;
 
 use derive_registrar;
-
-#[derive(Clone)]
-pub struct Resolutions {
-    pub freevars: FreevarMap,
-    pub trait_map: TraitMap,
-    pub maybe_unused_trait_imports: NodeSet,
-}
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
@@ -864,11 +856,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             resolutions.trait_map,
+                             resolutions,
                              named_region_map,
                              hir_map,
-                             resolutions.freevars,
-                             resolutions.maybe_unused_trait_imports,
                              region_map,
                              lang_items,
                              index,

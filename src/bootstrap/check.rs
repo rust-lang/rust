@@ -13,6 +13,8 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
+extern crate build_helper;
+
 use std::collections::HashSet;
 use std::env;
 use std::fmt;
@@ -543,7 +545,7 @@ pub fn distcheck(build: &Build) {
     build.run(&mut cmd);
     build.run(Command::new("./configure")
                      .current_dir(&dir));
-    build.run(Command::new("make")
+    build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")
                      .current_dir(&dir));
 }

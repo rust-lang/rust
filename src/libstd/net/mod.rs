@@ -12,6 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
 use io::{self, Error, ErrorKind};
 use sys_common::net as net_imp;
 
@@ -103,6 +104,13 @@ pub struct LookupHost(net_imp::LookupHost);
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> { self.0.next() }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for LookupHost {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("LookupHost { .. }")
+    }
 }
 
 /// Resolve the host specified by `host` as a number of `SocketAddr` instances.
