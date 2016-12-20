@@ -19,8 +19,7 @@
 //! completing evaluation successfully without panic).
 
 use llvm::{BasicBlockRef, ValueRef};
-use base::{self, Lifetime};
-use common;
+use base;
 use common::{BlockAndBuilder, FunctionContext, Funclet};
 use glue;
 use type_::Type;
@@ -55,22 +54,16 @@ impl<'tcx> DropValue<'tcx> {
     /// This should only be called once per function, as it creates an alloca for the landingpad.
     fn get_landing_pad<'a>(&self, fcx: &FunctionContext<'a, 'tcx>) -> BasicBlockRef {
         debug!("get_landing_pad");
+        let bcx = fcx.build_new_block("cleanup_unwind");
+        let llpersonality = bcx.ccx.eh_personality();
+        bcx.set_personality_fn(llpersonality);
 
-        let mut pad_bcx = fcx.build_new_block("unwind_custom_");
+        if base::wants_msvc_seh(fcx.ccx.sess()) {
+            // Insert cleanup instructions into the cleanup block
+            let funclet = Some(Funclet::new(bcx.cleanup_pad(None, &[])));
+            self.trans(funclet.as_ref(), &bcx);
 
-        let llpersonality = pad_bcx.ccx.eh_personality();
-
-        let resume_bcx = fcx.build_new_block("resume");
-        let val = if base::wants_msvc_seh(fcx.ccx.sess()) {
-            // A cleanup pad requires a personality function to be specified, so
-            // we do that here explicitly (happens implicitly below through
-            // creation of the landingpad instruction). We then create a
-            // cleanuppad instruction which has no filters to run cleanup on all
-            // exceptions.
-            pad_bcx.set_personality_fn(llpersonality);
-            let llretval = pad_bcx.cleanup_pad(None, &[]);
-            resume_bcx.cleanup_ret(resume_bcx.cleanup_pad(None, &[]), None);
-            UnwindKind::CleanupPad(llretval)
+            bcx.cleanup_ret(bcx.cleanup_pad(None, &[]), None);
         } else {
             // The landing pad return type (the type being propagated). Not sure
             // what this represents but it's determined by the personality
@@ -78,67 +71,24 @@ impl<'tcx> DropValue<'tcx> {
             let llretty = Type::struct_(fcx.ccx, &[Type::i8p(fcx.ccx), Type::i32(fcx.ccx)], false);
 
             // The only landing pad clause will be 'cleanup'
-            let llretval = pad_bcx.landing_pad(llretty, llpersonality, 1, pad_bcx.fcx().llfn);
+            let llretval = bcx.landing_pad(llretty, llpersonality, 1, bcx.fcx().llfn);
 
             // The landing pad block is a cleanup
-            pad_bcx.set_cleanup(llretval);
+            bcx.set_cleanup(llretval);
 
-            let addr = pad_bcx.fcx().alloca(common::val_ty(llretval), "");
-            Lifetime::Start.call(&pad_bcx, addr);
-            pad_bcx.store(llretval, addr);
-            let lp = resume_bcx.load(addr);
-            Lifetime::End.call(&resume_bcx, addr);
-            if !resume_bcx.sess().target.target.options.custom_unwind_resume {
-                resume_bcx.resume(lp);
+            // Insert cleanup instructions into the cleanup block
+            self.trans(None, &bcx);
+
+            if !bcx.sess().target.target.options.custom_unwind_resume {
+                bcx.resume(llretval);
             } else {
-                let exc_ptr = resume_bcx.extract_value(lp, 0);
-                resume_bcx.call(fcx.eh_unwind_resume().reify(fcx.ccx), &[exc_ptr], None);
-                resume_bcx.unreachable();
-            }
-            UnwindKind::LandingPad
-        };
-
-        let mut cleanup = fcx.build_new_block("clean_custom_");
-
-        // Insert cleanup instructions into the cleanup block
-        let funclet = match val {
-            UnwindKind::CleanupPad(_) => Some(Funclet::new(cleanup.cleanup_pad(None, &[]))),
-            UnwindKind::LandingPad => None,
-        };
-        self.trans(funclet.as_ref(), &cleanup);
-
-        // Insert instruction into cleanup block to branch to the exit
-        val.branch(&mut cleanup, resume_bcx.llbb());
-
-        // Branch into the cleanup block
-        val.branch(&mut pad_bcx, cleanup.llbb());
-
-        pad_bcx.llbb()
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-enum UnwindKind {
-    LandingPad,
-    CleanupPad(ValueRef),
-}
-
-impl UnwindKind {
-    /// Generates a branch going from `bcx` to `to_llbb` where `self` is
-    /// the exit label attached to the start of `bcx`.
-    ///
-    /// Transitions from an exit label to other exit labels depend on the type
-    /// of label. For example with MSVC exceptions unwind exit labels will use
-    /// the `cleanupret` instruction instead of the `br` instruction.
-    fn branch(&self, bcx: &BlockAndBuilder, to_llbb: BasicBlockRef) {
-        match *self {
-            UnwindKind::CleanupPad(pad) => {
-                bcx.cleanup_ret(pad, Some(to_llbb));
-            }
-            UnwindKind::LandingPad => {
-                bcx.br(to_llbb);
+                let exc_ptr = bcx.extract_value(llretval, 0);
+                bcx.call(fcx.eh_unwind_resume().reify(fcx.ccx), &[exc_ptr], None);
+                bcx.unreachable();
             }
         }
+
+        bcx.llbb()
     }
 }
 
