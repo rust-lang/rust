@@ -288,6 +288,7 @@ impl<'a> Resolver<'a> {
                         Some(shadower) if shadower.def() != binding.def() => {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: span, name: name, b1: shadower, b2: binding, lexical: true,
+                                legacy: false,
                             });
                             return Ok(shadower);
                         }

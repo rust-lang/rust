@@ -212,6 +212,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub LEGACY_IMPORTS,
+    Warn,
+    "detects names that resolve to ambiguous glob imports with RFC 1560"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -257,6 +263,7 @@ impl LintPass for HardwiredLints {
             PATTERNS_IN_FNS_WITHOUT_BODY,
             EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
+            LEGACY_IMPORTS,
             DEPRECATED
         )
     }

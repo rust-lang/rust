@@ -159,6 +159,7 @@ impl<'a> Resolver<'a> {
                        binding.def() != shadowed_glob.def() {
                         self.ambiguity_errors.push(AmbiguityError {
                             span: span, name: name, lexical: false, b1: binding, b2: shadowed_glob,
+                            legacy: false,
                         });
                     }
                 }
@@ -336,9 +337,9 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn ambiguity(&mut self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
-                 -> &'a NameBinding<'a> {
+                     -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Ambiguity { b1: b1, b2: b2 },
+            kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: false },
             vis: if b1.vis.is_at_least(b2.vis, self) { b1.vis } else { b2.vis },
             span: b1.span,
             expansion: Mark::root(),
@@ -726,7 +727,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
-            let resolution = resolution.borrow();
+            let resolution = &mut *resolution.borrow_mut();
             let binding = match resolution.binding {
                 Some(binding) => binding,
                 None => continue,
@@ -743,14 +744,34 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
             }
 
-            if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
-                if ns == TypeNS && orig_binding.is_variant() &&
-                   !orig_binding.vis.is_at_least(binding.vis, self) {
-                    let msg = format!("variant `{}` is private, and cannot be reexported \
-                                       (error E0364), consider declaring its enum as `pub`",
-                                      name);
-                    self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, binding.span, msg);
+            match binding.kind {
+                NameBindingKind::Import { binding: orig_binding, directive, .. } => {
+                    if ns == TypeNS && orig_binding.is_variant() &&
+                       !orig_binding.vis.is_at_least(binding.vis, self) {
+                        let msg = format!("variant `{}` is private, and cannot be reexported \
+                                           (error E0364), consider declaring its enum as `pub`",
+                                          name);
+                        self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, binding.span, msg);
+                    }
                 }
+                NameBindingKind::Ambiguity { b1, b2, .. }
+                        if b1.is_glob_import() && b2.is_glob_import() => {
+                    let (orig_b1, orig_b2) = match (&b1.kind, &b2.kind) {
+                        (&NameBindingKind::Import { binding: b1, .. },
+                         &NameBindingKind::Import { binding: b2, .. }) => (b1, b2),
+                        _ => continue,
+                    };
+                    let (b1, b2) = match (orig_b1.vis, orig_b2.vis) {
+                        (ty::Visibility::Public, ty::Visibility::Public) => continue,
+                        (ty::Visibility::Public, _) => (b1, b2),
+                        (_, ty::Visibility::Public) => (b2, b1),
+                        _ => continue,
+                    };
+                    resolution.binding = Some(self.arenas.alloc_name_binding(NameBinding {
+                        kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: true }, ..*b1
+                    }));
+                }
+                _ => {}
             }
         }
 

@@ -64,7 +64,7 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
@@ -896,6 +896,7 @@ enum NameBindingKind<'a> {
     Ambiguity {
         b1: &'a NameBinding<'a>,
         b2: &'a NameBinding<'a>,
+        legacy: bool,
     }
 }
 
@@ -907,6 +908,7 @@ struct AmbiguityError<'a> {
     lexical: bool,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
+    legacy: bool,
 }
 
 impl<'a> NameBinding<'a> {
@@ -914,6 +916,7 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Module(module) => Some(module),
             NameBindingKind::Import { binding, .. } => binding.module(),
+            NameBindingKind::Ambiguity { legacy: true, b1, .. } => b1.module(),
             _ => None,
         }
     }
@@ -923,6 +926,7 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Def(def) => def,
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
+            NameBindingKind::Ambiguity { legacy: true, b1, .. } => b1.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
         }
     }
@@ -1349,11 +1353,14 @@ impl<'a> Resolver<'a> {
                 self.record_use(name, ns, binding, span)
             }
             NameBindingKind::Import { .. } => false,
-            NameBindingKind::Ambiguity { b1, b2 } => {
+            NameBindingKind::Ambiguity { b1, b2, legacy } => {
                 self.ambiguity_errors.push(AmbiguityError {
-                    span: span, name: name, lexical: false, b1: b1, b2: b2,
+                    span: span, name: name, lexical: false, b1: b1, b2: b2, legacy: legacy,
                 });
-                true
+                if legacy {
+                    self.record_use(name, ns, b1, span);
+                }
+                !legacy
             }
             _ => false
         }
@@ -3065,26 +3072,39 @@ impl<'a> Resolver<'a> {
         self.report_shadowing_errors();
         let mut reported_spans = FxHashSet();
 
-        for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2, lexical, legacy } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
             let participle = |binding: &NameBinding| {
                 if binding.is_import() { "imported" } else { "defined" }
             };
             let msg1 = format!("`{}` could resolve to the name {} here", name, participle(b1));
             let msg2 = format!("`{}` could also resolve to the name {} here", name, participle(b2));
-            self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
-                .span_note(b1.span, &msg1)
-                .span_note(b2.span, &msg2)
-                .note(&if !lexical && b1.is_glob_import() {
-                    format!("consider adding an explicit import of `{}` to disambiguate", name)
-                } else if let Def::Macro(..) = b1.def() {
-                    format!("macro-expanded {} do not shadow",
-                            if b1.is_import() { "macro imports" } else { "macros" })
-                } else {
-                    format!("macro-expanded {} do not shadow when used in a macro invocation path",
-                            if b1.is_import() { "imports" } else { "items" })
-                })
-                .emit();
+            let note = if !lexical && b1.is_glob_import() {
+                format!("consider adding an explicit import of `{}` to disambiguate", name)
+            } else if let Def::Macro(..) = b1.def() {
+                format!("macro-expanded {} do not shadow",
+                        if b1.is_import() { "macro imports" } else { "macros" })
+            } else {
+                format!("macro-expanded {} do not shadow when used in a macro invocation path",
+                        if b1.is_import() { "imports" } else { "items" })
+            };
+            if legacy {
+                let id = match b2.kind {
+                    NameBindingKind::Import { directive, .. } => directive.id,
+                    _ => unreachable!(),
+                };
+                let mut span = MultiSpan::from_span(span);
+                span.push_span_label(b1.span, msg1);
+                span.push_span_label(b2.span, msg2);
+                let msg = format!("`{}` is ambiguous", name);
+                self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
+            } else {
+                self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
+                    .span_note(b1.span, &msg1)
+                    .span_note(b2.span, &msg2)
+                    .note(&note)
+                    .emit();
+            }
         }
 
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
