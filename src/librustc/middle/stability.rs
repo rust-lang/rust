@@ -302,9 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        if md.imported_from.is_none() {
-            self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
-        }
+        self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
     }
 }
 
@@ -373,9 +371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        if md.imported_from.is_none() {
-            self.check_missing_stability(md.id, md.span);
-        }
+        self.check_missing_stability(md.id, md.span);
     }
 }
 

@@ -201,6 +201,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     if def_id.krate == LOCAL_CRATE {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
+                    let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
                     let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
                         LoadedMacro::MacroRules(macro_rules) => macro_rules,
                         // FIXME(jseyfried): document proc macro reexports
@@ -217,7 +218,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         matchers: matchers,
                         stab: self.stability(def.id),
                         depr: self.deprecation(def.id),
-                        imported_from: def.imported_from.map(|ident| ident.name),
+                        imported_from: Some(imported_from),
                     })
                 }
             }
@@ -525,7 +526,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             matchers: matchers,
             stab: self.stability(def.id),
             depr: self.deprecation(def.id),
-            imported_from: def.imported_from,
+            imported_from: None,
         }
     }
 }

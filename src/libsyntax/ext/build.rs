@@ -322,21 +322,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = idents.into_iter()
-                                                      .map(|ident| {
-            ast::PathSegment {
-                identifier: ident,
-                parameters: ast::PathParameters::none(),
-            }
-        }).collect();
-        segments.push(ast::PathSegment {
-            identifier: last_identifier,
-            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
+        let mut segments: Vec<ast::PathSegment> = idents.into_iter().map(Into::into).collect();
+        let parameters = if lifetimes.is_empty() && types.is_empty() && bindings.is_empty() {
+            None
+        } else {
+            Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: P::from_vec(types),
                 bindings: P::from_vec(bindings),
-            })
-        });
+            })))
+        };
+        segments.push(ast::PathSegment { identifier: last_identifier, parameters: parameters });
         ast::Path {
             span: sp,
             global: global,
@@ -367,13 +363,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
+        let parameters = ast::AngleBracketedParameterData {
+            lifetimes: lifetimes,
+            types: P::from_vec(types),
+            bindings: P::from_vec(bindings),
+        };
         path.segments.push(ast::PathSegment {
             identifier: ident,
-            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
-                lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
-            })
+            parameters: Some(P(ast::PathParameters::AngleBracketed(parameters))),
         });
 
         (ast::QSelf {

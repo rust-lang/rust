@@ -418,8 +418,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
-            imported_from: None, // FIXME
-            allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
             attrs: attrs,
             body: body,
         })

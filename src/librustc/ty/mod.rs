@@ -17,7 +17,7 @@ pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
-use hir::map as ast_map;
+use hir::{map as ast_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -110,6 +110,13 @@ pub struct CrateAnalysis<'tcx> {
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
     pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
+}
+
+#[derive(Clone)]
+pub struct Resolutions {
+    pub freevars: FreevarMap,
+    pub trait_map: TraitMap,
+    pub maybe_unused_trait_imports: NodeSet,
 }
 
 #[derive(Copy, Clone)]

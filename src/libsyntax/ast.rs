@@ -47,10 +47,14 @@ impl Ident {
         Ident { name: name, ctxt: SyntaxContext::empty() }
     }
 
-   /// Maps a string to an identifier with an empty syntax context.
-   pub fn from_str(s: &str) -> Ident {
-       Ident::with_empty_ctxt(Symbol::intern(s))
-   }
+    /// Maps a string to an identifier with an empty syntax context.
+    pub fn from_str(s: &str) -> Ident {
+        Ident::with_empty_ctxt(Symbol::intern(s))
+    }
+
+    pub fn unhygienize(&self) -> Ident {
+        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    }
 }
 
 impl fmt::Debug for Ident {
@@ -133,12 +137,7 @@ impl Path {
         Path {
             span: s,
             global: false,
-            segments: vec![
-                PathSegment {
-                    identifier: identifier,
-                    parameters: PathParameters::none()
-                }
-            ],
+            segments: vec![identifier.into()],
         }
     }
 }
@@ -156,7 +155,15 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: PathParameters,
+    /// The `Option<P<..>>` wrapper is purely a size optimization;
+    /// `None` is used to represent both `Path` and `Path<>`.
+    pub parameters: Option<P<PathParameters>>,
+}
+
+impl From<Ident> for PathSegment {
+    fn from(id: Ident) -> Self {
+        PathSegment { identifier: id, parameters: None }
+    }
 }
 
 /// Parameters of a path segment.
@@ -170,79 +177,8 @@ pub enum PathParameters {
     Parenthesized(ParenthesizedParameterData),
 }
 
-impl PathParameters {
-    pub fn none() -> PathParameters {
-        PathParameters::AngleBracketed(AngleBracketedParameterData {
-            lifetimes: Vec::new(),
-            types: P::new(),
-            bindings: P::new(),
-        })
-    }
-
-    pub fn is_empty(&self) -> bool {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => data.is_empty(),
-
-            // Even if the user supplied no types, something like
-            // `X()` is equivalent to `X<(),()>`.
-            PathParameters::Parenthesized(..) => false,
-        }
-    }
-
-    pub fn has_lifetimes(&self) -> bool {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => !data.lifetimes.is_empty(),
-            PathParameters::Parenthesized(_) => false,
-        }
-    }
-
-    pub fn has_types(&self) -> bool {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => !data.types.is_empty(),
-            PathParameters::Parenthesized(..) => true,
-        }
-    }
-
-    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
-    /// parameters in the parenthesized case.
-    pub fn types(&self) -> Vec<&P<Ty>> {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => {
-                data.types.iter().collect()
-            }
-            PathParameters::Parenthesized(ref data) => {
-                data.inputs.iter()
-                    .chain(data.output.iter())
-                    .collect()
-            }
-        }
-    }
-
-    pub fn lifetimes(&self) -> Vec<&Lifetime> {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => {
-                data.lifetimes.iter().collect()
-            }
-            PathParameters::Parenthesized(_) => {
-                Vec::new()
-            }
-        }
-    }
-
-    pub fn bindings(&self) -> Vec<&TypeBinding> {
-        match *self {
-            PathParameters::AngleBracketed(ref data) => {
-                data.bindings.iter().collect()
-            }
-            PathParameters::Parenthesized(_) => {
-                Vec::new()
-            }
-        }
-    }
-}
-
 /// A path like `Foo<'a, T>`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
 pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
@@ -254,9 +190,10 @@ pub struct AngleBracketedParameterData {
     pub bindings: P<[TypeBinding]>,
 }
 
-impl AngleBracketedParameterData {
-    fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty()
+impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
+    fn into(self) -> Option<P<PathParameters>> {
+        let empty = self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty();
+        if empty { None } else { Some(P(PathParameters::AngleBracketed(self))) }
     }
 }
 
@@ -1968,8 +1905,6 @@ pub struct MacroDef {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub imported_from: Option<Ident>,
-    pub allow_internal_unstable: bool,
     pub body: Vec<TokenTree>,
 }
 
