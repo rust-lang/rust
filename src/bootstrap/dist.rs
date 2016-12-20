@@ -346,8 +346,14 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
 }
 
 /// Creates the `rust-src` installer component and the plain source tarball
-pub fn rust_src(build: &Build) {
+pub fn rust_src(build: &Build, host: &str) {
     println!("Dist src");
+
+    if host != build.config.build {
+        println!("\tskipping, not a build host");
+        return
+    }
+
     let plain_name = format!("rustc-{}-src", package_vers(build));
     let name = format!("rust-src-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-image", name));
