@@ -540,33 +540,33 @@ questions.
 Far and away, good documentation was the most mentioned factor people used to
 evaluate which crates to try.
 
-|    | Feature                                                                        | Used in evaluation   | Not available/too much time needed | Total                     | Notes                 |                   |    |  |
-|----|--------------------------------------------------------------------------------|----------------------|------------------------------------|---------------------------|-----------------------|-------------------|----|--|
-| 1  | Good documentation                                                             | 94                   | 10                                 | 104                       |                       |                   |    |  |
-| 2  | README                                                                         | 42                   | 19                                 | 61                        |                       |                   |    |  |
-| 3  | Number of downloads                                                            | 58                   | 0                                  | 58                        |                       |                   |    |  |
-| 4  | Most recent version date                                                       | 54                   | 0                                  | 54                        |                       |                   |    |  |
-| 5  | Obvious / easy to find usage examples                                          | 37                   | 14                                 | 51                        |                       |                   |    |  |
-| 6  | Examples in the repo                                                           | 38                   | 6                                  | 44                        |                       |                   |    |  |
-| 7  | Reputation of the author                                                       | 36                   | 3                                  | 39                        |                       |                   |    |  |
-| 8  | Description or README containing Introduction / goals / value prop / use cases | 29                   | 5                                  | 34                        |                       |                   |    |  |
-| 9  | Number of reverse dependencies (Dependent Crates)                              | 23                   | 7                                  | 30                        |                       |                   |    |  |
-| 10 | Version >= 1.0.0                                                               | 30                   | 0                                  | 30                        |                       |                   |    |  |
-| 11 | Commit activity                                                                | 23                   | 6                                  | 29                        | Depends on VCS        |                   |    |  |
-| 12 | Fits use case                                                                  | 26                   | 3                                  | 29                        | Situational           |                   |    |  |
-| 13 | Number of dependencies (more = worse)                                          | 28                   | 0                                  | 28                        |                       |                   |    |  |
-| 14 | "Number of open issues                                                         |  activity on issues" | 22                                 | 6                         | 28                    | Depends on GitHub |    |  |
-| 15 | Easy to use or understand                                                      | 27                   | 0                                  | 27                        | Situational           |                   |    |  |
-| 16 | "Publicity (blog posts                                                         |  reddit              |  urlo                              |  ""have I heard of it"")" | 25                    | 0                 | 25 |  |
-| 17 | Most recent commit date                                                        | 17                   | 5                                  | 22                        | Dependent on VCS      |                   |    |  |
-| 18 | Implementation details                                                         | 22                   | 0                                  | 22                        | Situational           |                   |    |  |
-| 19 | Nice API                                                                       | 22                   | 0                                  | 22                        | Situational           |                   |    |  |
-| 20 | Mentioned using/wanting to use docs.rs                                         | 8                    | 13                                 | 21                        |                       |                   |    |  |
-| 21 | Tutorials                                                                      | 18                   | 3                                  | 21                        |                       |                   |    |  |
-| 22 | Number or frequency of released versions                                       | 19                   | 1                                  | 20                        |                       |                   |    |  |
-| 23 | Number of maintainers/contributors                                             | 12                   | 6                                  | 18                        | Depends on VCS        |                   |    |  |
-| 24 | CI results                                                                     | 15                   | 2                                  | 17                        | Depends on CI service |                   |    |  |
-| 25 | "Whether the crate works on nightly                                            |  stable              |  particular stable versions"       | 8                         | 8                     | 16                |    |  |
+|    | Feature                                                                        | Used in evaluation   | Not available/too much time needed | Total                     | Notes                 |
+|----|--------------------------------------------------------------------------------|----------------------|------------------------------------|---------------------------|-----------------------|
+| 1  | Good documentation                                                             | 94                   | 10                                 | 104                       |                       |
+| 2  | README                                                                         | 42                   | 19                                 | 61                        |                       |
+| 3  | Number of downloads                                                            | 58                   | 0                                  | 58                        |                       |
+| 4  | Most recent version date                                                       | 54                   | 0                                  | 54                        |                       |
+| 5  | Obvious / easy to find usage examples                                          | 37                   | 14                                 | 51                        |                       |
+| 6  | Examples in the repo                                                           | 38                   | 6                                  | 44                        |                       |
+| 7  | Reputation of the author                                                       | 36                   | 3                                  | 39                        |                       |
+| 8  | Description or README containing Introduction / goals / value prop / use cases | 29                   | 5                                  | 34                        |                       |
+| 9  | Number of reverse dependencies (Dependent Crates)                              | 23                   | 7                                  | 30                        |                       |
+| 10 | Version >= 1.0.0                                                               | 30                   | 0                                  | 30                        |                       |
+| 11 | Commit activity                                                                | 23                   | 6                                  | 29                        | Depends on VCS        |
+| 12 | Fits use case                                                                  | 26                   | 3                                  | 29                        | Situational           |
+| 13 | Number of dependencies (more = worse)                                          | 28                   | 0                                  | 28                        |                       |
+| 14 | Number of open issues, activity on issues"                                     | 22                   | 6                                  | 28                        | Depends on GitHub     |
+| 15 | Easy to use or understand                                                      | 27                   | 0                                  | 27                        | Situational           |
+| 16 | Publicity (blog posts, reddit, urlo, "have I heard of it")                     | 25                   | 0                                  | 25                        |                       |
+| 17 | Most recent commit date                                                        | 17                   | 5                                  | 22                        | Dependent on VCS      |
+| 18 | Implementation details                                                         | 22                   | 0                                  | 22                        | Situational           |
+| 19 | Nice API                                                                       | 22                   | 0                                  | 22                        | Situational           |
+| 20 | Mentioned using/wanting to use docs.rs                                         | 8                    | 13                                 | 21                        |                       |
+| 21 | Tutorials                                                                      | 18                   | 3                                  | 21                        |                       |
+| 22 | Number or frequency of released versions                                       | 19                   | 1                                  | 20                        |                       |
+| 23 | Number of maintainers/contributors                                             | 12                   | 6                                  | 18                        | Depends on VCS        |
+| 24 | CI results                                                                     | 15                   | 2                                  | 17                        | Depends on CI service |
+| 25 | Whether the crate works on nightly, stable, particular stable versions         | 8                    | 8                                  | 16                        |                       |
 
 ## Relevant quotes motivating our choice of factors
 
