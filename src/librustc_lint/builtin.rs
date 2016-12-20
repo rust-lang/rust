@@ -240,11 +240,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, trait_item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(ref sig, None) = trait_item.node {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+        if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
             if sig.unsafety == hir::Unsafety::Unsafe {
                 cx.span_lint(UNSAFE_CODE,
-                             trait_item.span,
+                             item.span,
                              "declaration of an `unsafe` method")
             }
         }

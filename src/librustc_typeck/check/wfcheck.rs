@@ -478,7 +478,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             return;
         }
 
-        let span = method_sig.decl.inputs[0].pat.span;
+        let span = method_sig.decl.inputs[0].span;
 
         let free_substs = &fcx.parameter_environment.free_substs;
         let method_ty = fcx.tcx.item_type(method.def_id);

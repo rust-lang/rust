@@ -381,7 +381,9 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
-    for arg in &decl.inputs {
+    let body = ir.tcx.map.body(body_id);
+
+    for arg in &body.arguments {
         arg.pat.each_binding(|_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
             let name = path1.node;
@@ -404,8 +406,6 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
         clean_exit_var: fn_maps.add_variable(CleanExit)
     };
 
-    let body = ir.tcx.map.body(body_id);
-
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, specials);
     let entry_ln = lsets.compute(&body.value);
@@ -413,7 +413,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     // check for various error conditions
     lsets.visit_body(body);
     lsets.check_ret(id, sp, fk, entry_ln, body);
-    lsets.warn_about_unused_args(decl, entry_ln);
+    lsets.warn_about_unused_args(body, entry_ln);
 }
 
 fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
@@ -1502,8 +1502,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_unused_args(&self, decl: &hir::FnDecl, entry_ln: LiveNode) {
-        for arg in &decl.inputs {
+    fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
+        for arg in &body.arguments {
             arg.pat.each_binding(|_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.

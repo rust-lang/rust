@@ -1225,7 +1225,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // Use call-site for extent (unless this is a
                         // trait method with no default; then fallback
                         // to the method id).
-                        let extent = if let Some(body_id) = *body {
+                        let extent = if let hir::TraitMethod::Provided(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
                             tcx.region_maps.call_site_extent(id, body_id.node_id)
                         } else {

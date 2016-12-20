@@ -126,7 +126,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        arguments: A,
                                        abi: Abi,
                                        return_ty: Ty<'gcx>,
-                                       body_id: hir::BodyId)
+                                       body: &'gcx hir::Body)
                                        -> Mir<'tcx>
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
@@ -138,15 +138,14 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let call_site_extent =
         tcx.region_maps.lookup_code_extent(
-            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id.node_id });
+            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body.value.id });
     let arg_extent =
         tcx.region_maps.lookup_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id.node_id });
+            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.value.id });
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
-            let ast_expr = &tcx.map.body(body_id).value;
-            builder.args_and_body(block, &arguments, arg_extent, ast_expr)
+            builder.args_and_body(block, &arguments, arg_extent, &body.value)
         }));
         // Attribute epilogue to function's closing brace
         let fn_end = Span { lo: span.hi, ..span };

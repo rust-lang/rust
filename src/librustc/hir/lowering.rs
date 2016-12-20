@@ -170,8 +170,12 @@ impl<'a> LoweringContext<'a> {
         visit::walk_crate(&mut item_lowerer, c);
     }
 
-    fn record_body(&mut self, value: hir::Expr) -> hir::BodyId {
+    fn record_body(&mut self, value: hir::Expr, decl: Option<&FnDecl>)
+                   -> hir::BodyId {
         let body = hir::Body {
+            arguments: decl.map_or(hir_vec![], |decl| {
+                decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
+            }),
             value: value
         };
         let id = body.id();
@@ -310,11 +314,11 @@ impl<'a> LoweringContext<'a> {
                 TyKind::Array(ref ty, ref length) => {
                     let length = self.lower_expr(length);
                     hir::TyArray(self.lower_ty(ty),
-                                 self.record_body(length))
+                                 self.record_body(length, None))
                 }
                 TyKind::Typeof(ref expr) => {
                     let expr = self.lower_expr(expr);
-                    hir::TyTypeof(self.record_body(expr))
+                    hir::TyTypeof(self.record_body(expr, None))
                 }
                 TyKind::PolyTraitRef(ref bounds) => {
                     hir::TyPolyTraitRef(self.lower_bounds(bounds))
@@ -343,7 +347,7 @@ impl<'a> LoweringContext<'a> {
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node.disr_expr.as_ref().map(|e| {
                     let e = self.lower_expr(e);
-                    self.record_body(e)
+                    self.record_body(e, None)
                 }),
             },
             span: v.span,
@@ -532,13 +536,24 @@ impl<'a> LoweringContext<'a> {
         hir::Arg {
             id: arg.id,
             pat: self.lower_pat(&arg.pat),
-            ty: self.lower_ty(&arg.ty),
         }
+    }
+
+    fn lower_fn_args_to_names(&mut self, decl: &FnDecl)
+                              -> hir::HirVec<Spanned<Name>> {
+        decl.inputs.iter().map(|arg| {
+            match arg.pat.node {
+                PatKind::Ident(_, ident, None) => {
+                    respan(ident.span, ident.node.name)
+                }
+                _ => respan(arg.pat.span, keywords::Invalid.name()),
+            }
+        }).collect()
     }
 
     fn lower_fn_decl(&mut self, decl: &FnDecl) -> P<hir::FnDecl> {
         P(hir::FnDecl {
-            inputs: decl.inputs.iter().map(|x| self.lower_arg(x)).collect(),
+            inputs: decl.inputs.iter().map(|arg| self.lower_ty(&arg.ty)).collect(),
             output: match decl.output {
                 FunctionRetTy::Ty(ref ty) => hir::Return(self.lower_ty(ty)),
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
@@ -869,17 +884,17 @@ impl<'a> LoweringContext<'a> {
                 let value = self.lower_expr(e);
                 hir::ItemStatic(self.lower_ty(t),
                                 self.lower_mutability(m),
-                                self.record_body(value))
+                                self.record_body(value, None))
             }
             ItemKind::Const(ref t, ref e) => {
                 let value = self.lower_expr(e);
                 hir::ItemConst(self.lower_ty(t),
-                               self.record_body(value))
+                               self.record_body(value, None))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 let body = self.lower_block(body);
                 let body = self.expr_block(body, ThinVec::new());
-                let body_id = self.record_body(body);
+                let body_id = self.record_body(body, Some(decl));
                 hir::ItemFn(self.lower_fn_decl(decl),
                             self.lower_unsafety(unsafety),
                             self.lower_constness(constness),
@@ -948,16 +963,20 @@ impl<'a> LoweringContext<'a> {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
                                                   default.as_ref().map(|x| {
                             let value = this.lower_expr(x);
-                            this.record_body(value)
+                            this.record_body(value, None)
                         }))
                     }
-                    TraitItemKind::Method(ref sig, ref body) => {
+                    TraitItemKind::Method(ref sig, None) => {
+                        let names = this.lower_fn_args_to_names(&sig.decl);
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
-                                                   body.as_ref().map(|x| {
-                            let body = this.lower_block(x);
-                            let expr = this.expr_block(body, ThinVec::new());
-                            this.record_body(expr)
-                        }))
+                                                   hir::TraitMethod::Required(names))
+                    }
+                    TraitItemKind::Method(ref sig, Some(ref body)) => {
+                        let body = this.lower_block(body);
+                        let expr = this.expr_block(body, ThinVec::new());
+                        let body_id = this.record_body(expr, Some(&sig.decl));
+                        hir::TraitItemKind::Method(this.lower_method_sig(sig),
+                                                   hir::TraitMethod::Provided(body_id))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
                         hir::TraitItemKind::Type(this.lower_bounds(bounds),
@@ -1005,13 +1024,13 @@ impl<'a> LoweringContext<'a> {
                 node: match i.node {
                     ImplItemKind::Const(ref ty, ref expr) => {
                         let value = this.lower_expr(expr);
-                        let body_id = this.record_body(value);
+                        let body_id = this.record_body(value, None);
                         hir::ImplItemKind::Const(this.lower_ty(ty), body_id)
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
                         let body = this.lower_block(body);
                         let expr = this.expr_block(body, ThinVec::new());
-                        let body_id = this.record_body(expr);
+                        let body_id = this.record_body(expr, Some(&sig.decl));
                         hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
@@ -1097,7 +1116,9 @@ impl<'a> LoweringContext<'a> {
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     ForeignItemKind::Fn(ref fdec, ref generics) => {
-                        hir::ForeignItemFn(this.lower_fn_decl(fdec), this.lower_generics(generics))
+                        hir::ForeignItemFn(this.lower_fn_decl(fdec),
+                                           this.lower_fn_args_to_names(fdec),
+                                           this.lower_generics(generics))
                     }
                     ForeignItemKind::Static(ref t, m) => {
                         hir::ForeignItemStatic(this.lower_ty(t), m)
@@ -1367,7 +1388,7 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = P(self.lower_expr(expr));
                     let count = self.lower_expr(count);
-                    hir::ExprRepeat(expr, self.record_body(count))
+                    hir::ExprRepeat(expr, self.record_body(count, None))
                 }
                 ExprKind::Tup(ref elts) => {
                     hir::ExprTup(elts.iter().map(|x| self.lower_expr(x)).collect())
@@ -1450,7 +1471,7 @@ impl<'a> LoweringContext<'a> {
                         let expr = this.lower_expr(body);
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         this.record_body(expr),
+                                         this.record_body(expr, Some(decl)),
                                          fn_decl_span)
                     })
                 }
@@ -1734,13 +1755,7 @@ impl<'a> LoweringContext<'a> {
                     // `::std::option::Option::Some(<pat>) => <body>`
                     let pat_arm = {
                         let body_block = self.lower_block(body);
-                        let body_span = body_block.span;
-                        let body_expr = P(hir::Expr {
-                            id: self.next_id(),
-                            node: hir::ExprBlock(body_block),
-                            span: body_span,
-                            attrs: ThinVec::new(),
-                        });
+                        let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                         let pat = self.lower_pat(pat);
                         let some_pat = self.pat_some(e.span, pat);
 

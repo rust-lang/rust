@@ -476,8 +476,10 @@ enum SawTraitOrImplItemComponent {
 fn saw_trait_item(ti: &TraitItemKind) -> SawTraitOrImplItemComponent {
     match *ti {
         TraitItemKind::Const(..) => SawTraitOrImplItemConst,
-        TraitItemKind::Method(ref sig, ref body) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, body.is_some()),
+        TraitItemKind::Method(ref sig, TraitMethod::Required(_)) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, false),
+        TraitItemKind::Method(ref sig, TraitMethod::Provided(_)) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, true),
         TraitItemKind::Type(..) => SawTraitOrImplItemType
     }
 }

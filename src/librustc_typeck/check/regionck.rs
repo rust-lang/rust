@@ -141,7 +141,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn regionck_fn(&self,
                        fn_id: ast::NodeId,
-                       decl: &hir::FnDecl,
                        body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let node_id = body.value.id;
@@ -149,7 +148,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, decl, body, self.tcx.map.span(fn_id));
+            rcx.visit_fn_body(fn_id, body, self.tcx.map.span(fn_id));
         }
 
         rcx.free_region_map.relate_free_regions_from_predicates(
@@ -268,7 +267,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn visit_fn_body(&mut self,
                      id: ast::NodeId, // the id of the fn itself
-                     fn_decl: &hir::FnDecl,
                      body: &'gcx hir::Body,
                      span: Span)
     {
@@ -303,8 +301,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let old_body_id = self.set_body_id(body_id.node_id);
         self.relate_free_regions(&fn_sig_tys[..], body_id.node_id, span);
-        self.link_fn_args(self.tcx.region_maps.node_extent(body_id.node_id),
-                          &fn_decl.inputs[..]);
+        self.link_fn_args(self.tcx.region_maps.node_extent(body_id.node_id), &body.arguments);
         self.visit_body(body);
         self.visit_region_obligations(body_id.node_id);
 
@@ -483,10 +480,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_fn(&mut self, _fk: intravisit::FnKind<'gcx>, fd: &'gcx hir::FnDecl,
+    fn visit_fn(&mut self, _fk: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
                 b: hir::BodyId, span: Span, id: ast::NodeId) {
         let body = self.tcx.map.body(b);
-        self.visit_fn_body(id, fd, body, span)
+        self.visit_fn_body(id, body, span)
     }
 
     //visit_pat: visit_pat, // (..) see above
@@ -1116,7 +1113,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         for arg in args {
             let arg_ty = self.node_ty(arg.id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
-            let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
+            let arg_cmt = mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty);
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
                    arg_cmt,

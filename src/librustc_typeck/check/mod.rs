@@ -681,8 +681,8 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         fcx.check_casts();
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
 
-        fcx.regionck_fn(fn_id, decl, body);
-        fcx.resolve_type_vars_in_fn(decl, body, fn_id);
+        fcx.regionck_fn(fn_id, body);
+        fcx.resolve_type_vars_in_body(body, fn_id);
     });
 }
 
@@ -751,16 +751,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_ty(&mut self, t: &'gcx hir::Ty) {
-        match t.node {
-            hir::TyBareFn(ref function_declaration) => {
-                intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
-                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
-            }
-            _ => intravisit::walk_ty(self, t)
-        }
-    }
-
     // Don't descend into the bodies of nested closures
     fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
                 _: hir::BodyId, _: Span, _: ast::NodeId) { }
@@ -796,31 +786,21 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty.unwrap(),
                                fn_sig.variadic);
 
-    {
-        let mut visit = GatherLocalsVisitor { fcx: &fcx, };
+    GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
 
-        // Add formal parameters.
-        for (arg_ty, input) in fn_sig.inputs().iter().zip(&decl.inputs) {
-            // The type of the argument must be well-formed.
-            //
-            // NB -- this is now checked in wfcheck, but that
-            // currently only results in warnings, so we issue an
-            // old-style WF obligation here so that we still get the
-            // errors that we used to get.
-            fcx.register_old_wf_obligation(arg_ty, input.ty.span, traits::MiscObligation);
+    // Add formal parameters.
+    for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
+        // The type of the argument must be well-formed.
+        //
+        // NB -- this is now checked in wfcheck, but that
+        // currently only results in warnings, so we issue an
+        // old-style WF obligation here so that we still get the
+        // errors that we used to get.
+        fcx.register_old_wf_obligation(arg_ty, arg.pat.span, traits::MiscObligation);
 
-            // Create type variables for each argument.
-            input.pat.each_binding(|_bm, pat_id, sp, _path| {
-                let var_ty = visit.assign(sp, pat_id, None);
-                fcx.require_type_is_sized(var_ty, sp, traits::VariableType(pat_id));
-            });
-
-            // Check the pattern.
-            fcx.check_pat(&input.pat, arg_ty);
-            fcx.write_ty(input.id, arg_ty);
-        }
-
-        visit.visit_body(body);
+        // Check the pattern.
+        fcx.check_pat(&arg.pat, arg_ty);
+        fcx.write_ty(arg.id, arg_ty);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
@@ -910,7 +890,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                     err.emit();
                 }
 
-                if let hir::ForeignItemFn(ref fn_decl, _) = item.node {
+                if let hir::ForeignItemFn(ref fn_decl, _, _) = item.node {
                     require_c_abi_if_variadic(ccx.tcx, fn_decl, m.abi, item.span);
                 }
             }
@@ -954,10 +934,10 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                 hir::TraitItemKind::Const(_, Some(expr)) => {
                     check_const(ccx, expr, trait_item.id)
                 }
-                hir::TraitItemKind::Method(ref sig, Some(body_id)) => {
+                hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body_id)) => {
                     check_bare_fn(ccx, &sig.decl, body_id, trait_item.id, trait_item.span);
                 }
-                hir::TraitItemKind::Method(_, None) |
+                hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
                 hir::TraitItemKind::Const(_, None) |
                 hir::TraitItemKind::Type(..) => {
                     // Nothing to do.
@@ -1269,7 +1249,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         fcx.select_all_obligations_or_error();
 
         fcx.regionck_expr(body);
-        fcx.resolve_type_vars_in_expr(body, id);
+        fcx.resolve_type_vars_in_body(body, id);
     });
 }
 

@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             f: F)
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>)
     {
-        let extent = self.extent_of_innermost_scope();
+        let extent = self.scopes.last().map(|scope| scope.extent).unwrap();
         let loop_scope = LoopScope {
             extent: extent.clone(),
             continue_block: loop_block,
@@ -409,10 +409,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span: span,
             scope: self.visibility_scope
         }
-    }
-
-    pub fn extent_of_innermost_scope(&self) -> CodeExtent {
-        self.scopes.last().map(|scope| scope.extent).unwrap()
     }
 
     /// Returns the extent of the scope which should be exited by a

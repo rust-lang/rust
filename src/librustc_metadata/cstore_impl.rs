@@ -128,7 +128,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>
     {
-        self.dep_graph.read(DepNode::MetaData(did));
+        // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+        // a `fn` when encoding, so the dep-tracking wouldn't work.
+        // This is only used by rustdoc anyway, which shouldn't have
+        // incremental recompilation ever enabled.
+        assert!(!self.dep_graph.is_fully_enabled());
         self.get_crate_data(did.krate).get_fn_arg_names(did.index)
     }
 

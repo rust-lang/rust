@@ -190,7 +190,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
-                hir::ForeignItemFn(ref decl, ref generics) => {
+                hir::ForeignItemFn(ref decl, _, ref generics) => {
                     this.visit_early_late(item.id, decl, generics, |this| {
                         intravisit::walk_foreign_item(this, item);
                     })
@@ -266,7 +266,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // methods in an impl can reuse label names.
         let saved = replace(&mut self.labels_in_fn, vec![]);
 
-        if let hir::TraitItemKind::Method(ref sig, None) = trait_item.node {
+        if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) =
+                trait_item.node {
             self.visit_early_late(
                 trait_item.id,
                 &sig.decl, &sig.generics,
@@ -860,8 +861,8 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
     let mut constrained_by_input = ConstrainedCollector { regions: FxHashSet() };
-    for arg in &decl.inputs {
-        constrained_by_input.visit_ty(&arg.ty);
+    for arg_ty in &decl.inputs {
+        constrained_by_input.visit_ty(arg_ty);
     }
 
     let mut appears_in_output = AllCollector {

@@ -640,7 +640,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             id: ast::NodeId,
                             sig: &hir::MethodSig,
                             untransformed_rcvr_ty: Ty<'tcx>,
-                            rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
+                            body: Option<hir::BodyId>,
+                            rcvr_ty_predicates: &ty::GenericPredicates<'tcx>,) {
     let def_id = ccx.tcx.map.local_def_id(id);
     let ty_generics = generics_of_def_id(ccx, def_id);
 
@@ -658,7 +659,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         None
     };
     let fty = AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                                    sig, self_value_ty, anon_scope);
+                                    sig, self_value_ty, body, anon_scope);
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.map.span(id), def_id);
@@ -865,10 +866,14 @@ fn convert_trait_item(ccx: &CrateCtxt, trait_item: &hir::TraitItem) {
             convert_associated_type(ccx, TraitContainer(trait_def_id), trait_item.id, typ);
         }
 
-        hir::TraitItemKind::Method(ref sig, _) => {
+        hir::TraitItemKind::Method(ref sig, ref method) => {
+            let body = match *method {
+                hir::TraitMethod::Required(_) => None,
+                hir::TraitMethod::Provided(body) => Some(body)
+            };
             convert_method(ccx, TraitContainer(trait_def_id),
                            trait_item.id, sig, tcx.mk_self_type(),
-                           &trait_predicates);
+                           body, &trait_predicates);
         }
     }
 }
@@ -908,10 +913,10 @@ fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
             convert_associated_type(ccx, ImplContainer(impl_def_id), impl_item.id, Some(typ));
         }
 
-        hir::ImplItemKind::Method(ref sig, _) => {
+        hir::ImplItemKind::Method(ref sig, body) => {
             convert_method(ccx, ImplContainer(impl_def_id),
                            impl_item.id, sig, impl_self_ty,
-                           &impl_predicates);
+                           Some(body), &impl_predicates);
         }
     }
 }
@@ -1429,7 +1434,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             NodeForeignItem(item) => {
                 match item.node {
                     ForeignItemStatic(..) => &no_generics,
-                    ForeignItemFn(_, ref generics) => generics
+                    ForeignItemFn(_, _, ref generics) => generics
                 }
             }
 
@@ -1530,9 +1535,9 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     ItemStatic(ref t, ..) | ItemConst(ref t, _) => {
                         ccx.icx(&()).to_ty(&StaticRscope::new(&ccx.tcx), &t)
                     }
-                    ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
+                    ItemFn(ref decl, unsafety, _, abi, ref generics, body) => {
                         let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
-                                                          Some(AnonTypeScope::new(def_id)));
+                                                          body, Some(AnonTypeScope::new(def_id)));
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
                         ccx.tcx.mk_fn_def(def_id, substs, tofd)
                     }
@@ -1572,7 +1577,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let abi = ccx.tcx.map.get_foreign_abi(node_id);
 
                 match foreign_item.node {
-                    ForeignItemFn(ref fn_decl, ref generics) => {
+                    ForeignItemFn(ref fn_decl, _, ref generics) => {
                         compute_type_of_foreign_fn_decl(
                             ccx, ccx.tcx.map.local_def_id(foreign_item.id),
                             fn_decl, generics, abi)
@@ -1637,7 +1642,7 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let no_generics = hir::Generics::empty();
     let generics = match it.node {
-        hir::ForeignItemFn(_, ref generics) => generics,
+        hir::ForeignItemFn(_, _, ref generics) => generics,
         hir::ForeignItemStatic(..) => &no_generics
     };
 
@@ -2073,7 +2078,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
             }
         };
         for (input, ty) in decl.inputs.iter().zip(&input_tys) {
-            check(&input.ty, ty)
+            check(&input, ty)
         }
         if let hir::Return(ref ty) = decl.output {
             check(&ty, output)

@@ -51,6 +51,12 @@ impl DepGraph {
         }
     }
 
+    /// True if we are actually building the full dep-graph.
+    #[inline]
+    pub fn is_fully_enabled(&self) -> bool {
+        self.data.thread.is_fully_enabled()
+    }
+
     pub fn query(&self) -> DepGraphQuery<DefId> {
         self.data.thread.query()
     }

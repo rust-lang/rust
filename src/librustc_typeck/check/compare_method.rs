@@ -456,7 +456,7 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 };
 
                 impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
-                    match (&impl_arg.ty.node, &trait_arg.ty.node) {
+                    match (&impl_arg.node, &trait_arg.node) {
                         (&hir::TyRptr(_, ref impl_mt), &hir::TyRptr(_, ref trait_mt)) |
                         (&hir::TyPtr(ref impl_mt), &hir::TyPtr(ref trait_mt)) => {
                             impl_mt.mutbl != trait_mt.mutbl
@@ -464,7 +464,7 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                         _ => false,
                     }
                 }).map(|(ref impl_arg, ref trait_arg)| {
-                    (impl_arg.ty.span, Some(trait_arg.ty.span))
+                    (impl_arg.span, Some(trait_arg.span))
                 })
                 .unwrap_or_else(|| (cause.span, tcx.map.span_if_local(trait_m.def_id)))
             } else {
@@ -489,7 +489,7 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                          .filter_map(|(((impl_arg_ty, trait_arg_ty), impl_arg), trait_arg)| {
                              match infcx.sub_types(true, &cause, trait_arg_ty, impl_arg_ty) {
                                  Ok(_) => None,
-                                 Err(_) => Some((impl_arg.ty.span, Some(trait_arg.ty.span))),
+                                 Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
                              }
                          })
                          .next()
@@ -680,7 +680,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     } else {
                         0
                     }) {
-                        Some(arg.pat.span)
+                        Some(arg.span)
                     } else {
                         trait_item_span
                     }
@@ -698,7 +698,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 } else {
                     0
                 }) {
-                    arg.pat.span
+                    arg.span
                 } else {
                     impl_m_span
                 }

@@ -227,6 +227,7 @@ pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 }
 
 fn report_elision_failure(
+    tcx: TyCtxt,
     db: &mut DiagnosticBuilder,
     params: Vec<ElisionFailureInfo>)
 {
@@ -241,13 +242,14 @@ fn report_elision_failure(
 
     for (i, info) in elided_params.into_iter().enumerate() {
         let ElisionFailureInfo {
-            name, lifetime_count: n, have_bound_regions
+            parent, index, lifetime_count: n, have_bound_regions
         } = info;
 
-        let help_name = if name.is_empty() {
-            format!("argument {}", i + 1)
+        let help_name = if let Some(body) = parent {
+            let arg = &tcx.map.body(body).arguments[index];
+            format!("`{}`", pprust::pat_to_string(&arg.pat))
         } else {
-            format!("`{}`", name)
+            format!("argument {}", index + 1)
         };
 
         m.push_str(&(if n == 1 {
@@ -315,7 +317,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     err.span_label(ampersand_span, &format!("expected lifetime parameter"));
 
                     if let Some(params) = params {
-                        report_elision_failure(&mut err, params);
+                        report_elision_failure(self.tcx(), &mut err, params);
                     }
                     err.emit();
                     ty::ReStatic
@@ -540,15 +542,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// corresponding to each input type/pattern.
     fn find_implied_output_region<I>(&self,
                                      input_tys: &[Ty<'tcx>],
-                                     input_pats: I) -> ElidedLifetime
-        where I: Iterator<Item=String>
+                                     parent: Option<hir::BodyId>,
+                                     input_indices: I) -> ElidedLifetime
+        where I: Iterator<Item=usize>
     {
         let tcx = self.tcx();
         let mut lifetimes_for_params = Vec::with_capacity(input_tys.len());
         let mut possible_implied_output_region = None;
         let mut lifetimes = 0;
 
-        for input_type in input_tys.iter() {
+        for (input_type, index) in input_tys.iter().zip(input_indices) {
             let mut regions = FxHashSet();
             let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
@@ -564,11 +567,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 possible_implied_output_region = regions.iter().cloned().next();
             }
 
-            // Use a placeholder for `name` because computing it can be
-            // expensive and we don't want to do it until we know it's
-            // necessary.
             lifetimes_for_params.push(ElisionFailureInfo {
-                name: String::new(),
+                parent: parent,
+                index: index,
                 lifetime_count: regions.len(),
                 have_bound_regions: have_bound_regions
             });
@@ -577,11 +578,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if lifetimes == 1 {
             Ok(*possible_implied_output_region.unwrap())
         } else {
-            // Fill in the expensive `name` fields now that we know they're
-            // needed.
-            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats) {
-                info.name = input_pat;
-            }
             Err(Some(lifetimes_for_params))
         }
     }
@@ -618,8 +614,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
         }));
-        let input_params = iter::repeat(String::new()).take(inputs.len());
-        let implied_output_region = self.find_implied_output_region(&inputs, input_params);
+        let input_params = 0..inputs.len();
+        let implied_output_region = self.find_implied_output_region(&inputs, None, input_params);
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
@@ -1572,6 +1568,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                               bf.abi,
                                                               None,
                                                               &bf.decl,
+                                                              None,
                                                               anon_scope,
                                                               anon_scope);
 
@@ -1696,26 +1693,28 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn ty_of_arg(&self,
                      rscope: &RegionScope,
-                     a: &hir::Arg,
+                     ty: &hir::Ty,
                      expected_ty: Option<Ty<'tcx>>)
                      -> Ty<'tcx>
     {
-        match a.ty.node {
+        match ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
-            hir::TyInfer => self.ty_infer(a.ty.span),
-            _ => self.ast_ty_to_ty(rscope, &a.ty),
+            hir::TyInfer => self.ty_infer(ty.span),
+            _ => self.ast_ty_to_ty(rscope, ty),
         }
     }
 
     pub fn ty_of_method(&self,
                         sig: &hir::MethodSig,
                         opt_self_value_ty: Option<Ty<'tcx>>,
+                        body: Option<hir::BodyId>,
                         anon_scope: Option<AnonTypeScope>)
                         -> &'tcx ty::BareFnTy<'tcx> {
         self.ty_of_method_or_bare_fn(sig.unsafety,
                                      sig.abi,
                                      opt_self_value_ty,
                                      &sig.decl,
+                                     body,
                                      None,
                                      anon_scope)
     }
@@ -1724,9 +1723,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                          unsafety: hir::Unsafety,
                          abi: abi::Abi,
                          decl: &hir::FnDecl,
+                         body: hir::BodyId,
                          anon_scope: Option<AnonTypeScope>)
                          -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, None, anon_scope)
+        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, Some(body), None, anon_scope)
     }
 
     fn ty_of_method_or_bare_fn(&self,
@@ -1734,6 +1734,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                abi: abi::Abi,
                                opt_self_value_ty: Option<Ty<'tcx>>,
                                decl: &hir::FnDecl,
+                               body: Option<hir::BodyId>,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
                                -> &'tcx ty::BareFnTy<'tcx>
@@ -1764,12 +1765,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             // reference) in the arguments, then any anonymous regions in the output
             // have that lifetime.
             _ => {
-                let arg_params = &decl.inputs[has_self as usize..];
                 let arg_tys = &input_tys[has_self as usize..];
-
-                self.find_implied_output_region(arg_tys,
-                                                arg_params.iter()
-                                                    .map(|a| pprust::pat_to_string(&a.pat)))
+                let arg_params = has_self as usize..input_tys.len();
+                self.find_implied_output_region(arg_tys, body, arg_params)
 
             }
         };

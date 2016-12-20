@@ -52,7 +52,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
             };
             let body = infcx.tcx.map.body(b);
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
-            euv.walk_fn(fd, body);
+            euv.walk_fn(body);
         });
         intravisit::walk_fn(self, fk, fd, b, s, fn_id)
     }
