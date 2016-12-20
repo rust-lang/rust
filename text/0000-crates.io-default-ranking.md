@@ -140,78 +140,59 @@ By far, the most common attribute people said they considered in the survey was
 whether a crate had good documentation. Frequently mentioned when discussing
 documentation was the desire to quickly find an example of how to use the crate.
 
-- Percentage of top-level items that have documentation
-  - We have created a proof-of-concept [cargo doc-coverage][] tool to count the
-    number of public items and the percentage of those that have/don't have
-    documentation. The overall documentation coverage didn't match our human
-    perceptions of well-documentedness from looking at the front page of
-    documentation, so we decided top-level items are more important than items
-    in submodules. For example, nom is 48% documented overall, but the
-    top-level items are extremely well documented, 170/195 or 87%. Our
-    definition of "top-level" counts the overall crate as an item. We think our
-    doc coverage POC can be modified to report this number.
-  - Would need to unpack and run this on each package version in a background
-    job started by a publish; then save the percentage in crates.io's database.
+- Number of lines of documentation in Rust files:
+  `grep -r \/\/[\!\/] --binary-files=without-match --include=*.rs . | wc -l`
+- Number of lines in the README file, if specified in Cargo.toml
+- Number of lines in Rust files: `find . -name '*.rs' | xargs wc -l`
 
-- In the crate root documentation, presence of a section headed with the word
-  "Example" and containing a codeblock
-  - Existing issue, seen in the survey results is that people look in both the
-    README of the repo and the front page of the docs for examples. We have an
-    opportunity to encourage at least one to be present reliably.
-  - Increases the doc percentage score by 5%
+We would then add the lines in the README to the lines of documentation and
+subtract the lines of documentation from the total lines of code in order to
+get the ratio of documentation to code. Test code (and any documentation within
+test code) *is* part of this calculation.
 
-- Presence of files in `/examples`
-  - Future improvement: [render and link to examples in documentation][examples]
-  - Increases the doc percentage score by 5%
+Any crate getting in the top 20% of all crates would get a badge saying "well
+documented".
 
-[cargo doc-coverage]: https://crates.io/crates/cargo-doc-coverage
-[examples]: https://github.com/rust-lang/cargo/issues/2760
+Additionally, lists of crates would have a badge showing the number of files in
+the standard `/examples` directory, if any. A further enhancement would be to
+make that badge link to the examples displayed somewhere (crates.io? in the
+repository? in the documentation?).
 
-<table>
-    <tr>
-        <th>Crate</th>
+* combine:
+  * 1,195 lines of documentation
+  * 99 lines in README.md
+  * 5,815 lines of Rust
+  * (1195 + 99) / (5815 - 1195) = 1294/4620 = .28
 
-        <th>Doc coverage of top-level items</th>
-        <th>Example in the crate root docs bonus</th>
-        <th>`/examples` bonus</th>
-        <th>Overall Ease of Use score</th>
-    </tr>
-    <tr>
-        <td>peresil</td>
-        <td>10/10, 100%</td>
-        <td>5%</td>
-        <td>0%</td>
-        <td>105%, ☀️</td>
-    </tr>
-    <tr>
-        <td>combine</td>
-        <td>43/44, 98%</td>
-        <td>5%</td>
-        <td>0%</td>
-        <td>103%, ☀️</td>
-    </tr>
-    <tr>
-        <td>nom</td>
-        <td>170/195, 87%</td>
-        <td>5%</td>
-        <td>0%</td>
-        <td>92%, ☀️</td>
-    </tr>
-    <tr>
-        <td>lalrpop</td>
-        <td>4/5, 80%</td>
-        <td>0%</td>
-        <td>0%</td>
-        <td>80%, 🌤</td>
-    </tr>
-    <tr>
-        <td>peg</td>
-        <td>2/3, 66%</td>
-        <td>0%</td>
-        <td>0%</td>
-        <td>66%, 🌥</td>
-    </tr>
-</table>
+* nom:
+  * 2,263 lines of documentation
+  * 372 lines in README.md
+  * 15,661 lines of Rust
+  * (2263 + 372) / (15661 - 2263) = 2635/13398 = .20
+
+* peresil:
+  * 159 lines of documentation
+  * 20 lines in README.md
+  * 1,341 lines of Rust
+  * (159 + 20) / (1341 - 159) = 179/1182 = .15
+
+* lalrpop: ([in the /lalrpop directory in the repo][lalrpop-repo])
+  * 742 lines of documentation
+  * 110 lines in ../README.md
+  * 94,104 lines of Rust
+  * (742 + 110) / (94104 - 742) = 852/93362 = .01
+
+* peg:
+  * 3 lines of documentation
+  * no readme specified in Cargo.toml
+  * 1,531 lines of Rust
+  * (3 + 0) / (1531 - 3) = 3/1528 = .00
+
+[lalrpop-repo]: https://github.com/nikomatsakis/lalrpop/tree/master/lalrpop
+
+If we assume these are all the crates on crates.io for this example, then
+combine is the top 20% and would get a badge. None of the crates have files in
+`/examples`, so none would have the examples badge.
 
 ### Maintenance
 
