@@ -882,6 +882,15 @@ unsafe impl<'a, K: Sync, V: Sync> Sync for IterMut<'a, K, V> {}
 // but Send is the more useful bound
 unsafe impl<'a, K: Send, V: Send> Send for IterMut<'a, K, V> {}
 
+impl<'a, K: 'a, V: 'a> IterMut<'a, K, V> {
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter {
+            iter: self.iter.clone(),
+            elems_left: self.elems_left,
+        }
+    }
+}
+
 /// Iterator over the entries in a table, consuming the table.
 pub struct IntoIter<K, V> {
     table: RawTable<K, V>,
@@ -890,6 +899,15 @@ pub struct IntoIter<K, V> {
 
 unsafe impl<K: Sync, V: Sync> Sync for IntoIter<K, V> {}
 unsafe impl<K: Send, V: Send> Send for IntoIter<K, V> {}
+
+impl<K, V> IntoIter<K, V> {
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter {
+            iter: self.iter.clone(),
+            elems_left: self.table.size,
+        }
+    }
+}
 
 /// Iterator over the entries in a table, clearing the table.
 pub struct Drain<'a, K: 'a, V: 'a> {
@@ -900,6 +918,17 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 
 unsafe impl<'a, K: Sync, V: Sync> Sync for Drain<'a, K, V> {}
 unsafe impl<'a, K: Send, V: Send> Send for Drain<'a, K, V> {}
+
+impl<'a, K, V> Drain<'a, K, V> {
+    pub fn iter(&self) -> Iter<K, V> {
+        unsafe {
+            Iter {
+                iter: self.iter.clone(),
+                elems_left: (**self.table).size,
+            }
+        }
+    }
+}
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
