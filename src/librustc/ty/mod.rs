@@ -219,26 +219,18 @@ pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,
     /// Visible only in the given crate-local module.
-    Restricted(NodeId),
+    Restricted(DefId),
     /// Not visible anywhere in the local crate. This is the visibility of private external items.
-    PrivateExternal,
+    Invisible,
 }
 
-pub trait NodeIdTree {
-    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool;
+pub trait DefIdTree: Copy {
+    fn parent(self, id: DefId) -> Option<DefId>;
 }
 
-impl<'a> NodeIdTree for ast_map::Map<'a> {
-    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
-        let mut node_ancestor = node;
-        while node_ancestor != ancestor {
-            let node_ancestor_parent = self.get_module_parent(node_ancestor);
-            if node_ancestor_parent == node_ancestor {
-                return false;
-            }
-            node_ancestor = node_ancestor_parent;
-        }
-        true
+impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
+    fn parent(self, id: DefId) -> Option<DefId> {
+        self.def_key(id).parent.map(|index| DefId { index: index, ..id })
     }
 }
 
@@ -246,36 +238,46 @@ impl Visibility {
     pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt) -> Self {
         match *visibility {
             hir::Public => Visibility::Public,
-            hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
+            hir::Visibility::Crate => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
             hir::Visibility::Restricted { ref path, .. } => match path.def {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
                 Def::Err => Visibility::Public,
-                def => Visibility::Restricted(tcx.map.as_local_node_id(def.def_id()).unwrap()),
+                def => Visibility::Restricted(def.def_id()),
             },
-            hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
+            hir::Inherited => {
+                Visibility::Restricted(tcx.map.local_def_id(tcx.map.get_module_parent(id)))
+            }
         }
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: NodeIdTree>(self, block: NodeId, tree: &T) -> bool {
+    pub fn is_accessible_from<T: DefIdTree>(self, mut module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
             // Private items from other crates are visible nowhere.
-            Visibility::PrivateExternal => return false,
+            Visibility::Invisible => return false,
             // Restricted items are visible in an arbitrary local module.
+            Visibility::Restricted(other) if other.krate != module.krate => return false,
             Visibility::Restricted(module) => module,
         };
 
-        tree.is_descendant_of(block, restriction)
+        while module != restriction {
+            match tree.parent(module) {
+                Some(parent) => module = parent,
+                None => return false,
+            }
+        }
+
+        true
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least<T: NodeIdTree>(self, vis: Visibility, tree: &T) -> bool {
+    pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
-            Visibility::PrivateExternal => return true,
+            Visibility::Invisible => return true,
             Visibility::Restricted(module) => module,
         };
 
@@ -1779,7 +1781,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
-        block.map_or(true, |b| self.vis.is_accessible_from(b, &tcx.map)) &&
+        block.map_or(true, |b| tcx.vis_is_accessible_from(self.vis, b)) &&
         self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
@@ -2264,6 +2266,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.sess.cstore.def_span(&self.sess, def_id)
         }
+    }
+
+    pub fn vis_is_accessible_from(self, vis: Visibility, block: NodeId) -> bool {
+        vis.is_accessible_from(self.map.local_def_id(self.map.get_module_parent(block)), self)
     }
 
     pub fn item_name(self, id: DefId) -> ast::Name {

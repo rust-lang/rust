@@ -229,7 +229,7 @@ impl<'a> Resolver<'a> {
                     ViewPathGlob(_) => {
                         let subclass = GlobImport {
                             is_prelude: is_prelude,
-                            max_vis: Cell::new(ty::Visibility::PrivateExternal),
+                            max_vis: Cell::new(ty::Visibility::Invisible),
                         };
                         self.add_import_directive(
                             module_path, subclass, view_path.span, item.id, vis, expansion,
@@ -265,16 +265,16 @@ impl<'a> Resolver<'a> {
             ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
 
             ItemKind::Mod(..) => {
-                let def = Def::Mod(self.definitions.local_def_id(item.id));
+                let def_id = self.definitions.local_def_id(item.id);
+                let module_kind = ModuleKind::Def(Def::Mod(def_id), ident.name);
                 let module = self.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
-                    normal_ancestor_id: Some(item.id),
-                    ..ModuleData::new(Some(parent), ModuleKind::Def(def, ident.name))
+                    ..ModuleData::new(Some(parent), module_kind, def_id)
                 });
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
-                self.module_map.insert(item.id, module);
+                self.module_map.insert(def_id, module);
 
                 // Descend into the module.
                 self.current_module = module;
@@ -305,7 +305,8 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Enum(ref enum_definition, _) => {
                 let def = Def::Enum(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent, ModuleKind::Def(def, ident.name), true);
+                let module_kind = ModuleKind::Def(def, ident.name);
+                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
                 for variant in &(*enum_definition).variants {
@@ -355,8 +356,8 @@ impl<'a> Resolver<'a> {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let module =
-                    self.new_module(parent, ModuleKind::Def(Def::Trait(def_id), ident.name), true);
+                let module_kind = ModuleKind::Def(Def::Trait(def_id), ident.name);
+                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.current_module = module;
             }
@@ -404,15 +405,10 @@ impl<'a> Resolver<'a> {
     fn build_reduced_graph_for_block(&mut self, block: &Block) {
         let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
-            let block_id = block.id;
-
-            debug!("(building reduced graph for block) creating a new anonymous module for block \
-                    {}",
-                   block_id);
-
-            let new_module = self.new_module(parent, ModuleKind::Block(block_id), true);
-            self.module_map.insert(block_id, new_module);
-            self.current_module = new_module; // Descend into the block.
+            let module =
+                self.new_module(parent, ModuleKind::Block(block.id), parent.normal_ancestor_id);
+            self.block_map.insert(block.id, module);
+            self.current_module = module; // Descend into the block.
         }
     }
 
@@ -429,7 +425,7 @@ impl<'a> Resolver<'a> {
 
         match def {
             Def::Mod(..) | Def::Enum(..) => {
-                let module = self.new_module(parent, ModuleKind::Def(def, ident.name), false);
+                let module = self.new_module(parent, ModuleKind::Def(def, ident.name), def_id);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
             }
             Def::Variant(..) => {
@@ -446,7 +442,8 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
             }
             Def::Trait(..) => {
-                let module = self.new_module(parent, ModuleKind::Def(def, ident.name), false);
+                let module_kind = ModuleKind::Def(def, ident.name);
+                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
 
                 // If this is a trait, add all the trait item names to the trait info.
@@ -497,12 +494,10 @@ impl<'a> Resolver<'a> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
         let name = self.session.cstore.crate_name(cnum);
         let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
+        let module_kind = ModuleKind::Def(Def::Mod(def_id), name);
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
-            arenas.alloc_module(ModuleData {
-                populated: Cell::new(false),
-                ..ModuleData::new(None, ModuleKind::Def(Def::Mod(def_id), name))
-            })
+            arenas.alloc_module(ModuleData::new(None, module_kind, def_id))
         })
     }
 

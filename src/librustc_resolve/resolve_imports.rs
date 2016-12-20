@@ -19,6 +19,7 @@ use {resolve_error, ResolutionError};
 
 use rustc::ty;
 use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
+use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
 
 use syntax::ast::{Ident, NodeId};
@@ -274,7 +275,7 @@ impl<'a> Resolver<'a> {
 
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
-    pub fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
+    pub fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
                   -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
@@ -317,7 +318,7 @@ impl<'a> Resolver<'a> {
                         resolution.shadows_glob = Some(binding);
                     } else if binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(old_binding, binding));
-                    } else if !old_binding.vis.is_at_least(binding.vis, this) {
+                    } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
                         // We are glob-importing the same item but with greater visibility.
                         resolution.binding = Some(binding);
                     }
@@ -340,7 +341,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    pub fn ambiguity(&mut self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
+    pub fn ambiguity(&self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
                      -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: false },
@@ -415,9 +416,9 @@ impl<'a, 'b: 'a> ::std::ops::DerefMut for ImportResolver<'a, 'b> {
     }
 }
 
-impl<'a, 'b: 'a> ty::NodeIdTree for ImportResolver<'a, 'b> {
-    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
-        self.resolver.is_descendant_of(node, ancestor)
+impl<'a, 'b: 'a> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
+    fn parent(self, id: DefId) -> Option<DefId> {
+        self.resolver.parent(id)
     }
 }
 
@@ -490,7 +491,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             let vis = directive.vis.get();
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
-            directive.vis.set(ty::Visibility::PrivateExternal);
+            directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(&directive.module_path, None, None);
             directive.vis.set(vis);
 
@@ -580,8 +581,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
             GlobImport { is_prelude, ref max_vis } => {
                 if !is_prelude &&
-                   max_vis.get() != ty::Visibility::PrivateExternal && // Allow empty globs.
-                   !max_vis.get().is_at_least(directive.vis.get(), self) {
+                   max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
+                   !max_vis.get().is_at_least(directive.vis.get(), &*self) {
                     let msg = "A non-empty glob must import something with the glob's visibility";
                     self.session.span_err(directive.span, msg);
                 }
@@ -644,7 +645,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.per_ns(|this, ns| {
             if let Ok(binding) = result[ns].get() {
                 let vis = directive.vis.get();
-                if !binding.pseudo_vis().is_at_least(vis, this) {
+                if !binding.pseudo_vis().is_at_least(vis, &*this) {
                     reexport_error = Some((ns, binding));
                 } else {
                     any_successful_reexport = true;
@@ -752,7 +753,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             match binding.kind {
                 NameBindingKind::Import { binding: orig_binding, directive, .. } => {
                     if ns == TypeNS && orig_binding.is_variant() &&
-                       !orig_binding.vis.is_at_least(binding.vis, self) {
+                       !orig_binding.vis.is_at_least(binding.vis, &*self) {
                         let msg = format!("variant `{}` is private, and cannot be reexported \
                                            (error E0364), consider declaring its enum as `pub`",
                                           ident);
