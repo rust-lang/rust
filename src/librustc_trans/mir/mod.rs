@@ -10,14 +10,13 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use rustc::ty;
+use rustc::ty::{self, layout};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
 use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext, C_null};
 use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind, FunctionDebugContext};
-use machine;
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
@@ -494,10 +493,15 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 llval
             };
 
-            let llclosurety = type_of::type_of(bcx.ccx(), closure_ty);
+            let layout = bcx.ccx().layout_of(closure_ty);
+            let offsets = match *layout {
+                layout::Univariant { ref variant, .. } => &variant.offsets[..],
+                _ => bug!("Closures are only supposed to be Univariant")
+            };
+
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
-                let byte_offset_of_var_in_env =
-                    machine::llelement_offset(bcx.ccx(), llclosurety, i);
+                let byte_offset_of_var_in_env = offsets[i].bytes();
+
 
                 let ops = unsafe {
                     [llvm::LLVMRustDIBuilderCreateOpDeref(),
