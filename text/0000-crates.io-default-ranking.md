@@ -348,15 +348,6 @@ Since documentation/ease of use was such a highly mentioned factor in peoples' d
 </table>
 
 
-## Display
-
-On a list of crates, the letter representing the score in each category plus
-the overall score would be displayed using text, color, symbols, and detail on
-hover, with a link to a more thorough explanation. We like the information
-density in the way [npms][] displays scores:
-
-<img src="http://i.imgur.com/yadRNyy.png" src="Example npms score circles" width="442" />
-
 ## Out of scope
 
 This proposal is not advocating to change the order of **search results**; those
