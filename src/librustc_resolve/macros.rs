@@ -265,6 +265,7 @@ impl<'a> Resolver<'a> {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: span, name: name, b1: shadower, b2: binding, lexical: true,
+                                legacy: false,
                             });
                             return Ok(shadower);
                         }
