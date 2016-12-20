@@ -2801,7 +2801,7 @@ impl Clean<Item> for doctree::Macro {
             visibility: Some(Public),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: self.def_id,
             inner: MacroItem(Macro {
                 source: format!("macro_rules! {} {{\n{}}}",
                                 name,

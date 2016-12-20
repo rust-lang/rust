@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! For each definition, we track the following data.  A definition
+//! here is defined somewhat circularly as "something with a def-id",
+//! but it generally corresponds to things like structs, enums, etc.
+//! There are also some rather random cases (like const initializer
+//! expressions) that are mostly just leftovers.
+
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
@@ -18,12 +25,102 @@ use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
-/// The definition table containing node definitions
+/// The DefPathTable maps DefIndexes to DefKeys and vice versa.
+/// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
+/// stores the DefIndex of its parent.
+/// There is one DefPathTable for each crate.
+#[derive(Clone)]
+pub struct DefPathTable {
+    index_to_key: Vec<DefKey>,
+    key_to_index: FxHashMap<DefKey, DefIndex>,
+}
+
+impl DefPathTable {
+    fn insert(&mut self, key: DefKey) -> DefIndex {
+        let index = DefIndex::new(self.index_to_key.len());
+        debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
+        self.index_to_key.push(key.clone());
+        self.key_to_index.insert(key, index);
+        index
+    }
+
+    #[inline(always)]
+    pub fn def_key(&self, index: DefIndex) -> DefKey {
+        self.index_to_key[index.as_usize()].clone()
+    }
+
+    #[inline(always)]
+    pub fn def_index_for_def_key(&self, key: &DefKey) -> Option<DefIndex> {
+        self.key_to_index.get(key).cloned()
+    }
+
+    #[inline(always)]
+    pub fn contains_key(&self, key: &DefKey) -> bool {
+        self.key_to_index.contains_key(key)
+    }
+
+    pub fn retrace_path(&self,
+                        path_data: &[DisambiguatedDefPathData])
+                        -> Option<DefIndex> {
+        let root_key = DefKey {
+            parent: None,
+            disambiguated_data: DisambiguatedDefPathData {
+                data: DefPathData::CrateRoot,
+                disambiguator: 0,
+            },
+        };
+
+        let root_index = self.key_to_index
+                             .get(&root_key)
+                             .expect("no root key?")
+                             .clone();
+
+        debug!("retrace_path: root_index={:?}", root_index);
+
+        let mut index = root_index;
+        for data in path_data {
+            let key = DefKey { parent: Some(index), disambiguated_data: data.clone() };
+            debug!("retrace_path: key={:?}", key);
+            match self.key_to_index.get(&key) {
+                Some(&i) => index = i,
+                None => return None,
+            }
+        }
+
+        Some(index)
+    }
+}
+
+
+impl Encodable for DefPathTable {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.index_to_key.encode(s)
+    }
+}
+
+impl Decodable for DefPathTable {
+    fn decode<D: Decoder>(d: &mut D) -> Result<DefPathTable, D::Error> {
+        let index_to_key: Vec<DefKey> = Decodable::decode(d)?;
+        let key_to_index = index_to_key.iter()
+                                       .enumerate()
+                                       .map(|(index, key)| (key.clone(), DefIndex::new(index)))
+                                       .collect();
+        Ok(DefPathTable {
+            index_to_key: index_to_key,
+            key_to_index: key_to_index,
+        })
+    }
+}
+
+
+/// The definition table containing node definitions.
+/// It holds the DefPathTable for local DefIds/DefPaths and it also stores a
+/// mapping from NodeIds to local DefIds.
 #[derive(Clone)]
 pub struct Definitions {
-    data: Vec<DefData>,
-    key_map: FxHashMap<DefKey, DefIndex>,
-    node_map: NodeMap<DefIndex>,
+    table: DefPathTable,
+    node_to_def_index: NodeMap<DefIndex>,
+    def_index_to_node: Vec<ast::NodeId>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -50,19 +147,6 @@ pub struct DisambiguatedDefPathData {
     pub disambiguator: u32
 }
 
-/// For each definition, we track the following data.  A definition
-/// here is defined somewhat circularly as "something with a def-id",
-/// but it generally corresponds to things like structs, enums, etc.
-/// There are also some rather random cases (like const initializer
-/// expressions) that are mostly just leftovers.
-#[derive(Clone, Debug)]
-pub struct DefData {
-    pub key: DefKey,
-
-    /// Local ID within the HIR.
-    pub node_id: ast::NodeId,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefPath {
     /// the path leading from the crate root to the item
@@ -77,12 +161,11 @@ impl DefPath {
         self.krate == LOCAL_CRATE
     }
 
-    pub fn make<FN>(start_krate: CrateNum,
+    pub fn make<FN>(krate: CrateNum,
                     start_index: DefIndex,
                     mut get_key: FN) -> DefPath
         where FN: FnMut(DefIndex) -> DefKey
     {
-        let mut krate = start_krate;
         let mut data = vec![];
         let mut index = Some(start_index);
         loop {
@@ -93,13 +176,6 @@ impl DefPath {
             match key.disambiguated_data.data {
                 DefPathData::CrateRoot => {
                     assert!(key.parent.is_none());
-                    break;
-                }
-                DefPathData::InlinedRoot(ref p) => {
-                    assert!(key.parent.is_none());
-                    assert!(!p.def_id.is_local());
-                    data.extend(p.data.iter().cloned().rev());
-                    krate = p.def_id.krate;
                     break;
                 }
                 _ => {
@@ -144,31 +220,6 @@ impl DefPath {
     }
 }
 
-/// Root of an inlined item. We track the `DefPath` of the item within
-/// the original crate but also its def-id. This is kind of an
-/// augmented version of a `DefPath` that includes a `DefId`. This is
-/// all sort of ugly but the hope is that inlined items will be going
-/// away soon anyway.
-///
-/// Some of the constraints that led to the current approach:
-///
-/// - I don't want to have a `DefId` in the main `DefPath` because
-///   that gets serialized for incr. comp., and when reloaded the
-///   `DefId` is no longer valid. I'd rather maintain the invariant
-///   that every `DefId` is valid, and a potentially outdated `DefId` is
-///   represented as a `DefPath`.
-///   - (We don't serialize def-paths from inlined items, so it's ok to have one here.)
-/// - We need to be able to extract the def-id from inline items to
-///   make the symbol name. In theory we could retrace it from the
-///   data, but the metadata doesn't have the required indices, and I
-///   don't want to write the code to create one just for this.
-/// - It may be that we don't actually need `data` at all. We'll have
-///   to see about that.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct InlinedRootPath {
-    pub data: Vec<DisambiguatedDefPathData>,
-    pub def_id: DefId,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
@@ -176,8 +227,6 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker)
     CrateRoot,
-    /// An inlined root
-    InlinedRoot(Box<InlinedRootPath>),
 
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
@@ -219,23 +268,30 @@ impl Definitions {
     /// Create new empty definition map.
     pub fn new() -> Definitions {
         Definitions {
-            data: vec![],
-            key_map: FxHashMap(),
-            node_map: NodeMap(),
+            table: DefPathTable {
+                index_to_key: vec![],
+                key_to_index: FxHashMap(),
+            },
+            node_to_def_index: NodeMap(),
+            def_index_to_node: vec![],
         }
+    }
+
+    pub fn def_path_table(&self) -> &DefPathTable {
+        &self.table
     }
 
     /// Get the number of definitions.
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.def_index_to_node.len()
     }
 
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.data[index.as_usize()].key.clone()
+        self.table.def_key(index)
     }
 
     pub fn def_index_for_def_key(&self, key: DefKey) -> Option<DefIndex> {
-        self.key_map.get(&key).cloned()
+        self.table.def_index_for_def_key(&key)
     }
 
     /// Returns the path from the crate root to `index`. The root
@@ -248,7 +304,7 @@ impl Definitions {
     }
 
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
-        self.node_map.get(&node).cloned()
+        self.node_to_def_index.get(&node).cloned()
     }
 
     pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
@@ -261,8 +317,8 @@ impl Definitions {
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            assert!(def_id.index.as_usize() < self.data.len());
-            Some(self.data[def_id.index.as_usize()].node_id)
+            assert!(def_id.index.as_usize() < self.def_index_to_node.len());
+            Some(self.def_index_to_node[def_id.index.as_usize()])
         } else {
             None
         }
@@ -277,16 +333,13 @@ impl Definitions {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
 
-        assert!(!self.node_map.contains_key(&node_id),
+        assert!(!self.node_to_def_index.contains_key(&node_id),
                 "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
                 node_id,
                 data,
-                self.data[self.node_map[&node_id].as_usize()]);
+                self.table.def_key(self.node_to_def_index[&node_id]));
 
-        assert!(parent.is_some() ^ match data {
-            DefPathData::CrateRoot | DefPathData::InlinedRoot(_) => true,
-            _ => false,
-        });
+        assert!(parent.is_some() ^ (data == DefPathData::CrateRoot));
 
         // Find a unique DefKey. This basically means incrementing the disambiguator
         // until we get no match.
@@ -298,20 +351,18 @@ impl Definitions {
             }
         };
 
-        while self.key_map.contains_key(&key) {
+        while self.table.contains_key(&key) {
             key.disambiguated_data.disambiguator += 1;
         }
 
         debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let index = DefIndex::new(self.data.len());
-        self.data.push(DefData { key: key.clone(), node_id: node_id });
-        debug!("create_def_with_parent: node_map[{:?}] = {:?}", node_id, index);
-        self.node_map.insert(node_id, index);
-        debug!("create_def_with_parent: key_map[{:?}] = {:?}", key, index);
-        self.key_map.insert(key, index);
-
+        let index = self.table.insert(key);
+        debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
+        self.node_to_def_index.insert(node_id, index);
+        assert_eq!(index.as_usize(), self.def_index_to_node.len());
+        self.def_index_to_node.push(node_id);
 
         index
     }
@@ -333,7 +384,6 @@ impl DefPathData {
 
             Impl |
             CrateRoot |
-            InlinedRoot(_) |
             Misc |
             ClosureExpr |
             StructCtor |
@@ -359,9 +409,6 @@ impl DefPathData {
 
             // note that this does not show up in user printouts
             CrateRoot => "{{root}}",
-
-            // note that this does not show up in user printouts
-            InlinedRoot(_) => "{{inlined-root}}",
 
             Impl => "{{impl}}",
             Misc => "{{?}}",
