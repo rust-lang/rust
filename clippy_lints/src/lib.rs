@@ -175,8 +175,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     let mut store = reg.sess.lint_store.borrow_mut();
     store.register_removed("unstable_as_slice", "`Vec::as_slice` has been stabilized in 1.7");
     store.register_removed("unstable_as_mut_slice", "`Vec::as_mut_slice` has been stabilized in 1.7");
-    store.register_removed("str_to_string", "using `str::to_string` is common even today and specialization will likely happen soon");
-    store.register_removed("string_to_string", "using `string::to_string` is common even today and specialization will likely happen soon");
+    store.register_removed("str_to_string",
+                           "using `str::to_string` is common even today and specialization will likely happen soon");
+    store.register_removed("string_to_string",
+                           "using `string::to_string` is common even today and specialization will likely happen soon");
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde::Serde);
@@ -229,7 +231,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
-    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
+    reg.register_late_lint_pass(
+        box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold)
+    );
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);

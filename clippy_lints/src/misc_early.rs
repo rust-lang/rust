@@ -333,8 +333,16 @@ impl EarlyLintPass for MiscEarly {
                                            lit.span,
                                            "this is a decimal constant",
                                            |db| {
-                            db.span_suggestion(lit.span, "if you mean to use a decimal constant, remove the `0` to remove confusion:", src[1..].to_string());
-                            db.span_suggestion(lit.span, "if you mean to use an octal constant, use `0o`:", format!("0o{}", &src[1..]));
+                            db.span_suggestion(
+                                lit.span,
+                                "if you mean to use a decimal constant, remove the `0` to remove confusion:",
+                                src[1..].to_string(),
+                            );
+                            db.span_suggestion(
+                                lit.span,
+                                "if you mean to use an octal constant, use `0o`:",
+                                format!("0o{}", &src[1..]),
+                            );
                         });
                     }
                 }}
@@ -374,7 +382,12 @@ impl EarlyLintPass for MiscEarly {
                 let ExprKind::Path(_, ref path) = closure.node
             ], {
                 if sp_ident.node == (&path.segments[0]).identifier {
-                    span_lint(cx, REDUNDANT_CLOSURE_CALL, second.span, "Closure called just once immediately after it was declared");
+                    span_lint(
+                        cx,
+                        REDUNDANT_CLOSURE_CALL,
+                        second.span,
+                        "Closure called just once immediately after it was declared",
+                    );
                 }
             }}
         }

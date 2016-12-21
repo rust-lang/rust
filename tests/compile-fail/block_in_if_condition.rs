@@ -21,13 +21,13 @@ macro_rules! blocky_too {
 fn macro_if() {
     if blocky!() {
     }
-    
+
     if blocky_too!() {
     }
 }
 
 fn condition_has_block() -> i32 {
-    if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
+    if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
         let x = 3;
         x == 3
     } {
@@ -55,12 +55,12 @@ fn pred_test() {
     // this is a sneaky case, where the block isn't directly in the condition, but is actually
     // inside a closure that the condition is using.  same principle applies.  add some extra
     // expressions to make sure linter isn't confused by them.
-    if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-
+    if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
+        //~^ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
     }
 
-    if predicate(|x| { let target = 3; x == target }, v) { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-
+    if predicate(|x| { let target = 3; x == target }, v) {
+        //~^ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
     }
 
 }

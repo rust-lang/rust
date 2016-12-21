@@ -131,7 +131,12 @@ macro_rules! define_Conf {
 
     // how to read the value?
     (CONV i64, $value: expr) => { $value.as_integer() };
-    (CONV u64, $value: expr) => { $value.as_integer().iter().filter_map(|&i| if i >= 0 { Some(i as u64) } else { None }).next() };
+    (CONV u64, $value: expr) => {
+        $value.as_integer()
+        .iter()
+        .filter_map(|&i| if i >= 0 { Some(i as u64) } else { None })
+        .next()
+    };
     (CONV String, $value: expr) => { $value.as_str().map(Into::into) };
     (CONV Vec<String>, $value: expr) => {{
         let slice = $value.as_slice();
@@ -139,12 +144,10 @@ macro_rules! define_Conf {
         if let Some(slice) = slice {
             if slice.iter().any(|v| v.as_str().is_none()) {
                 None
+            } else {
+                Some(slice.iter().map(|v| v.as_str().expect("already checked").to_owned()).collect())
             }
-            else {
-                Some(slice.iter().map(|v| v.as_str().unwrap_or_else(|| unreachable!()).to_owned()).collect())
-            }
-        }
-        else {
+        } else {
             None
         }
     }};
@@ -160,7 +163,19 @@ define_Conf! {
     /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
-    ("doc-valid-idents", doc_valid_idents, ["MiB", "GiB", "TiB", "PiB", "EiB", "DirectX", "GPLv2", "GPLv3", "GitHub", "IPv4", "IPv6", "JavaScript", "NaN", "OAuth", "OpenGL", "TrueType", "iOS", "macOS"] => Vec<String>),
+    ("doc-valid-idents", doc_valid_idents, [
+        "MiB", "GiB", "TiB", "PiB", "EiB",
+        "DirectX",
+        "GPLv2", "GPLv3",
+        "GitHub",
+        "IPv4", "IPv6",
+        "JavaScript",
+        "NaN",
+        "OAuth",
+        "OpenGL",
+        "TrueType",
+        "iOS", "macOS",
+    ] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
     ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have

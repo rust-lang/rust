@@ -9,7 +9,7 @@ fn main() {
     let u: u32 = 42;
 
     u <= 0;
-    //~^ ERROR this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
+    //~^ ERROR this comparison involving the minimum or maximum element for this type contains a
     //~| HELP using u == 0 instead
     u <= Z;
     //~^ ERROR this comparison involving
@@ -41,10 +41,10 @@ fn main() {
         //~| HELP because 1-1 is the minimum value for this type, this comparison is always false
     u >= !0;
         //~^ ERROR this comparison involving
-        //~| HELP because !0 is the maximum value for this type, the case where the two sides are not equal never occurs, consider using u == !0 instead
+        //~| HELP consider using u == !0 instead
     u <= 12 - 2*6;
         //~^ ERROR this comparison involving
-        //~| HELP because 12 - 2*6 is the minimum value for this type, the case where the two sides are not equal never occurs, consider using u == 12 - 2*6 instead
+        //~| HELP consider using u == 12 - 2*6 instead
 
     let i: i8 = 0;
     i < -127 - 1;

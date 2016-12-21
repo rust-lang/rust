@@ -126,7 +126,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                             return; // implements_trait does not work with generics
                         }
                         macro_rules! ops {
-                            ($op:expr, $cx:expr, $ty:expr, $rty:expr, $($trait_name:ident:$full_trait_name:ident),+) => {
+                            ($op:expr,
+                             $cx:expr,
+                             $ty:expr,
+                             $rty:expr,
+                             $($trait_name:ident:$full_trait_name:ident),+) => {
                                 match $op {
                                     $(hir::$full_trait_name => {
                                         let [krate, module] = ::utils::paths::OPS_MODULE;
@@ -140,15 +144,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         let parent_fn = cx.tcx.map.get_parent(e.id);
                                         let parent_impl = cx.tcx.map.get_parent(parent_fn);
                                         // the crate node is the only one that is not in the map
-                                        if parent_impl != ast::CRATE_NODE_ID {
-                                            if let hir::map::Node::NodeItem(item) = cx.tcx.map.get(parent_impl) {
-                                                if let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-                                                    if trait_ref.path.def.def_id() == trait_id {
-                                                        return;
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        if_let_chain!{[
+                                            parent_impl != ast::CRATE_NODE_ID,
+                                            let hir::map::Node::NodeItem(item) = cx.tcx.map.get(parent_impl),
+                                            let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node,
+                                            trait_ref.path.def.def_id() == trait_id
+                                        ], { return; }}
                                         implements_trait($cx, $ty, trait_id, vec![$rty])
                                     },)*
                                     _ => false,
