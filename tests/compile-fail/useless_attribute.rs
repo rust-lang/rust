@@ -11,4 +11,9 @@ extern crate clippy_lints;
 #[allow(unused_imports)]
 use std::collections;
 
+// don't lint on deprecated for `use` items
+mod foo { #[deprecated] pub struct Bar; }
+#[allow(deprecated)]
+pub use foo::Bar;
+
 fn main() {}
