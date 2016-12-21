@@ -35,7 +35,8 @@ impl Deref for Stat {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
         unsafe {
-            slice::from_raw_parts(self as *const Stat as *const u8, mem::size_of::<Stat>()) as &[u8]
+            slice::from_raw_parts(self as *const Stat as *const u8,
+                                  mem::size_of::<Stat>()) as &[u8]
         }
     }
 }
@@ -62,7 +63,8 @@ impl Deref for StatVfs {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
         unsafe {
-            slice::from_raw_parts(self as *const StatVfs as *const u8, mem::size_of::<StatVfs>()) as &[u8]
+            slice::from_raw_parts(self as *const StatVfs as *const u8,
+                                  mem::size_of::<StatVfs>()) as &[u8]
         }
     }
 }
@@ -70,7 +72,8 @@ impl Deref for StatVfs {
 impl DerefMut for StatVfs {
     fn deref_mut(&mut self) -> &mut [u8] {
         unsafe {
-            slice::from_raw_parts_mut(self as *mut StatVfs as *mut u8, mem::size_of::<StatVfs>()) as &mut [u8]
+            slice::from_raw_parts_mut(self as *mut StatVfs as *mut u8,
+                                      mem::size_of::<StatVfs>()) as &mut [u8]
         }
     }
 }
