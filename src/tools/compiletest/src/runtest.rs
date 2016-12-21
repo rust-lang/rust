@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate build_helper;
-
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
@@ -2110,7 +2108,16 @@ actual:\n\
         }
         self.create_dir_racy(&tmpdir);
 
-        let mut cmd = Command::new(build_helper::make(&self.config.host));
+        let host = &self.config.host;
+        let make = if host.contains("bitrig") || host.contains("dragonfly") ||
+            host.contains("freebsd") || host.contains("netbsd") ||
+            host.contains("openbsd") {
+            "gmake"
+        } else {
+            "make"
+        };
+
+        let mut cmd = Command::new(make);
         cmd.current_dir(&self.testpaths.file)
            .env("TARGET", &self.config.target)
            .env("PYTHON", &self.config.docck_python)
