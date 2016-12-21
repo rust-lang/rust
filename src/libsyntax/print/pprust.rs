@@ -2351,7 +2351,8 @@ impl<'a> State<'a> {
             if i > 0 {
                 try!(word(&mut self.s, "::"))
             }
-            if segment.identifier.name != keywords::CrateRoot.name() {
+            if segment.identifier.name != keywords::CrateRoot.name() &&
+               segment.identifier.name != "$crate" {
                 try!(self.print_ident(segment.identifier));
                 if let Some(ref parameters) = segment.parameters {
                     try!(self.print_path_parameters(parameters, colons_before_params));
