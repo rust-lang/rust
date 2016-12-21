@@ -11,11 +11,11 @@ difficult to find which crates are meant for a particular purpose and then to
 decide among the available crates which one is most suitable in a particular
 context. [Categorization][cat-pr] and [badges][badge-pr] are coming to
 crates.io; categories help with finding a set of crates to consider and badges
-help communicate attributes of crates. The question of how to order crates
-within a category, or within the list of crates that have a particular keyword,
-is still open. This RFC proposes a method of ranking crates combining number of
-downloads, version, and other attributes in order to help people decide what
-crate to use.
+help communicate attributes of crates. 
+
+**This RFC aims to create a default ranking of crates within a list of crates
+that have a category or keyword in order to make a recommendation to crate users
+about which crates are likely to deserve further manual evaluation.**
 
 [cat-pr]: https://github.com/rust-lang/crates.io/pull/473
 [badge-pr]: https://github.com/rust-lang/crates.io/pull/481
