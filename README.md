@@ -154,7 +154,7 @@ directory and it will apply the options in that file. See `rustfmt
 source code, [src/config.rs](src/config.rs).
 
 By default, Rustfmt uses a style which (mostly) conforms to the
-[Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).
+[Rust style guidelines](https://doc.rust-lang.org/1.12.0/style/README.html).
 There are many details which the style guidelines do not cover, and in these
 cases we try to adhere to a style similar to that used in the
 [Rust repo](https://github.com/rust-lang/rust). Once Rustfmt is more complete, and
