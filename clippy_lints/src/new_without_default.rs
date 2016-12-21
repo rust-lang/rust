@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         decl: &'tcx hir::FnDecl,
         _: &'tcx hir::Expr,
         span: Span,
-        id: ast::NodeId,
+        id: ast::NodeId
     ) {
         if in_external_macro(cx, span) {
             return;
@@ -161,7 +161,7 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
                 }
             }
             true
-        }
+        },
         _ => false,
     }
 }

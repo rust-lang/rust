@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         decl: &'tcx hir::FnDecl,
         expr: &'tcx hir::Expr,
         span: Span,
-        nodeid: ast::NodeId,
+        nodeid: ast::NodeId
     ) {
         use rustc::hir::map::Node::*;
 
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Functions {
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,
         expr: &'tcx hir::Expr,
-        nodeid: ast::NodeId,
+        nodeid: ast::NodeId
     ) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
             let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
@@ -178,7 +178,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprMethodCall(_, _, ref args) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let base_type = self.cx.tcx.tables.borrow().method_map[&method_call].ty;
@@ -188,7 +188,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprUnary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }

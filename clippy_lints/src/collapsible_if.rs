@@ -2,7 +2,7 @@
 //!
 //! For example, the lint would catch:
 //!
-//! ```rust
+//! ```rust,ignore
 //! if x {
 //!     if y {
 //!         println!("Hello world");
@@ -28,7 +28,7 @@ use utils::sugg::Sugg;
 /// **Known problems:** None.
 ///
 /// **Example:**
-/// ```rust
+/// ```rust,ignore
 /// if x {
 ///     if y {
 ///         …
@@ -48,7 +48,7 @@ use utils::sugg::Sugg;
 ///
 /// Should be written:
 ///
-/// ```rust
+/// ```rust.ignore
 /// if x && y {
 ///     …
 /// }
@@ -92,10 +92,10 @@ fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
             } else {
                 check_collapsible_no_if_let(cx, expr, check, then);
             }
-        }
+        },
         ast::ExprKind::IfLet(_, _, _, Some(ref else_)) => {
             check_collapsible_maybe_if_let(cx, else_);
-        }
+        },
         _ => (),
     }
 }
@@ -120,12 +120,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
     }}
 }
 
-fn check_collapsible_no_if_let(
-    cx: &EarlyContext,
-    expr: &ast::Expr,
-    check: &ast::Expr,
-    then: &ast::Block,
-) {
+fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
     if_let_chain! {[
         let Some(inner) = expr_block(then),
         let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node,
@@ -145,13 +140,14 @@ fn check_collapsible_no_if_let(
     }}
 }
 
-/// If the block contains only one expression, returns it.
+/// If the block contains only one expression, return it.
 fn expr_block(block: &ast::Block) -> Option<&ast::Expr> {
     let mut it = block.stmts.iter();
 
     if let (Some(stmt), None) = (it.next(), it.next()) {
         match stmt.node {
-            ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(expr),
+            ast::StmtKind::Expr(ref expr) |
+            ast::StmtKind::Semi(ref expr) => Some(expr),
             _ => None,
         }
     } else {

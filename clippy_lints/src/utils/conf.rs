@@ -8,21 +8,20 @@ use syntax::{ast, codemap};
 use toml;
 
 /// Get the configuration file from arguments.
-pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>]) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
+pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>])
+    -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
         if arg.name() == "conf_file" {
             return match arg.node {
                 ast::MetaItemKind::Word |
-                ast::MetaItemKind::List(_) => {
-                    Err(("`conf_file` must be a named value", arg.span))
-                }
+                ast::MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
                 ast::MetaItemKind::NameValue(ref value) => {
                     if let ast::LitKind::Str(ref file, _) = value.node {
                         Ok(Some(file.to_string().into()))
                     } else {
                         Err(("`conf_file` value must be a string", value.span))
                     }
-                }
+                },
             };
         }
     }
@@ -38,14 +37,12 @@ pub enum Error {
     /// The file is not valid TOML.
     Toml(Vec<toml::ParserError>),
     /// Type error.
-    Type(
-        /// The name of the key.
-        &'static str,
-        /// The expected type.
-        &'static str,
-        /// The type we got instead.
-        &'static str
-    ),
+    Type(/// The name of the key.
+         &'static str,
+         /// The expected type.
+         &'static str,
+         /// The type we got instead.
+         &'static str),
     /// There is an unknown key is the file.
     UnknownKey(String),
 }
@@ -66,10 +63,10 @@ impl fmt::Display for Error {
                 }
 
                 Ok(())
-            }
+            },
             Error::Type(key, expected, got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
-            }
+            },
             Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
         }
     }
@@ -134,7 +131,12 @@ macro_rules! define_Conf {
 
     // how to read the value?
     (CONV i64, $value: expr) => { $value.as_integer() };
-    (CONV u64, $value: expr) => { $value.as_integer().iter().filter_map(|&i| if i >= 0 { Some(i as u64) } else { None }).next() };
+    (CONV u64, $value: expr) => {
+        $value.as_integer()
+        .iter()
+        .filter_map(|&i| if i >= 0 { Some(i as u64) } else { None })
+        .next()
+    };
     (CONV String, $value: expr) => { $value.as_str().map(Into::into) };
     (CONV Vec<String>, $value: expr) => {{
         let slice = $value.as_slice();
@@ -142,12 +144,10 @@ macro_rules! define_Conf {
         if let Some(slice) = slice {
             if slice.iter().any(|v| v.as_str().is_none()) {
                 None
+            } else {
+                Some(slice.iter().map(|v| v.as_str().expect("already checked").to_owned()).collect())
             }
-            else {
-                Some(slice.iter().map(|v| v.as_str().unwrap_or_else(|| unreachable!()).to_owned()).collect())
-            }
-        }
-        else {
+        } else {
             None
         }
     }};
@@ -163,7 +163,19 @@ define_Conf! {
     /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
-    ("doc-valid-idents", doc_valid_idents, ["MiB", "GiB", "TiB", "PiB", "EiB", "DirectX", "GPLv2", "GPLv3", "GitHub", "IPv4", "IPv6", "JavaScript", "NaN", "OAuth", "OpenGL", "TrueType", "iOS", "macOS"] => Vec<String>),
+    ("doc-valid-idents", doc_valid_idents, [
+        "MiB", "GiB", "TiB", "PiB", "EiB",
+        "DirectX",
+        "GPLv2", "GPLv3",
+        "GitHub",
+        "IPv4", "IPv6",
+        "JavaScript",
+        "NaN",
+        "OAuth",
+        "OpenGL",
+        "TrueType",
+        "iOS", "macOS",
+    ] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
     ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
@@ -196,7 +208,7 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
                     if e.kind() != io::ErrorKind::NotFound {
                         return Err(e);
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -231,11 +243,11 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
             }
 
             buf
-        }
+        },
         Err(err) => {
             errors.push(err.into());
             return (conf, errors);
-        }
+        },
     };
 
     let mut parser = toml::Parser::new(&file);

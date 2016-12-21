@@ -38,19 +38,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
         match e.node {
             ExprCall(ref fn_expr, ref arguments) => {
                 let function_type = borrowed_table.node_types
-                                                  .get(&fn_expr.id)
-                                                  .expect("A function with an unknown type is called. \
-                                                           If this happened, the compiler would have \
-                                                           aborted the compilation long ago");
+                    .get(&fn_expr.id)
+                    .expect("A function with an unknown type is called. If this happened, the compiler would have \
+                             aborted the compilation long ago");
                 if let ExprPath(ref path) = fn_expr.node {
                     check_arguments(cx, arguments, function_type, &path.to_string());
                 }
-            }
+            },
             ExprMethodCall(ref name, _, ref arguments) => {
                 let method_call = MethodCall::expr(e.id);
                 let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
                 check_arguments(cx, arguments, method_type.ty, &name.node.as_str())
-            }
+            },
             _ => (),
         }
     }
@@ -71,11 +70,11 @@ fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: &TyS, 
                                       argument.span,
                                       &format!("The function/method \"{}\" doesn't need a mutable reference", name));
                         }
-                    }
+                    },
                     _ => (),
                 }
             }
-        }
+        },
         _ => (),
     }
 }

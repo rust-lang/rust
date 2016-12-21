@@ -15,7 +15,7 @@ use utils::{paths, method_chain_args, span_help_and_lint, match_type, snippet};
 ///         vec.push(bench)
 ///     }
 /// }
-///```
+/// ```
 /// Could be written:
 ///
 /// ```rust

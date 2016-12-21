@@ -38,19 +38,35 @@ impl ClippyCompilerCalls {
 }
 
 impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
-    fn early_callback(&mut self, matches: &getopts::Matches, sopts: &config::Options, cfg: &ast::CrateConfig,
-                      descriptions: &rustc_errors::registry::Registry, output: ErrorOutputType)
-                      -> Compilation {
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType
+    ) -> Compilation {
         self.default.early_callback(matches, sopts, cfg, descriptions, output)
     }
-    fn no_input(&mut self, matches: &getopts::Matches, sopts: &config::Options, cfg: &ast::CrateConfig,
-                odir: &Option<PathBuf>, ofile: &Option<PathBuf>, descriptions: &rustc_errors::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry
+    ) -> Option<(Input, Option<PathBuf>)> {
         self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
-    fn late_callback(&mut self, matches: &getopts::Matches, sess: &Session, input: &Input, odir: &Option<PathBuf>,
-                     ofile: &Option<PathBuf>)
-                     -> Compilation {
+    fn late_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sess: &Session,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>
+    ) -> Compilation {
         self.default.late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {

@@ -75,18 +75,16 @@ impl PartialEq for Constant {
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
             (&Constant::Int(l), &Constant::Int(r)) => {
                 l.is_negative() == r.is_negative() && l.to_u64_unchecked() == r.to_u64_unchecked()
-            }
+            },
             (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
                 match (ls.parse::<f64>(), rs.parse::<f64>()) {
                     // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
-                    (Ok(l), Ok(r)) => unsafe {
-                        mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r)
-                    },
+                    (Ok(l), Ok(r)) => unsafe { mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r) },
                     _ => false,
                 }
-            }
+            },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l == r,
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
@@ -104,34 +102,34 @@ impl Hash for Constant {
             Constant::Str(ref s, ref k) => {
                 s.hash(state);
                 k.hash(state);
-            }
+            },
             Constant::Binary(ref b) => {
                 b.hash(state);
-            }
+            },
             Constant::Char(c) => {
                 c.hash(state);
-            }
+            },
             Constant::Int(i) => {
                 i.to_u64_unchecked().hash(state);
                 i.is_negative().hash(state);
-            }
+            },
             Constant::Float(ref f, _) => {
                 // don’t use the width here because of PartialEq implementation
                 if let Ok(f) = f.parse::<f64>() {
                     unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
                 }
-            }
+            },
             Constant::Bool(b) => {
                 b.hash(state);
-            }
+            },
             Constant::Vec(ref v) |
             Constant::Tuple(ref v) => {
                 v.hash(state);
-            }
+            },
             Constant::Repeat(ref c, l) => {
                 c.hash(state);
                 l.hash(state);
-            }
+            },
         }
     }
 }
@@ -145,19 +143,21 @@ impl PartialOrd for Constant {
                 } else {
                     None
                 }
-            }
+            },
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
             (&Constant::Int(l), &Constant::Int(r)) => Some(l.cmp(&r)),
             (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
                 match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    (Ok(ref l), Ok(ref r)) => match (l.partial_cmp(r), l.is_sign_positive() == r.is_sign_positive()) {
-                        // Check for comparison of -0.0 and 0.0
-                        (Some(Ordering::Equal), false) => None,
-                        (x, _) => x
+                    (Ok(ref l), Ok(ref r)) => {
+                        match (l.partial_cmp(r), l.is_sign_positive() == r.is_sign_positive()) {
+                            // Check for comparison of -0.0 and 0.0
+                            (Some(Ordering::Equal), false) => None,
+                            (x, _) => x,
+                        }
                     },
                     _ => None,
                 }
-            }
+            },
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
             (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) |
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l.partial_cmp(r),
@@ -166,7 +166,7 @@ impl PartialOrd for Constant {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }
-            }
+            },
             _ => None, //TODO: Are there any useful inter-type orderings?
         }
     }
@@ -187,14 +187,14 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U64)) => Constant::Int(ConstInt::U64(value as u64)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::Us)) => {
             Constant::Int(ConstInt::Usize(ConstUsize::Us32(value as u32)))
-        }
+        },
         LitKind::Int(value, LitIntType::Signed(IntTy::I8)) => Constant::Int(ConstInt::I8(value as i8)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I16)) => Constant::Int(ConstInt::I16(value as i16)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I32)) => Constant::Int(ConstInt::I32(value as i32)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I64)) => Constant::Int(ConstInt::I64(value as i64)),
         LitKind::Int(value, LitIntType::Signed(IntTy::Is)) => {
             Constant::Int(ConstInt::Isize(ConstIsize::Is32(value as i32)))
-        }
+        },
         LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
         LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
         LitKind::Bool(b) => Constant::Bool(b),
@@ -260,7 +260,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprRepeat(ref value, ref number) => {
                 self.binop_apply(value, number, |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
-            }
+            },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| {
                     match op {
@@ -269,7 +269,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                         UnDeref => Some(o),
                     }
                 })
-            }
+            },
             ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
             // TODO: add other expressions
             _ => None,
@@ -280,8 +280,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// non-constant part
     fn multi(&mut self, vec: &[Expr]) -> Option<Vec<Constant>> {
         vec.iter()
-           .map(|elem| self.expr(elem))
-           .collect::<Option<_>>()
+            .map(|elem| self.expr(elem))
+            .collect::<Option<_>>()
     }
 
     /// lookup a possibly constant expression from a ExprPath
@@ -289,8 +289,11 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         if let Some(lcx) = self.lcx {
             let def = lcx.tcx.tables().qpath_def(qpath, id);
             match def {
-                Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    let substs = Some(lcx.tcx.tables().node_id_item_substs(id)
+                Def::Const(def_id) |
+                Def::AssociatedConst(def_id) => {
+                    let substs = Some(lcx.tcx
+                        .tables()
+                        .node_id_item_substs(id)
                         .unwrap_or_else(|| lcx.tcx.intern_substs(&[])));
                     if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
                         let ret = self.expr(const_expr);

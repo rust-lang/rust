@@ -65,7 +65,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
             } else {
                 return;
             }
-        }
+        },
         higher::VecArgs::Vec(args) => {
             if let Some(last) = args.iter().last() {
                 let span = Span {
@@ -78,7 +78,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
             } else {
                 "&[]".into()
             }
-        }
+        },
     };
 
     span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {

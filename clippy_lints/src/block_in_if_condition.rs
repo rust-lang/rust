@@ -110,7 +110,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                     }
                 }
             } else {
-                let mut visitor = ExVisitor { found_block: None, cx: cx };
+                let mut visitor = ExVisitor {
+                    found_block: None,
+                    cx: cx,
+                };
                 walk_expr(&mut visitor, check);
                 if let Some(block) = visitor.found_block {
                     span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);

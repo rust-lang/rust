@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if is_temporary(base) && !is_adjusted(cx, base) {
                         span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
                     }
-                }
+                },
                 _ => (),
             }
         }

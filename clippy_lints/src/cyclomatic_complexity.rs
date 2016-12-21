@@ -136,7 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                 if arms_n > 1 {
                     self.match_arms += arms_n - 2;
                 }
-            }
+            },
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
                 let ty = self.cx.tcx.tables().node_id_to_type(callee.id);
@@ -144,10 +144,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                     ty::TyFnDef(_, _, ty) |
                     ty::TyFnPtr(ty) if ty.sig.skip_binder().output().sty == ty::TyNever => {
                         self.divergence += 1;
-                    }
+                    },
                     _ => (),
                 }
-            }
+            },
             ExprClosure(..) => (),
             ExprBinary(op, _, _) => {
                 walk_expr(self, e);
@@ -155,7 +155,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                     BiAnd | BiOr => self.short_circuits += 1,
                     _ => (),
                 }
-            }
+            },
             ExprRet(_) => self.returns += 1,
             _ => walk_expr(self, e),
         }

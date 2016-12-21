@@ -41,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
                 for arg in args {
                     check_closure(cx, arg)
                 }
-            }
+            },
             _ => (),
         }
     }
@@ -65,11 +65,10 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 // Is it an unsafe function? They don't implement the closure traits
                 ty::TyFnDef(_, _, fn_ty) |
                 ty::TyFnPtr(fn_ty) => {
-                    if fn_ty.unsafety == Unsafety::Unsafe ||
-                       fn_ty.sig.skip_binder().output().sty == ty::TyNever {
+                    if fn_ty.unsafety == Unsafety::Unsafe || fn_ty.sig.skip_binder().output().sty == ty::TyNever {
                         return;
                     }
-                }
+                },
                 _ => (),
             }
             for (a1, a2) in decl.inputs.iter().zip(args) {

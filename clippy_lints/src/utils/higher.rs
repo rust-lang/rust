@@ -47,9 +47,9 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
     /// Find the field named `name` in the field. Always return `Some` for convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields.iter()
-                          .find(|field| field.name.node == name)
-                          .unwrap_or_else(|| panic!("missing {} field for range", name))
-                          .expr;
+            .find(|field| field.name.node == name)
+            .unwrap_or_else(|| panic!("missing {} field for range", name))
+            .expr;
 
         Some(expr)
     }
@@ -68,7 +68,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
             } else {
                 None
             }
-        }
+        },
         hir::ExprStruct(ref path, ref fields, None) => {
             if match_path(path, &paths::RANGE_FROM_STD) || match_path(path, &paths::RANGE_FROM) {
                 Some(Range {
@@ -77,7 +77,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                     limits: ast::RangeLimits::HalfOpen,
                 })
             } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) ||
-               match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
+                      match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
@@ -104,7 +104,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
             } else {
                 None
             }
-        }
+        },
         _ => None,
     }
 }

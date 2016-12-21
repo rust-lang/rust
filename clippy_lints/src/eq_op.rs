@@ -48,19 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
 
 fn is_valid_operator(op: &BinOp) -> bool {
     match op.node {
-        BiSub |
-        BiDiv |
-        BiEq |
-        BiLt |
-        BiLe |
-        BiGt |
-        BiGe |
-        BiNe |
-        BiAnd |
-        BiOr |
-        BiBitXor |
-        BiBitAnd |
-        BiBitOr => true,
+        BiSub | BiDiv | BiEq | BiLt | BiLe | BiGt | BiGe | BiNe | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr => true,
         _ => false,
     }
 }

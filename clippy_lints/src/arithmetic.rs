@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
                     self.span = Some(expr.span);
                 }
-            }
+            },
             hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
                 let ty = cx.tcx.tables().expr_ty(arg);
                 if ty.is_integral() {
@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
                     self.span = Some(expr.span);
                 }
-            }
+            },
             _ => (),
         }
     }

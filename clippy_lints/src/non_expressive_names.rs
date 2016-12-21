@@ -88,7 +88,7 @@ impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         self.visit_pat(&field.node.pat);
                     }
                 }
-            }
+            },
             _ => walk_pat(self, pat),
         }
     }
@@ -210,8 +210,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                     diag.span_help(span,
                                    &format!("separate the discriminating character by an \
                                                                 underscore like: `{}_{}`",
-                                                               &interned_name[..split],
-                                                               &interned_name[split..]));
+                                            &interned_name[..split],
+                                            &interned_name[split..]));
                 }
             });
             return;
@@ -241,7 +241,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         if let Some(ref init) = local.init {
             self.apply(|this| walk_expr(this, &**init));
         }
-        // add the pattern after the expression because the bindings aren't available yet in the init expression
+        // add the pattern after the expression because the bindings aren't available yet in the init
+        // expression
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
     fn visit_block(&mut self, blk: &'tcx Block) {
@@ -249,7 +250,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     }
     fn visit_arm(&mut self, arm: &'tcx Arm) {
         self.apply(|this| {
-            // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
+            // just go through the first pattern, as either all patterns
+            // bind the same bindings or rustc would have errored much earlier
             SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
             this.apply(|this| walk_expr(this, &arm.body));
         });

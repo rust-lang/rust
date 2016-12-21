@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                     (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
-                    }
+                    },
                 }
             }
         }

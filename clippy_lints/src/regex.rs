@@ -145,7 +145,7 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
                 hi: base.lo + BytePos(h as u32),
                 ..base
             }
-        }
+        },
         _ => base,
     }
 }
@@ -172,17 +172,18 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
                         (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
                         _ => None,
                     }
-                }
+                },
                 3 => {
-                    if let (&Expr::StartText, &Expr::Literal {..}, &Expr::EndText) = (&exprs[0], &exprs[1], &exprs[2]) {
+                    if let (&Expr::StartText, &Expr::Literal { .. }, &Expr::EndText) =
+                        (&exprs[0], &exprs[1], &exprs[2]) {
                         Some("consider using `==` on `str`s")
                     } else {
                         None
                     }
-                }
+                },
                 _ => None,
             }
-        }
+        },
         _ => None,
     }
 }
@@ -213,14 +214,13 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                                            "trivial regex",
                                            &format!("consider using {}", repl));
                     }
-                }
+                },
                 Err(e) => {
                     span_lint(cx,
                               INVALID_REGEX,
                               str_span(expr.span, r, e.position()),
-                              &format!("regex syntax error: {}",
-                                       e.description()));
-                }
+                              &format!("regex syntax error: {}", e.description()));
+                },
             }
         }
     } else if let Some(r) = const_str(cx, expr) {
@@ -233,15 +233,13 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                                        "trivial regex",
                                        &format!("consider using {}", repl));
                 }
-            }
+            },
             Err(e) => {
                 span_lint(cx,
                           INVALID_REGEX,
                           expr.span,
-                          &format!("regex syntax error on position {}: {}",
-                                   e.position(),
-                                   e.description()));
-            }
+                          &format!("regex syntax error on position {}: {}", e.position(), e.description()));
+            },
         }
     }
 }
