@@ -56,14 +56,14 @@ pub mod reimpls {
     pub struct u64x2(u64, u64);
 
     #[cfg(not(stage0))]
-    #[cfg(all(windows, target_pointer_width="64")]
+    #[cfg(all(windows, target_pointer_width="64"))]
     type u128ret = u64x2;
 
     #[cfg(any(not(all(windows, target_pointer_width="64")),stage0))]
     type u128ret = u128_;
 
     #[cfg(not(stage0))]
-    #[cfg(all(windows, target_pointer_width="64")]
+    #[cfg(all(windows, target_pointer_width="64"))]
     type i128ret = u64x2;
 
     #[cfg(any(not(all(windows, target_pointer_width="64")),stage0))]
@@ -695,29 +695,31 @@ pub mod reimpls {
     #[cfg(not(stage0))]
     #[cfg(all(windows, target_pointer_width="64"))]
     mod windows_64_workarounds {
+        use super::{i128_, u128_, LargeInt};
+        use super::{i128_as_f64, i128_as_f32, u128_as_f64, u128_as_f32};
         #[export_name="__floattidf"]
         pub extern "C" fn i128_as_f64_win(alow: u64, ahigh: i64) -> f64 {
-            ::i128_as_f64(i128_::from_parts(alow, ahigh))
+            i128_as_f64(i128_::from_parts(alow, ahigh))
         }
 
         #[export_name="__floattisf"]
         pub extern "C" fn i128_as_f32_win(alow: u64, ahigh: i64) -> f32 {
-            ::i128_as_f32(i128_::from_parts(alow, ahigh))
+            i128_as_f32(i128_::from_parts(alow, ahigh))
         }
 
         #[export_name="__floatuntidf"]
         pub extern "C" fn u128_as_f64_win(alow: u64, ahigh: u64) -> f64 {
-            ::u128_as_f64(u128_::from_parts(alow, ahigh))
+            u128_as_f64(u128_::from_parts(alow, ahigh))
         }
 
         #[export_name="__floatuntisf"]
         pub extern "C" fn u128_as_f32_win(alow: u64, ahigh: u64) -> f32 {
-            ::u128_as_f32(u128_::from_parts(alow, ahigh))
+            u128_as_f32(u128_::from_parts(alow, ahigh))
         }
     }
     #[cfg(not(stage0))]
     #[cfg(all(windows, target_pointer_width="64"))]
-    pub use windows_64_workarounds::*;
+    pub use self::windows_64_workarounds::*;
 
 
     #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
