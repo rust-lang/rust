@@ -117,6 +117,7 @@ pub enum Attribute {
     StructRet       = 16,
     UWTable         = 17,
     ZExt            = 18,
+    InReg           = 19,
 }
 
 /// LLVMIntPredicate

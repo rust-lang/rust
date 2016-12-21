@@ -14,7 +14,13 @@ use type_::Type;
 use super::common::*;
 use super::machine::*;
 
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+#[derive(PartialEq)]
+pub enum Flavor {
+    General,
+    Fastcall
+}
+
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
     if !fty.ret.is_ignore() {
         if fty.ret.ty.kind() == Struct {
             // Returning a structure. Most often, this will use
@@ -49,6 +55,53 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
             arg.attrs.set(ArgAttribute::ByVal);
         } else {
             arg.extend_integer_width_to(32);
+        }
+    }
+
+    if flavor == Flavor::Fastcall {
+        // Mark arguments as InReg like clang does it,
+        // so our fastcall is compatible with C/C++ fastcall.
+        // Clang reference: ib/CodeGen/TargetInfo.cpp
+        let is_mcu_abi = ccx.sess().target.target.target_os.eq("elfiamcu");
+        let is_soft_float_abi = ccx.sess().target.target.options.features.contains("+soft-float");
+
+        let mut free_regs = 2;
+
+        for arg in &mut fty.args {
+            if !arg.is_ignore() && !arg.is_indirect() {
+                if !is_soft_float_abi {
+                    if arg.ty.kind() == Float {
+                        continue;
+                    }
+                }
+
+                let size = llbitsize_of_real(ccx, arg.ty);
+                let size_in_regs = (size + 31) / 32;
+
+                if size_in_regs == 0 {
+                    continue;
+                }
+
+                if !is_mcu_abi {
+                    if size_in_regs > free_regs {
+                        break;
+                    }
+                } else {
+                    if size_in_regs > free_regs || size_in_regs > 2 {
+                        continue;
+                    }
+                }
+
+                free_regs -= size_in_regs;
+
+                if !is_mcu_abi && size <= 32 && (arg.ty.kind() == Pointer || arg.ty.kind() == Integer) {
+                    arg.attrs.set(ArgAttribute::InReg);
+                }
+
+                if free_regs == 0 {
+                    break;
+                }
+            }
         }
     }
 }

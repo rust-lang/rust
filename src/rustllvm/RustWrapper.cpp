@@ -150,6 +150,8 @@ from_rust(LLVMRustAttribute kind) {
       return Attribute::UWTable;
     case ZExt:
       return Attribute::ZExt;
+    case InReg:
+      return Attribute::InReg;
     default:
       llvm_unreachable("bad AttributeKind");
   }
