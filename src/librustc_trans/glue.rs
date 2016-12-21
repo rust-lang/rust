@@ -13,13 +13,15 @@
 // Code relating to drop glue.
 
 use std;
+use std::iter;
 
 use llvm;
 use llvm::{ValueRef, get_param};
-use middle::lang_items::ExchangeFreeFnLangItem;
+use middle::lang_items::BoxFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
 use rustc::ty::{self, AdtKind, Ty, TypeFoldable};
+use rustc::ty::subst::Kind;
 use adt::{self, MaybeSizedValue};
 use base::*;
 use callee::Callee;
@@ -36,36 +38,20 @@ use cleanup::CleanupScope;
 
 use syntax_pos::DUMMY_SP;
 
-pub fn trans_exchange_free_dyn<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
-    v: ValueRef,
-    size: ValueRef,
-    align: ValueRef
-) {
-    let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
-    let args = [bcx.pointercast(v, Type::i8p(bcx.ccx)), size, align];
-    let callee = Callee::def(bcx.ccx, def_id, bcx.tcx().intern_substs(&[]));
-
-    let ccx = bcx.ccx;
-    let fn_ty = callee.direct_fn_type(ccx, &[]);
-
-    let llret = bcx.call(callee.reify(ccx), &args[..], None);
-    fn_ty.apply_attrs_callsite(llret);
-}
-
 pub fn trans_exchange_free_ty<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>, ptr: ValueRef, content_ty: Ty<'tcx>
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    ptr: MaybeSizedValue,
+    content_ty: Ty<'tcx>
 ) {
-    assert!(bcx.ccx.shared().type_is_sized(content_ty));
-    let sizing_type = sizing_type_of(bcx.ccx, content_ty);
-    let content_size = llsize_of_alloc(bcx.ccx, sizing_type);
+    let def_id = langcall(bcx.tcx(), None, "", BoxFreeFnLangItem);
+    let substs = bcx.tcx().mk_substs(iter::once(Kind::from(content_ty)));
+    let callee = Callee::def(bcx.ccx, def_id, substs);
 
-    // `Box<ZeroSizeType>` does not allocate.
-    if content_size != 0 {
-        let content_align = align_of(bcx.ccx, content_ty);
-        let ccx = bcx.ccx;
-        trans_exchange_free_dyn(bcx, ptr, C_uint(ccx, content_size), C_uint(ccx, content_align));
-    }
+    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
+
+    let llret = bcx.call(callee.reify(bcx.ccx),
+        &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize], None);
+    fn_ty.apply_attrs_callsite(llret);
 }
 
 pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
@@ -224,30 +210,16 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // special. It may move to library and have Drop impl. As
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
-            if !bcx.ccx.shared().type_is_sized(content_ty) {
+            let ptr = if !bcx.ccx.shared().type_is_sized(content_ty) {
                 let llbox = bcx.load(get_dataptr(&bcx, ptr.value));
                 let info = bcx.load(get_meta(&bcx, ptr.value));
-                drop_ty(&bcx, MaybeSizedValue::unsized_(llbox, info), content_ty);
-                let (llsize, llalign) = size_and_align_of_dst(&bcx, content_ty, info);
-
-                // `Box<ZeroSizeType>` does not allocate.
-                let needs_free = bcx.icmp(llvm::IntNE, llsize, C_uint(bcx.ccx, 0u64));
-                if const_to_opt_uint(needs_free) == Some(0) {
-                    bcx
-                } else {
-                    let next_cx = bcx.fcx().build_new_block("next");
-                    let cond_cx = bcx.fcx().build_new_block("cond");
-                    bcx.cond_br(needs_free, cond_cx.llbb(), next_cx.llbb());
-                    trans_exchange_free_dyn(&cond_cx, llbox, llsize, llalign);
-                    cond_cx.br(next_cx.llbb());
-                    next_cx
-                }
+                MaybeSizedValue::unsized_(llbox, info)
             } else {
-                let llbox = bcx.load(ptr.value);
-                drop_ty(&bcx, MaybeSizedValue::sized(llbox), content_ty);
-                trans_exchange_free_ty(&bcx, llbox, content_ty);
-                bcx
-            }
+                MaybeSizedValue::sized(bcx.load(ptr.value))
+            };
+            drop_ty(&bcx, ptr, content_ty);
+            trans_exchange_free_ty(&bcx, ptr, content_ty);
+            bcx
         }
         ty::TyDynamic(..) => {
             // No support in vtable for distinguishing destroying with

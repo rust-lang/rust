@@ -193,9 +193,9 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
+use rustc::middle::lang_items::{BoxFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::traits;
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc::ty::{self, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
@@ -214,6 +214,8 @@ use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
 use trans_item::{TransItem, DefPathBasedNames};
+
+use std::iter;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
@@ -723,23 +725,17 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     debug!("find_drop_glue_neighbors: {}", type_to_string(scx.tcx(), ty));
 
-    // Make sure the exchange_free_fn() lang-item gets translated if
-    // there is a boxed value.
-    if let ty::TyBox(_) = ty.sty {
-        let exchange_free_fn_def_id = scx.tcx()
-                                         .lang_items
-                                         .require(ExchangeFreeFnLangItem)
-                                         .unwrap_or_else(|e| scx.sess().fatal(&e));
-
-        assert!(can_have_local_instance(scx.tcx(), exchange_free_fn_def_id));
-        let fn_substs = scx.empty_substs_for_def_id(exchange_free_fn_def_id);
-        let exchange_free_fn_trans_item =
+    // Make sure the BoxFreeFn lang-item gets translated if there is a boxed value.
+    if let ty::TyBox(content_type) = ty.sty {
+        let def_id = scx.tcx().require_lang_item(BoxFreeFnLangItem);
+        assert!(can_have_local_instance(scx.tcx(), def_id));
+        let box_free_fn_trans_item =
             create_fn_trans_item(scx,
-                                 exchange_free_fn_def_id,
-                                 fn_substs,
+                                 def_id,
+                                 scx.tcx().mk_substs(iter::once(Kind::from(content_type))),
                                  scx.tcx().intern_substs(&[]));
 
-        output.push(exchange_free_fn_trans_item);
+        output.push(box_free_fn_trans_item);
     }
 
     // If the type implements Drop, also add a translation item for the
