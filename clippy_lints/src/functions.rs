@@ -70,8 +70,13 @@ impl LintPass for Functions {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     fn check_fn(
-        &mut self, cx: &LateContext<'a, 'tcx>, kind: intravisit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr, span: Span, nodeid: ast::NodeId
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: intravisit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        expr: &'tcx hir::Expr,
+        span: Span,
+        nodeid: ast::NodeId
     ) {
         use rustc::hir::map::Node::*;
 
@@ -127,7 +132,11 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_raw_ptr(
-        &self, cx: &LateContext<'a, 'tcx>, unsafety: hir::Unsafety, decl: &'tcx hir::FnDecl, expr: &'tcx hir::Expr,
+        &self,
+        cx: &LateContext<'a, 'tcx>,
+        unsafety: hir::Unsafety,
+        decl: &'tcx hir::FnDecl,
+        expr: &'tcx hir::Expr,
         nodeid: ast::NodeId
     ) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {

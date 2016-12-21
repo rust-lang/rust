@@ -62,7 +62,12 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_fn(
-        &mut self, cx: &LateContext<'a, 'tcx>, _: visit::FnKind<'tcx>, decl: &'tcx FnDecl, body: &'tcx Expr, _: Span,
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: visit::FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        body: &'tcx Expr,
+        _: Span,
         id: NodeId
     ) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
@@ -146,8 +151,15 @@ impl<'a, 'tcx: 'a + 'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 
         }
 
     }
-    fn borrow(&mut self, borrow_id: NodeId, _: Span, cmt: cmt<'tcx>, _: &ty::Region, _: ty::BorrowKind,
-              loan_cause: LoanCause) {
+    fn borrow(
+        &mut self,
+        borrow_id: NodeId,
+        _: Span,
+        cmt: cmt<'tcx>,
+        _: &ty::Region,
+        _: ty::BorrowKind,
+        loan_cause: LoanCause
+    ) {
         use rustc::ty::adjustment::Adjust;
 
         if let Categorization::Local(lid) = cmt.cat {

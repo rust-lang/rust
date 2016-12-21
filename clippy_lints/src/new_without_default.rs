@@ -91,8 +91,13 @@ impl LintPass for NewWithoutDefault {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
     fn check_fn(
-        &mut self, cx: &LateContext<'a, 'tcx>, kind: FnKind<'tcx>, decl: &'tcx hir::FnDecl, _: &'tcx hir::Expr,
-        span: Span, id: ast::NodeId
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        _: &'tcx hir::Expr,
+        span: Span,
+        id: ast::NodeId
     ) {
         if in_external_macro(cx, span) {
             return;

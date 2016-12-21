@@ -317,8 +317,12 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
-pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId, ty_params: Vec<ty::Ty<'tcx>>)
-    -> bool {
+pub fn implements_trait<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    trait_id: DefId,
+    ty_params: Vec<ty::Ty<'tcx>>
+) -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
@@ -401,8 +405,12 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprBlock`.
 /// Also takes an `Option<String>` which can be put inside the braces.
-pub fn expr_block<'a, 'b, T: LintContext<'b>>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str)
-    -> Cow<'a, str> {
+pub fn expr_block<'a, 'b, T: LintContext<'b>>(
+    cx: &T,
+    expr: &Expr,
+    option: Option<String>,
+    default: &'a str
+) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
     if let ExprBlock(_) = expr.node {
@@ -515,8 +523,13 @@ pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, 
     }
 }
 
-pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str,
-                                                              help: &str) {
+pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    help: &str
+) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         db.0.help(help);
@@ -524,8 +537,14 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, lint: &
     }
 }
 
-pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str,
-                                                              note_span: Span, note: &str) {
+pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    note_span: Span,
+    note: &str
+) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
@@ -537,9 +556,13 @@ pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, lint: &
     }
 }
 
-pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str,
-                                                                 f: F)
-    where F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>)
+pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
+    cx: &'a T,
+    lint: &'static Lint,
+    sp: Span,
+    msg: &str,
+    f: F
+) where F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>)
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
@@ -756,8 +779,12 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
 /// Check if two types are the same.
 // FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
 // not for type parameters.
-pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>, parameter_item: NodeId)
-    -> bool {
+pub fn same_tys<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    a: ty::Ty<'tcx>,
+    b: ty::Ty<'tcx>,
+    parameter_item: NodeId
+) -> bool {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
     cx.tcx.infer_ctxt(None, Some(parameter_env), Reveal::All).enter(|infcx| {
         let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);

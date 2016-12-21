@@ -86,8 +86,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>,
-                            hash_is_automatically_derived: bool) {
+fn check_hash_peq<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    span: Span,
+    trait_ref: &TraitRef,
+    ty: ty::Ty<'tcx>,
+    hash_is_automatically_derived: bool
+) {
     if_let_chain! {[
         match_path_old(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()

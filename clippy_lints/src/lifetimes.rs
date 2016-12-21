@@ -116,8 +116,12 @@ fn check_fn_inner<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, gene
     report_extra_lifetimes(cx, decl, generics);
 }
 
-fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, named_lts: &'tcx [LifetimeDef], bounds_lts: T)
-    -> bool {
+fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
+    cx: &LateContext<'a, 'tcx>,
+    func: &'tcx FnDecl,
+    named_lts: &'tcx [LifetimeDef],
+    bounds_lts: T
+) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT

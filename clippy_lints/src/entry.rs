@@ -78,8 +78,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
     }
 }
 
-fn check_cond<'a, 'tcx, 'b>(cx: &'a LateContext<'a, 'tcx>, check: &'b Expr)
-    -> Option<(&'static str, &'b Expr, &'b Expr)> {
+fn check_cond<'a, 'tcx, 'b>(
+    cx: &'a LateContext<'a, 'tcx>,
+    check: &'b Expr
+) -> Option<(&'static str, &'b Expr, &'b Expr)> {
     if_let_chain! {[
         let ExprMethodCall(ref name, _, ref params) = check.node,
         params.len() >= 2,

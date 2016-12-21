@@ -696,7 +696,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
-        cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr, or_has_args: bool,
+        cx: &LateContext,
+        name: &str,
+        fun: &hir::Expr,
+        self_expr: &hir::Expr,
+        arg: &hir::Expr,
+        or_has_args: bool,
         span: Span
     ) -> bool {
         if or_has_args {
@@ -737,7 +742,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
     /// Check for `*or(foo())`.
     fn check_general_case(
-        cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr, or_has_args: bool,
+        cx: &LateContext,
+        name: &str,
+        fun: &hir::Expr,
+        self_expr: &hir::Expr,
+        arg: &hir::Expr,
+        or_has_args: bool,
         span: Span
     ) {
         // don't lint for constant values
@@ -1157,8 +1167,13 @@ fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[
 }
 
 /// lint searching an Iterator followed by `is_some()`
-fn lint_search_is_some(cx: &LateContext, expr: &hir::Expr, search_method: &str, search_args: &[hir::Expr],
-                       is_some_args: &[hir::Expr]) {
+fn lint_search_is_some(
+    cx: &LateContext,
+    expr: &hir::Expr,
+    search_method: &str,
+    search_args: &[hir::Expr],
+    is_some_args: &[hir::Expr]
+) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!("called `is_some()` after searching an `Iterator` with {}. This is more succinctly \

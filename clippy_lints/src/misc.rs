@@ -170,8 +170,15 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, k: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span,
-                _: NodeId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        k: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        _: &'tcx Expr,
+        _: Span,
+        _: NodeId
+    ) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
             return;

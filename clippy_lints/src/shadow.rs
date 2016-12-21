@@ -80,8 +80,15 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, _: FnKind<'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr,
-                _: Span, _: NodeId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        expr: &'tcx Expr,
+        _: Span,
+        _: NodeId
+    ) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -143,8 +150,13 @@ fn is_binding(cx: &LateContext, pat_id: NodeId) -> bool {
     }
 }
 
-fn check_pat<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, init: Option<&'tcx Expr>, span: Span,
-                       bindings: &mut Vec<(Name, Span)>) {
+fn check_pat<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    init: Option<&'tcx Expr>,
+    span: Span,
+    bindings: &mut Vec<(Name, Span)>
+) {
     // TODO: match more stuff / destructuring
     match pat.node {
         PatKind::Binding(_, _, ref ident, ref inner) => {
@@ -222,8 +234,14 @@ fn check_pat<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, init: Option<
     }
 }
 
-fn lint_shadow<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, span: Span, pattern_span: Span,
-                             init: Option<&'tcx Expr>, prev_span: Span) {
+fn lint_shadow<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    name: Name,
+    span: Span,
+    pattern_span: Span,
+    init: Option<&'tcx Expr>,
+    prev_span: Span
+) {
     if let Some(expr) = init {
         if is_self_shadow(name, expr) {
             span_lint_and_then(cx,

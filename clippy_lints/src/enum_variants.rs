@@ -114,7 +114,14 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 
 // FIXME: #600
 #[allow(while_let_on_iterator)]
-fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &str, item_name_chars: usize, span: Span) {
+fn check_variant(
+    cx: &EarlyContext,
+    threshold: u64,
+    def: &EnumDef,
+    item_name: &str,
+    item_name_chars: usize,
+    span: Span
+) {
     if (def.variants.len() as u64) < threshold {
         return;
     }

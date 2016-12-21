@@ -528,8 +528,15 @@ impl LintPass for TypeComplexityPass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, _: FnKind<'tcx>, decl: &'tcx FnDecl, _: &'tcx Expr, _: Span,
-                _: NodeId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        _: &'tcx Expr,
+        _: Span,
+        _: NodeId
+    ) {
         self.check_fndecl(cx, decl);
     }
 
@@ -740,8 +747,12 @@ enum AbsurdComparisonResult {
 
 
 
-fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
-    -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+fn detect_absurd_comparison<'a>(
+    cx: &LateContext,
+    op: BinOp_,
+    lhs: &'a Expr,
+    rhs: &'a Expr
+) -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
@@ -1008,8 +1019,13 @@ fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: boo
 }
 
 fn upcast_comparison_bounds_err(
-    cx: &LateContext, span: &Span, rel: comparisons::Rel, lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr,
-    rhs: &Expr, invert: bool
+    cx: &LateContext,
+    span: &Span,
+    rel: comparisons::Rel,
+    lhs_bounds: Option<(FullInt, FullInt)>,
+    lhs: &Expr,
+    rhs: &Expr,
+    invert: bool
 ) {
     use utils::comparisons::*;
 

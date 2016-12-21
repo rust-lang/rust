@@ -402,8 +402,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_for_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr, body: &'tcx Expr,
-                            expr: &'tcx Expr) {
+fn check_for_loop<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr
+) {
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
@@ -413,8 +418,13 @@ fn check_for_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'t
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
-fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr, body: &'tcx Expr,
-                                  expr: &'tcx Expr) {
+fn check_for_loop_range<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr
+) {
     if let Some(higher::Range { start: Some(start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, def_id, ref ident, _) = pat.node {
@@ -641,8 +651,12 @@ fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     }
 }
 
-fn check_for_loop_explicit_counter<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx Expr, body: &'tcx Expr,
-                                             expr: &'tcx Expr) {
+fn check_for_loop_explicit_counter<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr
+) {
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
         cx: cx,
@@ -687,8 +701,13 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'
 }
 
 /// Check for the `FOR_KV_MAP` lint.
-fn check_for_loop_over_map_kv<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, arg: &'tcx Expr,
-                                        body: &'tcx Expr, expr: &'tcx Expr) {
+fn check_for_loop_over_map_kv<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr
+) {
     let pat_span = pat.span;
 
     if let PatKind::Tuple(ref pat, _) = pat.node {
