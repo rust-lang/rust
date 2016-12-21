@@ -398,7 +398,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// db.suggest_item_with_attr(cx, item, "#[derive(Default)]");
     /// ```
     fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D);
@@ -409,7 +409,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// db.suggest_prepend_item(cx, item,
     /// "fn foo() {
     ///     bar();

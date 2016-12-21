@@ -2,7 +2,7 @@
 //!
 //! For example, the lint would catch:
 //!
-//! ```rust
+//! ```rust,ignore
 //! if x {
 //!     if y {
 //!         println!("Hello world");
@@ -28,7 +28,7 @@ use utils::sugg::Sugg;
 /// **Known problems:** None.
 ///
 /// **Example:**
-/// ```rust
+/// ```rust,ignore
 /// if x {
 ///     if y {
 ///         …
@@ -48,7 +48,7 @@ use utils::sugg::Sugg;
 ///
 /// Should be written:
 ///
-/// ```rust
+/// ```rust.ignore
 /// if x && y {
 ///     …
 /// }
@@ -140,7 +140,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast:
     }}
 }
 
-/// If the block contains only one expression, returns it.
+/// If the block contains only one expression, return it.
 fn expr_block(block: &ast::Block) -> Option<&ast::Expr> {
     let mut it = block.stmts.iter();
 

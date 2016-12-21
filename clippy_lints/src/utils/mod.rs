@@ -35,23 +35,27 @@ pub type MethodArgs = HirVec<P<Expr>>;
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
-///     if_let_chain! {[
-///         let Some(y) = x,
-///         y.len() == 2,
-///         let Some(z) = y,
-///     ], {
-///         block
-///     }}
+/// ```rust,ignore
+/// if_let_chain! {[
+///     let Some(y) = x,
+///     y.len() == 2,
+///     let Some(z) = y,
+/// ], {
+///     block
+/// }}
+/// ```
 ///
 /// becomes
 ///
-///     if let Some(y) = x {
-///         if y.len() == 2 {
-///             if let Some(z) = y {
-///                 block
-///             }
+/// ```rust,ignore
+/// if let Some(y) = x {
+///     if y.len() == 2 {
+///         if let Some(z) = y {
+///             block
 ///         }
 ///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! if_let_chain {
     ([let $pat:pat = $expr:expr, $($tt:tt)+], $block:block) => {
@@ -135,7 +139,7 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
 /// Check if a `DefId`'s path matches the given absolute type path usage.
 ///
 /// # Examples
-/// ```
+/// ```rust,ignore
 /// match_def_path(cx, id, &["core", "option", "Option"])
 /// ```
 ///
@@ -229,7 +233,7 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
 /// Match a `Path` against a slice of segment string literals.
 ///
 /// # Examples
-/// ```
+/// ```rust,ignore
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
@@ -254,7 +258,7 @@ pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
 /// Match a `Path` against a slice of segment string literals, e.g.
 ///
 /// # Examples
-/// ```
+/// ```rust,ignore
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
@@ -371,7 +375,7 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 /// Convert a span to a code snippet if available, otherwise use default.
 ///
 /// # Example
-/// ```
+/// ```rust,ignore
 /// snippet(cx, expr.span, "..")
 /// ```
 pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
@@ -388,7 +392,7 @@ pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String>
 /// things which need to be printed as such.
 ///
 /// # Example
-/// ```
+/// ```rust,ignore
 /// snippet(cx, expr.span, "..")
 /// ```
 pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
