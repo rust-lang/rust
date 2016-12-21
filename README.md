@@ -82,8 +82,9 @@ build.
    # Install build tools needed for Rust. If you're building a 32-bit compiler,
    # then replace "x86_64" below with "i686". If you've already got git, python,
    # or CMake installed and in PATH you can remove them from this list. Note
-   # that it is important that the `python2` and `cmake` packages **not** used.
-   # The build has historically been known to fail with these packages.
+   # that it is important that you do **not** use the 'python2' and 'cmake'
+   # packages from the 'msys2' subsystem. The build has historically been known
+   # to fail with these packages.
    $ pacman -S git \
                make \
                diffutils \
