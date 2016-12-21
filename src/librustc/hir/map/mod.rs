@@ -266,7 +266,6 @@ impl<'ast> Map<'ast> {
 
                     EntryTraitItem(_, item) => {
                         let def_id = self.local_def_id(id);
-                        assert!(!self.is_inlined_def_id(def_id));
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
@@ -289,8 +288,19 @@ impl<'ast> Map<'ast> {
                         return DepNode::Hir(def_id);
                     }
 
+                    EntryVariant(p, v) => {
+                        id = p;
+
+                        if last_expr.is_some() {
+                            if v.node.disr_expr.map(|e| e.node_id) == last_expr {
+                                // The enum parent holds both Hir and HirBody nodes.
+                                let def_id = self.local_def_id(id);
+                                return DepNode::HirBody(def_id);
+                            }
+                        }
+                    }
+
                     EntryForeignItem(p, _) |
-                    EntryVariant(p, _) |
                     EntryField(p, _) |
                     EntryStmt(p, _) |
                     EntryTy(p, _) |
@@ -317,7 +327,7 @@ impl<'ast> Map<'ast> {
                         bug!("node {} has inlined ancestor but is not inlined", id0),
 
                     NotPresent =>
-                        // Some nodes, notably struct fields, are not
+                        // Some nodes, notably macro definitions, are not
                         // present in the map for whatever reason, but
                         // they *do* have def-ids. So if we encounter an
                         // empty hole, check for that case.
@@ -369,21 +379,25 @@ impl<'ast> Map<'ast> {
 
     fn is_item_body(&self, node_id: NodeId, item: &Item) -> bool {
         match item.node {
-            ItemFn(_, _, _, _, _, body) => body.node_id() == node_id,
+            ItemConst(_, body) |
+            ItemStatic(.., body) |
+            ItemFn(_, _, _, _, _, body) => body.node_id == node_id,
             _ => false
         }
     }
 
     fn is_trait_item_body(&self, node_id: NodeId, item: &TraitItem) -> bool {
         match item.node {
-            TraitItemKind::Method(_, Some(body)) => body.node_id() == node_id,
+            TraitItemKind::Const(_, Some(body)) |
+            TraitItemKind::Method(_, Some(body)) => body.node_id == node_id,
             _ => false
         }
     }
 
     fn is_impl_item_body(&self, node_id: NodeId, item: &ImplItem) -> bool {
         match item.node {
-            ImplItemKind::Method(_, body) => body.node_id() == node_id,
+            ImplItemKind::Const(_, body) |
+            ImplItemKind::Method(_, body) => body.node_id == node_id,
             _ => false
         }
     }
@@ -457,6 +471,14 @@ impl<'ast> Map<'ast> {
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.impl_item(id)
+    }
+
+    pub fn body(&self, id: BodyId) -> &'ast Body {
+        self.read(id.node_id);
+
+        // NB: intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.body(id)
     }
 
     /// Get the attributes on the krate. This is preferable to
@@ -709,10 +731,6 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expr(&self, id: ExprId) -> &'ast Expr {
-        self.expect_expr(id.node_id())
-    }
-
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
@@ -793,7 +811,7 @@ impl<'ast> Map<'ast> {
             Some(EntryVisibility(_, v)) => bug!("unexpected Visibility {:?}", v),
 
             Some(RootCrate) => self.forest.krate.span,
-            Some(RootInlinedParent(parent)) => parent.body.span,
+            Some(RootInlinedParent(parent)) => parent.body.value.span,
             Some(NotPresent) | None => {
                 bug!("hir::map::Map::span: id not in map: {:?}", id)
             }

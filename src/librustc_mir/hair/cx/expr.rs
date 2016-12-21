@@ -575,7 +575,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         // Now comes the rote stuff:
-        hir::ExprRepeat(ref v, ref c) => {
+        hir::ExprRepeat(ref v, c) => {
+            let c = &cx.tcx.map.body(c).value;
             ExprKind::Repeat {
                 value: v.to_ref(),
                 count: TypedConstVal {
@@ -585,7 +586,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         ConstVal::Integral(ConstInt::Usize(u)) => u,
                         other => bug!("constant evaluation of repeat count yielded {:?}", other),
                     },
-                },
+                }
             }
         }
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
@@ -780,7 +781,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let body_id = match cx.tcx.map.find(closure_expr_id) {
                 Some(map::NodeExpr(expr)) => {
                     match expr.node {
-                        hir::ExprClosure(.., body_id, _) => body_id.node_id(),
+                        hir::ExprClosure(.., body, _) => body.node_id,
                         _ => {
                             span_bug!(expr.span, "closure expr is not a closure expr");
                         }

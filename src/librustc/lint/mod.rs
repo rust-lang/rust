@@ -162,14 +162,14 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
                 _: &LateContext<'a, 'tcx>,
                 _: FnKind<'tcx>,
                 _: &'tcx hir::FnDecl,
-                _: &'tcx hir::Expr,
+                _: &'tcx hir::Body,
                 _: Span,
                 _: ast::NodeId) { }
     fn check_fn_post(&mut self,
                      _: &LateContext<'a, 'tcx>,
                      _: FnKind<'tcx>,
                      _: &'tcx hir::FnDecl,
-                     _: &'tcx hir::Expr,
+                     _: &'tcx hir::Body,
                      _: Span,
                      _: ast::NodeId) { }
     fn check_trait_item(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::TraitItem) { }

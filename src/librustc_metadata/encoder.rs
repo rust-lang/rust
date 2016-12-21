@@ -802,7 +802,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 _ => None,
             },
             mir: match item.node {
-                hir::ItemStatic(..) |
+                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
+                    self.encode_mir(def_id)
+                }
                 hir::ItemConst(..) => self.encode_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let tps_len = generics.ty_params.len();

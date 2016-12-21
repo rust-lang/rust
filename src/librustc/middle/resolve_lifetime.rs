@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, fn_id: ast::NodeId) {
+                b: hir::BodyId, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -407,7 +407,7 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
+fn extract_labels(ctxt: &mut LifetimeContext, b: hir::BodyId) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
@@ -419,7 +419,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
         scope: ctxt.scope,
         labels_in_fn: &mut ctxt.labels_in_fn,
     };
-    gather.visit_expr(ctxt.hir_map.expr(b));
+    gather.visit_body(ctxt.hir_map.body(b));
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn add_scope_and_walk_fn(&mut self,
                              fk: FnKind<'tcx>,
                              fd: &'tcx hir::FnDecl,
-                             fb: hir::ExprId,
+                             fb: hir::BodyId,
                              _span: Span,
                              fn_id: ast::NodeId) {
         match fk {
@@ -522,8 +522,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // `self.labels_in_fn`.
         extract_labels(self, fb);
 
-        self.with(FnScope { fn_id: fn_id, body_id: fb.node_id(), s: self.scope },
-                  |_old_scope, this| this.visit_body(fb))
+        self.with(FnScope { fn_id: fn_id, body_id: fb.node_id, s: self.scope },
+                  |_old_scope, this| this.visit_nested_body(fb))
     }
 
     // FIXME(#37666) this works around a limitation in the region inferencer

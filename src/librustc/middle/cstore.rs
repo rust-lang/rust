@@ -38,7 +38,6 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
-use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
@@ -140,7 +139,7 @@ pub struct NativeLibrary {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlinedItem {
     pub def_id: DefId,
-    pub body: P<hir::Expr>,
+    pub body: hir::Body,
     pub const_fn_args: Vec<Option<DefId>>,
 }
 
@@ -149,7 +148,7 @@ pub struct InlinedItem {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, Hash, Debug)]
 pub struct InlinedItemRef<'a> {
     pub def_id: DefId,
-    pub body: &'a hir::Expr,
+    pub body: &'a hir::Body,
     pub const_fn_args: Vec<Option<DefId>>,
 }
 
@@ -160,31 +159,31 @@ fn get_fn_args(decl: &hir::FnDecl) -> Vec<Option<DefId>> {
     }).collect()
 }
 
-impl<'a> InlinedItemRef<'a> {
-    pub fn from_item<'b, 'tcx>(def_id: DefId,
-                               item: &'a hir::Item,
-                               tcx: TyCtxt<'b, 'a, 'tcx>)
-                               -> InlinedItemRef<'a> {
-        let (body, args) = match item.node {
+impl<'a, 'tcx> InlinedItemRef<'tcx> {
+    pub fn from_item(def_id: DefId,
+                     item: &hir::Item,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                     -> InlinedItemRef<'tcx> {
+        let (body_id, args) = match item.node {
             hir::ItemFn(ref decl, _, _, _, _, body_id) =>
-                (tcx.map.expr(body_id), get_fn_args(decl)),
-            hir::ItemConst(_, ref body) => (&**body, Vec::new()),
+                (body_id, get_fn_args(decl)),
+            hir::ItemConst(_, body_id) => (body_id, vec![]),
             _ => bug!("InlinedItemRef::from_item wrong kind")
         };
         InlinedItemRef {
             def_id: def_id,
-            body: body,
+            body: tcx.map.body(body_id),
             const_fn_args: args
         }
     }
 
     pub fn from_trait_item(def_id: DefId,
-                           item: &'a hir::TraitItem,
-                           _tcx: TyCtxt)
-                           -> InlinedItemRef<'a> {
-        let (body, args) = match item.node {
-            hir::TraitItemKind::Const(_, Some(ref body)) =>
-                (&**body, Vec::new()),
+                           item: &hir::TraitItem,
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                           -> InlinedItemRef<'tcx> {
+        let (body_id, args) = match item.node {
+            hir::TraitItemKind::Const(_, Some(body_id)) =>
+                (body_id, vec![]),
             hir::TraitItemKind::Const(_, None) => {
                 bug!("InlinedItemRef::from_trait_item called for const without body")
             },
@@ -192,33 +191,33 @@ impl<'a> InlinedItemRef<'a> {
         };
         InlinedItemRef {
             def_id: def_id,
-            body: body,
+            body: tcx.map.body(body_id),
             const_fn_args: args
         }
     }
 
-    pub fn from_impl_item<'b, 'tcx>(def_id: DefId,
-                                    item: &'a hir::ImplItem,
-                                    tcx: TyCtxt<'b, 'a, 'tcx>)
-                                    -> InlinedItemRef<'a> {
-        let (body, args) = match item.node {
+    pub fn from_impl_item(def_id: DefId,
+                          item: &hir::ImplItem,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                          -> InlinedItemRef<'tcx> {
+        let (body_id, args) = match item.node {
             hir::ImplItemKind::Method(ref sig, body_id) =>
-                (tcx.map.expr(body_id), get_fn_args(&sig.decl)),
-            hir::ImplItemKind::Const(_, ref body) =>
-                (&**body, Vec::new()),
+                (body_id, get_fn_args(&sig.decl)),
+            hir::ImplItemKind::Const(_, body_id) =>
+                (body_id, vec![]),
             _ => bug!("InlinedItemRef::from_impl_item wrong kind")
         };
         InlinedItemRef {
             def_id: def_id,
-            body: body,
+            body: tcx.map.body(body_id),
             const_fn_args: args
         }
     }
 
     pub fn visit<V>(&self, visitor: &mut V)
-        where V: Visitor<'a>
+        where V: Visitor<'tcx>
     {
-        visitor.visit_expr(&self.body);
+        visitor.visit_body(self.body);
     }
 }
 
@@ -226,7 +225,7 @@ impl InlinedItem {
     pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
         where V: Visitor<'ast>
     {
-        visitor.visit_expr(&self.body);
+        visitor.visit_body(&self.body);
     }
 }
 

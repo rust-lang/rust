@@ -46,8 +46,7 @@ use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
-use util::nodemap::NodeMap;
-use rustc_data_structures::fnv::FnvHashMap;
+use util::nodemap::{NodeMap, FxHashMap};
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -70,7 +69,6 @@ pub struct LoweringContext<'a> {
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
     parent_def: Option<DefIndex>,
-    exprs: FnvHashMap<hir::ExprId, hir::Expr>,
     resolver: &'a mut Resolver,
 
     /// The items being lowered are collected here.
@@ -78,6 +76,7 @@ pub struct LoweringContext<'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
+    bodies: FxHashMap<hir::BodyId, hir::Body>,
 }
 
 pub trait Resolver {
@@ -105,11 +104,11 @@ pub fn lower_crate(sess: &Session,
         crate_root: std_inject::injected_crate_name(krate),
         sess: sess,
         parent_def: None,
-        exprs: FnvHashMap(),
         resolver: resolver,
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
+        bodies: FxHashMap(),
     }.lower_crate(krate)
 }
 
@@ -136,7 +135,7 @@ impl<'a> LoweringContext<'a> {
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
-            exprs: self.exprs,
+            bodies: self.bodies,
         }
     }
 
@@ -171,9 +170,12 @@ impl<'a> LoweringContext<'a> {
         visit::walk_crate(&mut item_lowerer, c);
     }
 
-    fn record_expr(&mut self, expr: hir::Expr) -> hir::ExprId {
-        let id = hir::ExprId(expr.id);
-        self.exprs.insert(id, expr);
+    fn record_body(&mut self, value: hir::Expr) -> hir::BodyId {
+        let body = hir::Body {
+            value: value
+        };
+        let id = body.id();
+        self.bodies.insert(id, body);
         id
     }
 
@@ -305,11 +307,14 @@ impl<'a> LoweringContext<'a> {
                 TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
                 }
-                TyKind::Array(ref ty, ref e) => {
-                    hir::TyArray(self.lower_ty(ty), P(self.lower_expr(e)))
+                TyKind::Array(ref ty, ref length) => {
+                    let length = self.lower_expr(length);
+                    hir::TyArray(self.lower_ty(ty),
+                                 self.record_body(length))
                 }
                 TyKind::Typeof(ref expr) => {
-                    hir::TyTypeof(P(self.lower_expr(expr)))
+                    let expr = self.lower_expr(expr);
+                    hir::TyTypeof(self.record_body(expr))
                 }
                 TyKind::PolyTraitRef(ref bounds) => {
                     hir::TyPolyTraitRef(self.lower_bounds(bounds))
@@ -336,7 +341,10 @@ impl<'a> LoweringContext<'a> {
                 name: v.node.name.name,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
-                disr_expr: v.node.disr_expr.as_ref().map(|e| P(self.lower_expr(e))),
+                disr_expr: v.node.disr_expr.as_ref().map(|e| {
+                    let e = self.lower_expr(e);
+                    self.record_body(e)
+                }),
             },
             span: v.span,
         }
@@ -858,17 +866,20 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemUse(path, kind)
             }
             ItemKind::Static(ref t, m, ref e) => {
+                let value = self.lower_expr(e);
                 hir::ItemStatic(self.lower_ty(t),
                                 self.lower_mutability(m),
-                                P(self.lower_expr(e)))
+                                self.record_body(value))
             }
             ItemKind::Const(ref t, ref e) => {
-                hir::ItemConst(self.lower_ty(t), P(self.lower_expr(e)))
+                let value = self.lower_expr(e);
+                hir::ItemConst(self.lower_ty(t),
+                               self.record_body(value))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 let body = self.lower_block(body);
                 let body = self.expr_block(body, ThinVec::new());
-                let body_id = self.record_expr(body);
+                let body_id = self.record_body(body);
                 hir::ItemFn(self.lower_fn_decl(decl),
                             self.lower_unsafety(unsafety),
                             self.lower_constness(constness),
@@ -935,14 +946,17 @@ impl<'a> LoweringContext<'a> {
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
-                                                  default.as_ref().map(|x| P(this.lower_expr(x))))
+                                                  default.as_ref().map(|x| {
+                            let value = this.lower_expr(x);
+                            this.record_body(value)
+                        }))
                     }
                     TraitItemKind::Method(ref sig, ref body) => {
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
                                                    body.as_ref().map(|x| {
                             let body = this.lower_block(x);
                             let expr = this.expr_block(body, ThinVec::new());
-                            this.record_expr(expr)
+                            this.record_body(expr)
                         }))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
@@ -990,13 +1004,15 @@ impl<'a> LoweringContext<'a> {
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
                     ImplItemKind::Const(ref ty, ref expr) => {
-                        hir::ImplItemKind::Const(this.lower_ty(ty), P(this.lower_expr(expr)))
+                        let value = this.lower_expr(expr);
+                        let body_id = this.record_body(value);
+                        hir::ImplItemKind::Const(this.lower_ty(ty), body_id)
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
                         let body = this.lower_block(body);
                         let expr = this.expr_block(body, ThinVec::new());
-                        let expr_id = this.record_expr(expr);
-                        hir::ImplItemKind::Method(this.lower_method_sig(sig), expr_id)
+                        let body_id = this.record_body(expr);
+                        hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
                     ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -1350,8 +1366,8 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = P(self.lower_expr(expr));
-                    let count = P(self.lower_expr(count));
-                    hir::ExprRepeat(expr, count)
+                    let count = self.lower_expr(count);
+                    hir::ExprRepeat(expr, self.record_body(count))
                 }
                 ExprKind::Tup(ref elts) => {
                     hir::ExprTup(elts.iter().map(|x| self.lower_expr(x)).collect())
@@ -1434,7 +1450,7 @@ impl<'a> LoweringContext<'a> {
                         let expr = this.lower_expr(body);
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         this.record_expr(expr),
+                                         this.record_body(expr),
                                          fn_decl_span)
                     })
                 }

@@ -485,7 +485,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                     .insert(def_id, None);
             }
             Some(&InlinedItem { ref body, .. }) => {
-                let inlined_root_node_id = find_inlined_item_root(body.id);
+                let inlined_root_node_id = find_inlined_item_root(body.value.id);
                 cache_inlined_item(def_id, inlined_root_node_id, inlined_root_node_id);
             }
         }

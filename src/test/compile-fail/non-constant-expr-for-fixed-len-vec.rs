@@ -12,8 +12,8 @@
 
 fn main() {
     fn bar(n: isize) {
-        // FIXME (#24414): This error message needs improvement.
         let _x: [isize; n];
-        //~^ ERROR no type for local variable
+        //~^ ERROR attempt to use a non-constant value in a constant [E0435]
+        //~| ERROR constant evaluation error [E0080]
     }
 }

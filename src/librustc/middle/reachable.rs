@@ -250,15 +250,15 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(.., body) => {
                         if item_might_be_inlined(&item) {
-                            self.visit_body(body);
+                            self.visit_nested_body(body);
                         }
                     }
 
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemConst(_, ref init) => {
-                        self.visit_expr(&init);
+                    hir::ItemConst(_, init) => {
+                        self.visit_nested_body(init);
                     }
 
                     // These are normal, nothing reachable about these
@@ -278,24 +278,22 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::TraitItemKind::Method(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::TraitItemKind::Const(_, Some(ref body)) => {
-                        self.visit_expr(body);
-                    }
+                    hir::TraitItemKind::Const(_, Some(body_id)) |
                     hir::TraitItemKind::Method(_, Some(body_id)) => {
-                        self.visit_body(body_id);
+                        self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}
                 }
             }
             ast_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
-                    hir::ImplItemKind::Const(_, ref expr) => {
-                        self.visit_expr(&expr);
+                    hir::ImplItemKind::Const(_, body) => {
+                        self.visit_nested_body(body);
                     }
                     hir::ImplItemKind::Method(ref sig, body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {
-                            self.visit_body(body)
+                            self.visit_nested_body(body)
                         }
                     }
                     hir::ImplItemKind::Type(_) => {}

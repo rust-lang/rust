@@ -289,9 +289,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     pub fn walk_fn(&mut self,
                    decl: &hir::FnDecl,
-                   body: &hir::Expr) {
-        self.walk_arg_patterns(decl, body);
-        self.consume_expr(body);
+                   body: &hir::Body) {
+        self.walk_arg_patterns(decl, &body.value);
+        self.consume_expr(&body.value);
     }
 
     fn walk_arg_patterns(&mut self,
@@ -537,9 +537,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprRepeat(ref base, ref count) => {
+            hir::ExprRepeat(ref base, _) => {
                 self.consume_expr(&base);
-                self.consume_expr(&count);
             }
 
             hir::ExprClosure(.., fn_decl_span) => {

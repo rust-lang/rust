@@ -1095,7 +1095,8 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut prev_disr = None::<ty::Disr>;
     let variants = def.variants.iter().map(|v| {
         let wrapped_disr = prev_disr.map_or(initial, |d| d.wrap_incr());
-        let disr = if let Some(ref e) = v.node.disr_expr {
+        let disr = if let Some(e) = v.node.disr_expr {
+            let e = &tcx.map.body(e).value;
             evaluate_disr_expr(ccx, repr_type, e)
         } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
             Some(disr)

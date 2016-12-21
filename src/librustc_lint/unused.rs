@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
                 cx: &LateContext,
                 _: FnKind,
                 decl: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::Body,
                 _: Span,
                 _: ast::NodeId) {
         for a in &decl.inputs {

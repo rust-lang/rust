@@ -41,12 +41,12 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_fn(&mut self, cx: &LateContext,
-                              fk: FnKind, _: &hir::FnDecl, expr: &hir::Expr,
+                              fk: FnKind, _: &hir::FnDecl, body: &hir::Body,
                               span: Span, node: ast::NodeId)
     {
         if let FnKind::Closure(..) = fk { return }
 
-        let mut extent = cx.tcx.region_maps.node_extent(expr.id);
+        let mut extent = cx.tcx.region_maps.node_extent(body.value.id);
         while let Some(parent) = cx.tcx.region_maps.opt_encl_scope(extent) {
             extent = parent;
         }

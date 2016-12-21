@@ -50,7 +50,6 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
             let task_id = (self.dep_node_fn)(trait_item_def_id);
             let _task = self.tcx.dep_graph.in_task(task_id.clone());
             debug!("Started task {:?}", task_id);
-            assert!(!self.tcx.map.is_inlined_def_id(trait_item_def_id));
             self.tcx.dep_graph.read(DepNode::Hir(trait_item_def_id));
             self.visitor.visit_trait_item(i);
             debug!("Ended task {:?}", task_id);

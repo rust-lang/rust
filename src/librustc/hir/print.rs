@@ -462,7 +462,7 @@ impl<'a> State<'a> {
 
     pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) -> io::Result<()> {
         self.print_inner_attributes(attrs)?;
-        for item_id in &_mod.item_ids {
+        for &item_id in &_mod.item_ids {
             self.print_item_id(item_id)?;
         }
         Ok(())
@@ -545,16 +545,16 @@ impl<'a> State<'a> {
             hir::TyImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
             }
-            hir::TyArray(ref ty, ref v) => {
+            hir::TyArray(ref ty, v) => {
                 word(&mut self.s, "[")?;
                 self.print_type(&ty)?;
                 word(&mut self.s, "; ")?;
-                self.print_expr(&v)?;
+                self.print_body_id(v)?;
                 word(&mut self.s, "]")?;
             }
-            hir::TyTypeof(ref e) => {
+            hir::TyTypeof(e) => {
                 word(&mut self.s, "typeof(")?;
-                self.print_expr(&e)?;
+                self.print_body_id(e)?;
                 word(&mut self.s, ")")?;
             }
             hir::TyInfer => {
@@ -600,7 +600,7 @@ impl<'a> State<'a> {
     fn print_associated_const(&mut self,
                               name: ast::Name,
                               ty: &hir::Ty,
-                              default: Option<&hir::Expr>,
+                              default: Option<hir::BodyId>,
                               vis: &hir::Visibility)
                               -> io::Result<()> {
         word(&mut self.s, &visibility_qualified(vis, ""))?;
@@ -611,7 +611,7 @@ impl<'a> State<'a> {
         if let Some(expr) = default {
             space(&mut self.s)?;
             self.word_space("=")?;
-            self.print_expr(expr)?;
+            self.print_body_id(expr)?;
         }
         word(&mut self.s, ";")
     }
@@ -634,7 +634,7 @@ impl<'a> State<'a> {
         word(&mut self.s, ";")
     }
 
-    pub fn print_item_id(&mut self, item_id: &hir::ItemId) -> io::Result<()> {
+    pub fn print_item_id(&mut self, item_id: hir::ItemId) -> io::Result<()> {
         if let Some(krate) = self.krate {
             // skip nested items if krate context was not provided
             let item = &krate.items[&item_id.id];
@@ -644,9 +644,9 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_expr_id(&mut self, expr_id: &hir::ExprId) -> io::Result<()> {
+    fn print_body_id(&mut self, body_id: hir::BodyId) -> io::Result<()> {
         if let Some(krate) = self.krate {
-            let expr = &krate.exprs[expr_id];
+            let expr = &krate.body(body_id).value;
             self.print_expr(expr)
         } else {
             Ok(())
@@ -697,7 +697,7 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemStatic(ref ty, m, ref expr) => {
+            hir::ItemStatic(ref ty, m, expr) => {
                 self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m == hir::MutMutable {
                     self.word_space("mut")?;
@@ -709,11 +709,11 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
 
                 self.word_space("=")?;
-                self.print_expr(&expr)?;
+                self.print_body_id(expr)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemConst(ref ty, ref expr) => {
+            hir::ItemConst(ref ty, expr) => {
                 self.head(&visibility_qualified(&item.vis, "const"))?;
                 self.print_name(item.name)?;
                 self.word_space(":")?;
@@ -722,11 +722,11 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
 
                 self.word_space("=")?;
-                self.print_expr(&expr)?;
+                self.print_body_id(expr)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemFn(ref decl, unsafety, constness, abi, ref typarams, ref body) => {
+            hir::ItemFn(ref decl, unsafety, constness, abi, ref typarams, body) => {
                 self.head("")?;
                 self.print_fn(decl,
                               unsafety,
@@ -738,7 +738,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, " ")?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_expr_id(body)?;
+                self.print_body_id(body)?;
             }
             hir::ItemMod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
@@ -985,14 +985,12 @@ impl<'a> State<'a> {
         self.head("")?;
         let generics = hir::Generics::empty();
         self.print_struct(&v.node.data, &generics, v.node.name, v.span, false)?;
-        match v.node.disr_expr {
-            Some(ref d) => {
-                space(&mut self.s)?;
-                self.word_space("=")?;
-                self.print_expr(&d)
-            }
-            _ => Ok(()),
+        if let Some(d) = v.node.disr_expr {
+            space(&mut self.s)?;
+            self.word_space("=")?;
+            self.print_body_id(d)?;
         }
+        Ok(())
     }
     pub fn print_method_sig(&mut self,
                             name: ast::Name,
@@ -1024,22 +1022,19 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ti.span.lo)?;
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
-            hir::TraitItemKind::Const(ref ty, ref default) => {
-                self.print_associated_const(ti.name,
-                                            &ty,
-                                            default.as_ref().map(|expr| &**expr),
-                                            &hir::Inherited)?;
+            hir::TraitItemKind::Const(ref ty, default) => {
+                self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
             }
-            hir::TraitItemKind::Method(ref sig, ref body) => {
+            hir::TraitItemKind::Method(ref sig, body) => {
                 if body.is_some() {
                     self.head("")?;
                 }
                 self.print_method_sig(ti.name, sig, &hir::Inherited)?;
-                if let Some(ref body) = *body {
+                if let Some(body) = body {
                     self.nbsp()?;
                     self.end()?; // need to close a box
                     self.end()?; // need to close a box
-                    self.print_expr_id(body)?;
+                    self.print_body_id(body)?;
                 } else {
                     word(&mut self.s, ";")?;
                 }
@@ -1075,16 +1070,16 @@ impl<'a> State<'a> {
         }
 
         match ii.node {
-            hir::ImplItemKind::Const(ref ty, ref expr) => {
-                self.print_associated_const(ii.name, &ty, Some(&expr), &ii.vis)?;
+            hir::ImplItemKind::Const(ref ty, expr) => {
+                self.print_associated_const(ii.name, &ty, Some(expr), &ii.vis)?;
             }
-            hir::ImplItemKind::Method(ref sig, ref body) => {
+            hir::ImplItemKind::Method(ref sig, body) => {
                 self.head("")?;
                 self.print_method_sig(ii.name, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_expr_id(body)?;
+                self.print_body_id(body)?;
             }
             hir::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.name, None, Some(ty))?;
@@ -1256,12 +1251,12 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr, count: &hir::Expr) -> io::Result<()> {
+    fn print_expr_repeat(&mut self, element: &hir::Expr, count: hir::BodyId) -> io::Result<()> {
         self.ibox(indent_unit)?;
         word(&mut self.s, "[")?;
         self.print_expr(element)?;
         self.word_space(";")?;
-        self.print_expr(count)?;
+        self.print_body_id(count)?;
         word(&mut self.s, "]")?;
         self.end()
     }
@@ -1372,8 +1367,8 @@ impl<'a> State<'a> {
             hir::ExprArray(ref exprs) => {
                 self.print_expr_vec(exprs)?;
             }
-            hir::ExprRepeat(ref element, ref count) => {
-                self.print_expr_repeat(&element, &count)?;
+            hir::ExprRepeat(ref element, count) => {
+                self.print_expr_repeat(&element, count)?;
             }
             hir::ExprStruct(ref qpath, ref fields, ref wth) => {
                 self.print_expr_struct(qpath, &fields[..], wth)?;
@@ -1444,14 +1439,14 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, ref body, _fn_decl_span) => {
+            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(&decl)?;
                 space(&mut self.s)?;
 
                 // this is a bare expression
-                self.print_expr_id(body)?;
+                self.print_body_id(body)?;
                 self.end()?; // need to close a box
 
                 // a box will be closed by print_expr, but we didn't want an overall
@@ -1625,7 +1620,7 @@ impl<'a> State<'a> {
                 }
                 self.end()
             }
-            hir::DeclItem(ref item) => {
+            hir::DeclItem(item) => {
                 self.print_item_id(item)
             }
         }

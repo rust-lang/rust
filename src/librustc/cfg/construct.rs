@@ -327,10 +327,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.opt_expr(base, field_cfg)
             }
 
-            hir::ExprRepeat(ref elem, ref count) => {
-                self.straightline(expr, pred, [elem, count].iter().map(|&e| &**e))
-            }
-
             hir::ExprAssign(ref l, ref r) |
             hir::ExprAssignOp(_, ref l, ref r) => {
                 self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
@@ -347,7 +343,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ExprType(ref e, _) |
             hir::ExprUnary(_, ref e) |
             hir::ExprField(ref e, _) |
-            hir::ExprTupField(ref e, _) => {
+            hir::ExprTupField(ref e, _) |
+            hir::ExprRepeat(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 

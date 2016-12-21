@@ -31,8 +31,7 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FxHashSet};
-use rustc_data_structures::fnv::FnvHashMap;
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
@@ -40,7 +39,7 @@ use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
 
@@ -432,7 +431,7 @@ pub struct Crate {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub exprs: FnvHashMap<ExprId, Expr>,
+    pub bodies: FxHashMap<BodyId, Body>,
 }
 
 impl Crate {
@@ -472,8 +471,8 @@ impl Crate {
         }
     }
 
-    pub fn expr(&self, id: ExprId) -> &Expr {
-        &self.exprs[&id]
+    pub fn body(&self, id: BodyId) -> &Body {
+        &self.bodies[&id]
     }
 }
 
@@ -862,11 +861,21 @@ pub enum UnsafeSource {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ExprId(NodeId);
+pub struct BodyId {
+    pub node_id: NodeId,
+}
 
-impl ExprId {
-    pub fn node_id(self) -> NodeId {
-        self.0
+/// The body of a function or constant value.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct Body {
+    pub value: Expr
+}
+
+impl Body {
+    pub fn id(&self) -> BodyId {
+        BodyId {
+            node_id: self.value.id
+        }
     }
 }
 
@@ -877,12 +886,6 @@ pub struct Expr {
     pub span: Span,
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
-}
-
-impl Expr {
-    pub fn expr_id(&self) -> ExprId {
-        ExprId(self.id)
-    }
 }
 
 impl fmt::Debug for Expr {
@@ -944,7 +947,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, ExprId, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -988,7 +991,7 @@ pub enum Expr_ {
     ///
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    ExprRepeat(P<Expr>, P<Expr>),
+    ExprRepeat(P<Expr>, BodyId),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -1104,9 +1107,9 @@ pub struct TraitItem {
 pub enum TraitItemKind {
     /// An associated constant with an optional value (otherwise `impl`s
     /// must contain a value)
-    Const(P<Ty>, Option<P<Expr>>),
+    Const(P<Ty>, Option<BodyId>),
     /// A method with an optional body
-    Method(MethodSig, Option<ExprId>),
+    Method(MethodSig, Option<BodyId>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     Type(TyParamBounds, Option<P<Ty>>),
@@ -1137,9 +1140,9 @@ pub struct ImplItem {
 pub enum ImplItemKind {
     /// An associated constant of the given type, set to the constant result
     /// of the expression
-    Const(P<Ty>, P<Expr>),
+    Const(P<Ty>, BodyId),
     /// A method implementation with the given signature and body
-    Method(MethodSig, ExprId),
+    Method(MethodSig, BodyId),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1192,7 +1195,7 @@ pub enum Ty_ {
     /// A variable length slice (`[T]`)
     TySlice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    TyArray(P<Ty>, P<Expr>),
+    TyArray(P<Ty>, BodyId),
     /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
@@ -1216,7 +1219,7 @@ pub enum Ty_ {
     /// An `impl TraitA+TraitB` type.
     TyImplTrait(TyParamBounds),
     /// Unused for now
-    TyTypeof(P<Expr>),
+    TyTypeof(BodyId),
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     TyInfer,
@@ -1371,7 +1374,7 @@ pub struct Variant_ {
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, eg `Foo = 1`
-    pub disr_expr: Option<P<Expr>>,
+    pub disr_expr: Option<BodyId>,
 }
 
 pub type Variant = Spanned<Variant_>;
@@ -1530,11 +1533,11 @@ pub enum Item_ {
     ItemUse(P<Path>, UseKind),
 
     /// A `static` item
-    ItemStatic(P<Ty>, Mutability, P<Expr>),
+    ItemStatic(P<Ty>, Mutability, BodyId),
     /// A `const` item
-    ItemConst(P<Ty>, P<Expr>),
+    ItemConst(P<Ty>, BodyId),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, ExprId),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, BodyId),
     /// A module
     ItemMod(Mod),
     /// An external module

@@ -100,6 +100,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             .enter(|infcx| f(&mut euv::ExprUseVisitor::new(self, &infcx)))
     }
 
+    fn global_body(&mut self, mode: Mode, body: hir::BodyId) -> ConstQualif {
+        let expr = &self.tcx.map.body(body).value;
+        self.global_expr(mode, expr)
+    }
+
     fn global_expr(&mut self, mode: Mode, expr: &'gcx hir::Expr) -> ConstQualif {
         assert!(mode != Mode::Var);
         match self.tcx.const_qualif_map.borrow_mut().entry(expr.id) {
@@ -134,7 +139,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn fn_like(&mut self,
                fk: FnKind<'gcx>,
                fd: &'gcx hir::FnDecl,
-               b: hir::ExprId,
+               b: hir::BodyId,
                s: Span,
                fn_id: ast::NodeId)
                -> ConstQualif {
@@ -160,7 +165,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         };
 
         let qualif = self.with_mode(mode, |this| {
-            let body = this.tcx.map.expr(b);
+            let body = this.tcx.map.body(b);
             this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, body));
             intravisit::walk_fn(this, fk, fd, b, s, fn_id);
             this.qualif
@@ -197,7 +202,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 true
             },
             Some(ConstFnNode::Inlined(ii)) => {
-                let node_id = ii.body.id;
+                let node_id = ii.body.value.id;
 
                 let qualif = match self.tcx.const_qualif_map.borrow_mut().entry(node_id) {
                     Entry::Occupied(entry) => *entry.get(),
@@ -241,19 +246,19 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         debug!("visit_item(item={})", self.tcx.map.node_to_string(i.id));
         assert_eq!(self.mode, Mode::Var);
         match i.node {
-            hir::ItemStatic(_, hir::MutImmutable, ref expr) => {
-                self.global_expr(Mode::Static, &expr);
+            hir::ItemStatic(_, hir::MutImmutable, expr) => {
+                self.global_body(Mode::Static, expr);
             }
-            hir::ItemStatic(_, hir::MutMutable, ref expr) => {
-                self.global_expr(Mode::StaticMut, &expr);
+            hir::ItemStatic(_, hir::MutMutable, expr) => {
+                self.global_body(Mode::StaticMut, expr);
             }
-            hir::ItemConst(_, ref expr) => {
-                self.global_expr(Mode::Const, &expr);
+            hir::ItemConst(_, expr) => {
+                self.global_body(Mode::Const, expr);
             }
             hir::ItemEnum(ref enum_definition, _) => {
                 for var in &enum_definition.variants {
-                    if let Some(ref ex) = var.node.disr_expr {
-                        self.global_expr(Mode::Const, &ex);
+                    if let Some(ex) = var.node.disr_expr {
+                        self.global_body(Mode::Const, ex);
                     }
                 }
             }
@@ -265,9 +270,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, t: &'tcx hir::TraitItem) {
         match t.node {
-            hir::TraitItemKind::Const(_, ref default) => {
-                if let Some(ref expr) = *default {
-                    self.global_expr(Mode::Const, &expr);
+            hir::TraitItemKind::Const(_, default) => {
+                if let Some(expr) = default {
+                    self.global_body(Mode::Const, expr);
                 } else {
                     intravisit::walk_trait_item(self, t);
                 }
@@ -278,8 +283,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, i: &'tcx hir::ImplItem) {
         match i.node {
-            hir::ImplItemKind::Const(_, ref expr) => {
-                self.global_expr(Mode::Const, &expr);
+            hir::ImplItemKind::Const(_, expr) => {
+                self.global_body(Mode::Const, expr);
             }
             _ => self.with_mode(Mode::Var, |v| intravisit::walk_impl_item(v, i)),
         }
@@ -288,7 +293,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'tcx>,
                 fd: &'tcx hir::FnDecl,
-                b: hir::ExprId,
+                b: hir::BodyId,
                 s: Span,
                 fn_id: ast::NodeId) {
         self.fn_like(fk, fd, b, s, fn_id);

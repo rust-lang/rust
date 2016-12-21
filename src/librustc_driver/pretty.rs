@@ -702,8 +702,8 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let cfg = match code {
         blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
         blocks::Code::FnLike(fn_like) => {
-            let body = tcx.map.expr(fn_like.body());
-            cfg::CFG::new(tcx, body)
+            let body = tcx.map.body(fn_like.body());
+            cfg::CFG::new(tcx, &body.value)
         },
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
