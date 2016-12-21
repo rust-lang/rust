@@ -1,6 +1,6 @@
 #![feature(plugin, non_ascii_idents)]
 #![plugin(clippy)]
-#![deny(clippy)]
+#![deny(clippy, pub_enum_variant_names)]
 
 enum FakeCallType {
     CALL, CREATE
@@ -85,6 +85,21 @@ enum NonCaps { //~ ERROR: All variants have the same prefix: `Prefix`
     Prefix的,
     PrefixTea,
     PrefixCake,
+}
+
+pub enum PubSeall { //~ ERROR: All variants have the same prefix:
+    WithOutCake,
+    WithOutTea,
+    WithOut,
+}
+
+#[allow(pub_enum_variant_names)]
+mod allowed {
+    pub enum PubAllowed {
+        SomeThis,
+        SomeThat,
+        SomeOtherWhat,
+    }
 }
 
 fn main() {}

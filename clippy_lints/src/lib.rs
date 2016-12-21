@@ -294,6 +294,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_lint_group("clippy_pedantic", vec![
         booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
+        enum_variants::PUB_ENUM_VARIANT_NAMES,
         enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
