@@ -502,7 +502,7 @@ pub mod reimpls {
             u128::from_parts(low, high as u64) as i128
         }
         #[cfg(not(windows))]
-        fn to_ret(self) -> u128ret {
+        fn to_ret(self) -> i128ret {
             self
         }
         #[cfg(windows)]
