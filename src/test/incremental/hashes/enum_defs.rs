@@ -108,8 +108,10 @@ enum EnumChangeValueCStyleVariant0 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant0 {
@@ -126,6 +128,8 @@ enum EnumChangeValueCStyleVariant1 {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant1 {

@@ -99,15 +99,21 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
-        self.visit_trait_item(self.krate.trait_item(item_id))
+        if !self.ignore_nested_items {
+            self.visit_trait_item(self.krate.trait_item(item_id))
+        }
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
-        self.visit_impl_item(self.krate.impl_item(item_id))
+        if !self.ignore_nested_items {
+            self.visit_impl_item(self.krate.impl_item(item_id))
+        }
     }
 
-    fn visit_body(&mut self, id: ExprId) {
-        self.visit_expr(self.krate.expr(id))
+    fn visit_nested_body(&mut self, id: BodyId) {
+        if !self.ignore_nested_items {
+            self.visit_body(self.krate.body(id))
+        }
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
@@ -117,11 +123,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
         self.with_parent(i.id, |this| {
             match i.node {
-                ItemEnum(ref enum_definition, _) => {
-                    for v in &enum_definition.variants {
-                        this.insert(v.node.data.id(), NodeVariant(v));
-                    }
-                }
                 ItemStruct(ref struct_def, _) => {
                     // If this is a tuple-like struct, register the constructor.
                     if !struct_def.is_struct() {
@@ -213,7 +214,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: ExprId, s: Span, id: NodeId) {
+                b: BodyId, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
@@ -245,6 +246,14 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
         self.insert_entry(macro_def.id, NotPresent);
+    }
+
+    fn visit_variant(&mut self, v: &'ast Variant, g: &'ast Generics, item_id: NodeId) {
+        let id = v.node.data.id();
+        self.insert(id, NodeVariant(v));
+        self.with_parent(id, |this| {
+            intravisit::walk_variant(this, v, g, item_id);
+        });
     }
 
     fn visit_struct_field(&mut self, field: &'ast StructField) {

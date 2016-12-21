@@ -56,15 +56,17 @@ macro_rules! math {
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   variant_def: DefId)
                                   -> Option<&'tcx Expr> {
-    fn variant_expr<'a>(variants: &'a [hir::Variant], id: ast::NodeId)
-                        -> Option<&'a Expr> {
+    let variant_expr = |variants: &'tcx [hir::Variant], id: ast::NodeId |
+                        -> Option<&'tcx Expr> {
         for variant in variants {
             if variant.node.data.id() == id {
-                return variant.node.disr_expr.as_ref().map(|e| &**e);
+                return variant.node.disr_expr.map(|e| {
+                    &tcx.map.body(e).value
+                });
             }
         }
         None
-    }
+    };
 
     if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
         let enum_node_id = tcx.map.get_parent(variant_node_id);
@@ -96,21 +98,24 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match tcx.map.find(node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
-                hir::ItemConst(ref ty, ref const_expr) => {
-                    Some((&const_expr, tcx.ast_ty_to_prim_ty(ty)))
+                hir::ItemConst(ref ty, body) => {
+                    Some((&tcx.map.body(body).value,
+                          tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                hir::TraitItemKind::Const(ref ty, ref expr_option) => {
+                hir::TraitItemKind::Const(ref ty, default) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
                         let trait_id = tcx.map.get_parent(node_id);
                         let trait_id = tcx.map.local_def_id(trait_id);
-                        let default_value = expr_option.as_ref()
-                            .map(|expr| (&**expr, tcx.ast_ty_to_prim_ty(ty)));
+                        let default_value = default.map(|body| {
+                            (&tcx.map.body(body).value,
+                             tcx.ast_ty_to_prim_ty(ty))
+                        });
                         resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
                     } else {
                         // Technically, without knowing anything about the
@@ -125,8 +130,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                hir::ImplItemKind::Const(ref ty, ref expr) => {
-                    Some((&expr, tcx.ast_ty_to_prim_ty(ty)))
+                hir::ImplItemKind::Const(ref ty, body) => {
+                    Some((&tcx.map.body(body).value,
+                          tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
@@ -142,8 +148,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem { body: ref const_expr, .. }, _)) => {
-                Some((&**const_expr, Some(tcx.sess.cstore.item_type(tcx, def_id))))
+            Some((&InlinedItem { ref body, .. }, _)) => {
+                Some((&body.value, Some(tcx.sess.cstore.item_type(tcx, def_id))))
             }
             _ => None
         };
@@ -864,18 +870,18 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
-          let (arg_defs, body_id) = match lookup_const_fn_by_id(tcx, did) {
-              Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), ii.body.expr_id()),
+          let (arg_defs, body) = match lookup_const_fn_by_id(tcx, did) {
+              Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), &ii.body),
               Some(ConstFnNode::Local(fn_like)) =>
                   (fn_like.decl().inputs.iter()
                    .map(|arg| match arg.pat.node {
                        hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
                        _ => None
                    }).collect(),
-                   fn_like.body()),
+                   tcx.map.body(fn_like.body())),
               None => signal!(e, NonConstPath),
           };
-          let result = tcx.map.expr(body_id);
+          let result = &body.value;
           assert_eq!(arg_defs.len(), args.len());
 
           let mut call_args = DefIdMap();
@@ -893,7 +899,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               }
           }
           debug!("const call({:?})", call_args);
-          eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          eval_const_expr_partial(tcx, result, ty_hint, Some(&call_args))?
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
           Ok(val) => val,
@@ -953,11 +959,12 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
       }
       hir::ExprArray(ref v) => Array(e.id, v.len() as u64),
-      hir::ExprRepeat(_, ref n) => {
+      hir::ExprRepeat(_, n) => {
           let len_hint = ty_hint.checked_or(tcx.types.usize);
+          let n = &tcx.map.body(n).value;
           Repeat(
               e.id,
-              match eval_const_expr_partial(tcx, &n, len_hint, fn_args)? {
+              match eval_const_expr_partial(tcx, n, len_hint, fn_args)? {
                   Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
                   Integral(_) => signal!(e, RepeatCountNotNatural),
                   _ => signal!(e, RepeatCountNotInt),

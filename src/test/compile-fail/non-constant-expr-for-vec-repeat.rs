@@ -13,8 +13,9 @@
 fn main() {
     fn bar(n: usize) {
         let _x = [0; n];
-        //~^ ERROR constant evaluation error
-        //~| non-constant path in constant expression
-        //~| NOTE `n` is a variable
+        //~^ ERROR attempt to use a non-constant value in a constant [E0435]
+        //~| NOTE non-constant used with constant
+        //~| NOTE unresolved path in constant expression
+        //~| ERROR constant evaluation error [E0080]
     }
 }

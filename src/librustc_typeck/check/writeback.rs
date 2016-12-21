@@ -34,10 +34,10 @@ use rustc::hir::{self, PatKind};
 // Entry point functions
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_expr(&self, e: &'gcx hir::Expr, item_id: ast::NodeId) {
+    pub fn resolve_type_vars_in_expr(&self, body: &'gcx hir::Body, item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
-        wbcx.visit_expr(e);
+        wbcx.visit_body(body);
         wbcx.visit_upvar_borrow_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
@@ -48,11 +48,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_type_vars_in_fn(&self,
                                    decl: &'gcx hir::FnDecl,
-                                   body: &'gcx hir::Expr,
+                                   body: &'gcx hir::Body,
                                    item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
-        wbcx.visit_expr(body);
+        wbcx.visit_body(body);
         for arg in &decl.inputs {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
             wbcx.visit_pat(&arg.pat);
@@ -188,7 +188,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
 impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
@@ -211,10 +211,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        if let hir::ExprClosure(_, ref decl, ..) = e.node {
+        if let hir::ExprClosure(_, ref decl, body, _) = e.node {
             for input in &decl.inputs {
                 self.visit_node_id(ResolvingExpr(e.span), input.id);
             }
+
+            let body = self.fcx.tcx.map.body(body);
+            self.visit_body(body);
         }
 
         intravisit::walk_expr(self, e);
@@ -257,10 +260,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_ty(&mut self, t: &'gcx hir::Ty) {
         match t.node {
-            hir::TyArray(ref ty, ref count_expr) => {
-                self.visit_ty(&ty);
-                self.write_ty_to_tcx(count_expr.id, self.tcx().types.usize);
-            }
             hir::TyBareFn(ref function_declaration) => {
                 intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
                 walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);

@@ -243,7 +243,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 cx: &LateContext,
                 fk: FnKind,
                 _: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::Body,
                 span: Span,
                 id: ast::NodeId) {
         match fk {

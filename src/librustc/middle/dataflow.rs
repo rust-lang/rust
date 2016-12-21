@@ -194,7 +194,7 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
         intravisit::walk_fn_decl(&mut formals, decl);
         impl<'a, 'v> intravisit::Visitor<'v> for Formals<'a> {
             fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
-                panic!("should not encounter fn bodies or items")
+                intravisit::NestedVisitorMap::None
             }
 
             fn visit_pat(&mut self, p: &hir::Pat) {
@@ -502,7 +502,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
 impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 //                                ^^^^^^^^^^^^^ only needed for pretty printing
-    pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Expr) {
+    pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Body) {
         //! Performs the data flow analysis.
 
         if self.bits_per_id == 0 {
@@ -534,11 +534,11 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
     }
 
     fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
-                           body: &hir::Expr) -> io::Result<()> {
+                           body: &hir::Body) -> io::Result<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self, None);
         ps.cbox(pprust::indent_unit)?;
         ps.ibox(0)?;
-        ps.print_expr(body)?;
+        ps.print_expr(&body.value)?;
         pp::eof(&mut ps.s)
     }
 }

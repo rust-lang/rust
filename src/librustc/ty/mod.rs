@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.map.local_def_id(id),
-                            tcx.region_maps.call_site_extent(id, body.node_id()))
+                            tcx.region_maps.call_site_extent(id, body.node_id))
                     }
                 }
             }
@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // to the method id).
                         let extent = if let Some(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.region_maps.call_site_extent(id, body_id.node_id())
+                            tcx.region_maps.call_site_extent(id, body_id.node_id)
                         } else {
                             // no default impl: use item extent as free_id_outlive bound.
                             tcx.region_maps.item_extent(id)
@@ -1248,7 +1248,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             item.span,
                             fn_def_id,
-                            tcx.region_maps.call_site_extent(id, body_id.node_id()))
+                            tcx.region_maps.call_site_extent(id, body_id.node_id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     tcx.construct_parameter_environment(
                         expr.span,
                         base_def_id,
-                        tcx.region_maps.call_site_extent(id, body.node_id()))
+                        tcx.region_maps.call_site_extent(id, body.node_id))
                 } else {
                     tcx.empty_parameter_environment()
                 }

@@ -1270,9 +1270,9 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
 impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::TraitItemKind::Const(ref ty, ref default) => {
+            hir::TraitItemKind::Const(ref ty, default) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    default.as_ref().map(|e| pprust::expr_to_string(&e)))
+                                    default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
@@ -1300,9 +1300,9 @@ impl Clean<Item> for hir::TraitItem {
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ImplItemKind::Const(ref ty, ref expr) => {
+            hir::ImplItemKind::Const(ref ty, expr) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    Some(pprust::expr_to_string(expr)))
+                                    Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, _) => {
                 MethodItem(sig.clean(cx))
@@ -1687,11 +1687,12 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TySlice(ref ty) => Vector(box ty.clean(cx)),
-            TyArray(ref ty, ref e) => {
+            TyArray(ref ty, e) => {
                 use rustc_const_math::{ConstInt, ConstUsize};
                 use rustc_const_eval::eval_const_expr;
                 use rustc::middle::const_val::ConstVal;
 
+                let e = &cx.tcx.map.body(e).value;
                 let n = match eval_const_expr(cx.tcx, e) {
                     ConstVal::Integral(ConstInt::Usize(u)) => match u {
                         ConstUsize::Us16(u) => u.to_string(),
@@ -2372,7 +2373,7 @@ impl Clean<Item> for doctree::Static {
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
-                expr: pprust::expr_to_string(&self.expr),
+                expr: print_const_expr(cx, self.expr),
             }),
         }
     }
@@ -2396,7 +2397,7 @@ impl Clean<Item> for doctree::Constant {
             deprecation: self.depr.clean(cx),
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
-                expr: pprust::expr_to_string(&self.expr),
+                expr: print_const_expr(cx, self.expr),
             }),
         }
     }
@@ -2722,6 +2723,10 @@ fn name_from_pat(p: &hir::Pat) -> String {
             format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         },
     }
+}
+
+fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
+    pprust::expr_to_string(&cx.tcx.map.body(body).value)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

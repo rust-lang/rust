@@ -222,7 +222,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
                 cx: &LateContext,
                 fk: FnKind<'tcx>,
                 _: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::Body,
                 span: Span,
                 _: ast::NodeId) {
         match fk {
@@ -674,7 +674,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 cx: &LateContext,
                 fn_kind: FnKind,
                 _: &hir::FnDecl,
-                blk: &hir::Expr,
+                body: &hir::Body,
                 sp: Span,
                 id: ast::NodeId) {
         let method = match fn_kind {
@@ -712,7 +712,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // to have behaviour like the above, rather than
         // e.g. accidentally recurring after an assert.
 
-        let cfg = cfg::CFG::new(cx.tcx, blk);
+        let cfg = cfg::CFG::new(cx.tcx, &body.value);
 
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
