@@ -30,8 +30,10 @@ pub use self::CandidateSource::*;
 pub use self::suggest::AllTraitsVec;
 
 mod confirm;
-mod probe;
+pub mod probe;
 mod suggest;
+
+use self::probe::IsSuggestion;
 
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
@@ -91,7 +93,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          allow_private: bool)
                          -> bool {
         let mode = probe::Mode::MethodCall;
-        match self.probe_method(span, mode, method_name, self_ty, call_expr_id) {
+        match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+                                  self_ty, call_expr_id) {
             Ok(..) => true,
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
@@ -130,7 +133,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_type_vars_if_possible(&self_ty);
-        let pick = self.probe_method(span, mode, method_name, self_ty, call_expr.id)?;
+        let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+                                       self_ty, call_expr.id)?;
 
         if let Some(import_id) = pick.import_id {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
@@ -328,7 +332,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
-        let pick = self.probe_method(span, mode, method_name, self_ty, expr_id)?;
+        let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+                                       self_ty, expr_id)?;
 
         if let Some(import_id) = pick.import_id {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
