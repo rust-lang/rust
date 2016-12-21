@@ -473,10 +473,10 @@ fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, ar
                                        expr.span,
                                        &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
                                        |db| {
-                                           multispan_sugg(db, "consider using an iterator".to_string(), &[
-                            (pat.span, &format!("({}, <item>)", ident.node)),
-                            (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
-                        ]);
+                                           multispan_sugg(db,
+                                       "consider using an iterator".to_string(),
+                                       &[(pat.span, &format!("({}, <item>)", ident.node)),
+                                         (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip))]);
                                        });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
@@ -488,13 +488,14 @@ fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, ar
                     span_lint_and_then(cx,
                                        NEEDLESS_RANGE_LOOP,
                                        expr.span,
-                                       &format!("the loop variable `{}` is only used to index `{}`.", ident.node, indexed),
+                                       &format!("the loop variable `{}` is only used to index `{}`.",
+                                                ident.node,
+                                                indexed),
                                        |db| {
-                        multispan_sugg(db, "consider using an iterator".to_string(), &[
-                            (pat.span, "<item>"),
-                            (arg.span, &repl),
-                        ]);
-                    });
+                                           multispan_sugg(db,
+                                                          "consider using an iterator".to_string(),
+                                                          &[(pat.span, "<item>"), (arg.span, &repl)]);
+                                       });
                 }
             }
         }
@@ -551,9 +552,9 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                            "consider using the following if you are attempting to iterate over this \
                                             range in reverse",
                                            format!("({end}{dots}{start}).rev()",
-                                                                      end=end_snippet,
-                                                                      dots=dots,
-                                                                      start=start_snippet));
+                                                   end = end_snippet,
+                                                   dots = dots,
+                                                   start = start_snippet));
                     });
                 } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
@@ -597,9 +598,9 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                           EXPLICIT_INTO_ITER_LOOP,
                           expr.span,
                           &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                       object,
-                                       object,
-                                       method_name));
+                                   object,
+                                   object,
+                                   method_name));
 
             } else if &*method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,

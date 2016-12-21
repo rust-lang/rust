@@ -210,8 +210,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                     diag.span_help(span,
                                    &format!("separate the discriminating character by an \
                                                                 underscore like: `{}_{}`",
-                                                               &interned_name[..split],
-                                                               &interned_name[split..]));
+                                            &interned_name[..split],
+                                            &interned_name[split..]));
                 }
             });
             return;

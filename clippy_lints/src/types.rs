@@ -352,11 +352,7 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, 
               &format!("casting {0} to {1} causes a loss of precision {2}({0} is {3} bits wide, but {1}'s mantissa \
                         is only {4} bits wide)",
                        cast_from,
-                       if cast_to_f64 {
-                           "f64"
-                       } else {
-                           "f32"
-                       },
+                       if cast_to_f64 { "f64" } else { "f32" },
                        if arch_dependent {
                            arch_dependent_str
                        } else {
@@ -687,9 +683,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
-                        let help = format!("Consider using a byte literal \
-                                            instead:\nb{}",
-                                           snippet(cx, e.span, "'x'"));
+                        let help = format!("Consider using a byte literal instead:\nb{}", snippet(cx, e.span, "'x'"));
                         span_help_and_lint(cx, CHAR_LIT_AS_U8, expr.span, msg, &help);
                     }
                 }

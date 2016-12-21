@@ -144,25 +144,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                       CROSSPOINTER_TRANSMUTE,
                                       e.span,
                                       &format!("transmute from a type (`{}`) to the type that it points to (`{}`)",
-                                     from_ty,
-                                     to_ty))
+                                               from_ty,
+                                               to_ty))
                         },
                         (_, &TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => {
                             span_lint(cx,
                                       CROSSPOINTER_TRANSMUTE,
                                       e.span,
                                       &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)",
-                                     from_ty,
-                                     to_ty))
+                                               from_ty,
+                                               to_ty))
                         },
-                        (&TyRawPtr(from_pty), &TyRef(_, to_rty)) => span_lint_and_then(
-                            cx,
-                            TRANSMUTE_PTR_TO_REF,
-                            e.span,
-                            &format!("transmute from a pointer type (`{}`) to a reference type (`{}`)",
-                                    from_ty,
-                                    to_ty),
-                            |db| {
+                        (&TyRawPtr(from_pty), &TyRef(_, to_rty)) => {
+                            span_lint_and_then(cx,
+                                               TRANSMUTE_PTR_TO_REF,
+                                               e.span,
+                                               &format!("transmute from a pointer type (`{}`) to a reference type \
+                                                         (`{}`)",
+                                                        from_ty,
+                                                        to_ty),
+                                               |db| {
                                 let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                 let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
                                     ("&mut *", "*mut")
@@ -177,8 +178,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 };
 
                                 db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
-                            },
-                        ),
+                            })
+                        },
                         _ => return,
                     };
                 }

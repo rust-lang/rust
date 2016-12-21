@@ -159,7 +159,12 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(TOPLEVEL_REF_ARG, CMP_NAN, FLOAT_CMP, CMP_OWNED, MODULO_ONE, REDUNDANT_PATTERN,
+        lint_array!(TOPLEVEL_REF_ARG,
+                    CMP_NAN,
+                    FLOAT_CMP,
+                    CMP_OWNED,
+                    MODULO_ONE,
+                    REDUNDANT_PATTERN,
                     USED_UNDERSCORE_BINDING)
     }
 }
@@ -285,7 +290,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                       USED_UNDERSCORE_BINDING,
                       expr.span,
                       &format!("used binding `{}` which is prefixed with an underscore. A leading \
-                                underscore signals that a binding will not be used.", binding));
+                                underscore signals that a binding will not be used.",
+                               binding));
         }
     }
 
@@ -295,9 +301,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 span_lint(cx,
                           REDUNDANT_PATTERN,
                           pat.span,
-                          &format!("the `{} @ _` pattern can be written as just `{}`",
-                                   ident.node,
-                                   ident.node));
+                          &format!("the `{} @ _` pattern can be written as just `{}`", ident.node, ident.node));
             }
         }
     }

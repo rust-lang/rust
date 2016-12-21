@@ -249,7 +249,8 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
 
     /// Whether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
-        matches!(*op, AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus)
+        matches!(*op,
+                 AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus)
     }
 
     /// Whether the operator `op` needs parenthesis with the operator `other` in the direction

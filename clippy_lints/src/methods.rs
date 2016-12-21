@@ -776,10 +776,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                            span,
                            &format!("use of `{}` followed by a function call", name),
                            |db| {
-            db.span_suggestion(span,
+                               db.span_suggestion(span,
                                "try this",
                                format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
-        });
+                           });
     }
 
     if args.len() == 2 {
@@ -836,10 +836,10 @@ fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
                            expr.span,
                            "use of `extend` to extend a Vec by a slice",
                            |db| {
-            db.span_suggestion(expr.span,
+                               db.span_suggestion(expr.span,
                                "try this",
                                format!("{}.extend_from_slice({})", snippet(cx, args[0].span, "_"), slice));
-        });
+                           });
     }
 }
 

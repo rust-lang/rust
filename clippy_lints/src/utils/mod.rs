@@ -500,7 +500,7 @@ impl<'a> DiagnosticWrapper<'a> {
     fn wiki_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
             self.0.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                               lint.name_lower()));
+                                 lint.name_lower()));
         }
     }
 }
@@ -780,7 +780,8 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: Node
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext, qpath: &QPath, did: NodeId) -> bool {
-        matches!(cx.tcx.tables().qpath_def(qpath, did), def::Def::Variant(..) | def::Def::VariantCtor(..))
+        matches!(cx.tcx.tables().qpath_def(qpath, did),
+                 def::Def::Variant(..) | def::Def::VariantCtor(..))
     }
 
     fn are_refutable<'a, I: Iterator<Item = &'a Pat>>(cx: &LateContext, mut i: I) -> bool {

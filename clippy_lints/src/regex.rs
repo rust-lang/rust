@@ -219,8 +219,7 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                     span_lint(cx,
                               INVALID_REGEX,
                               str_span(expr.span, r, e.position()),
-                              &format!("regex syntax error: {}",
-                                       e.description()));
+                              &format!("regex syntax error: {}", e.description()));
                 },
             }
         }
@@ -239,9 +238,7 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                 span_lint(cx,
                           INVALID_REGEX,
                           expr.span,
-                          &format!("regex syntax error on position {}: {}",
-                                   e.position(),
-                                   e.description()));
+                          &format!("regex syntax error on position {}: {}", e.position(), e.description()));
             },
         }
     }

@@ -85,7 +85,9 @@ fn check_known_consts(cx: &LateContext, e: &Expr, s: &symbol::Symbol, module: &s
                           APPROX_CONSTANT,
                           e.span,
                           &format!("approximate value of `{}::consts::{}` found. \
-                                    Consider using it directly", module, &name));
+                                    Consider using it directly",
+                                   module,
+                                   &name));
                 return;
             }
         }
