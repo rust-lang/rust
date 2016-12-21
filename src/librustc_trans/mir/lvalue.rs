@@ -44,13 +44,13 @@ impl<'tcx> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
-    pub fn alloca<'bcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    pub fn alloca<'a>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         ty: Ty<'tcx>,
                         name: &str)
                         -> LvalueRef<'tcx>
     {
         assert!(!ty.has_erasable_regions());
-        let lltemp = bcx.with_block(|bcx| base::alloc_ty(bcx, ty, name));
+        let lltemp = base::alloc_ty(bcx, ty, name);
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
 
@@ -67,14 +67,14 @@ impl<'tcx> LvalueRef<'tcx> {
     }
 }
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_lvalue(&mut self,
-                        bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                        bcx: &BlockAndBuilder<'a, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
                         -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
         let tcx = bcx.tcx();
 
         if let mir::Lvalue::Local(index) = *lvalue {
@@ -103,7 +103,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let ptr = self.trans_consume(bcx, base);
                 let projected_ty = LvalueTy::from_ty(ptr.ty)
                     .projection_ty(tcx, &mir::ProjectionElem::Deref);
-                let projected_ty = bcx.monomorphize(&projected_ty);
+                let projected_ty = self.monomorphize(&projected_ty);
                 let (llptr, llextra) = match ptr.val {
                     OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
                     OperandValue::Pair(llptr, llextra) => (llptr, llextra),
@@ -118,14 +118,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
-                let projected_ty = bcx.monomorphize(&projected_ty);
+                let projected_ty = self.monomorphize(&projected_ty);
 
                 let project_index = |llindex| {
                     let element = if let ty::TySlice(_) = tr_base.ty.to_ty(tcx).sty {
                         // Slices already point to the array element type.
                         bcx.inbounds_gep(tr_base.llval, &[llindex])
                     } else {
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        let zero = common::C_uint(bcx.ccx, 0u64);
                         bcx.inbounds_gep(tr_base.llval, &[zero, llindex])
                     };
                     element
@@ -140,14 +140,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
                         };
                         let discr = discr as u64;
-                        let is_sized = common::type_is_sized(tcx, projected_ty.to_ty(tcx));
+                        let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
                         let base = if is_sized {
                             adt::MaybeSizedValue::sized(tr_base.llval)
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = adt::trans_field_ptr_builder(bcx, base_ty, base,
-                                                                       Disr(discr), field.index());
+                        let llprojected = adt::trans_field_ptr(bcx, base_ty, base, Disr(discr),
+                            field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
@@ -162,19 +162,19 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let lloffset = C_uint(bcx.ccx(), offset);
+                        let lloffset = C_uint(bcx.ccx, offset);
                         (project_index(lloffset), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
-                        let lloffset = C_uint(bcx.ccx(), offset);
-                        let lllen = tr_base.len(bcx.ccx());
+                        let lloffset = C_uint(bcx.ccx, offset);
+                        let lllen = tr_base.len(bcx.ccx);
                         let llindex = bcx.sub(lllen, lloffset);
                         (project_index(llindex), ptr::null_mut())
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
-                        let llindex = C_uint(bcx.ccx(), from);
+                        let llindex = C_uint(bcx.ccx, from);
                         let llbase = project_index(llindex);
 
                         let base_ty = tr_base.ty.to_ty(bcx.tcx());
@@ -183,14 +183,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 // must cast the lvalue pointer type to the new
                                 // array type (*[%_; new_len]).
                                 let base_ty = self.monomorphized_lvalue_ty(lvalue);
-                                let llbasety = type_of::type_of(bcx.ccx(), base_ty).ptr_to();
+                                let llbasety = type_of::type_of(bcx.ccx, base_ty).ptr_to();
                                 let llbase = bcx.pointercast(llbase, llbasety);
                                 (llbase, ptr::null_mut())
                             }
                             ty::TySlice(..) => {
                                 assert!(tr_base.llextra != ptr::null_mut());
                                 let lllen = bcx.sub(tr_base.llextra,
-                                                    C_uint(bcx.ccx(), from+to));
+                                                    C_uint(bcx.ccx, from+to));
                                 (llbase, lllen)
                             }
                             _ => bug!("unexpected type {:?} in Subslice", base_ty)
@@ -214,7 +214,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     // Perform an action using the given Lvalue.
     // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
     // is created first, then used as an operand to update the Lvalue.
-    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
@@ -235,9 +235,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // See comments in LocalRef::new_operand as to why
                     // we always have Some in a ZST LocalRef::Operand.
                     let ty = self.monomorphized_lvalue_ty(lvalue);
-                    if common::type_is_zero_size(bcx.ccx(), ty) {
+                    if common::type_is_zero_size(bcx.ccx, ty) {
                         // Pass an undef pointer as no stores can actually occur.
-                        let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
+                        let llptr = C_undef(type_of(bcx.ccx, ty).ptr_to());
                         f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty)))
                     } else {
                         bug!("Lvalue local already set");
@@ -255,13 +255,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     ///
     /// nmatsakis: is this still necessary? Not sure.
     fn prepare_index(&mut self,
-                     bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                     bcx: &BlockAndBuilder<'a, 'tcx>,
                      llindex: ValueRef)
                      -> ValueRef
     {
-        let ccx = bcx.ccx();
-        let index_size = machine::llbitsize_of_real(bcx.ccx(), common::val_ty(llindex));
-        let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type());
+        let ccx = bcx.ccx;
+        let index_size = machine::llbitsize_of_real(bcx.ccx, common::val_ty(llindex));
+        let int_size = machine::llbitsize_of_real(bcx.ccx, ccx.int_type());
         if index_size < int_size {
             bcx.zext(llindex, ccx.int_type())
         } else if index_size > int_size {
@@ -272,8 +272,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
-        let tcx = self.fcx.ccx.tcx();
+        let tcx = self.ccx.tcx();
         let lvalue_ty = lvalue.ty(&self.mir, tcx);
-        self.fcx.monomorphize(&lvalue_ty.to_ty(tcx))
+        self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }

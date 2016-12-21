@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 use abi::FnType;
 use adt;
 use common::*;
@@ -41,7 +39,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     let _recursion_lock = cx.enter_type_of(t);
 
     let llsizingty = match t.sty {
-        _ if !type_is_sized(cx.tcx(), t) => {
+        _ if !cx.shared().type_is_sized(t) => {
             Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, t)], false)
         }
 
@@ -55,7 +53,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyBox(ty) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-            if type_is_sized(cx.tcx(), ty) {
+            if cx.shared().type_is_sized(ty) {
                 Type::i8p(cx)
             } else {
                 Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, ty)], false)
@@ -104,7 +102,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
     let layout = cx.layout_of(t);
-    if !type_is_sized(cx.tcx(), t) {
+    if !cx.shared().type_is_sized(t) {
         if !layout.is_unsized() {
             bug!("layout should be unsized for type `{}` / {:#?}",
                  t, layout);
@@ -135,7 +133,7 @@ pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     match ty.sty {
         ty::TyBox(t) |
         ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
-        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !type_is_sized(ccx.tcx(), t) => {
+        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !ccx.shared().type_is_sized(t) => {
             in_memory_type_of(ccx, t).ptr_to()
         }
         _ => bug!("expected fat ptr ty but got {:?}", ty)
@@ -172,7 +170,7 @@ pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 /// is too large for it to be placed in SSA value (by our rules).
 /// For the raw type without far pointer indirection, see `in_memory_type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
-    let ty = if !type_is_sized(cx.tcx(), ty) {
+    let ty = if !cx.shared().type_is_sized(ty) {
         cx.tcx().mk_imm_ptr(ty)
     } else {
         ty
@@ -232,7 +230,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyBox(ty) |
       ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
       ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-          if !type_is_sized(cx.tcx(), ty) {
+          if !cx.shared().type_is_sized(ty) {
               if let ty::TyStr = ty.sty {
                   // This means we get a nicer name in the output (str is always
                   // unsized).

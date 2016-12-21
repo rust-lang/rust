@@ -25,7 +25,7 @@ use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
-use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty, type_is_sized};
+use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
 use common::{const_to_opt_int, const_to_opt_uint};
@@ -401,7 +401,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     .projection_ty(tcx, &projection.elem);
                 let base = tr_base.to_const(span);
                 let projected_ty = self.monomorphize(&projected_ty).to_ty(tcx);
-                let is_sized = common::type_is_sized(tcx, projected_ty);
+                let is_sized = self.ccx.shared().type_is_sized(projected_ty);
 
                 let (projected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
@@ -598,11 +598,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::Unsize => {
                         // unsize targets other than to a fat pointer currently
                         // can't be in constants.
-                        assert!(common::type_is_fat_ptr(tcx, cast_ty));
+                        assert!(common::type_is_fat_ptr(self.ccx, cast_ty));
 
                         let pointee_ty = operand.ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer type").ty;
-                        let (base, old_info) = if !common::type_is_sized(tcx, pointee_ty) {
+                        let (base, old_info) = if !self.ccx.shared().type_is_sized(pointee_ty) {
                             // Normally, the source is a thin pointer and we are
                             // adding extra info to make a fat pointer. The exception
                             // is when we are upcasting an existing object fat pointer
@@ -685,9 +685,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
                         let ll_cast_ty = type_of::immediate_type_of(self.ccx, cast_ty);
                         let ll_from_ty = type_of::immediate_type_of(self.ccx, operand.ty);
-                        if common::type_is_fat_ptr(tcx, operand.ty) {
+                        if common::type_is_fat_ptr(self.ccx, operand.ty) {
                             let (data_ptr, meta_ptr) = operand.get_fat_ptr();
-                            if common::type_is_fat_ptr(tcx, cast_ty) {
+                            if common::type_is_fat_ptr(self.ccx, cast_ty) {
                                 let ll_cft = ll_cast_ty.field_types();
                                 let ll_fft = ll_from_ty.field_types();
                                 let data_cast = consts::ptrcast(data_ptr, ll_cft[0]);
@@ -716,7 +716,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let base = match tr_lvalue.base {
                     Base::Value(llval) => {
                         // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
-                        let align = if type_is_sized(self.ccx.tcx(), ty) {
+                        let align = if self.ccx.shared().type_is_sized(ty) {
                             type_of::align_of(self.ccx, ty)
                         } else {
                             self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
@@ -731,7 +731,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     Base::Static(llval) => llval
                 };
 
-                let ptr = if common::type_is_sized(tcx, ty) {
+                let ptr = if self.ccx.shared().type_is_sized(ty) {
                     base
                 } else {
                     C_struct(self.ccx, &[base, tr_lvalue.llextra], false)
@@ -945,40 +945,39 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_constant(&mut self,
-                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                          bcx: &BlockAndBuilder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {
         debug!("trans_constant({:?})", constant);
-        let ty = bcx.monomorphize(&constant.ty);
+        let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
                 // Shortcut for zero-sized types, including function item
                 // types, which would not work with MirConstContext.
-                if common::type_is_zero_size(bcx.ccx(), ty) {
-                    let llty = type_of::type_of(bcx.ccx(), ty);
+                if common::type_is_zero_size(bcx.ccx, ty) {
+                    let llty = type_of::type_of(bcx.ccx, ty);
                     return Const::new(C_null(llty), ty);
                 }
 
-                let substs = bcx.monomorphize(&substs);
+                let substs = self.monomorphize(&substs);
                 let instance = Instance::new(def_id, substs);
-                MirConstContext::trans_def(bcx.ccx(), instance, IndexVec::new())
+                MirConstContext::trans_def(bcx.ccx, instance, IndexVec::new())
             }
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
-                MirConstContext::new(bcx.ccx(), mir, bcx.fcx().param_substs,
-                                     IndexVec::new()).trans()
+                MirConstContext::new(bcx.ccx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
-                Ok(Const::from_constval(bcx.ccx(), value, ty))
+                Ok(Const::from_constval(bcx.ccx, value, ty))
             }
         };
 
         let result = result.unwrap_or_else(|_| {
             // We've errored, so we don't have to produce working code.
-            let llty = type_of::type_of(bcx.ccx(), ty);
+            let llty = type_of::type_of(bcx.ccx, ty);
             Const::new(C_undef(llty), ty)
         });
 

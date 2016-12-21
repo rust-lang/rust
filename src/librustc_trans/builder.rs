@@ -14,12 +14,10 @@ use llvm;
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
-use base;
 use common::*;
 use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
-use util::nodemap::FxHashMap;
 use libc::{c_uint, c_char};
 
 use std::borrow::Cow;
@@ -32,65 +30,40 @@ pub struct Builder<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
 
+impl<'a, 'tcx> Drop for Builder<'a, 'tcx> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMDisposeBuilder(self.llbuilder);
+        }
+    }
+}
+
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
-pub fn noname() -> *const c_char {
+fn noname() -> *const c_char {
     static CNULL: c_char = 0;
     &CNULL
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>) -> Builder<'a, 'tcx> {
+    pub fn with_ccx(ccx: &'a CrateContext<'a, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe {
+            llvm::LLVMCreateBuilderInContext(ccx.llcx())
+        };
         Builder {
-            llbuilder: ccx.raw_builder(),
+            llbuilder: llbuilder,
             ccx: ccx,
         }
     }
 
-    pub fn count_insn(&self, category: &str) {
+    fn count_insn(&self, category: &str) {
         if self.ccx.sess().trans_stats() {
-            self.ccx.stats().n_llvm_insns.set(self.ccx
-                                                .stats()
-                                                .n_llvm_insns
-                                                .get() + 1);
+            self.ccx.stats().n_llvm_insns.set(self.ccx.stats().n_llvm_insns.get() + 1);
         }
-        self.ccx.count_llvm_insn();
         if self.ccx.sess().count_llvm_insns() {
-            base::with_insn_ctxt(|v| {
-                let mut h = self.ccx.stats().llvm_insns.borrow_mut();
-
-                // Build version of path with cycles removed.
-
-                // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = FxHashMap();
-                let len = v.len();
-                let mut i = 0;
-                while i < len {
-                    mm.insert(v[i], i);
-                    i += 1;
-                }
-
-                // Pass 2: concat strings for each elt, skipping
-                // forwards over any cycles by advancing to rightmost
-                // occurrence of each element in path.
-                let mut s = String::from(".");
-                i = 0;
-                while i < len {
-                    i = mm[v[i]];
-                    s.push('/');
-                    s.push_str(v[i]);
-                    i += 1;
-                }
-
-                s.push('/');
-                s.push_str(category);
-
-                let n = match h.get(&s) {
-                    Some(&n) => n,
-                    _ => 0
-                };
-                h.insert(s, n+1);
-            })
+            let mut h = self.ccx.stats().llvm_insns.borrow_mut();
+            *h.entry(category.to_string()).or_insert(0) += 1;
         }
     }
 
@@ -462,7 +435,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn dynamic_alloca(&self, ty: Type, name: &str) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
             if name.is_empty() {
@@ -1100,6 +1073,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn atomic_fence(&self, order: AtomicOrdering, scope: SynchronizationScope) {
         unsafe {
             llvm::LLVMRustBuildAtomicFence(self.llbuilder, order, scope);
+        }
+    }
+
+    pub fn add_case(&self, s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
+        unsafe {
+            if llvm::LLVMIsUndef(s) == llvm::True { return; }
+            llvm::LLVMAddCase(s, on_val, dest)
+        }
+    }
+
+    pub fn add_incoming_to_phi(&self, phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
+        unsafe {
+            if llvm::LLVMIsUndef(phi) == llvm::True { return; }
+            llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
         }
     }
 
