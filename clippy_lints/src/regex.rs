@@ -82,12 +82,12 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_crate(&mut self, _: &LateContext, _: &Crate) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         self.spans.clear();
     }
 
-    fn check_block(&mut self, cx: &LateContext, block: &Block) {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
@@ -106,19 +106,19 @@ impl LateLintPass for Pass {
         }}
     }
 
-    fn check_block_post(&mut self, _: &LateContext, block: &Block) {
+    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         if self.last.map_or(false, |id| block.id == id) {
             self.last = None;
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
+            let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
-            let Some(def) = cx.tcx.def_map.borrow().get(&fun.id),
         ], {
-            let def_id = def.full_def().def_id();
+            let def_id = cx.tcx.tables().qpath_def(qpath, fun.id).def_id();
             if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);
@@ -145,7 +145,7 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
                 hi: base.lo + BytePos(h as u32),
                 ..base
             }
-        }
+        },
         _ => base,
     }
 }
@@ -172,17 +172,18 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
                         (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
                         _ => None,
                     }
-                }
+                },
                 3 => {
-                    if let (&Expr::StartText, &Expr::Literal {..}, &Expr::EndText) = (&exprs[0], &exprs[1], &exprs[2]) {
+                    if let (&Expr::StartText, &Expr::Literal { .. }, &Expr::EndText) =
+                        (&exprs[0], &exprs[1], &exprs[2]) {
                         Some("consider using `==` on `str`s")
                     } else {
                         None
                     }
-                }
+                },
                 _ => None,
             }
-        }
+        },
         _ => None,
     }
 }
@@ -213,14 +214,13 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                                            "trivial regex",
                                            &format!("consider using {}", repl));
                     }
-                }
+                },
                 Err(e) => {
                     span_lint(cx,
                               INVALID_REGEX,
                               str_span(expr.span, r, e.position()),
-                              &format!("regex syntax error: {}",
-                                       e.description()));
-                }
+                              &format!("regex syntax error: {}", e.description()));
+                },
             }
         }
     } else if let Some(r) = const_str(cx, expr) {
@@ -233,15 +233,13 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
                                        "trivial regex",
                                        &format!("consider using {}", repl));
                 }
-            }
+            },
             Err(e) => {
                 span_lint(cx,
                           INVALID_REGEX,
                           expr.span,
-                          &format!("regex syntax error on position {}: {}",
-                                   e.position(),
-                                   e.description()));
-            }
+                          &format!("regex syntax error on position {}: {}", e.position(), e.description()));
+            },
         }
     }
 }

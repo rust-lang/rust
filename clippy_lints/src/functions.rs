@@ -68,8 +68,16 @@ impl LintPass for Functions {
     }
 }
 
-impl LateLintPass for Functions {
-    fn check_fn(&mut self, cx: &LateContext, kind: intravisit::FnKind, decl: &hir::FnDecl, expr: &hir::Expr, span: Span, nodeid: ast::NodeId) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: intravisit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        expr: &'tcx hir::Expr,
+        span: Span,
+        nodeid: ast::NodeId
+    ) {
         use rustc::hir::map::Node::*;
 
         let is_impl = if let Some(NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
@@ -97,21 +105,22 @@ impl LateLintPass for Functions {
         self.check_raw_ptr(cx, unsafety, decl, expr, nodeid);
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::MethodTraitItem(ref sig, ref expr) = item.node {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+        if let hir::MethodTraitItem(ref sig, eid) = item.node {
             // don't lint extern functions decls, it's not their fault
             if sig.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span);
             }
 
-            if let Some(ref expr) = *expr {
+            if let Some(eid) = eid {
+                let expr = cx.tcx.map.expr(eid);
                 self.check_raw_ptr(cx, sig.unsafety, &sig.decl, expr, item.id);
             }
         }
     }
 }
 
-impl Functions {
+impl<'a, 'tcx> Functions {
     fn check_arg_number(&self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
@@ -122,7 +131,14 @@ impl Functions {
         }
     }
 
-    fn check_raw_ptr(&self, cx: &LateContext, unsafety: hir::Unsafety, decl: &hir::FnDecl, expr: &hir::Expr, nodeid: ast::NodeId) {
+    fn check_raw_ptr(
+        &self,
+        cx: &LateContext<'a, 'tcx>,
+        unsafety: hir::Unsafety,
+        decl: &'tcx hir::FnDecl,
+        expr: &'tcx hir::Expr,
+        nodeid: ast::NodeId
+    ) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
             let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
 
@@ -138,9 +154,9 @@ impl Functions {
     }
 }
 
-fn raw_ptr_arg(cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
-    if let (&hir::PatKind::Binding(_, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
-        cx.tcx.def_map.borrow().get(&arg.pat.id).map(|pr| pr.full_def().def_id())
+fn raw_ptr_arg(_cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
+    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
+        Some(def_id)
     } else {
         None
     }
@@ -151,8 +167,8 @@ struct DerefVisitor<'a, 'tcx: 'a> {
     ptrs: HashSet<hir::def_id::DefId>,
 }
 
-impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'v hir::Expr) {
+impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprCall(ref f, ref args) => {
                 let ty = self.cx.tcx.tables().expr_ty(f);
@@ -162,7 +178,7 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprMethodCall(_, _, ref args) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let base_type = self.cx.tcx.tables.borrow().method_map[&method_call].ty;
@@ -172,19 +188,23 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
                         self.check_arg(arg);
                     }
                 }
-            }
+            },
             hir::ExprUnary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
 
         hir::intravisit::walk_expr(self, expr);
     }
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
 impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
-        if let Some(def) = self.cx.tcx.def_map.borrow().get(&ptr.id) {
-            if self.ptrs.contains(&def.full_def().def_id()) {
+        if let hir::ExprPath(ref qpath) = ptr.node {
+            let def = self.cx.tcx.tables().qpath_def(qpath, ptr.id);
+            if self.ptrs.contains(&def.def_id()) {
                 span_lint(self.cx,
                           NOT_UNSAFE_PTR_ARG_DEREF,
                           ptr.span,

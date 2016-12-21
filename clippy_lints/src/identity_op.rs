@@ -31,8 +31,8 @@ impl LintPass for IdentityOp {
     }
 }
 
-impl LateLintPass for IdentityOp {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if in_macro(cx, e.span) {
             return;
         }
@@ -41,17 +41,17 @@ impl LateLintPass for IdentityOp {
                 BiAdd | BiBitOr | BiBitXor => {
                     check(cx, left, 0, e.span, right.span);
                     check(cx, right, 0, e.span, left.span);
-                }
+                },
                 BiShl | BiShr | BiSub => check(cx, right, 0, e.span, left.span),
                 BiMul => {
                     check(cx, left, 1, e.span, right.span);
                     check(cx, right, 1, e.span, left.span);
-                }
+                },
                 BiDiv => check(cx, right, 1, e.span, left.span),
                 BiBitAnd => {
                     check(cx, left, -1, e.span, right.span);
                     check(cx, right, -1, e.span, left.span);
-                }
+                },
                 _ => (),
             }
         }

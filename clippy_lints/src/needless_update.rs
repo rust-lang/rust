@@ -30,8 +30,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprStruct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tcx.tables().expr_ty(expr);
             if let TyAdt(def, _) = ty.sty {

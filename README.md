@@ -16,9 +16,78 @@ Table of contents:
 
 ## Usage
 
+Since this is a tool for helping the developer of a library or application
+write better code, it is recommended not to include clippy as a hard dependency.
+Options include using it as an optional dependency, as a cargo subcommand, or
+as an included feature during build. All of these options are detailed below.
+
 As a general rule clippy will only work with the *latest* Rust nightly for now.
 
+### Optional dependency
+
+If you want to make clippy an optional dependency, you can do the following:
+
+In your `Cargo.toml`:
+
+```toml
+[dependencies]
+clippy = {version = "*", optional = true}
+
+[features]
+default = []
+```
+
+And, in your `main.rs` or `lib.rs`:
+
+```rust
+#![cfg_attr(feature="clippy", feature(plugin))]
+
+#![cfg_attr(feature="clippy", plugin(clippy))]
+```
+
+Then build by enabling the feature: `cargo build --features "clippy"`
+
+Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
+`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
+(the `-Z no trans`, while not neccessary, will stop the compilation process after
+typechecking (and lints) have completed, which can significantly reduce the runtime).
+
+### As a cargo subcommand (`cargo clippy`)
+
+An alternate way to use clippy is by installing clippy through cargo as a cargo
+subcommand.
+
+```terminal
+cargo install clippy
+```
+
+Now you can run clippy by invoking `cargo clippy`, or
+`rustup run nightly cargo clippy` directly from a directory that is usually
+compiled with stable.
+
+In case you are not using rustup, you need to set the environment flag
+`SYSROOT` during installation so clippy knows where to find `librustc` and
+similar crates.
+
+```terminal
+SYSROOT=/path/to/rustc/sysroot cargo install clippy
+```
+
+### Running clippy from the command line without installing
+
+To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
+in your code, you can use:
+
+```terminal
+cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
+```
+
+*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
+Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
+
 ### As a Compiler Plugin
+
+*Note:* This is not a recommended installation method.
 
 Since stable Rust is backwards compatible, you should be able to
 compile your stable programs with nightly Rust with clippy plugged in to
@@ -62,68 +131,6 @@ src/main.rs:11     }
 src/main.rs:8:5: 11:6 help: Try
 if let Some(y) = x { println!("{:?}", y) }
 ```
-
-### As a cargo subcommand (`cargo clippy`)
-
-An alternate way to use clippy is by installing clippy through cargo as a cargo
-subcommand.
-
-```terminal
-cargo install clippy
-```
-
-Now you can run clippy by invoking `cargo clippy`, or
-`rustup run nightly cargo clippy` directly from a directory that is usually
-compiled with stable.
-
-In case you are not using rustup, you need to set the environment flag
-`SYSROOT` during installation so clippy knows where to find `librustc` and
-similar crates.
-
-```terminal
-SYSROOT=/path/to/rustc/sysroot cargo install clippy
-```
-
-### Running clippy from the command line without installing
-
-To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
-in your code, you can use:
-
-```terminal
-cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
-```
-
-*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
-Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
-
-### Optional dependency
-
-If you want to make clippy an optional dependency, you can do the following:
-
-In your `Cargo.toml`:
-
-```toml
-[dependencies]
-clippy = {version = "*", optional = true}
-
-[features]
-default = []
-```
-
-And, in your `main.rs` or `lib.rs`:
-
-```rust
-#![cfg_attr(feature="clippy", feature(plugin))]
-
-#![cfg_attr(feature="clippy", plugin(clippy))]
-```
-
-Then build by enabling the feature: `cargo build --features "clippy"`
-
-Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
-`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
-(the `-Z no trans`, while not neccessary, will stop the compilation process after
-typechecking (and lints) have completed, which can significantly reduce the runtime).
 
 ## Configuration
 
@@ -172,7 +179,7 @@ transparently:
 
 ## Lints
 
-There are 178 lints included in this crate:
+There are 180 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -204,6 +211,7 @@ name                                                                            
 [crosspointer_transmute](https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute)                       | warn    | transmutes that have to or from types that are a pointer to the other
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                         | warn    | functions that should be split up into multiple functions
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                                 | warn    | use of `#[deprecated(since = "x")]` where x is not semver
+[deref_addrof](https://github.com/Manishearth/rust-clippy/wiki#deref_addrof)                                           | warn    | use of `*&` or `*&mut` in an expression
 [derive_hash_xor_eq](https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq)                               | warn    | deriving `Hash` but implementing `PartialEq` explicitly
 [diverging_sub_expression](https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression)                   | warn    | whether an expression contains a diverging sub expression
 [doc_markdown](https://github.com/Manishearth/rust-clippy/wiki#doc_markdown)                                           | warn    | presence of `_`, `::` or camel-case outside backticks in documentation
@@ -297,6 +305,7 @@ name                                                                            
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                           | allow   | printing on stdout
 [print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                               | warn    | using `print!()` with a format string that ends in a newline
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                     | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+[pub_enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#pub_enum_variant_names)                       | allow   | enums where all variants share a prefix/postfix
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                               | warn    | using `Range::step_by(0)`, which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                               | warn    | zipping iterator with a range when `enumerate()` would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                                 | warn    | redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)

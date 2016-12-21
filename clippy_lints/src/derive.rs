@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{is_automatically_derived, match_path, span_lint_and_then};
+use utils::{is_automatically_derived, span_lint_and_then, match_path_old};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -70,8 +70,8 @@ impl LintPass for Derive {
     }
 }
 
-impl LateLintPass for Derive {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
             let ty = cx.tcx.item_type(cx.tcx.map.local_def_id(item.id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
@@ -86,10 +86,15 @@ impl LateLintPass for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>,
-                                hash_is_automatically_derived: bool) {
+fn check_hash_peq<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    span: Span,
+    trait_ref: &TraitRef,
+    ty: ty::Ty<'tcx>,
+    hash_is_automatically_derived: bool
+) {
     if_let_chain! {[
-        match_path(&trait_ref.path, &paths::HASH),
+        match_path_old(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
         let peq_trait_def = cx.tcx.lookup_trait_def(peq_trait_def_id);
@@ -131,7 +136,7 @@ fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_re
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
-    if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
+    if match_path_old(&trait_ref.path, &paths::CLONE_TRAIT) {
         let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
         let subst_ty = ty.subst(cx.tcx, parameter_environment.free_substs);
 
@@ -149,18 +154,18 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                         match field.ty(cx.tcx, substs).sty {
                             TypeVariants::TyArray(_, size) if size > 32 => {
                                 return;
-                            }
+                            },
                             TypeVariants::TyFnPtr(..) => {
                                 return;
-                            }
+                            },
                             TypeVariants::TyTuple(tys) if tys.len() > 12 => {
                                 return;
-                            }
+                            },
                             _ => (),
                         }
                     }
                 }
-            }
+            },
             _ => (),
         }
 
@@ -169,7 +174,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                            item.span,
                            "you are implementing `Clone` explicitly on a `Copy` type",
                            |db| {
-                               db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
-                           });
+            db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
+        });
     }
 }

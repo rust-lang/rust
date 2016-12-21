@@ -55,8 +55,8 @@ impl LintPass for ArrayIndexing {
     }
 }
 
-impl LateLintPass for ArrayIndexing {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         if let hir::ExprIndex(ref array, ref index) = e.node {
             // Array with known size can be checked statically
             let ty = cx.tcx.tables().expr_ty(array);
@@ -107,9 +107,12 @@ impl LateLintPass for ArrayIndexing {
 }
 
 /// Returns an option containing a tuple with the start and end (exclusive) of the range.
-fn to_const_range(start: Option<Option<ConstVal>>, end: Option<Option<ConstVal>>, limits: RangeLimits,
-                  array_size: ConstInt)
-                  -> Option<(ConstInt, ConstInt)> {
+fn to_const_range(
+    start: Option<Option<ConstVal>>,
+    end: Option<Option<ConstVal>>,
+    limits: RangeLimits,
+    array_size: ConstInt
+) -> Option<(ConstInt, ConstInt)> {
     let start = match start {
         Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
@@ -123,7 +126,7 @@ fn to_const_range(start: Option<Option<ConstVal>>, end: Option<Option<ConstVal>>
             } else {
                 x
             }
-        }
+        },
         Some(_) => return None,
         None => array_size,
     };

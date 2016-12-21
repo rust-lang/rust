@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.103"
+version = "0.0.104"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -25,11 +25,11 @@ test = false
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.103", path = "clippy_lints" }
+clippy_lints = { version = "0.0.104", path = "clippy_lints" }
 # end automatic update
 
 [dev-dependencies]
-compiletest_rs = "0.2.1"
+compiletest_rs = "0.2.5"
 lazy_static = "0.1.15"
 regex = "0.1.71"
 rustc-serialize = "0.3"

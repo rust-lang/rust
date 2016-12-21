@@ -109,8 +109,8 @@ impl LintPass for CopyAndPaste {
     }
 }
 
-impl LateLintPass for CopyAndPaste {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if !in_macro(cx, expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
@@ -204,8 +204,11 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
                     if let PatKind::Wild = j.pats[0].node {
                         // if the last arm is _, then i could be integrated into _
-                        // note that i.pats[0] cannot be _, because that would mean that we're hiding all the subsequent arms, and rust won't compile
-                        db.span_note(i.body.span, &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`", lhs));
+                        // note that i.pats[0] cannot be _, because that would mean that we're
+                        // hiding all the subsequent arms, and rust won't compile
+                        db.span_note(i.body.span,
+                                     &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`",
+                                              lhs));
                     } else {
                         db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
                     }
@@ -245,7 +248,11 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 
 /// Return the list of bindings in a pattern.
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, ty::Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, ty::Ty<'tcx>>) {
+    fn bindings_impl<'a, 'tcx>(
+        cx: &LateContext<'a, 'tcx>,
+        pat: &Pat,
+        map: &mut HashMap<InternedString, ty::Ty<'tcx>>
+    ) {
         match pat.node {
             PatKind::Box(ref pat) |
             PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
@@ -253,25 +260,25 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                 for pat in pats {
                     bindings_impl(cx, pat, map);
                 }
-            }
-            PatKind::Binding(_, ref ident, ref as_pat) => {
+            },
+            PatKind::Binding(_, _, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
                     v.insert(cx.tcx.tables().pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {
                     bindings_impl(cx, as_pat, map);
                 }
-            }
+            },
             PatKind::Struct(_, ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, &pat.node.pat, map);
                 }
-            }
+            },
             PatKind::Tuple(ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, pat, map);
                 }
-            }
+            },
             PatKind::Slice(ref lhs, ref mid, ref rhs) => {
                 for pat in lhs {
                     bindings_impl(cx, pat, map);
@@ -282,7 +289,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                 for pat in rhs {
                     bindings_impl(cx, pat, map);
                 }
-            }
+            },
             PatKind::Lit(..) |
             PatKind::Range(..) |
             PatKind::Wild |
@@ -320,10 +327,10 @@ fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
                         return Some((o, expr));
                     }
                 }
-            }
+            },
             Entry::Vacant(v) => {
                 v.insert(vec![expr]);
-            }
+            },
         }
     }
 

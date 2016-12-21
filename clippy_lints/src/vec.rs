@@ -32,8 +32,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
             let ty::TypeVariants::TyRef(_, ref ty) = cx.tcx.tables().expr_ty_adjusted(expr).sty,
@@ -65,7 +65,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
             } else {
                 return;
             }
-        }
+        },
         higher::VecArgs::Vec(args) => {
             if let Some(last) = args.iter().last() {
                 let span = Span {
@@ -78,7 +78,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
             } else {
                 "&[]".into()
             }
-        }
+        },
     };
 
     span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {

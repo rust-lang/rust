@@ -9,6 +9,7 @@
 #![allow(blacklisted_name)]
 #![allow(collapsible_if)]
 #![allow(zero_divided_by_zero, eq_op)]
+#![allow(path_statements)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -234,6 +235,13 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
     else {
         if let Some(42) = None {}
+    }
+
+    if true {
+        if let Some(42) = None::<u8> {}
+    }
+    else {
+        if let Some(42) = None::<u32> {}
     }
 
     if true {

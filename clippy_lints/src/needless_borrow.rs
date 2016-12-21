@@ -34,14 +34,15 @@ impl LintPass for NeedlessBorrow {
     }
 }
 
-impl LateLintPass for NeedlessBorrow {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if in_macro(cx, e.span) {
             return;
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
             if let ty::TyRef(..) = cx.tcx.tables().expr_ty(inner).sty {
-                if let Some(&ty::adjustment::Adjust::DerefRef { autoderefs, autoref, .. }) = cx.tcx.tables.borrow().adjustments.get(&e.id).map(|a| &a.kind) {
+                if let Some(&ty::adjustment::Adjust::DerefRef { autoderefs, autoref, .. }) =
+                    cx.tcx.tables.borrow().adjustments.get(&e.id).map(|a| &a.kind) {
                     if autoderefs > 1 && autoref.is_some() {
                         span_lint(cx,
                                   NEEDLESS_BORROW,
@@ -53,18 +54,15 @@ impl LateLintPass for NeedlessBorrow {
             }
         }
     }
-    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if in_macro(cx, pat.span) {
             return;
         }
-        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _) = pat.node {
+        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node {
             if let ty::TyRef(_, ref tam) = cx.tcx.tables().pat_ty(pat).sty {
                 if tam.mutbl == MutImmutable {
                     if let ty::TyRef(..) = tam.ty.sty {
-                        span_lint(cx,
-                                  NEEDLESS_BORROW,
-                                  pat.span,
-                                  "this pattern creates a reference to a reference")
+                        span_lint(cx, NEEDLESS_BORROW, pat.span, "this pattern creates a reference to a reference")
                     }
                 }
             }

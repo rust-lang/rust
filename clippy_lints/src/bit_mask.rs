@@ -1,5 +1,5 @@
 use rustc::hir::*;
-use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def::Def;
 use rustc::lint::*;
 use rustc_const_eval::lookup_const_by_id;
 use syntax::ast::LitKind;
@@ -79,8 +79,8 @@ impl LintPass for BitMask {
     }
 }
 
-impl LateLintPass for BitMask {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
@@ -134,7 +134,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value | cmp_value != cmp_value {
                         span_lint(cx,
@@ -144,10 +144,10 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                                            mask_value,
                                            cmp_value));
                     }
-                }
+                },
                 _ => (),
             }
-        }
+        },
         BiLt | BiGe => {
             match bit_op {
                 BiBitAnd => {
@@ -161,7 +161,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value >= cmp_value {
                         span_lint(cx,
@@ -173,11 +173,11 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else {
                         check_ineffective_lt(cx, *span, mask_value, cmp_value, "|");
                     }
-                }
+                },
                 BiBitXor => check_ineffective_lt(cx, *span, mask_value, cmp_value, "^"),
                 _ => (),
             }
-        }
+        },
         BiLe | BiGt => {
             match bit_op {
                 BiBitAnd => {
@@ -191,7 +191,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-                }
+                },
                 BiBitOr => {
                     if mask_value > cmp_value {
                         span_lint(cx,
@@ -203,11 +203,11 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else {
                         check_ineffective_gt(cx, *span, mask_value, cmp_value, "|");
                     }
-                }
+                },
                 BiBitXor => check_ineffective_gt(cx, *span, mask_value, cmp_value, "^"),
                 _ => (),
             }
-        }
+        },
         _ => (),
     }
 }
@@ -244,20 +244,15 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
             } else {
                 None
             }
-        }
-        ExprPath(_, _) => {
-            {
-                // Important to let the borrow expire before the const lookup to avoid double
-                // borrowing.
-                let def_map = cx.tcx.def_map.borrow();
-                match def_map.get(&lit.id) {
-                    Some(&PathResolution { base_def: Def::Const(def_id), .. }) => Some(def_id),
-                    _ => None,
-                }
+        },
+        ExprPath(ref qpath) => {
+            let def = cx.tcx.tables().qpath_def(qpath, lit.id);
+            if let Def::Const(def_id) = def {
+                lookup_const_by_id(cx.tcx, def_id, None).and_then(|(l, _ty)| fetch_int_literal(cx, l))
+            } else {
+                None
             }
-            .and_then(|def_id| lookup_const_by_id(cx.tcx, def_id, None))
-            .and_then(|(l, _ty)| fetch_int_literal(cx, l))
-        }
+        },
         _ => None,
     }
 }

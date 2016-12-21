@@ -38,32 +38,35 @@ impl ClippyCompilerCalls {
 }
 
 impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
-    fn early_callback(&mut self,
-                      matches: &getopts::Matches,
-                      sopts: &config::Options,
-                      cfg: &ast::CrateConfig,
-                      descriptions: &rustc_errors::registry::Registry,
-                      output: ErrorOutputType)
-                      -> Compilation {
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType
+    ) -> Compilation {
         self.default.early_callback(matches, sopts, cfg, descriptions, output)
     }
-    fn no_input(&mut self,
-                matches: &getopts::Matches,
-                sopts: &config::Options,
-                cfg: &ast::CrateConfig,
-                odir: &Option<PathBuf>,
-                ofile: &Option<PathBuf>,
-                descriptions: &rustc_errors::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry
+    ) -> Option<(Input, Option<PathBuf>)> {
         self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
-    fn late_callback(&mut self,
-                     matches: &getopts::Matches,
-                     sess: &Session,
-                     input: &Input,
-                     odir: &Option<PathBuf>,
-                     ofile: &Option<PathBuf>)
-                     -> Compilation {
+    fn late_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sess: &Session,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>
+    ) -> Compilation {
         self.default.late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
@@ -73,7 +76,12 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
             let old = std::mem::replace(&mut control.after_parse.callback, box |_| {});
             control.after_parse.callback = Box::new(move |state| {
                 {
-                    let mut registry = rustc_plugin::registry::Registry::new(state.session, state.krate.as_ref().expect("at this compilation stage the krate must be parsed").span);
+                    let mut registry = rustc_plugin::registry::Registry::new(state.session,
+                                                                             state.krate
+                                                                                 .as_ref()
+                                                                                 .expect("at this compilation stage \
+                                                                                          the krate must be parsed")
+                                                                                 .span);
                     registry.args_hidden = Some(Vec::new());
                     clippy_lints::register_plugins(&mut registry);
 
@@ -153,7 +161,7 @@ pub fn main() {
     if env::var("CLIPPY_DOGFOOD").map(|_| true).unwrap_or(false) {
         panic!("yummy");
     }
-    
+
     // Check for version and help flags even when invoked as 'cargo-clippy'
     if std::env::args().any(|a| a == "--help" || a == "-h") {
         show_help();
@@ -184,14 +192,16 @@ pub fn main() {
 
         let current_dir = std::env::current_dir();
 
-        let package_index = metadata.packages.iter()
+        let package_index = metadata.packages
+            .iter()
             .position(|package| {
                 let package_manifest_path = Path::new(&package.manifest_path);
                 if let Some(ref manifest_path) = manifest_path {
                     package_manifest_path == manifest_path
                 } else {
                     let current_dir = current_dir.as_ref().expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path.parent().expect("could not find parent directory of package manifest");
+                    let package_manifest_directory = package_manifest_path.parent()
+                        .expect("could not find parent directory of package manifest");
                     package_manifest_directory == current_dir
                 }
             })
@@ -205,7 +215,8 @@ pub fn main() {
                         std::process::exit(code);
                     }
                 } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args), &dep_path) {
+                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args),
+                                               &dep_path) {
                         std::process::exit(code);
                     }
                 }
@@ -285,8 +296,10 @@ fn process<P, I>(old_args: I, dep_path: P) -> Result<(), i32>
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC", path)
-        .spawn().expect("could not run cargo")
-        .wait().expect("failed to wait for cargo?");
+        .spawn()
+        .expect("could not run cargo")
+        .wait()
+        .expect("failed to wait for cargo?");
 
     if exit_status.success() {
         Ok(())

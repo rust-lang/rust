@@ -1,9 +1,8 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::hir::def::Def;
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, FnKind};
-use std::ops::Deref;
+use rustc::hir::intravisit::{Visitor, FnKind, NestedVisitorMap};
+use rustc::ty;
 use syntax::codemap::Span;
 use utils::{higher, in_external_macro, snippet, span_lint_and_then};
 
@@ -80,8 +79,16 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, expr: &Expr, _: Span, _: NodeId) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        expr: &'tcx Expr,
+        _: Span,
+        _: NodeId
+    ) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -89,17 +96,17 @@ impl LateLintPass for Pass {
     }
 }
 
-fn check_fn(cx: &LateContext, decl: &FnDecl, expr: &Expr) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
-        if let PatKind::Binding(_, ident, _) = arg.pat.node {
+        if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
             bindings.push((ident.node, ident.span))
         }
     }
     check_expr(cx, expr, &mut bindings);
 }
 
-fn check_block(cx: &LateContext, block: &Block, bindings: &mut Vec<(Name, Span)>) {
+fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {
     let len = bindings.len();
     for stmt in &block.stmts {
         match stmt.node {
@@ -114,7 +121,7 @@ fn check_block(cx: &LateContext, block: &Block, bindings: &mut Vec<(Name, Span)>
     bindings.truncate(len);
 }
 
-fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
+fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) {
         return;
     }
@@ -128,27 +135,33 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
         }
         if let Some(ref o) = *init {
             check_expr(cx, o, bindings);
-            check_pat(cx, pat, &Some(o), span, bindings);
+            check_pat(cx, pat, Some(o), span, bindings);
         } else {
-            check_pat(cx, pat, &None, span, bindings);
+            check_pat(cx, pat, None, span, bindings);
         }
     }
 }
 
-fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
-    match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-        Some(Def::Variant(..)) |
-        Some(Def::Struct(..)) => false,
+fn is_binding(cx: &LateContext, pat_id: NodeId) -> bool {
+    let var_ty = cx.tcx.tables().node_id_to_type(pat_id);
+    match var_ty.sty {
+        ty::TyAdt(..) => false,
         _ => true,
     }
 }
 
-fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bindings: &mut Vec<(Name, Span)>) {
+fn check_pat<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    init: Option<&'tcx Expr>,
+    span: Span,
+    bindings: &mut Vec<(Name, Span)>
+) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatKind::Binding(_, ref ident, ref inner) => {
+        PatKind::Binding(_, _, ref ident, ref inner) => {
             let name = ident.node;
-            if is_binding(cx, pat) {
+            if is_binding(cx, pat.id) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
                     if tup.0 == name {
@@ -165,16 +178,16 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
             if let Some(ref p) = *inner {
                 check_pat(cx, p, init, span, bindings);
             }
-        }
+        },
         PatKind::Struct(_, ref pfields, _) => {
-            if let Some(init_struct) = *init {
+            if let Some(init_struct) = init {
                 if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
                         let name = field.node.name;
                         let efield = efields.iter()
-                                            .find(|f| f.name.node == name)
-                                            .map(|f| &*f.expr);
-                        check_pat(cx, &field.node.pat, &efield, span, bindings);
+                            .find(|f| f.name.node == name)
+                            .map(|f| &*f.expr);
+                        check_pat(cx, &field.node.pat, efield, span, bindings);
                     }
                 } else {
                     for field in pfields {
@@ -183,15 +196,15 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 }
             } else {
                 for field in pfields {
-                    check_pat(cx, &field.node.pat, &None, span, bindings);
+                    check_pat(cx, &field.node.pat, None, span, bindings);
                 }
             }
-        }
+        },
         PatKind::Tuple(ref inner, _) => {
-            if let Some(init_tup) = *init {
+            if let Some(init_tup) = init {
                 if let ExprTup(ref tup) = init_tup.node {
                     for (i, p) in inner.iter().enumerate() {
-                        check_pat(cx, p, &Some(&tup[i]), p.span, bindings);
+                        check_pat(cx, p, Some(&tup[i]), p.span, bindings);
                     }
                 } else {
                     for p in inner {
@@ -200,31 +213,36 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 }
             } else {
                 for p in inner {
-                    check_pat(cx, p, &None, span, bindings);
+                    check_pat(cx, p, None, span, bindings);
                 }
             }
-        }
+        },
         PatKind::Box(ref inner) => {
-            if let Some(initp) = *init {
+            if let Some(initp) = init {
                 if let ExprBox(ref inner_init) = initp.node {
-                    check_pat(cx, inner, &Some(&**inner_init), span, bindings);
+                    check_pat(cx, inner, Some(&**inner_init), span, bindings);
                 } else {
                     check_pat(cx, inner, init, span, bindings);
                 }
             } else {
                 check_pat(cx, inner, init, span, bindings);
             }
-        }
+        },
         PatKind::Ref(ref inner, _) => check_pat(cx, inner, init, span, bindings),
         // PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
         _ => (),
     }
 }
 
-fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, init: &Option<T>, prev_span: Span)
-    where T: Deref<Target = Expr>
-{
-    if let Some(ref expr) = *init {
+fn lint_shadow<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    name: Name,
+    span: Span,
+    pattern_span: Span,
+    init: Option<&'tcx Expr>,
+    prev_span: Span
+) {
+    if let Some(expr) = init {
         if is_self_shadow(name, expr) {
             span_lint_and_then(cx,
                                SHADOW_SAME,
@@ -232,9 +250,10 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
                                &format!("`{}` is shadowed by itself in `{}`",
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
-                               |db| { db.span_note(prev_span, "previous binding is here"); },
-            );
-        } else if contains_self(name, expr) {
+                               |db| {
+                db.span_note(prev_span, "previous binding is here");
+            });
+        } else if contains_self(cx, name, expr) {
             span_lint_and_then(cx,
                                SHADOW_REUSE,
                                pattern_span,
@@ -242,9 +261,9 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| {
-                                   db.span_note(expr.span, "initialization happens here");
-                                   db.span_note(prev_span, "previous binding is here");
-                               });
+                db.span_note(expr.span, "initialization happens here");
+                db.span_note(prev_span, "previous binding is here");
+            });
         } else {
             span_lint_and_then(cx,
                                SHADOW_UNRELATED,
@@ -253,9 +272,9 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| {
-                                   db.span_note(expr.span, "initialization happens here");
-                                   db.span_note(prev_span, "previous binding is here");
-                               });
+                db.span_note(expr.span, "initialization happens here");
+                db.span_note(prev_span, "previous binding is here");
+            });
         }
 
     } else {
@@ -263,11 +282,13 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
                            SHADOW_UNRELATED,
                            span,
                            &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
-                           |db| { db.span_note(prev_span, "previous binding is here"); });
+                           |db| {
+            db.span_note(prev_span, "previous binding is here");
+        });
     }
 }
 
-fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
+fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, expr.span) {
         return;
     }
@@ -285,24 +306,24 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
             for e in v {
                 check_expr(cx, e, bindings)
             }
-        }
+        },
         ExprIf(ref cond, ref then, ref otherwise) => {
             check_expr(cx, cond, bindings);
             check_block(cx, then, bindings);
             if let Some(ref o) = *otherwise {
                 check_expr(cx, o, bindings);
             }
-        }
+        },
         ExprWhile(ref cond, ref block, _) => {
             check_expr(cx, cond, bindings);
             check_block(cx, block, bindings);
-        }
+        },
         ExprMatch(ref init, ref arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();
             for arm in arms {
                 for pat in &arm.pats {
-                    check_pat(cx, pat, &Some(&**init), pat.span, bindings);
+                    check_pat(cx, pat, Some(&**init), pat.span, bindings);
                     // This is ugly, but needed to get the right type
                     if let Some(ref guard) = arm.guard {
                         check_expr(cx, guard, bindings);
@@ -311,26 +332,26 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
                     bindings.truncate(len);
                 }
             }
-        }
+        },
         _ => (),
     }
 }
 
-fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
+fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
         TyObjectSum(ref sty, _) |
         TySlice(ref sty) => check_ty(cx, sty, bindings),
         TyArray(ref fty, ref expr) => {
             check_ty(cx, fty, bindings);
             check_expr(cx, expr, bindings);
-        }
+        },
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
         TyTup(ref tup) => {
             for t in tup {
                 check_ty(cx, t, bindings)
             }
-        }
+        },
         TyTypeof(ref expr) => check_expr(cx, expr, bindings),
         _ => (),
     }
@@ -342,9 +363,9 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
         ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
-        }
+        },
         ExprUnary(op, ref inner) => (UnDeref == op) && is_self_shadow(name, inner),
-        ExprPath(_, ref path) => path_eq_name(name, path),
+        ExprPath(QPath::Resolved(_, ref path)) => path_eq_name(name, path),
         _ => false,
     }
 }
@@ -353,23 +374,28 @@ fn path_eq_name(name: Name, path: &Path) -> bool {
     !path.global && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
 }
 
-struct ContainsSelf {
+struct ContainsSelf<'a, 'tcx: 'a> {
     name: Name,
     result: bool,
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'v> Visitor<'v> for ContainsSelf {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for ContainsSelf<'a, 'tcx> {
     fn visit_name(&mut self, _: Span, name: Name) {
         if self.name == name {
             self.result = true;
         }
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
+    }
 }
 
-fn contains_self(name: Name, expr: &Expr) -> bool {
+fn contains_self<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, expr: &'tcx Expr) -> bool {
     let mut cs = ContainsSelf {
         name: name,
         result: false,
+        cx: cx,
     };
     cs.visit_expr(expr);
     cs.result

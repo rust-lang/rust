@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.104 — 2016-12-15
+* Update to *rustc 1.15.0-nightly (8f02c429a 2016-12-15)*
+
 ## 0.0.103 — 2016-11-25
 * Update to *rustc 1.15.0-nightly (d5814b03e 2016-11-23)*
 
@@ -260,6 +263,7 @@ All notable changes to this project will be documented in this file.
 [`crosspointer_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute
 [`cyclomatic_complexity`]: https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity
 [`deprecated_semver`]: https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver
+[`deref_addrof`]: https://github.com/Manishearth/rust-clippy/wiki#deref_addrof
 [`derive_hash_xor_eq`]: https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq
 [`diverging_sub_expression`]: https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression
 [`doc_markdown`]: https://github.com/Manishearth/rust-clippy/wiki#doc_markdown
@@ -353,6 +357,7 @@ All notable changes to this project will be documented in this file.
 [`print_stdout`]: https://github.com/Manishearth/rust-clippy/wiki#print_stdout
 [`print_with_newline`]: https://github.com/Manishearth/rust-clippy/wiki#print_with_newline
 [`ptr_arg`]: https://github.com/Manishearth/rust-clippy/wiki#ptr_arg
+[`pub_enum_variant_names`]: https://github.com/Manishearth/rust-clippy/wiki#pub_enum_variant_names
 [`range_step_by_zero`]: https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero
 [`range_zip_with_len`]: https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len
 [`redundant_closure`]: https://github.com/Manishearth/rust-clippy/wiki#redundant_closure

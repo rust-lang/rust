@@ -89,8 +89,16 @@ impl LintPass for NewWithoutDefault {
     }
 }
 
-impl LateLintPass for NewWithoutDefault {
-    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, _: &hir::Expr, span: Span, id: ast::NodeId) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        _: &'tcx hir::Expr,
+        span: Span,
+        id: ast::NodeId
+    ) {
         if in_external_macro(cx, span) {
             return;
         }
@@ -153,7 +161,7 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
                 }
             }
             true
-        }
+        },
         _ => false,
     }
 }

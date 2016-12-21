@@ -49,7 +49,7 @@ impl EarlyLintPass for Precedence {
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
                                        snippet(cx, right.span, "..")));
-                }
+                },
                 (true, false) => {
                     span_lint(cx,
                               PRECEDENCE,
@@ -59,7 +59,7 @@ impl EarlyLintPass for Precedence {
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
                                        snippet(cx, right.span, "..")));
-                }
+                },
                 (false, true) => {
                     span_lint(cx,
                               PRECEDENCE,
@@ -69,7 +69,7 @@ impl EarlyLintPass for Precedence {
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
                                        snippet(cx, right.span, "..")));
-                }
+                },
                 _ => (),
             }
         }
@@ -88,7 +88,7 @@ impl EarlyLintPass for Precedence {
                                           &format!("unary minus has lower precedence than method call. Consider \
                                                     adding parentheses to clarify your intent: -({})",
                                                    snippet(cx, rhs.span, "..")));
-                            }
+                            },
                             _ => (),
                         }
                     }

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet};
+use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet, last_path_segment};
 use utils::sugg;
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -84,29 +84,29 @@ impl LintPass for Transmute {
     }
 }
 
-impl LateLintPass for Transmute {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprCall(ref path_expr, ref args) = e.node {
-            if let ExprPath(None, ref path) = path_expr.node {
-                let def_id = cx.tcx.expect_def(path_expr.id).def_id();
+            if let ExprPath(ref qpath) = path_expr.node {
+                let def_id = cx.tcx.tables().qpath_def(qpath, path_expr.id).def_id();
 
                 if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tcx.tables().expr_ty(&args[0]);
                     let to_ty = cx.tcx.tables().expr_ty(e);
 
                     match (&from_ty.sty, &to_ty.sty) {
-                        _ if from_ty == to_ty => span_lint(
-                            cx,
-                            USELESS_TRANSMUTE,
-                            e.span,
-                            &format!("transmute from a type (`{}`) to itself", from_ty),
-                        ),
-                        (&TyRef(_, rty), &TyRawPtr(ptr_ty)) => span_lint_and_then(
-                            cx,
-                            USELESS_TRANSMUTE,
-                            e.span,
-                            "transmute from a reference to a pointer",
-                            |db| {
+                        _ if from_ty == to_ty => {
+                            span_lint(cx,
+                                      USELESS_TRANSMUTE,
+                                      e.span,
+                                      &format!("transmute from a type (`{}`) to itself", from_ty))
+                        },
+                        (&TyRef(_, rty), &TyRawPtr(ptr_ty)) => {
+                            span_lint_and_then(cx,
+                                               USELESS_TRANSMUTE,
+                                               e.span,
+                                               "transmute from a reference to a pointer",
+                                               |db| {
                                 if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     let sugg = if ptr_ty == rty {
                                         arg.as_ty(to_ty)
@@ -116,53 +116,54 @@ impl LateLintPass for Transmute {
 
                                     db.span_suggestion(e.span, "try", sugg.to_string());
                                 }
-                            },
-                        ),
+                            })
+                        },
                         (&ty::TyInt(_), &TyRawPtr(_)) |
-                        (&ty::TyUint(_), &TyRawPtr(_)) => span_lint_and_then(
-                            cx,
-                            USELESS_TRANSMUTE,
-                            e.span,
-                            "transmute from an integer to a pointer",
-                            |db| {
+                        (&ty::TyUint(_), &TyRawPtr(_)) => {
+                            span_lint_and_then(cx,
+                                               USELESS_TRANSMUTE,
+                                               e.span,
+                                               "transmute from an integer to a pointer",
+                                               |db| {
                                 if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     db.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()).to_string());
                                 }
-                            },
-                        ),
+                            })
+                        },
                         (&ty::TyFloat(_), &TyRef(..)) |
                         (&ty::TyFloat(_), &TyRawPtr(_)) |
                         (&ty::TyChar, &TyRef(..)) |
-                        (&ty::TyChar, &TyRawPtr(_)) => span_lint(
-                            cx,
-                            WRONG_TRANSMUTE,
-                            e.span,
-                            &format!("transmute from a `{}` to a pointer", from_ty),
-                        ),
-                        (&TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
-                            cx,
-                            CROSSPOINTER_TRANSMUTE,
-                            e.span,
-                            &format!("transmute from a type (`{}`) to the type that it points to (`{}`)",
-                                     from_ty,
-                                     to_ty),
-                        ),
-                        (_, &TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
-                            cx,
-                            CROSSPOINTER_TRANSMUTE,
-                            e.span,
-                            &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)",
-                                     from_ty,
-                                     to_ty),
-                        ),
-                        (&TyRawPtr(from_pty), &TyRef(_, to_rty)) => span_lint_and_then(
-                            cx,
-                            TRANSMUTE_PTR_TO_REF,
-                            e.span,
-                            &format!("transmute from a pointer type (`{}`) to a reference type (`{}`)",
-                                    from_ty,
-                                    to_ty),
-                            |db| {
+                        (&ty::TyChar, &TyRawPtr(_)) => {
+                            span_lint(cx,
+                                      WRONG_TRANSMUTE,
+                                      e.span,
+                                      &format!("transmute from a `{}` to a pointer", from_ty))
+                        },
+                        (&TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => {
+                            span_lint(cx,
+                                      CROSSPOINTER_TRANSMUTE,
+                                      e.span,
+                                      &format!("transmute from a type (`{}`) to the type that it points to (`{}`)",
+                                               from_ty,
+                                               to_ty))
+                        },
+                        (_, &TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => {
+                            span_lint(cx,
+                                      CROSSPOINTER_TRANSMUTE,
+                                      e.span,
+                                      &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)",
+                                               from_ty,
+                                               to_ty))
+                        },
+                        (&TyRawPtr(from_pty), &TyRef(_, to_rty)) => {
+                            span_lint_and_then(cx,
+                                               TRANSMUTE_PTR_TO_REF,
+                                               e.span,
+                                               &format!("transmute from a pointer type (`{}`) to a reference type \
+                                                         (`{}`)",
+                                                        from_ty,
+                                                        to_ty),
+                                               |db| {
                                 let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                 let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
                                     ("&mut *", "*mut")
@@ -173,12 +174,12 @@ impl LateLintPass for Transmute {
                                 let arg = if from_pty.ty == to_rty.ty {
                                     arg
                                 } else {
-                                    arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, path, to_rty.ty)))
+                                    arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_rty.ty)))
                                 };
 
                                 db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
-                            },
-                        ),
+                            })
+                        },
                         _ => return,
                     };
                 }
@@ -190,9 +191,9 @@ impl LateLintPass for Transmute {
 /// Get the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is not available , use
 /// the type's `ToString` implementation. In weird cases it could lead to types with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext, path: &Path, to_rty: ty::Ty) -> String {
+fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: ty::Ty) -> String {
+    let seg = last_path_segment(path);
     if_let_chain!{[
-        let Some(seg) = path.segments.last(),
         let PathParameters::AngleBracketedParameters(ref ang) = seg.parameters,
         let Some(to_ty) = ang.types.get(1),
         let TyRptr(_, ref to_ty) = to_ty.node,

@@ -79,8 +79,8 @@ impl LintPass for StringAdd {
     }
 }
 
-impl LateLintPass for StringAdd {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
@@ -122,7 +122,7 @@ fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
         ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
-        }
+        },
         _ => false,
     }
 }
@@ -136,8 +136,8 @@ impl LintPass for StringLitAsBytes {
     }
 }
 
-impl LateLintPass for StringLitAsBytes {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use std::ascii::AsciiExt;
         use syntax::ast::LitKind;
         use utils::{snippet, in_macro};
@@ -152,11 +152,9 @@ impl LateLintPass for StringLitAsBytes {
                                                e.span,
                                                "calling `as_bytes()` on a string literal",
                                                |db| {
-                                                   let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
-                                                   db.span_suggestion(e.span,
-                                                                      "consider using a byte string literal instead",
-                                                                      sugg);
-                                               });
+                                let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
+                                db.span_suggestion(e.span, "consider using a byte string literal instead", sugg);
+                            });
 
                         }
                     }

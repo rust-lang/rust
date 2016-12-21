@@ -1,5 +1,8 @@
 max_width = 120
 ideal_width = 100
-fn_args_density = "Compressed"
 fn_call_width = 80
-fn_args_paren_newline = false
+match_block_trailing_comma = true
+fn_args_layout = "Block"
+closure_block_indent_threshold = 0
+fn_return_indent = "WithWhereClause"
+wrap_comments = true

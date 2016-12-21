@@ -9,6 +9,7 @@
 #![feature(repeat_str)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
+#![allow(needless_lifetimes)]
 
 #[macro_use]
 extern crate syntax;
@@ -115,6 +116,7 @@ pub mod precedence;
 pub mod print;
 pub mod ptr;
 pub mod ranges;
+pub mod reference;
 pub mod regex;
 pub mod returns;
 pub mod serde;
@@ -171,10 +173,22 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     };
 
     let mut store = reg.sess.lint_store.borrow_mut();
-    store.register_removed("unstable_as_slice", "`Vec::as_slice` has been stabilized in 1.7");
-    store.register_removed("unstable_as_mut_slice", "`Vec::as_mut_slice` has been stabilized in 1.7");
-    store.register_removed("str_to_string", "using `str::to_string` is common even today and specialization will likely happen soon");
-    store.register_removed("string_to_string", "using `string::to_string` is common even today and specialization will likely happen soon");
+    store.register_removed(
+        "unstable_as_slice",
+        "`Vec::as_slice` has been stabilized in 1.7",
+    );
+    store.register_removed(
+        "unstable_as_mut_slice",
+        "`Vec::as_mut_slice` has been stabilized in 1.7",
+    );
+    store.register_removed(
+        "str_to_string",
+        "using `str::to_string` is common even today and specialization will likely happen soon",
+    );
+    store.register_removed(
+        "string_to_string",
+        "using `string::to_string` is common even today and specialization will likely happen soon",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde::Serde);
@@ -227,7 +241,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
-    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
+    reg.register_late_lint_pass(
+        box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold)
+    );
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
@@ -256,7 +272,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
-    reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
+    reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
     reg.register_late_lint_pass(box assign_ops::AssignOps);
@@ -266,6 +282,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
+    reg.register_early_lint_pass(box reference::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -277,6 +294,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_lint_group("clippy_pedantic", vec![
         booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
+        enum_variants::PUB_ENUM_VARIANT_NAMES,
         enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
@@ -431,6 +449,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ptr::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
+        reference::DEREF_ADDROF,
         regex::INVALID_REGEX,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,

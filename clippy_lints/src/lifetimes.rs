@@ -2,10 +2,10 @@ use reexport::*;
 use rustc::lint::*;
 use rustc::hir::def::Def;
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
+use rustc::hir::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics, NestedVisitorMap};
 use std::collections::{HashSet, HashMap};
 use syntax::codemap::Span;
-use utils::{in_external_macro, span_lint};
+use utils::{in_external_macro, span_lint, last_path_segment};
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
 /// relying on lifetime elision.
@@ -56,20 +56,20 @@ impl LintPass for LifetimePass {
     }
 }
 
-impl LateLintPass for LifetimePass {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
             check_fn_inner(cx, decl, generics, item.span);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
@@ -87,25 +87,25 @@ enum RefLt {
 fn bound_lifetimes(bound: &TyParamBound) -> HirVec<&Lifetime> {
     if let TraitTyParamBound(ref trait_ref, _) = *bound {
         trait_ref.trait_ref
-                 .path
-                 .segments
-                 .last()
-                 .expect("a path must have at least one segment")
-                 .parameters
-                 .lifetimes()
+            .path
+            .segments
+            .last()
+            .expect("a path must have at least one segment")
+            .parameters
+            .lifetimes()
     } else {
         HirVec::new()
     }
 }
 
-fn check_fn_inner(cx: &LateContext, decl: &FnDecl, generics: &Generics, span: Span) {
+fn check_fn_inner<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, generics: &'tcx Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 
     let bounds_lts = generics.ty_params
-                             .iter()
-                             .flat_map(|typ| typ.bounds.iter().flat_map(bound_lifetimes));
+        .iter()
+        .flat_map(|typ| typ.bounds.iter().flat_map(bound_lifetimes));
 
     if could_use_elision(cx, decl, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
@@ -116,9 +116,12 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, generics: &Generics, span: Sp
     report_extra_lifetimes(cx, decl, generics);
 }
 
-fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, func: &FnDecl,
-                                                           named_lts: &[LifetimeDef], bounds_lts: T)
-                                                           -> bool {
+fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
+    cx: &LateContext<'a, 'tcx>,
+    func: &'tcx FnDecl,
+    named_lts: &'tcx [LifetimeDef],
+    bounds_lts: T
+) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
@@ -210,8 +213,8 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
 }
 
 /// A visitor usable for `rustc_front::visit::walk_ty()`.
-struct RefVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>,
+struct RefVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
     lts: Vec<RefLt>,
 }
 
@@ -239,56 +242,57 @@ impl<'v, 't> RefVisitor<'v, 't> {
         self.lts
     }
 
-    fn collect_anonymous_lifetimes(&mut self, path: &Path, ty: &Ty) {
-        let last_path_segment = path.segments.last().map(|s| &s.parameters);
-        if let Some(&AngleBracketedParameters(ref params)) = last_path_segment {
+    fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
+        let last_path_segment = &last_path_segment(qpath).parameters;
+        if let AngleBracketedParameters(ref params) = *last_path_segment {
             if params.lifetimes.is_empty() {
-                if let Some(def) = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def()) {
-                    match def {
-                        Def::TyAlias(def_id) |
-                        Def::Struct(def_id) => {
-                            let generics = self.cx.tcx.item_generics(def_id);
-                            for _ in generics.regions.as_slice() {
-                                self.record(&None);
-                            }
+                match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
+                    Def::TyAlias(def_id) |
+                    Def::Struct(def_id) => {
+                        let generics = self.cx.tcx.item_generics(def_id);
+                        for _ in generics.regions.as_slice() {
+                            self.record(&None);
                         }
-                        Def::Trait(def_id) => {
-                            let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
-                            for _ in &trait_def.generics.regions {
-                                self.record(&None);
-                            }
+                    },
+                    Def::Trait(def_id) => {
+                        let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
+                        for _ in &self.cx.tcx.item_generics(trait_def.def_id).regions {
+                            self.record(&None);
                         }
-                        _ => (),
-                    }
+                    },
+                    _ => (),
                 }
             }
         }
     }
 }
 
-impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
+impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.record(&Some(*lifetime));
     }
 
-    fn visit_ty(&mut self, ty: &'v Ty) {
+    fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.node {
             TyRptr(None, _) => {
                 self.record(&None);
-            }
-            TyPath(_, ref path) => {
+            },
+            TyPath(ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
-            }
+            },
             _ => (),
         }
         walk_ty(self, ty);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
     }
 }
 
 /// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
 /// reason about elision.
-fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
+fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &'tcx WhereClause) -> bool {
     for predicate in &where_clause.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
@@ -312,47 +316,52 @@ fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
                         return true;
                     }
                 }
-            }
+            },
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
                 walk_ty(&mut visitor, &pred.ty);
                 if !visitor.lts.is_empty() {
                     return true;
                 }
-            }
+            },
         }
     }
     false
 }
 
-struct LifetimeChecker(HashMap<Name, Span>);
+struct LifetimeChecker {
+    map: HashMap<Name, Span>,
+}
 
-impl<'v> Visitor<'v> for LifetimeChecker {
+impl<'tcx> Visitor<'tcx> for LifetimeChecker {
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
-        self.0.remove(&lifetime.name);
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+        self.map.remove(&lifetime.name);
     }
 
-    fn visit_lifetime_def(&mut self, _: &'v LifetimeDef) {
+    fn visit_lifetime_def(&mut self, _: &'tcx LifetimeDef) {
         // don't actually visit `<'a>` or `<'a: 'b>`
         // we've already visited the `'a` declarations and
         // don't want to spuriously remove them
         // `'b` in `'a: 'b` is useless unless used elsewhere in
         // a non-lifetime bound
     }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 }
 
-fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics) {
+fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
     let hs = generics.lifetimes
-                     .iter()
-                     .map(|lt| (lt.lifetime.name, lt.lifetime.span))
-                     .collect();
-    let mut checker = LifetimeChecker(hs);
+        .iter()
+        .map(|lt| (lt.lifetime.name, lt.lifetime.span))
+        .collect();
+    let mut checker = LifetimeChecker { map: hs };
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
 
-    for &v in checker.0.values() {
+    for &v in checker.map.values() {
         span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
     }
 }

@@ -50,8 +50,8 @@ impl LintPass for Swap {
     }
 }
 
-impl LateLintPass for Swap {
-    fn check_block(&mut self, cx: &LateContext, block: &Block) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
+    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
     }
@@ -65,7 +65,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             let StmtDecl(ref tmp, _) = w[0].node,
             let DeclLocal(ref tmp) = tmp.node,
             let Some(ref tmp_init) = tmp.init,
-            let PatKind::Binding(_, ref tmp_name, None) = tmp.pat.node,
+            let PatKind::Binding(_, _, ref tmp_name, None) = tmp.pat.node,
 
             // foo() = bar();
             let StmtSemi(ref first, _) = w[1].node,
@@ -74,14 +74,18 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             // bar() = t;
             let StmtSemi(ref second, _) = w[2].node,
             let ExprAssign(ref lhs2, ref rhs2) = second.node,
-            let ExprPath(None, ref rhs2) = rhs2.node,
+            let ExprPath(QPath::Resolved(None, ref rhs2)) = rhs2.node,
             rhs2.segments.len() == 1,
 
             tmp_name.node.as_str() == rhs2.segments[0].name.as_str(),
             SpanlessEq::new(cx).ignore_fn().eq_expr(tmp_init, lhs1),
             SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2)
         ], {
-            fn check_for_slice<'a>(cx: &LateContext, lhs1: &'a Expr, lhs2: &'a Expr) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
+            fn check_for_slice<'a>(
+                cx: &LateContext,
+                lhs1: &'a Expr,
+                lhs2: &'a Expr,
+            ) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
                 if let ExprIndex(ref lhs1, ref idx1) = lhs1.node {
                     if let ExprIndex(ref lhs2, ref idx2) = lhs2.node {
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
@@ -104,7 +108,10 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 if let Some(slice) = Sugg::hir_opt(cx, slice) {
                     (false,
                      format!(" elements of `{}`", slice),
-                     format!("{}.swap({}, {})", slice.maybe_par(), snippet(cx, idx1.span, ".."), snippet(cx, idx2.span, "..")))
+                     format!("{}.swap({}, {})",
+                             slice.maybe_par(),
+                             snippet(cx, idx1.span, ".."),
+                             snippet(cx, idx2.span, "..")))
                 } else {
                     (false, "".to_owned(), "".to_owned())
                 }
@@ -148,7 +155,9 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
             SpanlessEq::new(cx).ignore_fn().eq_expr(lhs0, rhs1),
             SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, rhs0)
         ], {
-            let (what, lhs, rhs) = if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs0), Sugg::hir_opt(cx, rhs0)) {
+            let lhs0 = Sugg::hir_opt(cx, lhs0);
+            let rhs0 = Sugg::hir_opt(cx, rhs0);
+            let (what, lhs, rhs) = if let (Some(first), Some(second)) = (lhs0, rhs0) {
                 (format!(" `{}` and `{}`", first, second), first.mut_addr().to_string(), second.mut_addr().to_string())
             } else {
                 ("".to_owned(), "".to_owned(), "".to_owned())

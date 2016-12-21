@@ -54,14 +54,14 @@ impl LintPass for PointerPass {
     }
 }
 
-impl LateLintPass for PointerPass {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(ref decl, _, _, _, _, _) = item.node {
             check_fn(cx, decl, item.id);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
             if let Some(NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
@@ -72,13 +72,13 @@ impl LateLintPass for PointerPass {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn(cx, &sig.decl, item.id);
         }
     }
-    
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref op, ref l, ref r) = expr.node {
             if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(cx,
@@ -94,7 +94,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     let fn_def_id = cx.tcx.map.local_def_id(fn_id);
     let fn_ty = cx.tcx.item_type(fn_def_id).fn_sig().skip_binder();
 
-    for (arg, ty) in decl.inputs.iter().zip(&fn_ty.inputs) {
+    for (arg, ty) in decl.inputs.iter().zip(fn_ty.inputs()) {
         if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
             if match_type(cx, ty, &paths::VEC) {
                 span_lint(cx,
@@ -116,8 +116,8 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
 fn is_null_path(expr: &Expr) -> bool {
     if let ExprCall(ref pathexp, ref args) = expr.node {
         if args.is_empty() {
-            if let ExprPath(_, ref path) = pathexp.node {
-                return match_path(path, &paths::PTR_NULL) || match_path(path, &paths::PTR_NULL_MUT)
+            if let ExprPath(ref path) = pathexp.node {
+                return match_path(path, &paths::PTR_NULL) || match_path(path, &paths::PTR_NULL_MUT);
             }
         }
     }

@@ -32,8 +32,8 @@ impl LintPass for EqOp {
     }
 }
 
-impl LateLintPass for EqOp {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
             if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
                 span_lint(cx,
@@ -48,19 +48,7 @@ impl LateLintPass for EqOp {
 
 fn is_valid_operator(op: &BinOp) -> bool {
     match op.node {
-        BiSub |
-        BiDiv |
-        BiEq |
-        BiLt |
-        BiLe |
-        BiGt |
-        BiGe |
-        BiNe |
-        BiAnd |
-        BiOr |
-        BiBitXor |
-        BiBitAnd |
-        BiBitOr => true,
+        BiSub | BiDiv | BiEq | BiLt | BiLe | BiGt | BiGe | BiNe | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr => true,
         _ => false,
     }
 }

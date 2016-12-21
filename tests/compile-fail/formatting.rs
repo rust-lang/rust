@@ -5,6 +5,7 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(if_same_then_else)]
+#![allow(deref_addrof)]
 
 fn foo() -> bool { true }
 

@@ -36,9 +36,9 @@ impl LintPass for UnportableVariant {
     }
 }
 
-impl LateLintPass for UnportableVariant {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
     #[allow(cast_possible_truncation, cast_sign_loss)]
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemEnum(ref def, _) = item.node {
             for var in &def.variants {
                 let variant = &var.node;

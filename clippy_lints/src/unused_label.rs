@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
-use rustc::hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
+use rustc::hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, NestedVisitorMap};
 use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -29,15 +29,9 @@ declare_lint! {
 
 pub struct UnusedLabel;
 
-#[derive(Default)]
-struct UnusedLabelVisitor {
+struct UnusedLabelVisitor<'a, 'tcx: 'a> {
     labels: HashMap<InternedString, Span>,
-}
-
-impl UnusedLabelVisitor {
-    pub fn new() -> UnusedLabelVisitor {
-        ::std::default::Default::default()
-    }
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
 impl LintPass for UnusedLabel {
@@ -46,14 +40,25 @@ impl LintPass for UnusedLabel {
     }
 }
 
-impl LateLintPass for UnusedLabel {
-    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, body: &hir::Expr, span: Span, fn_id: ast::NodeId) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        body: &'tcx hir::Expr,
+        span: Span,
+        fn_id: ast::NodeId
+    ) {
         if in_macro(cx, span) {
             return;
         }
 
-        let mut v = UnusedLabelVisitor::new();
-        walk_fn(&mut v, kind, decl, body, span, fn_id);
+        let mut v = UnusedLabelVisitor {
+            cx: cx,
+            labels: HashMap::new(),
+        };
+        walk_fn(&mut v, kind, decl, body.expr_id(), span, fn_id);
 
         for (label, span) in v.labels {
             span_lint(cx, UNUSED_LABEL, span, &format!("unused label `{}`", label));
@@ -61,20 +66,23 @@ impl LateLintPass for UnusedLabel {
     }
 }
 
-impl<'v> Visitor<'v> for UnusedLabelVisitor {
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprBreak(Some(label), _) |
             hir::ExprAgain(Some(label)) => {
-                self.labels.remove(&label.node.as_str());
-            }
+                self.labels.remove(&label.name.as_str());
+            },
             hir::ExprLoop(_, Some(label), _) |
             hir::ExprWhile(_, _, Some(label)) => {
                 self.labels.insert(label.node.as_str(), expr.span);
-            }
+            },
             _ => (),
         }
 
         walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }

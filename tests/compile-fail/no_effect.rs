@@ -4,6 +4,7 @@
 #![deny(no_effect, unnecessary_operation)]
 #![allow(dead_code)]
 #![allow(path_statements)]
+#![allow(deref_addrof)]
 #![feature(untagged_unions)]
 
 struct Unit;

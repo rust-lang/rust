@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
+use syntax::ast;
 use utils::{span_lint_and_then, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
 use utils::{higher, sugg};
 
@@ -66,8 +67,8 @@ impl LintPass for AssignOps {
     }
 }
 
-impl LateLintPass for AssignOps {
-    fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
@@ -94,13 +95,13 @@ impl LateLintPass for AssignOps {
                                                expr.span,
                                                "variable appears on both sides of an assignment operation",
                                                |db| {
-                                                   if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
-                                                                                          snippet_opt(cx, rhs.span)) {
-                                                       db.span_suggestion(expr.span,
-                                                                          "replace it with",
-                                                                          format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                                   }
-                                               });
+                                if let (Some(snip_a), Some(snip_r)) =
+                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
+                                    db.span_suggestion(expr.span,
+                                                       "replace it with",
+                                                       format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                }
+                            });
                         };
                         // lhs op= l op r
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
@@ -112,7 +113,7 @@ impl LateLintPass for AssignOps {
                         }
                     }
                 }
-            }
+            },
             hir::ExprAssign(ref assignee, ref e) => {
                 if let hir::ExprBinary(op, ref l, ref r) = e.node {
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
@@ -125,7 +126,11 @@ impl LateLintPass for AssignOps {
                             return; // implements_trait does not work with generics
                         }
                         macro_rules! ops {
-                            ($op:expr, $cx:expr, $ty:expr, $rty:expr, $($trait_name:ident:$full_trait_name:ident),+) => {
+                            ($op:expr,
+                             $cx:expr,
+                             $ty:expr,
+                             $rty:expr,
+                             $($trait_name:ident:$full_trait_name:ident),+) => {
                                 match $op {
                                     $(hir::$full_trait_name => {
                                         let [krate, module] = ::utils::paths::OPS_MODULE;
@@ -135,6 +140,16 @@ impl LateLintPass for AssignOps {
                                         } else {
                                             return; // useless if the trait doesn't exist
                                         };
+                                        // check that we are not inside an `impl AssignOp` of this exact operation
+                                        let parent_fn = cx.tcx.map.get_parent(e.id);
+                                        let parent_impl = cx.tcx.map.get_parent(parent_fn);
+                                        // the crate node is the only one that is not in the map
+                                        if_let_chain!{[
+                                            parent_impl != ast::CRATE_NODE_ID,
+                                            let hir::map::Node::NodeItem(item) = cx.tcx.map.get(parent_impl),
+                                            let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node,
+                                            trait_ref.path.def.def_id() == trait_id
+                                        ], { return; }}
                                         implements_trait($cx, $ty, trait_id, vec![$rty])
                                     },)*
                                     _ => false,
@@ -162,13 +177,13 @@ impl LateLintPass for AssignOps {
                                                expr.span,
                                                "manual implementation of an assign operation",
                                                |db| {
-                                                   if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
-                                                                                          snippet_opt(cx, rhs.span)) {
-                                                       db.span_suggestion(expr.span,
-                                                                          "replace it with",
-                                                                          format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                                   }
-                                               });
+                                if let (Some(snip_a), Some(snip_r)) =
+                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
+                                    db.span_suggestion(expr.span,
+                                                       "replace it with",
+                                                       format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                }
+                            });
                         }
                     };
                     // a = a op b
@@ -181,13 +196,13 @@ impl LateLintPass for AssignOps {
                             hir::BiAdd | hir::BiMul | hir::BiAnd | hir::BiOr | hir::BiBitXor | hir::BiBitAnd |
                             hir::BiBitOr => {
                                 lint(assignee, l);
-                            }
-                            _ => {}
+                            },
+                            _ => {},
                         }
                     }
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }
@@ -195,23 +210,7 @@ impl LateLintPass for AssignOps {
 fn is_commutative(op: hir::BinOp_) -> bool {
     use rustc::hir::BinOp_::*;
     match op {
-        BiAdd |
-        BiMul |
-        BiAnd |
-        BiOr |
-        BiBitXor |
-        BiBitAnd |
-        BiBitOr |
-        BiEq |
-        BiNe => true,
-        BiSub |
-        BiDiv |
-        BiRem |
-        BiShl |
-        BiShr |
-        BiLt |
-        BiLe |
-        BiGe |
-        BiGt => false,
+        BiAdd | BiMul | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr | BiEq | BiNe => true,
+        BiSub | BiDiv | BiRem | BiShl | BiShr | BiLt | BiLe | BiGe | BiGt => false,
     }
 }

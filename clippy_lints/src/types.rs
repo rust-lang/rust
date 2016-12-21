@@ -1,13 +1,13 @@
 use reexport::*;
 use rustc::hir::*;
-use rustc::hir::intravisit::{FnKind, Visitor, walk_ty};
+use rustc::hir::intravisit::{FnKind, Visitor, walk_ty, NestedVisitorMap};
 use rustc::lint::*;
 use rustc::ty;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
-use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet,
-            span_help_and_lint, span_lint};
+use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
+            opt_def_id, last_path_segment};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -69,38 +69,107 @@ impl LintPass for TypePass {
     }
 }
 
-impl LateLintPass for TypePass {
-    fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
-        if in_macro(cx, ast_ty.span) {
-            return;
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, id: NodeId) {
+        // skip trait implementations, see #605
+        if let Some(map::NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent(id)) {
+            if let ItemImpl(_, _, _, Some(..), _, _) = item.node {
+                return;
+            }
         }
-        if let Some(did) = cx.tcx.def_map.borrow().get(&ast_ty.id) {
-            if let def::Def::Struct(..) = did.full_def() {
-                if Some(did.full_def().def_id()) == cx.tcx.lang_items.owned_box() {
+
+        check_fn_decl(cx, decl);
+    }
+
+    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
+        check_ty(cx, &field.ty);
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+        match item.node {
+            ConstTraitItem(ref ty, _) |
+            TypeTraitItem(_, Some(ref ty)) => check_ty(cx, ty),
+            MethodTraitItem(ref sig, _) => check_fn_decl(cx, &sig.decl),
+            _ => (),
+        }
+    }
+}
+
+fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
+    for input in &decl.inputs {
+        check_ty(cx, &input.ty);
+    }
+
+    if let FunctionRetTy::Return(ref ty) = decl.output {
+        check_ty(cx, ty);
+    }
+}
+
+fn check_ty(cx: &LateContext, ast_ty: &Ty) {
+    if in_macro(cx, ast_ty.span) {
+        return;
+    }
+    match ast_ty.node {
+        TyPath(ref qpath) => {
+            let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
+            if let Some(def_id) = opt_def_id(def) {
+                if Some(def_id) == cx.tcx.lang_items.owned_box() {
+                    let last = last_path_segment(qpath);
                     if_let_chain! {[
-                        let TyPath(_, ref path) = ast_ty.node,
-                        let Some(ref last) = path.segments.last(),
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
                         let Some(ref vec) = ag.types.get(0),
-                        let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
-                        let def::Def::Struct(..) = did.full_def(),
-                        match_def_path(cx, did.full_def().def_id(), &paths::VEC),
+                        let TyPath(ref qpath) = vec.node,
+                        let def::Def::Struct(..) = cx.tcx.tables().qpath_def(qpath, vec.id),
+                        let Some(did) = opt_def_id(cx.tcx.tables().qpath_def(qpath, vec.id)),
+                        match_def_path(cx, did, &paths::VEC),
                     ], {
                         span_help_and_lint(cx,
                                            BOX_VEC,
                                            ast_ty.span,
                                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                        return; // don't recurse into the type
                     }}
-                } else if match_def_path(cx, did.full_def().def_id(), &paths::LINKED_LIST) {
+                } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
                                        LINKEDLIST,
                                        ast_ty.span,
                                        "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                                        "a VecDeque might work");
+                    return; // don't recurse into the type
                 }
             }
-        }
+            match *qpath {
+                QPath::Resolved(Some(ref ty), ref p) => {
+                    check_ty(cx, ty);
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                        check_ty(cx, ty);
+                    }
+                },
+                QPath::Resolved(None, ref p) => {
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                        check_ty(cx, ty);
+                    }
+                },
+                QPath::TypeRelative(ref ty, ref seg) => {
+                    check_ty(cx, ty);
+                    for ty in seg.parameters.types() {
+                        check_ty(cx, ty);
+                    }
+                },
+            }
+        },
+        // recurse
+        TySlice(ref ty) |
+        TyArray(ref ty, _) |
+        TyPtr(MutTy { ref ty, .. }) |
+        TyRptr(_, MutTy { ref ty, .. }) => check_ty(cx, ty),
+        TyTup(ref tys) => {
+            for ty in tys {
+                check_ty(cx, ty);
+            }
+        },
+        _ => {},
     }
 }
 
@@ -140,7 +209,7 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
                           decl.span,
                           &format!("this let-binding has unit value. Consider omitting `let {} =`",
                                    snippet(cx, local.pat.span, "..")));
-            }
+            },
             _ => (),
         }
     }
@@ -152,8 +221,8 @@ impl LintPass for LetPass {
     }
 }
 
-impl LateLintPass for LetPass {
-    fn check_decl(&mut self, cx: &LateContext, decl: &Decl) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetPass {
+    fn check_decl(&mut self, cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl) {
         check_let_unit(cx, decl)
     }
 }
@@ -189,8 +258,8 @@ impl LintPass for UnitCmp {
     }
 }
 
-impl LateLintPass for UnitCmp {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_macro(cx, expr.span) {
             return;
         }
@@ -210,8 +279,8 @@ impl LateLintPass for UnitCmp {
                                   &format!("{}-comparison of unit values detected. This will always be {}",
                                            op.as_str(),
                                            result));
-                    }
-                    _ => ()
+                    },
+                    _ => (),
                 }
             }
         }
@@ -335,11 +404,7 @@ fn is_isize_or_usize(typ: &ty::TyS) -> bool {
 }
 
 fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
-    let mantissa_nbits = if cast_to_f64 {
-        52
-    } else {
-        23
-    };
+    let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
     let from_nbits_str = if arch_dependent {
@@ -355,11 +420,7 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, 
               &format!("casting {0} to {1} causes a loss of precision {2}({0} is {3} bits wide, but {1}'s mantissa \
                         is only {4} bits wide)",
                        cast_from,
-                       if cast_to_f64 {
-                           "f64"
-                       } else {
-                           "f32"
-                       },
+                       if cast_to_f64 { "f64" } else { "f32" },
                        if arch_dependent {
                            arch_dependent_str
                        } else {
@@ -387,27 +448,27 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::
              ArchSuffix::None,
              to_nbits == from_nbits && cast_unsigned_to_signed,
              ArchSuffix::None)
-        }
+        },
         (true, false) => {
             (to_nbits <= 32,
              if to_nbits == 32 {
-                ArchSuffix::_64
-            } else {
-                ArchSuffix::None
-            },
+                 ArchSuffix::_64
+             } else {
+                 ArchSuffix::None
+             },
              to_nbits <= 32 && cast_unsigned_to_signed,
              ArchSuffix::_32)
-        }
+        },
         (false, true) => {
             (from_nbits == 64,
              ArchSuffix::_32,
              cast_unsigned_to_signed,
              if from_nbits == 64 {
-                ArchSuffix::_64
-            } else {
-                ArchSuffix::_32
-            })
-        }
+                 ArchSuffix::_64
+             } else {
+                 ArchSuffix::_32
+             })
+        },
     };
     if span_truncation {
         span_lint(cx,
@@ -446,8 +507,8 @@ impl LintPass for CastPass {
     }
 }
 
-impl LateLintPass for CastPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tcx.tables().expr_ty(ex), cx.tcx.tables().expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
@@ -462,7 +523,7 @@ impl LateLintPass for CastPass {
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
-                    }
+                    },
                     (false, true) => {
                         span_lint(cx,
                                   CAST_POSSIBLE_TRUNCATION,
@@ -474,7 +535,7 @@ impl LateLintPass for CastPass {
                                       expr.span,
                                       &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
-                    }
+                    },
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
                             span_lint(cx,
@@ -483,16 +544,16 @@ impl LateLintPass for CastPass {
                                       &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-                    }
+                    },
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty,
-                                                                                           &cast_to.sty) {
+                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) =
+                            (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx,
                                       CAST_POSSIBLE_TRUNCATION,
                                       expr.span,
                                       "casting f64 to f32 may truncate the value");
                         }
-                    }
+                    },
                 }
             }
         }
@@ -534,17 +595,25 @@ impl LintPass for TypeComplexityPass {
     }
 }
 
-impl LateLintPass for TypeComplexityPass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, _: NodeId) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: FnKind<'tcx>,
+        decl: &'tcx FnDecl,
+        _: &'tcx Expr,
+        _: Span,
+        _: NodeId
+    ) {
         self.check_fndecl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx StructField) {
         // enum variants are also struct fields now
         self.check_type(cx, &field.ty);
     }
 
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         match item.node {
             ItemStatic(ref ty, _, _) |
             ItemConst(ref ty, _) => self.check_type(cx, ty),
@@ -553,7 +622,7 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.node {
             ConstTraitItem(ref ty, _) |
             TypeTraitItem(_, Some(ref ty)) => self.check_type(cx, ty),
@@ -563,7 +632,7 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         match item.node {
             ImplItemKind::Const(ref ty, _) |
             ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
@@ -572,15 +641,15 @@ impl LateLintPass for TypeComplexityPass {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext, local: &Local) {
+    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
         if let Some(ref ty) = local.ty {
             self.check_type(cx, ty);
         }
     }
 }
 
-impl TypeComplexityPass {
-    fn check_fndecl(&self, cx: &LateContext, decl: &FnDecl) {
+impl<'a, 'tcx> TypeComplexityPass {
+    fn check_fndecl(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl) {
         for arg in &decl.inputs {
             self.check_type(cx, &arg.ty);
         }
@@ -589,7 +658,7 @@ impl TypeComplexityPass {
         }
     }
 
-    fn check_type(&self, cx: &LateContext, ty: &Ty) {
+    fn check_type(&self, cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty) {
         if in_macro(cx, ty.span) {
             return;
         }
@@ -597,6 +666,7 @@ impl TypeComplexityPass {
             let mut visitor = TypeComplexityVisitor {
                 score: 0,
                 nest: 1,
+                cx: cx,
             };
             visitor.visit_ty(ty);
             visitor.score
@@ -612,24 +682,22 @@ impl TypeComplexityPass {
 }
 
 /// Walks a type and assigns a complexity score to it.
-struct TypeComplexityVisitor {
+struct TypeComplexityVisitor<'a, 'tcx: 'a> {
     /// total complexity score of the type
     score: u64,
     /// current nesting level
     nest: u64,
+    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'v> Visitor<'v> for TypeComplexityVisitor {
-    fn visit_ty(&mut self, ty: &'v Ty) {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &'tcx Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
-            TyPath(..) |
-            TySlice(..) |
-            TyTup(..) |
-            TyArray(..) => (10 * self.nest, 1),
+            TyPath(..) | TySlice(..) | TyTup(..) | TyArray(..) => (10 * self.nest, 1),
 
             // "Sum" of trait bounds
             TyObjectSum(..) => (20 * self.nest, 0),
@@ -644,6 +712,9 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
         self.nest += sub_nest;
         walk_ty(self, ty);
         self.nest -= sub_nest;
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }
 
@@ -676,8 +747,8 @@ impl LintPass for CharLitAsU8 {
     }
 }
 
-impl LateLintPass for CharLitAsU8 {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         use syntax::ast::{LitKind, UintTy};
 
         if let ExprCast(ref e, _) = expr.node {
@@ -687,9 +758,7 @@ impl LateLintPass for CharLitAsU8 {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
-                        let help = format!("Consider using a byte literal \
-                                            instead:\nb{}",
-                                           snippet(cx, e.span, "'x'"));
+                        let help = format!("Consider using a byte literal instead:\nb{}", snippet(cx, e.span, "'x'"));
                         span_help_and_lint(cx, CHAR_LIT_AS_U8, expr.span, msg, &help);
                     }
                 }
@@ -746,12 +815,15 @@ enum AbsurdComparisonResult {
 
 
 
-fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
-                                -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+fn detect_absurd_comparison<'a>(
+    cx: &LateContext,
+    op: BinOp_,
+    lhs: &'a Expr,
+    rhs: &'a Expr
+) -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
-    type Extr<'a> = ExtremeExpr<'a>;
 
     let normalized = normalize_comparison(op, lhs, rhs);
     let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
@@ -766,20 +838,20 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
     Some(match rel {
         Rel::Lt => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
-                (_, Some(r @ Extr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
+                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
+                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
                 _ => return None,
             }
-        }
+        },
         Rel::Le => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
-                (Some(l @ Extr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
-                (_, Some(r @ Extr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
-                (_, Some(r @ Extr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
+                (Some(l @ ExtremeExpr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
+                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
+                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
+                (_, Some(r @ ExtremeExpr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
                 _ => return None,
             }
-        }
+        },
         Rel::Ne | Rel::Eq => return None,
     })
 }
@@ -840,8 +912,8 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     })
 }
 
-impl LateLintPass for AbsurdExtremeComparisons {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         use types::ExtremeType::*;
         use types::AbsurdComparisonResult::*;
 
@@ -859,7 +931,7 @@ impl LateLintPass for AbsurdExtremeComparisons {
                                      instead",
                                     snippet(cx, lhs.span, "lhs"),
                                     snippet(cx, rhs.span, "rhs"))
-                        }
+                        },
                     };
 
                     let help = format!("because {} is the {} value for this type, {}",
@@ -962,7 +1034,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
                     IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
                 })
-            }
+            },
             TyUint(uint_ty) => {
                 Some(match uint_ty {
                     UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
@@ -971,7 +1043,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
                     UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
                 })
-            }
+            },
             _ => None,
         }
     } else {
@@ -996,7 +1068,7 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
             } else {
                 None
             }
-        }
+        },
         Err(_) => None,
     }
 }
@@ -1014,8 +1086,15 @@ fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: boo
     }
 }
 
-fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons::Rel,
-                                lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr, rhs: &Expr, invert: bool) {
+fn upcast_comparison_bounds_err(
+    cx: &LateContext,
+    span: &Span,
+    rel: comparisons::Rel,
+    lhs_bounds: Option<(FullInt, FullInt)>,
+    lhs: &Expr,
+    rhs: &Expr,
+    invert: bool
+) {
     use utils::comparisons::*;
 
     if let Some((lb, ub)) = lhs_bounds {
@@ -1031,14 +1110,14 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                     } else {
                         ub < norm_rhs_val
                     }
-                }
+                },
                 Rel::Le => {
                     if invert {
                         norm_rhs_val <= lb
                     } else {
                         ub <= norm_rhs_val
                     }
-                }
+                },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, span, lhs, true)
@@ -1049,14 +1128,14 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                     } else {
                         lb >= norm_rhs_val
                     }
-                }
+                },
                 Rel::Le => {
                     if invert {
                         norm_rhs_val > ub
                     } else {
                         lb > norm_rhs_val
                     }
-                }
+                },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, span, lhs, false)
@@ -1065,8 +1144,8 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
     }
 }
 
-impl LateLintPass for InvalidUpcastComparisons {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
 
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);

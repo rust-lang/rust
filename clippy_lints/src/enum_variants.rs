@@ -28,6 +28,27 @@ declare_lint! {
     "enums where all variants share a prefix/postfix"
 }
 
+/// **What it does:** Detects enumeration variants that are prefixed or suffixed
+/// by the same characters.
+///
+/// **Why is this bad?** Enumeration variant names should specify their variant,
+/// not repeat the enumeration name.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// enum Cake {
+///     BlackForestCake,
+///     HummingbirdCake,
+/// }
+/// ```
+declare_lint! {
+    pub PUB_ENUM_VARIANT_NAMES,
+    Allow,
+    "enums where all variants share a prefix/postfix"
+}
+
 /// **What it does:** Detects type names that are prefixed or suffixed by the
 /// containing module's name.
 ///
@@ -49,10 +70,13 @@ declare_lint! {
 
 /// **What it does:** Checks for modules that have the same name as their parent module
 ///
-/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { .. }` in `foo.rs`.
-///                      The expectation is that items inside the inner `mod foo { .. }` are then available
+/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { ..
+/// }` in `foo.rs`.
+/// The expectation is that items inside the inner `mod foo { .. }` are then
+/// available
 ///                      through `foo::x`, but they are only available through `foo::foo::x`.
-///                      If this is done on purpose, it would be better to choose a more representative module name.
+/// If this is done on purpose, it would be better to choose a more
+/// representative module name.
 ///
 /// **Known problems:** None.
 ///
@@ -78,13 +102,16 @@ pub struct EnumVariantNames {
 
 impl EnumVariantNames {
     pub fn new(threshold: u64) -> EnumVariantNames {
-        EnumVariantNames { modules: Vec::new(), threshold: threshold }
+        EnumVariantNames {
+            modules: Vec::new(),
+            threshold: threshold,
+        }
     }
 }
 
 impl LintPass for EnumVariantNames {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ENUM_VARIANT_NAMES, STUTTER, MODULE_INCEPTION)
+        lint_array!(ENUM_VARIANT_NAMES, PUB_ENUM_VARIANT_NAMES, STUTTER, MODULE_INCEPTION)
     }
 }
 
@@ -108,18 +135,25 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 
 // FIXME: #600
 #[allow(while_let_on_iterator)]
-fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &str,
-                 item_name_chars: usize, span: Span) {
+fn check_variant(
+    cx: &EarlyContext,
+    threshold: u64,
+    def: &EnumDef,
+    item_name: &str,
+    item_name_chars: usize,
+    span: Span,
+    lint: &'static Lint
+) {
     if (def.variants.len() as u64) < threshold {
         return;
     }
     for var in &def.variants {
         let name = var2str(var);
         if partial_match(item_name, &name) == item_name_chars {
-            span_lint(cx, ENUM_VARIANT_NAMES, var.span, "Variant name starts with the enum's name");
+            span_lint(cx, lint, var.span, "Variant name starts with the enum's name");
         }
         if partial_rmatch(item_name, &name) == item_name_chars {
-            span_lint(cx, ENUM_VARIANT_NAMES, var.span, "Variant name ends with the enum's name");
+            span_lint(cx, lint, var.span, "Variant name ends with the enum's name");
         }
     }
     let first = var2str(&def.variants[0]);
@@ -154,7 +188,7 @@ fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &s
         (true, false) => ("post", post),
     };
     span_help_and_lint(cx,
-                       ENUM_VARIANT_NAMES,
+                       lint,
                        span,
                        &format!("All variants have the same {}fix: `{}`", what, value),
                        &format!("remove the {}fixes and use full paths to \
@@ -200,7 +234,10 @@ impl EarlyLintPass for EnumVariantNames {
                 if !mod_camel.is_empty() {
                     if mod_name == &item_name {
                         if let ItemKind::Mod(..) = item.node {
-                            span_lint(cx, MODULE_INCEPTION, item.span, "module has the same name as its containing module");
+                            span_lint(cx,
+                                      MODULE_INCEPTION,
+                                      item.span,
+                                      "module has the same name as its containing module");
                         }
                     }
                     if item.vis == Visibility::Public {
@@ -218,7 +255,11 @@ impl EarlyLintPass for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.node {
-            check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
+            let lint = match item.vis {
+                Visibility::Public => PUB_ENUM_VARIANT_NAMES,
+                _ => ENUM_VARIANT_NAMES,
+            };
+            check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span, lint);
         }
         self.modules.push((item_name, item_camel));
     }

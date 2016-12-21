@@ -53,13 +53,15 @@ impl LintPass for NonminimalBool {
     }
 }
 
-impl LateLintPass for NonminimalBool {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        NonminimalBoolVisitor(cx).visit_item(item)
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        NonminimalBoolVisitor { cx: cx }.visit_item(item)
     }
 }
 
-struct NonminimalBoolVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
+struct NonminimalBoolVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+}
 
 use quine_mc_cluskey::Bool;
 struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
@@ -92,14 +94,14 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                         BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
                         _ => (),
                     }
-                }
+                },
                 ExprLit(ref lit) => {
                     match lit.node {
                         LitKind::Bool(true) => return Ok(Bool::True),
                         LitKind::Bool(false) => return Ok(Bool::False),
                         _ => (),
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -127,7 +129,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                         BiLe => mk_expr(BiGt),
                         _ => continue,
                     }
-                }
+                },
                 _ => continue,
             };
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
@@ -154,17 +156,17 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             True => {
                 s.push_str("true");
                 s
-            }
+            },
             False => {
                 s.push_str("false");
                 s
-            }
+            },
             Not(ref inner) => {
                 match **inner {
                     And(_) | Or(_) => {
                         s.push('!');
                         recurse(true, cx, inner, terminals, s)
-                    }
+                    },
                     Term(n) => {
                         if let ExprBinary(binop, ref lhs, ref rhs) = terminals[n as usize].node {
                             let op = match binop.node {
@@ -177,7 +179,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                                 _ => {
                                     s.push('!');
                                     return recurse(true, cx, inner, terminals, s);
-                                }
+                                },
                             };
                             s.push_str(&snip(lhs));
                             s.push_str(op);
@@ -187,13 +189,13 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                             s.push('!');
                             recurse(false, cx, inner, terminals, s)
                         }
-                    }
+                    },
                     _ => {
                         s.push('!');
                         recurse(false, cx, inner, terminals, s)
-                    }
+                    },
                 }
-            }
+            },
             And(ref v) => {
                 if brackets {
                     s.push('(');
@@ -215,7 +217,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     s.push(')');
                 }
                 s
-            }
+            },
             Or(ref v) => {
                 if brackets {
                     s.push('(');
@@ -229,7 +231,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     s.push(')');
                 }
                 s
-            }
+            },
             Term(n) => {
                 if brackets {
                     if let ExprBinary(..) = terminals[n as usize].node {
@@ -243,7 +245,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     }
                 }
                 s
-            }
+            },
         }
     }
     recurse(false, cx, suggestion, terminals, String::new())
@@ -260,13 +262,13 @@ fn simple_negate(b: Bool) -> Bool {
                 *el = simple_negate(::std::mem::replace(el, True));
             }
             Or(v)
-        }
+        },
         Or(mut v) => {
             for el in &mut v {
                 *el = simple_negate(::std::mem::replace(el, True));
             }
             And(v)
-        }
+        },
         Not(inner) => *inner,
     }
 }
@@ -288,13 +290,13 @@ fn terminal_stats(b: &Bool) -> Stats {
                     _ => stats.negations += 1,
                 }
                 recurse(inner, stats);
-            }
+            },
             And(ref v) | Or(ref v) => {
                 stats.ops += v.len() - 1;
                 for inner in v {
                     recurse(inner, stats);
                 }
-            }
+            },
             Term(n) => stats.terminals[n as usize] += 1,
         }
     }
@@ -308,7 +310,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     fn bool_expr(&self, e: &Expr) {
         let mut h2q = Hir2Qmm {
             terminals: Vec::new(),
-            cx: self.0,
+            cx: self.cx,
         };
         if let Ok(expr) = h2q.run(e) {
 
@@ -323,7 +325,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr.clone())).simplify() {
                 match simple {
-                    Bool::Not(_) | Bool::True | Bool::False => {}
+                    Bool::Not(_) | Bool::True | Bool::False => {},
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),
                 }
                 let simple_negated = simple_negate(simple);
@@ -343,7 +345,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         continue 'simplified;
                     }
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
-                        span_lint_and_then(self.0,
+                        span_lint_and_then(self.cx,
                                            LOGIC_BUG,
                                            e.span,
                                            "this boolean expression contains a logic bug",
@@ -353,7 +355,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                           outer expression");
                             db.span_suggestion(e.span,
                                                "it would look like the following",
-                                               suggest(self.0, suggestion, &h2q.terminals));
+                                               suggest(self.cx, suggestion, &h2q.terminals));
                         });
                         // don't also lint `NONMINIMAL_BOOL`
                         return;
@@ -370,13 +372,13 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             }
             if !improvements.is_empty() {
-                span_lint_and_then(self.0,
+                span_lint_and_then(self.cx,
                                    NONMINIMAL_BOOL,
                                    e.span,
                                    "this boolean expression can be simplified",
                                    |db| {
                     for suggestion in &improvements {
-                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                        db.span_suggestion(e.span, "try", suggest(self.cx, suggestion, &h2q.terminals));
                     }
                 });
             }
@@ -384,21 +386,24 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for NonminimalBoolVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, e: &'v Expr) {
-        if in_macro(self.0, e.span) {
+impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, e: &'tcx Expr) {
+        if in_macro(self.cx, e.span) {
             return;
         }
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => {
-                if self.0.tcx.tables.borrow().node_types[&inner.id].is_bool() {
+                if self.cx.tcx.tables.borrow().node_types[&inner.id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);
                 }
-            }
+            },
             _ => walk_expr(self, e),
         }
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.cx.tcx.map)
     }
 }

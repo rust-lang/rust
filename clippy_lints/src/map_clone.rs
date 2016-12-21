@@ -24,14 +24,14 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct Pass;
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if &*name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, ref closure_expr, _) => {
-                        let closure_expr = remove_blocks(closure_expr);
+                    ExprClosure(_, ref decl, closure_eid, _) => {
+                        let closure_expr = remove_blocks(cx.tcx.map.expr(closure_eid));
                         if_let_chain! {[
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
@@ -63,8 +63,8 @@ impl LateLintPass for Pass {
                                 }
                             }
                         }}
-                    }
-                    ExprPath(_, ref path) => {
+                    },
+                    ExprPath(ref path) => {
                         if match_path(path, &paths::CLONE) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
                             span_help_and_lint(cx,
@@ -75,7 +75,7 @@ impl LateLintPass for Pass {
                                                         type_name),
                                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
                         }
-                    }
+                    },
                     _ => (),
                 }
             }
@@ -85,13 +85,13 @@ impl LateLintPass for Pass {
 
 fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
     match expr.node {
-        ExprPath(None, ref path) => {
+        ExprPath(QPath::Resolved(None, ref path)) => {
             let arg_segment = [PathSegment {
                                    name: id,
                                    parameters: PathParameters::none(),
                                }];
             !path.global && path.segments[..] == arg_segment
-        }
+        },
         _ => false,
     }
 }
@@ -108,7 +108,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
 
 fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     match pat.node {
-        PatKind::Binding(_, name, None) => Some(name.node),
+        PatKind::Binding(_, _, name, None) => Some(name.node),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }

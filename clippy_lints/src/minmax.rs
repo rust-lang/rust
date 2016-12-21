@@ -33,8 +33,8 @@ impl LintPass for MinMaxPass {
     }
 }
 
-impl LateLintPass for MinMaxPass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
             if let Some((inner_max, inner_c, _)) = min_max(cx, oe) {
                 if outer_max == inner_max {
@@ -46,7 +46,7 @@ impl LateLintPass for MinMaxPass {
                     (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
-                    }
+                    },
                 }
             }
         }
@@ -61,8 +61,8 @@ enum MinMax {
 
 fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
     if let ExprCall(ref path, ref args) = expr.node {
-        if let ExprPath(None, _) = path.node {
-            let def_id = cx.tcx.expect_def(path.id).def_id();
+        if let ExprPath(ref qpath) = path.node {
+            let def_id = cx.tcx.tables().qpath_def(qpath, path.id).def_id();
 
             if match_def_path(cx, def_id, &paths::CMP_MIN) {
                 fetch_const(args, MinMax::Min)

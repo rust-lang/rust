@@ -42,16 +42,15 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
 
-        if let ExprMatch(ref op, ref arms, MatchSource::IfLetDesugar{..}) = expr.node {
+        if let ExprMatch(ref op, ref arms, MatchSource::IfLetDesugar { .. }) = expr.node {
 
             if arms[0].pats.len() == 1 {
 
                 let good_method = match arms[0].pats[0].node {
-                    PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 && pats[0].node == PatKind::Wild =>  {
-
+                    PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 && pats[0].node == PatKind::Wild => {
                         if match_path(path, &paths::RESULT_OK) {
                             "is_ok()"
                         } else if match_path(path, &paths::RESULT_ERR) {
@@ -59,15 +58,13 @@ impl LateLintPass for Pass {
                         } else if match_path(path, &paths::OPTION_SOME) {
                             "is_some()"
                         } else {
-                            return
+                            return;
                         }
-                    }
+                    },
 
-                    PatKind::Path(_, ref path) if match_path(path, &paths::OPTION_NONE) => {
-                        "is_none()"
-                    }
+                    PatKind::Path(ref path) if match_path(path, &paths::OPTION_NONE) => "is_none()",
 
-                    _ => return
+                    _ => return,
                 };
 
                 span_lint_and_then(cx,
@@ -75,15 +72,13 @@ impl LateLintPass for Pass {
                                    arms[0].pats[0].span,
                                    &format!("redundant pattern matching, consider using `{}`", good_method),
                                    |db| {
-                                        let span = Span {
-                                            lo: expr.span.lo,
-                                            hi: op.span.hi,
-                                            expn_id: expr.span.expn_id,
-                                        };
-                                        db.span_suggestion(span,
-                                                           "try this",
-                                                           format!("if {}.{}", snippet(cx, op.span, "_"), good_method));
-                                    });
+                    let span = Span {
+                        lo: expr.span.lo,
+                        hi: op.span.hi,
+                        expn_id: expr.span.expn_id,
+                    };
+                    db.span_suggestion(span, "try this", format!("if {}.{}", snippet(cx, op.span, "_"), good_method));
+                });
             }
 
         }

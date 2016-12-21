@@ -59,8 +59,8 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprLit(ref lit) = e.node {
             check_lit(cx, lit, e);
         }
@@ -85,7 +85,9 @@ fn check_known_consts(cx: &LateContext, e: &Expr, s: &symbol::Symbol, module: &s
                           APPROX_CONSTANT,
                           e.span,
                           &format!("approximate value of `{}::consts::{}` found. \
-                                    Consider using it directly", module, &name));
+                                    Consider using it directly",
+                                   module,
+                                   &name));
                 return;
             }
         }

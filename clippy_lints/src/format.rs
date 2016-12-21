@@ -38,17 +38,16 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some(span) = is_expn_of(cx, expr.span, "format") {
             match expr.node {
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {
                     if_let_chain!{[
-                        let ExprPath(..) = fun.node,
+                        let ExprPath(ref qpath) = fun.node,
                         args.len() == 2,
-                        let Some(fun) = resolve_node(cx, fun.id),
-                        match_def_path(cx, fun.def_id(), &paths::FMT_ARGUMENTS_NEWV1),
+                        match_def_path(cx, resolve_node(cx, qpath, fun.id).def_id(), &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
                         check_static_str(cx, &args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
@@ -56,7 +55,7 @@ impl LateLintPass for Pass {
                     ], {
                         span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                     }}
-                }
+                },
                 // `format!("foo")` expansion contains `match () { () => [], }`
                 ExprMatch(ref matchee, _, _) => {
                     if let ExprTup(ref tup) = matchee.node {
@@ -64,7 +63,7 @@ impl LateLintPass for Pass {
                             span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                         }
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -73,8 +72,7 @@ impl LateLintPass for Pass {
 
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.
 /// Public because it's shared with a lint in print.rs.
-pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr)
-                                         -> Option<Vec<InternedString>> {
+pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr) -> Option<Vec<InternedString>> {
     if_let_chain! {[
         let ExprBlock(ref block) = expr.node,
         block.stmts.len() == 1,
@@ -129,9 +127,8 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         exprs.len() == 1,
         let ExprCall(_, ref args) = exprs[0].node,
         args.len() == 2,
-        let ExprPath(None, _) = args[1].node,
-        let Some(fun) = resolve_node(cx, args[1].id),
-        match_def_path(cx, fun.def_id(), &paths::DISPLAY_FMT_METHOD),
+        let ExprPath(ref qpath) = args[1].node,
+        match_def_path(cx, resolve_node(cx, qpath, args[1].id).def_id(), &paths::DISPLAY_FMT_METHOD),
     ], {
         let ty = walk_ptrs_ty(cx.tcx.tables().pat_ty(&pat[0]));
 

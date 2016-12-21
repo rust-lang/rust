@@ -168,9 +168,14 @@ pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
-                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX,
-                    ZERO_PREFIXED_LITERAL, BUILTIN_TYPE_SHADOW)
+        lint_array!(UNNEEDED_FIELD_PATTERN,
+                    DUPLICATE_UNDERSCORE_ARGUMENT,
+                    REDUNDANT_CLOSURE_CALL,
+                    DOUBLE_NEG,
+                    MIXED_CASE_HEX_LITERALS,
+                    UNSEPARATED_LITERAL_SUFFIX,
+                    ZERO_PREFIXED_LITERAL,
+                    BUILTIN_TYPE_SHADOW)
     }
 }
 
@@ -272,14 +277,14 @@ impl EarlyLintPass for MiscEarly {
                                            expr.span,
                                            "Try not to call a closure in the expression where it is declared.",
                                            |db| {
-                                               if decl.inputs.is_empty() {
-                                                   let hint = snippet(cx, block.span, "..").into_owned();
-                                                   db.span_suggestion(expr.span, "Try doing something like: ", hint);
-                                               }
-                                           });
+                            if decl.inputs.is_empty() {
+                                let hint = snippet(cx, block.span, "..").into_owned();
+                                db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                            }
+                        });
                     }
                 }
-            }
+            },
             ExprKind::Unary(UnOp::Neg, ref inner) => {
                 if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
                     span_lint(cx,
@@ -287,7 +292,7 @@ impl EarlyLintPass for MiscEarly {
                               expr.span,
                               "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
                 }
-            }
+            },
             ExprKind::Lit(ref lit) => {
                 if_let_chain! {[
                     let LitKind::Int(value, ..) = lit.node,
@@ -328,8 +333,16 @@ impl EarlyLintPass for MiscEarly {
                                            lit.span,
                                            "this is a decimal constant",
                                            |db| {
-                            db.span_suggestion(lit.span, "if you mean to use a decimal constant, remove the `0` to remove confusion:", src[1..].to_string());
-                            db.span_suggestion(lit.span, "if you mean to use an octal constant, use `0o`:", format!("0o{}", &src[1..]));
+                            db.span_suggestion(
+                                lit.span,
+                                "if you mean to use a decimal constant, remove the `0` to remove confusion:",
+                                src[1..].to_string(),
+                            );
+                            db.span_suggestion(
+                                lit.span,
+                                "if you mean to use an octal constant, use `0o`:",
+                                format!("0o{}", &src[1..]),
+                            );
                         });
                     }
                 }}
@@ -351,8 +364,8 @@ impl EarlyLintPass for MiscEarly {
                         prev = ch;
                     }
                 }}
-            }
-            _ => ()
+            },
+            _ => (),
         }
     }
 
@@ -369,7 +382,12 @@ impl EarlyLintPass for MiscEarly {
                 let ExprKind::Path(_, ref path) = closure.node
             ], {
                 if sp_ident.node == (&path.segments[0]).identifier {
-                    span_lint(cx, REDUNDANT_CLOSURE_CALL, second.span, "Closure called just once immediately after it was declared");
+                    span_lint(
+                        cx,
+                        REDUNDANT_CLOSURE_CALL,
+                        second.span,
+                        "Closure called just once immediately after it was declared",
+                    );
                 }
             }}
         }

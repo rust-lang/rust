@@ -14,4 +14,4 @@ impl Iterator for Foo {
     }
 }
 
-impl ExactSizeIterator for Foo { }
+impl ExactSizeIterator for Foo {}
