@@ -70,11 +70,47 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ast_ty: &'tcx Ty) {
-        if in_macro(cx, ast_ty.span) {
-            return;
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, id: NodeId) {
+        // skip trait implementations, see #605
+        if let Some(map::NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent(id)) {
+            if let ItemImpl(_, _, _, Some(..), _, _) = item.node {
+                return;
+            }
         }
-        if let TyPath(ref qpath) = ast_ty.node {
+
+        check_fn_decl(cx, decl);
+    }
+
+    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
+        check_ty(cx, &field.ty);
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+        match item.node {
+            ConstTraitItem(ref ty, _) |
+            TypeTraitItem(_, Some(ref ty)) => check_ty(cx, ty),
+            MethodTraitItem(ref sig, _) => check_fn_decl(cx, &sig.decl),
+            _ => (),
+        }
+    }
+}
+
+fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
+    for input in &decl.inputs {
+        check_ty(cx, &input.ty);
+    }
+
+    if let FunctionRetTy::Return(ref ty) = decl.output {
+        check_ty(cx, ty);
+    }
+}
+
+fn check_ty(cx: &LateContext, ast_ty: &Ty) {
+    if in_macro(cx, ast_ty.span) {
+        return;
+    }
+    match ast_ty.node {
+        TyPath(ref qpath) => {
             let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items.owned_box() {
@@ -92,6 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
                                            ast_ty.span,
                                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                        return; // don't recurse into the type
                     }}
                 } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
@@ -99,9 +136,40 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
                                        ast_ty.span,
                                        "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                                        "a VecDeque might work");
+                    return; // don't recurse into the type
                 }
             }
-        }
+            match *qpath {
+                QPath::Resolved(Some(ref ty), ref p) => {
+                    check_ty(cx, ty);
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                        check_ty(cx, ty);
+                    }
+                },
+                QPath::Resolved(None, ref p) => {
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                        check_ty(cx, ty);
+                    }
+                },
+                QPath::TypeRelative(ref ty, ref seg) => {
+                    check_ty(cx, ty);
+                    for ty in seg.parameters.types() {
+                        check_ty(cx, ty);
+                    }
+                },
+            }
+        },
+        // recurse
+        TySlice(ref ty) |
+        TyArray(ref ty, _) |
+        TyPtr(MutTy { ref ty, .. }) |
+        TyRptr(_, MutTy { ref ty, .. }) => check_ty(cx, ty),
+        TyTup(ref tys) => {
+            for ty in tys {
+                check_ty(cx, ty);
+            }
+        },
+        _ => {},
     }
 }
 
