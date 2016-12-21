@@ -51,22 +51,22 @@ pub mod reimpls {
     // match here what LLVM expects from us. This is only
     // required for the return type!
     #[cfg(not(stage0))]
-    #[cfg(windows)]
+    #[cfg(all(windows, target_pointer_width="64"))]
     #[repr(simd)]
     pub struct u64x2(u64, u64);
 
     #[cfg(not(stage0))]
-    #[cfg(windows)]
+    #[cfg(all(windows, target_pointer_width="64")]
     type u128ret = u64x2;
 
-    #[cfg(any(not(windows),stage0))]
+    #[cfg(any(not(all(windows, target_pointer_width="64")),stage0))]
     type u128ret = u128_;
 
     #[cfg(not(stage0))]
-    #[cfg(windows)]
+    #[cfg(all(windows, target_pointer_width="64")]
     type i128ret = u64x2;
 
-    #[cfg(any(not(windows),stage0))]
+    #[cfg(any(not(all(windows, target_pointer_width="64")),stage0))]
     type i128ret = i128_;
 
     macro_rules! ashl {
@@ -477,11 +477,11 @@ pub mod reimpls {
             #[repr(C, packed)] struct Parts(u64, u64);
             unsafe { ::core::mem::transmute(Parts(low, high)) }
         }
-        #[cfg(not(windows))]
+        #[cfg(not(all(windows, target_pointer_width="64")))]
         fn to_ret(self) -> u128ret {
             self
         }
-        #[cfg(windows)]
+        #[cfg(all(windows, target_pointer_width="64"))]
         fn to_ret(self) -> u128ret {
             u64x2(self.low(), self.high())
         }
@@ -501,11 +501,11 @@ pub mod reimpls {
         fn from_parts(low: u64, high: i64) -> i128 {
             u128::from_parts(low, high as u64) as i128
         }
-        #[cfg(not(windows))]
+        #[cfg(not(all(windows, target_pointer_width="64")))]
         fn to_ret(self) -> i128ret {
             self
         }
-        #[cfg(windows)]
+        #[cfg(all(windows, target_pointer_width="64"))]
         fn to_ret(self) -> i128ret {
             u64x2(self.low(), self.high() as u64)
         }
@@ -693,30 +693,35 @@ pub mod reimpls {
     // LLVM expectations for ABI on windows are pure madness.
 
     #[cfg(not(stage0))]
-    #[cfg_attr(windows, export_name="__floattidf")]
-    pub extern "C" fn i128_as_f64_win(alow: u64, ahigh: i64) -> f64 {
-        i128_as_f64(i128_::from_parts(alow, ahigh))
-    }
+    #[cfg(all(windows, target_pointer_width="64"))]
+    mod windows_64_workarounds {
+        #[export_name="__floattidf"]
+        pub extern "C" fn i128_as_f64_win(alow: u64, ahigh: i64) -> f64 {
+            ::i128_as_f64(i128_::from_parts(alow, ahigh))
+        }
 
+        #[export_name="__floattisf"]
+        pub extern "C" fn i128_as_f32_win(alow: u64, ahigh: i64) -> f32 {
+            ::i128_as_f32(i128_::from_parts(alow, ahigh))
+        }
+
+        #[export_name="__floatuntidf"]
+        pub extern "C" fn u128_as_f64_win(alow: u64, ahigh: u64) -> f64 {
+            ::u128_as_f64(u128_::from_parts(alow, ahigh))
+        }
+
+        #[export_name="__floatuntisf"]
+        pub extern "C" fn u128_as_f32_win(alow: u64, ahigh: u64) -> f32 {
+            ::u128_as_f32(u128_::from_parts(alow, ahigh))
+        }
+    }
     #[cfg(not(stage0))]
-    #[cfg_attr(windows, export_name="__floattisf")]
-    pub extern "C" fn i128_as_f32_win(alow: u64, ahigh: i64) -> f32 {
-        i128_as_f32(i128_::from_parts(alow, ahigh))
-    }
+    #[cfg(all(windows, target_pointer_width="64"))]
+    pub use windows_64_workarounds::*;
 
-    #[cfg(not(stage0))]
-    #[cfg_attr(windows, export_name="__floatuntidf")]
-    pub extern "C" fn u128_as_f64_win(alow: u64, ahigh: u64) -> f64 {
-        u128_as_f64(u128_::from_parts(alow, ahigh))
-    }
 
-    #[cfg(not(stage0))]
-    #[cfg_attr(windows, export_name="__floatuntisf")]
-    pub extern "C" fn u128_as_f32_win(alow: u64, ahigh: u64) -> f32 {
-        u128_as_f32(u128_::from_parts(alow, ahigh))
-    }
-
-    #[cfg_attr(any(not(windows),stage0),export_name="__floattidf")]
+    #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
+               export_name="__floattidf")]
     pub extern "C" fn i128_as_f64(a: i128_) -> f64 {
         match a.signum() {
             1 => u128_as_f64(a.uabs()),
@@ -725,7 +730,8 @@ pub mod reimpls {
         }
     }
 
-    #[cfg_attr(any(not(windows),stage0),export_name="__floattisf")]
+    #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
+               export_name="__floattisf")]
     pub extern "C" fn i128_as_f32(a: i128_) -> f32 {
         match a.signum() {
             1 => u128_as_f32(a.uabs()),
@@ -734,7 +740,8 @@ pub mod reimpls {
         }
     }
 
-    #[cfg_attr(any(not(windows),stage0),export_name="__floatuntidf")]
+    #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
+               export_name="__floatuntidf")]
     pub extern "C" fn u128_as_f64(mut a: u128_) -> f64 {
         use ::core::f64::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
@@ -770,7 +777,8 @@ pub mod reimpls {
         }
     }
 
-    #[cfg_attr(any(not(windows),stage0),export_name="__floatuntisf")]
+    #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
+               export_name="__floatuntisf")]
     pub extern "C" fn u128_as_f32(mut a: u128_) -> f32 {
         use ::core::f32::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
