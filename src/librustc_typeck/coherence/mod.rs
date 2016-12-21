@@ -356,7 +356,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                         infcx.report_mismatched_types(&cause,
                                                       mk_ptr(mt_b.ty),
                                                       target,
-                                                      ty::error::TypeError::Mutability);
+                                                      ty::error::TypeError::Mutability).emit();
                     }
                     (mt_a.ty, mt_b.ty, unsize_trait, None)
                 };
