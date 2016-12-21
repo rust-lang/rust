@@ -98,7 +98,7 @@ def gen_deprecated(lints):
     """Declare deprecated lints"""
 
     for lint in lints:
-        yield '    store.register_removed("%s", "%s");\n' % (lint[1], lint[2])
+        yield '    store.register_removed(\n        "%s",\n        "%s",\n    );\n' % (lint[1], lint[2])
 
 
 def replace_region(fn, region_start, region_end, callback,
