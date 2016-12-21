@@ -695,9 +695,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 /// Checks for the `OR_FUN_CALL` lint.
 fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
-    fn check_unwrap_or_default(cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr,
-                               or_has_args: bool, span: Span)
-                               -> bool {
+    fn check_unwrap_or_default(
+        cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr, or_has_args: bool,
+        span: Span
+    ) -> bool {
         if or_has_args {
             return false;
         }
@@ -721,11 +722,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                                            span,
                                            &format!("use of `{}` followed by a call to `{}`", name, path),
                                            |db| {
-                                               db.span_suggestion(span,
-                                                                  "try this",
-                                                                  format!("{}.unwrap_or_default()",
-                                                                          snippet(cx, self_expr.span, "_")));
-                                           });
+                            db.span_suggestion(span,
+                                               "try this",
+                                               format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
+                        });
                         return true;
                     }
                 }
@@ -736,8 +736,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     }
 
     /// Check for `*or(foo())`.
-    fn check_general_case(cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr,
-                          or_has_args: bool, span: Span) {
+    fn check_general_case(
+        cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr, or_has_args: bool,
+        span: Span
+    ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
         if let Some(qualif) = cx.tcx.const_qualif_map.borrow().get(&arg.id) {
@@ -776,10 +778,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                            span,
                            &format!("use of `{}` followed by a function call", name),
                            |db| {
-                               db.span_suggestion(span,
+            db.span_suggestion(span,
                                "try this",
                                format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
-                           });
+        });
     }
 
     if args.len() == 2 {
@@ -836,10 +838,10 @@ fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
                            expr.span,
                            "use of `extend` to extend a Vec by a slice",
                            |db| {
-                               db.span_suggestion(expr.span,
+            db.span_suggestion(expr.span,
                                "try this",
                                format!("{}.extend_from_slice({})", snippet(cx, args[0].span, "_"), slice));
-                           });
+        });
     }
 }
 
@@ -1223,8 +1225,8 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
                                arg.span,
                                "single-character string constant used as pattern",
                                |db| {
-                                   db.span_suggestion(expr.span, "try using a char instead:", hint);
-                               });
+                db.span_suggestion(expr.span, "try using a char instead:", hint);
+            });
         }
     }
 }

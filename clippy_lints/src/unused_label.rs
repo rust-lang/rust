@@ -41,8 +41,10 @@ impl LintPass for UnusedLabel {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, kind: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                body: &'tcx hir::Expr, span: Span, fn_id: ast::NodeId) {
+    fn check_fn(
+        &mut self, cx: &LateContext<'a, 'tcx>, kind: FnKind<'tcx>, decl: &'tcx hir::FnDecl, body: &'tcx hir::Expr,
+        span: Span, fn_id: ast::NodeId
+    ) {
         if in_macro(cx, span) {
             return;
         }

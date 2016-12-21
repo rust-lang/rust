@@ -322,10 +322,10 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                                expr.span,
                                "you don't need to add `&` to both the expression and the patterns",
                                |db| {
-                                   let inner = Sugg::hir(cx, inner, "..");
-                                   let template = match_template(expr.span, source, inner);
-                                   db.span_suggestion(expr.span, "try", template);
-                               });
+                let inner = Sugg::hir(cx, inner, "..");
+                let template = match_template(expr.span, source, inner);
+                db.span_suggestion(expr.span, "try", template);
+            });
         } else {
             span_lint_and_then(cx,
                                MATCH_REF_PATS,
@@ -335,8 +335,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                 let ex = Sugg::hir(cx, ex, "..");
                 let template = match_template(expr.span, source, ex.deref());
                 db.span_suggestion(expr.span,
-                                   "instead of prefixing all patterns with `&`, you can \
-                                   dereference the expression",
+                                   "instead of prefixing all patterns with `&`, you can dereference the expression",
                                    template);
             });
         }

@@ -169,7 +169,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                            item.span,
                            "you are implementing `Clone` explicitly on a `Copy` type",
                            |db| {
-                               db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
-                           });
+            db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
+        });
     }
 }

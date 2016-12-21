@@ -73,7 +73,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     // }
     // }
     //
-    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _: &hir::Generics) {
+    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _:
+    // &hir::Generics) {
     // if !has_attr(&var.node.attrs) {
     // return;
     // }

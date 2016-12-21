@@ -351,11 +351,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                                    expr.span,
                                                    "this loop could be written as a `while let` loop",
                                                    |db| {
-                                                       let sug = format!("while let {} = {} {{ .. }}",
-                                                                         snippet(cx, arms[0].pats[0].span, ".."),
-                                                                         snippet(cx, matchexpr.span, ".."));
-                                                       db.span_suggestion(expr.span, "try", sug);
-                                                   });
+                                    let sug = format!("while let {} = {} {{ .. }}",
+                                                      snippet(cx, arms[0].pats[0].span, ".."),
+                                                      snippet(cx, matchexpr.span, ".."));
+                                    db.span_suggestion(expr.span, "try", sug);
+                                });
                             }
                         },
                         _ => (),
@@ -379,10 +379,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                        expr.span,
                                        "this loop could be written as a `for` loop",
                                        |db| {
-                                           db.span_suggestion(expr.span,
-                                                              "try",
-                                                              format!("for {} in {} {{ .. }}", loop_var, iterator));
-                                       });
+                        db.span_suggestion(expr.span, "try", format!("for {} in {} {{ .. }}", loop_var, iterator));
+                    });
                 }
             }
         }
@@ -473,11 +471,11 @@ fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, ar
                                        expr.span,
                                        &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
                                        |db| {
-                                           multispan_sugg(db,
+                        multispan_sugg(db,
                                        "consider using an iterator".to_string(),
                                        &[(pat.span, &format!("({}, <item>)", ident.node)),
                                          (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip))]);
-                                       });
+                    });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
@@ -492,10 +490,10 @@ fn check_for_loop_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat, ar
                                                 ident.node,
                                                 indexed),
                                        |db| {
-                                           multispan_sugg(db,
-                                                          "consider using an iterator".to_string(),
-                                                          &[(pat.span, "<item>"), (arg.span, &repl)]);
-                                       });
+                        multispan_sugg(db,
+                                       "consider using an iterator".to_string(),
+                                       &[(pat.span, "<item>"), (arg.span, &repl)]);
+                    });
                 }
             }
         }

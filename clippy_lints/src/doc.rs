@@ -268,7 +268,9 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
                             }
 
                             lookup_parser = parser.clone();
-                            if let (Some((false, $c)), Some((false, $c))) = (lookup_parser.next(), lookup_parser.next()) {
+                            let a = lookup_parser.next();
+                            let b = lookup_parser.next();
+                            if let (Some((false, $c)), Some((false, $c))) = (a, b) {
                                 let mut close_count = 3;
                                 while let Some((false, $c)) = lookup_parser.next() {
                                     close_count += 1;

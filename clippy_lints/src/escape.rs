@@ -61,8 +61,10 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_fn(&mut self, cx: &LateContext<'a, 'tcx>, _: visit::FnKind<'tcx>, decl: &'tcx FnDecl, body: &'tcx Expr,
-                _: Span, id: NodeId) {
+    fn check_fn(
+        &mut self, cx: &LateContext<'a, 'tcx>, _: visit::FnKind<'tcx>, decl: &'tcx FnDecl, body: &'tcx Expr, _: Span,
+        id: NodeId
+    ) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 
         let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);

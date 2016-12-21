@@ -204,7 +204,8 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
                     if let PatKind::Wild = j.pats[0].node {
                         // if the last arm is _, then i could be integrated into _
-                        // note that i.pats[0] cannot be _, because that would mean that we're hiding all the subsequent arms, and rust won't compile
+                        // note that i.pats[0] cannot be _, because that would mean that we're
+                        // hiding all the subsequent arms, and rust won't compile
                         db.span_note(i.body.span,
                                      &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`",
                                               lhs));

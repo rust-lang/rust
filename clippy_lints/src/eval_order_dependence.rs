@@ -146,7 +146,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 }
             },
             _ => {
-                // do not lint expressions referencing objects of type `!`, as that required a diverging expression to begin with
+                // do not lint expressions referencing objects of type `!`, as that required a diverging expression
+                // to begin with
             },
         }
         self.maybe_walk_expr(e);

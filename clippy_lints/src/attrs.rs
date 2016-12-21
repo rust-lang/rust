@@ -36,9 +36,11 @@ declare_lint! {
 
 /// **What it does:** Checks for `extern crate` and `use` items annotated with lint attributes
 ///
-/// **Why is this bad?** Lint attributes have no effect on crate imports. Most likely a `!` was forgotten
+/// **Why is this bad?** Lint attributes have no effect on crate imports. Most likely a `!` was
+/// forgotten
 ///
-/// **Known problems:** Technically one might allow `unused_import` on a `use` item, but it's easier to remove the unused item.
+/// **Known problems:** Technically one might allow `unused_import` on a `use` item,
+/// but it's easier to remove the unused item.
 ///
 /// **Example:**
 /// ```rust
@@ -125,11 +127,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                                            attr.span,
                                                            "useless lint attribute",
                                                            |db| {
-                                                               sugg.insert(1, '!');
-                                                               db.span_suggestion(attr.span,
-                                                                                  "if you just forgot a `!`, use",
-                                                                                  sugg);
-                                                           });
+                                            sugg.insert(1, '!');
+                                            db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                        });
                                     }
                                 }
                             },

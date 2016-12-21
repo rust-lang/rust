@@ -741,7 +741,7 @@ enum AbsurdComparisonResult {
 
 
 fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
-                                -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+    -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
@@ -1007,8 +1007,10 @@ fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: boo
     }
 }
 
-fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons::Rel,
-                                lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr, rhs: &Expr, invert: bool) {
+fn upcast_comparison_bounds_err(
+    cx: &LateContext, span: &Span, rel: comparisons::Rel, lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr,
+    rhs: &Expr, invert: bool
+) {
     use utils::comparisons::*;
 
     if let Some((lb, ub)) = lhs_bounds {

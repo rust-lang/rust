@@ -317,9 +317,8 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
-pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId,
-                                  ty_params: Vec<ty::Ty<'tcx>>)
-                                  -> bool {
+pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId, ty_params: Vec<ty::Ty<'tcx>>)
+    -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
@@ -403,7 +402,7 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
 /// Like `snippet_block`, but add braces if the expr is not an `ExprBlock`.
 /// Also takes an `Option<String>` which can be put inside the braces.
 pub fn expr_block<'a, 'b, T: LintContext<'b>>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str)
-                                              -> Cow<'a, str> {
+    -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
     if let ExprBlock(_) = expr.node {
@@ -758,7 +757,7 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
 // FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>, parameter_item: NodeId)
-                          -> bool {
+    -> bool {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
     cx.tcx.infer_ctxt(None, Some(parameter_env), Reveal::All).enter(|infcx| {
         let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);

@@ -152,11 +152,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                                                e.span,
                                                "calling `as_bytes()` on a string literal",
                                                |db| {
-                                                   let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
-                                                   db.span_suggestion(e.span,
-                                                                      "consider using a byte string literal instead",
-                                                                      sugg);
-                                               });
+                                let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
+                                db.span_suggestion(e.span, "consider using a byte string literal instead", sugg);
+                            });
 
                         }
                     }

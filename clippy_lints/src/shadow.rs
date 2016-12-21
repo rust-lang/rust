@@ -233,8 +233,8 @@ fn lint_shadow<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, span: Span,
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| {
-                                   db.span_note(prev_span, "previous binding is here");
-                               });
+                db.span_note(prev_span, "previous binding is here");
+            });
         } else if contains_self(cx, name, expr) {
             span_lint_and_then(cx,
                                SHADOW_REUSE,
@@ -243,9 +243,9 @@ fn lint_shadow<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, span: Span,
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| {
-                                   db.span_note(expr.span, "initialization happens here");
-                                   db.span_note(prev_span, "previous binding is here");
-                               });
+                db.span_note(expr.span, "initialization happens here");
+                db.span_note(prev_span, "previous binding is here");
+            });
         } else {
             span_lint_and_then(cx,
                                SHADOW_UNRELATED,
@@ -254,9 +254,9 @@ fn lint_shadow<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, span: Span,
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| {
-                                   db.span_note(expr.span, "initialization happens here");
-                                   db.span_note(prev_span, "previous binding is here");
-                               });
+                db.span_note(expr.span, "initialization happens here");
+                db.span_note(prev_span, "previous binding is here");
+            });
         }
 
     } else {
@@ -265,8 +265,8 @@ fn lint_shadow<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, span: Span,
                            span,
                            &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
                            |db| {
-                               db.span_note(prev_span, "previous binding is here");
-                           });
+            db.span_note(prev_span, "previous binding is here");
+        });
     }
 }
 

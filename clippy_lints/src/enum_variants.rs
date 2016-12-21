@@ -49,10 +49,13 @@ declare_lint! {
 
 /// **What it does:** Checks for modules that have the same name as their parent module
 ///
-/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { .. }` in `foo.rs`.
-///                      The expectation is that items inside the inner `mod foo { .. }` are then available
+/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { ..
+/// }` in `foo.rs`.
+/// The expectation is that items inside the inner `mod foo { .. }` are then
+/// available
 ///                      through `foo::x`, but they are only available through `foo::foo::x`.
-///                      If this is done on purpose, it would be better to choose a more representative module name.
+/// If this is done on purpose, it would be better to choose a more
+/// representative module name.
 ///
 /// **Known problems:** None.
 ///
@@ -111,8 +114,7 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 
 // FIXME: #600
 #[allow(while_let_on_iterator)]
-fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &str, item_name_chars: usize,
-                 span: Span) {
+fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &str, item_name_chars: usize, span: Span) {
     if (def.variants.len() as u64) < threshold {
         return;
     }
