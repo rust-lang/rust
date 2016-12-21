@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty;
+use rustc::ty::{self, layout};
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
@@ -23,7 +23,6 @@ use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funcl
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
 use abi::FnType;
-use machine;
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
