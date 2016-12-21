@@ -8,6 +8,8 @@ git:
   depth: 1
   submodules: false
 
+osx_image: xcode8.2
+
 matrix:
   include:
     # Linux builders, all docker images

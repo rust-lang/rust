@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // min-lldb-version: 310
+// ignore-macos FIXME(#37479)
 
 // compile-flags:-g
 
