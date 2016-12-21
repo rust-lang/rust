@@ -24,9 +24,9 @@ install:
 script:
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
- - PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff
- - cd clippy_lints && PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff
  - set -e
+ - PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff
+ - cd clippy_lints && PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff && cd ..
  - cargo build --features debugging
  - cargo test --features debugging
  - mkdir -p ~/rust/cargo/bin
