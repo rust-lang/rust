@@ -9,17 +9,16 @@
 // except according to those terms.
 
 use llvm;
-use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig,
-                       WorkProduct};
+use llvm::{ContextRef, ModuleRef, ValueRef};
+use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
+use rustc::hir;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
-use base;
-use builder::Builder;
-use common::BuilderRef_res;
 use debuginfo;
+use callee::Callee;
+use base;
 use declare;
 use glue::DropGlueKind;
 use monomorphize::Instance;
@@ -40,11 +39,13 @@ use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::ptr;
+use std::iter;
 use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
-use abi::FnType;
+use syntax_pos::DUMMY_SP;
+use abi::{Abi, FnType};
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -71,6 +72,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    empty_param_env: ty::ParameterEnvironment<'tcx>,
     stats: Stats,
     check_overflow: bool,
 
@@ -140,7 +142,6 @@ pub struct LocalCrateContext<'tcx> {
     int_type: Type,
     opaque_vec_type: Type,
     str_slice_type: Type,
-    builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
     closure_vals: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
@@ -152,11 +153,6 @@ pub struct LocalCrateContext<'tcx> {
     rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
-
-    /// Number of LLVM instructions translated into this `LocalCrateContext`.
-    /// This is used to perform some basic load-balancing to keep all LLVM
-    /// contexts around the same size.
-    n_llvm_insns: Cell<usize>,
 
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
@@ -316,38 +312,6 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
     }
 }
 
-/// The iterator produced by `CrateContext::maybe_iter`.
-pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccxs: &'a [LocalCrateContext<'tcx>],
-    index: usize,
-    single: bool,
-    origin: usize,
-}
-
-impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
-    type Item = (CrateContext<'a, 'tcx>, bool);
-
-    fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {
-        if self.index >= self.local_ccxs.len() {
-            return None;
-        }
-
-        let index = self.index;
-        self.index += 1;
-        if self.single {
-            self.index = self.local_ccxs.len();
-        }
-
-        let ccx = CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: self.local_ccxs
-        };
-        Some((ccx, index == self.origin))
-    }
-}
-
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
         Some(ref s) => &s[..],
@@ -496,6 +460,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             export_map: export_map,
             exported_symbols: exported_symbols,
             link_meta: link_meta,
+            empty_param_env: tcx.empty_parameter_environment(),
             tcx: tcx,
             stats: Stats {
                 n_glues_created: Cell::new(0),
@@ -514,6 +479,14 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
             project_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
+    }
+
+    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_needs_drop_given_env(ty, &self.empty_param_env)
+    }
+
+    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_sized(self.tcx, &self.empty_param_env, DUMMY_SP)
     }
 
     pub fn metadata_llmod(&self) -> ModuleRef {
@@ -638,14 +611,12 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
-                builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 closure_vals: RefCell::new(FxHashMap()),
                 dbg_cx: dbg_cx,
                 eh_personality: Cell::new(None),
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
-                n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
                 symbol_map: symbol_map,
                 local_gen_sym_counter: Cell::new(0),
@@ -670,10 +641,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
             local_ccx.int_type = int_type;
             local_ccx.opaque_vec_type = opaque_vec_type;
             local_ccx.str_slice_type = str_slice_ty;
-
-            if shared.tcx.sess.count_llvm_insns() {
-                base::init_insn_ctxt()
-            }
 
             local_ccx
         }
@@ -703,24 +670,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared
     }
 
-    pub fn local(&self) -> &'b LocalCrateContext<'tcx> {
+    fn local(&self) -> &'b LocalCrateContext<'tcx> {
         &self.local_ccxs[self.index]
-    }
-
-    /// Either iterate over only `self`, or iterate over all `CrateContext`s in
-    /// the `SharedCrateContext`.  The iterator produces `(ccx, is_origin)`
-    /// pairs, where `is_origin` is `true` if `ccx` is `self` and `false`
-    /// otherwise.  This method is useful for avoiding code duplication in
-    /// cases where it may or may not be necessary to translate code into every
-    /// context.
-    pub fn maybe_iter(&self, iter_all: bool) -> CrateContextMaybeIterator<'b, 'tcx> {
-        CrateContextMaybeIterator {
-            shared: self.shared,
-            index: if iter_all { 0 } else { self.index },
-            single: !iter_all,
-            origin: self.index,
-            local_ccxs: self.local_ccxs,
-        }
     }
 
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
@@ -729,14 +680,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.shared.tcx.sess
-    }
-
-    pub fn builder<'a>(&'a self) -> Builder<'a, 'tcx> {
-        Builder::new(self)
-    }
-
-    pub fn raw_builder<'a>(&'a self) -> BuilderRef {
-        self.local().builder.b
     }
 
     pub fn get_intrinsic(&self, key: &str) -> ValueRef {
@@ -886,24 +829,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().dbg_cx
     }
 
-    pub fn eh_personality<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local().eh_personality
-    }
-
-    pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local().eh_unwind_resume
-    }
-
     pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local().rust_try_fn
     }
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FxHashMap<&'static str, ValueRef>> {
         &self.local().intrinsics
-    }
-
-    pub fn count_llvm_insn(&self) {
-        self.local().n_llvm_insns.set(self.local().n_llvm_insns.get() + 1);
     }
 
     pub fn obj_size_bound(&self) -> u64 {
@@ -973,6 +904,82 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         name.push_str(".");
         base_n::push_str(idx as u64, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
+    }
+
+    pub fn eh_personality(&self) -> ValueRef {
+        // The exception handling personality function.
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to translate that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
+        if let Some(llpersonality) = self.local().eh_personality.get() {
+            return llpersonality
+        }
+        let tcx = self.tcx();
+        let llfn = match tcx.lang_items.eh_personality() {
+            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
+                Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
+            }
+            _ => {
+                let name = if base::wants_msvc_seh(self.sess()) {
+                    "__CxxFrameHandler3"
+                } else {
+                    "rust_eh_personality"
+                };
+                let fty = Type::variadic_func(&[], &Type::i32(self));
+                declare::declare_cfn(self, name, fty)
+            }
+        };
+        self.local().eh_personality.set(Some(llfn));
+        llfn
+    }
+
+    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
+    // otherwise declares it as an external function.
+    pub fn eh_unwind_resume(&self) -> ValueRef {
+        use attributes;
+        let unwresume = &self.local().eh_unwind_resume;
+        if let Some(llfn) = unwresume.get() {
+            return llfn;
+        }
+
+        let tcx = self.tcx();
+        assert!(self.sess().target.target.options.custom_unwind_resume);
+        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
+            let llfn = Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self);
+            unwresume.set(Some(llfn));
+            return llfn;
+        }
+
+        let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: hir::Unsafety::Unsafe,
+            abi: Abi::C,
+            sig: ty::Binder(tcx.mk_fn_sig(
+                iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
+                tcx.types.never,
+                false
+            )),
+        }));
+
+        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
+        attributes::unwind(llfn, true);
+        unwresume.set(Some(llfn));
+        llfn
     }
 }
 

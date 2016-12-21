@@ -10,7 +10,6 @@
 
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
-use build::AllocaFcx;
 use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
 use context::CrateContext;
 use cabi_x86;
@@ -99,18 +98,8 @@ impl ArgAttributes {
         self
     }
 
-    pub fn unset(&mut self, attr: ArgAttribute) -> &mut Self {
-        self.regular = self.regular - attr;
-        self
-    }
-
     pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
         self.dereferenceable_bytes = bytes;
-        self
-    }
-
-    pub fn unset_dereferenceable(&mut self) -> &mut Self {
-        self.dereferenceable_bytes = 0;
         self
     }
 
@@ -246,7 +235,7 @@ impl ArgType {
         if self.is_ignore() {
             return;
         }
-        let ccx = bcx.ccx();
+        let ccx = bcx.ccx;
         if self.is_indirect() {
             let llsz = llsize_of(ccx, self.ty);
             let llalign = llalign_of_min(ccx, self.ty);
@@ -278,7 +267,7 @@ impl ArgType {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = AllocaFcx(bcx.fcx(), ty, "abi_cast");
+                let llscratch = bcx.fcx().alloca(ty, "abi_cast");
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
@@ -431,7 +420,7 @@ impl FnType {
         let ret_ty = sig.output();
         let mut ret = arg_of(ret_ty, true);
 
-        if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
+        if !type_is_fat_ptr(ccx, ret_ty) {
             // The `noalias` attribute on the return value is useful to a
             // function ptr caller.
             if let ty::TyBox(_) = ret_ty.sty {
@@ -496,7 +485,7 @@ impl FnType {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if type_is_fat_ptr(ccx.tcx(), ty) {
+            if type_is_fat_ptr(ccx, ty) {
                 let original_tys = arg.original_ty.field_types();
                 let sizing_tys = arg.ty.field_types();
                 assert_eq!((original_tys.len(), sizing_tys.len()), (2, 2));
@@ -569,7 +558,7 @@ impl FnType {
             };
             // Fat pointers are returned by-value.
             if !self.ret.is_ignore() {
-                if !type_is_fat_ptr(ccx.tcx(), sig.output()) {
+                if !type_is_fat_ptr(ccx, sig.output()) {
                     fixup(&mut self.ret);
                 }
             }

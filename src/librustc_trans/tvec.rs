@@ -8,56 +8,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 use llvm;
 use llvm::ValueRef;
-use base::*;
-use build::*;
 use common::*;
-use debuginfo::DebugLoc;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                     data_ptr: ValueRef,
-                                     unit_ty: Ty<'tcx>,
-                                     len: ValueRef,
-                                     f: F)
-                                     -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
-{
-    let _icx = push_ctxt("tvec::slice_for_each");
-    let fcx = bcx.fcx;
-
+pub fn slice_for_each<'a, 'tcx, F>(
+    bcx: &BlockAndBuilder<'a, 'tcx>,
+    data_ptr: ValueRef,
+    unit_ty: Ty<'tcx>,
+    len: ValueRef,
+    f: F
+) -> BlockAndBuilder<'a, 'tcx> where F: FnOnce(&BlockAndBuilder<'a, 'tcx>, ValueRef) {
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
-    let zst = type_is_zero_size(bcx.ccx(), unit_ty);
-    let add = |bcx, a, b| if zst {
-        Add(bcx, a, b, DebugLoc::None)
+    let zst = type_is_zero_size(bcx.ccx, unit_ty);
+    let add = |bcx: &BlockAndBuilder, a, b| if zst {
+        bcx.add(a, b)
     } else {
-        InBoundsGEP(bcx, a, &[b])
+        bcx.inbounds_gep(a, &[b])
     };
 
-    let header_bcx = fcx.new_block("slice_loop_header");
-    let body_bcx = fcx.new_block("slice_loop_body");
-    let next_bcx = fcx.new_block("slice_loop_next");
+    let body_bcx = bcx.fcx().build_new_block("slice_loop_body");
+    let next_bcx = bcx.fcx().build_new_block("slice_loop_next");
+    let header_bcx = bcx.fcx().build_new_block("slice_loop_header");
 
     let start = if zst {
-        C_uint(bcx.ccx(), 0 as usize)
+        C_uint(bcx.ccx, 0usize)
     } else {
         data_ptr
     };
-    let end = add(bcx, start, len);
+    let end = add(&bcx, start, len);
 
-    Br(bcx, header_bcx.llbb, DebugLoc::None);
-    let current = Phi(header_bcx, val_ty(start), &[start], &[bcx.llbb]);
+    bcx.br(header_bcx.llbb());
+    let current = header_bcx.phi(val_ty(start), &[start], &[bcx.llbb()]);
 
-    let keep_going =
-        ICmp(header_bcx, llvm::IntNE, current, end, DebugLoc::None);
-    CondBr(header_bcx, keep_going, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
+    let keep_going = header_bcx.icmp(llvm::IntNE, current, end);
+    header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
-    let body_bcx = f(body_bcx, if zst { data_ptr } else { current });
-    let next = add(body_bcx, current, C_uint(bcx.ccx(), 1usize));
-    AddIncomingToPhi(current, next, body_bcx.llbb);
-    Br(body_bcx, header_bcx.llbb, DebugLoc::None);
+    f(&body_bcx, if zst { data_ptr } else { current });
+    let next = add(&body_bcx, current, C_uint(bcx.ccx, 1usize));
+    header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
+    body_bcx.br(header_bcx.llbb());
     next_bcx
 }

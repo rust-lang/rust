@@ -36,6 +36,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
+#![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
 
@@ -95,8 +96,6 @@ mod asm;
 mod assert_module_sources;
 mod attributes;
 mod base;
-mod basic_block;
-mod build;
 mod builder;
 mod cabi_aarch64;
 mod cabi_arm;
