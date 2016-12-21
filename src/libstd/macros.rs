@@ -463,7 +463,7 @@ pub mod builtin {
     ///
     /// Using this macro is often a bad idea, because if the file is
     /// parsed as an expression, it is going to be placed in the
-    /// surrounding code unhygenically. This could result in variables
+    /// surrounding code unhygienically. This could result in variables
     /// or functions being different from what the file expected if
     /// there are variables or functions that have the same name in
     /// the current file.
