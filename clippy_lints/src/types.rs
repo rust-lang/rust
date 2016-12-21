@@ -825,6 +825,12 @@ fn detect_absurd_comparison<'a>(
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
 
+    // absurd comparison only makes sense on primitive types
+    // primitive types don't implement comparison operators with each other
+    if cx.tcx.tables().expr_ty(lhs) != cx.tcx.tables().expr_ty(rhs) {
+        return None;
+    }
+
     let normalized = normalize_comparison(op, lhs, rhs);
     let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
         val

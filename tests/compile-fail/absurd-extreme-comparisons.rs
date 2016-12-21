@@ -3,6 +3,7 @@
 
 #![deny(absurd_extreme_comparisons)]
 #![allow(unused, eq_op, no_effect, unnecessary_operation)]
+
 fn main() {
     const Z: u32 = 0;
 
@@ -69,4 +70,24 @@ fn main() {
 
     // this is handled by unit_cmp
     () < {}; //~WARNING <-comparison of unit values detected.
+}
+
+use std::cmp::{Ordering, PartialEq, PartialOrd};
+
+#[derive(PartialEq, PartialOrd)]
+pub struct U(u64);
+
+impl PartialEq<u32> for U {
+    fn eq(&self, other: &u32) -> bool {
+        self.eq(&U(*other as u64))
+    }
+}
+impl PartialOrd<u32> for U {
+    fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
+        self.partial_cmp(&U(*other as u64))
+    }
+}
+
+pub fn foo(val: U) -> bool {
+    val > std::u32::MAX
 }
