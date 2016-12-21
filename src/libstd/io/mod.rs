@@ -1425,6 +1425,12 @@ pub trait BufRead: Read {
     ///     println!("{}", line.unwrap());
     /// }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Each line of the iterator has the same error semantics as [`BufRead::read_line()`].
+    ///
+    /// [`BufRead::read_line()`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
