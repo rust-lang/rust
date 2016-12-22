@@ -13,6 +13,7 @@ use io::{Error, ErrorKind, Result};
 use net::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use path::Path;
 use sys::fs::{File, OpenOptions};
+use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
 use super::{path_to_peer_addr, path_to_local_addr};
@@ -170,4 +171,18 @@ impl UdpSocket {
     pub fn leave_multicast_v6(&self, _multiaddr: &Ipv6Addr, _interface: u32) -> Result<()> {
         Err(Error::new(ErrorKind::Other, "UdpSocket::leave_multicast_v6 not implemented"))
     }
+}
+
+impl AsInner<File> for UdpSocket {
+    fn as_inner(&self) -> &File { &self.0 }
+}
+
+impl FromInner<File> for UdpSocket {
+    fn from_inner(file: File) -> UdpSocket {
+        UdpSocket(file, UnsafeCell::new(None))
+    }
+}
+
+impl IntoInner<File> for UdpSocket {
+    fn into_inner(self) -> File { self.0 }
 }
