@@ -720,6 +720,10 @@ then
     exit 0
 fi
 
+# Unstuck the LLVM submodule
+rm -f "${CFG_SRC_DIR}/.git/modules/src/llvm/index.lock"
+exit 1
+
 # Validate Options
 if [ -z "$CFG_DISABLE_OPTION_CHECKING" ]
 then
