@@ -1,12 +1,12 @@
 use rustc::hir::*;
 use rustc::hir::intravisit as visit;
 use rustc::hir::map::Node::{NodeExpr, NodeStmt};
-use rustc::infer::InferCtxt;
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
 use rustc::ty;
 use rustc::ty::layout::TargetDataLayout;
+use rustc::traits::Reveal;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -46,10 +46,9 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
     }
 }
 
-struct EscapeDelegate<'a, 'tcx: 'a + 'gcx, 'gcx: 'a> {
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
-    infcx: &'a InferCtxt<'a, 'gcx, 'gcx>,
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     target: TargetDataLayout,
     too_large_for_stack: u64,
 }
@@ -70,20 +69,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         id: NodeId
     ) {
-        let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
-
-        let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
-
         // we store the infcx because it is expensive to recreate
         // the context each time.
         let mut v = EscapeDelegate {
-            tcx: cx.tcx,
             set: NodeSet(),
-            infcx: &infcx,
+            tcx: cx.tcx,
             target: TargetDataLayout::parse(cx.sess()),
             too_large_for_stack: self.too_large_for_stack,
         };
+        let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 
+        let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
         {
             let mut vis = ExprUseVisitor::new(&mut v, &infcx);
             vis.walk_fn(decl, body);
@@ -98,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-impl<'a, 'tcx: 'a + 'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 'gcx> {
+impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
@@ -207,18 +203,20 @@ impl<'a, 'tcx: 'a + 'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 
     fn mutate(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {}
 }
 
-impl<'a, 'tcx: 'a + 'gcx, 'gcx: 'a> EscapeDelegate<'a, 'tcx, 'gcx> {
-    fn is_large_box(&self, ty: ty::Ty<'gcx>) -> bool {
+impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
+    fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
         match ty.sty {
             ty::TyBox(inner) => {
-                if let Ok(layout) = inner.layout(self.infcx) {
-                    let size = layout.size(&self.target);
-                    size.bytes() > self.too_large_for_stack
-                } else {
-                    false
-                }
+                self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                    if let Ok(layout) = inner.layout(&infcx) {
+                        let size = layout.size(&self.target);
+                        size.bytes() > self.too_large_for_stack
+                    } else {
+                        false
+                    }
+                })
             },
             _ => false,
         }
