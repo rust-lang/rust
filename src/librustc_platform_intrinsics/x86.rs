@@ -872,6 +872,36 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::F64x4,
             definition: Named("llvm.x86.fma.vfnmsub.pd.256")
         },
+        "_rdrand16_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdrand.16")
+        },
+        "_rdrand32_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdrand.32")
+        },
+        "_rdrand64_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdrand.64")
+        },
+        "_rdseed16_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdseed.16")
+        },
+        "_rdseed32_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdseed.32")
+        },
+        "_rdseed64_step" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64, &::I32]; &PARTS }); &AGG },
+            definition: Named("llvm.x86.rdseed.64")
+        },
         "_mm_adds_epi8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
             output: &::I8x16,
