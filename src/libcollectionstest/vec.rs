@@ -12,6 +12,7 @@ use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
+use std::panic;
 use std::vec::{Drain, IntoIter};
 
 use test::Bencher;
@@ -613,6 +614,24 @@ fn assert_covariance() {
     fn into_iter<'new>(i: IntoIter<&'static str>) -> IntoIter<&'new str> {
         i
     }
+}
+
+#[test]
+fn test_placement() {
+    let mut vec = vec![1];
+    assert_eq!(vec.place_back() <- 2, &2);
+    assert_eq!(vec.len(), 2);
+    assert_eq!(vec.place_back() <- 3, &3);
+    assert_eq!(vec.len(), 3);
+    assert_eq!(&vec, &[1, 2, 3]);
+}
+
+#[test]
+fn test_placement_panic() {
+    let mut vec = vec![1, 2, 3];
+    fn mkpanic() -> usize { panic!() }
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { vec.place_back() <- mkpanic(); }));
+    assert_eq!(vec.len(), 3);
 }
 
 #[bench]
