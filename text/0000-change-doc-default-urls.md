@@ -86,6 +86,11 @@ We could do work on the `rel=canonical` issue instead, which would solve this
 in a different way. This doesn't totally solve all issues, however, only
 the duplication issue.
 
+We could redirect all URLs that don't start with a version prefix to redirect to
+`/`, which would be an index page showing all of the various places to go. Right
+now, it's unclear how many people even know that we host specific old versions,
+or stuff like `/beta`.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
