@@ -13,6 +13,10 @@ Extend `Cell` to work with non-`Copy` types.
 
 It allows safe inner-mutability of non-`Copy` types without the overhead of `RefCell`'s reference counting.
 
+The key idea of `Cell` is to provide a primitive building block to safely support inner mutability. This must be done while maintaining Rust's aliasing requirements for mutable references. Unlike `RefCell` which enforces this at runtime through reference counting, `Cell` does this statically by disallowing any reference (mutable or immutable) to the data contained in the cell.
+
+While the current implementation only supports `Copy` types, this restriction isn't actually necessary to maintain Rust's aliasing invariants. The only affected API is the `get` function which, by design, is only usable with `Copy` types.
+
 # Detailed design
 [design]: #detailed-design
 
