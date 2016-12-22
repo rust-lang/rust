@@ -238,9 +238,4 @@ impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
         self.calculate_node_id(impl_item.id, |v| v.visit_impl_item(impl_item));
         visit::walk_impl_item(self, impl_item);
     }
-
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
-        self.calculate_node_id(item.id, |v| v.visit_foreign_item(item));
-        visit::walk_foreign_item(self, item);
-    }
 }
