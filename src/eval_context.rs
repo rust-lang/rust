@@ -16,10 +16,7 @@ use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
 use memory::{Memory, Pointer};
 use operator;
-use value::{PrimVal, PrimValKind};
-
-// FIXME(solson): Remove this.
-pub use value::Value;
+use value::{PrimVal, PrimValKind, Value};
 
 pub type MirRef<'tcx> = Ref<'tcx, mir::Mir<'tcx>>;
 

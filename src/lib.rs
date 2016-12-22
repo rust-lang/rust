@@ -43,7 +43,6 @@ pub use eval_context::{
     Frame,
     ResourceLimits,
     StackPopCleanup,
-    Value,
     eval_main,
     run_mir_passes,
 };
@@ -62,4 +61,5 @@ pub use memory::{
 pub use value::{
     PrimVal,
     PrimValKind,
+    Value,
 };
