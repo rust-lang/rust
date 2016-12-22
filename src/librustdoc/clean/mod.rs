@@ -2206,7 +2206,7 @@ impl Path {
     }
 
     pub fn last_name(&self) -> &str {
-        self.segments.last().unwrap().name
+        self.segments.last().unwrap().name.as_str()
     }
 }
 
