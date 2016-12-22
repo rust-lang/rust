@@ -378,13 +378,13 @@ pub mod reimpls {
                 if b != 0 && b != 1 {
                     *overflow = 1;
                 }
-                return result.to_ret();
+                return result;
             }
             if b == <$ty>::min_value() {
                 if a != 0 && a != 1 {
                     *overflow = 1;
                 }
-                return result.to_ret();
+                return result;
             }
 
             let sa = a.signum();
@@ -392,7 +392,7 @@ pub mod reimpls {
             let sb = b.signum();
             let abs_b = b.iabs();
             if abs_a < 2 || abs_b < 2 {
-                return result.to_ret();
+                return result;
             }
             unsafe {
             if sa == sb {
@@ -405,13 +405,14 @@ pub mod reimpls {
                 }
             }
             }
-            result.to_ret()
+            result
         }}
     }
 
     // FIXME: i32 here should be c_int.
-    #[export_name="__muloti4"]
-    pub extern "C" fn i128_mul_oflow(a: i128_, b: i128_, o: &mut i32) -> i128ret {
+    #[cfg_attr(not(all(windows, target_pointer_width="64", not(stage0))),
+               export_name="__muloti4")]
+    pub extern "C" fn i128_mul_oflow(a: i128_, b: i128_, o: &mut i32) -> i128 {
         mulo!(a, b, o, i128_)
     }
 
@@ -696,7 +697,14 @@ pub mod reimpls {
     #[cfg(all(windows, target_pointer_width="64"))]
     mod windows_64_workarounds {
         use super::{i128_, u128_, LargeInt};
-        use super::{i128_as_f64, i128_as_f32, u128_as_f64, u128_as_f32};
+        use super::{i128_as_f64, i128_as_f32, u128_as_f64, u128_as_f32, i128_mul_oflow};
+
+        #[export_name="__muloti4"]
+        pub extern "C" fn i128_mul_oflow_win(alow: u64, ahigh: i64,
+                                             blow: u64, bhigh: i64, o: &mut i32) -> i128 {
+            i128_mul_oflow(i128_::from_parts(alow, ahigh), i128_::from_parts(blow, bhigh), o)
+        }
+
         #[export_name="__floattidf"]
         pub extern "C" fn i128_as_f64_win(alow: u64, ahigh: i64) -> f64 {
             i128_as_f64(i128_::from_parts(alow, ahigh))
