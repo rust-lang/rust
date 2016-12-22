@@ -1767,6 +1767,16 @@ mod tests {
         }
     ) }
 
+    #[cfg(windows)]
+    macro_rules! error { ($e:expr, $s:expr) => (
+        match $e {
+            Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
+            Err(ref err) => assert!(err.raw_os_error() == Some($s),
+                                    format!("`{}` did not have a code of `{}`", err, $s))
+        }
+    ) }
+
+    #[cfg(unix)]
     macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
@@ -1787,12 +1797,9 @@ mod tests {
 
         match symlink_file(r"nonexisting_target", link) {
             Ok(_) => true,
-            Err(ref err) =>
-                if err.to_string().contains("A required privilege is not held by the client.") {
-                    false
-                } else {
-                    true
-                }
+            // ERROR_PRIVILEGE_NOT_HELD = 1314
+            Err(ref err) if err.raw_os_error() == Some(1314) => false,
+            Err(_) => true,
         }
     }
 
@@ -1823,12 +1830,10 @@ mod tests {
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open(filename);
 
-        if cfg!(unix) {
-            error!(result, "No such file or directory");
-        }
-        if cfg!(windows) {
-            error!(result, "The system cannot find the file specified");
-        }
+        #[cfg(unix)]
+        error!(result, "No such file or directory");
+        #[cfg(windows)]
+        error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
 
     #[test]
@@ -1838,12 +1843,10 @@ mod tests {
 
         let result = fs::remove_file(filename);
 
-        if cfg!(unix) {
-            error!(result, "No such file or directory");
-        }
-        if cfg!(windows) {
-            error!(result, "The system cannot find the file specified");
-        }
+        #[cfg(unix)]
+        error!(result, "No such file or directory");
+        #[cfg(windows)]
+        error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
 
     #[test]
@@ -2598,8 +2601,10 @@ mod tests {
         let mut a = OO::new(); a.append(true);
         let mut ra = OO::new(); ra.read(true).append(true);
 
-        let invalid_options = if cfg!(windows) { "The parameter is incorrect" }
-                              else { "Invalid argument" };
+        #[cfg(windows)]
+        let invalid_options = 87; // ERROR_INVALID_PARAMETER
+        #[cfg(unix)]
+        let invalid_options = "Invalid argument";
 
         // Test various combinations of creation modes and access modes.
         //
