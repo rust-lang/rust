@@ -299,7 +299,6 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
-#![cfg_attr(target_os = "redox", feature(naked_functions))]
 #![cfg_attr(test, feature(update_panic_count))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
