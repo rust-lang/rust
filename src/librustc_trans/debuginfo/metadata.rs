@@ -906,7 +906,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 
             MemberDescription {
                 name: name,
-                llvm_type: type_of::type_of(cx, fty),
+                llvm_type: type_of::in_memory_type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
                 offset: offset,
                 flags: DIFlags::FlagZero,
