@@ -25,10 +25,6 @@
 // Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
-// Reexport the start module on platforms that provide it
-#[unstable(feature = "sys_rt", issue="0")]
-pub use sys::rt::*;
-
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
