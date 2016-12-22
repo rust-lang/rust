@@ -91,7 +91,7 @@ impl<'a> SpanUtils<'a> {
 
     fn span_to_tts(&self, span: Span) -> Vec<TokenTree> {
         let srdr = self.retokenise_span(span);
-        let mut p = Parser::new(&self.sess.parse_sess, Box::new(srdr));
+        let mut p = Parser::new(&self.sess.parse_sess, Box::new(srdr), None, false);
         p.parse_all_token_trees().expect("Couldn't re-parse span")
     }
 
