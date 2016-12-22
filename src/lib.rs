@@ -1,6 +1,5 @@
 #![feature(
     btree_range,
-    cell_extras,
     collections,
     collections_bound,
     pub_restricted,

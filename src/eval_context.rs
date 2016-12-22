@@ -469,7 +469,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield } => {
+                    StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
                             if nndiscr == variant as u64 {
                                 let offsets = nonnull.offsets.iter().map(|s| s.bytes());
