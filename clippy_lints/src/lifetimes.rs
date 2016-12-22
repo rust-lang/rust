@@ -281,6 +281,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             TyPath(ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
             },
+            TyImplTrait(ref param_bounds) => {
+                for bound in param_bounds {
+                    if let RegionTyParamBound(_) = *bound {
+                        self.record(&None);
+                    }
+                }
+            }
             _ => (),
         }
         walk_ty(self, ty);
