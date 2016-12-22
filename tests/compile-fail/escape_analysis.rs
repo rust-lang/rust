@@ -112,3 +112,20 @@ fn nowarn_large_array() {
         ref y => ()
     }
 }
+
+
+/// ICE regression test
+pub trait Foo {
+    type Item;
+}
+
+impl<'a> Foo for &'a () {
+    type Item = ();
+}
+
+pub struct PeekableSeekable<I: Foo> {
+    _peeked: I::Item,
+}
+
+pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () { //~ ERROR local variable doesn't need
+}
