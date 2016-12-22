@@ -917,6 +917,18 @@ case $CFG_BUILD in
 esac
 putvar CFG_LLDB_PYTHON
 
+# Do some sanity checks if running on buildbot
+# (these env vars are set by rust-buildbot)
+if [ -n "$RUST_DIST_SERVER" -a -n "$ALLOW_NONZERO_RLIMIT_CORE" ]; then
+   # Frequently the llvm submodule directory is broken by the build
+   # being killed
+   llvm_lock="${CFG_SRC_DIR}/.git/modules/src/llvm/index.lock"
+   if [ -e "$llvm_lock" ]; then
+       step_msg "removing $llvm_lock"
+       rm -f "$llvm_lock"
+   fi
+fi
+
 step_msg "looking for target specific programs"
 
 probe CFG_ADB        adb
