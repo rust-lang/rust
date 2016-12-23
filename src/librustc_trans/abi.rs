@@ -352,6 +352,7 @@ impl FnType {
             Fastcall => llvm::X86FastcallCallConv,
             Vectorcall => llvm::X86_VectorCall,
             C => llvm::CCallConv,
+            Unadjusted => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
             SysV64 => llvm::X86_64_SysV,
             Aapcs => llvm::ArmAapcsCallConv,
@@ -528,6 +529,8 @@ impl FnType {
                                     ccx: &CrateContext<'a, 'tcx>,
                                     abi: Abi,
                                     sig: &ty::FnSig<'tcx>) {
+        if abi == Abi::Unadjusted { return }
+
         if abi == Abi::Rust || abi == Abi::RustCall ||
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType| {

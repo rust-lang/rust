@@ -324,6 +324,9 @@ declare_features! (
 
     // The `i128` type
     (active, i128_type, "1.16.0", Some(35118)),
+
+    // The `unadjusted` ABI. Perma unstable.
+    (active, abi_unadjusted, "1.16.0", None),
 );
 
 declare_features! (
@@ -995,7 +998,11 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::PtxKernel => {
                 gate_feature_post!(&self, abi_ptx, span,
                                    "PTX ABIs are experimental and subject to change");
-            }
+            },
+            Abi::Unadjusted => {
+                gate_feature_post!(&self, abi_unadjusted, span,
+                                   "unadjusted ABI is an implementation detail and perma-unstable");
+            },
             // Stable
             Abi::Cdecl |
             Abi::Stdcall |
