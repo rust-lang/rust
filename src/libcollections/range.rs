@@ -91,3 +91,21 @@ impl<T> RangeArgument<T> for Range<T> {
         Excluded(&self.end)
     }
 }
+
+impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
+    fn start(&self) -> Bound<&T> {
+        match *self {
+            (Included(ref start), _) => Included(start),
+            (Excluded(ref start), _) => Excluded(start),
+            (Unbounded, _)           => Unbounded,
+        }
+    }
+
+    fn end(&self) -> Bound<&T> {
+        match *self {
+            (_, Included(ref end)) => Included(end),
+            (_, Excluded(ref end)) => Excluded(end),
+            (_, Unbounded)         => Unbounded,
+        }
+    }
+}
