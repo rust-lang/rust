@@ -187,12 +187,11 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(ccx.shared(), dg.ty()));
         let t = dg.ty();
 
-        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(tcx.types.i8)), tcx.mk_nil(), false);
+        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(t)), tcx.mk_nil(), false);
 
-        // Create a FnType for fn(*mut i8) and substitute the real type in
-        // later - that prevents FnType from splitting fat pointers up.
-        let mut fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
-        fn_ty.args[0].original_ty = type_of::type_of(ccx, t).ptr_to();
+        debug!("predefine_drop_glue: sig={}", sig);
+
+        let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
         let llfnty = fn_ty.llvm_type(ccx);
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());

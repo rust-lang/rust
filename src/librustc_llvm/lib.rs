@@ -270,7 +270,8 @@ pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
     unsafe {
-        assert!(index < LLVMCountParams(llfn));
+        assert!(index < LLVMCountParams(llfn),
+            "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
     }
 }
