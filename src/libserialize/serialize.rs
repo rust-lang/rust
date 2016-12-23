@@ -674,8 +674,8 @@ pub trait SpecializationError {
     /// `T` is the type being encoded/decoded, and
     /// the arguments are the names of the trait
     /// and method that should've been overriden.
-    fn not_found<S, T: ?Sized>(trait_name: &'static str,
-                               method_name: &'static str) -> Self;
+    fn not_found<_S, _T: ?Sized>(trait_name: &'static str,
+                                 method_name: &'static str) -> Self;
 }
 
 impl<E> SpecializationError for E {

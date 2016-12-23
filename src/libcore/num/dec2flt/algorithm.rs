@@ -35,7 +35,7 @@ fn power_of_ten(e: i16) -> Fp {
 // precision of the computation is determined on a per-operation basis.
 #[cfg(any(not(target_arch="x86"), target_feature="sse2"))]
 mod fpu_precision {
-    pub fn set_precision<T>() { }
+    pub fn set_precision<_T>() { }
 }
 
 // On x86, the x87 FPU is used for float operations if the SSE/SSE2 extensions are not available.

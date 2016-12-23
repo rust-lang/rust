@@ -12,6 +12,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
+#![allow(unused_type_parameters)]
 
 trait Baz {
 }

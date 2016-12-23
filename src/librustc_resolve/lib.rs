@@ -48,6 +48,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet};
 
+use syntax::abi::Abi;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
@@ -558,7 +559,14 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
 
 impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
+        let is_lang_item = item.attrs.iter().any(|attr| attr.name() == "lang");
+        if is_lang_item {
+            self.check_unused_type_parameters = false;
+        }
+
         self.resolve_item(item);
+
+        self.check_unused_type_parameters = true;
     }
     fn visit_arm(&mut self, arm: &'tcx Arm) {
         self.resolve_arm(arm);
@@ -721,6 +729,8 @@ enum RibKind<'a> {
 struct Rib<'a> {
     bindings: FxHashMap<Ident, Def>,
     kind: RibKind<'a>,
+    sources: FxHashMap<Ident, (NodeId, Span)>,
+    used_names: RefCell<FxHashSet<Ident>>,
 }
 
 impl<'a> Rib<'a> {
@@ -728,7 +738,25 @@ impl<'a> Rib<'a> {
         Rib {
             bindings: FxHashMap(),
             kind: kind,
+            sources: FxHashMap(),
+            used_names: RefCell::new(FxHashSet()),
         }
+    }
+
+    fn insert(&mut self, ident: Ident, def: Def) {
+        self.bindings.insert(ident, def);
+    }
+
+    fn insert_with_source(&mut self, ident: Ident, id: NodeId, span: Span, def: Def) {
+        self.bindings.insert(ident, def);
+        self.sources.insert(ident, (id, span));
+    }
+
+    fn get(&self, ident: Ident) -> Option<Def> {
+        self.bindings.get(&ident).map(|def| {
+            self.used_names.borrow_mut().insert(ident);
+            def.clone()
+        })
     }
 }
 
@@ -1110,6 +1138,10 @@ pub struct Resolver<'a> {
 
     // Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
+
+    // Whether unused type parameters should be warned. Default true,
+    // false for intrinsics and lang items.
+    check_unused_type_parameters: bool,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1284,6 +1316,7 @@ impl<'a> Resolver<'a> {
             macro_exports: Vec::new(),
             invocations: invocations,
             name_already_seen: FxHashMap(),
+            check_unused_type_parameters: true,
         }
     }
 
@@ -1392,7 +1425,7 @@ impl<'a> Resolver<'a> {
 
         // Walk backwards up the ribs in scope.
         for i in (0 .. self.ribs[ns].len()).rev() {
-            if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {
+            if let Some(def) = self.ribs[ns][i].get(ident) {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Def(if let Some(span) = record_used {
                     self.adjust_local_def(LocalDef { ribs: Some((ns, i)), def: def }, span)
@@ -1499,7 +1532,7 @@ impl<'a> Resolver<'a> {
                     return None;
                 }
             }
-            let result = rib.bindings.get(&ident).cloned();
+            let result = rib.get(ident);
             if result.is_some() {
                 return result;
             }
@@ -1574,10 +1607,22 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(_) => {
                 self.with_scope(item.id, |this| {
                     visit::walk_item(this, item);
                 });
+            }
+
+            ItemKind::ForeignMod(ref m) => {
+                if m.abi == Abi::RustIntrinsic {
+                    self.check_unused_type_parameters = false;
+                }
+
+                self.with_scope(item.id, |this| {
+                    visit::walk_item(this, item);
+                });
+
+                self.check_unused_type_parameters = true;
             }
 
             ItemKind::Const(..) | ItemKind::Static(..) => {
@@ -1633,7 +1678,7 @@ impl<'a> Resolver<'a> {
     {
         match type_parameters {
             HasTypeParameters(generics, rib_kind) => {
-                let mut function_type_rib = Rib::new(rib_kind);
+                let mut type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
                 for type_parameter in &generics.ty_params {
                     let name = type_parameter.ident.name;
@@ -1649,12 +1694,13 @@ impl<'a> Resolver<'a> {
                     seen_bindings.entry(name).or_insert(type_parameter.span);
 
                     // plain insert (no renaming)
+                    let ident = Ident::with_empty_ctxt(name);
                     let def_id = self.definitions.local_def_id(type_parameter.id);
                     let def = Def::TyParam(def_id);
-                    function_type_rib.bindings.insert(Ident::with_empty_ctxt(name), def);
+                    type_rib.insert_with_source(ident, type_parameter.id, type_parameter.span, def);
                     self.record_def(type_parameter.id, PathResolution::new(def));
                 }
-                self.ribs[TypeNS].push(function_type_rib);
+                self.ribs[TypeNS].push(type_rib);
             }
 
             NoTypeParameters => {
@@ -1665,6 +1711,20 @@ impl<'a> Resolver<'a> {
         f(self);
 
         if let HasTypeParameters(..) = type_parameters {
+            if self.check_unused_type_parameters {
+                let type_rib = self.ribs[TypeNS].last().unwrap();
+                for (&name, &(id, span)) in &type_rib.sources {
+                    if name.to_string().starts_with('_') {
+                        continue;
+                    }
+                    if !type_rib.used_names.borrow().contains(&name) {
+                        self.session.add_lint(lint::builtin::UNUSED_TYPE_PARAMETERS,
+                                              id, span,
+                                              "unused type parameter".to_string());
+                    }
+                }
+            }
+
             self.ribs[TypeNS].pop();
         }
     }
@@ -1778,7 +1838,7 @@ impl<'a> Resolver<'a> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // plain insert (no renaming, types are not currently hygienic....)
-        self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
+        self_type_rib.insert(keywords::SelfType.ident(), self_def);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
         self.ribs[TypeNS].pop();
@@ -2092,7 +2152,7 @@ impl<'a> Resolver<'a> {
                 // A completely fresh binding, add to the lists if it's valid.
                 if ident.node.name != keywords::Invalid.name() {
                     bindings.insert(ident.node, outer_pat_id);
-                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident.node, def);
+                    self.ribs[ValueNS].last_mut().unwrap().insert(ident.node, def);
                 }
             }
         }
@@ -2597,7 +2657,7 @@ impl<'a> Resolver<'a> {
         if let Some(label) = label {
             let def = Def::Label(id);
             self.with_label_rib(|this| {
-                this.label_ribs.last_mut().unwrap().bindings.insert(label.node, def);
+                this.label_ribs.last_mut().unwrap().insert(label.node, def);
                 this.visit_block(block);
             });
         } else {

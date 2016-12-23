@@ -818,7 +818,7 @@ impl<T> fmt::Debug for JoinHandle<T> {
 }
 
 fn _assert_sync_and_send() {
-    fn _assert_both<T: Send + Sync>() {}
+    fn _assert_both<_T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
     _assert_both::<Thread>();
 }

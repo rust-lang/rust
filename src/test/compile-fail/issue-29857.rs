@@ -10,6 +10,7 @@
 
 
 #![feature(rustc_attrs)]
+#![allow(unused_type_parameters)]
 
 use std::marker::PhantomData;
 

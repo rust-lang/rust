@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![allow(unused_type_parameters)]
 
 pub trait Foo<P> {}
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![allow(unused_type_parameters)]
 #![deny(extra_requirement_in_impl)]
 
 // Test that we elaborate `Type: 'region` constraints and infer various important things.

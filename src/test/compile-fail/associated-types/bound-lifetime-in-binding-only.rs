@@ -11,6 +11,7 @@
 // revisions: angle paren ok elision
 
 #![allow(dead_code)]
+#![allow(unused_type_parameters)]
 #![feature(rustc_attrs)]
 #![feature(unboxed_closures)]
 #![deny(hr_lifetime_in_assoc_type)]

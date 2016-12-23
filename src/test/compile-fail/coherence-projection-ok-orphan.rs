@@ -10,6 +10,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
+#![allow(unused_type_parameters)]
 
 // Here we do not get a coherence conflict because `Baz: Iterator`
 // does not hold and (due to the orphan rules), we can rely on that.
