@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use {AmbiguityError, Resolver, ResolutionError, resolve_error};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathScope, PathResult};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
 use Namespace::{self, MacroNS};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
@@ -30,6 +30,7 @@ use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::fold::Folder;
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
 use syntax_pos::{Span, DUMMY_SP};
@@ -105,15 +106,13 @@ impl<'a> base::Resolver for Resolver<'a> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
                 if ident.name == "$crate" {
-                    path.global = true;
+                    path.segments[0].identifier.name = keywords::CrateRoot.name();
                     let module = self.0.resolve_crate_var(ident.ctxt);
-                    if module.is_local() {
-                        path.segments.remove(0);
-                    } else {
-                        path.segments[0].identifier = match module.kind {
-                            ModuleKind::Def(_, name) => ast::Ident::with_empty_ctxt(name),
+                    if !module.is_local() {
+                        path.segments.insert(1, match module.kind {
+                            ModuleKind::Def(_, name) => ast::Ident::with_empty_ctxt(name).into(),
                             _ => unreachable!(),
-                        };
+                        })
                     }
                 }
                 path
@@ -182,7 +181,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        let ast::Path { ref segments, global, span } = *path;
+        let ast::Path { ref segments, span } = *path;
         if segments.iter().any(|segment| segment.parameters.is_some()) {
             let kind =
                 if segments.last().unwrap().parameters.is_some() { "macro" } else { "module" };
@@ -191,12 +190,11 @@ impl<'a> base::Resolver for Resolver<'a> {
             return Err(Determinacy::Determined);
         }
 
-        let path_scope = if global { PathScope::Global } else { PathScope::Lexical };
         let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();
 
-        if path.len() > 1 || global {
+        if path.len() > 1 {
             if !self.use_extern_macros {
                 let msg = "non-ident macro paths are experimental";
                 let feature = "use_extern_macros";
@@ -204,7 +202,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let ext = match self.resolve_path(&path, path_scope, Some(MacroNS), None) {
+            let ext = match self.resolve_path(&path, Some(MacroNS), None) {
                 PathResult::NonModule(path_res) => match path_res.base_def {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => Ok(self.get_macro(def)),
@@ -214,7 +212,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 _ => Err(Determinacy::Determined),
             };
             self.current_module.macro_resolutions.borrow_mut()
-                .push((path.into_boxed_slice(), path_scope, span));
+                .push((path.into_boxed_slice(), span));
             return ext;
         }
 
@@ -351,8 +349,8 @@ impl<'a> Resolver<'a> {
 
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
-        for &(ref path, scope, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(path, scope, Some(MacroNS), Some(span)) {
+        for &(ref path, span) in module.macro_resolutions.borrow().iter() {
+            match self.resolve_path(path, Some(MacroNS), Some(span)) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));

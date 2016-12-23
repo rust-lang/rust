@@ -61,7 +61,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
         fn path(&self) -> ast::Path {
             ast::Path {
                 span: self.span,
-                global: false,
                 segments: vec![self.ident.into()],
             }
         }

@@ -324,7 +324,6 @@ impl Witness {
                     let v = ctor.variant_for_adt(adt);
                     let qpath = hir::QPath::Resolved(None, P(hir::Path {
                         span: DUMMY_SP,
-                        global: false,
                         def: Def::Err,
                         segments: vec![hir::PathSegment::from_name(v.name)].into(),
                     }));
