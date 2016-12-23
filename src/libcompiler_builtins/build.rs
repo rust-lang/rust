@@ -242,7 +242,7 @@ fn main() {
                          "atomic_thread_fence.c"]);
     }
 
-    if !target.contains("windows") {
+    if !target.contains("redox") && !target.contains("windows") {
         sources.extend(&["emutls.c"]);
     }
 
