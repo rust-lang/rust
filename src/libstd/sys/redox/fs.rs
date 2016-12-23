@@ -43,7 +43,7 @@ pub struct DirEntry {
     name: Box<[u8]>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -63,6 +63,7 @@ pub struct FilePermissions { mode: u16 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType { mode: u16 }
 
+#[derive(Debug)]
 pub struct DirBuilder { mode: u16 }
 
 impl FileAttr {
