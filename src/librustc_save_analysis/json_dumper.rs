@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use external_data::*;
-use data::VariableKind;
+use data::{VariableKind, SigElement};
 use dump::Dump;
 use super::Format;
 
@@ -86,6 +86,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         };
         if def.span.file_name != def.value {
             // If the module is an out-of-line defintion, then we'll make the
@@ -223,6 +224,7 @@ struct Def {
     children: Vec<Id>,
     decl_id: Option<Id>,
     docs: String,
+    sig: Option<JsonSignature>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -264,6 +266,7 @@ impl From<EnumData> for Def {
             children: data.variants.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -280,6 +283,7 @@ impl From<TupleVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -295,6 +299,7 @@ impl From<StructVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -310,6 +315,7 @@ impl From<StructData> for Def {
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -325,6 +331,7 @@ impl From<TraitData> for Def {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -340,6 +347,7 @@ impl From<FunctionData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -355,6 +363,7 @@ impl From<MethodData> for Def {
             children: vec![],
             decl_id: data.decl_id.map(|id| From::from(id)),
             docs: data.docs,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -370,10 +379,10 @@ impl From<MacroData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
-
 impl From<TypeDefData> for Def {
     fn from(data: TypeDefData) -> Def {
         Def {
@@ -386,6 +395,7 @@ impl From<TypeDefData> for Def {
             children: vec![],
             decl_id: None,
             docs: String::new(),
+            sig: data.sig.map(|s| From::from(s)),
         }
     }
 }
@@ -406,6 +416,7 @@ impl From<VariableData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -493,6 +504,46 @@ impl From<MacroUseData> for MacroRef {
             span: data.span,
             qualname: data.qualname,
             callee_span: data.callee_span,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct JsonSignature {
+    span: SpanData,
+    text: String,
+    ident_start: usize,
+    ident_end: usize,
+    defs: Vec<JsonSigElement>,
+    refs: Vec<JsonSigElement>,
+}
+
+impl From<Signature> for JsonSignature {
+    fn from(data: Signature) -> JsonSignature {
+        JsonSignature {
+            span: data.span,
+            text: data.text,
+            ident_start: data.ident_start,
+            ident_end: data.ident_end,
+            defs: data.defs.into_iter().map(|s| From::from(s)).collect(),
+            refs: data.refs.into_iter().map(|s| From::from(s)).collect(),
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct JsonSigElement {
+    id: Id,
+    start: usize,
+    end: usize,
+}
+
+impl From<SigElement> for JsonSigElement {
+    fn from(data: SigElement) -> JsonSigElement {
+        JsonSigElement {
+            id: From::from(data.id),
+            start: data.start,
+            end: data.end,
         }
     }
 }

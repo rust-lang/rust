@@ -19,7 +19,9 @@ use std::path::Path;
 use syntax::ast;
 use syntax::parse::lexer::{self, Reader, StringReader};
 use syntax::parse::token::{self, Token};
+use syntax::parse::parser::Parser;
 use syntax::symbol::keywords;
+use syntax::tokenstream::TokenTree;
 use syntax_pos::*;
 
 #[derive(Clone)]
@@ -85,6 +87,12 @@ impl<'a> SpanUtils<'a> {
                           .new_filemap(String::from("<anon-dxr>"), None, self.snippet(span));
         let s = self.sess;
         lexer::StringReader::new(s.diagnostic(), filemap)
+    }
+
+    fn span_to_tts(&self, span: Span) -> Vec<TokenTree> {
+        let srdr = self.retokenise_span(span);
+        let mut p = Parser::new(&self.sess.parse_sess, Box::new(srdr), None, false);
+        p.parse_all_token_trees().expect("Couldn't re-parse span")
     }
 
     // Re-parses a path and returns the span for the last identifier in the path
@@ -306,6 +314,42 @@ impl<'a> SpanUtils<'a> {
                 result.push(self.make_sub_span(span, Some(ts.sp)).unwrap());
             }
         }
+    }
+
+    /// `span` must be the span for an item such as a function or struct. This
+    /// function returns the program text from the start of the span until the
+    /// end of the 'signature' part, that is up to, but not including an opening
+    /// brace or semicolon.
+    pub fn signature_string_for_span(&self, span: Span) -> String {
+        let mut toks = self.span_to_tts(span).into_iter();
+        let mut prev = toks.next().unwrap();
+        let first_span = prev.get_span();
+        let mut angle_count = 0;
+        for tok in toks {
+            if let TokenTree::Token(_, ref tok) = prev {
+                angle_count += match *tok {
+                    token::Eof => { break; }
+                    token::Lt => 1,
+                    token::Gt => -1,
+                    token::BinOp(token::Shl) => 2,
+                    token::BinOp(token::Shr) => -2,
+                    _ => 0,
+                };
+            }
+            if angle_count > 0 {
+                prev = tok;
+                continue;
+            }
+            if let TokenTree::Token(_, token::Semi) = tok {
+                return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
+            } else if let TokenTree::Delimited(_, ref d) = tok {
+                if d.delim == token::Brace {
+                    return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
+                }
+            }
+            prev = tok;
+        }
+        self.snippet(span)
     }
 
     pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {

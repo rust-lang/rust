@@ -357,6 +357,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         parent: None,
                         visibility: Visibility::Inherited,
                         docs: String::new(),
+                        sig: None,
                     }.lower(self.tcx));
                 }
             }
@@ -429,6 +430,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: trait_id,
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
+                    sig: method_data.sig,
                 }.lower(self.tcx));
             }
 
@@ -500,6 +502,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     visibility: Visibility::Inherited,
                     parent: None,
                     docs: String::new(),
+                    sig: None,
                 }.lower(self.tcx));
             }
         }
@@ -572,6 +575,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: Some(parent_id),
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
+                sig: None,
             }.lower(self.tcx));
         }
 
@@ -615,11 +619,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 fields: fields,
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
+                sig: self.save_ctxt.sig_base(item),
             }.lower(self.tcx));
         }
 
-
-        // fields
         for field in def.fields() {
             self.process_struct_field_def(field, item.id);
             self.visit_ty(&field.ty);
@@ -648,6 +651,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             qualname.push_str("::");
             qualname.push_str(&name);
 
+            let text = self.span.signature_string_for_span(variant.span);
+            let ident_start = text.find(&name).unwrap();
+            let ident_end = ident_start + name.len();
+            let sig = Signature {
+                span: variant.span,
+                text: text,
+                ident_start: ident_start,
+                ident_end: ident_end,
+                defs: vec![],
+                refs: vec![],
+            };
+
             match variant.node.data {
                 ast::VariantData::Struct(ref fields, _) => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
@@ -669,6 +684,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
+                            sig: sig,
                         }.lower(self.tcx));
                     }
                 }
@@ -694,6 +710,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
+                            sig: sig,
                         }.lower(self.tcx));
                     }
                 }
@@ -778,6 +795,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 items: methods.iter().map(|i| i.id).collect(),
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
+                sig: self.save_ctxt.sig_base(item),
             }.lower(self.tcx));
         }
 
@@ -1043,6 +1061,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: None,
                     visibility: Visibility::Inherited,
                     docs: String::new(),
+                    sig: None,
                 }.lower(self.tcx));
             }
         }
@@ -1257,10 +1276,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             Impl(..,
-                          ref ty_params,
-                          ref trait_ref,
-                          ref typ,
-                          ref impl_items) => {
+                 ref ty_params,
+                 ref trait_ref,
+                 ref typ,
+                 ref impl_items) => {
                 self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
             }
             Trait(_, ref generics, ref trait_refs, ref methods) =>
@@ -1283,6 +1302,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         visibility: From::from(&item.vis),
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
+                        sig: Some(self.save_ctxt.sig_base(item)),
                     }.lower(self.tcx));
                 }
 
@@ -1492,6 +1512,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             parent: None,
                             visibility: Visibility::Inherited,
                             docs: String::new(),
+                            sig: None,
                         }.lower(self.tcx));
                     }
                 }
