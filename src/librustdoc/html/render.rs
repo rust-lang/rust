@@ -2122,14 +2122,14 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             write!(w, "<li><code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
-            let dissambiguate = if let clean::Type::ResolvedPath {
+            let use_absolute = if let clean::Type::ResolvedPath {
                 ref path, ..
             } = implementor.impl_.for_ {
                 implementor_count[path.last_name()] > 1
             } else {
                 false
             };
-            fmt_impl_for_trait_page(&implementor.impl_, w, dissambiguate)?;
+            fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
             writeln!(w, "</code></li>")?;
         }
     }

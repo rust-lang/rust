@@ -561,14 +561,14 @@ impl<'a> fmt::Display for HRef<'a> {
     }
 }
 
-fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, full_path: bool) -> fmt::Result {
+fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt::Result {
     match *t {
         clean::Generic(ref name) => {
             f.write_str(name)
         }
         clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
             // Paths like T::Output and Self::Output should be rendered with all segments
-            resolved_path(f, did, path, is_generic, full_path)?;
+            resolved_path(f, did, path, is_generic, use_absolute)?;
             tybounds(f, typarams)
         }
         clean::Infer => write!(f, "_"),
@@ -727,7 +727,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, full_path: bool) -> fmt::Re
                 write!(f, "{}::", self_type)?;
             }
             let path = clean::Path::singleton(name.clone());
-            resolved_path(f, did, &path, true, full_path)?;
+            resolved_path(f, did, &path, true, use_absolute)?;
 
             // FIXME: `typarams` are not rendered, and this seems bad?
             drop(typarams);
@@ -752,7 +752,10 @@ impl fmt::Display for clean::Type {
     }
 }
 
-fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool, full: bool) -> fmt::Result {
+fn fmt_impl(i: &clean::Impl,
+            f: &mut fmt::Formatter,
+            link_trait: bool,
+            use_absolute: bool) -> fmt::Result {
     let mut plain = String::new();
 
     if f.alternate() {
@@ -786,7 +789,7 @@ fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool, full: boo
         plain.push_str(" for ");
     }
 
-    fmt_type(&i.for_, f, full)?;
+    fmt_type(&i.for_, f, use_absolute)?;
     plain.push_str(&format!("{:#}", i.for_));
 
     fmt::Display::fmt(&WhereClause(&i.generics, plain.len() + 1), f)?;
@@ -802,8 +805,8 @@ impl fmt::Display for clean::Impl {
 // The difference from above is that trait is not hyperlinked.
 pub fn fmt_impl_for_trait_page(i: &clean::Impl,
                                f: &mut fmt::Formatter,
-                               disambiguate: bool) -> fmt::Result {
-    fmt_impl(i, f, false, disambiguate)
+                               use_absolute: bool) -> fmt::Result {
+    fmt_impl(i, f, false, use_absolute)
 }
 
 impl fmt::Display for clean::Arguments {
