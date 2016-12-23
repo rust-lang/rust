@@ -15,6 +15,7 @@
 //! Range syntax.
 
 use core::ops::{RangeFull, Range, RangeTo, RangeFrom};
+use Bound::{self, Excluded, Included, Unbounded};
 
 /// **RangeArgument** is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
@@ -38,8 +39,8 @@ pub trait RangeArgument<T> {
     /// assert_eq!((3..10).start(), Some(&3));
     /// # }
     /// ```
-    fn start(&self) -> Option<&T> {
-        None
+    fn start(&self) -> Bound<&T> {
+        Unbounded
     }
 
     /// End index (exclusive)
@@ -61,8 +62,8 @@ pub trait RangeArgument<T> {
     /// assert_eq!((3..10).end(), Some(&10));
     /// # }
     /// ```
-    fn end(&self) -> Option<&T> {
-        None
+    fn end(&self) -> Bound<&T> {
+        Unbounded
     }
 }
 
@@ -71,22 +72,22 @@ pub trait RangeArgument<T> {
 impl<T> RangeArgument<T> for RangeFull {}
 
 impl<T> RangeArgument<T> for RangeFrom<T> {
-    fn start(&self) -> Option<&T> {
-        Some(&self.start)
+    fn start(&self) -> Bound<&T> {
+        Included(&self.start)
     }
 }
 
 impl<T> RangeArgument<T> for RangeTo<T> {
-    fn end(&self) -> Option<&T> {
-        Some(&self.end)
+    fn end(&self) -> Bound<&T> {
+        Excluded(&self.end)
     }
 }
 
 impl<T> RangeArgument<T> for Range<T> {
-    fn start(&self) -> Option<&T> {
-        Some(&self.start)
+    fn start(&self) -> Bound<&T> {
+        Included(&self.start)
     }
-    fn end(&self) -> Option<&T> {
-        Some(&self.end)
+    fn end(&self) -> Bound<&T> {
+        Excluded(&self.end)
     }
 }
