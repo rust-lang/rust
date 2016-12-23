@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --emit=metadata
 // aux-build:rmeta_meta.rs
 // no-prefer-dynamic
 // must-compile-successfully
@@ -15,8 +16,6 @@
 // Check that building a metadata crate works with a dependent, metadata-only
 // crate.
 // This is a cfail test since there is no executable to run.
-
-#![crate_type="metadata"]
 
 extern crate rmeta_meta;
 use rmeta_meta::Foo;

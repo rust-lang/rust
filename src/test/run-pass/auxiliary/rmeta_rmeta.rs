@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // no-prefer-dynamic
+// compile-flags: --emit=metadata
 
-#![crate_type="metadata"]
+#![crate_type="rlib"]
 #![crate_name="rmeta_aux"]
 
 pub struct Foo {
