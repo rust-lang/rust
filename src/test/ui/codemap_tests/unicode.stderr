@@ -1,4 +1,4 @@
-error: invalid ABI: expected one of [cdecl, stdcall, fastcall, vectorcall, aapcs, win64, sysv64, ptx-kernel, Rust, C, system, rust-intrinsic, rust-call, platform-intrinsic], found `路濫狼á́́`
+error: invalid ABI: expected one of [cdecl, stdcall, fastcall, vectorcall, aapcs, win64, sysv64, ptx-kernel, Rust, C, system, rust-intrinsic, rust-call, platform-intrinsic, unadjusted], found `路濫狼á́́`
   --> $DIR/unicode.rs:11:8
    |
 11 | extern "路濫狼á́́" fn foo() {}
