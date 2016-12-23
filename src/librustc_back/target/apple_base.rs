@@ -37,6 +37,7 @@ pub fn opts() -> TargetOptions {
         function_sections: false,
         dynamic_linking: true,
         executables: true,
+        target_family: Some("unix".to_string()),
         is_like_osx: true,
         has_rpath: true,
         dll_prefix: "lib".to_string(),
