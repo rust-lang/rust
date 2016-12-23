@@ -101,9 +101,9 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 #[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
-        MetaItemKind::Word(ref s) => *s == SKIP_ANNOTATION,
-        MetaItemKind::List(ref s, ref l) => {
-            *s == "cfg_attr" && l.len() == 2 && is_skip_nested(&l[1])
+        MetaItemKind::Word => meta_item.name == SKIP_ANNOTATION,
+        MetaItemKind::List(ref l) => {
+            meta_item.name == "cfg_attr" && l.len() == 2 && is_skip_nested(&l[1])
         }
         _ => false,
     }
@@ -119,7 +119,7 @@ fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
 
 #[inline]
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|a| is_skip(&a.node.value))
+    attrs.iter().any(|a| is_skip(&a.value))
 }
 
 // Find the end of a TyParam
