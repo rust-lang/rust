@@ -481,7 +481,7 @@ def main():
 
     # Allow the subcommand to be last in the argv list
     argv = sys.argv[1:]
-    subcomands = [
+    subcommands = [
         'build',
         'test',
         'bench',
@@ -489,11 +489,13 @@ def main():
         'clean',
         'dist',
     ]
-    for subcomand in subcomands:
-        if argv[-1] == subcomand:
-            del argv[-1]
-            argv.insert(0, subcomand)
+    for subcommand in subcommands:
+        try:
+            i = argv.index(subcommand)
+            argv = argv[i:] + argv[:i]
             break
+        except ValueError:
+            pass
 
     args.extend(argv)
     env = os.environ.copy()
