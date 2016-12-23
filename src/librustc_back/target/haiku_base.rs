@@ -17,6 +17,7 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
+        target_family: Some("unix".to_string()),
         linker_is_gnu: true,
         .. Default::default()
     }

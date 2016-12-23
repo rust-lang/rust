@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use PanicStrategy;
 use target::TargetOptions;
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        dynamic_linking: true,
-        executables: true,
-        target_family: Some("unix".to_string()),
-        linker_is_gnu: true,
-        has_rpath: true,
         pre_link_args: vec![
             // We want to be able to strip as much executable code as possible
             // from the linker command line, and this flag indicates to the
@@ -30,10 +26,25 @@ pub fn opts() -> TargetOptions {
 
             // Always enable NX protection when it is available
             "-Wl,-z,noexecstack".to_string(),
+
+            // Static link
+            "-static".to_string()
         ],
-        position_independent_executables: true,
-        exe_allocation_crate: super::maybe_jemalloc(),
+        late_link_args: vec![
+            "-lc".to_string(),
+            "-lm".to_string()
+        ],
+        executables: true,
+        relocation_model: "static".to_string(),
+        disable_redzone: true,
+        eliminate_frame_pointer: false,
+        target_family: None,
+        linker_is_gnu: true,
+        no_default_libraries: true,
+        lib_allocation_crate: "alloc_system".to_string(),
+        exe_allocation_crate: "alloc_system".to_string(),
         has_elf_tls: true,
+        panic_strategy: PanicStrategy::Abort,
         .. Default::default()
     }
 }

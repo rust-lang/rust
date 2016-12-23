@@ -10,11 +10,10 @@
 
 #![allow(dead_code, missing_docs, bad_style)]
 
-pub extern crate syscall;
-
 use io::{self, ErrorKind};
 
 pub mod args;
+#[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
 pub mod env;
@@ -34,6 +33,7 @@ pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
+pub mod syscall;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
