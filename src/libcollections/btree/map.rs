@@ -18,6 +18,7 @@ use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
 use Bound::{self, Excluded, Included, Unbounded};
+use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -681,12 +682,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<Min: ?Sized + Ord, Max: ?Sized + Ord>(&self,
-                                                       min: Bound<&Min>,
-                                                       max: Bound<&Max>)
-                                                       -> Range<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
+        let min = range.start();
+        let max = range.end();
         let front = match min {
             Included(key) => {
                 match search::search_tree(self.root.as_ref(), key) {
