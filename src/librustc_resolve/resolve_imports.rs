@@ -128,6 +128,7 @@ impl<'a> NameResolution<'a> {
 impl<'a> Resolver<'a> {
     fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
                   -> &'a RefCell<NameResolution<'a>> {
+        let ident = ident.unhygienize();
         *module.resolutions.borrow_mut().entry((ident, ns))
                .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
@@ -141,7 +142,6 @@ impl<'a> Resolver<'a> {
                                    ignore_unresolved_invocations: bool,
                                    record_used: Option<Span>)
                                    -> Result<&'a NameBinding<'a>, Determinacy> {
-        let ident = ident.unhygienize();
         self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
@@ -307,7 +307,6 @@ impl<'a> Resolver<'a> {
                       ns: Namespace,
                       binding: &'a NameBinding<'a>)
                       -> Result<(), &'a NameBinding<'a>> {
-        let ident = ident.unhygienize();
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
