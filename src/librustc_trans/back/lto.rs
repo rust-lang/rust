@@ -34,7 +34,6 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
 
         config::CrateTypeDylib     |
         config::CrateTypeRlib      |
-        config::CrateTypeMetadata  |
         config::CrateTypeProcMacro => false,
     }
 }

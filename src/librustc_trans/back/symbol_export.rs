@@ -149,7 +149,6 @@ pub fn crate_export_threshold(crate_type: config::CrateType)
         config::CrateTypeProcMacro  |
         config::CrateTypeCdylib     => SymbolExportLevel::C,
         config::CrateTypeRlib       |
-        config::CrateTypeMetadata   |
         config::CrateTypeDylib      => SymbolExportLevel::Rust,
     }
 }

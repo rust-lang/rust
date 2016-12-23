@@ -191,7 +191,8 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
-        if sess.opts.debugging_opts.no_trans &&
+        if (sess.opts.debugging_opts.no_trans ||
+            sess.opts.output_types.contains_key(&OutputType::Metadata)) &&
            crate_type == config::CrateTypeExecutable {
             continue;
         }
@@ -200,15 +201,16 @@ pub fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let out_file = link_binary_output(sess, trans, crate_type, outputs,
-                                          crate_name);
+        let out_file = link_binary_output(sess, trans, crate_type, outputs, crate_name);
         out_filenames.push(out_file);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        for obj in object_filenames(trans, outputs) {
-            remove(sess, &obj);
+        if !sess.opts.output_types.contains_key(&OutputType::Metadata) {
+            for obj in object_filenames(trans, outputs) {
+                remove(sess, &obj);
+            }
         }
         remove(sess, &outputs.with_extension("metadata.o"));
     }
@@ -259,12 +261,14 @@ pub fn filename_for_input(sess: &Session,
                           crate_name: &str,
                           outputs: &OutputFilenames) -> PathBuf {
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+
+    if outputs.outputs.contains_key(&OutputType::Metadata) {
+        return outputs.out_directory.join(&format!("lib{}.rmeta", libname));
+    }
+
     match crate_type {
         config::CrateTypeRlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
-        }
-        config::CrateTypeMetadata => {
-            outputs.out_directory.join(&format!("lib{}.rmeta", libname))
         }
         config::CrateTypeCdylib |
         config::CrateTypeProcMacro |
@@ -351,20 +355,21 @@ fn link_binary_output(sess: &Session,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
 
-    match crate_type {
-        config::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &objects, &out_filename,
-                      tmpdir.path()).build();
-        }
-        config::CrateTypeStaticlib => {
-            link_staticlib(sess, &objects, &out_filename, tmpdir.path());
-        }
-        config::CrateTypeMetadata => {
-            emit_metadata(sess, trans, &out_filename);
-        }
-        _ => {
-            link_natively(sess, crate_type, &objects, &out_filename, trans,
-                          outputs, tmpdir.path());
+    if outputs.outputs.contains_key(&OutputType::Metadata) {
+        emit_metadata(sess, trans, &out_filename);
+    } else {
+        match crate_type {
+            config::CrateTypeRlib => {
+                link_rlib(sess, Some(trans), &objects, &out_filename,
+                          tmpdir.path()).build();
+            }
+            config::CrateTypeStaticlib => {
+                link_staticlib(sess, &objects, &out_filename, tmpdir.path());
+            }
+            _ => {
+                link_natively(sess, crate_type, &objects, &out_filename, trans,
+                              outputs, tmpdir.path());
+            }
         }
     }
 

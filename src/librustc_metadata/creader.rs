@@ -799,8 +799,7 @@ impl<'a> CrateLoader<'a> {
                 config::CrateTypeProcMacro |
                 config::CrateTypeCdylib |
                 config::CrateTypeStaticlib => need_lib_alloc = true,
-                config::CrateTypeRlib |
-                config::CrateTypeMetadata => {}
+                config::CrateTypeRlib => {}
             }
         }
         if !need_lib_alloc && !need_exe_alloc { return }

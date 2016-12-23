@@ -73,6 +73,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
+    Metadata,
     Object,
     Exe,
     DepInfo,
@@ -86,7 +87,8 @@ impl OutputType {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
-            OutputType::Object => false,
+            OutputType::Object |
+            OutputType::Metadata => false,
         }
     }
 
@@ -96,6 +98,7 @@ impl OutputType {
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
             OutputType::Object => "obj",
+            OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
         }
@@ -107,6 +110,7 @@ impl OutputType {
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
             OutputType::Object => "o",
+            OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
         }
@@ -482,7 +486,6 @@ pub enum CrateType {
     CrateTypeStaticlib,
     CrateTypeCdylib,
     CrateTypeProcMacro,
-    CrateTypeMetadata,
 }
 
 #[derive(Clone, Hash)]
@@ -1159,12 +1162,12 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              assumed.", "[KIND=]NAME"),
         opt::multi_s("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                   "[bin|lib|rlib|dylib|cdylib|staticlib|metadata]"),
+                   "[bin|lib|rlib|dylib|cdylib|staticlib]"),
         opt::opt_s("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout", &print_opts.join("|")),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
@@ -1327,6 +1330,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     "llvm-ir" => OutputType::LlvmAssembly,
                     "llvm-bc" => OutputType::Bitcode,
                     "obj" => OutputType::Object,
+                    "metadata" => OutputType::Metadata,
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
                     part => {
@@ -1553,7 +1557,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
-                "metadata"  => CrateTypeMetadata,
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1638,7 +1641,6 @@ impl fmt::Display for CrateType {
             CrateTypeStaticlib => "staticlib".fmt(f),
             CrateTypeCdylib => "cdylib".fmt(f),
             CrateTypeProcMacro => "proc-macro".fmt(f),
-            CrateTypeMetadata => "metadata".fmt(f),
         }
     }
 }
