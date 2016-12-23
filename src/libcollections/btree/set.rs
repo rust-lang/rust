@@ -21,7 +21,7 @@ use core::ops::{BitOr, BitAnd, BitXor, Sub};
 use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use super::Recover;
-use Bound;
+use range::RangeArgument;
 
 // FIXME(conventions): implement bounded iterators
 
@@ -232,13 +232,10 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<'a, Min: ?Sized + Ord, Max: ?Sized + Ord>(&'a self,
-                                                           min: Bound<&Min>,
-                                                           max: Bound<&Max>)
-                                                           -> Range<'a, T>
-        where T: Borrow<Min> + Borrow<Max>
+    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
+        where K: Ord, T: Borrow<K>, R: RangeArgument<K>
     {
-        Range { iter: self.map.range(min, max) }
+        Range { iter: self.map.range(range) }
     }
 }
 
