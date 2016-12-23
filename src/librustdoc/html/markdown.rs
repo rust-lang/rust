@@ -629,7 +629,7 @@ pub fn plain_summary_line(md: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{LangString, Markdown};
+    use super::{LangString, Markdown, MarkdownHtml};
     use super::plain_summary_line;
     use html::render::reset_ids;
 
@@ -734,5 +734,16 @@ mod tests {
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
         t("## header", "header");
+    }
+
+    #[test]
+    fn test_markdown_html_escape() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", MarkdownHtml(input));
+            assert_eq!(output, expect);
+        }
+
+        t("`Struct<'a, T>`", "<p><code>Struct&lt;&#39;a, T&gt;</code></p>\n");
+        t("Struct<'a, T>", "<p>Struct&lt;&#39;a, T&gt;</p>\n");
     }
 }
