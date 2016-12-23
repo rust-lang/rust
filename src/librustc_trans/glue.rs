@@ -20,7 +20,7 @@ use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
 use rustc::ty::{self, AdtKind, Ty, TypeFoldable};
-use adt;
+use adt::{self, MaybeSizedValue};
 use base::*;
 use callee::Callee;
 use common::*;
@@ -107,13 +107,13 @@ pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'t
     }
 }
 
-fn drop_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, t: Ty<'tcx>) {
-    call_drop_glue(bcx, v, t, false, None)
+fn drop_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, args: MaybeSizedValue, t: Ty<'tcx>) {
+    call_drop_glue(bcx, args, t, false, None)
 }
 
 pub fn call_drop_glue<'a, 'tcx>(
     bcx: &BlockAndBuilder<'a, 'tcx>,
-    v: ValueRef,
+    mut args: MaybeSizedValue,
     t: Ty<'tcx>,
     skip_dtor: bool,
     funclet: Option<&'a Funclet>,
@@ -129,14 +129,13 @@ pub fn call_drop_glue<'a, 'tcx>(
         };
         let glue = get_drop_glue_core(ccx, g);
         let glue_type = get_drop_glue_type(ccx.shared(), t);
-        let ptr = if glue_type != t {
-            bcx.pointercast(v, type_of(ccx, glue_type).ptr_to())
-        } else {
-            v
-        };
+        if glue_type != t {
+            args.value = bcx.pointercast(args.value, type_of(ccx, glue_type).ptr_to());
+        }
 
         // No drop-hint ==> call standard drop glue
-        bcx.call(glue, &[ptr], funclet.map(|b| b.bundle()));
+        bcx.call(glue, &[args.value, args.meta][..1 + args.has_meta() as usize],
+            funclet.map(|b| b.bundle()));
     }
 }
 
@@ -189,7 +188,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     let (llfn, _) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
     let fcx = FunctionContext::new(ccx, llfn);
-    let bcx = fcx.get_entry_block();
+    let mut bcx = fcx.get_entry_block();
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a
@@ -205,8 +204,14 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     // non-null, (and maybe we need to continue doing so), but we now
     // must definitely check for special bit-patterns corresponding to
     // the special dtor markings.
-    let v0 = get_param(llfn, 0);
     let t = g.ty();
+
+    let value = get_param(llfn, 0);
+    let ptr = if ccx.shared().type_is_sized(t) {
+        MaybeSizedValue::sized(value)
+    } else {
+        MaybeSizedValue::unsized_(value, get_param(llfn, 1))
+    };
 
     let skip_dtor = match g {
         DropGlueKind::Ty(_) => false,
@@ -220,12 +225,9 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
             if !bcx.ccx.shared().type_is_sized(content_ty) {
-                let llval = get_dataptr(&bcx, v0);
-                let llbox = bcx.load(llval);
-                drop_ty(&bcx, v0, content_ty);
-                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
-                let info = get_meta(&bcx, v0);
-                let info = bcx.load(info);
+                let llbox = bcx.load(get_dataptr(&bcx, ptr.value));
+                let info = bcx.load(get_meta(&bcx, ptr.value));
+                drop_ty(&bcx, MaybeSizedValue::unsized_(llbox, info), content_ty);
                 let (llsize, llalign) = size_and_align_of_dst(&bcx, content_ty, info);
 
                 // `Box<ZeroSizeType>` does not allocate.
@@ -241,9 +243,8 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
                     next_cx
                 }
             } else {
-                let llval = v0;
-                let llbox = bcx.load(llval);
-                drop_ty(&bcx, llbox, content_ty);
+                let llbox = bcx.load(ptr.value);
+                drop_ty(&bcx, MaybeSizedValue::sized(llbox), content_ty);
                 trans_exchange_free_ty(&bcx, llbox, content_ty);
                 bcx
             }
@@ -252,91 +253,67 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
-            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
             assert!(!skip_dtor);
-            let data_ptr = get_dataptr(&bcx, v0);
-            let vtable_ptr = bcx.load(get_meta(&bcx, v0));
-            let dtor = bcx.load(vtable_ptr);
-            bcx.call(dtor, &[bcx.pointercast(bcx.load(data_ptr), Type::i8p(bcx.ccx))], None);
+            let dtor = bcx.load(ptr.meta);
+            bcx.call(dtor, &[ptr.value], None);
             bcx
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
-            trans_custom_dtor(bcx, t, v0, def.is_union())
+            let shallow_drop = def.is_union();
+            let tcx = bcx.tcx();
+
+            let def = t.ty_adt_def().unwrap();
+
+            // Be sure to put the contents into a scope so we can use an invoke
+            // instruction to call the user destructor but still call the field
+            // destructors if the user destructor panics.
+            //
+            // FIXME (#14875) panic-in-drop semantics might be unsupported; we
+            // might well consider changing below to more direct code.
+            // Issue #23611: schedule cleanup of contents, re-inspecting the
+            // discriminant (if any) in case of variant swap in drop code.
+            let contents_scope = if !shallow_drop {
+                bcx.fcx().schedule_drop_adt_contents(ptr, t)
+            } else {
+                CleanupScope::noop()
+            };
+
+            let trait_ref = ty::Binder(ty::TraitRef {
+                def_id: tcx.lang_items.drop_trait().unwrap(),
+                substs: tcx.mk_substs_trait(t, &[])
+            });
+            let vtbl = match fulfill_obligation(bcx.ccx.shared(), DUMMY_SP, trait_ref) {
+                traits::VtableImpl(data) => data,
+                _ => bug!("dtor for {:?} is not an impl???", t)
+            };
+            let dtor_did = def.destructor().unwrap();
+            let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
+            let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
+            let llret;
+            let args = &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize];
+            if let Some(landing_pad) = contents_scope.landing_pad {
+                let normal_bcx = bcx.fcx().build_new_block("normal-return");
+                llret = bcx.invoke(callee.reify(ccx), args, normal_bcx.llbb(), landing_pad, None);
+                bcx = normal_bcx;
+            } else {
+                llret = bcx.call(callee.reify(bcx.ccx), args, None);
+            }
+            fn_ty.apply_attrs_callsite(llret);
+            contents_scope.trans(&bcx);
+            bcx
         }
         ty::TyAdt(def, ..) if def.is_union() => {
             bcx
         }
         _ => {
             if bcx.ccx.shared().type_needs_drop(t) {
-                drop_structural_ty(bcx, v0, t)
+                drop_structural_ty(bcx, ptr, t)
             } else {
                 bcx
             }
         }
     };
     bcx.ret_void();
-}
-
-fn trans_custom_dtor<'a, 'tcx>(mut bcx: BlockAndBuilder<'a, 'tcx>,
-                               t: Ty<'tcx>,
-                               v0: ValueRef,
-                               shallow_drop: bool)
-                               -> BlockAndBuilder<'a, 'tcx>
-{
-    debug!("trans_custom_dtor t: {}", t);
-    let tcx = bcx.tcx();
-
-    let def = t.ty_adt_def().unwrap();
-
-    // Be sure to put the contents into a scope so we can use an invoke
-    // instruction to call the user destructor but still call the field
-    // destructors if the user destructor panics.
-    //
-    // FIXME (#14875) panic-in-drop semantics might be unsupported; we
-    // might well consider changing below to more direct code.
-    // Issue #23611: schedule cleanup of contents, re-inspecting the
-    // discriminant (if any) in case of variant swap in drop code.
-    let contents_scope = if !shallow_drop {
-        bcx.fcx().schedule_drop_adt_contents(v0, t)
-    } else {
-        CleanupScope::noop()
-    };
-
-    let (sized_args, unsized_args);
-    let args: &[ValueRef] = if bcx.ccx.shared().type_is_sized(t) {
-        sized_args = [v0];
-        &sized_args
-    } else {
-        // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
-        unsized_args = [
-            bcx.load(get_dataptr(&bcx, v0)),
-            bcx.load(get_meta(&bcx, v0))
-        ];
-        &unsized_args
-    };
-
-    let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: tcx.lang_items.drop_trait().unwrap(),
-        substs: tcx.mk_substs_trait(t, &[])
-    });
-    let vtbl = match fulfill_obligation(bcx.ccx.shared(), DUMMY_SP, trait_ref) {
-        traits::VtableImpl(data) => data,
-        _ => bug!("dtor for {:?} is not an impl???", t)
-    };
-    let dtor_did = def.destructor().unwrap();
-    let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
-    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
-    let llret;
-    if let Some(landing_pad) = contents_scope.landing_pad {
-        let normal_bcx = bcx.fcx().build_new_block("normal-return");
-        llret = bcx.invoke(callee.reify(bcx.ccx), args, normal_bcx.llbb(), landing_pad, None);
-        bcx = normal_bcx;
-    } else {
-        llret = bcx.call(callee.reify(bcx.ccx), args, None);
-    }
-    fn_ty.apply_attrs_callsite(llret);
-    contents_scope.trans(&bcx);
-    bcx
 }
 
 pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
@@ -448,7 +425,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
 // Iterates through the elements of a structural type, dropping them.
 fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
-                                av: ValueRef,
+                                ptr: MaybeSizedValue,
                                 t: Ty<'tcx>)
                                 -> BlockAndBuilder<'a, 'tcx> {
     fn iter_variant<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>,
@@ -460,60 +437,47 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             let field_ptr = adt::trans_field_ptr(&cx, t, av, Disr::from(variant.disr_val), i);
-            drop_ty(&cx, field_ptr, arg);
+            drop_ty(&cx, MaybeSizedValue::sized(field_ptr), arg);
         }
     }
-
-    let value = if cx.ccx.shared().type_is_sized(t) {
-        adt::MaybeSizedValue::sized(av)
-    } else {
-        // FIXME(#36457) -- we should pass unsized values as two arguments
-        let data = cx.load(get_dataptr(&cx, av));
-        let info = cx.load(get_meta(&cx, av));
-        adt::MaybeSizedValue::unsized_(data, info)
-    };
 
     let mut cx = cx;
     match t.sty {
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
-                let llupvar = adt::trans_field_ptr(&cx, t, value, Disr(0), i);
-                drop_ty(&cx, llupvar, upvar_ty);
+                let llupvar = adt::trans_field_ptr(&cx, t, ptr, Disr(0), i);
+                drop_ty(&cx, MaybeSizedValue::sized(llupvar), upvar_ty);
             }
         }
         ty::TyArray(_, n) => {
-            let base = get_dataptr(&cx, value.value);
+            let base = get_dataptr(&cx, ptr.value);
             let len = C_uint(cx.ccx, n);
             let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::slice_for_each(&cx, base, unit_ty, len, |bb, vv| drop_ty(bb, vv, unit_ty));
+            cx = tvec::slice_for_each(&cx, base, unit_ty, len,
+                |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::slice_for_each(&cx, value.value, unit_ty, value.meta,
-                |bb, vv| drop_ty(bb, vv, unit_ty));
+            cx = tvec::slice_for_each(&cx, ptr.value, unit_ty, ptr.meta,
+                |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
         }
         ty::TyTuple(ref args) => {
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(&cx, t, value, Disr(0), i);
-                drop_ty(&cx, llfld_a, *arg);
+                let llfld_a = adt::trans_field_ptr(&cx, t, ptr, Disr(0), i);
+                drop_ty(&cx, MaybeSizedValue::sized(llfld_a), *arg);
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
                 let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let llfld_a = adt::trans_field_ptr(&cx, t, value, Disr::from(discr), i);
-
-                    let val = if cx.ccx.shared().type_is_sized(field_ty) {
-                        llfld_a
+                    let llfld_a = adt::trans_field_ptr(&cx, t, ptr, Disr::from(discr), i);
+                    let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
+                        MaybeSizedValue::sized(llfld_a)
                     } else {
-                        // FIXME(#36457) -- we should pass unsized values as two arguments
-                        let scratch = alloc_ty(&cx, field_ty, "__fat_ptr_iter");
-                        cx.store(llfld_a, get_dataptr(&cx, scratch));
-                        cx.store(value.meta, get_meta(&cx, scratch));
-                        scratch
+                        MaybeSizedValue::unsized_(llfld_a, ptr.meta)
                     };
-                    drop_ty(&cx, val, field_ty);
+                    drop_ty(&cx, ptr, field_ty);
                 }
             }
             AdtKind::Union => {
@@ -525,17 +489,16 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                 // NB: we must hit the discriminant first so that structural
                 // comparison know not to proceed when the discriminants differ.
 
-                match adt::trans_switch(&cx, t, av, false) {
+                match adt::trans_switch(&cx, t, ptr.value, false) {
                     (adt::BranchKind::Single, None) => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            iter_variant(&cx, t, adt::MaybeSizedValue::sized(av),
-                                            &adt.variants[0], substs);
+                            iter_variant(&cx, t, ptr, &adt.variants[0], substs);
                         }
                     }
                     (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
                         let tcx = cx.tcx();
-                        drop_ty(&cx, lldiscrim_a, tcx.types.isize);
+                        drop_ty(&cx, MaybeSizedValue::sized(lldiscrim_a), tcx.types.isize);
 
                         // Create a fall-through basic block for the "else" case of
                         // the switch instruction we're about to generate. Note that
@@ -561,7 +524,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: BlockAndBuilder<'a, 'tcx>,
                             let variant_cx = cx.fcx().build_new_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
-                            iter_variant(&variant_cx, t, value, variant, substs);
+                            iter_variant(&variant_cx, t, ptr, variant, substs);
                             variant_cx.br(next_cx.llbb());
                         }
                         cx = next_cx;

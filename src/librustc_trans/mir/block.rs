@@ -14,7 +14,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, layout};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
-use adt;
+use adt::{self, MaybeSizedValue};
 use base::{self, Lifetime};
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, BlockAndBuilder, Funclet};
@@ -37,8 +37,6 @@ use super::constant::Const;
 use super::lvalue::{LvalueRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
-
-use std::ptr;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock,
@@ -244,35 +242,27 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
-                let is_sized = bcx.ccx.shared().type_is_sized(ty);
-                let llvalue = if is_sized {
-                    if drop_ty != ty {
+                let ptr = if bcx.ccx.shared().type_is_sized(ty) {
+                    let value = if drop_ty != ty {
                         bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to())
                     } else {
                         lvalue.llval
-                    }
+                    };
+                    MaybeSizedValue::sized(value)
                 } else {
-                    // FIXME(#36457) Currently drop glue takes sized
-                    // values as a `*(data, meta)`, but elsewhere in
-                    // MIR we pass `(data, meta)` as two separate
-                    // arguments. It would be better to fix drop glue,
-                    // but I am shooting for a quick fix to #35546
-                    // here that can be cleanly backported to beta, so
-                    // I want to avoid touching all of trans.
-                    let scratch = base::alloc_ty(&bcx, ty, "drop");
-                    Lifetime::Start.call(&bcx, scratch);
-                    bcx.store(lvalue.llval, base::get_dataptr(&bcx, scratch));
-                    bcx.store(lvalue.llextra, base::get_meta(&bcx, scratch));
-                    scratch
+                    MaybeSizedValue::unsized_(lvalue.llval, lvalue.llextra)
                 };
+                let args = &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize];
                 if let Some(unwind) = unwind {
-                    bcx.invoke(drop_fn,
-                               &[llvalue],
-                               self.blocks[target],
-                               llblock(self, unwind),
-                               cleanup_bundle);
+                    bcx.invoke(
+                        drop_fn,
+                        args,
+                        self.blocks[target],
+                        llblock(self, unwind),
+                        cleanup_bundle
+                    );
                 } else {
-                    bcx.call(drop_fn, &[llvalue], cleanup_bundle);
+                    bcx.call(drop_fn, args, cleanup_bundle);
                     funclet_br(self, bcx, target);
                 }
             }
@@ -429,7 +419,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
                     _ => None
                 };
-                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
+                let mut intrinsic = intrinsic.as_ref().map(|s| &s[..]);
 
                 if intrinsic == Some("move_val_init") {
                     let &(_, target) = destination.as_ref().unwrap();
@@ -438,65 +428,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let val = self.trans_operand(&bcx, &args[1]);
                     self.store_operand(&bcx, llptr, val);
                     funclet_br(self, bcx, target);
-                    return;
-                }
-
-                // FIXME: This should proxy to the drop glue in the future when the ABI matches;
-                // most of the below code was copied from the match arm for TerminatorKind::Drop.
-                if intrinsic == Some("drop_in_place") {
-                    let &(_, target) = destination.as_ref().unwrap();
-                    let ty = if let ty::TyFnDef(_, substs, _) = callee.ty.sty {
-                        substs.type_at(0)
-                    } else {
-                        bug!("Unexpected ty: {}", callee.ty);
-                    };
-
-                    // Double check for necessity to drop
-                    if !bcx.ccx.shared().type_needs_drop(ty) {
-                        funclet_br(self, bcx, target);
-                        return;
-                    }
-
-                    let ptr = self.trans_operand(&bcx, &args[0]);
-                    let (llval, llextra) = match ptr.val {
-                        Immediate(llptr) => (llptr, ptr::null_mut()),
-                        Pair(llptr, llextra) => (llptr, llextra),
-                        Ref(_) => bug!("Deref of by-Ref type {:?}", ptr.ty)
-                    };
-
-                    let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
-                    let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
-                    let is_sized = bcx.ccx.shared().type_is_sized(ty);
-                    let llvalue = if is_sized {
-                        if drop_ty != ty {
-                            bcx.pointercast(llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to())
-                        } else {
-                            llval
-                        }
-                    } else {
-                        // FIXME(#36457) Currently drop glue takes sized
-                        // values as a `*(data, meta)`, but elsewhere in
-                        // MIR we pass `(data, meta)` as two separate
-                        // arguments. It would be better to fix drop glue,
-                        // but I am shooting for a quick fix to #35546
-                        // here that can be cleanly backported to beta, so
-                        // I want to avoid touching all of trans.
-                        let scratch = base::alloc_ty(&bcx, ty, "drop");
-                        Lifetime::Start.call(&bcx, scratch);
-                        bcx.store(llval, base::get_dataptr(&bcx, scratch));
-                        bcx.store(llextra, base::get_meta(&bcx, scratch));
-                        scratch
-                    };
-                    if let Some(unwind) = *cleanup {
-                        bcx.invoke(drop_fn,
-                            &[llvalue],
-                            self.blocks[target],
-                            llblock(self, unwind),
-                            cleanup_bundle);
-                    } else {
-                        bcx.call(drop_fn, &[llvalue], cleanup_bundle);
-                        funclet_br(self, bcx, target);
-                    }
                     return;
                 }
 
@@ -516,6 +447,26 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     self.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
                 let fn_ty = callee.direct_fn_type(bcx.ccx, &extra_args);
+
+                if intrinsic == Some("drop_in_place") {
+                    let &(_, target) = destination.as_ref().unwrap();
+                    let ty = if let ty::TyFnDef(_, substs, _) = callee.ty.sty {
+                        substs.type_at(0)
+                    } else {
+                        bug!("Unexpected ty: {}", callee.ty);
+                    };
+
+                    // Double check for necessity to drop
+                    if !bcx.ccx.shared().type_needs_drop(ty) {
+                        funclet_br(self, bcx, target);
+                        return;
+                    }
+
+                    let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
+                    let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
+                    callee.data = Fn(bcx.pointercast(drop_fn, llty));
+                    intrinsic = None;
+                }
 
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
