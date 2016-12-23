@@ -946,10 +946,10 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let mut ret = HashSet::new();
     // Target bindings.
     ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
-    if let Some(fam) = sess.target.target.options.target_family {
-        ret.insert((Symbol::intern("target_family"), Some(fam)));
+    if let Some(ref fam) = sess.target.target.options.target_family {
+        ret.insert((Symbol::intern("target_family"), Some(Symbol::intern(fam))));
         if fam == "windows" || fam == "unix" {
-            ret.insert((fam, None));
+            ret.insert((Symbol::intern(fam), None));
         }
     }
     ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
