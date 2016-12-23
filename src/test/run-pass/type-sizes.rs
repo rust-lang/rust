@@ -31,10 +31,6 @@ enum e3 {
     a([u16; 0], u8), b
 }
 
-// Test struct field reordering to make sure it actually reorders.
-struct WillOptimize1(u8, u16, u8);
-struct WillOptimize2 { a: u8, b: u16, c: u8}
-
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -58,7 +54,4 @@ pub fn main() {
     assert_eq!(size_of::<e1>(), 8 as usize);
     assert_eq!(size_of::<e2>(), 8 as usize);
     assert_eq!(size_of::<e3>(), 4 as usize);
-
-    assert_eq!(size_of::<WillOptimize1>(), 4);
-    assert_eq!(size_of::<WillOptimize2>(), 4);
 }
