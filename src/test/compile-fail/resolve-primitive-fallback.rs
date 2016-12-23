@@ -16,5 +16,5 @@ fn main() {
 
     // Make sure primitive type fallback doesn't work with global paths
     let _: ::u8;
-    //~^ ERROR type name `u8` is undefined or not in scope
+    //~^ ERROR type name `::u8` is undefined or not in scope
 }

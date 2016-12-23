@@ -154,8 +154,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_path(&mut self, path: &'a Path, id: NodeId) {
-        if path.global && path.segments.len() > 0 {
-            let ident = path.segments[0].identifier;
+        if path.segments.len() >= 2 && path.is_global() {
+            let ident = path.segments[1].identifier;
             if token::Ident(ident).is_path_segment_keyword() {
                 self.session.add_lint(lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
                                       id,

@@ -40,6 +40,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
+use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
@@ -112,7 +113,7 @@ impl<'a> Resolver<'a> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let module_path: Vec<_> = match view_path.node {
+                let mut module_path: Vec<_> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
                                  .split_last()
@@ -131,6 +132,12 @@ impl<'a> Resolver<'a> {
                                          .collect()
                     }
                 };
+
+                // This can be removed once warning cycle #36888 is complete.
+                if module_path.len() >= 2 && module_path[0].name == keywords::CrateRoot.name() &&
+                   token::Ident(module_path[1]).is_path_segment_keyword() {
+                    module_path.remove(0);
+                }
 
                 // Build up the import directives.
                 let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
@@ -193,18 +200,16 @@ impl<'a> Resolver<'a> {
                                     let rename = node.rename.unwrap_or(node.name);
                                     (module_path.clone(), node.name, rename)
                                 } else {
-                                    let ident = match module_path.last() {
-                                        Some(&ident) => ident,
-                                        None => {
-                                            resolve_error(
-                                                self,
-                                                source_item.span,
-                                                ResolutionError::
-                                                SelfImportOnlyInImportListWithNonEmptyPrefix
-                                            );
-                                            continue;
-                                        }
-                                    };
+                                    let ident = *module_path.last().unwrap();
+                                    if ident.name == keywords::CrateRoot.name() {
+                                        resolve_error(
+                                            self,
+                                            source_item.span,
+                                            ResolutionError::
+                                            SelfImportOnlyInImportListWithNonEmptyPrefix
+                                        );
+                                        continue;
+                                    }
                                     let module_path = module_path.split_last().unwrap().1;
                                     let rename = node.rename.unwrap_or(ident);
                                     (module_path.to_vec(), ident, rename)
