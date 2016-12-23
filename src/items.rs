@@ -23,9 +23,8 @@ use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle};
 use itertools::Itertools;
 
-use syntax::{ast, abi, ptr, codemap};
+use syntax::{ast, abi, codemap, ptr, symbol};
 use syntax::codemap::{Span, BytePos, mk_sp};
-use syntax::parse::token;
 use syntax::ast::ImplItem;
 
 // Statements of the form
@@ -1276,7 +1275,7 @@ pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
 
 pub fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident.node != token::keywords::Invalid.ident()
+        ident.node != symbol::keywords::Invalid.ident()
     } else {
         true
     }
@@ -1688,13 +1687,8 @@ fn rewrite_args(context: &RewriteContext,
 }
 
 fn arg_has_pattern(arg: &ast::Arg) -> bool {
-    if let ast::PatKind::Ident(_,
-                               codemap::Spanned {
-                                   node: ast::Ident { name: ast::Name(0u32), .. },
-                                   ..
-                               },
-                               _) = arg.pat.node {
-        false
+    if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
+        ident.node != symbol::keywords::Invalid.ident()
     } else {
         true
     }

@@ -43,8 +43,8 @@ fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Ordering {
-    let a_name_str = a.node.name.name.as_str();
-    let b_name_str = b.node.name.name.as_str();
+    let a_name_str = &*a.node.name.name.as_str();
+    let b_name_str = &*b.node.name.name.as_str();
     let name_ordering = if a_name_str == "self" {
         if b_name_str == "self" {
             Ordering::Equal

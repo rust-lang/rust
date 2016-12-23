@@ -471,7 +471,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let outers: Vec<_> = attrs.iter()
-            .filter(|a| a.node.style == ast::AttrStyle::Outer)
+            .filter(|a| a.style == ast::AttrStyle::Outer)
             .cloned()
             .collect();
         if outers.is_empty() {

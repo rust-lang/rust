@@ -20,9 +20,10 @@
 // and those with brackets will be formatted as array literals.
 
 use syntax::ast;
+use syntax::codemap::{mk_sp, BytePos};
 use syntax::parse::token::Token;
 use syntax::parse::tts_to_parser;
-use syntax::codemap::{mk_sp, BytePos};
+use syntax::symbol;
 use syntax::util::ThinVec;
 
 use Indent;
@@ -72,11 +73,18 @@ pub fn rewrite_macro(mac: &ast::Mac,
     }
 
     let original_style = macro_style(mac, context);
+
     let macro_name = match extra_ident {
-        None |
-        Some(ast::Ident { name: ast::Name(0), .. }) => format!("{}!", mac.node.path),
-        Some(ident) => format!("{}! {}", mac.node.path, ident),
+        None => format!("{}!", mac.node.path),
+        Some(ident) => {
+            if ident == symbol::keywords::Invalid.ident() {
+                format!("{}!", mac.node.path)
+            } else {
+                format!("{}! {}", mac.node.path, ident)
+            }
+        }
     };
+
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
         MacroStyle::Brackets
     } else {

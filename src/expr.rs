@@ -160,15 +160,24 @@ fn format_expr(expr: &ast::Expr,
                      width,
                      offset)
         }
-        ast::ExprKind::Break(ref opt_ident) => {
+        ast::ExprKind::Break(ref opt_ident, ref opt_expr) => {
             let id_str = match *opt_ident {
                 Some(ident) => format!(" {}", ident.node),
                 None => String::new(),
             };
-            wrap_str(format!("break{}", id_str),
-                     context.config.max_width,
-                     width,
-                     offset)
+
+            if let Some(ref expr) = *opt_expr {
+                rewrite_unary_prefix(context,
+                                     &format!("break{} ", id_str),
+                                     &**expr,
+                                     width,
+                                     offset)
+            } else {
+                wrap_str(format!("break{}", id_str),
+                         context.config.max_width,
+                         width,
+                         offset)
+            }
         }
         ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
             rewrite_closure(capture, fn_decl, body, expr.span, context, width, offset)
