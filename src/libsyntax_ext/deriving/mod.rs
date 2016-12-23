@@ -175,8 +175,10 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                            feature_gate::GateIssue::Language,
                                            feature_gate::EXPLAIN_CUSTOM_DERIVE);
         } else {
-            cx.span_warn(titem.span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
             let name = Symbol::intern(&format!("derive_{}", tname));
+            if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
+                cx.span_warn(titem.span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
+            }
             let mitem = cx.meta_word(titem.span, name);
             new_attributes.push(cx.attribute(mitem.span, mitem));
         }

@@ -1104,6 +1104,7 @@ pub struct Resolver<'a> {
     lexical_macro_resolutions: Vec<(Name, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_exports: Vec<Export>,
+    pub whitelisted_legacy_custom_derives: Vec<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -1284,6 +1285,7 @@ impl<'a> Resolver<'a> {
             macro_exports: Vec::new(),
             invocations: invocations,
             name_already_seen: FxHashMap(),
+            whitelisted_legacy_custom_derives: Vec::new(),
         }
     }
 
