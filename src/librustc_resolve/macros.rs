@@ -122,6 +122,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         EliminateCrateVar(self).fold_item(item).expect_one("")
     }
 
+    fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool {
+        self.whitelisted_legacy_custom_derives.contains(&name)
+    }
+
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         let invocation = self.invocations[&mark];
         self.collect_def_ids(invocation, expansion);

@@ -592,6 +592,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
     });
 
+    let whitelisted_legacy_custom_derives = registry.take_whitelisted_custom_derives();
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, mir_passes, .. } = registry;
 
@@ -631,6 +632,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
         Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
+    resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {
