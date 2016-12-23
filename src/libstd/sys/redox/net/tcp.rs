@@ -12,6 +12,7 @@ use io::{Error, ErrorKind, Result};
 use net::{SocketAddr, Shutdown};
 use path::Path;
 use sys::fs::{File, OpenOptions};
+use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 use vec::Vec;
 
@@ -112,6 +113,20 @@ impl TcpStream {
     }
 }
 
+impl AsInner<File> for TcpStream {
+    fn as_inner(&self) -> &File { &self.0 }
+}
+
+impl FromInner<File> for TcpStream {
+    fn from_inner(file: File) -> TcpStream {
+        TcpStream(file)
+    }
+}
+
+impl IntoInner<File> for TcpStream {
+    fn into_inner(self) -> File { self.0 }
+}
+
 #[derive(Debug)]
 pub struct TcpListener(File);
 
@@ -167,4 +182,18 @@ impl TcpListener {
     pub fn set_ttl(&self, _ttl: u32) -> Result<()> {
         Err(Error::new(ErrorKind::Other, "TcpListener::set_ttl not implemented"))
     }
+}
+
+impl AsInner<File> for TcpListener {
+    fn as_inner(&self) -> &File { &self.0 }
+}
+
+impl FromInner<File> for TcpListener {
+    fn from_inner(file: File) -> TcpListener {
+        TcpListener(file)
+    }
+}
+
+impl IntoInner<File> for TcpListener {
+    fn into_inner(self) -> File { self.0 }
 }

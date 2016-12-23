@@ -914,6 +914,11 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
+#[cfg(target_os = "redox")]
+fn stdout_isatty() -> bool {
+    // FIXME: Implement isatty on Redox
+    false
+}
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
@@ -1101,6 +1106,12 @@ fn get_concurrency() -> usize {
             GetSystemInfo(&mut sysinfo);
             sysinfo.dwNumberOfProcessors as usize
         }
+    }
+
+    #[cfg(target_os = "redox")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on Redox
+        1
     }
 
     #[cfg(any(target_os = "linux",
