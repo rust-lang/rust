@@ -142,7 +142,7 @@ incremental builds:
 ```
 
 The `--incremental` flag will store incremental compilation artifacts
-in `build/stage0-incremental`. Note that we only use incremental
+in `build/<host>/stage0-incremental`. Note that we only use incremental
 compilation for the stage0 -> stage1 compilation -- this is because
 the stage1 compiler is changing, and we don't try to cache and reuse
 incremental artifacts across different versions of the compiler. For
