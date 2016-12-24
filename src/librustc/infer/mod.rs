@@ -41,6 +41,7 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
 use util::nodemap::{FxHashMap, FxHashSet, NodeMap};
+use arena::DroplessArena;
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
@@ -374,7 +375,7 @@ impl fmt::Display for FixupError {
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
 pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    arenas: ty::CtxtArenas<'tcx>,
+    arena: DroplessArena,
     tables: Option<RefCell<ty::Tables<'tcx>>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
     projection_mode: Reveal,
@@ -388,7 +389,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
                       -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
-            arenas: ty::CtxtArenas::new(),
+            arena: DroplessArena::new(),
             tables: tables.map(RefCell::new),
             param_env: param_env,
             projection_mode: projection_mode,
@@ -426,7 +427,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     {
         let InferCtxtBuilder {
             global_tcx,
-            ref arenas,
+            ref arena,
             ref tables,
             ref mut param_env,
             projection_mode,
@@ -439,7 +440,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let param_env = param_env.take().unwrap_or_else(|| {
             global_tcx.empty_parameter_environment()
         });
-        global_tcx.enter_local(arenas, |tcx| f(InferCtxt {
+        global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
