@@ -107,7 +107,7 @@ impl Foo {
     pub fn method_selfness(&self) { }
 }
 
-// Change Method Selfmutness -----------------------------------------------------------
+// Change Method Selfmutness ---------------------------------------------------
 #[cfg(cfail1)]
 impl Foo {
     pub fn method_selfmutness(&self) { }
@@ -126,3 +126,411 @@ impl Foo {
     pub fn method_selfmutness(&mut self) { }
 }
 
+
+
+// Add Method To Impl ----------------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_method_to_impl1(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_method_to_impl1(&self) { }
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_method_to_impl2(&self) { }
+}
+
+
+
+// Add Method Parameter --------------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_method_parameter(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_method_parameter(&self, _: i32) { }
+}
+
+
+
+// Change Method Parameter Name ------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn change_method_parameter_name(&self, a: i64) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn change_method_parameter_name(&self, b: i64) { }
+}
+
+
+
+// Change Method Return Type ---------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn change_method_return_type(&self) -> u16 { 0 }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn change_method_return_type(&self) -> u8 { 0 }
+}
+
+
+
+// Make Method #[inline] -------------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn make_method_inline(&self) -> u8 { 0 }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    #[inline]
+    pub fn make_method_inline(&self) -> u8 { 0 }
+}
+
+
+
+//  Change order of parameters -------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn change_method_parameter_order(&self, a: i64, b: i64) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn change_method_parameter_order(&self, b: i64, a: i64) { }
+}
+
+
+
+// Make method unsafe ----------------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn make_method_unsafe(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub unsafe fn make_method_unsafe(&self) { }
+}
+
+
+
+// Make method extern ----------------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn make_method_extern(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub extern fn make_method_extern(&self) { }
+}
+
+
+
+// Change method calling convention --------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub extern "C" fn change_method_calling_convention(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub extern "system" fn change_method_calling_convention(&self) { }
+}
+
+
+
+// Add Lifetime Parameter to Method --------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_lifetime_parameter_to_method(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_lifetime_parameter_to_method<'a>(&self) { }
+}
+
+
+
+// Add Type Parameter To Method ------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_type_parameter_to_method(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_type_parameter_to_method<T>(&self) { }
+}
+
+
+
+// Add Lifetime Bound to Lifetime Parameter of Method --------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b>(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
+}
+
+
+
+// Add Lifetime Bound to Type Parameter of Method ------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_lifetime_bound_to_type_param_of_method<'a, T>(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
+}
+
+
+
+// Add Trait Bound to Type Parameter of Method ------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_trait_bound_to_type_param_of_method<T>(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_trait_bound_to_type_param_of_method<T: Clone>(&self) { }
+}
+
+
+
+// Add #[no_mangle] to Method --------------------------------------------------
+#[cfg(cfail1)]
+impl Foo {
+    pub fn add_no_mangle_to_method(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    #[no_mangle]
+    pub fn add_no_mangle_to_method(&self) { }
+}
+
+
+
+struct Bar<T>(T);
+
+// Add Type Parameter To Impl --------------------------------------------------
+#[cfg(cfail1)]
+impl Bar<u32> {
+    pub fn add_type_parameter_to_impl(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T> Bar<T> {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_type_parameter_to_impl(&self) { }
+}
+
+
+
+// Change Self Type of Impl ----------------------------------------------------
+#[cfg(cfail1)]
+impl Bar<u32> {
+    pub fn change_impl_self_type(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Bar<u64> {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn change_impl_self_type(&self) { }
+}
+
+
+
+// Add Lifetime Bound to Impl --------------------------------------------------
+#[cfg(cfail1)]
+impl<T> Bar<T> {
+    pub fn add_lifetime_bound_to_impl_parameter(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T: 'static> Bar<T> {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_lifetime_bound_to_impl_parameter(&self) { }
+}
+
+
+
+// Add Trait Bound to Impl Parameter -------------------------------------------
+#[cfg(cfail1)]
+impl<T> Bar<T> {
+    pub fn add_trait_bound_to_impl_parameter(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T: Clone> Bar<T> {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    pub fn add_trait_bound_to_impl_parameter(&self) { }
+}
