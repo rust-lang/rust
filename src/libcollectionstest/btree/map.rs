@@ -235,6 +235,25 @@ fn test_range() {
 }
 
 #[test]
+fn test_range_mut() {
+    let size = 200;
+    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+
+    for i in 0..size {
+        for j in i..size {
+            let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
+            let mut pairs = (i..j + 1).map(|i| (i, i));
+
+            for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
+                assert_eq!(kv, pair);
+            }
+            assert_eq!(kvs.next(), None);
+            assert_eq!(pairs.next(), None);
+        }
+    }
+}
+
+#[test]
 fn test_borrow() {
     // make sure these compile -- using the Borrow trait
     {
