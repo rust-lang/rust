@@ -784,7 +784,7 @@ impl<T> JoinInner<T> {
 ///
 /// A `JoinHandle` *detaches* the child thread when it is dropped.
 ///
-/// Due to platform restrictions, it is not possible to `Clone` this
+/// Due to platform restrictions, it is not possible to [`Clone`] this
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
 ///
@@ -795,7 +795,7 @@ impl<T> JoinInner<T> {
 ///
 /// Creation from [`thread::spawn`]:
 ///
-/// ```rust
+/// ```
 /// use std::thread;
 ///
 /// let join_handle: thread::JoinHandle<_> = thread::spawn(|| {
@@ -805,7 +805,7 @@ impl<T> JoinInner<T> {
 ///
 /// Creation from [`thread::Builder::spawn`]:
 ///
-/// ```rust
+/// ```
 /// use std::thread;
 ///
 /// let builder = thread::Builder::new();
@@ -815,13 +815,31 @@ impl<T> JoinInner<T> {
 /// }).unwrap();
 /// ```
 ///
+/// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [`thread::spawn`]: fn.spawn.html
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
 impl<T> JoinHandle<T> {
-    /// Extracts a handle to the underlying thread
+    /// Extracts a handle to the underlying thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_id)]
+    ///
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
+    ///     // some work here
+    /// }).unwrap();
+    ///
+    /// let thread = join_handle.thread();
+    /// println!("thread id: {:?}", thread.id());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
@@ -829,8 +847,24 @@ impl<T> JoinHandle<T> {
 
     /// Waits for the associated thread to finish.
     ///
-    /// If the child thread panics, `Err` is returned with the parameter given
-    /// to `panic`.
+    /// If the child thread panics, [`Err`] is returned with the parameter given
+    /// to [`panic`].
+    ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`panic!`]: ../../std/macro.panic.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
+    ///     // some work here
+    /// }).unwrap();
+    /// join_handle.join().expect("Couldn't join on the associated thread");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(mut self) -> Result<T> {
         self.0.join()
