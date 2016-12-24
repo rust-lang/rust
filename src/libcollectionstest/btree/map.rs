@@ -208,8 +208,8 @@ fn test_range_borrowed_key() {
     map.insert("baboon".to_string(), 2);
     map.insert("coyote".to_string(), 3);
     map.insert("dingo".to_string(), 4);
-    // NOTE: would like to use simply "a".."d" here...
-    let mut iter = map.range("b".to_string().."d".to_string());
+    // NOTE: would like to use simply "b".."d" here...
+    let mut iter = map.range::<str, _>((Included("b"),Excluded("d")));
     assert_eq!(iter.next(), Some((&"baboon".to_string(), &2)));
     assert_eq!(iter.next(), Some((&"coyote".to_string(), &3)));
     assert_eq!(iter.next(), None);
