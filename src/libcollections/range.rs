@@ -73,7 +73,7 @@ pub trait RangeArgument<T: ?Sized> {
 
 // FIXME add inclusive ranges to RangeArgument
 
-impl<T> RangeArgument<T> for RangeFull {}
+impl<T: ?Sized> RangeArgument<T> for RangeFull {}
 
 impl<T> RangeArgument<T> for RangeFrom<T> {
     fn start(&self) -> Bound<&T> {
@@ -110,6 +110,24 @@ impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
             (_, Included(ref end)) => Included(end),
             (_, Excluded(ref end)) => Excluded(end),
             (_, Unbounded)         => Unbounded,
+        }
+    }
+}
+
+impl<'a, T: ?Sized + 'a> RangeArgument<T> for (Bound<&'a T>, Bound<&'a T>) {
+    fn start(&self) -> Bound<&T> {
+        match *self {
+            (Included(start), _) => Included(start),
+            (Excluded(start), _) => Excluded(start),
+            (Unbounded, _)       => Unbounded,
+        }
+    }
+
+    fn end(&self) -> Bound<&T> {
+        match *self {
+            (_, Included(end)) => Included(end),
+            (_, Excluded(end)) => Excluded(end),
+            (_, Unbounded)     => Unbounded,
         }
     }
 }
