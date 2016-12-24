@@ -17,7 +17,7 @@ use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{self, Excluded, Included, Unbounded};
+use Bound::{Excluded, Included, Unbounded};
 use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
@@ -763,7 +763,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
     ///                                                                       .collect();
-    /// for (_, balance) in map.range_mut(Included("B"), Excluded("Cheryl")) {
+    /// for (_, balance) in map.range_mut((Included("B"), Excluded("Cheryl"))) {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
@@ -773,12 +773,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range_mut<Min: ?Sized + Ord, Max: ?Sized + Ord>(&mut self,
-                                                           min: Bound<&Min>,
-                                                           max: Bound<&Max>)
-                                                           -> RangeMut<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
+        let min = range.start();
+        let max = range.end();
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
 
