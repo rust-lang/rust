@@ -13,7 +13,7 @@ Traits can be aliased the same way types can be aliased with the `type` keyword.
 
 Sometimes, some traits are defined with parameters. For instance:
 
-```
+```rust
 trait Foo<T> {
   // ...
 }
@@ -34,19 +34,28 @@ instead of the more explicit and unwanted `Foo<BackendType>`.
 The idea is to add a new keyword or construct for enabling trait aliasing. One shouldn’t use the
 `type` keyword as a trait is not a type and that could be very confusing.
 
-The `trait TraitAlias as Trait` is suggested as a starter construct for the discussion.
+The `trait TraitAlias = Trait` was adopted as the syntax for aliasing. It creates a new trait alias
+`TraitAlias` that will resolve to `Trait`.
 
+```rust
+trait TraitAlias = Debug;
 ```
-mod gen {
-  trait Foo<T> { }
-}
 
-mod backend_0 {
-  struct Bck0 {}
+Optionnaly, if needed, one can provide a `where` clause to express *bounds*:
 
-  trait Foo as gen::Foo<Bck0>;
-}
+```rust
+trait TraitAlias = Debug where Self: Default;
 ```
+
+Trait aliasing to combinations of traits is also provided with the standard `+` construct:
+
+```rust
+trait TraitAlias = Debug + Default; // same as the example above
+```
+
+Trait aliases can be used in any place arbitrary bounds would be syntactically legal. However, you
+cannot use them in `impl` place but can have them as *trait objects*, in *where-clauses* and *type
+parameters declarations* of course.
 
 # Drawbacks
 [drawbacks]: #drawbacks
