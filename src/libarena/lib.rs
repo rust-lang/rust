@@ -196,9 +196,9 @@ impl<T> TypedArena<T> {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
-                    let prev_capacity = last_chunk.storage.cap();
+                    new_capacity = last_chunk.storage.cap();
                     loop {
-                        new_capacity = prev_capacity.checked_mul(2).unwrap();
+                        new_capacity = new_capacity.checked_mul(2).unwrap();
                         if new_capacity >= currently_used_cap + n {
                             break;
                         }
