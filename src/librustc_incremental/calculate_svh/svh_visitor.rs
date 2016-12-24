@@ -28,7 +28,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
@@ -264,7 +264,7 @@ enum SawExprComponent<'a> {
     SawExprPath,
     SawExprAddrOf(hir::Mutability),
     SawExprRet,
-    SawExprInlineAsm(&'a hir::InlineAsm),
+    SawExprInlineAsm(StableInlineAsm<'a>),
     SawExprStruct,
     SawExprRepeat,
 }
@@ -340,7 +340,7 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprBreak(label, _)      => (SawExprBreak(label.map(|l| l.name.as_str())), false),
         ExprAgain(label)         => (SawExprAgain(label.map(|l| l.name.as_str())), false),
         ExprRet(..)              => (SawExprRet, false),
-        ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(a), false),
+        ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(StableInlineAsm(a)), false),
         ExprStruct(..)           => (SawExprStruct, false),
         ExprRepeat(..)           => (SawExprRepeat, false),
     }
@@ -489,6 +489,46 @@ enum SawSpanExpnKind {
     NoExpansion,
     CommandLine,
     SomeExpansion,
+}
+
+/// A wrapper that provides a stable Hash implementation.
+struct StableInlineAsm<'a>(&'a InlineAsm);
+
+impl<'a> Hash for StableInlineAsm<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let InlineAsm {
+            asm,
+            asm_str_style,
+            ref outputs,
+            ref inputs,
+            ref clobbers,
+            volatile,
+            alignstack,
+            dialect,
+            expn_id: _, // This is used for error reporting
+        } = *self.0;
+
+        asm.as_str().hash(state);
+        asm_str_style.hash(state);
+        outputs.len().hash(state);
+        for output in outputs {
+            let InlineAsmOutput { constraint, is_rw, is_indirect } = *output;
+            constraint.as_str().hash(state);
+            is_rw.hash(state);
+            is_indirect.hash(state);
+        }
+        inputs.len().hash(state);
+        for input in inputs {
+            input.as_str().hash(state);
+        }
+        clobbers.len().hash(state);
+        for clobber in clobbers {
+            clobber.as_str().hash(state);
+        }
+        volatile.hash(state);
+        alignstack.hash(state);
+        dialect.hash(state);
+    }
 }
 
 macro_rules! hash_attrs {

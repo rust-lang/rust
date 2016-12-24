@@ -207,7 +207,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
         if !f.alternate() {
             clause.push_str("</span>");
             let plain = format!("{:#}", self);
-            if plain.len() > 80 {
+            if plain.len() + pad > 80 {
                 //break it onto its own line regardless, but make sure method impls and trait
                 //blocks keep their fixed padding (2 and 9, respectively)
                 let padding = if pad > 10 {
