@@ -224,10 +224,10 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(3);
     /// set.insert(5);
     /// set.insert(8);
-    /// for &elem in set.range(Included(&4), Included(&8)) {
+    /// for &elem in set.range((Included(&4), Included(&8))) {
     ///     println!("{}", elem);
     /// }
-    /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some(&5), set.range((Included(&4), Unbounded)).next());
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",

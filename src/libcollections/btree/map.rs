@@ -674,10 +674,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// map.insert(3, "a");
     /// map.insert(5, "b");
     /// map.insert(8, "c");
-    /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
+    /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some((&5, &"b")), map.range((Included(&4), Unbounded)).next());
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
