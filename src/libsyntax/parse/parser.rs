@@ -4368,6 +4368,23 @@ impl<'a> Parser<'a> {
             return Ok(where_clause);
         }
 
+        // This is a temporary hack.
+        //
+        // We are considering adding generics to the `where` keyword as an alternative higher-rank
+        // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
+        // change, for now we refuse to parse `where < (ident | lifetime) (> | , | :)`.
+        if token::Lt == self.token {
+            let ident_or_lifetime = self.look_ahead(1, |t| t.is_ident() || t.is_lifetime());
+            if ident_or_lifetime {
+                let gt_comma_or_colon = self.look_ahead(2, |t| {
+                    *t == token::Gt || *t == token::Comma || *t == token::Colon
+                });
+                if gt_comma_or_colon {
+                    self.span_err(self.span, "syntax `where<T>` is reserved for future use");
+                }
+            }
+        }
+
         let mut parsed_something = false;
         loop {
             let lo = self.span.lo;
