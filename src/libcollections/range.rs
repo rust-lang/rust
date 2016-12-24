@@ -19,47 +19,51 @@ use Bound::{self, Excluded, Included, Unbounded};
 
 /// **RangeArgument** is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
-pub trait RangeArgument<T> {
-    /// Start index (inclusive)
+pub trait RangeArgument<T: ?Sized> {
+    /// Start index bound
     ///
-    /// Return start value if present, else `None`.
+    /// Return start value as a `Bound`
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
+    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
     /// # fn main() {
     /// use collections::range::RangeArgument;
+    /// use collections::Bound::*;
     ///
-    /// assert_eq!((..10).start(), None);
-    /// assert_eq!((3..10).start(), Some(&3));
+    /// assert_eq!((..10).start(), Unbounded);
+    /// assert_eq!((3..10).start(), Included(&3));
     /// # }
     /// ```
     fn start(&self) -> Bound<&T> {
         Unbounded
     }
 
-    /// End index (exclusive)
+    /// End index bound
     ///
-    /// Return end value if present, else `None`.
+    /// Return end value as a `Bound`
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
+    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
     /// # fn main() {
     /// use collections::range::RangeArgument;
+    /// use collections::Bound::*;
     ///
-    /// assert_eq!((3..).end(), None);
-    /// assert_eq!((3..10).end(), Some(&10));
+    /// assert_eq!((3..).end(), Unbounded);
+    /// assert_eq!((3..10).end(), Excluded(&10));
     /// # }
     /// ```
     fn end(&self) -> Bound<&T> {
