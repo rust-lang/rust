@@ -2931,6 +2931,7 @@ impl<'a> Resolver<'a> {
 
         let mut lookup_results = Vec::new();
         let mut worklist = Vec::new();
+        let mut seen_modules = FxHashSet();
         worklist.push((self.graph_root, Vec::new(), false));
 
         while let Some((in_module,
@@ -2976,7 +2977,7 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        if !worklist.iter().any(|&(m, ..)| m.def() == module.def()) {
+                        if seen_modules.insert(module.def_id().unwrap()) {
                             worklist.push((module, path_segments, is_extern));
                         }
                     }
