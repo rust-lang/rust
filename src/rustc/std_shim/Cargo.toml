@@ -37,4 +37,5 @@ core = { path = "../../libcore" }
 backtrace = ["std/backtrace"]
 debug-jemalloc = ["std/debug-jemalloc"]
 jemalloc = ["std/jemalloc"]
+alloc_frame = ["std/alloc_frame"]
 panic-unwind = ["std/panic-unwind"]

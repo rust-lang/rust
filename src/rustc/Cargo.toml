@@ -17,6 +17,7 @@ path = "rustdoc.rs"
 rustc_back = { path = "../librustc_back" }
 rustc_driver = { path = "../librustc_driver" }
 rustdoc = { path = "../librustdoc" }
+alloc_frame = { path = "../liballoc_frame", optional = true }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]

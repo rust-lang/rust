@@ -331,7 +331,7 @@ extern crate libc;
 // We always need an unwinder currently for backtraces
 extern crate unwind;
 
-#[cfg(stage0)]
+#[cfg(all(stage0, not(alloc_frame)))]
 extern crate alloc_system;
 
 // compiler-rt intrinsics

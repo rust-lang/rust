@@ -9,7 +9,12 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
+#![cfg_attr(feature = "alloc_frame", feature(alloc_frame))]
 
 extern crate rustc_driver;
+
+// Use the frame allocator to speed up runtime
+#[cfg(feature = "alloc_frame")]
+extern crate alloc_frame;
 
 fn main() { rustc_driver::main() }

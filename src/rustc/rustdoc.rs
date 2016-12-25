@@ -9,7 +9,12 @@
 // except according to those terms.
 
 #![feature(rustdoc)]
+#![cfg_attr(feature = "alloc_frame", feature(alloc_frame))]
 
 extern crate rustdoc;
+
+// Use the frame allocator to speed up runtime
+#[cfg(feature = "alloc_frame")]
+extern crate alloc_frame;
 
 fn main() { rustdoc::main() }

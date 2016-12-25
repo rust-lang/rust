@@ -53,6 +53,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     // std crates
     "src/liballoc_jemalloc",
     "src/liballoc_system",
+    "src/liballoc_frame",
     "src/liblibc",
     "src/libpanic_abort",
     "src/libpanic_unwind",
