@@ -505,7 +505,9 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty);
+        if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
+            err.emit();
+        }
     }
 
     fn check_variances_for_type_defn(&self,
