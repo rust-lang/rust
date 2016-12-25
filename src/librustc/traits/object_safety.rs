@@ -81,8 +81,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let mut violations = vec![];
 
-        if self.supertraits_reference_self(trait_def_id) {
-            violations.push(ObjectSafetyViolation::SupertraitSelf);
+        for def_id in traits::supertrait_def_ids(self, trait_def_id) {
+            if self.supertraits_reference_self(def_id) {
+                violations.push(ObjectSafetyViolation::SupertraitSelf);
+            }
         }
 
         debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
