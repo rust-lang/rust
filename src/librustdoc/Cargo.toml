@@ -30,3 +30,6 @@ log = { path = "../liblog" }
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.27"
+
+[features]
+rustc_alloc_frame = ["rustc_driver/rustc_alloc_frame", "rustc_metadata/rustc_alloc_frame"]

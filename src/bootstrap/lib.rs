@@ -609,9 +609,6 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        if self.config.use_alloc_frame {
-            features.push_str(" alloc_frame");
-        }
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
@@ -624,8 +621,8 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        if self.config.use_alloc_frame {
-            features.push_str(" alloc_frame");
+        if self.config.rustc_alloc_frame {
+            features.push_str(" rustc_alloc_frame");
         }
         return features
     }

@@ -28,6 +28,7 @@
 //! - core may not have platform-specific code
 //! - liballoc_system may have platform-specific code
 //! - liballoc_jemalloc may have platform-specific code
+//! - liballoc_frame may have platform-specific code
 //! - libpanic_abort may have platform-specific code
 //! - libpanic_unwind may have platform-specific code
 //! - libunwind may have platform-specific code

@@ -820,7 +820,10 @@ impl<'a> CrateLoader<'a> {
         // * Binaries use jemalloc
         // * Staticlibs and Rust dylibs use system malloc
         // * Rust dylibs used as dependencies to rust use jemalloc
-        let name = if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
+        let name = if cfg!(rustc_alloc_frame) && (cfg!(stage0) || cfg!(stage1)) {
+            // HACK to make stage1/2 with alloc_frame
+            Symbol::intern(&"alloc_frame")
+        } else if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
             Symbol::intern(&self.sess.target.target.options.lib_allocation_crate)
         } else {
             Symbol::intern(&self.sess.target.target.options.exe_allocation_crate)

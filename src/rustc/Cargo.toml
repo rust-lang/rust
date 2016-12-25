@@ -21,3 +21,4 @@ alloc_frame = { path = "../liballoc_frame", optional = true }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]
+rustc_alloc_frame = ["alloc_frame", "rustc_driver/rustc_alloc_frame"]

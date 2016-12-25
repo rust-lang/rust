@@ -9,12 +9,13 @@
 // except according to those terms.
 
 #![feature(rustdoc)]
-#![cfg_attr(feature = "alloc_frame", feature(alloc_frame))]
+#![feature(staged_api)]
+#![cfg_attr(all(feature = "rustc_alloc_frame", not(stage0)), feature(alloc_frame))]
 
 extern crate rustdoc;
 
 // Use the frame allocator to speed up runtime
-#[cfg(feature = "alloc_frame")]
+#[cfg(all(feature = "rustc_alloc_frame", not(stage0)))]
 extern crate alloc_frame;
 
 fn main() { rustdoc::main() }
