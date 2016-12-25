@@ -588,7 +588,7 @@ impl<'a, 'tcx> CrateMetadata {
                 ty::FieldDef {
                     did: self.local_def_id(index),
                     name: self.item_name(index),
-                    vis: f.visibility
+                    vis: f.visibility.decode(self)
                 }
             }).collect(),
             disr_val: ConstInt::Infer(data.disr),
@@ -678,7 +678,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
         match self.is_proc_macro(id) {
             true => ty::Visibility::Public,
-            false => self.entry(id).visibility,
+            false => self.entry(id).visibility.decode(self),
         }
     }
 
@@ -885,7 +885,7 @@ impl<'a, 'tcx> CrateMetadata {
                 ty::AssociatedItem {
                     name: name,
                     kind: ty::AssociatedKind::Const,
-                    vis: item.visibility,
+                    vis: item.visibility.decode(self),
                     defaultness: container.defaultness(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
@@ -898,7 +898,7 @@ impl<'a, 'tcx> CrateMetadata {
                 ty::AssociatedItem {
                     name: name,
                     kind: ty::AssociatedKind::Method,
-                    vis: item.visibility,
+                    vis: item.visibility.decode(self),
                     defaultness: data.container.defaultness(),
                     def_id: self.local_def_id(id),
                     container: data.container.with_def_id(parent),
@@ -910,7 +910,7 @@ impl<'a, 'tcx> CrateMetadata {
                 ty::AssociatedItem {
                     name: name,
                     kind: ty::AssociatedKind::Type,
-                    vis: item.visibility,
+                    vis: item.visibility.decode(self),
                     defaultness: container.defaultness(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),

@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 continue
             }
 
-            if !item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
+            if !self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
                 self.private_candidate = Some(item.def());
                 continue
             }

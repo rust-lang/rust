@@ -201,7 +201,7 @@ pub struct TraitImpls {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
-    pub visibility: ty::Visibility,
+    pub visibility: Lazy<ty::Visibility>,
     pub span: Lazy<Span>,
     pub attributes: LazySeq<ast::Attribute>,
     pub children: LazySeq<DefIndex>,
