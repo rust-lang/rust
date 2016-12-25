@@ -341,12 +341,22 @@ pub fn krate(build: &Build,
     println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
              compiler.host, target);
 
+    // If we're not doing a full bootstrap but we're testing a stage2 version of
+    // libstd, then what we're actually testing is the libstd produced in
+    // stage1. Reflect that here by updating the compiler that we're working
+    // with automatically.
+    let compiler = if build.force_use_stage1(compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler.clone()
+    };
+
     // Build up the base `cargo test` command.
     //
     // Pass in some standard flags then iterate over the graph we've discovered
     // in `cargo metadata` with the maps above and figure out what `-p`
     // arguments need to get passed.
-    let mut cargo = build.cargo(compiler, mode, target, test_kind.subcommand());
+    let mut cargo = build.cargo(&compiler, mode, target, test_kind.subcommand());
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
@@ -380,7 +390,7 @@ pub fn krate(build: &Build,
     // Note that to run the compiler we need to run with the *host* libraries,
     // but our wrapper scripts arrange for that to be the case anyway.
     let mut dylib_path = dylib_path();
-    dylib_path.insert(0, build.sysroot_libdir(compiler, target));
+    dylib_path.insert(0, build.sysroot_libdir(&compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     if target.contains("android") {
@@ -399,10 +409,10 @@ pub fn krate(build: &Build,
 
     if target.contains("android") {
         build.run(&mut cargo);
-        krate_android(build, compiler, target, mode);
+        krate_android(build, &compiler, target, mode);
     } else if target.contains("emscripten") {
         build.run(&mut cargo);
-        krate_emscripten(build, compiler, target, mode);
+        krate_emscripten(build, &compiler, target, mode);
     } else {
         cargo.args(&build.flags.cmd.test_args());
         build.run(&mut cargo);

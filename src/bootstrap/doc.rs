@@ -137,6 +137,11 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Libstd)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
@@ -160,6 +165,11 @@ pub fn test(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Libtest)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
@@ -182,6 +192,11 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);

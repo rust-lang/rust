@@ -572,9 +572,7 @@ impl Build {
         let mut cmd = Command::new(self.tool(&compiler, tool));
         let host = compiler.host;
         let mut paths = vec![
-            self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
-            self.cargo_out(compiler, Mode::Libtest, host).join("deps"),
-            self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
+            self.sysroot_libdir(compiler, compiler.host),
             self.cargo_out(compiler, Mode::Tool, host).join("deps"),
         ];
 
@@ -879,6 +877,30 @@ impl Build {
     /// Path to the python interpreter to use
     fn python(&self) -> &Path {
         self.config.python.as_ref().unwrap()
+    }
+
+    /// Tests whether the `compiler` compiling for `target` should be forced to
+    /// use a stage1 compiler instead.
+    ///
+    /// Currently, by default, the build system does not perform a "full
+    /// bootstrap" by default where we compile the compiler three times.
+    /// Instead, we compile the compiler two times. The final stage (stage2)
+    /// just copies the libraries from the previous stage, which is what this
+    /// method detects.
+    ///
+    /// Here we return `true` if:
+    ///
+    /// * The build isn't performing a full bootstrap
+    /// * The `compiler` is in the final stage, 2
+    /// * We're not cross-compiling, so the artifacts are already available in
+    ///   stage1
+    ///
+    /// When all of these conditions are met the build will lift artifacts from
+    /// the previous stage forward.
+    fn force_use_stage1(&self, compiler: &Compiler, target: &str) -> bool {
+        !self.config.full_bootstrap &&
+            compiler.stage >= 2 &&
+            self.config.host.iter().any(|h| h == target)
     }
 }
 

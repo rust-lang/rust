@@ -17,6 +17,7 @@ matrix:
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=x86_64-freebsd
     - env: IMAGE=x86_64-gnu
+    - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-cargotest
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt

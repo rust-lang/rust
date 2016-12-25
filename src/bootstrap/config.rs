@@ -46,6 +46,7 @@ pub struct Config {
     pub docs: bool,
     pub vendor: bool,
     pub target_config: HashMap<String, Target>,
+    pub full_bootstrap: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -134,6 +135,7 @@ struct Build {
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
+    full_bootstrap: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -264,6 +266,7 @@ impl Config {
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
         set(&mut config.vendor, build.vendor);
+        set(&mut config.full_bootstrap, build.full_bootstrap);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone();
@@ -393,6 +396,7 @@ impl Config {
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
                 ("VENDOR", self.vendor),
+                ("FULL_BOOTSTRAP", self.full_bootstrap),
             }
 
             match key {
