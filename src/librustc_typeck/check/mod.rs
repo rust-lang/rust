@@ -3009,7 +3009,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     debug!("struct named {:?}",  base_t);
                     if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
                         let field_ty = self.field_ty(expr.span, field, substs);
-                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                        if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
                             autoderef.finalize(lvalue_pref, Some(base));
                             self.write_autoderef_adjustment(base.id, autoderefs, base_t);
 
@@ -3116,7 +3116,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     base_def.struct_variant().fields.get(idx.node).and_then(|field| {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         private_candidate = Some((base_def.did, field_ty));
-                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                        if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
                             self.tcx.check_stability(field.did, expr.id, expr.span);
                             Some(field_ty)
                         } else {

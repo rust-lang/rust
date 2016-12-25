@@ -88,7 +88,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
         let mark = Mark::fresh();
-        let module = self.module_map[&id];
+        let module = self.module_map[&self.definitions.local_def_id(id)];
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(module),
             def_index: module.def_id().unwrap().index,
@@ -154,7 +154,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let binding = self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(Def::Macro(def_id)),
             span: DUMMY_SP,
-            vis: ty::Visibility::PrivateExternal,
+            vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
         });
         self.builtin_macros.insert(ident.name, binding);
