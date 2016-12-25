@@ -27,6 +27,10 @@ use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
+        self.check_pat_arg(pat, expected, false);
+    }
+
+    pub fn check_pat_arg(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>, is_arg: bool) {
         let tcx = self.tcx;
 
         debug!("check_pat(pat={:?},expected={:?})", pat, expected);
@@ -212,7 +216,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
                             let rptr_ty = tcx.mk_ref(region, mt);
-                            self.demand_eqtype(pat.span, expected, rptr_ty);
+                            let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
+                            if let Some(mut err) = err {
+                                if is_arg {
+                                    if let Ok(snippet) = self.sess().codemap()
+                                        .span_to_snippet(pat.span)
+                                    {
+                                        err.help(&format!("did you mean `{}: &{}`?",
+                                                          snippet,
+                                                          expected));
+                                        err.help(&format!("did you mean `{}: {}`?",
+                                                          &snippet[1..],
+                                                          expected));
+                                    }
+                                }
+                                err.emit();
+                            }
                             (rptr_ty, inner_ty)
                         }
                     };

@@ -19,6 +19,7 @@ use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::ty::{self, AssociatedItem};
+use errors::DiagnosticBuilder;
 
 use super::method::probe;
 
@@ -38,20 +39,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        self.demand_eqtype_with_origin(&self.misc(sp), expected, actual);
+        if let Some(mut err) = self.demand_eqtype_diag(sp, expected, actual) {
+            err.emit();
+        }
+    }
+
+    pub fn demand_eqtype_diag(&self,
+                             sp: Span,
+                             expected: Ty<'tcx>,
+                             actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
+        self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
     pub fn demand_eqtype_with_origin(&self,
                                      cause: &ObligationCause<'tcx>,
                                      expected: Ty<'tcx>,
-                                     actual: Ty<'tcx>)
-    {
+                                     actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         match self.eq_types(false, cause, actual, expected) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
+                None
             },
             Err(e) => {
-                self.report_mismatched_types(cause, expected, actual, e).emit();
+                Some(self.report_mismatched_types(cause, expected, actual, e))
             }
         }
     }
