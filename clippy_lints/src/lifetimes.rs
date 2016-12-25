@@ -287,7 +287,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                         self.record(&None);
                     }
                 }
-            }
+            },
             _ => (),
         }
         walk_ty(self, ty);
