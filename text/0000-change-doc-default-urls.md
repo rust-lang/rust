@@ -52,8 +52,8 @@ From `#rust-internals` on 2016-12-22:
 Short URLs are nice to have, but they have an increasing maintenance cost
 that's affecting other parts of the project in an adverse way.
 
-The big underlying issue here is that people tend to link to `/`, becuase it's
-what you get by defualt. By changing the default, people will link to the
+The big underlying issue here is that people tend to link to `/`, because it's
+what you get by default. By changing the default, people will link to the
 specific version instead. This means that their links will not break, and will
 allow us to update the URL structure of our documentation more freely.
 
