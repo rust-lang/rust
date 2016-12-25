@@ -41,7 +41,7 @@ The `trait TraitAlias = Trait` was adopted as the syntax for aliasing. It create
 trait TraitAlias = Debug;
 ```
 
-Optionnaly, if needed, one can provide a `where` clause to express *bounds*:
+Optionally, if needed, one can provide a `where` clause to express *bounds*:
 
 ```rust
 trait TraitAlias = Debug where Self: Default;
@@ -60,7 +60,7 @@ parameters declarations* of course.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The syntax `trait TraitAlias as Trait` makes parsers need a lookhead (`=` or `as`?).
+The syntax `trait TraitAlias = Trait` makes parsers need a lookhead.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -76,4 +76,4 @@ However, it’s not a good idea as it might clash with already used `alias` in c
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-The syntax `trait TraitAlias as Trait` is not yet stabilized and needs to be discussed.
+The syntax `trait TraitAlias = Trait` is not yet stabilized and needs to be discussed.
