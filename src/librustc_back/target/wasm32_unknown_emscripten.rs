@@ -26,6 +26,7 @@ pub fn target() -> Result<Target, String> {
         max_atomic_width: Some(32),
         post_link_args: vec!["-s".to_string(), "BINARYEN=1".to_string(),
                              "-s".to_string(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()],
+        target_family: Some("unix".to_string()),
         .. Default::default()
     };
     Ok(Target {
@@ -35,7 +36,6 @@ pub fn target() -> Result<Target, String> {
         target_os: "emscripten".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        target_family: Some("unix".to_string()),
         data_layout: "e-p:32:32-i64:64-v128:32:128-n32-S128".to_string(),
         arch: "wasm32".to_string(),
         options: opts,
