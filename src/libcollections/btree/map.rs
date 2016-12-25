@@ -763,7 +763,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
     ///                                                                       .collect();
-    /// for (_, balance) in map.range_mut((Included("B"), Excluded("Cheryl"))) {
+    /// for (_, balance) in map.range_mut::<str, _>((Included("B"), Excluded("Cheryl"))) {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
