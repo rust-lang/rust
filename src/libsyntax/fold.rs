@@ -302,23 +302,22 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
     view_path.map(|Spanned {node, span}| Spanned {
         node: match node {
             ViewPathSimple(ident, path) => {
-                ViewPathSimple(ident, fld.fold_path(path))
+                ViewPathSimple(fld.fold_ident(ident), fld.fold_path(path))
             }
             ViewPathGlob(path) => {
                 ViewPathGlob(fld.fold_path(path))
             }
             ViewPathList(path, path_list_idents) => {
-                ViewPathList(fld.fold_path(path),
-                             path_list_idents.move_map(|path_list_ident| {
-                                Spanned {
-                                    node: PathListItem_ {
-                                        id: fld.new_id(path_list_ident.node.id),
-                                        rename: path_list_ident.node.rename,
-                                        name: path_list_ident.node.name,
-                                    },
-                                    span: fld.new_span(path_list_ident.span)
-                                }
-                             }))
+                let path = fld.fold_path(path);
+                let path_list_idents = path_list_idents.move_map(|path_list_ident| Spanned {
+                    node: PathListItem_ {
+                        id: fld.new_id(path_list_ident.node.id),
+                        rename: path_list_ident.node.rename.map(|ident| fld.fold_ident(ident)),
+                        name: fld.fold_ident(path_list_ident.node.name),
+                    },
+                    span: fld.new_span(path_list_ident.span)
+                });
+                ViewPathList(path, path_list_idents)
             }
         },
         span: fld.new_span(span)
@@ -345,7 +344,7 @@ pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T
 pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBinding {
     TypeBinding {
         id: fld.new_id(b.id),
-        ident: b.ident,
+        ident: fld.fold_ident(b.ident),
         ty: fld.fold_ty(b.ty),
         span: fld.new_span(b.span),
     }
@@ -672,7 +671,7 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
             .collect::<Vec<_>>()
             .into(),
         id: fld.new_id(id),
-        ident: ident,
+        ident: fld.fold_ident(ident),
         bounds: fld.fold_bounds(bounds),
         default: default.map(|x| fld.fold_ty(x)),
         span: span
@@ -1087,7 +1086,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                 let fs = fields.move_map(|f| {
                     Spanned { span: folder.new_span(f.span),
                               node: ast::FieldPat {
-                                  ident: f.node.ident,
+                                  ident: folder.fold_ident(f.node.ident),
                                   pat: folder.fold_pat(f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
                               }}
