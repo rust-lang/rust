@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(not(windows))]
 pub fn cmd(name: &str) -> String {
-    name.to_string()
-}
-
-#[cfg(windows)]
-pub fn cmd(name: &str) -> String {
-    [name, ".bat"].concat()
+    if cfg!(windows) {
+        format!("{}.bat", name)
+    } else {
+        name.to_string()
+    }
 }
