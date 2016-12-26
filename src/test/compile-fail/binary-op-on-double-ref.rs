@@ -12,9 +12,9 @@ fn main() {
     let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let vr = v.iter().filter(|x| {
         x % 2 == 0
-        //~^ ERROR binary operation `%` cannot be applied to type `&&_`
+        //~^ ERROR binary operation `%` cannot be applied to type `&&{integer}`
         //~| NOTE this is a reference of type that `%` can be applied to
-        //~| NOTE an implementation of `std::ops::Rem` might be missing for `&&_`
+        //~| NOTE an implementation of `std::ops::Rem` might be missing for `&&{integer}`
     });
     println!("{:?}", vr);
 }
