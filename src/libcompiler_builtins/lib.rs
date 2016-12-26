@@ -16,13 +16,9 @@
             issue = "0")]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
-#![feature(staged_api)]
-#![cfg_attr(any(target_pointer_width="32", target_pointer_width="16", target_os="windows",
-            target_arch="mips64"),
-            feature(core_intrinsics, repr_simd))]
-#![feature(associated_consts)]
-#![cfg_attr(not(stage0), feature(i128_type, core_float, abi_unadjusted))]
-
+#![allow(unused_features)]
+#![feature(staged_api, core_intrinsics, repr_simd,
+           i128_type, core_float, abi_unadjusted, associated_consts)]
 #![allow(non_camel_case_types, unused_variables, unused_imports)]
 #![cfg_attr(stage0, allow(dead_code))]
 
