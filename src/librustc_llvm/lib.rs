@@ -371,6 +371,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeMSP430Target,
                  LLVMInitializeMSP430TargetMC,
                  LLVMInitializeMSP430AsmPrinter);
+    init_target!(llvm_component = "sparc",
+                 LLVMInitializeSparcTargetInfo,
+                 LLVMInitializeSparcTarget,
+                 LLVMInitializeSparcTargetMC,
+                 LLVMInitializeSparcAsmPrinter,
+                 LLVMInitializeSparcAsmParser);
 }
 
 pub fn last_error() -> Option<String> {
