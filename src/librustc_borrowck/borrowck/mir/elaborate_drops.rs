@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::gather_moves::{MoveData, MovePathIndex, LookupResult};
+use super::gather_moves::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use super::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use super::dataflow::{DataflowResults};
 use super::{drop_flag_effects_for_location, on_all_children_bits};
@@ -51,11 +51,13 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 param_env: param_env
             };
             let flow_inits =
-                super::do_dataflow(tcx, mir, id, &[], &env,
-                                   MaybeInitializedLvals::new(tcx, mir));
+                super::do_dataflow(tcx, mir, id, &[],
+                                   MaybeInitializedLvals::new(tcx, mir, &env),
+                                   |bd, p| &bd.move_data().move_paths[p]);
             let flow_uninits =
-                super::do_dataflow(tcx, mir, id, &[], &env,
-                                   MaybeUninitializedLvals::new(tcx, mir));
+                super::do_dataflow(tcx, mir, id, &[],
+                                   MaybeUninitializedLvals::new(tcx, mir, &env),
+                                   |bd, p| &bd.move_data().move_paths[p]);
 
             ElaborateDropsCtxt {
                 tcx: tcx,
