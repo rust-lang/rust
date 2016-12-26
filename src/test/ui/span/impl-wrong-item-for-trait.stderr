@@ -1,3 +1,9 @@
+error[E0437]: type `bar` is not a member of trait `Foo`
+  --> $DIR/impl-wrong-item-for-trait.rs:47:5
+   |
+47 |     type bar = u64;
+   |     ^^^^^^^^^^^^^^^ not a member of trait `Foo`
+
 error[E0323]: item `bar` is an associated const, which doesn't match its trait `Foo`
   --> $DIR/impl-wrong-item-for-trait.rs:25:5
    |

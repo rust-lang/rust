@@ -1,10 +1,8 @@
-error[E0404]: `Bar` is not a trait
+error[E0404]: expected trait, found type alias `Bar`
   --> $DIR/two_files.rs:15:6
    |
 15 | impl Bar for Baz { }
-   |      ^^^ expected trait, found type alias
-   |
-   = note: type aliases cannot be used for traits
+   |      ^^^ type aliases cannot be used for traits
 
 error: cannot continue compilation due to previous error
 

@@ -39,6 +39,6 @@ fn main() {
 
     assert_eq!(pprust::expr_to_string(&*quote_expr!(&cx, 23)), "23");
 
-    let expr = quote_expr!(&cx, 2 - $abcd + 7); //~ ERROR unresolved name `abcd`
+    let expr = quote_expr!(&cx, 2 - $abcd + 7); //~ ERROR unresolved value `abcd`
     assert_eq!(pprust::expr_to_string(&*expr), "2 - $abcd + 7");
 }

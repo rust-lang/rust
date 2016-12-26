@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `ImportError`
+  --> $DIR/issue-5035.rs:16:5
+   |
+16 | use ImportError; //~ ERROR unresolved import `ImportError` [E0432]
+   |     ^^^^^^^^^^^ no `ImportError` in the root
+
+error[E0404]: expected trait, found type alias `K`
+  --> $DIR/issue-5035.rs:13:6
+   |
+13 | impl K for isize {} //~ ERROR expected trait, found type alias `K`
+   |      ^ type aliases cannot be used for traits
+
+error: cannot continue compilation due to previous error
+

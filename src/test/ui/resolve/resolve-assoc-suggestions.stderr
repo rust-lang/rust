@@ -1,0 +1,56 @@
+error[E0412]: unresolved type `field`
+  --> $DIR/resolve-assoc-suggestions.rs:26:16
+   |
+26 |         let _: field;
+   |                ^^^^^ no resolution found
+
+error[E0531]: unresolved tuple struct/variant `field`
+  --> $DIR/resolve-assoc-suggestions.rs:29:13
+   |
+29 |         let field(..);
+   |             ^^^^^ no resolution found
+
+error[E0425]: unresolved value `field`
+  --> $DIR/resolve-assoc-suggestions.rs:32:9
+   |
+32 |         field;
+   |         ^^^^^ did you mean `self.field`?
+
+error[E0412]: unresolved type `Type`
+  --> $DIR/resolve-assoc-suggestions.rs:36:16
+   |
+36 |         let _: Type;
+   |                ^^^^ did you mean `Self::Type`?
+
+error[E0531]: unresolved tuple struct/variant `Type`
+  --> $DIR/resolve-assoc-suggestions.rs:39:13
+   |
+39 |         let Type(..);
+   |             ^^^^ no resolution found
+
+error[E0425]: unresolved value `Type`
+  --> $DIR/resolve-assoc-suggestions.rs:42:9
+   |
+42 |         Type;
+   |         ^^^^ no resolution found
+
+error[E0412]: unresolved type `method`
+  --> $DIR/resolve-assoc-suggestions.rs:46:16
+   |
+46 |         let _: method;
+   |                ^^^^^^ no resolution found
+
+error[E0531]: unresolved tuple struct/variant `method`
+  --> $DIR/resolve-assoc-suggestions.rs:49:13
+   |
+49 |         let method(..);
+   |             ^^^^^^ no resolution found
+
+error[E0425]: unresolved value `method`
+  --> $DIR/resolve-assoc-suggestions.rs:52:9
+   |
+52 |         method;
+   |         ^^^^^^ did you mean `self.method(...)`?
+
+error: aborting due to 9 previous errors
+

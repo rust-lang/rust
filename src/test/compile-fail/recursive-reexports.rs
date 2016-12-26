@@ -12,6 +12,6 @@
 
 extern crate recursive_reexports;
 
-fn f() -> recursive_reexports::S {} //~ ERROR type name `recursive_reexports::S` is undefined
+fn f() -> recursive_reexports::S {} //~ ERROR unresolved type `recursive_reexports::S`
 
 fn main() {}

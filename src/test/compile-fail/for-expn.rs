@@ -13,7 +13,7 @@
 fn main() {
     // Odd formatting to make sure we get the right span.
     for t in &
-      foo //~ ERROR unresolved name `foo`
+      foo //~ ERROR unresolved value `foo`
     {
     }
 }

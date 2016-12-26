@@ -1,0 +1,20 @@
+error: incorrect close delimiter: `)`
+  --> $DIR/token-error-correct-2.rs:18:5
+   |
+18 |     ) //~ ERROR: incorrect close delimiter: `)`
+   |     ^
+   |
+note: unclosed delimiter
+  --> $DIR/token-error-correct-2.rs:14:12
+   |
+14 |     if foo {
+   |            ^
+
+error[E0425]: unresolved value `foo`
+  --> $DIR/token-error-correct-2.rs:14:8
+   |
+14 |     if foo {
+   |        ^^^ no resolution found
+
+error: aborting due to 2 previous errors
+

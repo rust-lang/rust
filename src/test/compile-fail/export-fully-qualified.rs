@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: failed to resolve. Use of undeclared type or module `foo`
-
 // In this test baz isn't resolved when called as foo.baz even though
 // it's called from inside foo. This is somewhat surprising and may
 // want to change eventually.
 
 mod foo {
-    pub fn bar() { foo::baz(); }
+    pub fn bar() { foo::baz(); } //~ ERROR failed to resolve. Use of undeclared type or module `foo`
 
     fn baz() { }
 }

@@ -13,10 +13,10 @@ static Y: u8 = 1;
 fn foo() {}
 
 impl X {}
-//~^ ERROR type name `X` is undefined or not in scope
+//~^ ERROR expected type, found constant `X`
 impl Y {}
-//~^ ERROR type name `Y` is undefined or not in scope
+//~^ ERROR expected type, found static `Y`
 impl foo {}
-//~^ ERROR type name `foo` is undefined or not in scope
+//~^ ERROR expected type, found function `foo`
 
 fn main() {}

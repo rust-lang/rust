@@ -1,10 +1,10 @@
-error[E0425]: unresolved name `bar`
+error[E0425]: unresolved value `bar`
   --> $DIR/typo-suggestion.rs:15:26
    |
 15 |     println!("Hello {}", bar);
-   |                          ^^^ unresolved name
+   |                          ^^^ no resolution found
 
-error[E0425]: unresolved name `fob`
+error[E0425]: unresolved value `fob`
   --> $DIR/typo-suggestion.rs:18:26
    |
 18 |     println!("Hello {}", fob);

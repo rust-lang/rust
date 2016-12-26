@@ -1,0 +1,26 @@
+error[E0425]: unresolved value `field`
+  --> $DIR/resolve-speculative-adjustment.rs:27:13
+   |
+27 |             field;
+   |             ^^^^^ no resolution found
+
+error[E0425]: unresolved function `method`
+  --> $DIR/resolve-speculative-adjustment.rs:30:13
+   |
+30 |             method();
+   |             ^^^^^^ no resolution found
+
+error[E0425]: unresolved value `field`
+  --> $DIR/resolve-speculative-adjustment.rs:35:9
+   |
+35 |         field;
+   |         ^^^^^ did you mean `self.field`?
+
+error[E0425]: unresolved function `method`
+  --> $DIR/resolve-speculative-adjustment.rs:38:9
+   |
+38 |         method();
+   |         ^^^^^^ did you mean `self.method(...)`?
+
+error: aborting due to 4 previous errors
+

@@ -417,28 +417,18 @@ impl<'a> Resolver<'a> {
         let ident = Ident::with_empty_ctxt(child.name);
         let def = child.def;
         let def_id = def.def_id();
-        let vis = match def {
-            Def::Macro(..) => ty::Visibility::Public,
-            _ if parent.is_trait() => ty::Visibility::Public,
-            _ => self.session.cstore.visibility(def_id),
-        };
+        let vis = self.session.cstore.visibility(def_id);
 
         match def {
             Def::Mod(..) | Def::Enum(..) => {
                 let module = self.new_module(parent, ModuleKind::Def(def, ident.name), def_id);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
             }
-            Def::Variant(..) => {
+            Def::Variant(..) | Def::TyAlias(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
             }
-            Def::VariantCtor(..) => {
-                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
-            }
-            Def::Fn(..) |
-            Def::Static(..) |
-            Def::Const(..) |
-            Def::AssociatedConst(..) |
-            Def::Method(..) => {
+            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
+            Def::VariantCtor(..) | Def::StructCtor(..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
             }
             Def::Trait(..) => {
@@ -446,29 +436,19 @@ impl<'a> Resolver<'a> {
                 let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
 
-                // If this is a trait, add all the trait item names to the trait info.
-                let trait_item_def_ids = self.session.cstore.associated_item_def_ids(def_id);
-                for trait_item_def_id in trait_item_def_ids {
-                    let trait_item_name = self.session.cstore.def_key(trait_item_def_id)
-                                              .disambiguated_data.data.get_opt_name()
-                                              .expect("opt_item_name returned None for trait");
-                    self.trait_item_map.insert((trait_item_name, def_id), false);
-                }
-            }
-            Def::TyAlias(..) | Def::AssociatedTy(..) => {
-                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
-            }
-            Def::Struct(..) => {
-                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
+                for child in self.session.cstore.item_children(def_id) {
+                    let ns = if let Def::AssociatedTy(..) = child.def { TypeNS } else { ValueNS };
+                    let ident = Ident::with_empty_ctxt(child.name);
+                    self.define(module, ident, ns, (child.def, ty::Visibility::Public,
+                                                    DUMMY_SP, Mark::root()));
 
-                // Record field names for error reporting.
-                let field_names = self.session.cstore.struct_field_names(def_id);
-                self.insert_field_names(def_id, field_names);
+                    let has_self = self.session.cstore.associated_item(child.def.def_id())
+                                       .map_or(false, |item| item.method_has_self_argument);
+                    self.trait_item_map.insert((def_id, child.name, ns), (child.def, has_self));
+                }
+                module.populated.set(true);
             }
-            Def::StructCtor(..) => {
-                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
-            }
-            Def::Union(..) => {
+            Def::Struct(..) | Def::Union(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
 
                 // Record field names for error reporting.
@@ -478,15 +458,7 @@ impl<'a> Resolver<'a> {
             Def::Macro(..) => {
                 self.define(parent, ident, MacroNS, (def, vis, DUMMY_SP, Mark::root()));
             }
-            Def::Local(..) |
-            Def::PrimTy(..) |
-            Def::TyParam(..) |
-            Def::Upvar(..) |
-            Def::Label(..) |
-            Def::SelfTy(..) |
-            Def::Err => {
-                bug!("unexpected definition: {:?}", def);
-            }
+            _ => bug!("unexpected definition: {:?}", def)
         }
     }
 
@@ -751,18 +723,15 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
         // Add the item to the trait info.
         let item_def_id = self.resolver.definitions.local_def_id(item.id);
-        let mut is_static_method = false;
-        let (def, ns) = match item.node {
-            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
-            TraitItemKind::Method(ref sig, _) => {
-                is_static_method = !sig.decl.has_self();
-                (Def::Method(item_def_id), ValueNS)
-            }
-            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
+        let (def, ns, has_self) = match item.node {
+            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS, false),
+            TraitItemKind::Method(ref sig, _) =>
+                (Def::Method(item_def_id), ValueNS, sig.decl.has_self()),
+            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS, false),
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 
-        self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);
+        self.resolver.trait_item_map.insert((def_id, item.ident.name, ns), (def, has_self));
 
         let vis = ty::Visibility::Public;
         self.resolver.define(parent, item.ident, ns, (def, vis, item.span, self.expansion));

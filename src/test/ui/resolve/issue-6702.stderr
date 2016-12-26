@@ -1,0 +1,8 @@
+error[E0423]: expected function, found struct `Monster`
+  --> $DIR/issue-6702.rs:17:14
+   |
+17 |     let _m = Monster(); //~ ERROR expected function, found struct `Monster`
+   |              ^^^^^^^ did you mean `Monster { /* fields */ }`?
+
+error: aborting due to previous error
+

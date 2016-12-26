@@ -1,0 +1,8 @@
+error[E0423]: expected value, found trait `Bar`
+  --> $DIR/issue-33876.rs:20:22
+   |
+20 |     let any: &Any = &Bar; //~ ERROR expected value, found trait `Bar`
+   |                      ^^^ not a value
+
+error: aborting due to previous error
+

@@ -12,7 +12,7 @@
 fn main() {
     let z = match 3 {
         x(1) => x(1) //~ ERROR unresolved tuple struct/variant `x`
-        //~^ ERROR unresolved name `x`
+        //~^ ERROR unresolved function `x`
     };
     assert!(z == 3);
 }

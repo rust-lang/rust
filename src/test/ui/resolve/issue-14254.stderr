@@ -1,0 +1,148 @@
+error[E0425]: unresolved function `baz`
+  --> $DIR/issue-14254.rs:29:9
+   |
+29 |         baz();
+   |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `a`
+  --> $DIR/issue-14254.rs:32:9
+   |
+32 |         a;
+   |         ^ no resolution found
+
+error[E0425]: unresolved function `baz`
+  --> $DIR/issue-14254.rs:40:9
+   |
+40 |         baz();
+   |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `x`
+  --> $DIR/issue-14254.rs:43:9
+   |
+43 |         x;
+   |         ^ did you mean `self.x`?
+
+error[E0425]: unresolved value `y`
+  --> $DIR/issue-14254.rs:46:9
+   |
+46 |         y;
+   |         ^ did you mean `self.y`?
+
+error[E0425]: unresolved value `a`
+  --> $DIR/issue-14254.rs:49:9
+   |
+49 |         a;
+   |         ^ no resolution found
+
+error[E0425]: unresolved value `bah`
+  --> $DIR/issue-14254.rs:52:9
+   |
+52 |         bah;
+   |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved value `b`
+  --> $DIR/issue-14254.rs:55:9
+   |
+55 |         b;
+   |         ^ no resolution found
+
+error[E0425]: unresolved function `baz`
+  --> $DIR/issue-14254.rs:63:9
+   |
+63 |         baz();
+   |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `x`
+  --> $DIR/issue-14254.rs:66:9
+   |
+66 |         x;
+   |         ^ did you mean `self.x`?
+
+error[E0425]: unresolved value `y`
+  --> $DIR/issue-14254.rs:69:9
+   |
+69 |         y;
+   |         ^ did you mean `self.y`?
+
+error[E0425]: unresolved value `a`
+  --> $DIR/issue-14254.rs:72:9
+   |
+72 |         a;
+   |         ^ no resolution found
+
+error[E0425]: unresolved value `bah`
+  --> $DIR/issue-14254.rs:75:9
+   |
+75 |         bah;
+   |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved value `b`
+  --> $DIR/issue-14254.rs:78:9
+   |
+78 |         b;
+   |         ^ no resolution found
+
+error[E0425]: unresolved function `baz`
+  --> $DIR/issue-14254.rs:86:9
+   |
+86 |         baz();
+   |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `bah`
+  --> $DIR/issue-14254.rs:89:9
+   |
+89 |         bah;
+   |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved function `baz`
+  --> $DIR/issue-14254.rs:97:9
+   |
+97 |         baz();
+   |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `bah`
+   --> $DIR/issue-14254.rs:100:9
+    |
+100 |         bah;
+    |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved function `baz`
+   --> $DIR/issue-14254.rs:108:9
+    |
+108 |         baz();
+    |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `bah`
+   --> $DIR/issue-14254.rs:111:9
+    |
+111 |         bah;
+    |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved function `baz`
+   --> $DIR/issue-14254.rs:119:9
+    |
+119 |         baz();
+    |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `bah`
+   --> $DIR/issue-14254.rs:122:9
+    |
+122 |         bah;
+    |         ^^^ did you mean `Self::bah`?
+
+error[E0425]: unresolved function `baz`
+   --> $DIR/issue-14254.rs:130:9
+    |
+130 |         baz();
+    |         ^^^ did you mean `self.baz(...)`?
+
+error[E0425]: unresolved value `bah`
+   --> $DIR/issue-14254.rs:133:9
+    |
+133 |         bah;
+    |         ^^^ did you mean `Self::bah`?
+
+error: main function not found
+
+error: aborting due to 25 previous errors
+

@@ -14,7 +14,7 @@ fn f() {
     fn g() {}
     mod foo {
         fn h() {
-           g(); //~ ERROR unresolved name
+           g(); //~ ERROR unresolved function `g`
         }
     }
 }

@@ -188,8 +188,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def_id.krate).get_trait_of_item(def_id.index)
     }
 
-    fn associated_item<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> Option<ty::AssociatedItem>
+    fn associated_item(&self, def: DefId) -> Option<ty::AssociatedItem>
     {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_associated_item(def.index)
