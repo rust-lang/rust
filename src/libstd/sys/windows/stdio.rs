@@ -111,19 +111,27 @@ impl Stdin {
         if utf8.position() as usize == utf8.get_ref().len() {
             let mut utf16 = vec![0u16; 0x1000];
             let mut num = 0;
+            let mut input_control = readconsole_input_control(CTRL_Z_MASK);
             cvt(unsafe {
                 c::ReadConsoleW(handle,
                                 utf16.as_mut_ptr() as c::LPVOID,
                                 utf16.len() as u32,
                                 &mut num,
-                                ptr::null_mut())
+                                &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL)
             })?;
             utf16.truncate(num as usize);
             // FIXME: what to do about this data that has already been read?
-            let data = match String::from_utf16(&utf16) {
+            let mut data = match String::from_utf16(&utf16) {
                 Ok(utf8) => utf8.into_bytes(),
                 Err(..) => return Err(invalid_encoding()),
             };
+            if let Output::Console(_) = self.handle {
+                if let Some(&last_byte) = data.last() {
+                    if last_byte == CTRL_Z {
+                        data.pop();
+                    }
+                }
+            }
             *utf8 = Cursor::new(data);
         }
 
@@ -216,6 +224,18 @@ impl Output {
 fn invalid_encoding() -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, "text was not valid unicode")
 }
+
+fn readconsole_input_control(wakeup_mask: c::ULONG) -> c::CONSOLE_READCONSOLE_CONTROL {
+    c::CONSOLE_READCONSOLE_CONTROL {
+        nLength: ::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
+        nInitialChars: 0,
+        dwCtrlWakeupMask: wakeup_mask,
+        dwControlKeyState: 0,
+    }
+}
+
+const CTRL_Z: u8 = 0x1A;
+const CTRL_Z_MASK: c::ULONG = 0x4000000; //1 << 0x1A
 
 pub const EBADF_ERR: i32 = ::sys::c::ERROR_INVALID_HANDLE as i32;
 // The default buffer capacity is 64k, but apparently windows

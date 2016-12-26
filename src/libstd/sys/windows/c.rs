@@ -818,6 +818,16 @@ pub enum EXCEPTION_DISPOSITION {
     ExceptionCollidedUnwind
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CONSOLE_READCONSOLE_CONTROL {
+    pub nLength: ULONG,
+    pub nInitialChars: ULONG,
+    pub dwCtrlWakeupMask: ULONG,
+    pub dwControlKeyState: ULONG,
+}
+pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
 #[link(name = "ws2_32")]
 #[link(name = "userenv")]
 #[link(name = "shell32")]
@@ -848,12 +858,11 @@ extern "system" {
     pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
-    // FIXME - pInputControl should be PCONSOLE_READCONSOLE_CONTROL
     pub fn ReadConsoleW(hConsoleInput: HANDLE,
                         lpBuffer: LPVOID,
                         nNumberOfCharsToRead: DWORD,
                         lpNumberOfCharsRead: LPDWORD,
-                        pInputControl: LPVOID) -> BOOL;
+                        pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
 
     pub fn WriteConsoleW(hConsoleOutput: HANDLE,
                          lpBuffer: LPCVOID,
