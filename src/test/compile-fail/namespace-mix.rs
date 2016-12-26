@@ -41,13 +41,13 @@ mod m2 {
 
 fn f12() {
     check(m1::S{}); //~ ERROR c::Item
-    check(m1::S); //~ ERROR unresolved name
+    check(m1::S); //~ ERROR expected value, found type alias `m1::S`
     check(m2::S{}); //~ ERROR c::S
     check(m2::S); //~ ERROR c::Item
 }
 fn xf12() {
     check(xm1::S{}); //~ ERROR c::Item
-    check(xm1::S); //~ ERROR unresolved name
+    check(xm1::S); //~ ERROR expected value, found type alias `xm1::S`
     check(xm2::S{}); //~ ERROR c::S
     check(xm2::S); //~ ERROR c::Item
 }
@@ -107,13 +107,13 @@ mod m8 {
 
 fn f78() {
     check(m7::V{}); //~ ERROR c::Item
-    check(m7::V); //~ ERROR name of a struct or struct variant
+    check(m7::V); //~ ERROR expected value, found struct variant `m7::V`
     check(m8::V{}); //~ ERROR c::E
     check(m8::V); //~ ERROR c::Item
 }
 fn xf78() {
     check(xm7::V{}); //~ ERROR c::Item
-    check(xm7::V); //~ ERROR name of a struct or struct variant
+    check(xm7::V); //~ ERROR expected value, found struct variant `xm7::V`
     check(xm8::V{}); //~ ERROR c::E
     check(xm8::V); //~ ERROR c::Item
 }

@@ -1,0 +1,11 @@
+error[E0405]: unresolved trait `OuterTrait`
+  --> $DIR/issue-21221-3.rs:25:6
+   |
+25 | impl OuterTrait for Foo {}
+   |      ^^^^^^^^^^ no resolution found
+   |
+   = help: possible candidate is found in another module, you can import it into scope:
+   = help:   `use issue_21221_3::outer::OuterTrait;`
+
+error: cannot continue compilation due to previous error
+

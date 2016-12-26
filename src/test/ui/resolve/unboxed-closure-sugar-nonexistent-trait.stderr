@@ -1,0 +1,14 @@
+error[E0405]: unresolved trait `Nonexist`
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:11:8
+   |
+11 | fn f<F:Nonexist(isize) -> isize>(x: F) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ no resolution found
+
+error[E0404]: expected trait, found type alias `Typedef`
+  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:17:8
+   |
+17 | fn g<F:Typedef(isize) -> isize>(x: F) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ type aliases cannot be used for traits
+
+error: cannot continue compilation due to previous error
+

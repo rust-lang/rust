@@ -17,7 +17,7 @@ trait From<Src> {
 trait To: Sized {
     fn to<Dst: From<Self>>(self) ->
         <Dst as From<Self>>::Dst
-        //~^ ERROR associated type `From::Dst` is undefined or not in scope
+        //~^ ERROR unresolved associated type `From::Dst`
     {
         From::from(self)
     }

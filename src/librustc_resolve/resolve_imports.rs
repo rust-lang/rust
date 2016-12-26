@@ -717,7 +717,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Record the destination of this import
-        self.def_map.insert(directive.id, PathResolution::new(module.def().unwrap()));
+        self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
     // Miscellaneous post-processing, including recording reexports, reporting conflicts,

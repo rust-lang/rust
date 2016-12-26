@@ -18,6 +18,6 @@ macro_rules! foo {
 // not to the macro variable '$id'
 fn main() {
     foo!(
-        x //~ ERROR unresolved name `x`
+        x //~ ERROR unresolved value `x`
         );
 }

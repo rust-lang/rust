@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name `foobar`
-
-fn main() { println!("{}", foobar); }
+fn main() { println!("{}", foobar); } //~ ERROR unresolved value `foobar`

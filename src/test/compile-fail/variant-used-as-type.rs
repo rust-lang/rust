@@ -15,7 +15,7 @@
 enum Ty {
     A,
     B(Ty::A),
-    //~^ ERROR: found value `Ty::A` used as a type
+    //~^ ERROR expected type, found variant `Ty::A`
 }
 
 
@@ -25,6 +25,6 @@ enum E {
 }
 
 impl E::A {}
-//~^ ERROR: found value `E::A` used as a type
+//~^ ERROR expected type, found variant `E::A`
 
 fn main() {}

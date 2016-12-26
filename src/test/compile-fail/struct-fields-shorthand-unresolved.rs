@@ -19,6 +19,6 @@ fn main() {
     let x = 0;
     let foo = Foo {
         x,
-        y //~ ERROR unresolved name `y`
+        y //~ ERROR unresolved value `y`
     };
 }

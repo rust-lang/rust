@@ -2071,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
         self.associated_items.memoize(def_id, || {
             if !def_id.is_local() {
-                return self.sess.cstore.associated_item(self.global_tcx(), def_id)
+                return self.sess.cstore.associated_item(def_id)
                            .expect("missing AssociatedItem in metadata");
             }
 
@@ -2526,8 +2526,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// ID of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.associated_item(self.global_tcx(), def_id)
-                       .and_then(|item| {
+            return self.sess.cstore.associated_item(def_id).and_then(|item| {
                 match item.container {
                     TraitContainer(_) => None,
                     ImplContainer(def_id) => Some(def_id),
