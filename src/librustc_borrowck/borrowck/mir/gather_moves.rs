@@ -120,6 +120,10 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
 }
 
+pub trait HasMoveData<'tcx> {
+    fn move_data(&self) -> &MoveData<'tcx>;
+}
+
 #[derive(Debug)]
 pub struct LocationMap<T> {
     /// Location-indexed (BasicBlock for outer index, index within BB

@@ -17,9 +17,9 @@ use rustc::mir::{self, Mir};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MovePathIndex, LookupResult};
-use super::super::MoveDataParamEnv;
 use super::BitDenotation;
 use super::DataflowResults;
+use super::super::gather_moves::HasMoveData;
 
 /// This function scans `mir` for all calls to the intrinsic
 /// `rustc_peek` that have the expression form `rustc_peek(&expr)`.
@@ -41,9 +41,8 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
                                                 id: ast::NodeId,
                                                 _attributes: &[ast::Attribute],
-                                                flow_ctxt: &O::Ctxt,
                                                 results: &DataflowResults<O>)
-    where O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
+    where O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -51,18 +50,17 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // stuff, so such generalization may not be realistic.)
 
     for bb in mir.basic_blocks().indices() {
-        each_block(tcx, mir, flow_ctxt, results, bb);
+        each_block(tcx, mir, results, bb);
     }
 }
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
-                           ctxt: &O::Ctxt,
                            results: &DataflowResults<O>,
                            bb: mir::BasicBlock) where
-    O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
+    O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
-    let move_data = &ctxt.move_data;
+    let move_data = results.0.operator.move_data();
     let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
 
     let (args, span) = match is_rustc_peek(tcx, terminator) {
@@ -146,7 +144,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(ctxt, &mut sets, bb, j);
+        results.0.operator.statement_effect(&mut sets, bb, j);
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }
