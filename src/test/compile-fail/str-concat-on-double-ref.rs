@@ -13,7 +13,6 @@ fn main() {
     let b: &str = &"2";
     let c = a + b;
     //~^ ERROR binary operation `+` cannot be applied to type `&std::string::String`
-    //~| NOTE this is a reference of type that `+` can be applied to
     //~| NOTE an implementation of `std::ops::Add` might be missing for `&std::string::String`
     println!("{:?}", c);
 }
