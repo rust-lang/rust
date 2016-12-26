@@ -95,7 +95,8 @@ fn main() {
     let is_crossed = target != host;
 
     let optional_components =
-        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend", "msp430"];
+        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend", "msp430",
+         "sparc"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.

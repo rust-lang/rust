@@ -81,7 +81,7 @@ pub fn llvm(build: &Build, target: &str) {
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD",
-               "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430")
+               "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc")
        .define("LLVM_INCLUDE_EXAMPLES", "OFF")
        .define("LLVM_INCLUDE_TESTS", "OFF")
        .define("LLVM_INCLUDE_DOCS", "OFF")
