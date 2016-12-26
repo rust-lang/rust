@@ -76,7 +76,7 @@ before_cache:
   - docker history -q rust-ci |
     grep -v missing |
     xargs docker save |
-    gzip -9 > $HOME/docker/rust-ci.tar.gz
+    gzip > $HOME/docker/rust-ci.tar.gz
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
 
