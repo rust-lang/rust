@@ -573,6 +573,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                 hir::ExprBreak(..)      |
                 hir::ExprAgain(..)      |
                 hir::ExprRet(..)        |
+                hir::ExprSuspend(..)    |
+                hir::ExprImplArg(..)    |
                 hir::ExprInlineAsm(..)  |
                 hir::ExprRepeat(..)     |
                 hir::ExprTup(..)        => {
@@ -637,7 +639,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprWhile(cond, body, label),
     ExprLoop(body, label, loop_src),
     ExprMatch(matchee, arms, match_src),
-    ExprClosure(capture_clause, decl, body_id, span),
+    ExprClosure(capture_clause, decl, body_id, span, gen),
     ExprBlock(blk),
     ExprAssign(lhs, rhs),
     ExprAssignOp(op, lhs, rhs),
@@ -651,7 +653,9 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprRet(val),
     ExprInlineAsm(asm, inputs, outputs),
     ExprStruct(path, fields, base),
-    ExprRepeat(val, times)
+    ExprRepeat(val, times),
+    ExprSuspend(val),
+    ExprImplArg(id)
 });
 
 impl_stable_hash_for!(enum hir::LocalSource {
@@ -685,6 +689,11 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::M
         }
     }
 }
+
+impl_stable_hash_for!(enum hir::GeneratorClause {
+    Immovable,
+    Movable
+});
 
 impl_stable_hash_for!(enum hir::CaptureClause {
     CaptureByValue,
@@ -1022,9 +1031,15 @@ impl_stable_hash_for!(struct hir::Arg {
     id
 });
 
+impl_stable_hash_for!(struct hir::ImplArg {
+    id,
+    span
+});
+
 impl_stable_hash_for!(struct hir::Body {
     arguments,
-    value
+    value,
+    impl_arg
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {

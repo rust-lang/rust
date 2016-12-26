@@ -602,6 +602,17 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
+          hir::ExprImplArg(id) => {
+            Ok(Rc::new(cmt_ {
+                id: expr.id,
+                span: expr.span,
+                cat: Categorization::Local(id),
+                mutbl: MutabilityCategory::McDeclared,
+                ty: expr_ty,
+                note: NoteNone
+            }))
+          },
+
           hir::ExprType(ref e, _) => {
             self.cat_expr(&e)
           }
@@ -609,7 +620,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           hir::ExprAddrOf(..) | hir::ExprCall(..) |
           hir::ExprAssign(..) | hir::ExprAssignOp(..) |
           hir::ExprClosure(..) | hir::ExprRet(..) |
-          hir::ExprUnary(..) |
+          hir::ExprUnary(..) | hir::ExprSuspend(..) |
           hir::ExprMethodCall(..) | hir::ExprCast(..) |
           hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprIf(..) |
           hir::ExprBinary(..) | hir::ExprWhile(..) |
@@ -703,7 +714,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let kind = match self.tables.closure_kinds.get(&fn_node_id) {
             Some(&(kind, _)) => kind,
-            None => span_bug!(span, "missing closure kind")
+            None => {
+                let ty = self.node_ty(fn_node_id)?;
+                match ty.sty {
+                    ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
+                    _ => span_bug!(span, "missing closure kind"),
+                }
+            }
         };
 
         let upvar_id = ty::UpvarId { var_id,

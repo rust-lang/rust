@@ -428,10 +428,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprClosure(..) => {
+        hir::ExprClosure(.., gen) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs) = match closure_ty.sty {
-                ty::TyClosure(def_id, substs) => (def_id, substs),
+                ty::TyClosure(def_id, substs) |
+                ty::TyGenerator(def_id, substs, _) => (def_id, substs),
                 _ => {
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
@@ -446,6 +447,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 closure_id: def_id,
                 substs: substs,
                 upvars: upvars,
+                generator: gen.is_some(),
             }
         }
 
@@ -564,6 +566,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },
         hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
+
+        hir::ExprImplArg(_) => ExprKind::ImplArg,
+        hir::ExprSuspend(ref v) => ExprKind::Suspend { value: v.to_ref() },
     };
 
     Expr {
@@ -698,7 +703,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = match cx.tcx.closure_kind(closure_def_id) {
+            let self_expr = if let ty::TyClosure(..) = closure_ty.sty {
+            match cx.tcx.closure_kind(closure_def_id) {
                 ty::ClosureKind::Fn => {
                     let ref_closure_ty = cx.tcx.mk_ref(region,
                                                        ty::TypeAndMut {
@@ -747,6 +753,14 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         span: expr.span,
                         kind: ExprKind::SelfRef,
                     }
+                }
+            }
+            } else {
+                Expr {
+                    ty: closure_ty,
+                    temp_lifetime: temp_lifetime,
+                    span: expr.span,
+                    kind: ExprKind::SelfRef,
                 }
             };
 

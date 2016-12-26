@@ -306,7 +306,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: TyCtxt) -> ast::NodeId {
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(.., body_id, _) => {
+            hir::ExprClosure(.., body_id, _, _) => {
                 body_id.node_id
             }
             _ => {
@@ -609,7 +609,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             move_data::Captured =>
                 (match self.tcx.hir.expect_expr(the_move.id).node {
-                    hir::ExprClosure(.., fn_decl_span) => fn_decl_span,
+                    hir::ExprClosure(.., fn_decl_span, _) => fn_decl_span,
                     ref r => bug!("Captured({}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),

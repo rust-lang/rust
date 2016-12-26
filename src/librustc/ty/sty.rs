@@ -149,6 +149,9 @@ pub enum TypeVariants<'tcx> {
     /// `|a| a`.
     TyClosure(DefId, ClosureSubsts<'tcx>),
 
+    /// The anonymous type of a generator. Pairs with a TyClosure for closure generators.
+    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
+
     /// The never type `!`
     TyNever,
 
@@ -272,6 +275,50 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         self.substs[self.substs.len()-generics.own_count()..].iter().map(
             |t| t.as_type().expect("unexpected region in upvars"))
+    }
+}
+
+impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
+    pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'tcx
+    {
+        let state = tcx.generator_layout(def_id).fields.iter();
+        let state: Vec<_> = state.map(|d| d.ty.subst(tcx, self.substs)).collect();
+        state.into_iter()
+    }
+
+    pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'tcx
+    {
+        let upvars = self.upvar_tys(def_id, tcx);
+        let state = self.state_tys(def_id, tcx);
+        let tys: Vec<_> = upvars.chain(iter::once(tcx.types.u32)).chain(state).collect();
+        tys.into_iter()
+    }
+}
+
+/// This describes the types that can be contained in a generator.
+/// It will be a type variable initially and unified in the last stages of typeck of a body.
+/// It contains a tuple of all the types that could end up on a generator frame.
+/// The state transformation MIR pass may only produce layouts which mention types in this tuple.
+/// Upvars are not counted here.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct GeneratorInterior<'tcx>(pub Ty<'tcx>);
+
+impl<'tcx> GeneratorInterior<'tcx> {
+    pub fn new(witness: Ty<'tcx>) -> GeneratorInterior<'tcx> {
+        GeneratorInterior(witness)
+    }
+
+    pub fn witness(&self) -> Ty<'tcx> {
+        self.0
+    }
+
+    pub fn as_slice(&self) -> &'tcx Slice<Ty<'tcx>> {
+        match self.0.sty {
+            ty::TyTuple(s, _) => s,
+            _ => bug!(),
+        }
     }
 }
 
@@ -593,6 +640,25 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct GenSig<'tcx> {
+    pub impl_arg_ty: Ty<'tcx>,
+    pub suspend_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+}
+
+#[allow(warnings)]
+pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
+
+#[allow(warnings)]
+impl<'tcx> PolyGenSig<'tcx> {
+    pub fn suspend_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.suspend_ty)
+    }
+    pub fn return_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.return_ty)
+    }
+}
 
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
@@ -1393,7 +1459,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
-            TyClosure(_, ref substs) => {
+            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _) => {
                 substs.substs.regions().collect()
             }
             TyProjection(ref data) => {

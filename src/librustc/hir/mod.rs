@@ -925,6 +925,13 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// represents an implicit argument of a generator
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ImplArg {
+    pub id: NodeId,
+    pub span: Span,
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct BodyId {
     pub node_id: NodeId,
@@ -934,7 +941,8 @@ pub struct BodyId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
-    pub value: Expr
+    pub value: Expr,
+    pub impl_arg: Option<ImplArg>,
 }
 
 impl Body {
@@ -942,6 +950,10 @@ impl Body {
         BodyId {
             node_id: self.value.id
         }
+    }
+
+    pub fn is_generator(&self) -> bool {
+        self.impl_arg.is_some()
     }
 }
 
@@ -1011,7 +1023,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorClause>),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1056,6 +1068,12 @@ pub enum Expr_ {
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, BodyId),
+
+    /// A suspension point for generators
+    ExprSuspend(P<Expr>),
+
+    /// The argument to a generator
+    ExprImplArg(NodeId),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -1182,6 +1200,12 @@ pub struct Destination {
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
     pub target_id: ScopeTarget,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum GeneratorClause {
+    Immovable,
+    Movable,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

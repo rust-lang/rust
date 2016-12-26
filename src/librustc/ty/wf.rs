@@ -239,8 +239,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyClosure(..) => {
-                    // the types in a closure are always the types of
+                ty::TyGenerator(..) | ty::TyClosure(..) => {
+                    // the types in a closure or generator are always the types of
                     // local variables (or possibly references to local
                     // variables), we'll walk those.
                     //

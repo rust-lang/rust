@@ -71,7 +71,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             // Assume that everything other than closures
             // is a constant "initializer" expression.
             match expr.node {
-                hir::ExprClosure(_, _, body, _) => body,
+                hir::ExprClosure(_, _, body, _, _) => body,
                 _ => hir::BodyId { node_id: expr.id }
             }
         }
@@ -94,13 +94,18 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
             let ty = tcx.type_of(tcx.hir.local_def_id(id));
             let mut abi = fn_sig.abi;
-            let implicit_argument = if let ty::TyClosure(..) = ty.sty {
-                // HACK(eddyb) Avoid having RustCall on closures,
-                // as it adds unnecessary (and wrong) auto-tupling.
-                abi = Abi::Rust;
-                Some((closure_self_ty(tcx, id, body_id), None))
-            } else {
-                None
+            let implicit_argument = match ty.sty {
+                ty::TyClosure(..) => {
+                    // HACK(eddyb) Avoid having RustCall on closures,
+                    // as it adds unnecessary (and wrong) auto-tupling.
+                    abi = Abi::Rust;
+                    Some((closure_self_ty(tcx, id, body_id), None))
+                }
+                ty::TyGenerator(..) => {
+                    let gen_ty =  tcx.body_tables(body_id).node_id_to_type(id);
+                    Some((gen_ty, None))
+                }
+                _ => None,
             };
 
             let body = tcx.hir.body(body_id);
@@ -113,7 +118,15 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
-            build::construct_fn(cx, id, arguments, abi, fn_sig.output(), body)
+            
+            let (suspend_ty, impl_arg_ty, return_ty) = if body.is_generator() {
+                let gen_sig = cx.tables().generator_sigs[&id].clone().unwrap();
+                (Some(gen_sig.suspend_ty), Some(gen_sig.impl_arg_ty), gen_sig.return_ty)
+            } else {
+                (None, None, fn_sig.output())
+            };
+            
+            build::construct_fn(cx, id, arguments, abi, return_ty, suspend_ty, impl_arg_ty, body)
         } else {
             build::construct_const(cx, body_id)
         };
@@ -198,7 +211,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: hir::BodyId)
                              -> Ty<'tcx> {
@@ -231,6 +244,9 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     fn_span: Span,
     arg_count: usize,
+    arg_offset: usize,
+
+    impl_arg_ty: Option<Ty<'tcx>>,
 
     /// the current set of scopes, updated as we traverse;
     /// see the `scope` module for more details
@@ -326,6 +342,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    arguments: A,
                                    abi: Abi,
                                    return_ty: Ty<'gcx>,
+                                   suspend_ty: Option<Ty<'gcx>>,
+                                   impl_arg_ty: Option<Ty<'gcx>>,
                                    body: &'gcx hir::Body)
                                    -> Mir<'tcx>
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
@@ -334,7 +352,13 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let tcx = hir.tcx();
     let span = tcx.hir.span(fn_id);
-    let mut builder = Builder::new(hir.clone(), span, arguments.len(), return_ty);
+    let arg_offset = if impl_arg_ty.is_some() { 1 } else { 0 };
+    let mut builder = Builder::new(hir.clone(),
+        span,
+        arguments.len() + arg_offset,
+        arg_offset,
+        impl_arg_ty,
+        return_ty);
 
     let call_site_extent = CodeExtent::CallSiteScope(body.id());
     let arg_extent = CodeExtent::ParameterScope(body.id());
@@ -342,7 +366,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let source_info = builder.source_info(span);
     unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {
         unpack!(block = builder.in_scope((arg_extent, source_info), block, |builder| {
-            builder.args_and_body(block, &arguments, arg_extent, &body.value)
+            builder.args_and_body(block, &arguments, arg_extent, impl_arg_ty, &body.value)
         }));
         // Attribute epilogue to function's closing brace
         let fn_end = Span { lo: span.hi, ..span };
@@ -387,7 +411,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    let mut mir = builder.finish(upvar_decls, return_ty);
+    let mut mir = builder.finish(upvar_decls, return_ty, suspend_ty);
     mir.spread_arg = spread_arg;
     mir
 }
@@ -400,7 +424,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir.clone(), span, 0, ty);
+    let mut builder = Builder::new(hir.clone(), span, 0, 0, None, ty);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
@@ -412,7 +436,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     // Constants can't `return` so a return block should not be created.
     assert_eq!(builder.cached_return_block, None);
 
-    builder.finish(vec![], ty)
+    builder.finish(vec![], ty, None)
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -420,16 +444,18 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        -> Mir<'tcx> {
     let span = hir.tcx().hir.span(hir.tcx().hir.body_owner(body_id));
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, ty);
+    let mut builder = Builder::new(hir, span, 0, 0, None, ty);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish(vec![], ty)
+    builder.finish(vec![], ty, None)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn new(hir: Cx<'a, 'gcx, 'tcx>,
            span: Span,
            arg_count: usize,
+           arg_offset: usize,
+           impl_arg_ty: Option<Ty<'tcx>>,
            return_ty: Ty<'tcx>)
            -> Builder<'a, 'gcx, 'tcx> {
         let mut builder = Builder {
@@ -437,6 +463,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count: arg_count,
+            arg_offset,
+            impl_arg_ty,
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
@@ -458,7 +486,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
-              return_ty: Ty<'tcx>)
+              return_ty: Ty<'tcx>,
+              suspend_ty: Option<Ty<'tcx>>)
               -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
@@ -470,6 +499,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                  self.visibility_scopes,
                  IndexVec::new(),
                  return_ty,
+                 suspend_ty,
                  self.local_decls,
                  self.arg_count,
                  upvar_decls,
@@ -481,9 +511,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      mut block: BasicBlock,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
                      argument_extent: CodeExtent,
+                     impl_arg_ty: Option<Ty<'gcx>>,
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
+        if let Some(impl_arg_ty) = impl_arg_ty {
+            self.local_decls.push(LocalDecl {
+                mutability: Mutability::Mut,
+                ty: impl_arg_ty,
+                is_user_variable: false,
+                source_info:  SourceInfo {
+                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                    span: self.fn_span,
+                },
+                name: None,
+            });
+            let lvalue = Lvalue::Local(Local::new(1));
+            // Make sure we drop the argument on completion
+            self.schedule_drop(ast_body.span, argument_extent, &lvalue, impl_arg_ty, true);
+        };
+
         // Allocate locals for the function arguments
         for &(ty, pattern) in arguments.iter() {
             // If this is a simple binding pattern, give the local a nice name for debuginfo.
@@ -510,7 +557,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Bind the argument patterns
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return pointer
-            let lvalue = Lvalue::Local(Local::new(index + 1));
+            let lvalue = Lvalue::Local(Local::new(self.arg_offset + index + 1));
 
             if let Some(pattern) = pattern {
                 let pattern = Pattern::from_hir(self.hir.tcx().global_tcx(),
@@ -523,7 +570,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                               argument_extent, &lvalue, ty);
+                               argument_extent, &lvalue, ty, false);
 
         }
 

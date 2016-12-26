@@ -30,7 +30,7 @@ use ty::ReprOptions;
 use traits;
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
-use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
+use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region};
 use hir::FreevarMap;
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
@@ -233,6 +233,10 @@ pub struct TypeckTables<'tcx> {
     /// that caused the closure to be this kind.
     pub closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
+    pub generator_sigs: NodeMap<Option<ty::GenSig<'tcx>>>,
+
+    pub generator_interiors: NodeMap<ty::GeneratorInterior<'tcx>>,
+
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
     /// (including late-bound regions) are replaced with free
@@ -275,6 +279,8 @@ impl<'tcx> TypeckTables<'tcx> {
             node_substs: NodeMap(),
             adjustments: NodeMap(),
             upvar_capture_map: FxHashMap(),
+            generator_sigs: NodeMap(),
+            generator_interiors: NodeMap(),
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),
             liberated_fn_sigs: NodeMap(),
@@ -1040,7 +1046,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr, TyGenerator,
             TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
@@ -1393,6 +1399,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           closure_substs: ClosureSubsts<'tcx>)
                                           -> Ty<'tcx> {
         self.mk_ty(TyClosure(closure_id, closure_substs))
+    }
+
+    pub fn mk_generator(self, 
+                        id: DefId,
+                        closure_substs: ClosureSubsts<'tcx>,
+                        interior: GeneratorInterior<'tcx>)
+                        -> Ty<'tcx> {
+        self.mk_ty(TyGenerator(id, closure_substs, interior))
     }
 
     pub fn mk_var(self, v: TyVid) -> Ty<'tcx> {

@@ -353,6 +353,7 @@ pub enum EntryKind<'tcx> {
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
     Closure(Lazy<ClosureData<'tcx>>),
+    Generator(Lazy<GeneratorData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     DefaultImpl(Lazy<ImplData<'tcx>>),
@@ -400,6 +401,9 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for EntryK
             }
             EntryKind::MacroDef(ref macro_def) => {
                 macro_def.hash_stable(hcx, hasher);
+            }
+            EntryKind::Generator(data) => {
+                data.hash_stable(hcx, hasher);
             }
             EntryKind::Closure(closure_data) => {
                 closure_data.hash_stable(hcx, hasher);
@@ -564,3 +568,10 @@ pub struct ClosureData<'tcx> {
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 impl_stable_hash_for!(struct ClosureData<'tcx> { kind, sig });
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct GeneratorData<'tcx> {
+    pub sig: ty::PolyGenSig<'tcx>,
+    pub layout: mir::GeneratorLayout<'tcx>,
+}
+impl_stable_hash_for!(struct GeneratorData<'tcx> { sig, layout });

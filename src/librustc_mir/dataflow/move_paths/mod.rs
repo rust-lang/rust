@@ -462,6 +462,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         match term.kind {
             TerminatorKind::Goto { target: _ } |
             TerminatorKind::Resume |
+            TerminatorKind::GeneratorDrop |
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
@@ -471,6 +472,11 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             TerminatorKind::Assert { .. } |
             TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
+            }
+
+            TerminatorKind::Suspend { ref value,  .. } => {
+                self.create_move_path(&Mir::impl_arg_lvalue());
+                self.gather_operand(loc, value);
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {

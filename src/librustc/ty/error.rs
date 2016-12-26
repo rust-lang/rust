@@ -213,6 +213,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                     |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }
             ty::TyClosure(..) => "closure".to_string(),
+            ty::TyGenerator(..) => "generator".to_string(),
             ty::TyTuple(..) => "tuple".to_string(),
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),

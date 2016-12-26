@@ -75,10 +75,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, body_id, _) => {
+            hir::ExprClosure(cc, _, body_id, _, gen) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure(expr.id, expr.span, body, cc);
+                self.fcx.analyze_closure(expr.id, expr.span, body, cc, gen.is_some());
             }
 
             _ => { }
@@ -93,19 +93,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        id: ast::NodeId,
                        span: Span,
                        body: &hir::Body,
-                       capture_clause: hir::CaptureClause) {
+                       capture_clause: hir::CaptureClause,
+                       gen: bool) {
         /*!
          * Analysis starting point.
          */
 
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id());
 
-        let infer_kind = match self.tables.borrow_mut().closure_kinds.entry(id) {
-            Entry::Occupied(_) => false,
-            Entry::Vacant(entry) => {
-                debug!("check_closure: adding closure {:?} as Fn", id);
-                entry.insert((ty::ClosureKind::Fn, None));
-                true
+        let infer_kind = if gen { false } else {
+            match self.tables.borrow_mut().closure_kinds.entry(id) {
+                Entry::Occupied(_) => false,
+                Entry::Vacant(entry) => {
+                    debug!("check_closure: adding closure {:?} as Fn", id);
+                    entry.insert((ty::ClosureKind::Fn, None));
+                    true
+                }
             }
         };
 
@@ -173,7 +176,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Extract the type variables UV0...UVn.
         let (def_id, closure_substs) = match self.node_ty(id).sty {
-            ty::TyClosure(def_id, substs) => (def_id, substs),
+            ty::TyClosure(def_id, substs) |
+            ty::TyGenerator(def_id, substs, _) => (def_id, substs),
             ref t => {
                 span_bug!(
                     span,

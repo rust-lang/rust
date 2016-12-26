@@ -203,7 +203,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let local_id = self.var_indices[&var];
         let var_ty = self.local_decls[local_id].ty;
         let extent = self.hir.region_maps.var_scope(var);
-        self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty);
+        self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty, false);
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, mut f: &mut F)

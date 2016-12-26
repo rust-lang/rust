@@ -247,6 +247,10 @@ macro_rules! make_mir_visitor {
                 self.super_local_decl(local_decl);
             }
 
+            fn visit_local(&mut self,
+                                _local: & $($mutability)* Local) {
+            }
+
             fn visit_visibility_scope(&mut self,
                                       scope: & $($mutability)* VisibilityScope) {
                 self.super_visibility_scope(scope);
@@ -395,7 +399,8 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::Resume |
-                    TerminatorKind::Return |
+                    TerminatorKind::Return | 
+                    TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable => {
                     }
 
@@ -442,6 +447,15 @@ macro_rules! make_mir_visitor {
                         self.visit_branch(block, target);
                         cleanup.map(|t| self.visit_branch(block, t));
                     }
+
+                    TerminatorKind::Suspend { ref $($mutability)* value,
+                                              resume,
+                                              drop } => {
+                        self.visit_operand(value, source_location);
+                        self.visit_branch(block, resume);
+                        drop.map(|t| self.visit_branch(block, t));
+                    }
+
                 }
             }
 
@@ -456,7 +470,9 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(len, location);
                         self.visit_operand(index, location);
                     }
-                    AssertMessage::Math(_) => {}
+                    AssertMessage::Math(_) => {},
+                    AssertMessage::GeneratorResumedAfterReturn => {},
+                    AssertMessage::GeneratorResumedAfterPanic => {},
                 }
             }
 
@@ -534,6 +550,11 @@ macro_rules! make_mir_visitor {
                                 self.visit_def_id(def_id, location);
                                 self.visit_closure_substs(closure_substs);
                             }
+                            AggregateKind::Generator(ref $($mutability)* def_id,
+                                                   ref $($mutability)* closure_substs) => {
+                                self.visit_def_id(def_id, location);
+                                self.visit_closure_substs(closure_substs);
+                            }
                         }
 
                         for operand in operands {
@@ -561,7 +582,8 @@ macro_rules! make_mir_visitor {
                             context: LvalueContext<'tcx>,
                             location: Location) {
                 match *lvalue {
-                    Lvalue::Local(_) => {
+                    Lvalue::Local(ref $($mutability)* local) => {
+                        self.visit_local(local);
                     }
                     Lvalue::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);

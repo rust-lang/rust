@@ -152,6 +152,7 @@ mod bit;
 mod deref;
 mod drop;
 mod function;
+mod generator;
 mod index;
 mod place;
 mod range;
@@ -188,6 +189,13 @@ pub use self::range::{RangeInclusive, RangeToInclusive};
 
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::try::Try;
+
+#[unstable(feature = "generator_trait", issue = "0")]
+#[cfg(not(stage0))]
+pub use self::generator::State;
+#[unstable(feature = "generator_trait", issue = "0")]
+#[cfg(not(stage0))]
+pub use self::generator::Generator;
 
 #[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub use self::place::{Place, Placer, InPlace, Boxed, BoxPlace};

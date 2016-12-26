@@ -1312,7 +1312,12 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span) => {
+            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span, gen) => {
+                if gen.is_some() {
+                    self.head("gen")?;
+                    space(&mut self.s)?;
+                }
+                
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_closure_args(&decl, body)?;
@@ -1460,6 +1465,15 @@ impl<'a> State<'a> {
                 }
 
                 self.pclose()?;
+            }
+            hir::ExprSuspend(ref expr) => {
+                word(&mut self.s, "suspend ")?;
+                self.print_expr(&expr)?;
+            }
+            hir::ExprImplArg(_) => {
+                word(&mut self.s, "gen")?;
+                space(&mut self.s)?;
+                word(&mut self.s, "arg")?;
             }
         }
         self.ann.post(self, NodeExpr(expr))?;

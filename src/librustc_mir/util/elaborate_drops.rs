@@ -752,7 +752,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.lvalue_ty(self.lvalue);
         match ty.sty {
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) |
+            ty::TyGenerator(def_id, substs, _) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }

@@ -823,7 +823,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprClosure(.., body_id, _) => {
+            hir::ExprClosure(.., body_id, _, _) => {
                 self.check_expr_fn_block(expr, body_id);
             }
 

@@ -607,6 +607,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyInfer(..) |
             ty::TyError |
             ty::TyClosure(..) |
+            ty::TyGenerator(..) |
             ty::TyProjection(..) |
             ty::TyAnon(..) |
             ty::TyFnDef(..) => bug!("Unexpected type in foreign function"),

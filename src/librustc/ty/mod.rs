@@ -25,6 +25,7 @@ use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use middle::region::CodeExtent;
 use mir::Mir;
+use mir::GeneratorLayout;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
@@ -59,9 +60,9 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 use hir;
 
 pub use self::sty::{Binder, DebruijnIndex};
-pub use self::sty::{FnSig, PolyFnSig};
+pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
-pub use self::sty::{ClosureSubsts, TypeAndMut};
+pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
@@ -1699,7 +1700,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyArray(..) | TyClosure(..) | TyNever => {
+            TyArray(..) | TyClosure(..) | TyGenerator(..) | TyNever => {
                 vec![]
             }
 
@@ -1976,6 +1977,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     },
                 }
             },
+            Some(hir_map::NodeImplArg(_)) => Symbol::intern("impl arg").as_str(),
             r => bug!("Variable id {} maps to {:?}, not local", id, r),
         }
     }
@@ -1996,6 +1998,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprUnary(hir::UnDeref, _) |
             hir::ExprField(..) |
             hir::ExprTupField(..) |
+            hir::ExprImplArg(_) |
             hir::ExprIndex(..) => {
                 true
             }
@@ -2027,6 +2030,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprBox(..) |
             hir::ExprAddrOf(..) |
             hir::ExprBinary(..) |
+            hir::ExprSuspend(..) |
             hir::ExprCast(..) => {
                 false
             }
@@ -2256,6 +2260,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_default_impl
+    }
+
+    pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
+        self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

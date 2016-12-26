@@ -50,6 +50,7 @@ impl Category {
             ExprKind::Index { .. } |
             ExprKind::SelfRef |
             ExprKind::VarRef { .. } |
+            ExprKind::ImplArg |
             ExprKind::StaticRef { .. } =>
                 Some(Category::Lvalue),
 
@@ -77,6 +78,7 @@ impl Category {
             ExprKind::Borrow { .. } |
             ExprKind::Assign { .. } |
             ExprKind::AssignOp { .. } |
+            ExprKind::Suspend { .. } |
             ExprKind::InlineAsm { .. } =>
                 Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 

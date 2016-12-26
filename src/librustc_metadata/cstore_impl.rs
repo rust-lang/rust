@@ -104,6 +104,7 @@ provide! { <'tcx> tcx, def_id, cdata,
 
         mir
     }
+    generator_sig => { cdata.generator_sig(def_id.index, tcx) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }

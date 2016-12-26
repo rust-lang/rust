@@ -1226,7 +1226,17 @@ impl<'a, 'tcx> Layout {
                 Univariant { variant: unit, non_zero: false }
             }
 
-            // Tuples and closures.
+            // Tuples, generators and closures.
+            ty::TyGenerator(def_id, ref substs, _) => {
+                let tys = substs.field_tys(def_id, tcx);
+                let st = Struct::new(dl,
+                    &tys.map(|ty| ty.layout(tcx, param_env))
+                      .collect::<Result<Vec<_>, _>>()?,
+                    &ReprOptions::default(),
+                    StructKind::AlwaysSizedUnivariant, ty)?;
+                Univariant { variant: st, non_zero: false }
+            }
+
             ty::TyClosure(def_id, ref substs) => {
                 let tys = substs.upvar_tys(def_id, tcx);
                 let st = Struct::new(dl,
@@ -2240,9 +2250,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TySlice(element) => element,
             ty::TyStr => tcx.types.u8,
 
-            // Tuples and closures.
+            // Tuples, generators and closures.
             ty::TyClosure(def_id, ref substs) => {
                 substs.upvar_tys(def_id, tcx).nth(i).unwrap()
+            }
+
+            ty::TyGenerator(def_id, ref substs, _) => {
+                substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
             ty::TyTuple(tys, _) => tys[i],

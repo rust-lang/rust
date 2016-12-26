@@ -36,6 +36,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for arg in &body.arguments {
             wbcx.visit_node_id(arg.pat.span, arg.id);
         }
+        if let Some(ref impl_arg) = body.impl_arg {
+            wbcx.visit_node_id(impl_arg.span, impl_arg.id);
+        }
         wbcx.visit_body(body);
         wbcx.visit_upvar_borrow_map();
         wbcx.visit_closures();
@@ -45,6 +48,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_cast_types();
         wbcx.visit_lints();
         wbcx.visit_free_region_map();
+        wbcx.visit_generator_sigs();
+        wbcx.visit_generator_interiors();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
                                               DefIdSet());
@@ -160,8 +165,9 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         self.visit_node_id(e.span, e.id);
 
-        if let hir::ExprClosure(_, _, body, _) = e.node {
+        if let hir::ExprClosure(_, _, body, _, _) = e.node {
             let body = self.fcx.tcx.hir.body(body);
+            // FIXME: Why visit the args here?
             for arg in &body.arguments {
                 self.visit_node_id(e.span, arg.id);
             }
@@ -309,6 +315,24 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 debug!("Adjustments for node {}: {:?}", node_id, resolved_adjustment);
                 self.tables.adjustments.insert(node_id, resolved_adjustment);
             }
+        }
+    }
+
+    fn visit_generator_interiors(&mut self) {
+        for (&node_id, interior) in self.fcx.tables.borrow().generator_interiors.iter() {
+            let interior = self.resolve(interior, &node_id);
+            self.tables.generator_interiors.insert(node_id, interior);
+        }
+    }
+
+    fn visit_generator_sigs(&mut self) {
+        for (&node_id, gen_sig) in self.fcx.tables.borrow().generator_sigs.iter() {
+            let gen_sig = gen_sig.map(|s| ty::GenSig {
+                impl_arg_ty: self.resolve(&s.impl_arg_ty, &node_id),
+                suspend_ty: self.resolve(&s.suspend_ty, &node_id),
+                return_ty: self.resolve(&s.return_ty, &node_id),
+            });
+            self.tables.generator_sigs.insert(node_id, gen_sig);
         }
     }
 

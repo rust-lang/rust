@@ -96,15 +96,20 @@ fn find_dead_unwinds<'a, 'tcx>(
                            MaybeInitializedLvals::new(tcx, mir, &env),
                            |bd, p| &bd.move_data().move_paths[p]);
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-        match bb_data.terminator().kind {
+        let impl_arg = Mir::impl_arg_lvalue();
+        let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
-            TerminatorKind::DropAndReplace { ref location, unwind: Some(_), .. } => {
+            TerminatorKind::DropAndReplace { ref location, unwind: Some(_), .. } => location,
+            TerminatorKind::Suspend { .. } => &impl_arg,
+            _ => continue,
+        };
+
                 let mut init_data = InitializationData {
                     live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
                     dead: IdxSetBuf::new_empty(env.move_data.move_paths.len()),
                 };
                 debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
-                       bb, bb_data, init_data.live);
+                        bb, bb_data, init_data.live);
                 for stmt in 0..bb_data.statements.len() {
                     let loc = Location { block: bb, statement_index: stmt };
                     init_data.apply_location(tcx, mir, env, loc);
@@ -130,9 +135,6 @@ fn find_dead_unwinds<'a, 'tcx>(
                 if !maybe_live {
                     dead_unwinds.add(&bb);
                 }
-            }
-            _ => {}
-        }
     }
 
     dead_unwinds
@@ -342,9 +344,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let terminator = data.terminator();
+            let impl_arg = Mir::impl_arg_lvalue();
             let location = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
                 TerminatorKind::DropAndReplace { ref location, .. } => location,
+                TerminatorKind::Suspend { .. } => &impl_arg,
                 _ => continue
             };
 

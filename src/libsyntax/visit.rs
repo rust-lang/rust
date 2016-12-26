@@ -784,6 +784,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
                 visitor.visit_expr(&output.expr)
             }
         }
+        ExprKind::Yield(ref optional_expression) => {
+            walk_list!(visitor, visit_expr, optional_expression);
+        }
+        ExprKind::ImplArg => (),
         ExprKind::Try(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }

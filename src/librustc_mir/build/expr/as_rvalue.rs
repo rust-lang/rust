@@ -179,12 +179,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
-                let upvars =
+            ExprKind::Closure { closure_id, substs, upvars, generator } => { // see (*) above
+                let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                block.and(Rvalue::Aggregate(box AggregateKind::Closure(closure_id, substs), upvars))
+                let result = if generator {
+                    // Add the state operand
+                    operands.push(Operand::Constant(box Constant {
+                        span: expr_span,
+                        ty: this.hir.tcx().types.u32,
+                        literal: Literal::Value {
+                            value: ConstVal::Integral(ConstInt::U32(0)),
+                        },
+                    }));
+                    box AggregateKind::Generator(closure_id, substs)
+                } else {
+                    box AggregateKind::Closure(closure_id, substs)
+                };
+                block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
@@ -226,6 +239,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block = unpack!(this.stmt_expr(block, expr));
                 block.and(this.unit_rvalue())
             }
+            ExprKind::Suspend { value } => {
+                let value = unpack!(block = this.as_operand(block, scope, value));
+                let impl_arg_ty = this.impl_arg_ty.unwrap();
+                block = unpack!(this.build_drop(block,
+                    expr_span,
+                    Lvalue::Local(Local::new(1)),
+                    impl_arg_ty));
+                let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup(expr_span);
+                this.cfg.terminate(block, source_info, TerminatorKind::Suspend {
+                    value: value,
+                    resume: resume,
+                    drop: cleanup,
+                });
+                resume.and(this.unit_rvalue())
+            }
             ExprKind::Literal { .. } |
             ExprKind::Block { .. } |
             ExprKind::Match { .. } |
@@ -243,6 +272,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Continue { .. } |
             ExprKind::Return { .. } |
             ExprKind::InlineAsm { .. } |
+            ExprKind::ImplArg |
             ExprKind::StaticRef { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that

@@ -32,6 +32,7 @@ use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use hir::map::Node;
 use mir::transform::MirSource;
 
 /// CodeExtent represents a statically-describable extent that can be
@@ -789,7 +790,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprClosure(.., body, _) => {
+        hir::ExprClosure(.., body, _, _) => {
             let body = visitor.tcx.hir.body(body);
             visitor.visit_body(body);
         }
@@ -1071,7 +1072,10 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         for argument in &body.arguments {
             self.visit_pat(&argument.pat);
         }
-
+        if let Some(ref impl_arg) = body.impl_arg {
+            record_var_lifetime(self, impl_arg.id, impl_arg.span);
+        }
+        
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
         self.visit_expr(&body.value);
@@ -1140,6 +1144,66 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     };
 
     Rc::new(maps)
+}
+
+struct YieldFinder(bool);
+
+impl<'tcx> Visitor<'tcx> for YieldFinder {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_body(&mut self, _body: &'tcx hir::Body) {
+        // Closures don't execute
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        if let hir::ExprSuspend(..) = expr.node {
+            self.0 = true;
+        }
+        
+        intravisit::walk_expr(self, expr);
+    }
+}
+
+pub fn extent_has_yield<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>, extent: CodeExtent) -> bool {
+    let mut finder = YieldFinder(false);
+
+    match extent {
+        CodeExtent::DestructionScope(node_id) |
+        CodeExtent::Misc(node_id) => {
+            match tcx.hir.get(node_id) {
+                Node::NodeItem(_) |
+                Node::NodeTraitItem(_) |
+                Node::NodeImplItem(_) => {
+                    let body = tcx.hir.body(tcx.hir.body_owned_by(node_id));
+                    intravisit::walk_body(&mut finder, body);
+                }
+                Node::NodeExpr(expr) => intravisit::walk_expr(&mut finder, expr),
+                Node::NodeStmt(stmt) => intravisit::walk_stmt(&mut finder, stmt),
+                Node::NodeBlock(block) => intravisit::walk_block(&mut finder, block), 
+                _ => bug!(),
+            }
+        }
+
+        CodeExtent::CallSiteScope(body_id) |
+        CodeExtent::ParameterScope(body_id) => {
+            intravisit::walk_body(&mut finder, tcx.hir.body(body_id))
+        }
+
+        CodeExtent::Remainder(r) => {
+            if let Node::NodeBlock(block) = tcx.hir.get(r.block) {
+                for stmt in &block.stmts[(r.first_statement_index as usize + 1)..] {
+                    intravisit::walk_stmt(&mut finder, stmt);
+                }
+                block.expr.as_ref().map(|e| intravisit::walk_expr(&mut finder, e));
+            } else {
+                bug!()
+            }
+        }
+    }
+
+    finder.0
 }
 
 pub fn provide(providers: &mut Providers) {

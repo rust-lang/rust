@@ -148,6 +148,12 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
+    // Check if this is a generator, if so, return the drop glue for it
+    if let Some(&ty::TyS { sty: ty::TyGenerator(gen_def_id, substs, _), .. }) = ty {
+        let mir = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
+        return mir.subst(tcx, substs.substs);
+    }
+
     let substs = if let Some(ty) = ty {
         tcx.mk_substs(iter::once(Kind::from(ty)))
     } else {
@@ -178,6 +184,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ),
         IndexVec::new(),
         sig.output(),
+        None,
         local_decls_for_sig(&sig, span),
         sig.inputs().len(),
         vec![],
@@ -213,10 +220,10 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub struct DropShimElaborator<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
-    patch: MirPatch<'tcx>,
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    pub mir: &'a Mir<'tcx>,
+    pub patch: MirPatch<'tcx>,
+    pub tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
@@ -390,6 +397,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ),
         IndexVec::new(),
         sig.output(),
+        None,
         local_decls,
         sig.inputs().len(),
         vec![],
@@ -461,6 +469,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         ),
         IndexVec::new(),
         sig.output(),
+        None,
         local_decls,
         sig.inputs().len(),
         vec![],

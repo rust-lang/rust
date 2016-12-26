@@ -361,6 +361,10 @@ declare_features! (
     // Allows unsized tuple coercion.
     (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
 
+    // Generators
+    (active, generators, "1.21.0", None),
+
+
     // global allocators and their internals
     (active, global_allocator, "1.20.0", None),
     (active, allocator_internals, "1.20.0", None),
@@ -1325,6 +1329,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
+            }
+            ast::ExprKind::Yield(..) => {
+                gate_feature_post!(&self, generators,
+                                  e.span,
+                                  "yield syntax is experimental");
+            }
+            ast::ExprKind::ImplArg => {
+                gate_feature_post!(&self, generators,
+                                  e.span,
+                                  "gen arg syntax is experimental");
             }
             ast::ExprKind::Lit(ref lit) => {
                 if let ast::LitKind::Int(_, ref ty) = lit.node {

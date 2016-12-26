@@ -580,6 +580,16 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
+        ty::TyGenerator(def_id, substs, _) => {
+            let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx()).map(|t| {
+                cx.tcx().normalize_associated_type(&t)
+            }).collect();
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &upvar_tys,
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
+        }
         ty::TyAdt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => {
                 prepare_struct_metadata(cx,

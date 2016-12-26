@@ -27,6 +27,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::cmp;
+use std::iter;
 use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
@@ -568,6 +569,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }).collect()
             }
 
+            ty::TyGenerator(def_id, substs, interior) => {
+                substs.upvar_tys(def_id, self).chain(iter::once(interior.witness())).map(|ty| {
+                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
+                }).collect()
+            }
+
             ty::TyAdt(def, substs) => {
                 let ty::DtorckConstraint {
                     dtorck_types, outlives
@@ -689,6 +696,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
+            TyGenerator(def_id, _, _) |
             TyAnon(def_id, _) |
             TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
@@ -1110,6 +1118,8 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyArray(ty, _) | ty::TySlice(ty) => needs_drop(ty),
 
         ty::TyClosure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
+
+        ty::TyGenerator(..) => true,
 
         ty::TyTuple(ref tys, _) => tys.iter().cloned().any(needs_drop),
 

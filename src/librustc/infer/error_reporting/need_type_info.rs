@@ -16,6 +16,7 @@ use ty::{self, Ty, TyInfer, TyVar};
 
 use syntax::ast::NodeId;
 use syntax_pos::Span;
+use syntax_pos::DUMMY_SP;
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
@@ -23,6 +24,7 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir_map: &'a hir::map::Map<'gcx>,
     found_local_pattern: Option<&'gcx Pat>,
     found_arg_pattern: Option<&'gcx Pat>,
+    found_impl_arg: bool,
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
@@ -68,6 +70,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                 self.found_arg_pattern = Some(&*argument.pat);
             }
         }
+        if let Some(ref impl_arg) = body.impl_arg {
+            if !self.found_impl_arg && self.node_matches_type(impl_arg.id) {
+                self.found_impl_arg = true;
+            }
+        }
         intravisit::walk_body(self, body);
     }
 }
@@ -101,6 +108,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             hir_map: &self.tcx.hir,
             found_local_pattern: None,
             found_arg_pattern: None,
+            found_impl_arg: false,
         };
 
         if let Some(body_id) = body_id {
@@ -135,6 +143,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             } else {
                 labels.push((pattern.span, format!("consider giving the pattern a type")));
             }
+        }
+
+        if local_visitor.found_impl_arg {
+            labels.push((DUMMY_SP, format!("consider giving a type to the implicit generator argument")));
         }
 
         let mut err = struct_span_err!(self.tcx.sess,

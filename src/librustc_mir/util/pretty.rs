@@ -94,6 +94,7 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    mir: &Mir<'tcx>) {
     let promotion_id = match source {
         MirSource::Promoted(_, id) => format!("-{:?}", id),
+        MirSource::GeneratorDrop(_) => format!("-drop"),
         _ => String::new()
     };
 
@@ -120,6 +121,9 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "// disambiguator = {}", disambiguator)?;
+        if let Some(ref layout) = mir.generator_layout {
+            writeln!(file, "// generator_layout = {:?}", layout)?;
+        }
         writeln!(file, "")?;
         write_mir_fn(tcx, source, mir, &mut file)?;
         Ok(())
@@ -176,7 +180,7 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-fn write_basic_block(tcx: TyCtxt,
+pub fn write_basic_block(tcx: TyCtxt,
                      block: BasicBlock,
                      mir: &Mir,
                      w: &mut Write)
@@ -274,7 +278,7 @@ fn write_scope_tree(tcx: TyCtxt,
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              src: MirSource,
                              mir: &Mir,
                              w: &mut Write)
@@ -322,28 +326,32 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         MirSource::Const(_) => write!(w, "const")?,
         MirSource::Static(_, hir::MutImmutable) => write!(w, "static")?,
         MirSource::Static(_, hir::MutMutable) => write!(w, "static mut")?,
-        MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?
+        MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?,
+        MirSource::GeneratorDrop(_) => write!(w, "drop_glue")?,
     }
 
     item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
         write!(w, " {}", tcx.node_path_str(src.item_id()))
     })?;
 
-    if let MirSource::Fn(_) = src {
-        write!(w, "(")?;
+    match src {
+        MirSource::Fn(_) | MirSource::GeneratorDrop(_) => {
+            write!(w, "(")?;
 
-        // fn argument types.
-        for (i, arg) in mir.args_iter().enumerate() {
-            if i != 0 {
-                write!(w, ", ")?;
+            // fn argument types.
+            for (i, arg) in mir.args_iter().enumerate() {
+                if i != 0 {
+                    write!(w, ", ")?;
+                }
+                write!(w, "{:?}: {}", Lvalue::Local(arg), mir.local_decls[arg].ty)?;
             }
-            write!(w, "{:?}: {}", Lvalue::Local(arg), mir.local_decls[arg].ty)?;
-        }
 
-        write!(w, ") -> {}", mir.return_ty)
-    } else {
-        assert_eq!(mir.arg_count, 0);
-        write!(w, ": {} =", mir.return_ty)
+            write!(w, ") -> {}", mir.return_ty)
+        }
+        _ => {
+            assert_eq!(mir.arg_count, 0);
+            write!(w, ": {} =", mir.return_ty)
+        }
     }
 }
 

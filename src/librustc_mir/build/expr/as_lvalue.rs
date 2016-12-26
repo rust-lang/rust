@@ -80,6 +80,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
+                block.and(Lvalue::Local(Local::new(this.arg_offset + 1)))
+            }
+            ExprKind::ImplArg => {
                 block.and(Lvalue::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
@@ -118,6 +121,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Return { .. } |
             ExprKind::Literal { .. } |
             ExprKind::InlineAsm { .. } |
+            ExprKind::Suspend { .. } |
             ExprKind::Call { .. } => {
                 // these are not lvalues, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {

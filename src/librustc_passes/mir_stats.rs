@@ -158,6 +158,8 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::DropAndReplace { .. } => "TerminatorKind::DropAndReplace",
             TerminatorKind::Call { .. } => "TerminatorKind::Call",
             TerminatorKind::Assert { .. } => "TerminatorKind::Assert",
+            TerminatorKind::GeneratorDrop => "TerminatorKind::GeneratorDrop",
+            TerminatorKind::Suspend { .. } => "TerminatorKind::Suspend",
         }, kind);
         self.super_terminator_kind(block, kind, location);
     }
@@ -169,6 +171,8 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record(match *msg {
             AssertMessage::BoundsCheck { .. } => "AssertMessage::BoundsCheck",
             AssertMessage::Math(..) => "AssertMessage::Math",
+            AssertMessage::GeneratorResumedAfterReturn => "AssertMessage::GeneratorResumedAfterReturn",
+            AssertMessage::GeneratorResumedAfterPanic => "AssertMessage::GeneratorResumedAfterPanic",
         }, msg);
         self.super_assert_message(msg, location);
     }
@@ -196,6 +200,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                     AggregateKind::Tuple => "AggregateKind::Tuple",
                     AggregateKind::Adt(..) => "AggregateKind::Adt",
                     AggregateKind::Closure(..) => "AggregateKind::Closure",
+                    AggregateKind::Generator(..) => "AggregateKind::Generator",
                 }, kind);
 
                 "Rvalue::Aggregate"

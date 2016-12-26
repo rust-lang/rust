@@ -21,6 +21,7 @@ use indexed_vec::Idx;
 ///
 /// In other words, `T` is the type used to index into the bitvector
 /// this type uses to represent the set of object it holds.
+#[derive(Eq, PartialEq)]
 pub struct IdxSetBuf<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: Vec<Word>,
@@ -106,6 +107,13 @@ impl<T: Idx> IdxSet<T> {
         IdxSetBuf {
             _pd: Default::default(),
             bits: self.bits.to_owned(),
+        }
+    }
+
+    /// Removes all elements
+    pub fn clear(&mut self) {
+        for b in &mut self.bits {
+            *b = 0;
         }
     }
 

@@ -182,6 +182,13 @@ impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
         });
     }
 
+    fn visit_body(&mut self, b: &'hir Body) {
+        if let Some(ref impl_arg) = b.impl_arg {
+            self.insert(impl_arg.id, NodeImplArg(impl_arg));
+        }
+        intravisit::walk_body(self, b);
+    }
+
     fn visit_fn(&mut self, fk: intravisit::FnKind<'hir>, fd: &'hir FnDecl,
                 b: BodyId, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);

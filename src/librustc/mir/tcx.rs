@@ -202,6 +202,11 @@ impl<'tcx> Rvalue<'tcx> {
                     AggregateKind::Closure(did, substs) => {
                         tcx.mk_closure_from_closure_substs(did, substs)
                     }
+                    AggregateKind::Generator(did, substs) => {
+                        let node_id = tcx.hir.as_local_node_id(did).unwrap();
+                        let interior = *tcx.typeck_tables_of(did).generator_interiors.get(&node_id).unwrap();
+                        tcx.mk_generator(did, substs, interior.subst(tcx, substs.substs))
+                    }
                 }
             }
         }
