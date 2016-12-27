@@ -78,7 +78,11 @@ pub fn check(build: &mut Build) {
         }
         need_cmd("cmake".as_ref());
         if build.config.ninja {
-            need_cmd("ninja".as_ref())
+            // Some Linux distros rename `ninja` to `ninja-build`.
+            // CMake can work with either binary name.
+            if have_cmd("ninja-build".as_ref()).is_none() {
+                need_cmd("ninja".as_ref());
+            }
         }
         break
     }
