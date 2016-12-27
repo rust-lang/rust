@@ -13,7 +13,6 @@ use super::{DeferredCallResolution, Expectation, FnCtxt, TupleArgumentsFlag};
 use CrateCtxt;
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
-use hir::print;
 use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::symbol::Symbol;
@@ -203,7 +202,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::TyAdt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprCall(ref expr, _) = call_expr.node {
-                            unit_variant = Some(print::expr_to_string(expr))
+                            unit_variant = Some(self.tcx.map.node_to_pretty_string(expr.id))
                         }
                     }
                 }

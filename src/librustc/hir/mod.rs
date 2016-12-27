@@ -85,7 +85,7 @@ impl fmt::Debug for Lifetime {
         write!(f,
                "lifetime({}: {})",
                self.id,
-               print::lifetime_to_string(self))
+               print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
     }
 }
 
@@ -117,13 +117,8 @@ impl Path {
 
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "path({})", print::path_to_string(self))
-    }
-}
-
-impl fmt::Display for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", print::path_to_string(self))
+        write!(f, "path({})",
+               print::to_string(print::NO_ANN, |s| s.print_path(self, false)))
     }
 }
 
@@ -510,7 +505,8 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id, print::pat_to_string(self))
+        write!(f, "pat({}: {})", self.id,
+               print::to_string(print::NO_ANN, |s| s.print_pat(self)))
     }
 }
 
@@ -762,7 +758,7 @@ impl fmt::Debug for Stmt_ {
         write!(f,
                "stmt({}: {})",
                spanned.node.id(),
-               print::stmt_to_string(&spanned))
+               print::to_string(print::NO_ANN, |s| s.print_stmt(&spanned)))
     }
 }
 
@@ -891,7 +887,8 @@ pub struct Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id, print::expr_to_string(self))
+        write!(f, "expr({}: {})", self.id,
+               print::to_string(print::NO_ANN, |s| s.print_expr(self)))
     }
 }
 
@@ -1013,12 +1010,6 @@ pub enum QPath {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes being each a `TyPath(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
-}
-
-impl fmt::Display for QPath {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", print::qpath_to_string(self))
-    }
 }
 
 /// Hints at the original code for a `match _ { .. }`
@@ -1177,7 +1168,8 @@ pub struct Ty {
 
 impl fmt::Debug for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "type({})", print::ty_to_string(self))
+        write!(f, "type({})",
+               print::to_string(print::NO_ANN, |s| s.print_type(self)))
     }
 }
 

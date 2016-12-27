@@ -30,7 +30,6 @@ use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
-use rustc::hir::print::pat_to_string;
 use rustc::hir::{self, Pat, PatKind};
 
 use rustc_back::slice;
@@ -231,7 +230,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 Useful => bug!()
             };
 
-            let pattern_string = pat_to_string(witness[0].single_pattern());
+            let pattern_string = hir::print::to_string(&self.tcx.map, |s| {
+                s.print_pat(witness[0].single_pattern())
+            });
             let mut diag = struct_span_err!(
                 self.tcx.sess, pat.span, E0005,
                 "refutable pattern in {}: `{}` not covered",
@@ -382,7 +383,9 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         },
                         _ => bug!(),
                     };
-                    let pattern_string = pat_to_string(witness);
+                    let pattern_string = hir::print::to_string(&cx.tcx.map, |s| {
+                        s.print_pat(witness)
+                    });
                     struct_span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
@@ -392,7 +395,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 },
                 _ => {
                     let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
-                        pat_to_string(w)
+                        hir::print::to_string(&cx.tcx.map, |s| s.print_pat(w))
                     }).collect();
                     const LIMIT: usize = 3;
                     let joined_patterns = match pattern_strings.len() {

@@ -13,18 +13,18 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 use errors;
 
 use hir;
-use hir::{Crate, PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 
 use std::io::{self, Write, Read};
 
@@ -37,7 +37,18 @@ pub enum AnnNode<'a> {
     NodePat(&'a hir::Pat),
 }
 
+pub enum Nested {
+    Item(hir::ItemId),
+    TraitItem(hir::TraitItemId),
+    ImplItem(hir::ImplItemId),
+    Body(hir::BodyId),
+    BodyArgPat(hir::BodyId, usize)
+}
+
 pub trait PpAnn {
+    fn nested(&self, _state: &mut State, _nested: Nested) -> io::Result<()> {
+        Ok(())
+    }
     fn pre(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> {
         Ok(())
     }
@@ -46,14 +57,23 @@ pub trait PpAnn {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct NoAnn;
-
 impl PpAnn for NoAnn {}
+pub const NO_ANN: &'static PpAnn = &NoAnn;
 
+impl PpAnn for hir::Crate {
+    fn nested(&self, state: &mut State, nested: Nested) -> io::Result<()> {
+        match nested {
+            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
+            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::Body(id) => state.print_expr(&self.body(id).value),
+            Nested::BodyArgPat(id, i) => state.print_pat(&self.body(id).arguments[i].pat)
+        }
+    }
+}
 
 pub struct State<'a> {
-    krate: Option<&'a Crate>,
     pub s: pp::Printer<'a>,
     cm: Option<&'a CodeMap>,
     comments: Option<Vec<comments::Comment>>,
@@ -85,30 +105,6 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 }
 
-pub fn rust_printer<'a>(writer: Box<Write + 'a>, krate: Option<&'a Crate>) -> State<'a> {
-    static NO_ANN: NoAnn = NoAnn;
-    rust_printer_annotated(writer, &NO_ANN, krate)
-}
-
-pub fn rust_printer_annotated<'a>(writer: Box<Write + 'a>,
-                                  ann: &'a PpAnn,
-                                  krate: Option<&'a Crate>)
-                                  -> State<'a> {
-    State {
-        krate: krate,
-        s: pp::mk_printer(writer, default_columns),
-        cm: None,
-        comments: None,
-        literals: None,
-        cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
-            cur_cmnt: 0,
-            cur_lit: 0,
-        },
-        boxes: Vec::new(),
-        ann: ann,
-    }
-}
-
 #[allow(non_upper_case_globals)]
 pub const indent_unit: usize = 4;
 
@@ -129,7 +125,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        is_expanded: bool)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, span_diagnostic, filename, input,
-                                      out, ann, is_expanded, Some(krate));
+                                      out, ann, is_expanded);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -146,8 +142,7 @@ impl<'a> State<'a> {
                           input: &mut Read,
                           out: Box<Write + 'a>,
                           ann: &'a PpAnn,
-                          is_expanded: bool,
-                          krate: Option<&'a Crate>)
+                          is_expanded: bool)
                           -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(span_diagnostic,
                                                                    filename,
@@ -164,19 +159,16 @@ impl<'a> State<'a> {
                        None
                    } else {
                        Some(lits)
-                   },
-                   krate)
+                   })
     }
 
     pub fn new(cm: &'a CodeMap,
                out: Box<Write + 'a>,
                ann: &'a PpAnn,
                comments: Option<Vec<comments::Comment>>,
-               literals: Option<Vec<comments::Literal>>,
-               krate: Option<&'a Crate>)
+               literals: Option<Vec<comments::Literal>>)
                -> State<'a> {
         State {
-            krate: krate,
             s: pp::mk_printer(out, default_columns),
             cm: Some(cm),
             comments: comments.clone(),
@@ -191,145 +183,34 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string<F>(f: F) -> String
+pub fn to_string<F>(ann: &PpAnn, f: F) -> String
     where F: FnOnce(&mut State) -> io::Result<()>
 {
     let mut wr = Vec::new();
     {
-        let mut printer = rust_printer(Box::new(&mut wr), None);
+        let mut printer = State {
+            s: pp::mk_printer(Box::new(&mut wr), default_columns),
+            cm: None,
+            comments: None,
+            literals: None,
+            cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
+                cur_cmnt: 0,
+                cur_lit: 0,
+            },
+            boxes: Vec::new(),
+            ann: ann,
+        };
         f(&mut printer).unwrap();
         eof(&mut printer.s).unwrap();
     }
     String::from_utf8(wr).unwrap()
 }
 
-pub fn binop_to_string(op: BinOpToken) -> &'static str {
-    match op {
-        token::Plus => "+",
-        token::Minus => "-",
-        token::Star => "*",
-        token::Slash => "/",
-        token::Percent => "%",
-        token::Caret => "^",
-        token::And => "&",
-        token::Or => "|",
-        token::Shl => "<<",
-        token::Shr => ">>",
-    }
-}
-
-pub fn ty_to_string(ty: &hir::Ty) -> String {
-    to_string(|s| s.print_type(ty))
-}
-
-pub fn bounds_to_string(bounds: &[hir::TyParamBound]) -> String {
-    to_string(|s| s.print_bounds("", bounds))
-}
-
-pub fn pat_to_string(pat: &hir::Pat) -> String {
-    to_string(|s| s.print_pat(pat))
-}
-
-pub fn arm_to_string(arm: &hir::Arm) -> String {
-    to_string(|s| s.print_arm(arm))
-}
-
-pub fn expr_to_string(e: &hir::Expr) -> String {
-    to_string(|s| s.print_expr(e))
-}
-
-pub fn lifetime_to_string(e: &hir::Lifetime) -> String {
-    to_string(|s| s.print_lifetime(e))
-}
-
-pub fn stmt_to_string(stmt: &hir::Stmt) -> String {
-    to_string(|s| s.print_stmt(stmt))
-}
-
-pub fn item_to_string(i: &hir::Item) -> String {
-    to_string(|s| s.print_item(i))
-}
-
-pub fn impl_item_to_string(i: &hir::ImplItem) -> String {
-    to_string(|s| s.print_impl_item(i))
-}
-
-pub fn trait_item_to_string(i: &hir::TraitItem) -> String {
-    to_string(|s| s.print_trait_item(i))
-}
-
-pub fn generics_to_string(generics: &hir::Generics) -> String {
-    to_string(|s| s.print_generics(generics))
-}
-
-pub fn where_clause_to_string(i: &hir::WhereClause) -> String {
-    to_string(|s| s.print_where_clause(i))
-}
-
-pub fn path_to_string(p: &hir::Path) -> String {
-    to_string(|s| s.print_path(p, false))
-}
-
-pub fn qpath_to_string(p: &hir::QPath) -> String {
-    to_string(|s| s.print_qpath(p, false))
-}
-
-pub fn name_to_string(name: ast::Name) -> String {
-    to_string(|s| s.print_name(name))
-}
-
-pub fn fn_decl_in_crate_to_string(krate: &hir::Crate,
-                                  decl: &hir::FnDecl,
-                                  unsafety: hir::Unsafety,
-                                  constness: hir::Constness,
-                                  name: ast::Name,
-                                  generics: &hir::Generics,
-                                  body_id: hir::BodyId)
-                                  -> String {
-
-    let mut wr = Vec::new();
-    {
-        let mut s = rust_printer(Box::new(&mut wr), Some(krate));
-        (|s: &mut State| {
-            s.head("")?;
-            s.print_fn(decl,
-                       unsafety,
-                       constness,
-                       Abi::Rust,
-                       Some(name),
-                       generics,
-                       &hir::Inherited,
-                       &[],
-                       Some(body_id))?;
-            s.end()?; // Close the head box
-            s.end()?; // Close the outer box
-            eof(&mut s.s)
-        })(&mut s).unwrap();
-    }
-    String::from_utf8(wr).unwrap()
-}
-
-pub fn block_to_string(blk: &hir::Block) -> String {
-    to_string(|s| {
-        // containing cbox, will be closed by print-block at }
-        s.cbox(indent_unit)?;
-        // head-ibox, will be closed by print-block after {
-        s.ibox(0)?;
-        s.print_block(blk)
+pub fn visibility_qualified(vis: &hir::Visibility, w: &str) -> String {
+    to_string(NO_ANN, |s| {
+        s.print_visibility(vis)?;
+        word(&mut s.s, w)
     })
-}
-
-pub fn variant_to_string(var: &hir::Variant) -> String {
-    to_string(|s| s.print_variant(var))
-}
-
-pub fn visibility_qualified(vis: &hir::Visibility, s: &str) -> String {
-    match *vis {
-        hir::Public => format!("pub {}", s),
-        hir::Visibility::Crate => format!("pub(crate) {}", s),
-        hir::Visibility::Restricted { ref path, .. } => format!("pub({}) {}", path, s),
-        hir::Inherited => s.to_string(),
-    }
 }
 
 fn needs_parentheses(expr: &hir::Expr) -> bool {
@@ -465,7 +346,7 @@ impl<'a> State<'a> {
     pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) -> io::Result<()> {
         self.print_inner_attributes(attrs)?;
         for &item_id in &_mod.item_ids {
-            self.print_item_id(item_id)?;
+            self.ann.nested(self, Nested::Item(item_id))?;
         }
         Ok(())
     }
@@ -551,12 +432,12 @@ impl<'a> State<'a> {
                 word(&mut self.s, "[")?;
                 self.print_type(&ty)?;
                 word(&mut self.s, "; ")?;
-                self.print_body_id(v)?;
+                self.ann.nested(self, Nested::Body(v))?;
                 word(&mut self.s, "]")?;
             }
             hir::TyTypeof(e) => {
                 word(&mut self.s, "typeof(")?;
-                self.print_body_id(e)?;
+                self.ann.nested(self, Nested::Body(e))?;
                 word(&mut self.s, ")")?;
             }
             hir::TyInfer => {
@@ -615,7 +496,7 @@ impl<'a> State<'a> {
         if let Some(expr) = default {
             space(&mut self.s)?;
             self.word_space("=")?;
-            self.print_body_id(expr)?;
+            self.ann.nested(self, Nested::Body(expr))?;
         }
         word(&mut self.s, ";")
     }
@@ -636,26 +517,6 @@ impl<'a> State<'a> {
             self.print_type(ty)?;
         }
         word(&mut self.s, ";")
-    }
-
-    pub fn print_item_id(&mut self, item_id: hir::ItemId) -> io::Result<()> {
-        if let Some(krate) = self.krate {
-            // skip nested items if krate context was not provided
-            let item = &krate.items[&item_id.id];
-            self.print_item(item)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn maybe_body(&mut self, body_id: hir::BodyId) -> Option<&'a hir::Body> {
-        self.krate.map(|krate| krate.body(body_id))
-    }
-
-    fn print_body_id(&mut self, body_id: hir::BodyId) -> io::Result<()> {
-        self.maybe_body(body_id).map_or(Ok(()), |body| {
-            self.print_expr(&body.value)
-        })
     }
 
     /// Pretty-print an item
@@ -714,7 +575,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
 
                 self.word_space("=")?;
-                self.print_body_id(expr)?;
+                self.ann.nested(self, Nested::Body(expr))?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end the outer cbox
             }
@@ -727,7 +588,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
 
                 self.word_space("=")?;
-                self.print_body_id(expr)?;
+                self.ann.nested(self, Nested::Body(expr))?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end the outer cbox
             }
@@ -745,7 +606,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, " ")?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_body_id(body)?;
+                self.ann.nested(self, Nested::Body(body))?;
             }
             hir::ItemMod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
@@ -839,7 +700,7 @@ impl<'a> State<'a> {
                 self.bopen()?;
                 self.print_inner_attributes(&item.attrs)?;
                 for impl_item in impl_items {
-                    self.print_impl_item_ref(impl_item)?;
+                    self.ann.nested(self, Nested::ImplItem(impl_item.id))?;
                 }
                 self.bclose(item.span)?;
             }
@@ -865,7 +726,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, " ")?;
                 self.bopen()?;
                 for trait_item in trait_items {
-                    self.print_trait_item_ref(trait_item)?;
+                    self.ann.nested(self, Nested::TraitItem(trait_item.id))?;
                 }
                 self.bclose(item.span)?;
             }
@@ -935,8 +796,11 @@ impl<'a> State<'a> {
         match *vis {
             hir::Public => self.word_nbsp("pub"),
             hir::Visibility::Crate => self.word_nbsp("pub(crate)"),
-            hir::Visibility::Restricted { ref path, .. } =>
-                self.word_nbsp(&format!("pub({})", path)),
+            hir::Visibility::Restricted { ref path, .. } => {
+                word(&mut self.s, "pub(")?;
+                self.print_path(path, false)?;
+                self.word_nbsp(")")
+            }
             hir::Inherited => Ok(()),
         }
     }
@@ -995,7 +859,7 @@ impl<'a> State<'a> {
         if let Some(d) = v.node.disr_expr {
             space(&mut self.s)?;
             self.word_space("=")?;
-            self.print_body_id(d)?;
+            self.ann.nested(self, Nested::Body(d))?;
         }
         Ok(())
     }
@@ -1017,16 +881,6 @@ impl<'a> State<'a> {
                       body_id)
     }
 
-    pub fn print_trait_item_ref(&mut self, item_ref: &hir::TraitItemRef) -> io::Result<()> {
-        if let Some(krate) = self.krate {
-            // skip nested items if krate context was not provided
-            let item = &krate.trait_item(item_ref.id);
-            self.print_trait_item(item)
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
@@ -1046,7 +900,7 @@ impl<'a> State<'a> {
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_body_id(body)?;
+                self.ann.nested(self, Nested::Body(body))?;
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.name,
@@ -1055,16 +909,6 @@ impl<'a> State<'a> {
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))
-    }
-
-    pub fn print_impl_item_ref(&mut self, item_ref: &hir::ImplItemRef) -> io::Result<()> {
-        if let Some(krate) = self.krate {
-            // skip nested items if krate context was not provided
-            let item = &krate.impl_item(item_ref.id);
-            self.print_impl_item(item)
-        } else {
-            Ok(())
-        }
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
@@ -1088,7 +932,7 @@ impl<'a> State<'a> {
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_body_id(body)?;
+                self.ann.nested(self, Nested::Body(body))?;
             }
             hir::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.name, None, Some(ty))?;
@@ -1265,7 +1109,7 @@ impl<'a> State<'a> {
         word(&mut self.s, "[")?;
         self.print_expr(element)?;
         self.word_space(";")?;
-        self.print_body_id(count)?;
+        self.ann.nested(self, Nested::Body(count))?;
         word(&mut self.s, "]")?;
         self.end()
     }
@@ -1455,7 +1299,7 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
 
                 // this is a bare expression
-                self.print_body_id(body)?;
+                self.ann.nested(self, Nested::Body(body))?;
                 self.end()?; // need to close a box
 
                 // a box will be closed by print_expr, but we didn't want an overall
@@ -1630,7 +1474,7 @@ impl<'a> State<'a> {
                 self.end()
             }
             hir::DeclItem(item) => {
-                self.print_item_id(item)
+                self.ann.nested(self, Nested::Item(item))
             }
         }
     }
@@ -1651,10 +1495,10 @@ impl<'a> State<'a> {
         self.print_expr(coll)
     }
 
-    fn print_path(&mut self,
-                  path: &hir::Path,
-                  colons_before_params: bool)
-                  -> io::Result<()> {
+    pub fn print_path(&mut self,
+                      path: &hir::Path,
+                      colons_before_params: bool)
+                      -> io::Result<()> {
         self.maybe_print_comment(path.span.lo)?;
 
         for (i, segment) in path.segments.iter().enumerate() {
@@ -1670,10 +1514,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_qpath(&mut self,
-                   qpath: &hir::QPath,
-                   colons_before_params: bool)
-                   -> io::Result<()> {
+    pub fn print_qpath(&mut self,
+                       qpath: &hir::QPath,
+                       colons_before_params: bool)
+                       -> io::Result<()> {
         match *qpath {
             hir::QPath::Resolved(None, ref path) => {
                 self.print_path(path, colons_before_params)
@@ -1991,16 +1835,14 @@ impl<'a> State<'a> {
         let mut i = 0;
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
         assert!(arg_names.is_empty() || body_id.is_none());
-        let args = body_id.and_then(|body_id| self.maybe_body(body_id))
-                          .map_or(&[][..], |body| &body.arguments[..]);
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(indent_unit)?;
             if let Some(name) = arg_names.get(i) {
                 word(&mut s.s, &name.node.as_str())?;
                 word(&mut s.s, ":")?;
                 space(&mut s.s)?;
-            } else if let Some(arg) = args.get(i) {
-                s.print_pat(&arg.pat)?;
+            } else if let Some(body_id) = body_id {
+                s.ann.nested(s, Nested::BodyArgPat(body_id, i))?;
                 word(&mut s.s, ":")?;
                 space(&mut s.s)?;
             }
@@ -2020,15 +1862,10 @@ impl<'a> State<'a> {
     fn print_closure_args(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) -> io::Result<()> {
         word(&mut self.s, "|")?;
         let mut i = 0;
-        let args = self.maybe_body(body_id).map_or(&[][..], |body| &body.arguments[..]);
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(indent_unit)?;
 
-            if let Some(arg) = args.get(i) {
-                s.print_pat(&arg.pat)?;
-            } else {
-                word(&mut s.s, "_")?;
-            }
+            s.ann.nested(s, Nested::BodyArgPat(body_id, i))?;
             i += 1;
 
             if ty.node != hir::TyInfer {

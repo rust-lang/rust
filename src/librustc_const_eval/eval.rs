@@ -1320,7 +1320,8 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
                 if let Def::Local(..) = path.def {
-                    diag.note(&format!("`{}` is a variable", path));
+                    diag.note(&format!("`{}` is a variable",
+                                       tcx.map.node_to_pretty_string(count_expr.id)));
                 }
             }
 

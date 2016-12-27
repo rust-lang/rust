@@ -17,7 +17,6 @@ use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::print as pprust;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 
@@ -343,8 +342,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         match item.kind {
             ty::AssociatedKind::Const => {
                 let default = if item.defaultness.has_value() {
-                    Some(pprust::expr_to_string(
-                        &tcx.sess.cstore.maybe_get_item_body(tcx, item.def_id).unwrap().value))
+                    Some(hir::print::to_string(&cx.tcx.map, |s| s.print_expr(
+                        &tcx.sess.cstore.maybe_get_item_body(tcx, item.def_id).unwrap().value)))
                 } else {
                     None
                 };
@@ -477,8 +476,8 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
 fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
     clean::Constant {
         type_: cx.tcx.item_type(did).clean(cx),
-        expr: pprust::expr_to_string(
-            &cx.tcx.sess.cstore.maybe_get_item_body(cx.tcx, did).unwrap().value)
+        expr: hir::print::to_string(&cx.tcx.map, |s| s.print_expr(
+            &cx.tcx.sess.cstore.maybe_get_item_body(cx.tcx, did).unwrap().value))
     }
 }
 

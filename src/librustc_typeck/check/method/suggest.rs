@@ -26,7 +26,6 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
-use rustc::hir::print as pprust;
 use rustc::hir;
 use rustc::infer::type_variable::TypeVariableOrigin;
 
@@ -266,7 +265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let msg = if let Some(callee) = rcvr_expr {
                     format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                             msg,
-                            pprust::expr_to_string(callee))
+                            self.tcx.map.node_to_pretty_string(callee.id))
                 } else {
                     msg
                 };

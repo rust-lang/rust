@@ -122,7 +122,6 @@ use syntax_pos::{self, BytePos, Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
-use rustc::hir::print as pprust;
 use rustc::middle::lang_items;
 use rustc_back::slice;
 use rustc_const_eval::eval_length;
@@ -3045,7 +3044,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 ty::TyRawPtr(..) => {
                     err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                      `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
+                                      `(*{0}).{1}`",
+                                      self.tcx.map.node_to_pretty_string(base.id),
+                                      field.node));
                 }
                 _ => {}
             }
@@ -3459,11 +3460,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(self.diverges.get() | old_diverges);
         self.has_errors.set(self.has_errors.get() | old_has_errors);
 
-        debug!("type of expr({}) {} is...", expr.id,
-               pprust::expr_to_string(expr));
-        debug!("... {:?}, expected is {:?}",
-               ty,
-               expected);
+        debug!("type of {} is...", self.tcx.map.node_to_string(expr.id));
+        debug!("... {:?}, expected is {:?}", ty, expected);
 
         // Add adjustments to !-expressions
         if ty.is_never() {

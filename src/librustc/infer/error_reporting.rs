@@ -75,7 +75,6 @@ use std::collections::HashSet;
 
 use hir::map as ast_map;
 use hir;
-use hir::print as pprust;
 
 use lint;
 use hir::def::Def;
@@ -1629,13 +1628,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 generics: &hir::Generics,
                                 span: Span,
                                 body: hir::BodyId) {
-        let s = pprust::fn_decl_in_crate_to_string(self.tcx.map.krate(),
-                                                   decl,
-                                                   unsafety,
-                                                   constness,
-                                                   name,
-                                                   generics,
-                                                   body);
+        let s = hir::print::to_string(&self.tcx.map, |s| {
+            use syntax::abi::Abi;
+            use syntax::print::pprust::PrintState;
+
+            s.head("")?;
+            s.print_fn(decl,
+                       unsafety,
+                       constness,
+                       Abi::Rust,
+                       Some(name),
+                       generics,
+                       &hir::Inherited,
+                       &[],
+                       Some(body))?;
+            s.end()?; // Close the head box
+            s.end()   // Close the outer box
+        });
         let msg = format!("consider using an explicit lifetime parameter as shown: {}", s);
         err.span_help(span, &msg[..]);
     }
