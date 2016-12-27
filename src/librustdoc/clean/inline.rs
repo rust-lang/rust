@@ -10,6 +10,8 @@
 
 //! Support for inlining external documentation into the current AST.
 
+use std::collections::BTreeMap;
+use std::io;
 use std::iter::once;
 
 use syntax::ast;
@@ -342,8 +344,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         match item.kind {
             ty::AssociatedKind::Const => {
                 let default = if item.defaultness.has_value() {
-                    Some(hir::print::to_string(&cx.tcx.map, |s| s.print_expr(
-                        &tcx.sess.cstore.maybe_get_item_body(tcx, item.def_id).unwrap().value)))
+                    Some(print_inlined_const(cx, item.def_id))
                 } else {
                     None
                 };
@@ -473,11 +474,33 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
     }
 }
 
+struct InlinedConst {
+    nested_bodies: BTreeMap<hir::BodyId, hir::Body>
+}
+
+impl hir::print::PpAnn for InlinedConst {
+    fn nested(&self, state: &mut hir::print::State, nested: hir::print::Nested)
+              -> io::Result<()> {
+        if let hir::print::Nested::Body(body) = nested {
+            state.print_expr(&self.nested_bodies[&body].value)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
+    let body = cx.tcx.sess.cstore.maybe_get_item_body(cx.tcx, did).unwrap();
+    let inlined = InlinedConst {
+        nested_bodies: cx.tcx.sess.cstore.item_body_nested_bodies(did)
+    };
+    hir::print::to_string(&inlined, |s| s.print_expr(&body.value))
+}
+
 fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
     clean::Constant {
         type_: cx.tcx.item_type(did).clean(cx),
-        expr: hir::print::to_string(&cx.tcx.map, |s| s.print_expr(
-            &cx.tcx.sess.cstore.maybe_get_item_body(cx.tcx, did).unwrap().value))
+        expr: print_inlined_const(cx, did)
     }
 }
 
