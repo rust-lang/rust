@@ -43,7 +43,7 @@ pub struct DirEntry {
     name: Box<[u8]>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -63,6 +63,7 @@ pub struct FilePermissions { mode: u16 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType { mode: u16 }
 
+#[derive(Debug)]
 pub struct DirBuilder { mode: u16 }
 
 impl FileAttr {
@@ -336,7 +337,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let flags = syscall::O_CREAT | syscall::O_DIRECTORY | syscall::O_EXCL;
+        let flags = syscall::O_CREAT | syscall::O_CLOEXEC | syscall::O_DIRECTORY | syscall::O_EXCL;
         let fd = cvt(syscall::open(p.to_str().unwrap(), flags | (self.mode as usize & 0o777)))?;
         let _ = syscall::close(fd);
         Ok(())
