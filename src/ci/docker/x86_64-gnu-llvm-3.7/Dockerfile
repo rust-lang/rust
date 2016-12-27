@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   sudo \
   gdb \
   llvm-3.7-tools \
