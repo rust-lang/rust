@@ -677,7 +677,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5, &"b")), map.range((Included(&4), Unbounded)).next());
+    /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
@@ -763,7 +763,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
     ///                                                                       .collect();
-    /// for (_, balance) in map.range_mut::<str, _>((Included("B"), Excluded("Cheryl"))) {
+    /// for (_, balance) in map.range_mut("B".."Cheryl") {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
