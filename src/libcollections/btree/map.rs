@@ -668,7 +668,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// #![feature(btree_range, collections_bound)]
     ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Unbounded};
+    /// use std::collections::Bound::Included;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(3, "a");
@@ -755,10 +755,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
+    /// #![feature(btree_range)]
     ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Excluded};
     ///
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
