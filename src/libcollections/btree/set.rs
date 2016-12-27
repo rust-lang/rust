@@ -218,7 +218,7 @@ impl<T: Ord> BTreeSet<T> {
     /// #![feature(btree_range, collections_bound)]
     ///
     /// use std::collections::BTreeSet;
-    /// use std::collections::Bound::{Included, Unbounded};
+    /// use std::collections::Bound::Included;
     ///
     /// let mut set = BTreeSet::new();
     /// set.insert(3);
