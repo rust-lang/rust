@@ -36,6 +36,8 @@ use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
 
+use std::collections::BTreeMap;
+
 impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn describe_def(&self, def: DefId) -> Option<Def> {
         self.dep_graph.read(DepNode::MetaData(def));
@@ -453,6 +455,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         }));
 
         inlined
+    }
+
+    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).item_body_nested_bodies(def.index)
     }
 
     fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {

@@ -33,6 +33,8 @@ use mir::Mir;
 use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
+
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
@@ -250,6 +252,7 @@ pub trait CrateStore<'tcx> {
     // misc. metadata
     fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                -> Option<&'tcx hir::Body>;
+    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body>;
     fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
 
     fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
@@ -420,6 +423,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                -> Option<&'tcx hir::Body> {
         bug!("maybe_get_item_body")
+    }
+    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
+        bug!("item_body_nested_bodies")
     }
     fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
         bug!("const_is_rvalue_promotable_to_static")

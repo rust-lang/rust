@@ -30,6 +30,7 @@ pub struct Ast<'tcx> {
     id_range: IdRange,
     body: Lazy<hir::Body>,
     side_tables: LazySeq<(ast::NodeId, TableEntry<'tcx>)>,
+    pub nested_bodies: LazySeq<hir::Body>,
     pub rvalue_promotable_to_static: bool,
 }
 
@@ -61,6 +62,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             visitor.count
         };
 
+        let nested_pos = self.position();
+        let nested_count = {
+            let mut visitor = NestedBodyEncodingVisitor {
+                ecx: self,
+                count: 0,
+            };
+            visitor.visit_body(body);
+            visitor.count
+        };
+
         let rvalue_promotable_to_static =
             self.tcx.rvalue_promotable_to_static.borrow()[&body.value.id];
 
@@ -68,6 +79,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             id_range: id_visitor.result(),
             body: Lazy::with_position(body_pos),
             side_tables: LazySeq::with_position_and_length(tables_pos, tables_count),
+            nested_bodies: LazySeq::with_position_and_length(nested_pos, nested_count),
             rvalue_promotable_to_static: rvalue_promotable_to_static
         })
     }
@@ -99,6 +111,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
         encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
         encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
         encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
+    }
+}
+
+struct NestedBodyEncodingVisitor<'a, 'b: 'a, 'tcx: 'b> {
+    ecx: &'a mut EncodeContext<'b, 'tcx>,
+    count: usize,
+}
+
+impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedBodyEncodingVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_nested_body(&mut self, body: hir::BodyId) {
+        let body = self.ecx.tcx.map.body(body);
+        body.encode(self.ecx).unwrap();
+        self.count += 1;
+
+        self.visit_body(body);
     }
 }
 

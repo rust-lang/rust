@@ -32,6 +32,7 @@ use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;
+use std::collections::BTreeMap;
 use std::io;
 use std::mem;
 use std::str;
@@ -827,6 +828,12 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).ast.map(|ast| {
             decode_body(self, tcx, self.local_def_id(id), ast.decode(self))
         })
+    }
+
+    pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {
+        self.entry(id).ast.into_iter().flat_map(|ast| {
+            ast.decode(self).nested_bodies.decode(self).map(|body| (body.id(), body))
+        }).collect()
     }
 
     pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
