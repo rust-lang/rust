@@ -29,5 +29,3 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-3.7
 ENV RUST_CHECK_TARGET check
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

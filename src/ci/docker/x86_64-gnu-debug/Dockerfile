@@ -27,5 +27,3 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-debug \
       --enable-optimize
 ENV RUST_CHECK_TARGET ""
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj
