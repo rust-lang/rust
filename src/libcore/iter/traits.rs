@@ -260,7 +260,8 @@ impl<I: Iterator> IntoIterator for I {
 ///
 /// Iterators produce a series of values, and collections can also be thought
 /// of as a series of values. The `Extend` trait bridges this gap, allowing you
-/// to extend a collection by including the contents of that iterator.
+/// to extend a collection by including the contents of that iterator. When
+/// extending a collection with an already existing key, that entry is updated.
 ///
 /// # Examples
 ///
