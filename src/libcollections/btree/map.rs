@@ -655,10 +655,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_right_edge();
     }
 
-    /// Constructs a double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range synax `min..max`, thus `range(..)` will
+    /// yield the whole collection.
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range.
     ///
     /// # Examples
     ///
@@ -745,10 +747,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range synax `min..max`, thus `range(..)` will
+    /// yield the whole collection.
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range.
     ///
     /// # Examples
     ///
