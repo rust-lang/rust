@@ -32,7 +32,6 @@ use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
@@ -2725,7 +2724,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 }
 
 fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
-    pprust::expr_to_string(&cx.tcx.map.body(body).value)
+    cx.tcx.map.node_to_pretty_string(body.node_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

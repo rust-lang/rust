@@ -370,7 +370,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                       the crate they're defined in; define a new trait instead")
                         .span_label(item_trait_ref.path.span,
                                     &format!("`{}` trait not defined in this crate",
-                                             item_trait_ref.path))
+                            self.tcx.map.node_to_pretty_string(item_trait_ref.ref_id)))
                         .emit();
                     return;
                 }

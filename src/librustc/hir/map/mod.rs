@@ -26,7 +26,7 @@ use syntax_pos::Span;
 
 use hir::*;
 use hir::intravisit::Visitor;
-use hir::print as pprust;
+use hir::print::Nested;
 
 use arena::TypedArena;
 use std::cell::RefCell;
@@ -842,6 +842,10 @@ impl<'ast> Map<'ast> {
     pub fn node_to_user_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id, false)
     }
+
+    pub fn node_to_pretty_string(&self, id: NodeId) -> String {
+        print::to_string(self, |s| s.print_node(self.get(id)))
+    }
 }
 
 pub struct NodesMatchingSuffix<'a, 'ast:'a> {
@@ -1004,13 +1008,23 @@ pub fn map_decoded_body<'ast>(map: &Map<'ast>,
     &ii.body
 }
 
-pub trait NodePrinter {
-    fn print_node(&mut self, node: &Node) -> io::Result<()>;
+/// Identical to the `PpAnn` implementation for `hir::Crate`,
+/// except it avoids creating a dependency on the whole crate.
+impl<'ast> print::PpAnn for Map<'ast> {
+    fn nested(&self, state: &mut print::State, nested: print::Nested) -> io::Result<()> {
+        match nested {
+            Nested::Item(id) => state.print_item(self.expect_item(id.id)),
+            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
+            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::Body(id) => state.print_expr(&self.body(id).value),
+            Nested::BodyArgPat(id, i) => state.print_pat(&self.body(id).arguments[i].pat)
+        }
+    }
 }
 
-impl<'a> NodePrinter for pprust::State<'a> {
-    fn print_node(&mut self, node: &Node) -> io::Result<()> {
-        match *node {
+impl<'a> print::State<'a> {
+    pub fn print_node(&mut self, node: Node) -> io::Result<()> {
+        match node {
             NodeItem(a)        => self.print_item(&a),
             NodeForeignItem(a) => self.print_foreign_item(&a),
             NodeTraitItem(a)   => self.print_trait_item(a),
@@ -1020,8 +1034,17 @@ impl<'a> NodePrinter for pprust::State<'a> {
             NodeStmt(a)        => self.print_stmt(&a),
             NodeTy(a)          => self.print_type(&a),
             NodeTraitRef(a)    => self.print_trait_ref(&a),
+            NodeLocal(a)       |
             NodePat(a)         => self.print_pat(&a),
-            NodeBlock(a)       => self.print_block(&a),
+            NodeBlock(a)       => {
+                use syntax::print::pprust::PrintState;
+
+                // containing cbox, will be closed by print-block at }
+                self.cbox(print::indent_unit)?;
+                // head-ibox, will be closed by print-block after {
+                self.ibox(0)?;
+                self.print_block(&a)
+            }
             NodeLifetime(a)    => self.print_lifetime(&a),
             NodeVisibility(a)  => self.print_visibility(&a),
             NodeTyParam(_)     => bug!("cannot print TyParam"),
@@ -1029,7 +1052,6 @@ impl<'a> NodePrinter for pprust::State<'a> {
             // these cases do not carry enough information in the
             // ast_map to reconstruct their full structure for pretty
             // printing.
-            NodeLocal(_)       => bug!("cannot print isolated Local"),
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
         }
     }
@@ -1110,33 +1132,32 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                     field.name,
                     path_str(), id_str)
         }
-        Some(NodeExpr(ref expr)) => {
-            format!("expr {}{}", pprust::expr_to_string(&expr), id_str)
+        Some(NodeExpr(_)) => {
+            format!("expr {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeStmt(ref stmt)) => {
-            format!("stmt {}{}", pprust::stmt_to_string(&stmt), id_str)
+        Some(NodeStmt(_)) => {
+            format!("stmt {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeTy(ref ty)) => {
-            format!("type {}{}", pprust::ty_to_string(&ty), id_str)
+        Some(NodeTy(_)) => {
+            format!("type {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeTraitRef(ref tr)) => {
-            format!("trait_ref {}{}", pprust::path_to_string(&tr.path), id_str)
+        Some(NodeTraitRef(_)) => {
+            format!("trait_ref {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeLocal(ref pat)) => {
-            format!("local {}{}", pprust::pat_to_string(&pat), id_str)
+        Some(NodeLocal(_)) => {
+            format!("local {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodePat(ref pat)) => {
-            format!("pat {}{}", pprust::pat_to_string(&pat), id_str)
+        Some(NodePat(_)) => {
+            format!("pat {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeBlock(ref block)) => {
-            format!("block {}{}", pprust::block_to_string(&block), id_str)
+        Some(NodeBlock(_)) => {
+            format!("block {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeStructCtor(_)) => {
             format!("struct_ctor {}{}", path_str(), id_str)
         }
-        Some(NodeLifetime(ref l)) => {
-            format!("lifetime {}{}",
-                    pprust::lifetime_to_string(&l), id_str)
+        Some(NodeLifetime(_)) => {
+            format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeTyParam(ref ty_param)) => {
             format!("typaram {:?}{}", ty_param, id_str)

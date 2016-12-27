@@ -53,7 +53,6 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
-use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -247,7 +246,7 @@ fn report_elision_failure(
 
         let help_name = if let Some(body) = parent {
             let arg = &tcx.map.body(body).arguments[index];
-            format!("`{}`", pprust::pat_to_string(&arg.pat))
+            format!("`{}`", tcx.map.node_to_pretty_string(arg.pat.id))
         } else {
             format!("argument {}", index + 1)
         };
@@ -685,7 +684,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             _ => {
                 span_fatal!(self.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                            path);
+                            self.tcx().map.node_to_pretty_string(trait_ref.ref_id));
             }
         }
     }
@@ -972,7 +971,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let mut err = struct_span_err!(tcx.sess, ty.span, E0178,
                                                "expected a path on the left-hand side \
                                                 of `+`, not `{}`",
-                                               pprust::ty_to_string(ty));
+                                               tcx.map.node_to_pretty_string(ty.id));
                 err.span_label(ty.span, &format!("expected a path"));
                 let hi = bounds.iter().map(|x| match *x {
                     hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
@@ -984,22 +983,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     expn_id: ty.span.expn_id,
                 });
                 match (&ty.node, full_span) {
-                    (&hir::TyRptr(None, ref mut_ty), Some(full_span)) => {
-                        let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
+                    (&hir::TyRptr(ref lifetime, ref mut_ty), Some(full_span)) => {
+                        let ty_str = hir::print::to_string(&tcx.map, |s| {
+                            use syntax::print::pp::word;
+                            use syntax::print::pprust::PrintState;
+
+                            word(&mut s.s, "&")?;
+                            s.print_opt_lifetime(lifetime)?;
+                            s.print_mutability(mut_ty.mutbl)?;
+                            s.popen()?;
+                            s.print_type(&mut_ty.ty)?;
+                            s.print_bounds(" +", bounds)?;
+                            s.pclose()
+                        });
                         err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                            format!("&{}({} +{})",
-                                                    mutbl_str,
-                                                    pprust::ty_to_string(&mut_ty.ty),
-                                                    pprust::bounds_to_string(bounds)));
-                    }
-                    (&hir::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
-                        let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
-                        err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                            format!("&{} {}({} +{})",
-                                                    pprust::lifetime_to_string(lt),
-                                                    mutbl_str,
-                                                    pprust::ty_to_string(&mut_ty.ty),
-                                                    pprust::bounds_to_string(bounds)));
+                                            ty_str);
                     }
 
                     _ => {

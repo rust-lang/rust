@@ -33,7 +33,6 @@ use util::nodemap::NodeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use hir;
-use hir::print::lifetime_to_string;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -822,9 +821,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                        probably a bug in syntax::fold");
         }
 
-        debug!("lifetime_ref={:?} id={:?} resolved to {:?} span={:?}",
-               lifetime_to_string(lifetime_ref),
-               lifetime_ref.id,
+        debug!("{} resolved to {:?} span={:?}",
+               self.hir_map.node_to_string(lifetime_ref.id),
                def,
                self.sess.codemap().span_to_string(lifetime_ref.span));
         self.map.defs.insert(lifetime_ref.id, def);

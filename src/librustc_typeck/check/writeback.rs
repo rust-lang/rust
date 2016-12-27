@@ -26,7 +26,6 @@ use std::cell::Cell;
 use syntax::ast;
 use syntax_pos::Span;
 
-use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
@@ -221,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
-               pat_to_string(p),
+               self.tcx().map.node_to_pretty_string(p.id),
                p.id,
                self.tcx().tables().node_id_to_type(p.id));
 

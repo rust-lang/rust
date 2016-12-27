@@ -127,7 +127,6 @@ use syntax_pos::Span;
 
 use hir::Expr;
 use hir;
-use hir::print::{expr_to_string, block_to_string};
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
@@ -819,7 +818,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for body, {}", expr_to_string(body));
+        debug!("compute: using id for body, {}", self.ir.tcx.map.node_to_pretty_string(body.id));
 
         let exit_ln = self.s.exit_ln;
         let entry_ln: LiveNode = self.with_loop_nodes(body.id, exit_ln, exit_ln, |this| {
@@ -912,7 +911,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", expr_to_string(expr));
+        debug!("propagate_through_expr: {}", self.ir.tcx.map.node_to_pretty_string(expr.id));
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
@@ -931,7 +930,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprClosure(.., blk_id, _) => {
               debug!("{} is an ExprClosure",
-                     expr_to_string(expr));
+                     self.ir.tcx.map.node_to_pretty_string(expr.id));
 
               /*
               The next-node for a break is the successor of the entire
@@ -1307,7 +1306,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, block_to_string(body));
+               expr.id, self.ir.tcx.map.node_to_pretty_string(body.id));
 
         let cond_ln = match kind {
             LoopLoop => ln,

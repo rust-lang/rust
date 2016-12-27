@@ -108,6 +108,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 }
 
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
+    fn nested(&self, state: &mut pprust::State, nested: pprust::Nested) -> io::Result<()> {
+        pprust::PpAnn::nested(&self.tcx.map, state, nested)
+    }
     fn pre(&self,
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
@@ -530,20 +533,11 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
         }
 
         debug!("Dataflow result for {}:", self.analysis_name);
-        debug!("{}", {
-            let mut v = Vec::new();
-            self.pretty_print_to(box &mut v, body).unwrap();
-            String::from_utf8(v).unwrap()
-        });
-    }
-
-    fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
-                           body: &hir::Body) -> io::Result<()> {
-        let mut ps = pprust::rust_printer_annotated(wr, self, None);
-        ps.cbox(pprust::indent_unit)?;
-        ps.ibox(0)?;
-        ps.print_expr(&body.value)?;
-        pp::eof(&mut ps.s)
+        debug!("{}", pprust::to_string(self, |s| {
+            s.cbox(pprust::indent_unit)?;
+            s.ibox(0)?;
+            s.print_expr(&body.value)
+        }));
     }
 }
 

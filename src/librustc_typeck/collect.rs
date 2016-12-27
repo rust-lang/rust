@@ -82,7 +82,7 @@ use syntax::{abi, ast, attr};
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
-use rustc::hir::{self, map as hir_map, print as pprust};
+use rustc::hir::{self, map as hir_map};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -1041,7 +1041,7 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
                           -> Option<ty::Disr> {
-        debug!("disr expr, checking {}", pprust::expr_to_string(e));
+        debug!("disr expr, checking {}", ccx.tcx.map.node_to_pretty_string(e.id));
 
         let ty_hint = repr_ty.to_ty(ccx.tcx);
         let print_err = |cv: ConstVal| {
@@ -2072,7 +2072,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
                 ccx.tcx.sess.struct_span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
-                                       pprust::ty_to_string(ast_ty)))
+                                       ccx.tcx.map.node_to_pretty_string(ast_ty.id)))
                     .help("add #![feature(simd_ffi)] to the crate attributes to enable")
                     .emit();
             }
