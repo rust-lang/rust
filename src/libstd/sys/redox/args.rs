@@ -52,10 +52,9 @@ impl DoubleEndedIterator for Args {
 mod imp {
     use os::unix::prelude::*;
     use mem;
-    use ffi::OsString;
+    use ffi::{CStr, OsString};
     use marker::PhantomData;
-    use slice;
-    use str;
+    use libc;
     use super::Args;
 
     use sys_common::mutex::Mutex;
@@ -64,12 +63,9 @@ mod imp {
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
-        let mut args: Vec<Vec<u8>> = Vec::new();
-        for i in 0..argc {
-            let len = *(argv.offset(i * 2)) as usize;
-            let ptr = *(argv.offset(i * 2 + 1));
-            args.push(slice::from_raw_parts(ptr, len).to_vec());
-        }
+        let args = (0..argc).map(|i| {
+            CStr::from_ptr(*argv.offset(i) as *const libc::c_char).to_bytes().to_vec()
+        }).collect();
 
         LOCK.lock();
         let ptr = get_global_ptr();
