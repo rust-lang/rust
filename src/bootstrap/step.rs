@@ -838,9 +838,10 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             } else {
                 &self.build.config.target
             };
-            // If --target was specified but --host wasn't specified, don't run
-            // any host-only tests
+            // Determine the actual targets participating in this rule.
             let arr = if rule.host {
+                // If --target was specified but --host wasn't specified,
+                // don't run any host-only tests
                 if self.build.flags.target.len() > 0 &&
                    self.build.flags.host.len() == 0 {
                     &[]
