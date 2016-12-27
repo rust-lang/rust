@@ -328,7 +328,6 @@ language_item_table! {
     PanicFmtLangItem,                "panic_fmt",               panic_fmt;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
-    ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
     StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
 
