@@ -208,11 +208,11 @@ impl<T> BTreeSet<T> {
 
 impl<T: Ord> BTreeSet<T> {
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
-    /// The simplest way is to use the range synax `min..max`, thus `range(..)` will
-    /// yield the whole collection.
+    /// The simplest way is to use the range synax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
     /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
     /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
-    /// range.
+    /// range from 4 to 10.
     ///
     /// # Examples
     ///
