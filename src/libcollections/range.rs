@@ -41,9 +41,7 @@ pub trait RangeArgument<T: ?Sized> {
     /// assert_eq!((3..10).start(), Included(&3));
     /// # }
     /// ```
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
+    fn start(&self) -> Bound<&T>;
 
     /// End index bound
     ///
@@ -66,22 +64,33 @@ pub trait RangeArgument<T: ?Sized> {
     /// assert_eq!((3..10).end(), Excluded(&10));
     /// # }
     /// ```
+    fn end(&self) -> Bound<&T>;
+}
+
+// FIXME add inclusive ranges to RangeArgument
+
+impl<T: ?Sized> RangeArgument<T> for RangeFull {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
     fn end(&self) -> Bound<&T> {
         Unbounded
     }
 }
 
-// FIXME add inclusive ranges to RangeArgument
-
-impl<T: ?Sized> RangeArgument<T> for RangeFull {}
-
 impl<T> RangeArgument<T> for RangeFrom<T> {
     fn start(&self) -> Bound<&T> {
         Included(&self.start)
     }
+    fn end(&self) -> Bound<&T> {
+        Unbounded
+    }
 }
 
 impl<T> RangeArgument<T> for RangeTo<T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
     fn end(&self) -> Bound<&T> {
         Excluded(&self.end)
     }
@@ -116,18 +125,10 @@ impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
 
 impl<'a, T: ?Sized + 'a> RangeArgument<T> for (Bound<&'a T>, Bound<&'a T>) {
     fn start(&self) -> Bound<&T> {
-        match *self {
-            (Included(start), _) => Included(start),
-            (Excluded(start), _) => Excluded(start),
-            (Unbounded, _)       => Unbounded,
-        }
+        self.0
     }
 
     fn end(&self) -> Bound<&T> {
-        match *self {
-            (_, Included(end)) => Included(end),
-            (_, Excluded(end)) => Excluded(end),
-            (_, Unbounded)     => Unbounded,
-        }
+        self.1
     }
 }
