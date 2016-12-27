@@ -11,7 +11,6 @@ RUN dpkg --add-architecture i386 && \
   python2.7 \
   git \
   cmake \
-  ccache \
   unzip \
   expect \
   openjdk-9-jre \

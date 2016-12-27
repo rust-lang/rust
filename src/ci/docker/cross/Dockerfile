@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   sudo \
   gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
   gcc-arm-linux-gnueabi libc6-dev-armel-cross \
