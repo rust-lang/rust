@@ -1006,6 +1006,7 @@ impl<'a, 'tcx> CrateMetadata {
         let filter = match filter.map(|def_id| self.reverse_translate_def_id(def_id)) {
             Some(Some(def_id)) => Some((def_id.krate.as_u32(), def_id.index)),
             Some(None) => return,
+            None if self.proc_macros.is_some() => return,
             None => None,
         };
 
