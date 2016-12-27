@@ -843,7 +843,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             let arr = if rule.host {
                 if self.build.flags.target.len() > 0 &&
                    self.build.flags.host.len() == 0 {
-                    &hosts[..0]
+                    &[]
                 } else {
                     hosts
                 }
