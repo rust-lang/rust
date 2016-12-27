@@ -69,6 +69,3 @@ ENV AR_s390x_unknown_linux_gnu=s390x-linux-gnu-ar \
 
 # FIXME(rust-lang/rust#36150): powerpc unfortunately aborts right now
 ENV NO_LLVM_ASSERTIONS=1
-
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

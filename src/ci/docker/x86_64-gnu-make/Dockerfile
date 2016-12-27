@@ -24,5 +24,3 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --disable-rustbuild
 ENV RUST_CHECK_TARGET check
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj
