@@ -69,8 +69,7 @@ impl<T: Clone> Clone for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for VecDeque<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
     fn drop(&mut self) {
         let (front, back) = self.as_mut_slices();
         unsafe {
