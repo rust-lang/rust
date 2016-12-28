@@ -27,16 +27,15 @@ use std::marker::PhantomData;
 use std::mem;
 use std::path::Path;
 
-use super::super::MoveDataParamEnv;
 use super::super::MirBorrowckCtxtPreDataflow;
 use super::{BitDenotation, DataflowState};
 
 impl<O: BitDenotation> DataflowState<O> {
-    fn each_bit<F>(&self, ctxt: &O::Ctxt, words: &IdxSet<O::Idx>, mut f: F)
+    fn each_bit<F>(&self, words: &IdxSet<O::Idx>, mut f: F)
         where F: FnMut(O::Idx) {
         //! Helper for iterating over the bits in a bitvector.
 
-        let bits_per_block = self.operator.bits_per_block(ctxt);
+        let bits_per_block = self.operator.bits_per_block();
         let usize_bits: usize = mem::size_of::<usize>() * 8;
 
         for (word_index, &word) in words.words().iter().enumerate() {
@@ -65,35 +64,33 @@ impl<O: BitDenotation> DataflowState<O> {
     }
 
     pub fn interpret_set<'c, P>(&self,
-                                ctxt: &'c O::Ctxt,
+                                o: &'c O,
                                 words: &IdxSet<O::Idx>,
                                 render_idx: &P)
                                 -> Vec<&'c Debug>
-        where P: for <'b> Fn(&'b O::Ctxt, O::Idx) -> &'b Debug
+        where P: Fn(&O, O::Idx) -> &Debug
     {
         let mut v = Vec::new();
-        self.each_bit(ctxt, words, |i| {
-            v.push(render_idx(ctxt, i));
+        self.each_bit(words, |i| {
+            v.push(render_idx(o, i));
         });
         v
     }
 }
 
 pub trait MirWithFlowState<'tcx> {
-    type BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>;
+    type BD: BitDenotation;
     fn node_id(&self) -> NodeId;
     fn mir(&self) -> &Mir<'tcx>;
-    fn analysis_ctxt(&self) -> &<Self::BD as BitDenotation>::Ctxt;
     fn flow_state(&self) -> &DataflowState<Self::BD>;
 }
 
 impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where 'tcx: 'a, BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>
+    where 'tcx: 'a, BD: BitDenotation
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
     fn mir(&self) -> &Mir<'tcx> { self.flow_state.mir() }
-    fn analysis_ctxt(&self) -> &BD::Ctxt { &self.flow_state.ctxt }
     fn flow_state(&self) -> &DataflowState<Self::BD> { &self.flow_state.flow_state }
 }
 
@@ -110,8 +107,8 @@ pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     path: &Path,
     render_idx: P)
     -> io::Result<()>
-    where BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>,
-          P: for <'b> Fn(&'b BD::Ctxt, BD::Idx) -> &'b Debug
+    where BD: BitDenotation,
+          P: Fn(&BD, BD::Idx) -> &Debug
 {
     let g = Graph { mbcx: mbcx, phantom: PhantomData, render_idx: render_idx };
     let mut v = Vec::new();
@@ -133,9 +130,7 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>,
-          P: for <'b> Fn(&'b <MWF::BD as BitDenotation>::Ctxt,
-                         <MWF::BD as BitDenotation>::Idx)
-                         -> &'b Debug,
+          P: for <'b> Fn(&'b MWF::BD, <MWF::BD as BitDenotation>::Idx) -> &'b Debug,
 {
     type Node = Node;
     type Edge = Edge;
@@ -227,9 +222,8 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
         ::rustc_mir::graphviz::write_node_label(
             *n, self.mbcx.mir(), &mut v, 4,
             |w| {
-                let ctxt = self.mbcx.analysis_ctxt();
                 let flow = self.mbcx.flow_state();
-                let entry_interp = flow.interpret_set(ctxt,
+                let entry_interp = flow.interpret_set(&flow.operator,
                                                       flow.sets.on_entry_set_for(i),
                                                       &self.render_idx);
                 chunked_present_left(w, &entry_interp[..], chunk_size)?;
@@ -244,12 +238,11 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
                        entrybits=bits_to_string(entry.words(), bits_per_block))
             },
             |w| {
-                let ctxt = self.mbcx.analysis_ctxt();
                 let flow = self.mbcx.flow_state();
                 let gen_interp =
-                    flow.interpret_set(ctxt, flow.sets.gen_set_for(i), &self.render_idx);
+                    flow.interpret_set(&flow.operator, flow.sets.gen_set_for(i), &self.render_idx);
                 let kill_interp =
-                    flow.interpret_set(ctxt, flow.sets.kill_set_for(i), &self.render_idx);
+                    flow.interpret_set(&flow.operator, flow.sets.kill_set_for(i), &self.render_idx);
                 chunked_present_left(w, &gen_interp[..], chunk_size)?;
                 let bits_per_block = flow.sets.bits_per_block();
                 {
