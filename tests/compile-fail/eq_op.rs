@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #[deny(eq_op)]
-#[allow(identity_op)]
+#[allow(identity_op, double_parens)]
 #[allow(no_effect, unused_variables, unnecessary_operation)]
 #[deny(nonminimal_bool)]
 fn main() {

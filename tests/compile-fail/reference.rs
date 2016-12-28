@@ -9,7 +9,7 @@ fn get_reference(n : &usize) -> &usize {
     n
 }
 
-#[allow(many_single_char_names)]
+#[allow(many_single_char_names, double_parens)]
 #[allow(unused_variables)]
 #[deny(deref_addrof)]
 fn main() {
