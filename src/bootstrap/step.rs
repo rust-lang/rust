@@ -838,14 +838,21 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             } else {
                 &self.build.config.target
             };
-            // If --target was specified but --host wasn't specified, don't run
-            // any host-only tests
+            // Determine the actual targets participating in this rule.
+            // NOTE: We should keep the full projection from build triple to
+            // the hosts for the dist steps, now that the hosts array above is
+            // truncated to avoid duplication of work in that case. Therefore
+            // the original non-shadowed hosts array is used below.
             let arr = if rule.host {
-                if self.build.flags.target.len() > 0 &&
-                   self.build.flags.host.len() == 0 {
-                    &hosts[..0]
+                // If --target was specified but --host wasn't specified,
+                // don't run any host-only tests. Also, respect any `--host`
+                // overrides as done for `hosts`.
+                if self.build.flags.host.len() > 0 {
+                    &self.build.flags.host[..]
+                } else if self.build.flags.target.len() > 0 {
+                    &[]
                 } else {
-                    hosts
+                    &self.build.config.host[..]
                 }
             } else {
                 targets
