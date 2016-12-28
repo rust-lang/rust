@@ -541,6 +541,18 @@ case $CFG_CPUTYPE in
         CFG_CPUTYPE=x86_64
         ;;
 
+    mips | mips64)
+        if [ "$CFG_CPUTYPE" = "mips64" ]; then
+            CFG_OSTYPE="${CFG_OSTYPE}abi64"
+        fi
+        ENDIAN=$(printf '\1' | od -dAn)
+        if [ "$ENDIAN" -eq 1 ]; then
+            CFG_CPUTYPE="${CFG_CPUTYPE}el"
+        elif [ "$ENDIAN" -ne 256 ]; then
+            err "unknown endianness: $ENDIAN (expecting 1 for little or 256 for big)"
+        fi
+        ;;
+
     BePC)
         CFG_CPUTYPE=i686
         ;;
