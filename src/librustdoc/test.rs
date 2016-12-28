@@ -54,14 +54,15 @@ pub fn run(input: &str,
            libs: SearchPaths,
            externs: Externs,
            mut test_args: Vec<String>,
-           crate_name: Option<String>)
+           crate_name: Option<String>,
+           maybe_sysroot: Option<PathBuf>)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
-                                              .parent().unwrap().to_path_buf()),
+        maybe_sysroot: maybe_sysroot.clone().or_else(
+            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: libs.clone(),
         crate_types: vec![config::CrateTypeDylib],
         externs: externs.clone(),
@@ -99,7 +100,8 @@ pub fn run(input: &str,
                                        libs,
                                        externs,
                                        false,
-                                       opts);
+                                       opts,
+                                       maybe_sysroot);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -157,7 +159,8 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
-           compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions) {
+           compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
+           maybe_sysroot: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
@@ -168,8 +171,8 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
-                                              .parent().unwrap().to_path_buf()),
+        maybe_sysroot: maybe_sysroot.or_else(
+            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: libs,
         crate_types: vec![config::CrateTypeExecutable],
         output_types: outputs,
@@ -379,11 +382,12 @@ pub struct Collector {
     current_header: Option<String>,
     cratename: String,
     opts: TestOptions,
+    maybe_sysroot: Option<PathBuf>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
-               use_headers: bool, opts: TestOptions) -> Collector {
+               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -395,6 +399,7 @@ impl Collector {
             current_header: None,
             cratename: cratename,
             opts: opts,
+            maybe_sysroot: maybe_sysroot,
         }
     }
 
@@ -413,6 +418,7 @@ impl Collector {
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
+        let maybe_sysroot = self.maybe_sysroot.clone();
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -432,7 +438,8 @@ impl Collector {
                         as_test_harness,
                         compile_fail,
                         error_codes,
-                        &opts);
+                        &opts,
+                        maybe_sysroot);
             })
         });
     }

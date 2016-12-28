@@ -267,13 +267,14 @@ pub fn main_args(args: &[String]) -> isize {
     };
     let crate_name = matches.opt_str("crate-name");
     let playground_url = matches.opt_str("playground-url");
+    let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args)
+            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args, crate_name)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot)
         }
         (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
