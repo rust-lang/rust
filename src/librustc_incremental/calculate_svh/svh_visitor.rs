@@ -180,9 +180,10 @@ enum SawAbiComponent<'a> {
     SawLifetimeDef(usize),
 
     SawMod,
-    SawForeignItem,
+    SawForeignItem(SawForeignItemComponent),
     SawItem(SawItemComponent),
     SawTy(SawTyComponent),
+    SawFnDecl(bool),
     SawGenerics,
     SawTraitItem(SawTraitOrImplItemComponent),
     SawImplItem(SawTraitOrImplItemComponent),
@@ -363,7 +364,7 @@ enum SawItemComponent {
     SawItemConst,
     SawItemFn(Unsafety, Constness, Abi),
     SawItemMod,
-    SawItemForeignMod,
+    SawItemForeignMod(Abi),
     SawItemTy,
     SawItemEnum,
     SawItemStruct,
@@ -381,7 +382,7 @@ fn saw_item(node: &Item_) -> SawItemComponent {
         ItemConst(..) =>SawItemConst,
         ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
         ItemMod(..) => SawItemMod,
-        ItemForeignMod(..) => SawItemForeignMod,
+        ItemForeignMod(ref fm) => SawItemForeignMod(fm.abi),
         ItemTy(..) => SawItemTy,
         ItemEnum(..) => SawItemEnum,
         ItemStruct(..) => SawItemStruct,
@@ -390,6 +391,12 @@ fn saw_item(node: &Item_) -> SawItemComponent {
         ItemDefaultImpl(unsafety, _) => SawItemDefaultImpl(unsafety),
         ItemImpl(unsafety, implpolarity, ..) => SawItemImpl(unsafety, implpolarity)
     }
+}
+
+#[derive(Hash)]
+enum SawForeignItemComponent {
+    Static { mutable: bool },
+    Fn,
 }
 
 #[derive(Hash)]
@@ -641,7 +648,17 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
     fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
         debug!("visit_foreign_item: st={:?}", self.st);
 
-        SawForeignItem.hash(self.st);
+        match i.node {
+            ForeignItemFn(..) => {
+                SawForeignItem(SawForeignItemComponent::Fn)
+            }
+            ForeignItemStatic(_, mutable) => {
+                SawForeignItem(SawForeignItemComponent::Static {
+                    mutable: mutable
+                })
+            }
+        }.hash(self.st);
+
         hash_span!(self, i.span);
         hash_attrs!(self, &i.attrs);
         visit::walk_foreign_item(self, i)
@@ -676,6 +693,12 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         debug!("visit_generics: st={:?}", self.st);
         SawGenerics.hash(self.st);
         visit::walk_generics(self, g)
+    }
+
+    fn visit_fn_decl(&mut self, fd: &'tcx FnDecl) {
+        debug!("visit_fn_decl: st={:?}", self.st);
+        SawFnDecl(fd.variadic).hash(self.st);
+        visit::walk_fn_decl(self, fd)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx TraitItem) {
