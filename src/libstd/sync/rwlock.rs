@@ -310,8 +310,7 @@ impl<T: ?Sized> RwLock<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Drop for RwLock<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
     fn drop(&mut self) {
         // IMPORTANT: This code needs to be kept in sync with `RwLock::into_inner`.
         unsafe { self.inner.destroy() }
