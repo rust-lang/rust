@@ -182,7 +182,7 @@ pub struct StdinLock<'a> {
 ///
 /// # fn foo() -> io::Result<String> {
 /// let mut buffer = String::new();
-/// try!(io::stdin().read_to_string(&mut buffer));
+/// io::stdin().read_to_string(&mut buffer)?;
 /// # Ok(buffer)
 /// # }
 /// ```
@@ -197,7 +197,7 @@ pub struct StdinLock<'a> {
 /// let stdin = io::stdin();
 /// let mut handle = stdin.lock();
 ///
-/// try!(handle.read_to_string(&mut buffer));
+/// handle.read_to_string(&mut buffer)?;
 /// # Ok(buffer)
 /// # }
 /// ```
@@ -239,7 +239,7 @@ impl Stdin {
     /// let stdin = io::stdin();
     /// let mut handle = stdin.lock();
     ///
-    /// try!(handle.read_to_string(&mut buffer));
+    /// handle.read_to_string(&mut buffer)?;
     /// # Ok(buffer)
     /// # }
     /// ```
@@ -374,7 +374,7 @@ pub struct StdoutLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// # fn foo() -> io::Result<()> {
-/// try!(io::stdout().write(b"hello world"));
+/// io::stdout().write(b"hello world")?;
 ///
 /// # Ok(())
 /// # }
@@ -389,7 +389,7 @@ pub struct StdoutLock<'a> {
 /// let stdout = io::stdout();
 /// let mut handle = stdout.lock();
 ///
-/// try!(handle.write(b"hello world"));
+/// handle.write(b"hello world")?;
 ///
 /// # Ok(())
 /// # }
@@ -427,7 +427,7 @@ impl Stdout {
     /// let stdout = io::stdout();
     /// let mut handle = stdout.lock();
     ///
-    /// try!(handle.write(b"hello world"));
+    /// handle.write(b"hello world")?;
     ///
     /// # Ok(())
     /// # }
@@ -510,7 +510,7 @@ pub struct StderrLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// # fn foo() -> io::Result<()> {
-/// try!(io::stderr().write(b"hello world"));
+/// io::stderr().write(b"hello world")?;
 ///
 /// # Ok(())
 /// # }
@@ -525,7 +525,7 @@ pub struct StderrLock<'a> {
 /// let stderr = io::stderr();
 /// let mut handle = stderr.lock();
 ///
-/// try!(handle.write(b"hello world"));
+/// handle.write(b"hello world")?;
 ///
 /// # Ok(())
 /// # }
@@ -562,7 +562,7 @@ impl Stderr {
     ///     let stderr = io::stderr();
     ///     let mut handle = stderr.lock();
     ///
-    ///     try!(handle.write(b"hello world"));
+    ///     handle.write(b"hello world")?;
     ///
     ///     Ok(())
     /// }
