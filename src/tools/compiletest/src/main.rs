@@ -21,6 +21,10 @@
 extern crate libc;
 extern crate test;
 extern crate getopts;
+
+#[cfg(cargobuild)]
+extern crate rustc_serialize;
+#[cfg(not(cargobuild))]
 extern crate serialize as rustc_serialize;
 
 #[macro_use]
