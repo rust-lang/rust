@@ -37,11 +37,11 @@ use memchr;
 /// use std::fs::File;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut f = try!(File::open("log.txt"));
+/// let mut f = File::open("log.txt")?;
 /// let mut reader = BufReader::new(f);
 ///
 /// let mut line = String::new();
-/// let len = try!(reader.read_line(&mut line));
+/// let len = reader.read_line(&mut line)?;
 /// println!("First line is {} bytes long", len);
 /// # Ok(())
 /// # }
@@ -64,7 +64,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = try!(File::open("log.txt"));
+    /// let mut f = File::open("log.txt")?;
     /// let mut reader = BufReader::new(f);
     /// # Ok(())
     /// # }
@@ -85,7 +85,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = try!(File::open("log.txt"));
+    /// let mut f = File::open("log.txt")?;
     /// let mut reader = BufReader::with_capacity(10, f);
     /// # Ok(())
     /// # }
@@ -111,7 +111,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut f1 = File::open("log.txt")?;
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.get_ref();
@@ -132,7 +132,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut f1 = File::open("log.txt")?;
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.get_mut();
@@ -153,7 +153,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut f1 = File::open("log.txt")?;
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.into_inner();
@@ -632,7 +632,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// I took the one less traveled by,
 /// And that has made all the difference.";
 ///
-/// let file = try!(File::create("poem.txt"));
+/// let file = File::create("poem.txt")?;
 /// let mut file = LineWriter::new(file);
 ///
 /// for &byte in road_not_taken.iter() {
@@ -640,10 +640,10 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// }
 ///
 /// // let's check we did the right thing.
-/// let mut file = try!(File::open("poem.txt"));
+/// let mut file = File::open("poem.txt")?;
 /// let mut contents = String::new();
 ///
-/// try!(file.read_to_string(&mut contents));
+/// file.read_to_string(&mut contents)?;
 ///
 /// assert_eq!(contents.as_bytes(), &road_not_taken[..]);
 /// # Ok(())
@@ -665,7 +665,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = try!(File::create("poem.txt"));
+    /// let file = File::create("poem.txt")?;
     /// let file = LineWriter::new(file);
     /// # Ok(())
     /// # }
@@ -686,7 +686,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = try!(File::create("poem.txt"));
+    /// let file = File::create("poem.txt")?;
     /// let file = LineWriter::with_capacity(100, file);
     /// # Ok(())
     /// # }
@@ -708,7 +708,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = try!(File::create("poem.txt"));
+    /// let file = File::create("poem.txt")?;
     /// let file = LineWriter::new(file);
     ///
     /// let reference = file.get_ref();
@@ -730,7 +730,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = try!(File::create("poem.txt"));
+    /// let file = File::create("poem.txt")?;
     /// let mut file = LineWriter::new(file);
     ///
     /// // we can use reference just like file
@@ -752,11 +752,11 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = try!(File::create("poem.txt"));
+    /// let file = File::create("poem.txt")?;
     ///
     /// let writer: LineWriter<File> = LineWriter::new(file);
     ///
-    /// let file: File = try!(writer.into_inner());
+    /// let file: File = writer.into_inner()?;
     /// # Ok(())
     /// # }
     /// ```

@@ -257,7 +257,7 @@ impl MetadataExt for Metadata {
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::symlink_file("a.txt", "b.txt"));
+/// fs::symlink_file("a.txt", "b.txt")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -278,7 +278,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::symlink_file("a", "b"));
+/// fs::symlink_file("a", "b")?;
 /// # Ok(())
 /// # }
 /// ```
