@@ -89,7 +89,9 @@ fn main() {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        cmd.arg("-Cprefer-dynamic");
+        if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
+            cmd.arg("-Cprefer-dynamic");
+        }
 
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.

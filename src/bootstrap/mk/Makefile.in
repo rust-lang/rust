@@ -69,7 +69,7 @@ distcheck:
 install:
 	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
 tidy:
-	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS) --stage 0
+	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
 
 check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi

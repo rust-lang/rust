@@ -379,6 +379,11 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+
+    // We don't want to build tools dynamically as they'll be running across
+    // stages and such and it's just easier if they're not dynamically linked.
+    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
     build.run(&mut cargo);
 }
 
