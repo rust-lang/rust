@@ -821,6 +821,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, late_passes, e);
             hir_visit::walk_expr(cx, e);
+            run_lints!(cx, check_expr_post, late_passes, e);
         })
     }
 
@@ -835,8 +836,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                body_id: hir::ExprId, span: Span, id: ast::NodeId) {
-        let body = self.tcx.map.expr(body_id);
+                body_id: hir::BodyId, span: Span, id: ast::NodeId) {
+        let body = self.tcx.map.body(body_id);
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
@@ -907,10 +908,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_decl(&mut self, d: &'tcx hir::Decl) {
         run_lints!(self, check_decl, late_passes, d);
         hir_visit::walk_decl(self, d);
-    }
-
-    fn visit_expr_post(&mut self, e: &'tcx hir::Expr) {
-        run_lints!(self, check_expr_post, late_passes, e);
     }
 
     fn visit_generics(&mut self, g: &'tcx hir::Generics) {

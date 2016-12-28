@@ -126,7 +126,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        arguments: A,
                                        abi: Abi,
                                        return_ty: Ty<'gcx>,
-                                       ast_body: &'gcx hir::Expr)
+                                       body: &'gcx hir::Body)
                                        -> Mir<'tcx>
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
@@ -136,17 +136,16 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.map.span(fn_id);
     let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
 
-    let body_id = ast_body.id;
     let call_site_extent =
         tcx.region_maps.lookup_code_extent(
-            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id });
+            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body.value.id });
     let arg_extent =
         tcx.region_maps.lookup_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id });
+            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.value.id });
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
-            builder.args_and_body(block, &arguments, arg_extent, ast_body)
+            builder.args_and_body(block, &arguments, arg_extent, &body.value)
         }));
         // Attribute epilogue to function's closing brace
         let fn_end = Span { lo: span.hi, ..span };
@@ -197,9 +196,10 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
 pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        item_id: ast::NodeId,
-                                       ast_expr: &'tcx hir::Expr)
+                                       body_id: hir::BodyId)
                                        -> Mir<'tcx> {
     let tcx = hir.tcx();
+    let ast_expr = &tcx.map.body(body_id).value;
     let ty = tcx.tables().expr_ty_adjusted(ast_expr);
     let span = tcx.map.span(item_id);
     let mut builder = Builder::new(hir, span, 0, ty);

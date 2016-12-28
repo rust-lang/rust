@@ -17,7 +17,6 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -56,15 +55,17 @@ macro_rules! math {
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   variant_def: DefId)
                                   -> Option<&'tcx Expr> {
-    fn variant_expr<'a>(variants: &'a [hir::Variant], id: ast::NodeId)
-                        -> Option<&'a Expr> {
+    let variant_expr = |variants: &'tcx [hir::Variant], id: ast::NodeId |
+                        -> Option<&'tcx Expr> {
         for variant in variants {
             if variant.node.data.id() == id {
-                return variant.node.disr_expr.as_ref().map(|e| &**e);
+                return variant.node.disr_expr.map(|e| {
+                    &tcx.map.body(e).value
+                });
             }
         }
         None
-    }
+    };
 
     if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
         let enum_node_id = tcx.map.get_parent(variant_node_id);
@@ -96,21 +97,24 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match tcx.map.find(node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
-                hir::ItemConst(ref ty, ref const_expr) => {
-                    Some((&const_expr, tcx.ast_ty_to_prim_ty(ty)))
+                hir::ItemConst(ref ty, body) => {
+                    Some((&tcx.map.body(body).value,
+                          tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                hir::ConstTraitItem(ref ty, ref expr_option) => {
+                hir::TraitItemKind::Const(ref ty, default) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
                         let trait_id = tcx.map.get_parent(node_id);
                         let trait_id = tcx.map.local_def_id(trait_id);
-                        let default_value = expr_option.as_ref()
-                            .map(|expr| (&**expr, tcx.ast_ty_to_prim_ty(ty)));
+                        let default_value = default.map(|body| {
+                            (&tcx.map.body(body).value,
+                             tcx.ast_ty_to_prim_ty(ty))
+                        });
                         resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
                     } else {
                         // Technically, without knowing anything about the
@@ -125,29 +129,19 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                hir::ImplItemKind::Const(ref ty, ref expr) => {
-                    Some((&expr, tcx.ast_ty_to_prim_ty(ty)))
+                hir::ImplItemKind::Const(ref ty, body) => {
+                    Some((&tcx.map.body(body).value,
+                          tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.borrow().get(&def_id) {
-            Some(&None) => return None,
-            Some(&Some((expr_id, ty))) => {
-                return Some((tcx.map.expect_expr(expr_id), ty));
-            }
-            None => {}
-        }
-        let mut used_substs = false;
-        let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem { body: ref const_expr, .. }, _)) => {
-                Some((&**const_expr, Some(tcx.sess.cstore.item_type(tcx, def_id))))
-            }
-            _ => None
-        };
-        let expr_ty = match tcx.sess.cstore.describe_def(def_id) {
+        let expr_ty = tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
+            (&body.value, Some(tcx.sess.cstore.item_type(tcx, def_id)))
+        });
+        match tcx.sess.cstore.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {
                 let trait_id = tcx.sess.cstore.trait_of_item(def_id);
                 // As mentioned in the comments above for in-crate
@@ -155,8 +149,6 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
                 if let Some(trait_id) = trait_id {
-                    used_substs = true;
-
                     if let Some(substs) = substs {
                         resolve_trait_associated_const(tcx, def_id, expr_ty, trait_id, substs)
                     } else {
@@ -168,70 +160,27 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             },
             Some(Def::Const(..)) => expr_ty,
             _ => None
-        };
-        // If we used the substitutions, particularly to choose an impl
-        // of a trait-associated const, don't cache that, because the next
-        // lookup with the same def_id may yield a different result.
-        if !used_substs {
-            tcx.extern_const_statics
-               .borrow_mut()
-               .insert(def_id, expr_ty.map(|(e, t)| (e.id, t)));
         }
-        expr_ty
     }
 }
 
-fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 def_id: DefId)
-                                                 -> Option<ast::NodeId> {
-    match tcx.extern_const_fns.borrow().get(&def_id) {
-        Some(&ast::DUMMY_NODE_ID) => return None,
-        Some(&fn_id) => return Some(fn_id),
-        None => {}
-    }
-
-    if !tcx.sess.cstore.is_const_fn(def_id) {
-        tcx.extern_const_fns.borrow_mut().insert(def_id, ast::DUMMY_NODE_ID);
-        return None;
-    }
-
-    let fn_id = tcx.sess.cstore.maybe_get_item_ast(tcx, def_id).map(|t| t.1);
-    tcx.extern_const_fns.borrow_mut().insert(def_id,
-                                             fn_id.unwrap_or(ast::DUMMY_NODE_ID));
-    fn_id
-}
-
-pub enum ConstFnNode<'tcx> {
-    Local(FnLikeNode<'tcx>),
-    Inlined(&'tcx InlinedItem)
-}
-
-pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                       -> Option<ConstFnNode<'tcx>>
+fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                                   -> Option<&'tcx hir::Body>
 {
-    let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        node_id
-    } else {
-        if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
-            if let ast_map::NodeInlinedItem(ii) = tcx.map.get(fn_id) {
-                return Some(ConstFnNode::Inlined(ii));
+    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+        FnLikeNode::from_node(tcx.map.get(node_id)).and_then(|fn_like| {
+            if fn_like.constness() == hir::Constness::Const {
+                Some(tcx.map.body(fn_like.body()))
             } else {
-                bug!("Got const fn from external crate, but it's not inlined")
+                None
             }
-        } else {
-            return None;
-        }
-    };
-
-    let fn_like = match FnLikeNode::from_node(tcx.map.get(fn_id)) {
-        Some(fn_like) => fn_like,
-        None => return None
-    };
-
-    if fn_like.constness() == hir::Constness::Const {
-        Some(ConstFnNode::Local(fn_like))
+        })
     } else {
-        None
+        if tcx.sess.cstore.is_const_fn(def_id) {
+            tcx.sess.cstore.maybe_get_item_body(tcx, def_id)
+        } else {
+            None
+        }
     }
 }
 
@@ -864,18 +813,15 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
-          let (arg_defs, body_id) = match lookup_const_fn_by_id(tcx, did) {
-              Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), ii.body.expr_id()),
-              Some(ConstFnNode::Local(fn_like)) =>
-                  (fn_like.decl().inputs.iter()
-                   .map(|arg| match arg.pat.node {
-                       hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
-                       _ => None
-                   }).collect(),
-                   fn_like.body()),
+          let body = match lookup_const_fn_by_id(tcx, did) {
+              Some(body) => body,
               None => signal!(e, NonConstPath),
           };
-          let result = tcx.map.expr(body_id);
+
+          let arg_defs = body.arguments.iter().map(|arg| match arg.pat.node {
+               hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+               _ => None
+           }).collect::<Vec<_>>();
           assert_eq!(arg_defs.len(), args.len());
 
           let mut call_args = DefIdMap();
@@ -893,7 +839,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               }
           }
           debug!("const call({:?})", call_args);
-          eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          eval_const_expr_partial(tcx, &body.value, ty_hint, Some(&call_args))?
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
           Ok(val) => val,
@@ -953,11 +899,12 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
       }
       hir::ExprArray(ref v) => Array(e.id, v.len() as u64),
-      hir::ExprRepeat(_, ref n) => {
+      hir::ExprRepeat(_, n) => {
           let len_hint = ty_hint.checked_or(tcx.types.usize);
+          let n = &tcx.map.body(n).value;
           Repeat(
               e.id,
-              match eval_const_expr_partial(tcx, &n, len_hint, fn_args)? {
+              match eval_const_expr_partial(tcx, n, len_hint, fn_args)? {
                   Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
                   Integral(_) => signal!(e, RepeatCountNotNatural),
                   _ => signal!(e, RepeatCountNotInt),
@@ -1373,7 +1320,8 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
                 if let Def::Local(..) = path.def {
-                    diag.note(&format!("`{}` is a variable", path));
+                    diag.note(&format!("`{}` is a variable",
+                                       tcx.map.node_to_pretty_string(count_expr.id)));
                 }
             }
 

@@ -157,7 +157,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     unsafety: &hir::Unsafety,
                     constness: hir::Constness,
                     abi: &abi::Abi,
-                    gen: &hir::Generics) -> Function {
+                    gen: &hir::Generics,
+                    body: hir::BodyId) -> Function {
         debug!("Visiting fn");
         Function {
             id: item.id,
@@ -172,6 +173,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             unsafety: *unsafety,
             constness: constness,
             abi: *abi,
+            body: body,
         }
     }
 
@@ -410,9 +412,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
             hir::ItemUnion(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, name, sd, gen)),
-            hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
+            hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, body) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
-                                          constness, abi, gen)),
+                                          constness, abi, gen, body)),
             hir::ItemTy(ref ty, ref gen) => {
                 let t = Typedef {
                     ty: ty.clone(),
@@ -456,11 +458,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.constants.push(s);
             },
-            hir::ItemTrait(unsafety, ref gen, ref b, ref items) => {
+            hir::ItemTrait(unsafety, ref gen, ref b, ref item_ids) => {
+                let items = item_ids.iter()
+                                    .map(|ti| self.cx.tcx.map.trait_item(ti.id).clone())
+                                    .collect();
                 let t = Trait {
                     unsafety: unsafety,
                     name: name,
-                    items: items.clone(),
+                    items: items,
                     generics: gen.clone(),
                     bounds: b.iter().cloned().collect(),
                     id: item.id,

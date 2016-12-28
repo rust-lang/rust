@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::subst::Substs;
@@ -19,7 +20,10 @@ use syntax_pos::Span;
 
 #[derive(Clone)]
 pub struct ElisionFailureInfo {
-    pub name: String,
+    /// Where we can find the argument pattern.
+    pub parent: Option<hir::BodyId>,
+    /// The index of the argument in the original definition.
+    pub index: usize,
     pub lifetime_count: usize,
     pub have_bound_regions: bool
 }

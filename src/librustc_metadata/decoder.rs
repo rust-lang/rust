@@ -10,7 +10,7 @@
 
 // Decoding metadata from a single crate's metadata
 
-use astencode::decode_inlined_item;
+use astencode::decode_body;
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
@@ -18,7 +18,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-use rustc::middle::cstore::{InlinedItem, LinkagePreference};
+use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::lang_items;
@@ -32,6 +32,7 @@ use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;
+use std::collections::BTreeMap;
 use std::io;
 use std::mem;
 use std::str;
@@ -819,18 +820,25 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn maybe_get_item_ast(&self,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: DefIndex)
-                              -> Option<&'tcx InlinedItem> {
-        debug!("Looking up item: {:?}", id);
+    pub fn maybe_get_item_body(&self,
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               id: DefIndex)
+                               -> Option<&'tcx hir::Body> {
         if self.is_proc_macro(id) { return None; }
-        let item_doc = self.entry(id);
-        let item_did = self.local_def_id(id);
-        item_doc.ast.map(|ast| {
-            let ast = ast.decode(self);
-            decode_inlined_item(self, tcx, ast, item_did)
+        self.entry(id).ast.map(|ast| {
+            decode_body(self, tcx, self.local_def_id(id), ast.decode(self))
         })
+    }
+
+    pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {
+        self.entry(id).ast.into_iter().flat_map(|ast| {
+            ast.decode(self).nested_bodies.decode(self).map(|body| (body.id(), body))
+        }).collect()
+    }
+
+    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
+        self.entry(id).ast.expect("const item missing `ast`")
+            .decode(self).rvalue_promotable_to_static
     }
 
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {

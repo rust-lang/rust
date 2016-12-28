@@ -189,9 +189,8 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
                                      fn_id: ast::NodeId,
-                                     decl: &hir::FnDecl,
-                                     body: &hir::Expr) {
-    debug!("check_loans(body id={})", body.id);
+                                     body: &hir::Body) {
+    debug!("check_loans(body id={})", body.value.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
     let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
@@ -202,7 +201,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env: &infcx.parameter_environment
     };
-    euv::ExprUseVisitor::new(&mut clcx, &infcx).walk_fn(decl, body);
+    euv::ExprUseVisitor::new(&mut clcx, &infcx).consume_body(body);
 }
 
 #[derive(PartialEq)]

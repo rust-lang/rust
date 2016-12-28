@@ -97,11 +97,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
     fn check_fn(&mut self,
                 cx: &LateContext,
                 _: FnKind,
-                decl: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::FnDecl,
+                body: &hir::Body,
                 _: Span,
                 _: ast::NodeId) {
-        for a in &decl.inputs {
+        for a in &body.arguments {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
         }
     }

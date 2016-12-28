@@ -48,7 +48,7 @@ impl<'a, 'tcx> MirSource {
 
         match tcx.map.get(id) {
             map::NodeItem(&Item { node: ItemConst(..), .. }) |
-            map::NodeTraitItem(&TraitItem { node: ConstTraitItem(..), .. }) |
+            map::NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             map::NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
                 MirSource::Const(id)
             }

@@ -188,7 +188,7 @@ enum SawAbiComponent<'a> {
     SawTraitItem(SawTraitOrImplItemComponent),
     SawImplItem(SawTraitOrImplItemComponent),
     SawStructField,
-    SawVariant,
+    SawVariant(bool),
     SawQPath,
     SawPathSegment,
     SawPathParameters,
@@ -473,12 +473,14 @@ enum SawTraitOrImplItemComponent {
     SawTraitOrImplItemType
 }
 
-fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
+fn saw_trait_item(ti: &TraitItemKind) -> SawTraitOrImplItemComponent {
     match *ti {
-        ConstTraitItem(..) => SawTraitOrImplItemConst,
-        MethodTraitItem(ref sig, ref body) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, body.is_some()),
-        TypeTraitItem(..) => SawTraitOrImplItemType
+        TraitItemKind::Const(..) => SawTraitOrImplItemConst,
+        TraitItemKind::Method(ref sig, TraitMethod::Required(_)) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, false),
+        TraitItemKind::Method(ref sig, TraitMethod::Provided(_)) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, true),
+        TraitItemKind::Type(..) => SawTraitOrImplItemType
     }
 }
 
@@ -584,7 +586,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
                      g: &'tcx Generics,
                      item_id: NodeId) {
         debug!("visit_variant: st={:?}", self.st);
-        SawVariant.hash(self.st);
+        SawVariant(v.node.disr_expr.is_some()).hash(self.st);
         hash_attrs!(self, &v.node.attrs);
         visit::walk_variant(self, v, g, item_id)
     }
@@ -616,7 +618,12 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         // implicitly hashing the discriminant of SawExprComponent.
         hash_span!(self, ex.span, force_span);
         hash_attrs!(self, &ex.attrs);
-        visit::walk_expr(self, ex)
+
+        // Always hash nested constant bodies (e.g. n in `[x; n]`).
+        let hash_bodies = self.hash_bodies;
+        self.hash_bodies = true;
+        visit::walk_expr(self, ex);
+        self.hash_bodies = hash_bodies;
     }
 
     fn visit_stmt(&mut self, s: &'tcx Stmt) {
@@ -686,7 +693,12 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         debug!("visit_ty: st={:?}", self.st);
         SawTy(saw_ty(&t.node)).hash(self.st);
         hash_span!(self, t.span);
-        visit::walk_ty(self, t)
+
+        // Always hash nested constant bodies (e.g. N in `[T; N]`).
+        let hash_bodies = self.hash_bodies;
+        self.hash_bodies = true;
+        visit::walk_ty(self, t);
+        self.hash_bodies = hash_bodies;
     }
 
     fn visit_generics(&mut self, g: &'tcx Generics) {
@@ -1157,8 +1169,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             // These fields are handled separately:
             exported_macros: _,
             items: _,
+            trait_items: _,
             impl_items: _,
-            exprs: _,
+            bodies: _,
         } = *krate;
 
         visit::Visitor::visit_mod(self, module, span, ast::CRATE_NODE_ID);

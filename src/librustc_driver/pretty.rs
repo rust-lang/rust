@@ -47,7 +47,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 use rustc::hir::map as hir_map;
-use rustc::hir::map::{blocks, NodePrinter};
+use rustc::hir::map::blocks;
 use rustc::hir;
 use rustc::hir::print as pprust_hir;
 
@@ -320,7 +320,16 @@ impl<'ast> HirPrinterSupport<'ast> for NoAnn<'ast> {
 }
 
 impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
-impl<'ast> pprust_hir::PpAnn for NoAnn<'ast> {}
+impl<'ast> pprust_hir::PpAnn for NoAnn<'ast> {
+    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+              -> io::Result<()> {
+        if let Some(ref map) = self.ast_map {
+            pprust_hir::PpAnn::nested(map, state, nested)
+        } else {
+            Ok(())
+        }
+    }
+}
 
 struct IdentifiedAnnotation<'ast> {
     sess: &'ast Session,
@@ -393,6 +402,14 @@ impl<'ast> HirPrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
 }
 
 impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
+    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+              -> io::Result<()> {
+        if let Some(ref map) = self.ast_map {
+            pprust_hir::PpAnn::nested(map, state, nested)
+        } else {
+            Ok(())
+        }
+    }
     fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
             pprust_hir::NodeExpr(_) => s.popen(),
@@ -488,6 +505,10 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
 }
 
 impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
+    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+              -> io::Result<()> {
+        pprust_hir::PpAnn::nested(&self.tcx.map, state, nested)
+    }
     fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
             pprust_hir::NodeExpr(_) => s.popen(),
@@ -702,8 +723,8 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let cfg = match code {
         blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
         blocks::Code::FnLike(fn_like) => {
-            let body = tcx.map.expr(fn_like.body());
-            cfg::CFG::new(tcx, body)
+            let body = tcx.map.body(fn_like.body());
+            cfg::CFG::new(tcx, &body.value)
         },
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
@@ -909,11 +930,10 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                                          &mut rdr,
                                                                          box out,
                                                                          annotation.pp_ann(),
-                                                                         true,
-                                                                         Some(ast_map.krate()));
+                                                                         true);
                     for node_id in uii.all_matching_node_ids(ast_map) {
                         let node = ast_map.get(node_id);
-                        pp_state.print_node(&node)?;
+                        pp_state.print_node(node)?;
                         pp::space(&mut pp_state.s)?;
                         let path = annotation.node_path(node_id)
                             .expect("--unpretty missing node paths");

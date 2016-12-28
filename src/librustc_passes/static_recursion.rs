@@ -30,7 +30,7 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
     // variant definitions with the discriminant expression that applies to
     // each one. If the variant uses the default values (starting from `0`),
     // then `None` is stored.
-    discriminant_map: NodeMap<Option<&'ast hir::Expr>>,
+    discriminant_map: NodeMap<Option<hir::BodyId>>,
     detected_recursive_ids: NodeSet,
 }
 
@@ -66,7 +66,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
         match ti.node {
-            hir::ConstTraitItem(_, ref default) => {
+            hir::TraitItemKind::Const(_, ref default) => {
                 if let Some(_) = *default {
                     let mut recursion_visitor = CheckItemRecursionVisitor::new(self, &ti.span);
                     recursion_visitor.visit_trait_item(ti);
@@ -108,7 +108,7 @@ struct CheckItemRecursionVisitor<'a, 'b: 'a, 'ast: 'b> {
     root_span: &'b Span,
     sess: &'b Session,
     ast_map: &'b ast_map::Map<'ast>,
-    discriminant_map: &'a mut NodeMap<Option<&'ast hir::Expr>>,
+    discriminant_map: &'a mut NodeMap<Option<hir::BodyId>>,
     idstack: Vec<ast::NodeId>,
     detected_recursive_ids: &'a mut NodeSet,
 }
@@ -189,7 +189,7 @@ impl<'a, 'b: 'a, 'ast: 'b> CheckItemRecursionVisitor<'a, 'b, 'ast> {
             variant_stack.push(variant.node.data.id());
             // When we find an expression, every variant currently on the stack
             // is affected by that expression.
-            if let Some(ref expr) = variant.node.disr_expr {
+            if let Some(expr) = variant.node.disr_expr {
                 for id in &variant_stack {
                     self.discriminant_map.insert(*id, Some(expr));
                 }
@@ -226,19 +226,15 @@ impl<'a, 'b: 'a, 'ast: 'b> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'b, '
                      _: &'ast hir::Generics,
                      _: ast::NodeId) {
         let variant_id = variant.node.data.id();
-        let maybe_expr;
-        if let Some(get_expr) = self.discriminant_map.get(&variant_id) {
-            // This is necessary because we need to let the `discriminant_map`
-            // borrow fall out of scope, so that we can reborrow farther down.
-            maybe_expr = (*get_expr).clone();
-        } else {
+        let maybe_expr = *self.discriminant_map.get(&variant_id).unwrap_or_else(|| {
             span_bug!(variant.span,
                       "`check_static_recursion` attempted to visit \
                       variant with unknown discriminant")
-        }
+        });
         // If `maybe_expr` is `None`, that's because no discriminant is
         // specified that affects this variant. Thus, no risk of recursion.
         if let Some(expr) = maybe_expr {
+            let expr = &self.ast_map.body(expr).value;
             self.with_item_id_pushed(expr.id, |v| intravisit::walk_expr(v, expr), expr.span);
         }
     }

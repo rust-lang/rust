@@ -88,13 +88,6 @@ pub struct CrateMetadata {
     pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
-pub struct CachedInlinedItem {
-    /// The NodeId of the RootInlinedParent HIR map entry
-    pub inlined_root: ast::NodeId,
-    /// The local NodeId of the inlined entity
-    pub item_id: ast::NodeId,
-}
-
 pub struct CStore {
     pub dep_graph: DepGraph,
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
@@ -104,8 +97,7 @@ pub struct CStore {
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<FxHashSet<DefIndex>>,
     pub dllimport_foreign_items: RefCell<FxHashSet<DefIndex>>,
-    pub inlined_item_cache: RefCell<DefIdMap<Option<CachedInlinedItem>>>,
-    pub defid_for_inlined_node: RefCell<NodeMap<DefId>>,
+    pub inlined_item_cache: RefCell<DefIdMap<Option<ast::NodeId>>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
@@ -121,7 +113,6 @@ impl CStore {
             dllimport_foreign_items: RefCell::new(FxHashSet()),
             visible_parent_map: RefCell::new(FxHashMap()),
             inlined_item_cache: RefCell::new(FxHashMap()),
-            defid_for_inlined_node: RefCell::new(FxHashMap()),
         }
     }
 

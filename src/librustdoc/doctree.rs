@@ -156,6 +156,7 @@ pub struct Function {
     pub whence: Span,
     pub generics: hir::Generics,
     pub abi: abi::Abi,
+    pub body: hir::BodyId,
 }
 
 pub struct Typedef {
@@ -174,7 +175,7 @@ pub struct Typedef {
 pub struct Static {
     pub type_: P<hir::Ty>,
     pub mutability: hir::Mutability,
-    pub expr: P<hir::Expr>,
+    pub expr: hir::BodyId,
     pub name: Name,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub vis: hir::Visibility,
@@ -186,7 +187,7 @@ pub struct Static {
 
 pub struct Constant {
     pub type_: P<hir::Ty>,
-    pub expr: P<hir::Expr>,
+    pub expr: hir::BodyId,
     pub name: Name,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub vis: hir::Visibility,

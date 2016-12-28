@@ -13,43 +13,30 @@
 fn main() {
     let n = 1;
     let a = [0; n];
-    //~^ ERROR constant evaluation error
-    //~| non-constant path in constant expression
+    //~^ ERROR attempt to use a non-constant value in a constant [E0435]
     let b = [0; ()];
     //~^ ERROR mismatched types
     //~| expected type `usize`
     //~| found type `()`
     //~| expected usize, found ()
-    //~| ERROR expected `usize` for repeat count, found tuple [E0306]
-    //~| expected `usize`
     let c = [0; true];
     //~^ ERROR mismatched types
     //~| expected usize, found bool
-    //~| ERROR expected `usize` for repeat count, found boolean [E0306]
-    //~| expected `usize`
     let d = [0; 0.5];
     //~^ ERROR mismatched types
     //~| expected type `usize`
     //~| found type `{float}`
     //~| expected usize, found floating-point variable
-    //~| ERROR expected `usize` for repeat count, found float [E0306]
-    //~| expected `usize`
     let e = [0; "foo"];
     //~^ ERROR mismatched types
     //~| expected type `usize`
     //~| found type `&'static str`
     //~| expected usize, found reference
-    //~| ERROR expected `usize` for repeat count, found string literal [E0306]
-    //~| expected `usize`
     let f = [0; -4_isize];
-    //~^ ERROR constant evaluation error
-    //~| expected usize, found isize
-    //~| ERROR mismatched types
+    //~^ ERROR mismatched types
     //~| expected usize, found isize
     let f = [0_usize; -1_isize];
-    //~^ ERROR constant evaluation error
-    //~| expected usize, found isize
-    //~| ERROR mismatched types
+    //~^ ERROR mismatched types
     //~| expected usize, found isize
     struct G {
         g: (),
@@ -59,6 +46,4 @@ fn main() {
     //~| expected type `usize`
     //~| found type `main::G`
     //~| expected usize, found struct `main::G`
-    //~| ERROR expected `usize` for repeat count, found struct [E0306]
-    //~| expected `usize`
 }

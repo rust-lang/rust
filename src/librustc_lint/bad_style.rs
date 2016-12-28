@@ -243,7 +243,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 cx: &LateContext,
                 fk: FnKind,
                 _: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::Body,
                 span: Span,
                 id: ast::NodeId) {
         match fk {
@@ -271,12 +271,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, trait_item: &hir::TraitItem) {
-        if let hir::MethodTraitItem(_, None) = trait_item.node {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref names)) = item.node {
             self.check_snake_case(cx,
                                   "trait method",
-                                  &trait_item.name.as_str(),
-                                  Some(trait_item.span));
+                                  &item.name.as_str(),
+                                  Some(item.span));
+            for name in names {
+                self.check_snake_case(cx, "variable", &name.node.as_str(), Some(name.span));
+            }
         }
     }
 
@@ -288,14 +291,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        // Exclude parameter names from foreign functions
-        let parent_node = cx.tcx.map.get_parent_node(p.id);
-        if let hir::map::NodeForeignItem(item) = cx.tcx.map.get(parent_node) {
-            if let hir::ForeignItemFn(..) = item.node {
-                return;
-            }
-        }
-
         if let &PatKind::Binding(_, _, ref path1, _) = &p.node {
             self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
         }
@@ -363,7 +358,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
 
     fn check_trait_item(&mut self, cx: &LateContext, ti: &hir::TraitItem) {
         match ti.node {
-            hir::ConstTraitItem(..) => {
+            hir::TraitItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "associated constant", ti.name, ti.span);
             }
             _ => {}

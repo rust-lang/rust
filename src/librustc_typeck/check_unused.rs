@@ -50,6 +50,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
         }
     }
 
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    }
+
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

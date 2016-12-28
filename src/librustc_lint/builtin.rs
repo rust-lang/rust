@@ -222,7 +222,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
                 cx: &LateContext,
                 fk: FnKind<'tcx>,
                 _: &hir::FnDecl,
-                _: &hir::Expr,
+                _: &hir::Body,
                 span: Span,
                 _: ast::NodeId) {
         match fk {
@@ -240,11 +240,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, trait_item: &hir::TraitItem) {
-        if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+        if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
             if sig.unsafety == hir::Unsafety::Unsafe {
                 cx.span_lint(UNSAFE_CODE,
-                             trait_item.span,
+                             item.span,
                              "declaration of an `unsafe` method")
             }
         }
@@ -374,12 +374,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
             hir::ItemUnion(..) => "a union",
-            hir::ItemTrait(.., ref items) => {
+            hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
                     self.private_traits.insert(it.id);
-                    for itm in items {
-                        self.private_traits.insert(itm.id);
+                    for trait_item_ref in trait_item_refs {
+                        self.private_traits.insert(trait_item_ref.id.node_id);
                     }
                     return;
                 }
@@ -418,9 +418,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let desc = match trait_item.node {
-            hir::ConstTraitItem(..) => "an associated constant",
-            hir::MethodTraitItem(..) => "a trait method",
-            hir::TypeTraitItem(..) => "an associated type",
+            hir::TraitItemKind::Const(..) => "an associated constant",
+            hir::TraitItemKind::Method(..) => "a trait method",
+            hir::TraitItemKind::Type(..) => "an associated type",
         };
 
         self.check_missing_docs_attrs(cx,
@@ -674,7 +674,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 cx: &LateContext,
                 fn_kind: FnKind,
                 _: &hir::FnDecl,
-                blk: &hir::Expr,
+                body: &hir::Body,
                 sp: Span,
                 id: ast::NodeId) {
         let method = match fn_kind {
@@ -712,7 +712,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // to have behaviour like the above, rather than
         // e.g. accidentally recurring after an assert.
 
-        let cfg = cfg::CFG::new(cx.tcx, blk);
+        let cfg = cfg::CFG::new(cx.tcx, &body.value);
 
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;

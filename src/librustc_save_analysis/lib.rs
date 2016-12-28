@@ -349,7 +349,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     match item.node {
                         hir::ItemImpl(.., ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&rustc::hir::print::ty_to_string(&ty));
+                            result.push_str(&self.tcx.map.node_to_pretty_string(ty.id));
 
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;

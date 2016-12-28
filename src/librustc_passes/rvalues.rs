@@ -39,7 +39,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: intravisit::FnKind<'tcx>,
                 fd: &'tcx hir::FnDecl,
-                b: hir::ExprId,
+                b: hir::BodyId,
                 s: Span,
                 fn_id: ast::NodeId) {
         // FIXME (@jroesch) change this to be an inference context
@@ -50,9 +50,9 @@ impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
                 tcx: infcx.tcx,
                 param_env: &param_env
             };
-            let body = infcx.tcx.map.expr(b);
+            let body = infcx.tcx.map.body(b);
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
-            euv.walk_fn(fd, body);
+            euv.consume_body(body);
         });
         intravisit::walk_fn(self, fk, fd, b, s, fn_id)
     }

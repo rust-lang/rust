@@ -127,7 +127,6 @@ use syntax_pos::Span;
 
 use hir::Expr;
 use hir;
-use hir::print::{expr_to_string, block_to_string};
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
@@ -188,7 +187,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, id: NodeId) {
+                b: hir::BodyId, s: Span, id: NodeId) {
         visit_fn(self, fk, fd, b, s, id);
     }
     fn visit_local(&mut self, l: &'tcx hir::Local) { visit_local(self, l); }
@@ -354,13 +353,9 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.ir.tcx.map)
+        NestedVisitorMap::None
     }
 
-    fn visit_fn(&mut self, _: FnKind<'tcx>, _: &'tcx hir::FnDecl,
-                _: hir::ExprId, _: Span, _: NodeId) {
-        // do not check contents of nested fns
-    }
     fn visit_local(&mut self, l: &'tcx hir::Local) {
         check_local(self, l);
     }
@@ -375,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
                           fk: FnKind<'tcx>,
                           decl: &'tcx hir::FnDecl,
-                          body_id: hir::ExprId,
+                          body_id: hir::BodyId,
                           sp: Span,
                           id: ast::NodeId) {
     debug!("visit_fn");
@@ -385,7 +380,9 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
-    for arg in &decl.inputs {
+    let body = ir.tcx.map.body(body_id);
+
+    for arg in &body.arguments {
         arg.pat.each_binding(|_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
             let name = path1.node;
@@ -408,16 +405,14 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
         clean_exit_var: fn_maps.add_variable(CleanExit)
     };
 
-    let body = ir.tcx.map.expr(body_id);
-
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, specials);
-    let entry_ln = lsets.compute(body);
+    let entry_ln = lsets.compute(&body.value);
 
     // check for various error conditions
-    lsets.visit_expr(body);
+    lsets.visit_body(body);
     lsets.check_ret(id, sp, fk, entry_ln, body);
-    lsets.warn_about_unused_args(decl, entry_ln);
+    lsets.warn_about_unused_args(body, entry_ln);
 }
 
 fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
@@ -823,7 +818,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for body, {}", expr_to_string(body));
+        debug!("compute: using id for body, {}", self.ir.tcx.map.node_to_pretty_string(body.id));
 
         let exit_ln = self.s.exit_ln;
         let entry_ln: LiveNode = self.with_loop_nodes(body.id, exit_ln, exit_ln, |this| {
@@ -916,7 +911,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", expr_to_string(expr));
+        debug!("propagate_through_expr: {}", self.ir.tcx.map.node_to_pretty_string(expr.id));
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
@@ -935,14 +930,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprClosure(.., blk_id, _) => {
               debug!("{} is an ExprClosure",
-                     expr_to_string(expr));
+                     self.ir.tcx.map.node_to_pretty_string(expr.id));
 
               /*
               The next-node for a break is the successor of the entire
               loop. The next-node for a continue is the top of this loop.
               */
               let node = self.live_node(expr.id, expr.span);
-              self.with_loop_nodes(blk_id.node_id(), succ, node, |this| {
+              self.with_loop_nodes(blk_id.node_id, succ, node, |this| {
 
                  // the construction of a closure itself is not important,
                  // but we have to consider the closed over variables.
@@ -1088,11 +1083,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_exprs(exprs, succ)
           }
 
-          hir::ExprRepeat(ref element, ref count) => {
-            let succ = self.propagate_through_expr(&count, succ);
-            self.propagate_through_expr(&element, succ)
-          }
-
           hir::ExprStruct(_, ref fields, ref with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
             fields.iter().rev().fold(succ, |succ, field| {
@@ -1149,7 +1139,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
           hir::ExprType(ref e, _) |
-          hir::ExprUnary(_, ref e) => {
+          hir::ExprUnary(_, ref e) |
+          hir::ExprRepeat(ref e, _) => {
             self.propagate_through_expr(&e, succ)
           }
 
@@ -1315,7 +1306,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, block_to_string(body));
+               expr.id, self.ir.tcx.map.node_to_pretty_string(body.id));
 
         let cond_ln = match kind {
             LoopLoop => ln,
@@ -1443,7 +1434,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  sp: Span,
                  fk: FnKind,
                  entry_ln: LiveNode,
-                 body: &hir::Expr)
+                 body: &hir::Body)
     {
         let fn_ty = if let FnKind::Closure(_) = fk {
             self.ir.tcx.tables().node_id_to_type(id)
@@ -1460,7 +1451,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                self.ir.tcx.region_maps.call_site_extent(id, body.id),
+                self.ir.tcx.region_maps.call_site_extent(id, body.value.id),
                 &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
@@ -1510,8 +1501,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_unused_args(&self, decl: &hir::FnDecl, entry_ln: LiveNode) {
-        for arg in &decl.inputs {
+    fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
+        for arg in &body.arguments {
             arg.pat.each_binding(|_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.

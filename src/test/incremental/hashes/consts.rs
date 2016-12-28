@@ -66,8 +66,10 @@ const CONST_CHANGE_TYPE_2: Option<u64> = None;
 const CONST_CHANGE_VALUE_1: i16 = 1;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_1: i16 = 2;
@@ -78,8 +80,10 @@ const CONST_CHANGE_VALUE_1: i16 = 2;
 const CONST_CHANGE_VALUE_2: i16 = 1 + 1;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_2: i16 = 1 + 2;
@@ -89,8 +93,10 @@ const CONST_CHANGE_VALUE_2: i16 = 1 + 2;
 const CONST_CHANGE_VALUE_3: i16 = 2 + 3;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_3: i16 = 2 * 3;
@@ -100,8 +106,10 @@ const CONST_CHANGE_VALUE_3: i16 = 2 * 3;
 const CONST_CHANGE_VALUE_4: i16 = 1 + 2 * 3;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_4: i16 = 1 + 2 * 4;

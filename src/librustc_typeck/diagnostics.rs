@@ -3866,45 +3866,6 @@ extern "platform-intrinsic" {
 ```
 "##,
 
-E0513: r##"
-The type of the variable couldn't be found out.
-
-Erroneous code example:
-
-```compile_fail,E0513
-use std::mem;
-
-unsafe {
-    let size = mem::size_of::<u32>();
-    mem::transmute_copy::<u32, [u8; size]>(&8_8);
-    // error: no type for local variable
-}
-```
-
-To fix this error, please use a constant size instead of `size`. To make
-this error more obvious, you could run:
-
-```compile_fail,E0080
-use std::mem;
-
-unsafe {
-    mem::transmute_copy::<u32, [u8; mem::size_of::<u32>()]>(&8_8);
-    // error: constant evaluation error
-}
-```
-
-So now, you can fix your code by setting the size directly:
-
-```
-use std::mem;
-
-unsafe {
-    mem::transmute_copy::<u32, [u8; 4]>(&8_8);
-    // `u32` is 4 bytes so we replace the `mem::size_of` call with its size
-}
-```
-"##,
-
 E0516: r##"
 The `typeof` keyword is currently reserved but unimplemented.
 Erroneous code example:

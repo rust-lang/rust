@@ -527,7 +527,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let report_unexpected_def = |def: Def| {
             span_err!(tcx.sess, pat.span, E0533,
                       "expected unit struct/variant or constant, found {} `{}`",
-                      def.kind_name(), qpath);
+                      def.kind_name(),
+                      hir::print::to_string(&tcx.map, |s| s.print_qpath(qpath, false)));
         };
 
         // Resolve the path and check the definition for errors.
@@ -568,7 +569,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         let report_unexpected_def = |def: Def| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              def.kind_name(), qpath);
+                              def.kind_name(),
+                              hir::print::to_string(&tcx.map, |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
             on_error();

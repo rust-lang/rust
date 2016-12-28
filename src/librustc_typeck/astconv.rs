@@ -50,10 +50,9 @@
 
 use rustc_const_eval::eval_length;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use hir::{self, SelfKind};
+use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
-use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -227,6 +226,7 @@ pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 }
 
 fn report_elision_failure(
+    tcx: TyCtxt,
     db: &mut DiagnosticBuilder,
     params: Vec<ElisionFailureInfo>)
 {
@@ -241,13 +241,14 @@ fn report_elision_failure(
 
     for (i, info) in elided_params.into_iter().enumerate() {
         let ElisionFailureInfo {
-            name, lifetime_count: n, have_bound_regions
+            parent, index, lifetime_count: n, have_bound_regions
         } = info;
 
-        let help_name = if name.is_empty() {
-            format!("argument {}", i + 1)
+        let help_name = if let Some(body) = parent {
+            let arg = &tcx.map.body(body).arguments[index];
+            format!("`{}`", tcx.map.node_to_pretty_string(arg.pat.id))
         } else {
-            format!("`{}`", name)
+            format!("argument {}", index + 1)
         };
 
         m.push_str(&(if n == 1 {
@@ -315,7 +316,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     err.span_label(ampersand_span, &format!("expected lifetime parameter"));
 
                     if let Some(params) = params {
-                        report_elision_failure(&mut err, params);
+                        report_elision_failure(self.tcx(), &mut err, params);
                     }
                     err.emit();
                     ty::ReStatic
@@ -540,15 +541,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// corresponding to each input type/pattern.
     fn find_implied_output_region<I>(&self,
                                      input_tys: &[Ty<'tcx>],
-                                     input_pats: I) -> ElidedLifetime
-        where I: Iterator<Item=String>
+                                     parent: Option<hir::BodyId>,
+                                     input_indices: I) -> ElidedLifetime
+        where I: Iterator<Item=usize>
     {
         let tcx = self.tcx();
         let mut lifetimes_for_params = Vec::with_capacity(input_tys.len());
         let mut possible_implied_output_region = None;
         let mut lifetimes = 0;
 
-        for input_type in input_tys.iter() {
+        for (input_type, index) in input_tys.iter().zip(input_indices) {
             let mut regions = FxHashSet();
             let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
@@ -564,11 +566,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 possible_implied_output_region = regions.iter().cloned().next();
             }
 
-            // Use a placeholder for `name` because computing it can be
-            // expensive and we don't want to do it until we know it's
-            // necessary.
             lifetimes_for_params.push(ElisionFailureInfo {
-                name: String::new(),
+                parent: parent,
+                index: index,
                 lifetime_count: regions.len(),
                 have_bound_regions: have_bound_regions
             });
@@ -577,11 +577,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if lifetimes == 1 {
             Ok(*possible_implied_output_region.unwrap())
         } else {
-            // Fill in the expensive `name` fields now that we know they're
-            // needed.
-            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats) {
-                info.name = input_pat;
-            }
             Err(Some(lifetimes_for_params))
         }
     }
@@ -618,8 +613,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
         }));
-        let input_params = iter::repeat(String::new()).take(inputs.len());
-        let implied_output_region = self.find_implied_output_region(&inputs, input_params);
+        let input_params = 0..inputs.len();
+        let implied_output_region = self.find_implied_output_region(&inputs, None, input_params);
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
@@ -689,7 +684,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             _ => {
                 span_fatal!(self.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                            path);
+                            self.tcx().map.node_to_pretty_string(trait_ref.ref_id));
             }
         }
     }
@@ -976,7 +971,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let mut err = struct_span_err!(tcx.sess, ty.span, E0178,
                                                "expected a path on the left-hand side \
                                                 of `+`, not `{}`",
-                                               pprust::ty_to_string(ty));
+                                               tcx.map.node_to_pretty_string(ty.id));
                 err.span_label(ty.span, &format!("expected a path"));
                 let hi = bounds.iter().map(|x| match *x {
                     hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
@@ -988,22 +983,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     expn_id: ty.span.expn_id,
                 });
                 match (&ty.node, full_span) {
-                    (&hir::TyRptr(None, ref mut_ty), Some(full_span)) => {
-                        let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
+                    (&hir::TyRptr(ref lifetime, ref mut_ty), Some(full_span)) => {
+                        let ty_str = hir::print::to_string(&tcx.map, |s| {
+                            use syntax::print::pp::word;
+                            use syntax::print::pprust::PrintState;
+
+                            word(&mut s.s, "&")?;
+                            s.print_opt_lifetime(lifetime)?;
+                            s.print_mutability(mut_ty.mutbl)?;
+                            s.popen()?;
+                            s.print_type(&mut_ty.ty)?;
+                            s.print_bounds(" +", bounds)?;
+                            s.pclose()
+                        });
                         err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                            format!("&{}({} +{})",
-                                                    mutbl_str,
-                                                    pprust::ty_to_string(&mut_ty.ty),
-                                                    pprust::bounds_to_string(bounds)));
-                    }
-                    (&hir::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
-                        let mutbl_str = if mut_ty.mutbl == hir::MutMutable { "mut " } else { "" };
-                        err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                            format!("&{} {}({} +{})",
-                                                    pprust::lifetime_to_string(lt),
-                                                    mutbl_str,
-                                                    pprust::ty_to_string(&mut_ty.ty),
-                                                    pprust::bounds_to_string(bounds)));
+                                            ty_str);
                     }
 
                     _ => {
@@ -1572,6 +1566,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                               bf.abi,
                                                               None,
                                                               &bf.decl,
+                                                              None,
                                                               anon_scope,
                                                               anon_scope);
 
@@ -1664,8 +1659,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 };
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
-            hir::TyArray(ref ty, ref e) => {
-                if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {
+            hir::TyArray(ref ty, length) => {
+                let e = &tcx.map.body(length).value;
+                if let Ok(length) = eval_length(tcx.global_tcx(), e, "array length") {
                     tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
                 } else {
                     self.tcx().types.err
@@ -1695,26 +1691,28 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn ty_of_arg(&self,
                      rscope: &RegionScope,
-                     a: &hir::Arg,
+                     ty: &hir::Ty,
                      expected_ty: Option<Ty<'tcx>>)
                      -> Ty<'tcx>
     {
-        match a.ty.node {
+        match ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
-            hir::TyInfer => self.ty_infer(a.ty.span),
-            _ => self.ast_ty_to_ty(rscope, &a.ty),
+            hir::TyInfer => self.ty_infer(ty.span),
+            _ => self.ast_ty_to_ty(rscope, ty),
         }
     }
 
     pub fn ty_of_method(&self,
                         sig: &hir::MethodSig,
-                        untransformed_self_ty: Ty<'tcx>,
+                        opt_self_value_ty: Option<Ty<'tcx>>,
+                        body: Option<hir::BodyId>,
                         anon_scope: Option<AnonTypeScope>)
                         -> &'tcx ty::BareFnTy<'tcx> {
         self.ty_of_method_or_bare_fn(sig.unsafety,
                                      sig.abi,
-                                     Some(untransformed_self_ty),
+                                     opt_self_value_ty,
                                      &sig.decl,
+                                     body,
                                      None,
                                      anon_scope)
     }
@@ -1723,16 +1721,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                          unsafety: hir::Unsafety,
                          abi: abi::Abi,
                          decl: &hir::FnDecl,
+                         body: hir::BodyId,
                          anon_scope: Option<AnonTypeScope>)
                          -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, None, anon_scope)
+        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, Some(body), None, anon_scope)
     }
 
     fn ty_of_method_or_bare_fn(&self,
                                unsafety: hir::Unsafety,
                                abi: abi::Abi,
-                               opt_untransformed_self_ty: Option<Ty<'tcx>>,
+                               opt_self_value_ty: Option<Ty<'tcx>>,
                                decl: &hir::FnDecl,
+                               body: Option<hir::BodyId>,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
                                -> &'tcx ty::BareFnTy<'tcx>
@@ -1743,38 +1743,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // declaration are bound to that function type.
         let rb = MaybeWithAnonTypes::new(BindingRscope::new(), arg_anon_scope);
 
-        // `implied_output_region` is the region that will be assumed for any
-        // region parameters in the return type. In accordance with the rules for
-        // lifetime elision, we can determine it in two ways. First (determined
-        // here), if self is by-reference, then the implied output region is the
-        // region of the self parameter.
-        let (self_ty, explicit_self) = match (opt_untransformed_self_ty, decl.get_self()) {
-            (Some(untransformed_self_ty), Some(explicit_self)) => {
-                let self_type = self.determine_self_type(&rb, untransformed_self_ty,
-                                                         &explicit_self);
-                (Some(self_type), Some(ExplicitSelf::determine(untransformed_self_ty, self_type)))
-            }
-            _ => (None, None),
-        };
+        let input_tys: Vec<Ty> =
+            decl.inputs.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
 
-        // HACK(eddyb) replace the fake self type in the AST with the actual type.
-        let arg_params = if self_ty.is_some() {
-            &decl.inputs[1..]
-        } else {
-            &decl.inputs[..]
-        };
-        let arg_tys: Vec<Ty> =
-            arg_params.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
+        let has_self = opt_self_value_ty.is_some();
+        let explicit_self = opt_self_value_ty.map(|self_value_ty| {
+            ExplicitSelf::determine(self_value_ty, input_tys[0])
+        });
 
-        // Second, if there was exactly one lifetime (either a substitution or a
-        // reference) in the arguments, then any anonymous regions in the output
-        // have that lifetime.
         let implied_output_region = match explicit_self {
+            // `implied_output_region` is the region that will be assumed for any
+            // region parameters in the return type. In accordance with the rules for
+            // lifetime elision, we can determine it in two ways. First (determined
+            // here), if self is by-reference, then the implied output region is the
+            // region of the self parameter.
             Some(ExplicitSelf::ByReference(region, _)) => Ok(*region),
+
+            // Second, if there was exactly one lifetime (either a substitution or a
+            // reference) in the arguments, then any anonymous regions in the output
+            // have that lifetime.
             _ => {
-                self.find_implied_output_region(&arg_tys,
-                                                arg_params.iter()
-                                                    .map(|a| pprust::pat_to_string(&a.pat)))
+                let arg_tys = &input_tys[has_self as usize..];
+                let arg_params = has_self as usize..input_tys.len();
+                self.find_implied_output_region(arg_tys, body, arg_params)
 
             }
         };
@@ -1793,35 +1784,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             unsafety: unsafety,
             abi: abi,
             sig: ty::Binder(self.tcx().mk_fn_sig(
-                self_ty.into_iter().chain(arg_tys),
+                input_tys.into_iter(),
                 output_ty,
                 decl.variadic
             )),
         })
-    }
-
-    fn determine_self_type<'a>(&self,
-                               rscope: &RegionScope,
-                               untransformed_self_ty: Ty<'tcx>,
-                               explicit_self: &hir::ExplicitSelf)
-                               -> Ty<'tcx>
-    {
-        match explicit_self.node {
-            SelfKind::Value(..) => untransformed_self_ty,
-            SelfKind::Region(ref lifetime, mutability) => {
-                let region =
-                    self.opt_ast_region_to_region(
-                                             rscope,
-                                             explicit_self.span,
-                                             lifetime);
-                self.tcx().mk_ref(region,
-                    ty::TypeAndMut {
-                        ty: untransformed_self_ty,
-                        mutbl: mutability
-                    })
-            }
-            SelfKind::Explicit(ref ast_type, _) => self.ast_ty_to_ty(rscope, &ast_type)
-        }
     }
 
     pub fn ty_of_closure(&self,

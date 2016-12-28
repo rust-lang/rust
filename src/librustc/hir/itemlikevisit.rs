@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Item, ImplItem};
+use super::{Item, ImplItem, TraitItem};
 use super::intravisit::Visitor;
 
 /// The "item-like visitor" visitor defines only the top-level methods
@@ -58,6 +58,7 @@ use super::intravisit::Visitor;
 /// needed.
 pub trait ItemLikeVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir Item);
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem);
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem);
 }
 
@@ -78,6 +79,10 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
 {
     fn visit_item(&mut self, item: &'hir Item) {
         self.visitor.visit_item(item);
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem) {
+        self.visitor.visit_trait_item(trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem) {

@@ -26,7 +26,6 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
-use rustc::hir::print as pprust;
 use rustc::hir;
 use rustc::infer::type_variable::TypeVariableOrigin;
 
@@ -266,7 +265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let msg = if let Some(callee) = rcvr_expr {
                     format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                             msg,
-                            pprust::expr_to_string(callee))
+                            self.tcx.map.node_to_pretty_string(callee.id))
                 } else {
                     msg
                 };
@@ -461,6 +460,9 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                     }
                     _ => {}
                 }
+            }
+
+            fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
             }
 
             fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {

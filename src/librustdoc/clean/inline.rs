@@ -10,6 +10,8 @@
 
 //! Support for inlining external documentation into the current AST.
 
+use std::collections::BTreeMap;
+use std::io;
 use std::iter::once;
 
 use syntax::ast;
@@ -17,11 +19,8 @@ use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::print as pprust;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
-
-use rustc_const_eval::lookup_const_by_id;
 
 use core::{DocContext, DocAccessLevels};
 use doctree;
@@ -345,8 +344,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         match item.kind {
             ty::AssociatedKind::Const => {
                 let default = if item.defaultness.has_value() {
-                    Some(pprust::expr_to_string(
-                        lookup_const_by_id(tcx, item.def_id, None).unwrap().0))
+                    Some(print_inlined_const(cx, item.def_id))
                 } else {
                     None
                 };
@@ -476,17 +474,33 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
     }
 }
 
-fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
-    let (expr, ty) = lookup_const_by_id(cx.tcx, did, None).unwrap_or_else(|| {
-        panic!("expected lookup_const_by_id to succeed for {:?}", did);
-    });
-    debug!("converting constant expr {:?} to snippet", expr);
-    let sn = pprust::expr_to_string(expr);
-    debug!("got snippet {}", sn);
+struct InlinedConst {
+    nested_bodies: BTreeMap<hir::BodyId, hir::Body>
+}
 
+impl hir::print::PpAnn for InlinedConst {
+    fn nested(&self, state: &mut hir::print::State, nested: hir::print::Nested)
+              -> io::Result<()> {
+        if let hir::print::Nested::Body(body) = nested {
+            state.print_expr(&self.nested_bodies[&body].value)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
+    let body = cx.tcx.sess.cstore.maybe_get_item_body(cx.tcx, did).unwrap();
+    let inlined = InlinedConst {
+        nested_bodies: cx.tcx.sess.cstore.item_body_nested_bodies(did)
+    };
+    hir::print::to_string(&inlined, |s| s.print_expr(&body.value))
+}
+
+fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
     clean::Constant {
-        type_: ty.map(|t| t.clean(cx)).unwrap_or_else(|| cx.tcx.item_type(did).clean(cx)),
-        expr: sn
+        type_: cx.tcx.item_type(did).clean(cx),
+        expr: print_inlined_const(cx, did)
     }
 }
 

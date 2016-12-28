@@ -33,7 +33,6 @@ use util::nodemap::NodeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use hir;
-use hir::print::lifetime_to_string;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -190,7 +189,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
-                hir::ForeignItemFn(ref decl, ref generics) => {
+                hir::ForeignItemFn(ref decl, _, ref generics) => {
                     this.visit_early_late(item.id, decl, generics, |this| {
                         intravisit::walk_foreign_item(this, item);
                     })
@@ -206,7 +205,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, fn_id: ast::NodeId) {
+                b: hir::BodyId, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -266,7 +265,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // methods in an impl can reuse label names.
         let saved = replace(&mut self.labels_in_fn, vec![]);
 
-        if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
+        if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) =
+                trait_item.node {
             self.visit_early_late(
                 trait_item.id,
                 &sig.decl, &sig.generics,
@@ -407,7 +407,7 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
+fn extract_labels(ctxt: &mut LifetimeContext, b: hir::BodyId) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
@@ -419,7 +419,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
         scope: ctxt.scope,
         labels_in_fn: &mut ctxt.labels_in_fn,
     };
-    gather.visit_expr(ctxt.hir_map.expr(b));
+    gather.visit_body(ctxt.hir_map.body(b));
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn add_scope_and_walk_fn(&mut self,
                              fk: FnKind<'tcx>,
                              fd: &'tcx hir::FnDecl,
-                             fb: hir::ExprId,
+                             fb: hir::BodyId,
                              _span: Span,
                              fn_id: ast::NodeId) {
         match fk {
@@ -522,8 +522,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // `self.labels_in_fn`.
         extract_labels(self, fb);
 
-        self.with(FnScope { fn_id: fn_id, body_id: fb.node_id(), s: self.scope },
-                  |_old_scope, this| this.visit_body(fb))
+        self.with(FnScope { fn_id: fn_id, body_id: fb.node_id, s: self.scope },
+                  |_old_scope, this| this.visit_nested_body(fb))
     }
 
     // FIXME(#37666) this works around a limitation in the region inferencer
@@ -821,9 +821,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                        probably a bug in syntax::fold");
         }
 
-        debug!("lifetime_ref={:?} id={:?} resolved to {:?} span={:?}",
-               lifetime_to_string(lifetime_ref),
-               lifetime_ref.id,
+        debug!("{} resolved to {:?} span={:?}",
+               self.hir_map.node_to_string(lifetime_ref.id),
                def,
                self.sess.codemap().span_to_string(lifetime_ref.span));
         self.map.defs.insert(lifetime_ref.id, def);
@@ -860,8 +859,8 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
     let mut constrained_by_input = ConstrainedCollector { regions: FxHashSet() };
-    for arg in &decl.inputs {
-        constrained_by_input.visit_ty(&arg.ty);
+    for arg_ty in &decl.inputs {
+        constrained_by_input.visit_ty(arg_ty);
     }
 
     let mut appears_in_output = AllCollector {

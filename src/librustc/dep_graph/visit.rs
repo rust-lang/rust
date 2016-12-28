@@ -45,6 +45,16 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
             debug!("Ended task {:?}", task_id);
         }
 
+        fn visit_trait_item(&mut self, i: &'tcx hir::TraitItem) {
+            let trait_item_def_id = self.tcx.map.local_def_id(i.id);
+            let task_id = (self.dep_node_fn)(trait_item_def_id);
+            let _task = self.tcx.dep_graph.in_task(task_id.clone());
+            debug!("Started task {:?}", task_id);
+            self.tcx.dep_graph.read(DepNode::Hir(trait_item_def_id));
+            self.visitor.visit_trait_item(i);
+            debug!("Ended task {:?}", task_id);
+        }
+
         fn visit_impl_item(&mut self, i: &'tcx hir::ImplItem) {
             let impl_item_def_id = self.tcx.map.local_def_id(i.id);
             let task_id = (self.dep_node_fn)(impl_item_def_id);

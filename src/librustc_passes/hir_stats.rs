@@ -115,6 +115,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_item(nested_item)
     }
 
+    fn visit_nested_trait_item(&mut self, trait_item_id: hir::TraitItemId) {
+        let nested_trait_item = self.krate.unwrap().trait_item(trait_item_id);
+        self.visit_trait_item(nested_trait_item)
+    }
+
     fn visit_nested_impl_item(&mut self, impl_item_id: hir::ImplItemId) {
         let nested_impl_item = self.krate.unwrap().impl_item(impl_item_id);
         self.visit_impl_item(nested_impl_item)
@@ -172,7 +177,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_fn(&mut self,
                 fk: hir_visit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: hir::ExprId,
+                b: hir::BodyId,
                 s: Span,
                 id: NodeId) {
         self.record("FnDecl", Id::None, fd);

@@ -328,11 +328,12 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                 self.worklist.extend(enum_def.variants.iter()
                                                       .map(|variant| variant.node.data.id()));
             }
-            hir::ItemTrait(.., ref trait_items) => {
-                for trait_item in trait_items {
+            hir::ItemTrait(.., ref trait_item_refs) => {
+                for trait_item_ref in trait_item_refs {
+                    let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.node {
-                        hir::ConstTraitItem(_, Some(_)) |
-                        hir::MethodTraitItem(_, Some(_)) => {
+                        hir::TraitItemKind::Const(_, Some(_)) |
+                        hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
                             if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
                             }
@@ -352,6 +353,10 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
             }
             _ => ()
         }
+    }
+
+    fn visit_trait_item(&mut self, _item: &hir::TraitItem) {
+        // ignore: we are handling this in `visit_item` above
     }
 
     fn visit_impl_item(&mut self, _item: &hir::ImplItem) {
@@ -546,19 +551,19 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         match impl_item.node {
-            hir::ImplItemKind::Const(_, ref expr) => {
+            hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "associated const");
                 }
-                intravisit::walk_expr(self, expr)
+                self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Method(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
-                self.visit_body(body_id)
+                self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Type(..) => {}
         }
@@ -567,15 +572,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait item itself.
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         match trait_item.node {
-            hir::ConstTraitItem(_, Some(ref body)) => {
-                intravisit::walk_expr(self, body)
+            hir::TraitItemKind::Const(_, Some(body_id)) |
+            hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
+                self.visit_nested_body(body_id)
             }
-            hir::MethodTraitItem(_, Some(body_id)) => {
-                self.visit_body(body_id)
-            }
-            hir::ConstTraitItem(_, None) |
-            hir::MethodTraitItem(_, None) |
-            hir::TypeTraitItem(..) => {}
+            hir::TraitItemKind::Const(_, None) |
+            hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
+            hir::TraitItemKind::Type(..) => {}
         }
     }
 }

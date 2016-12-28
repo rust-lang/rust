@@ -202,8 +202,6 @@ use rustc::mir::{self, Location};
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
 
-use rustc_const_eval as const_eval;
-
 use syntax::abi::Abi;
 use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
@@ -344,19 +342,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             recursion_depth_reset = None;
 
-            // Scan the MIR in order to find function calls, closures, and
-            // drop-glue
-            let mir = scx.tcx().item_mir(def_id);
-
-            let empty_substs = scx.empty_substs_for_def_id(def_id);
-            let visitor = MirNeighborCollector {
-                scx: scx,
-                mir: &mir,
-                output: &mut neighbors,
-                param_substs: empty_substs
-            };
-
-            visit_mir_and_promoted(visitor, &mir);
+            collect_neighbours(scx, Instance::mono(scx, def_id), &mut neighbors);
         }
         TransItem::Fn(instance) => {
             // Keep track of the monomorphization recursion depth
@@ -365,18 +351,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                                                                recursion_depths));
             check_type_length_limit(scx.tcx(), instance);
 
-            // Scan the MIR in order to find function calls, closures, and
-            // drop-glue
-            let mir = scx.tcx().item_mir(instance.def);
-
-            let visitor = MirNeighborCollector {
-                scx: scx,
-                mir: &mir,
-                output: &mut neighbors,
-                param_substs: instance.substs
-            };
-
-            visit_mir_and_promoted(visitor, &mir);
+            collect_neighbours(scx, instance, &mut neighbors);
         }
     }
 
@@ -563,33 +538,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     // This is not a callee, but we still have to look for
                     // references to `const` items
                     if let mir::Literal::Item { def_id, substs } = constant.literal {
-                        let tcx = self.scx.tcx();
                         let substs = monomorphize::apply_param_substs(self.scx,
                                                                       self.param_substs,
                                                                       &substs);
 
-                        // If the constant referred to here is an associated
-                        // item of a trait, we need to resolve it to the actual
-                        // constant in the corresponding impl. Luckily
-                        // const_eval::lookup_const_by_id() does that for us.
-                        if let Some((expr, _)) = const_eval::lookup_const_by_id(tcx,
-                                                                                def_id,
-                                                                                Some(substs)) {
-                            // The hir::Expr we get here is the initializer of
-                            // the constant, what we really want is the item
-                            // DefId.
-                            let const_node_id = tcx.map.get_parent(expr.id);
-                            let def_id = if tcx.map.is_inlined_node_id(const_node_id) {
-                                tcx.sess.cstore.defid_for_inlined_node(const_node_id).unwrap()
-                            } else {
-                                tcx.map.local_def_id(const_node_id)
-                            };
-
-                            collect_const_item_neighbours(self.scx,
-                                                          def_id,
-                                                          substs,
-                                                          self.output);
-                        }
+                        let instance = Instance::new(def_id, substs).resolve_const(self.scx);
+                        collect_neighbours(self.scx, instance, self.output);
                     }
 
                     None
@@ -1122,6 +1076,11 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
         }
     }
 
+    fn visit_trait_item(&mut self, _: &'v hir::TraitItem) {
+        // Even if there's a default body with no explicit generics,
+        // it's still generic over some `Self: Trait`, so not a root.
+    }
+
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig {
@@ -1228,29 +1187,20 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
     }
 }
 
-// There are no translation items for constants themselves but their
-// initializers might still contain something that produces translation items,
-// such as cast that introduce a new vtable.
-fn collect_const_item_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                           def_id: DefId,
-                                           substs: &'tcx Substs<'tcx>,
-                                           output: &mut Vec<TransItem<'tcx>>)
+/// Scan the MIR in order to find function calls, closures, and drop-glue
+fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                instance: Instance<'tcx>,
+                                output: &mut Vec<TransItem<'tcx>>)
 {
-    // Scan the MIR in order to find function calls, closures, and
-    // drop-glue
-    let mir = scx.tcx().item_mir(def_id);
+    let mir = scx.tcx().item_mir(instance.def);
 
-    let visitor = MirNeighborCollector {
+    let mut visitor = MirNeighborCollector {
         scx: scx,
         mir: &mir,
         output: output,
-        param_substs: substs
+        param_substs: instance.substs
     };
 
-    visit_mir_and_promoted(visitor, &mir);
-}
-
-fn visit_mir_and_promoted<'tcx, V: MirVisitor<'tcx>>(mut visitor: V, mir: &mir::Mir<'tcx>) {
     visitor.visit_mir(&mir);
     for promoted in &mir.promoted {
         visitor.visit_mir(promoted);

@@ -57,12 +57,12 @@ use rustc::util::nodemap::NodeMap;
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn closure_analyze(&self, body: &'gcx hir::Expr) {
+    pub fn closure_analyze(&self, body: &'gcx hir::Body) {
         let mut seed = SeedBorrowKind::new(self);
-        seed.visit_expr(body);
+        seed.visit_body(body);
 
         let mut adjust = AdjustBorrowKind::new(self, seed.temp_closure_kinds);
-        adjust.visit_expr(body);
+        adjust.visit_body(body);
 
         // it's our job to process these.
         assert!(self.deferred_call_resolutions.borrow().is_empty());
@@ -79,13 +79,15 @@ struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
             hir::ExprClosure(cc, _, body_id, _) => {
-                self.check_closure(expr, cc, body_id);
+                let body = self.fcx.tcx.map.body(body_id);
+                self.visit_body(body);
+                self.check_closure(expr, cc);
             }
 
             _ => { }
@@ -102,8 +104,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
 
     fn check_closure(&mut self,
                      expr: &hir::Expr,
-                     capture_clause: hir::CaptureClause,
-                     _body_id: hir::ExprId)
+                     capture_clause: hir::CaptureClause)
     {
         let closure_def_id = self.fcx.tcx.map.local_def_id(expr.id);
         if !self.fcx.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
@@ -156,23 +157,21 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     fn analyze_closure(&mut self,
                        id: ast::NodeId,
                        span: Span,
-                       decl: &hir::FnDecl,
-                       body_id: hir::ExprId) {
+                       body: &hir::Body) {
         /*!
          * Analysis starting point.
          */
 
-        debug!("analyze_closure(id={:?}, body.id={:?})", id, body_id);
+        debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id());
 
         {
-            let body = self.fcx.tcx.map.expr(body_id);
             let mut euv =
                 euv::ExprUseVisitor::with_options(self,
                                                   self.fcx,
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true
                                                   });
-            euv.walk_fn(decl, body);
+            euv.consume_body(body);
         }
 
         // Now that we've analyzed the closure, we know how each
@@ -491,18 +490,21 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_fn(&mut self,
                 fn_kind: intravisit::FnKind<'gcx>,
                 decl: &'gcx hir::FnDecl,
-                body: hir::ExprId,
+                body: hir::BodyId,
                 span: Span,
                 id: ast::NodeId)
     {
         intravisit::walk_fn(self, fn_kind, decl, body, span, id);
-        self.analyze_closure(id, span, decl, body);
+
+        let body = self.fcx.tcx.map.body(body);
+        self.visit_body(body);
+        self.analyze_closure(id, span, body);
     }
 }
 

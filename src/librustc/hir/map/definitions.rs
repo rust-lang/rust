@@ -220,7 +220,6 @@ impl DefPath {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
@@ -339,7 +338,7 @@ impl Definitions {
                 data,
                 self.table.def_key(self.node_to_def_index[&node_id]));
 
-        assert!(parent.is_some() ^ (data == DefPathData::CrateRoot));
+        assert_eq!(parent.is_some(), data != DefPathData::CrateRoot);
 
         // Find a unique DefKey. This basically means incrementing the disambiguator
         // until we get no match.

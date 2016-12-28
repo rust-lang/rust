@@ -679,7 +679,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.ty.span, input_ty);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
@@ -713,7 +713,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
-                        hir::ForeignItemFn(ref decl, _) => {
+                        hir::ForeignItemFn(ref decl, _, _) => {
                             vis.check_foreign_fn(ni.id, decl);
                         }
                         hir::ForeignItemStatic(ref ty, _) => {
