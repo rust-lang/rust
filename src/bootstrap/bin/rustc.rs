@@ -67,6 +67,7 @@ fn main() {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
@@ -83,7 +84,7 @@ fn main() {
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set"));
+        cmd.arg("--sysroot").arg(sysroot);
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of

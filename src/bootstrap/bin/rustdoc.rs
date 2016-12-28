@@ -25,6 +25,7 @@ fn main() {
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTC_LIBDIR").expect("RUSTC_LIBDIR was not set");
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir));
@@ -35,6 +36,8 @@ fn main() {
         .arg(format!("stage{}", stage))
         .arg("--cfg")
         .arg("dox")
+        .arg("--sysroot")
+        .arg(sysroot)
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
     std::process::exit(match cmd.status() {
