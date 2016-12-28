@@ -19,7 +19,7 @@ use sys;
 use sys_common::{AsInnerMut, AsInner};
 
 /// Windows-specific extensions to `File`
-#[unstable(feature = "file_offset", issue = "35918")]
+#[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Seeks to a given position and reads a number of bytes.
     ///
@@ -35,7 +35,7 @@ pub trait FileExt {
     /// Note that similar to `File::read`, it is not an error to return with a
     /// short read. When returning from such a short read, the file pointer is
     /// still updated.
-    #[unstable(feature = "file_offset", issue = "35918")]
+    #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
     /// Seeks to a given position and writes a number of bytes.
@@ -52,11 +52,11 @@ pub trait FileExt {
     /// Note that similar to `File::write`, it is not an error to return a
     /// short write. When returning from such a short write, the file pointer
     /// is still updated.
-    #[unstable(feature = "file_offset", issue = "35918")]
+    #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 }
 
-#[unstable(feature = "file_offset", issue = "35918")]
+#[stable(feature = "file_offset", since = "1.15.0")]
 impl FileExt for fs::File {
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)

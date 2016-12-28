@@ -135,6 +135,7 @@ pub struct EnumData {
     pub variants: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 /// Data for extern crates.
@@ -169,6 +170,7 @@ pub struct FunctionData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 /// Data about a function call.
@@ -253,6 +255,7 @@ pub struct MethodData {
     pub parent: Option<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 /// Data for modules.
@@ -267,6 +270,7 @@ pub struct ModData {
     pub items: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 /// Data for a reference to a module.
@@ -290,6 +294,7 @@ pub struct StructData {
     pub fields: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -303,6 +308,7 @@ pub struct StructVariantData {
     pub scope: NodeId,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -316,6 +322,7 @@ pub struct TraitData {
     pub items: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -329,6 +336,7 @@ pub struct TupleVariantData {
     pub scope: NodeId,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 /// Data for a typedef.
@@ -342,6 +350,7 @@ pub struct TypeDefData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 /// Data for a reference to a type or trait.
@@ -386,6 +395,7 @@ pub struct VariableData {
     pub type_value: String,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -404,4 +414,29 @@ pub struct VariableRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
+}
+
+
+/// Encodes information about the signature of a definition. This should have
+/// enough information to create a nice display about a definition without
+/// access to the source code.
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct Signature {
+    pub span: Span,
+    pub text: String,
+    // These identify the main identifier for the defintion as byte offsets into
+    // `text`. E.g., of `foo` in `pub fn foo(...)`
+    pub ident_start: usize,
+    pub ident_end: usize,
+    pub defs: Vec<SigElement>,
+    pub refs: Vec<SigElement>,
+}
+
+/// An element of a signature. `start` and `end` are byte offsets into the `text`
+/// of the parent `Signature`.
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct SigElement {
+    pub id: DefId,
+    pub start: usize,
+    pub end: usize,
 }

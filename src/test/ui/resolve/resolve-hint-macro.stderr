@@ -1,0 +1,8 @@
+error[E0423]: expected function, found macro `assert`
+  --> $DIR/resolve-hint-macro.rs:12:5
+   |
+12 |     assert(true);
+   |     ^^^^^^ did you mean `assert!(...)`?
+
+error: aborting due to previous error
+

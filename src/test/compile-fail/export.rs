@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name
 mod foo {
     pub fn x(y: isize) { log(debug, y); }
+    //~^ ERROR unresolved function `log`
+    //~| ERROR unresolved value `debug`
     fn z(y: isize) { log(debug, y); }
+    //~^ ERROR unresolved function `log`
+    //~| ERROR unresolved value `debug`
 }
 
-fn main() { foo::z(10); }
+fn main() { foo::z(10); } //~ ERROR function `z` is private

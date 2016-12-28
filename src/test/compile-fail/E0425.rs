@@ -10,7 +10,7 @@
 
 trait Foo {
     fn bar() {
-        Self; //~ ERROR E0425
+        elf; //~ ERROR E0425
     }
 }
 

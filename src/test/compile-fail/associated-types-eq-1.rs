@@ -17,7 +17,7 @@ pub trait Foo {
 }
 
 fn foo2<I: Foo>(x: I) {
-    let _: A = x.boo(); //~ERROR undefined or not in scope
+    let _: A = x.boo(); //~ ERROR unresolved type `A`
 }
 
 pub fn main() {}

@@ -1,0 +1,45 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/token-error-correct-3.rs:29:9
+   |
+29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+   |         ^
+   |
+note: unclosed delimiter
+  --> $DIR/token-error-correct-3.rs:23:21
+   |
+23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
+   |                     ^
+
+error: expected one of `,`, `.`, `?`, or an operator, found `;`
+  --> $DIR/token-error-correct-3.rs:23:35
+   |
+23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
+   |                                   ^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
+  --> $DIR/token-error-correct-3.rs:29:9
+   |
+29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+   |         ^
+
+error[E0425]: unresolved function `is_directory`
+  --> $DIR/token-error-correct-3.rs:21:13
+   |
+21 |         if !is_directory(path.as_ref()) { //~ ERROR: unresolved function `is_directory`
+   |             ^^^^^^^^^^^^ no resolution found
+
+error[E0308]: mismatched types
+  --> $DIR/token-error-correct-3.rs:25:13
+   |
+25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found enum `std::result::Result`
+   |
+   = note: expected type `()`
+   = note:    found type `std::result::Result<bool, std::io::Error>`
+   = help: here are some functions which might fulfill your needs:
+ - .unwrap()
+ - .unwrap_err()
+ - .unwrap_or_default()
+
+error: aborting due to previous error
+

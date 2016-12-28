@@ -9,16 +9,11 @@
 // except according to those terms.
 
 use attributes;
-use arena::TypedArena;
 use llvm::{ValueRef, get_params};
 use rustc::traits;
-use abi::FnType;
-use base::*;
-use build::*;
-use callee::Callee;
+use callee::{Callee, CalleeData};
 use common::*;
 use consts;
-use debuginfo::DebugLoc;
 use declare;
 use glue;
 use machine;
@@ -32,15 +27,15 @@ use rustc::ty;
 const VTABLE_OFFSET: usize = 3;
 
 /// Extracts a method from a trait object's vtable, at the specified index.
-pub fn get_virtual_method<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      llvtable: ValueRef,
-                                      vtable_index: usize)
-                                      -> ValueRef {
+pub fn get_virtual_method<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                                    llvtable: ValueRef,
+                                    vtable_index: usize)
+                                    -> ValueRef {
     // Load the data pointer from the object.
     debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
            vtable_index, Value(llvtable));
 
-    Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]))
+    bcx.load(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]))
 }
 
 /// Generate a shim function that allows an object type like `SomeTrait` to
@@ -67,36 +62,47 @@ pub fn get_virtual_method<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                    callee: Callee<'tcx>)
                                    -> ValueRef {
-    let _icx = push_ctxt("trans_object_shim");
-    let tcx = ccx.tcx();
-
     debug!("trans_object_shim({:?})", callee);
 
-    let (sig, abi, function_name) = match callee.ty.sty {
-        ty::TyFnDef(def_id, substs, f) => {
+    let function_name = match callee.ty.sty {
+        ty::TyFnDef(def_id, substs, _) => {
             let instance = Instance::new(def_id, substs);
-            (&f.sig, f.abi, instance.symbol_name(ccx.shared()))
+            instance.symbol_name(ccx.shared())
         }
         _ => bug!()
     };
 
-    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
-    block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
-    let mut bcx = fcx.init(false);
+    let fcx = FunctionContext::new(ccx, llfn);
+    let bcx = fcx.get_entry_block();
 
-    let dest = fcx.llretslotptr.get();
-    let llargs = get_params(fcx.llfn);
-    bcx = callee.call(bcx, DebugLoc::None,
-                      &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).bcx;
+    let mut llargs = get_params(fcx.llfn);
+    let fn_ret = callee.ty.fn_ret();
+    let fn_ty = callee.direct_fn_type(ccx, &[]);
 
-    fcx.finish(bcx, DebugLoc::None);
+    let fn_ptr = match callee.data {
+        CalleeData::Virtual(idx) => {
+            let fn_ptr = get_virtual_method(&bcx,
+                llargs.remove(fn_ty.ret.is_indirect() as usize + 1), idx);
+            let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
+            bcx.pointercast(fn_ptr, llty)
+        },
+        _ => bug!("trans_object_shim called with non-virtual callee"),
+    };
+    let llret = bcx.call(fn_ptr, &llargs, None);
+    fn_ty.apply_attrs_callsite(llret);
+
+    if fn_ret.0.is_never() {
+        bcx.unreachable();
+    } else {
+        if fn_ty.ret.is_indirect() || fn_ty.ret.is_ignore() {
+            bcx.ret_void();
+        } else {
+            bcx.ret(llret);
+        }
+    }
 
     llfn
 }
@@ -115,7 +121,6 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             -> ValueRef
 {
     let tcx = ccx.tcx();
-    let _icx = push_ctxt("meth::get_vtable");
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 

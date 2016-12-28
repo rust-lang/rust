@@ -154,8 +154,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_path(&mut self, path: &'a Path, id: NodeId) {
-        if path.global && path.segments.len() > 0 {
-            let ident = path.segments[0].identifier;
+        if path.segments.len() >= 2 && path.is_global() {
+            let ident = path.segments[1].identifier;
             if token::Ident(ident).is_path_segment_keyword() {
                 self.session.add_lint(lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
                                       id,
@@ -171,7 +171,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match item.node {
             ItemKind::Use(ref view_path) => {
                 let path = view_path.node.path();
-                if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
+                if path.segments.iter().any(|segment| segment.parameters.is_some()) {
                     self.err_handler()
                         .span_err(path.span, "type or lifetime parameters in import path");
                 }
@@ -275,7 +275,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_vis(&mut self, vis: &'a Visibility) {
         match *vis {
             Visibility::Restricted { ref path, .. } => {
-                if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
+                if !path.segments.iter().all(|segment| segment.parameters.is_none()) {
                     self.err_handler()
                         .span_err(path.span, "type or lifetime parameters in visibility path");
                 }

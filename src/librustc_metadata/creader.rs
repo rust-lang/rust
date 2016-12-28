@@ -22,6 +22,7 @@ use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
+use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::middle::cstore::NativeLibrary;
 use rustc::hir::map::Definitions;
@@ -297,10 +298,14 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
+        let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
+            crate_root.def_path_table.decode(&metadata)
+        });
+
         let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
-            key_map: metadata.load_key_map(crate_root.index),
+            def_path_table: def_path_table,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
             }),

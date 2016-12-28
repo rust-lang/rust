@@ -178,7 +178,6 @@ pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
 
 pub fn walk_macro_def<'a, V: Visitor<'a>>(visitor: &mut V, macro_def: &'a MacroDef) {
     visitor.visit_ident(macro_def.span, macro_def.ident);
-    walk_opt_ident(visitor, macro_def.span, macro_def.imported_from);
     walk_list!(visitor, visit_attribute, &macro_def.attrs);
 }
 
@@ -384,7 +383,9 @@ pub fn walk_path_segment<'a, V: Visitor<'a>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'a PathSegment) {
     visitor.visit_ident(path_span, segment.identifier);
-    visitor.visit_path_parameters(path_span, &segment.parameters);
+    if let Some(ref parameters) = segment.parameters {
+        visitor.visit_path_parameters(path_span, parameters);
+    }
 }
 
 pub fn walk_path_parameters<'a, V>(visitor: &mut V,

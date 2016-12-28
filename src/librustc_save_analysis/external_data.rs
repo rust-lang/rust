@@ -15,7 +15,7 @@ use syntax::ast::NodeId;
 use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
-use data::{self, Visibility};
+use data::{self, Visibility, SigElement};
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
@@ -97,6 +97,7 @@ pub struct EnumData {
     pub variants: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::EnumData {
@@ -113,6 +114,7 @@ impl Lower for data::EnumData {
             variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -176,6 +178,7 @@ pub struct FunctionData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::FunctionData {
@@ -193,6 +196,7 @@ impl Lower for data::FunctionData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -341,6 +345,7 @@ pub struct MethodData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::MethodData {
@@ -358,6 +363,7 @@ impl Lower for data::MethodData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -374,6 +380,7 @@ pub struct ModData {
     pub items: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::ModData {
@@ -390,6 +397,7 @@ impl Lower for data::ModData {
             items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -428,6 +436,7 @@ pub struct StructData {
     pub fields: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::StructData {
@@ -445,6 +454,7 @@ impl Lower for data::StructData {
             fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -460,6 +470,7 @@ pub struct StructVariantData {
     pub scope: DefId,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::StructVariantData {
@@ -476,6 +487,7 @@ impl Lower for data::StructVariantData {
             scope: make_def_id(self.scope, &tcx.map),
             parent: self.parent,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -491,6 +503,7 @@ pub struct TraitData {
     pub items: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::TraitData {
@@ -507,6 +520,7 @@ impl Lower for data::TraitData {
             items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -522,6 +536,7 @@ pub struct TupleVariantData {
     pub scope: DefId,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Signature,
 }
 
 impl Lower for data::TupleVariantData {
@@ -538,6 +553,7 @@ impl Lower for data::TupleVariantData {
             scope: make_def_id(self.scope, &tcx.map),
             parent: self.parent,
             docs: self.docs,
+            sig: self.sig.lower(tcx),
         }
     }
 }
@@ -553,6 +569,7 @@ pub struct TypeDefData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 impl Lower for data::TypeDefData {
@@ -568,6 +585,7 @@ impl Lower for data::TypeDefData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
+            sig: self.sig.map(|s| s.lower(tcx)),
         }
     }
 }
@@ -656,6 +674,7 @@ pub struct VariableData {
     pub parent: Option<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 impl Lower for data::VariableData {
@@ -674,6 +693,7 @@ impl Lower for data::VariableData {
             parent: self.parent,
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.map(|s| s.lower(tcx)),
         }
     }
 }
@@ -697,6 +717,33 @@ impl Lower for data::VariableRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
             ref_id: self.ref_id,
+        }
+    }
+}
+
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct Signature {
+    pub span: SpanData,
+    pub text: String,
+    // These identify the main identifier for the defintion as byte offsets into
+    // `text`. E.g., of `foo` in `pub fn foo(...)`
+    pub ident_start: usize,
+    pub ident_end: usize,
+    pub defs: Vec<SigElement>,
+    pub refs: Vec<SigElement>,
+}
+
+impl Lower for data::Signature {
+    type Target = Signature;
+
+    fn lower(self, tcx: TyCtxt) -> Signature {
+        Signature {
+            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            text: self.text,
+            ident_start: self.ident_start,
+            ident_end: self.ident_end,
+            defs: self.defs,
+            refs: self.refs,
         }
     }
 }

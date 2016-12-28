@@ -56,7 +56,7 @@ pub trait CommandExt {
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
-    #[unstable(feature = "process_exec", issue = "31398")]
+    #[stable(feature = "process_exec", since = "1.15.0")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
 

@@ -35,21 +35,53 @@ use time::SystemTime;
 ///
 /// # Examples
 ///
+/// Create a new file and write bytes to it:
+///
 /// ```no_run
-/// use std::io::prelude::*;
 /// use std::fs::File;
+/// use std::io::prelude::*;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut f = try!(File::create("foo.txt"));
-/// try!(f.write_all(b"Hello, world!"));
-///
-/// let mut f = try!(File::open("foo.txt"));
-/// let mut s = String::new();
-/// try!(f.read_to_string(&mut s));
-/// assert_eq!(s, "Hello, world!");
+/// let mut file = try!(File::create("foo.txt"));
+/// try!(file.write_all(b"Hello, world!"));
 /// # Ok(())
 /// # }
 /// ```
+///
+/// Read the contents of a file into a `String`:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::prelude::*;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let mut file = try!(File::open("foo.txt"));
+/// let mut contents = String::new();
+/// try!(file.read_to_string(&mut contents));
+/// assert_eq!(contents, "Hello, world!");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// It can be more efficient to read the contents of a file with a buffered
+/// [`Read`]er. This can be accomplished with [`BufReader<R>`]:
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::BufReader;
+/// use std::io::prelude::*;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let file = try!(File::open("foo.txt"));
+/// let mut buf_reader = BufReader::new(file);
+/// let mut contents = String::new();
+/// try!(buf_reader.read_to_string(&mut contents));
+/// assert_eq!(contents, "Hello, world!");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// [`BufReader`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -140,7 +172,7 @@ pub struct DirEntry(fs_imp::DirEntry);
 ///             .create(true)
 ///             .open("foo.txt");
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
@@ -168,6 +200,7 @@ pub struct FileType(fs_imp::FileType);
 ///
 /// This builder also supports platform-specific options.
 #[stable(feature = "dir_builder", since = "1.6.0")]
+#[derive(Debug)]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
@@ -831,6 +864,21 @@ impl Metadata {
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
         self.0.created().map(FromInner::from_inner)
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Metadata {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Metadata")
+            .field("file_type", &self.file_type())
+            .field("is_dir", &self.is_dir())
+            .field("is_file", &self.is_file())
+            .field("permissions", &self.permissions())
+            .field("modified", &self.modified())
+            .field("accessed", &self.accessed())
+            .field("created", &self.created())
+            .finish()
     }
 }
 
@@ -1751,6 +1799,16 @@ mod tests {
         }
     ) }
 
+    #[cfg(windows)]
+    macro_rules! error { ($e:expr, $s:expr) => (
+        match $e {
+            Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
+            Err(ref err) => assert!(err.raw_os_error() == Some($s),
+                                    format!("`{}` did not have a code of `{}`", err, $s))
+        }
+    ) }
+
+    #[cfg(unix)]
     macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
@@ -1771,12 +1829,9 @@ mod tests {
 
         match symlink_file(r"nonexisting_target", link) {
             Ok(_) => true,
-            Err(ref err) =>
-                if err.to_string().contains("A required privilege is not held by the client.") {
-                    false
-                } else {
-                    true
-                }
+            // ERROR_PRIVILEGE_NOT_HELD = 1314
+            Err(ref err) if err.raw_os_error() == Some(1314) => false,
+            Err(_) => true,
         }
     }
 
@@ -1807,12 +1862,10 @@ mod tests {
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open(filename);
 
-        if cfg!(unix) {
-            error!(result, "No such file or directory");
-        }
-        if cfg!(windows) {
-            error!(result, "The system cannot find the file specified");
-        }
+        #[cfg(unix)]
+        error!(result, "No such file or directory");
+        #[cfg(windows)]
+        error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
 
     #[test]
@@ -1822,12 +1875,10 @@ mod tests {
 
         let result = fs::remove_file(filename);
 
-        if cfg!(unix) {
-            error!(result, "No such file or directory");
-        }
-        if cfg!(windows) {
-            error!(result, "The system cannot find the file specified");
-        }
+        #[cfg(unix)]
+        error!(result, "No such file or directory");
+        #[cfg(windows)]
+        error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
 
     #[test]
@@ -2582,8 +2633,10 @@ mod tests {
         let mut a = OO::new(); a.append(true);
         let mut ra = OO::new(); ra.read(true).append(true);
 
-        let invalid_options = if cfg!(windows) { "The parameter is incorrect" }
-                              else { "Invalid argument" };
+        #[cfg(windows)]
+        let invalid_options = 87; // ERROR_INVALID_PARAMETER
+        #[cfg(unix)]
+        let invalid_options = "Invalid argument";
 
         // Test various combinations of creation modes and access modes.
         //

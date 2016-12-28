@@ -579,11 +579,7 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
 fn path_node(ids: Vec<Ident>) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
-        global: false,
-        segments: ids.into_iter().map(|identifier| ast::PathSegment {
-            identifier: identifier,
-            parameters: ast::PathParameters::none(),
-        }).collect()
+        segments: ids.into_iter().map(Into::into).collect(),
     }
 }
 

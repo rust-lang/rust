@@ -42,7 +42,7 @@
 // gdb-command:continue
 
 // gdb-command:print x
-// gdbg-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, __0 = 0, __1 = 2088533116, __2 = 2088533116}}
+// gdbg-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, [...]}}
 // gdbr-check:$7 = by_value_non_immediate_argument::Enum::Case1{x: 0, y: 8970181431921507452}
 // gdb-command:continue
 

@@ -26,8 +26,7 @@ fn main() {
     assert_eq!(size_of::<E>(), 1);
     assert_eq!(size_of::<Option<E>>(), 1);
     assert_eq!(size_of::<Result<E, ()>>(), 1);
-    assert_eq!(size_of::<S>(), 4);
-    assert_eq!(size_of::<Option<S>>(), 4);
+    assert_eq!(size_of::<Option<S>>(), size_of::<S>());
     let enone = None::<E>;
     let esome = Some(E::A);
     if let Some(..) = enone {

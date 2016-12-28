@@ -31,7 +31,7 @@ use ext::base;
 use ext::tt::macro_parser;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::lexer;
-use parse;
+use parse::{self, Directory};
 use parse::token::{self, Token, Lit, Nonterminal};
 use print::pprust;
 use symbol::Symbol;
@@ -218,7 +218,11 @@ impl TokenTree {
         let diag = &cx.parse_sess().span_diagnostic;
         // `None` is because we're not interpolating
         let arg_rdr = lexer::new_tt_reader(diag, None, tts.iter().cloned().collect());
-        macro_parser::parse(cx.parse_sess(), arg_rdr, mtch)
+        let directory = Directory {
+            path: cx.current_expansion.module.directory.clone(),
+            ownership: cx.current_expansion.directory_ownership,
+        };
+        macro_parser::parse(cx.parse_sess(), arg_rdr, mtch, Some(directory))
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.

@@ -1,5 +1,3 @@
-@import "normalize.css";
-
 /**
  * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
@@ -52,13 +50,15 @@
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+	/* Avoid using locally installed font because bad versions are in circulation:
+	 * see https://github.com/rust-lang/rust/issues/24355 */
+	src: url("SourceCodePro-Regular.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.woff") format('woff');
 }
 
 * {
@@ -523,20 +523,20 @@ body.blur > :not(#help) {
 	padding: 20px;
 }
 
-em.stab {
-	display: inline-block;
+.stab {
+	display: table;
 	border-width: 1px;
 	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
 	font-size: 90%;
-	font-style: normal;
 }
-em.stab p {
+.stab p {
 	display: inline;
 }
 
 .module-item .stab {
+	display: inline;
 	border-width: 0;
 	padding: 0;
 	margin: 0;

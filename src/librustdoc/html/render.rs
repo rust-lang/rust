@@ -591,7 +591,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: Escape(&shorter(item.doc_value())).to_string(),
+                desc: plain_summary_line(item.doc_value()),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -629,7 +629,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
-        Escape(&shorter(module.doc_value())).to_string()
+        plain_summary_line(module.doc_value())
     }).unwrap_or(String::new());
 
     let mut crate_data = BTreeMap::new();
@@ -1064,7 +1064,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::").to_string(),
-                            desc: Escape(&shorter(item.doc_value())).to_string(),
+                            desc: plain_summary_line(item.doc_value()),
                             parent: parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
@@ -1468,6 +1468,13 @@ impl<'a> Item<'a> {
                 return None;
             }
         } else {
+            // Macros from other libraries get special filenames which we can
+            // safely ignore.
+            if self.item.source.filename.starts_with("<") &&
+               self.item.source.filename.ends_with("macros>") {
+                return None;
+            }
+
             let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(ref name, ref src, Local)) => (name, src),
                 Some(&(ref name, ref src, Remote(ref s))) => {
@@ -1655,8 +1662,13 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
 }
 
 fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
-    for stability in short_stability(item, cx, true) {
-        write!(w, "<div class='stability'>{}</div>", stability)?;
+    let stabilities = short_stability(item, cx, true);
+    if !stabilities.is_empty() {
+        write!(w, "<div class='stability'>")?;
+        for stability in stabilities {
+            write!(w, "{}", stability)?;
+        }
+        write!(w, "</div>")?;
     }
     Ok(())
 }
@@ -1855,7 +1867,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let text = format!("Deprecated{}{}", since, MarkdownHtml(&deprecated_reason));
-            stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+            stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
         if stab.level == stability::Unstable {
@@ -1880,7 +1892,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 String::new()
             };
             let text = format!("Unstable{}{}", unstable_extra, MarkdownHtml(&unstable_reason));
-            stability.push(format!("<em class='stab unstable'>{}</em>", text))
+            stability.push(format!("<div class='stab unstable'>{}</div>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
         let note = if show_reason && !depr.note.is_empty() {
@@ -1895,7 +1907,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         };
 
         let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
-        stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+        stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
     stability

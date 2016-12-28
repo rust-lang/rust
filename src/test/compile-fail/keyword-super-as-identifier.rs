@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let super = "foo"; //~ ERROR unresolved unit struct/variant or constant `super`
+    let super = "foo"; //~ ERROR failed to resolve. There are too many initial `super`s
 }

@@ -36,7 +36,8 @@ fn main() {
     // targets, which means we have to build the alloc_jemalloc crate
     // for targets like emscripten, even if we don't use it.
     if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
-       target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") {
+       target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") ||
+       target.contains("redox") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
         return;
     }
@@ -151,7 +152,7 @@ fn main() {
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
 
     run(&mut cmd);
-    let mut make = Command::new("make");
+    let mut make = Command::new(build_helper::make(&host));
     make.current_dir(&build_dir)
         .arg("build_lib_static");
 

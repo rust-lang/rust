@@ -24,6 +24,7 @@ pub fn opts() -> TargetOptions {
         staticlib_prefix: "".to_string(),
         staticlib_suffix: ".lib".to_string(),
         no_default_libraries: true,
+        target_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,
         pre_link_args: vec![

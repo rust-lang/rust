@@ -30,7 +30,7 @@
 //! future.
 
 use def_use::DefUseAnalysis;
-use rustc::mir::{Constant, Local, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
+use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -122,7 +122,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                                 local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Consume(ref src_lvalue) => {
-                                    Action::local_copy(&def_use_analysis, src_lvalue)
+                                    Action::local_copy(&mir, &def_use_analysis, src_lvalue)
                                 }
                                 Operand::Constant(ref src_constant) => {
                                     Action::constant(src_constant)
@@ -159,7 +159,7 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
+    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Lvalue::Local(local) = *src_lvalue {
@@ -195,7 +195,9 @@ impl<'tcx> Action<'tcx> {
         //     SRC = X;
         //     USE(SRC);
         let src_def_count = src_use_info.def_count_not_including_drop();
-        if src_def_count != 1 {
+        // allow function arguments to be propagated
+        if src_def_count > 1 ||
+            (src_def_count == 0 && mir.local_kind(src_local) != LocalKind::Arg) {
             debug!("  Can't copy-propagate local: {} defs of src",
                    src_use_info.def_count_not_including_drop());
             return None

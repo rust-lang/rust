@@ -1,0 +1,26 @@
+error[E0423]: expected function, found self type `Self`
+  --> $DIR/tuple-struct-alias.rs:16:17
+   |
+16 |         let s = Self(0, 1);
+   |                 ^^^^ did you mean `Self { /* fields */ }`?
+
+error[E0532]: expected tuple struct/variant, found self type `Self`
+  --> $DIR/tuple-struct-alias.rs:18:13
+   |
+18 |             Self(..) => {}
+   |             ^^^^ did you mean `Self { /* fields */ }`?
+
+error[E0423]: expected function, found type alias `A`
+  --> $DIR/tuple-struct-alias.rs:24:13
+   |
+24 |     let s = A(0, 1);
+   |             ^ did you mean `A { /* fields */ }`?
+
+error[E0532]: expected tuple struct/variant, found type alias `A`
+  --> $DIR/tuple-struct-alias.rs:26:9
+   |
+26 |         A(..) => {}
+   |         ^ did you mean `A { /* fields */ }`?
+
+error: aborting due to 4 previous errors
+

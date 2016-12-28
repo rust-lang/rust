@@ -27,7 +27,7 @@ pub mod foo1 {
 fn test_glob1() {
     use foo1::*;
 
-    Bar();  //~ ERROR unresolved name `Bar`
+    Bar();  //~ ERROR expected function, found trait `Bar`
 }
 
 // private type, public value
@@ -42,7 +42,7 @@ pub mod foo2 {
 fn test_glob2() {
     use foo2::*;
 
-    let _x: Box<Bar>;  //~ ERROR type name `Bar` is undefined or not in scope
+    let _x: Box<Bar>;  //~ ERROR expected type, found function `Bar`
 }
 
 // neither public
@@ -57,8 +57,8 @@ pub mod foo3 {
 fn test_glob3() {
     use foo3::*;
 
-    Bar();  //~ ERROR unresolved name `Bar`
-    let _x: Box<Bar>;  //~ ERROR  type name `Bar` is undefined or not in scope
+    Bar();  //~ ERROR unresolved function `Bar`
+    let _x: Box<Bar>;  //~ ERROR unresolved type `Bar`
 }
 
 fn main() {

@@ -86,20 +86,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_definition(&mut self, id: ast::NodeId, def: Def) {
-        // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
-        match def {
-            Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
-            if self.tcx.trait_of_item(def.def_id()).is_some() => {
-                if let Some(substs) = self.tcx.tables().item_substs.get(&id) {
-                    if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
-                        self.check_def_id(tyid.did);
-                    }
-                }
-            }
-            _ => {}
-        }
-
+    fn handle_definition(&mut self, def: Def) {
         match def {
             Def::Const(_) | Def::AssociatedConst(..) => {
                 self.check_def_id(def.def_id());
@@ -241,7 +228,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         match expr.node {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tcx.tables().qpath_def(qpath, expr.id);
-                self.handle_definition(expr.id, def);
+                self.handle_definition(def);
             }
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id);
@@ -281,7 +268,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tcx.tables().qpath_def(qpath, pat.id);
-                self.handle_definition(pat.id, def);
+                self.handle_definition(def);
             }
             _ => ()
         }
@@ -291,8 +278,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.ignore_non_const_paths = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
-        self.handle_definition(id, path.def);
+    fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
+        self.handle_definition(path.def);
         intravisit::walk_path(self, path);
     }
 }
@@ -426,6 +413,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             hir::ItemStatic(..)
             | hir::ItemConst(..)
             | hir::ItemFn(..)
+            | hir::ItemTy(..)
             | hir::ItemEnum(..)
             | hir::ItemStruct(..)
             | hir::ItemUnion(..) => true,

@@ -98,6 +98,7 @@ enum LLVMRustAttribute {
     StructRet       = 16,
     UWTable         = 17,
     ZExt            = 18,
+    InReg           = 19,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

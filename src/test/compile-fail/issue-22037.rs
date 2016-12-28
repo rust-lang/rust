@@ -11,7 +11,7 @@
 trait A {
     type Output;
     fn a(&self) -> <Self as A>::X;
-//~^ ERROR: associated type `A::X` is undefined or not in scope
+    //~^ ERROR unresolved associated type `A::X`
 }
 
 impl A for u32 {

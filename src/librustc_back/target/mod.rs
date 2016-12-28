@@ -69,6 +69,7 @@ mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
 mod fuchsia_base;
+mod redox_base;
 
 pub type TargetResult = Result<Target, String>;
 
@@ -184,6 +185,8 @@ supported_targets! {
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
+    ("x86_64-unknown-redox", x86_64_unknown_redox),
+
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
@@ -266,6 +269,9 @@ pub struct TargetOptions {
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: Vec<String>,
+
+    /// Extra arguments to pass to the external assembler (when used)
+    pub asm_args: Vec<String>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
@@ -394,6 +400,7 @@ impl Default for TargetOptions {
             ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: Vec::new(),
             post_link_args: Vec::new(),
+            asm_args: Vec::new(),
             cpu: "generic".to_string(),
             features: "".to_string(),
             dynamic_linking: false,
@@ -561,6 +568,7 @@ impl Target {
         key!(late_link_args, list);
         key!(post_link_objects, list);
         key!(post_link_args, list);
+        key!(asm_args, list);
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
@@ -723,6 +731,7 @@ impl ToJson for Target {
         target_option_val!(late_link_args);
         target_option_val!(post_link_objects);
         target_option_val!(post_link_args);
+        target_option_val!(asm_args);
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);

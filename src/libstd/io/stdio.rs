@@ -10,7 +10,7 @@
 
 use io::prelude::*;
 
-use cell::{RefCell, BorrowState};
+use cell::RefCell;
 use fmt;
 use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
@@ -81,11 +81,11 @@ impl Read for StdinRaw {
 }
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
 enum Maybe<T> {
@@ -282,6 +282,13 @@ impl Stdin {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Stdin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Stdin { .. }")
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -312,6 +319,13 @@ impl<'a> Read for StdinLock<'a> {
 impl<'a> BufRead for StdinLock<'a> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, n: usize) { self.inner.consume(n) }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a> fmt::Debug for StdinLock<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("StdinLock { .. }")
+    }
 }
 
 /// A handle to the global standard output stream of the current process.
@@ -424,6 +438,13 @@ impl Stdout {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Stdout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Stdout { .. }")
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -446,6 +467,13 @@ impl<'a> Write for StdoutLock<'a> {
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a> fmt::Debug for StdoutLock<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("StdoutLock { .. }")
     }
 }
 
@@ -545,6 +573,13 @@ impl Stderr {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Stderr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Stderr { .. }")
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -567,6 +602,13 @@ impl<'a> Write for StderrLock<'a> {
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a> fmt::Debug for StderrLock<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("StderrLock { .. }")
     }
 }
 
@@ -638,8 +680,8 @@ pub fn _print(args: fmt::Arguments) {
         LocalKeyState::Destroyed => stdout().write_fmt(args),
         LocalKeyState::Valid => {
             LOCAL_STDOUT.with(|s| {
-                if s.borrow_state() == BorrowState::Unused {
-                    if let Some(w) = s.borrow_mut().as_mut() {
+                if let Ok(mut borrowed) = s.try_borrow_mut() {
+                    if let Some(w) = borrowed.as_mut() {
                         return w.write_fmt(args);
                     }
                 }

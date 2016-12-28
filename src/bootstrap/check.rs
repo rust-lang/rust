@@ -13,6 +13,8 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
+extern crate build_helper;
+
 use std::collections::HashSet;
 use std::env;
 use std::fmt;
@@ -190,7 +192,7 @@ pub fn compiletest(build: &Build,
 
     cmd.args(&build.flags.cmd.test_args());
 
-    if build.config.verbose || build.flags.verbose {
+    if build.config.verbose() || build.flags.verbose() {
         cmd.arg("--verbose");
     }
 
@@ -299,6 +301,7 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
+    cmd.env("RUSTC_BOOTSTRAP", "1");
 
     let mut test_args = build.flags.cmd.test_args().join(" ");
     if build.config.quiet_tests {
@@ -542,7 +545,7 @@ pub fn distcheck(build: &Build) {
     build.run(&mut cmd);
     build.run(Command::new("./configure")
                      .current_dir(&dir));
-    build.run(Command::new("make")
+    build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")
                      .current_dir(&dir));
 }

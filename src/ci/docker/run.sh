@@ -25,9 +25,18 @@ docker \
   -t rust-ci \
   "`dirname "$script"`/$image"
 
-mkdir -p $HOME/.ccache
 mkdir -p $HOME/.cargo
 mkdir -p $root_dir/obj
+
+args=
+if [ "$SCCACHE_BUCKET" != "" ]; then
+    args="$args --env SCCACHE_BUCKET=$SCCACHE_BUCKET"
+    args="$args --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+    args="$args --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+else
+    mkdir -p $HOME/.cache/sccache
+    args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
+fi
 
 exec docker \
   run \
@@ -35,8 +44,7 @@ exec docker \
   --volume "$root_dir/obj:/checkout/obj" \
   --workdir /checkout/obj \
   --env SRC=/checkout \
-  --env CCACHE_DIR=/ccache \
-  --volume "$HOME/.ccache:/ccache" \
+  $args \
   --env CARGO_HOME=/cargo \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \

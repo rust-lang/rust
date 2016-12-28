@@ -31,7 +31,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::hir;
-use rustc_data_structures::blake2b::Blake2bHasher;
+use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
 use common::CrateContext;
 use type_::Type;
@@ -42,7 +42,6 @@ use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
-use std::fmt::Write;
 use std::path::Path;
 use std::ptr;
 use syntax::ast;
@@ -147,21 +146,11 @@ impl<'tcx> TypeMap<'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-        const TYPE_ID_HASH_LENGTH: usize = 20;
 
-        let mut type_id_hasher = TypeIdHasher::new(cx.tcx(),
-                                                   Blake2bHasher::new(TYPE_ID_HASH_LENGTH, &[]));
+        let mut type_id_hasher = TypeIdHasher::<[u8; 20]>::new(cx.tcx());
         type_id_hasher.visit_ty(type_);
-        let mut hash_state = type_id_hasher.into_inner();
-        let hash: &[u8] = hash_state.finalize();
-        debug_assert!(hash.len() == TYPE_ID_HASH_LENGTH);
 
-        let mut unique_type_id = String::with_capacity(TYPE_ID_HASH_LENGTH * 2);
-
-        for byte in hash.into_iter() {
-            write!(&mut unique_type_id, "{:x}", byte).unwrap();
-        }
-
+        let unique_type_id = type_id_hasher.finish().to_hex();
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
@@ -881,25 +870,28 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
+    ty: Ty<'tcx>,
     variant: &'tcx ty::VariantDef,
     substs: &'tcx Substs<'tcx>,
-    is_simd: bool,
     span: Span,
 }
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        let field_size = if self.is_simd {
-            let fty = monomorphize::field_ty(cx.tcx(),
-                                             self.substs,
-                                             &self.variant.fields[0]);
-            Some(machine::llsize_of_alloc(
-                cx,
-                type_of::type_of(cx, fty)
-            ) as usize)
-        } else {
-            None
+        let layout = cx.layout_of(self.ty);
+
+        let tmp;
+        let offsets = match *layout {
+            layout::Univariant { ref variant, .. } => &variant.offsets,
+            layout::Vector { element, count } => {
+                let element_size = element.size(&cx.tcx().data_layout).bytes();
+                tmp = (0..count).
+                  map(|i| layout::Size::from_bytes(i*element_size))
+                  .collect::<Vec<layout::Size>>();
+                &tmp
+            }
+            _ => bug!("{} is not a struct", self.ty)
         };
 
         self.variant.fields.iter().enumerate().map(|(i, f)| {
@@ -910,11 +902,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             };
             let fty = monomorphize::field_ty(cx.tcx(), self.substs, f);
 
-            let offset = if self.is_simd {
-                FixedMemberOffset { bytes: i * field_size.unwrap() }
-            } else {
-                ComputedMemberOffset
-            };
+            let offset = FixedMemberOffset { bytes: offsets[i].bytes() as usize};
 
             MemberDescription {
                 name: name,
@@ -956,9 +944,9 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_metadata_stub,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
+            ty: struct_type,
             variant: variant,
             substs: substs,
-            is_simd: struct_type.is_simd(),
             span: span,
         })
     )
@@ -970,6 +958,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 // Creates MemberDescriptions for the fields of a tuple
 struct TupleMemberDescriptionFactory<'tcx> {
+    ty: Ty<'tcx>,
     component_types: Vec<Ty<'tcx>>,
     span: Span,
 }
@@ -977,6 +966,13 @@ struct TupleMemberDescriptionFactory<'tcx> {
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
+        let layout = cx.layout_of(self.ty);
+        let offsets = if let layout::Univariant { ref variant, .. } = *layout {
+            &variant.offsets
+        } else {
+            bug!("{} is not a tuple", self.ty);
+        };
+
         self.component_types
             .iter()
             .enumerate()
@@ -985,7 +981,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 name: format!("__{}", i),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
-                offset: ComputedMemberOffset,
+                offset: FixedMemberOffset { bytes: offsets[i].bytes() as usize },
                 flags: DIFlags::FlagZero,
             }
         }).collect()
@@ -1012,6 +1008,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                            NO_SCOPE_METADATA),
         tuple_llvm_type,
         TupleMDF(TupleMemberDescriptionFactory {
+            ty: tuple_type,
             component_types: component_types.to_vec(),
             span: span,
         })
@@ -1250,7 +1247,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
             },
             layout::StructWrappedNullablePointer { nonnull: ref struct_def,
                                                 nndiscr,
-                                                ref discrfield, ..} => {
+                                                ref discrfield_source, ..} => {
                 // Create a description of the non-null variant
                 let (variant_type_metadata, variant_llvm_type, member_description_factory) =
                     describe_enum_variant(cx,
@@ -1273,12 +1270,12 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // member's name.
                 let null_variant_index = (1 - nndiscr) as usize;
                 let null_variant_name = adt.variants[null_variant_index].name;
-                let discrfield = discrfield.iter()
+                let discrfield_source = discrfield_source.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
                                            .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                discrfield,
+                                                discrfield_source,
                                                 null_variant_name);
 
                 // Create the (singleton) list of descriptions of union members.
@@ -1300,6 +1297,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a single enum variant.
 struct VariantMemberDescriptionFactory<'tcx> {
+    // Cloned from the layout::Struct describing the variant.
+    offsets: &'tcx [layout::Size],
     args: Vec<(String, Ty<'tcx>)>,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
@@ -1316,7 +1315,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
                     Some(metadata) if i == 0 => metadata,
                     _ => type_metadata(cx, ty, self.span)
                 },
-                offset: ComputedMemberOffset,
+                offset: FixedMemberOffset { bytes: self.offsets[i].bytes() as usize },
                 flags: DIFlags::FlagZero
             }
         }).collect()
@@ -1336,7 +1335,7 @@ enum EnumDiscriminantInfo {
 // full RecursiveTypeDescription.
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
-                                   struct_def: &layout::Struct,
+                                   struct_def: &'tcx layout::Struct,
                                    variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
@@ -1420,6 +1419,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
+            offsets: &struct_def.offsets[..],
             args: args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {
@@ -1763,6 +1763,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
+
+    let ty = cx.tcx().item_type(node_def_id);
+    let global_align = type_of::align_of(cx, ty);
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
                                                     var_scope,
@@ -1773,7 +1777,9 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     type_metadata,
                                                     is_local_to_unit,
                                                     global,
-                                                    ptr::null_mut());
+                                                    ptr::null_mut(),
+                                                    global_align as u64,
+        );
     }
 }
 

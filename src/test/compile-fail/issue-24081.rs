@@ -15,14 +15,14 @@ use std::ops::Div; //~ NOTE previous import
 use std::ops::Rem; //~ NOTE previous import
 
 type Add = bool; //~ ERROR a trait named `Add` has already been imported in this module
-//~| was already imported
+//~| `Add` already imported
 struct Sub { x: f32 } //~ ERROR a trait named `Sub` has already been imported in this module
-//~| was already imported
+//~| `Sub` already imported
 enum Mul { A, B } //~ ERROR a trait named `Mul` has already been imported in this module
-//~| was already imported
+//~| `Mul` already imported
 mod Div { } //~ ERROR a trait named `Div` has already been imported in this module
-//~| was already imported
+//~| `Div` already imported
 trait Rem {  } //~ ERROR a trait named `Rem` has already been imported in this module
-//~| was already imported
+//~| `Rem` already imported
 
 fn main() {}

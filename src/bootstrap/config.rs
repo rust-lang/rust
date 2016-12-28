@@ -38,9 +38,9 @@ use util::push_exe_path;
 /// `src/bootstrap/config.toml.example`.
 #[derive(Default)]
 pub struct Config {
-    pub ccache: bool,
+    pub ccache: Option<String>,
     pub ninja: bool,
-    pub verbose: bool,
+    pub verbose: usize,
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
@@ -113,6 +113,7 @@ pub struct Target {
 #[derive(RustcDecodable, Default)]
 struct TomlConfig {
     build: Option<Build>,
+    install: Option<Install>,
     llvm: Option<Llvm>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
@@ -135,16 +136,34 @@ struct Build {
     python: Option<String>,
 }
 
+/// TOML representation of various global install decisions.
+#[derive(RustcDecodable, Default, Clone)]
+struct Install {
+    prefix: Option<String>,
+}
+
 /// TOML representation of how the LLVM build is configured.
 #[derive(RustcDecodable, Default)]
 struct Llvm {
-    ccache: Option<bool>,
+    ccache: Option<StringOrBool>,
     ninja: Option<bool>,
     assertions: Option<bool>,
     optimize: Option<bool>,
     release_debuginfo: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
+}
+
+#[derive(RustcDecodable)]
+enum StringOrBool {
+    String(String),
+    Bool(bool),
+}
+
+impl Default for StringOrBool {
+    fn default() -> StringOrBool {
+        StringOrBool::Bool(false)
+    }
 }
 
 /// TOML representation of how the Rust build is configured.
@@ -246,8 +265,20 @@ impl Config {
         set(&mut config.submodules, build.submodules);
         set(&mut config.vendor, build.vendor);
 
+        if let Some(ref install) = toml.install {
+            config.prefix = install.prefix.clone();
+        }
+
         if let Some(ref llvm) = toml.llvm {
-            set(&mut config.ccache, llvm.ccache);
+            match llvm.ccache {
+                Some(StringOrBool::String(ref s)) => {
+                    config.ccache = Some(s.to_string())
+                }
+                Some(StringOrBool::Bool(true)) => {
+                    config.ccache = Some("ccache".to_string());
+                }
+                Some(StringOrBool::Bool(false)) | None => {}
+            }
             set(&mut config.ninja, llvm.ninja);
             set(&mut config.llvm_assertions, llvm.assertions);
             set(&mut config.llvm_optimize, llvm.optimize);
@@ -255,6 +286,7 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
+
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
@@ -338,7 +370,6 @@ impl Config {
             }
 
             check! {
-                ("CCACHE", self.ccache),
                 ("MANAGE_SUBMODULES", self.submodules),
                 ("COMPILER_DOCS", self.compiler_docs),
                 ("DOCS", self.docs),
@@ -475,9 +506,23 @@ impl Config {
                     let path = parse_configure_path(value);
                     self.python = Some(path);
                 }
+                "CFG_ENABLE_CCACHE" if value == "1" => {
+                    self.ccache = Some("ccache".to_string());
+                }
+                "CFG_ENABLE_SCCACHE" if value == "1" => {
+                    self.ccache = Some("sccache".to_string());
+                }
                 _ => {}
             }
         }
+    }
+
+    pub fn verbose(&self) -> bool {
+        self.verbose > 0
+    }
+
+    pub fn very_verbose(&self) -> bool {
+        self.verbose > 1
     }
 }
 

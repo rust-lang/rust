@@ -11,7 +11,7 @@
 use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
-use syntax_pos::{Span, DUMMY_SP, Pos};
+use syntax_pos::{Span, DUMMY_SP};
 use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
@@ -322,24 +322,24 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = idents.into_iter()
-                                                      .map(|ident| {
-            ast::PathSegment {
-                identifier: ident,
-                parameters: ast::PathParameters::none(),
-            }
-        }).collect();
-        segments.push(ast::PathSegment {
-            identifier: last_identifier,
-            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
+        let mut segments: Vec<ast::PathSegment> = Vec::new();
+        if global {
+            segments.push(ast::PathSegment::crate_root());
+        }
+
+        segments.extend(idents.into_iter().map(Into::into));
+        let parameters = if lifetimes.is_empty() && types.is_empty() && bindings.is_empty() {
+            None
+        } else {
+            Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: P::from_vec(types),
                 bindings: P::from_vec(bindings),
-            })
-        });
+            })))
+        };
+        segments.push(ast::PathSegment { identifier: last_identifier, parameters: parameters });
         ast::Path {
             span: sp,
-            global: global,
             segments: segments,
         }
     }
@@ -367,13 +367,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
+        let parameters = ast::AngleBracketedParameterData {
+            lifetimes: lifetimes,
+            types: P::from_vec(types),
+            bindings: P::from_vec(bindings),
+        };
         path.segments.push(ast::PathSegment {
             identifier: ident,
-            parameters: ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
-                lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
-            })
+            parameters: Some(P(ast::PathParameters::AngleBracketed(parameters))),
         });
 
         (ast::QSelf {
@@ -659,23 +660,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_field_access(&self, sp: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
-        let field_span = Span {
-            lo: sp.lo - Pos::from_usize(ident.name.as_str().len()),
-            hi: sp.hi,
-            expn_id: sp.expn_id,
-        };
-
-        let id = Spanned { node: ident, span: field_span };
+        let id = Spanned { node: ident, span: sp };
         self.expr(sp, ast::ExprKind::Field(expr, id))
     }
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
-        let field_span = Span {
-            lo: sp.lo - Pos::from_usize(idx.to_string().len()),
-            hi: sp.hi,
-            expn_id: sp.expn_id,
-        };
-
-        let id = Spanned { node: idx, span: field_span };
+        let id = Spanned { node: idx, span: sp };
         self.expr(sp, ast::ExprKind::TupField(expr, id))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {

@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
-use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
+use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
-use rustc_data_structures::blake2b::Blake2bHasher;
-use rustc_data_structures::fmt_wrap::FmtWrap;
-use rustc::ty::util::ArchIndependentHasher;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType,
@@ -22,11 +19,12 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Resolutions};
 use rustc::util::common::time;
 use rustc::util::nodemap::{NodeSet, NodeMap};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
+use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -59,13 +57,6 @@ use syntax;
 use syntax_ext;
 
 use derive_registrar;
-
-#[derive(Clone)]
-pub struct Resolutions {
-    pub freevars: FreevarMap,
-    pub trait_map: TraitMap,
-    pub maybe_unused_trait_imports: NodeSet,
-}
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
@@ -601,6 +592,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
     });
 
+    let whitelisted_legacy_custom_derives = registry.take_whitelisted_custom_derives();
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, mir_passes, .. } = registry;
 
@@ -640,6 +632,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
         Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
+    resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {
@@ -865,11 +858,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             resolutions.trait_map,
+                             resolutions,
                              named_region_map,
                              hir_map,
-                             resolutions.freevars,
-                             resolutions.maybe_unused_trait_imports,
                              region_map,
                              lang_items,
                              index,
@@ -1274,7 +1265,7 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
     // FIXME(mw): It seems that the crate_disambiguator is used everywhere as
     //            a hex-string instead of raw bytes. We should really use the
     //            smaller representation.
-    let mut hasher = ArchIndependentHasher::new(Blake2bHasher::new(128 / 8, &[]));
+    let mut hasher = StableHasher::<Fingerprint>::new();
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
@@ -1292,14 +1283,11 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
         hasher.write(s.as_bytes());
     }
 
-    let mut hash_state = hasher.into_inner();
-    let hash_bytes = hash_state.finalize();
-
     // If this is an executable, add a special suffix, so that we don't get
     // symbol conflicts when linking against a library of the same name.
     let is_exe = session.crate_types.borrow().contains(&config::CrateTypeExecutable);
 
-    format!("{:x}{}", FmtWrap(hash_bytes), if is_exe { "-exe" } else {""})
+    format!("{}{}", hasher.finish().to_hex(), if is_exe { "-exe" } else {""})
 }
 
 pub fn build_output_filenames(input: &Input,

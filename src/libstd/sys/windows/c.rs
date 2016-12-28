@@ -47,7 +47,9 @@ pub type CHAR = c_char;
 pub type HCRYPTPROV = LONG_PTR;
 pub type ULONG_PTR = c_ulonglong;
 pub type ULONG = c_ulong;
+#[cfg(target_arch = "x86_64")]
 pub type ULONGLONG = u64;
+#[cfg(target_arch = "x86_64")]
 pub type DWORDLONG = ULONGLONG;
 
 pub type LPBOOL = *mut BOOL;
@@ -66,7 +68,6 @@ pub type LPVOID = *mut c_void;
 pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
-pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 pub type LPWSTR = *mut WCHAR;
 pub type LPFILETIME = *mut FILETIME;
@@ -310,8 +311,6 @@ pub struct WSADATA {
     pub szDescription: [u8; WSADESCRIPTION_LEN + 1],
     pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
 }
-
-pub type WSAEVENT = HANDLE;
 
 #[repr(C)]
 pub struct WSAPROTOCOL_INFO {
@@ -819,6 +818,16 @@ pub enum EXCEPTION_DISPOSITION {
     ExceptionCollidedUnwind
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CONSOLE_READCONSOLE_CONTROL {
+    pub nLength: ULONG,
+    pub nInitialChars: ULONG,
+    pub dwCtrlWakeupMask: ULONG,
+    pub dwControlKeyState: ULONG,
+}
+pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
 #[link(name = "ws2_32")]
 #[link(name = "userenv")]
 #[link(name = "shell32")]
@@ -849,12 +858,11 @@ extern "system" {
     pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
-    // FIXME - pInputControl should be PCONSOLE_READCONSOLE_CONTROL
     pub fn ReadConsoleW(hConsoleInput: HANDLE,
                         lpBuffer: LPVOID,
                         nNumberOfCharsToRead: DWORD,
                         lpNumberOfCharsRead: LPDWORD,
-                        pInputControl: LPVOID) -> BOOL;
+                        pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
 
     pub fn WriteConsoleW(hConsoleOutput: HANDLE,
                          lpBuffer: LPCVOID,

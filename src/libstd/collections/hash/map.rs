@@ -1276,6 +1276,15 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
+}
+
 /// HashMap mutable values iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
@@ -1285,7 +1294,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// HashMap move iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    inner: table::IntoIter<K, V>,
+    pub(super) inner: table::IntoIter<K, V>,
 }
 
 /// HashMap keys iterator.
@@ -1299,6 +1308,15 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 impl<'a, K, V> Clone for Keys<'a, K, V> {
     fn clone(&self) -> Keys<'a, K, V> {
         Keys { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K: Debug, V: Debug> fmt::Debug for Keys<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
     }
 }
 
@@ -1316,10 +1334,19 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K: Debug, V: Debug> fmt::Debug for Values<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
+}
+
 /// HashMap drain iterator.
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
-    inner: table::Drain<'a, K, V>,
+    pub(super) inner: table::Drain<'a, K, V>,
 }
 
 /// Mutable HashMap values iterator.
@@ -1557,6 +1584,18 @@ impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
+    where K: fmt::Debug,
+          V: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.iter())
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
@@ -1579,6 +1618,15 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 }
 #[unstable(feature = "fused", issue = "35602")]
 impl<K, V> FusedIterator for IntoIter<K, V> {}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.iter())
+            .finish()
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
@@ -1649,6 +1697,18 @@ impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
+    where K: fmt::Debug,
+          V: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.inner.iter())
+            .finish()
+    }
+}
+
 #[stable(feature = "drain", since = "1.6.0")]
 impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
@@ -1671,6 +1731,18 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
+    where K: fmt::Debug,
+          V: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.inner.iter())
+            .finish()
+    }
+}
 
 impl<'a, K, V> Entry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2145,6 +2217,13 @@ impl Default for RandomState {
     #[inline]
     fn default() -> RandomState {
         RandomState::new()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for RandomState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("RandomState { .. }")
     }
 }
 

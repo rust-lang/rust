@@ -114,6 +114,17 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Child {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Child")
+            .field("stdin", &self.stdin)
+            .field("stdout", &self.stdout)
+            .field("stderr", &self.stderr)
+            .finish()
+    }
+}
+
 /// A handle to a child process's stdin. This struct is used in the [`stdin`]
 /// field on [`Child`].
 ///
@@ -146,6 +157,13 @@ impl IntoInner<AnonPipe> for ChildStdin {
 impl FromInner<AnonPipe> for ChildStdin {
     fn from_inner(pipe: AnonPipe) -> ChildStdin {
         ChildStdin { inner: pipe }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStdin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStdin { .. }")
     }
 }
 
@@ -183,6 +201,13 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStdout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStdout { .. }")
+    }
+}
+
 /// A handle to a child process's stderr. This struct is used in the [`stderr`]
 /// field on [`Child`].
 ///
@@ -214,6 +239,13 @@ impl IntoInner<AnonPipe> for ChildStderr {
 impl FromInner<AnonPipe> for ChildStderr {
     fn from_inner(pipe: AnonPipe) -> ChildStderr {
         ChildStderr { inner: pipe }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStderr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStderr { .. }")
     }
 }
 
@@ -622,6 +654,13 @@ impl FromInner<imp::Stdio> for Stdio {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Stdio {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Stdio { .. }")
+    }
+}
+
 /// Describes the result of a process after it has terminated.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
@@ -828,6 +867,12 @@ impl Child {
 /// this function at a known point where there are no more destructors left
 /// to run.
 ///
+/// ## Platform-specific behavior
+///
+/// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
+/// will be visible to a parent process inspecting the exit code. On most
+/// Unix-like platforms, only the eight least-significant bits are considered.
+///
 /// # Examples
 ///
 /// ```
@@ -835,6 +880,17 @@ impl Child {
 ///
 /// process::exit(0);
 /// ```
+///
+/// Due to [platform-specific behavior], the exit code for this example will be
+/// `0` on Linux, but `256` on Windows:
+///
+/// ```no_run
+/// use std::process;
+///
+/// process::exit(0x0f00);
+/// ```
+///
+/// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
     ::sys_common::cleanup();

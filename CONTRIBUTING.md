@@ -212,12 +212,13 @@ Some common invocations of `x.py` are:
   & everything builds in the correct manner.
 - `x.py test src/libstd --stage 1` - test the standard library without
   recompiling stage 2.
-- `x.py test src/test/run-pass --filter TESTNAME` - Run a matching set of tests.
+- `x.py test src/test/run-pass --test-args TESTNAME` - Run a matching set of
+  tests.
   - `TESTNAME` should be a substring of the tests to match against e.g. it could
     be the fully qualified test name, or just a part of it.
     `TESTNAME=collections::hash::map::test_map::test_capacity_not_less_than_len`
     or `TESTNAME=test_capacity_not_less_than_len`.
-- `x.py test src/test/run-pass --stage 1 --filter <substring-of-test-name>` -
+- `x.py test src/test/run-pass --stage 1 --test-args <substring-of-test-name>` -
   Run a single rpass test with the stage1 compiler (this will be quicker than
   running the command above as we only build the stage1 compiler, not the entire
   thing).  You can also leave off the directory argument to run all stage1 test
@@ -284,7 +285,7 @@ been approved. The PR then enters the [merge queue][merge-queue], where @bors
 will run all the tests on every platform we support. If it all works out,
 @bors will merge your code into `master` and close the pull request.
 
-[merge-queue]: http://buildbot.rust-lang.org/homu/queue/rust
+[merge-queue]: https://buildbot.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found
@@ -403,4 +404,4 @@ are:
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
 [rctd]: ./COMPILER_TESTS.md
-[cheatsheet]: http://buildbot.rust-lang.org/homu/
+[cheatsheet]: https://buildbot.rust-lang.org/homu/

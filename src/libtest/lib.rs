@@ -254,10 +254,16 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>) {
         Some(Err(msg)) => panic!("{:?}", msg),
         None => return,
     };
-    match run_tests_console(&opts, tests) {
-        Ok(true) => {}
-        Ok(false) => std::process::exit(101),
-        Err(e) => panic!("io error when running tests: {:?}", e),
+    if opts.list {
+        if let Err(e) = list_tests_console(&opts, tests) {
+            panic!("io error when listing tests: {:?}", e);
+        }
+    } else {
+        match run_tests_console(&opts, tests) {
+            Ok(true) => {}
+            Ok(false) => std::process::exit(101),
+            Err(e) => panic!("io error when running tests: {:?}", e),
+        }
     }
 }
 
@@ -300,7 +306,9 @@ pub enum ColorConfig {
 }
 
 pub struct TestOpts {
+    pub list: bool,
     pub filter: Option<String>,
+    pub filter_exact: bool,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
@@ -316,7 +324,9 @@ impl TestOpts {
     #[cfg(test)]
     fn new() -> TestOpts {
         TestOpts {
+            list: false,
             filter: None,
+            filter_exact: false,
             run_ignored: false,
             run_tests: false,
             bench_benchmarks: false,
@@ -338,6 +348,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
     vec![getopts::optflag("", "ignored", "Run ignored tests"),
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
+      getopts::optflag("", "list", "List all tests and benchmarks"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
@@ -348,6 +359,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
                                      be used multiple times)","FILTER"),
       getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
+      getopts::optflag("", "exact", "Exactly match filters rather than by substring"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
@@ -407,6 +419,8 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let run_ignored = matches.opt_present("ignored");
     let quiet = matches.opt_present("quiet");
+    let exact = matches.opt_present("exact");
+    let list = matches.opt_present("list");
 
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
@@ -447,7 +461,9 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     let test_opts = TestOpts {
+        list: list,
         filter: filter,
+        filter_exact: exact,
         run_ignored: run_ignored,
         run_tests: run_tests,
         bench_benchmarks: bench_benchmarks,
@@ -576,7 +592,8 @@ impl<T: Write> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_plain(&mut self, s: &str) -> io::Result<()> {
+    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        let s = s.as_ref();
         match self.out {
             Pretty(ref mut term) => {
                 term.write_all(s.as_bytes())?;
@@ -630,23 +647,26 @@ impl<T: Write> ConsoleTestState<T> {
                                   TEST_WARN_TIMEOUT_S))
     }
 
-    pub fn write_log(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
+    pub fn write_log<S: AsRef<str>>(&mut self, msg: S) -> io::Result<()> {
+        let msg = msg.as_ref();
         match self.log_out {
             None => Ok(()),
-            Some(ref mut o) => {
-                let s = format!("{} {}\n",
-                                match *result {
-                                    TrOk => "ok".to_owned(),
-                                    TrFailed => "failed".to_owned(),
-                                    TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                                    TrIgnored => "ignored".to_owned(),
-                                    TrMetrics(ref mm) => mm.fmt_metrics(),
-                                    TrBench(ref bs) => fmt_bench_samples(bs),
-                                },
-                                test.name);
-                o.write_all(s.as_bytes())
-            }
+            Some(ref mut o) => o.write_all(msg.as_bytes()),
         }
+    }
+
+    pub fn write_log_result(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
+        self.write_log(
+            format!("{} {}\n",
+                    match *result {
+                        TrOk => "ok".to_owned(),
+                        TrFailed => "failed".to_owned(),
+                        TrFailedMsg(ref msg) => format!("failed: {}", msg),
+                        TrIgnored => "ignored".to_owned(),
+                        TrMetrics(ref mm) => mm.fmt_metrics(),
+                        TrBench(ref bs) => fmt_bench_samples(bs),
+                    },
+                    test.name))
     }
 
     pub fn write_failures(&mut self) -> io::Result<()> {
@@ -741,6 +761,49 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     output
 }
 
+// List the tests to console, and optionally to logfile. Filters are honored.
+pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
+    let mut st = ConsoleTestState::new(opts, None::<io::Stdout>)?;
+
+    let mut ntest = 0;
+    let mut nbench = 0;
+    let mut nmetric = 0;
+
+    for test in filter_tests(&opts, tests) {
+        use TestFn::*;
+
+        let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
+
+        let fntype = match testfn {
+            StaticTestFn(..) | DynTestFn(..) => { ntest += 1; "test" },
+            StaticBenchFn(..) | DynBenchFn(..) => { nbench += 1; "benchmark" },
+            StaticMetricFn(..) | DynMetricFn(..) => { nmetric += 1; "metric" },
+        };
+
+        st.write_plain(format!("{}: {}\n", name, fntype))?;
+        st.write_log(format!("{} {}\n", fntype, name))?;
+    }
+
+    fn plural(count: u32, s: &str) -> String {
+        match count {
+            1 => format!("{} {}", 1, s),
+            n => format!("{} {}s", n, s),
+        }
+    }
+
+    if !opts.quiet {
+        if ntest != 0 || nbench != 0 || nmetric != 0 {
+            st.write_plain("\n")?;
+        }
+        st.write_plain(format!("{}, {}, {}\n",
+            plural(ntest, "test"),
+            plural(nbench, "benchmark"),
+            plural(nmetric, "metric")))?;
+    }
+
+    Ok(())
+}
+
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
 
@@ -750,7 +813,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeTimeout(ref test) => st.write_timeout(test),
             TeResult(test, result, stdout) => {
-                st.write_log(&test, &result)?;
+                st.write_log_result(&test, &result)?;
                 st.write_result(&result)?;
                 match result {
                     TrOk => st.passed += 1,
@@ -851,6 +914,11 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
+#[cfg(target_os = "redox")]
+fn stdout_isatty() -> bool {
+    // FIXME: Implement isatty on Redox
+    false
+}
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
@@ -1040,6 +1108,12 @@ fn get_concurrency() -> usize {
         }
     }
 
+    #[cfg(target_os = "redox")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on Redox
+        1
+    }
+
     #[cfg(any(target_os = "linux",
               target_os = "macos",
               target_os = "ios",
@@ -1118,14 +1192,26 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         None => filtered,
         Some(ref filter) => {
             filtered.into_iter()
-                    .filter(|test| test.desc.name.as_slice().contains(&filter[..]))
+                    .filter(|test| {
+                        if opts.filter_exact {
+                            test.desc.name.as_slice() == &filter[..]
+                        } else {
+                            test.desc.name.as_slice().contains(&filter[..])
+                        }
+                    })
                     .collect()
         }
     };
 
     // Skip tests that match any of the skip filters
     filtered = filtered.into_iter()
-        .filter(|t| !opts.skip.iter().any(|sf| t.desc.name.as_slice().contains(&sf[..])))
+        .filter(|t| !opts.skip.iter().any(|sf| {
+                if opts.filter_exact {
+                    t.desc.name.as_slice() == &sf[..]
+                } else {
+                    t.desc.name.as_slice().contains(&sf[..])
+                }
+            }))
         .collect();
 
     // Maybe pull out the ignored test and unignore them
@@ -1652,6 +1738,77 @@ mod tests {
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(), "1");
         assert!(!filtered[0].desc.ignore);
+    }
+
+    #[test]
+    pub fn exact_filter_match() {
+        fn tests() -> Vec<TestDescAndFn> {
+            vec!["base",
+                 "base::test",
+                 "base::test1",
+                 "base::test2",
+            ].into_iter()
+            .map(|name| TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName(name),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                },
+                testfn: DynTestFn(Box::new(move |()| {}))
+            })
+            .collect()
+        }
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("base".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 4);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("bas".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 4);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("::test".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 3);
+
+        let substr = filter_tests(&TestOpts {
+                filter: Some("base::test".into()),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(substr.len(), 3);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base".into()),
+                filter_exact: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("bas".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 0);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("::test".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 0);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base::test".into()),
+                filter_exact: true,
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
     }
 
     #[test]

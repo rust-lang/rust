@@ -95,7 +95,8 @@ fn main() {
     let is_crossed = target != host;
 
     let optional_components =
-        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend", "msp430"];
+        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend", "msp430",
+         "sparc"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
@@ -230,6 +231,13 @@ fn main() {
         }
     }
 
+    // OpenBSD has a particular C++ runtime library name
+    let stdcppname = if target.contains("openbsd") {
+        "estdc++"
+    } else {
+        "stdc++"
+    };
+
     // C++ runtime library
     if !target.contains("msvc") {
         if let Some(s) = env::var_os("LLVM_STATIC_STDCPP") {
@@ -237,11 +245,11 @@ fn main() {
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}",
                      path.parent().unwrap().display());
-            println!("cargo:rustc-link-lib=static=stdc++");
+            println!("cargo:rustc-link-lib=static={}", stdcppname);
         } else if cxxflags.contains("stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");
         } else {
-            println!("cargo:rustc-link-lib=stdc++");
+            println!("cargo:rustc-link-lib={}", stdcppname);
         }
     }
 }

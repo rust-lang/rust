@@ -12,5 +12,4 @@ fn main () {
     struct Foo { a: bool };
 
     let f = Foo(); //~ ERROR E0423
-                   //~^ struct called like a function
 }

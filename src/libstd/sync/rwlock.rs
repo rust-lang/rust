@@ -362,6 +362,24 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("RwLockReadGuard")
+            .field("lock", &self.__lock)
+            .finish()
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("RwLockWriteGuard")
+            .field("lock", &self.__lock)
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;

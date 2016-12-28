@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_upper_case_globals)]
-
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use abi::{self, align_up_to, FnType, ArgType};
 use context::CrateContext;

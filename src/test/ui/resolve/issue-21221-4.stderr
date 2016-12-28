@@ -1,0 +1,11 @@
+error[E0405]: unresolved trait `T`
+  --> $DIR/issue-21221-4.rs:20:6
+   |
+20 | impl T for Foo {}
+   |      ^ no resolution found
+   |
+   = help: possible candidate is found in another module, you can import it into scope:
+   = help:   `use issue_21221_4::T;`
+
+error: cannot continue compilation due to previous error
+

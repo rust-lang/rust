@@ -203,7 +203,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_access)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bool = AtomicBool::new(true);
@@ -212,7 +211,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_access", issue = "35603")]
+    #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut bool {
         unsafe { &mut *(self.v.get() as *mut bool) }
     }
@@ -225,14 +224,13 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_access)]
     /// use std::sync::atomic::AtomicBool;
     ///
     /// let some_bool = AtomicBool::new(true);
     /// assert_eq!(some_bool.into_inner(), true);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_access", issue = "35603")]
+    #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> bool {
         unsafe { self.v.into_inner() != 0 }
     }
@@ -588,7 +586,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_access)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut atomic_ptr = AtomicPtr::new(&mut 10);
@@ -596,7 +593,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(unsafe { *atomic_ptr.load(Ordering::SeqCst) }, 5);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_access", issue = "35603")]
+    #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut *mut T {
         unsafe { &mut *self.p.get() }
     }
@@ -609,14 +606,13 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_access)]
     /// use std::sync::atomic::AtomicPtr;
     ///
     /// let atomic_ptr = AtomicPtr::new(&mut 5);
     /// assert_eq!(unsafe { *atomic_ptr.into_inner() }, 5);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_access", issue = "35603")]
+    #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> *mut T {
         unsafe { self.p.into_inner() }
     }
@@ -883,7 +879,6 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_access)]
             /// use std::sync::atomic::{AtomicIsize, Ordering};
             ///
             /// let mut some_isize = AtomicIsize::new(10);
@@ -905,7 +900,6 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_access)]
             /// use std::sync::atomic::AtomicIsize;
             ///
             /// let some_isize = AtomicIsize::new(5);
@@ -1261,7 +1255,7 @@ atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
-    unstable(feature = "atomic_access", issue = "35603"),
+    stable(feature = "atomic_access", since = "1.15.0"),
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1269,7 +1263,7 @@ atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
-    unstable(feature = "atomic_access", issue = "35603"),
+    stable(feature = "atomic_access", since = "1.15.0"),
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 

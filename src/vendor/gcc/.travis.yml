@@ -19,12 +19,14 @@ script:
   - cargo test --manifest-path gcc-test/Cargo.toml --target $TARGET --features parallel
   - cargo test --manifest-path gcc-test/Cargo.toml --target $TARGET --release
   - cargo doc
+  - cargo clean && cargo build
   - rustdoc --test README.md -L target/debug -L target/debug/deps
 after_success:
   - travis-cargo --only nightly doc-upload
 env:
   global:
-    secure: ilbcq9zX+UaiBcwqkBGldeanbEQus9npLsi0/nF1PUxKbQsoWSVtVOehAD8Hy92D3hX2npIRyNL8GxBn85XEcBYc1h7DiWUhLcXfZie79v8Ly/qboHCfZLXlB1ofbypbyQfouEdOE9zHf0ZILYVpAgUkliv6KuVShsrKNlbn4QE=
+    secure: "CBtqrudgE0PS8x3kTr44jKbC2D4nfnmdYVecooNm0qnER4B4TSvZpZSQoCgKK6k4BYQuOSyFTOwYx6M79w39ZMOgyCP9ytB+tyMWL0/+ZuUQL04yVg4M5vd3oJMkOaXbvG56ncgPyFrseY+FPDg+mXAzvJk/nily37YXjkQj2D0="
+
   matrix:
     - ARCH=x86_64
     - ARCH=i686

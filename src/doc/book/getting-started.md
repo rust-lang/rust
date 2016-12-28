@@ -24,40 +24,39 @@ see the website][platform-support].
 
 [platform-support]: https://forge.rust-lang.org/platform-support.html
 
-## Installing on Linux or Mac
+## Installing Rust
 
-If we're on Linux or a Mac, all we need to do is open a terminal and type this:
+All you need to do on Unix systems like Linux and macOS is open a
+terminal and type this:
 
 ```bash
-$ curl -sSf https://static.rust-lang.org/rustup.sh | sh
+$ curl https://sh.rustup.rs -sSf | sh
 ```
 
-This will download a script, and start the installation. If it all goes well,
-you’ll see this appear:
+It will download a script, and start the installation. If everything
+goes well, you’ll see this appear:
 
 ```text
-Rust is ready to roll.
+Rust is installed now. Great! 
 ```
 
-From here, press `y` for ‘yes’, and then follow the rest of the prompts.
+Installing on Windows is nearly as easy: download and run
+[rustup-init.exe]. It will start the installation in a console and
+present the above message on success.
 
-## Installing on Windows
+For other installation options and information, visit the [install]
+page of the Rust website.
 
-If you're on Windows, please download the appropriate [installer][install-page].
-
-[install-page]: https://www.rust-lang.org/install.html
+[rustup-init.exe]: https://win.rustup.rs
+[install]: https://www.rust-lang.org/install.html
 
 ## Uninstalling
 
-Uninstalling Rust is as easy as installing it. On Linux or Mac, run
-the uninstall script:
+Uninstalling Rust is as easy as installing it:
 
 ```bash
-$ sudo /usr/local/lib/rustlib/uninstall.sh
+$ rustup self uninstall
 ```
-
-If we used the Windows installer, we can re-run the `.msi` and it will give us
-an uninstall option.
 
 ## Troubleshooting
 
@@ -71,12 +70,15 @@ You should see the version number, commit hash, and commit date.
 
 If you do, Rust has been installed successfully! Congrats!
 
-If you don't and you're on Windows, check that Rust is in your %PATH% system
-variable: `$ echo %PATH%`. If it isn't, run the installer again, select "Change"
-on the "Change, repair, or remove installation" page and ensure "Add to PATH" is
-installed on the local hard drive.  If you need to configure your path manually,
-you can find the Rust executables in a directory like
-`"C:\Program Files\Rust stable GNU 1.x\bin"`.
+If you don't, that probably means that the `PATH` environment variable
+doesn't include Cargo's binary directory, `~/.cargo/bin` on Unix, or
+`%USERPROFILE%\.cargo\bin` on Windows. This is the directory where
+Rust development tools live, and most Rust developers keep it in their
+`PATH` environment variable, which makes it possible to run `rustc` on
+the command line. Due to differences in operating systems, command
+shells, and bugs in installation, you may need to restart your shell,
+log out of the system, or configure `PATH` manually as appropriate for
+your operating environment.
 
 Rust does not do its own linking, and so you’ll need to have a linker
 installed. Doing so will depend on your specific system. For
@@ -106,9 +108,7 @@ resources include [the user’s forum][users] and [Stack Overflow][stackoverflow
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
 
 This installer also installs a copy of the documentation locally, so we can
-read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
-On Windows, it's in a `share/doc` directory, inside the directory to which Rust
-was installed.
+read it offline. It's only a `rustup doc` away!
 
 # Hello, world!
 
