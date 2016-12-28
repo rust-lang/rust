@@ -190,7 +190,7 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
     fn reset(&mut self) -> io::Result<bool> {
         // are there any terminals that have color/attrs and not sgr0?
         // Try falling back to sgr, then op
-        let cmd = match ["sg0", "sgr", "op"]
+        let cmd = match ["sgr0", "sgr", "op"]
                             .iter()
                             .filter_map(|cap| self.ti.strings.get(*cap))
                             .next() {
