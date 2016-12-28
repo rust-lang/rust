@@ -7,6 +7,7 @@ version = "0.0.0"
 path = "lib.rs"
 test = false
 bench = false
+doc = false
 
 [dependencies]
 alloc = { path = "../liballoc" }
