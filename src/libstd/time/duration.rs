@@ -14,16 +14,19 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 
-/// A duration type to represent a span of time, typically used for system
+/// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
 ///
-/// Each duration is composed of a number of seconds and nanosecond precision.
+/// Each `Duration` is composed of a number of seconds and nanosecond precision.
 /// APIs binding a system timeout will typically round up the nanosecond
 /// precision if the underlying system does not support that level of precision.
 ///
-/// Durations implement many common traits, including `Add`, `Sub`, and other
-/// ops traits. Currently a duration may only be inspected for its number of
-/// seconds and its nanosecond precision.
+/// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
+/// [`ops`] traits.
+///
+/// [`Add`]: ../../std/ops/trait.Add.html
+/// [`Sub`]: ../../std/ops/trait.Sub.html
+/// [`ops`]: ../../std/ops/index.html
 ///
 /// # Examples
 ///
@@ -56,6 +59,14 @@ impl Duration {
     ///
     /// This constructor will panic if the carry from the nanoseconds overflows
     /// the seconds counter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = Duration::new(5, 0);
+    /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Duration {
@@ -66,6 +77,14 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = Duration::from_secs(5);
+    /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn from_secs(secs: u64) -> Duration {
@@ -73,6 +92,14 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = Duration::from_millis(5000);
+    /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn from_millis(millis: u64) -> Duration {
@@ -81,25 +108,45 @@ impl Duration {
         Duration { secs: secs, nanos: nanos }
     }
 
-    /// Returns the number of whole seconds represented by this duration.
+    /// Returns the number of whole seconds represented by this `Duration`.
     ///
     /// The extra precision represented by this duration is ignored (i.e. extra
     /// nanoseconds are not represented in the returned value).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = Duration::new(5, 0);
+    /// assert_eq!(five_seconds.as_secs(), 5);
+    /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
-    /// Returns the nanosecond precision represented by this duration.
+    /// Returns the nanosecond precision represented by this `Duration`.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by nanoseconds. The returned number always represents a
     /// fractional portion of a second (i.e. it is less than one billion).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_millis(5010);
+    /// assert_eq!(duration.subsec_nanos(), 10000000);
+    /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
 
-    /// Checked duration addition. Computes `self + other`, returning `None`
+    /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -136,8 +183,10 @@ impl Duration {
         }
     }
 
-    /// Checked duration subtraction. Computes `self + other`, returning `None`
+    /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if underflow occurred.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -172,8 +221,10 @@ impl Duration {
         }
     }
 
-    /// Checked duration multiplication. Computes `self * other`, returning
-    /// `None` if underflow or overflow occurred.
+    /// Checked `Duration` multiplication. Computes `self * other`, returning
+    /// [`None`] if overflow occurred.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -207,8 +258,10 @@ impl Duration {
         }
     }
 
-    /// Checked duration division. Computes `self / other`, returning `None`
-    /// if `other == 0` or the operation results in underflow or overflow.
+    /// Checked `Duration` division. Computes `self / other`, returning [`None`]
+    /// if `other == 0`.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///

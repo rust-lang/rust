@@ -460,8 +460,9 @@ not actually pass as a test.
 ```
 
 The `no_run` attribute will compile your code, but not run it. This is
-important for examples such as "Here's how to start up a network service,"
-which you would want to make sure compile, but might run in an infinite loop!
+important for examples such as "Here's how to retrieve a web page,"
+which you would want to ensure compiles, but might be run in a test
+environment that has no network access.
 
 ### Documenting modules
 

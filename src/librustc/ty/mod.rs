@@ -17,7 +17,7 @@ pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
-use hir::map as ast_map;
+use hir::{map as ast_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -110,6 +110,13 @@ pub struct CrateAnalysis<'tcx> {
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
     pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
+}
+
+#[derive(Clone)]
+pub struct Resolutions {
+    pub freevars: FreevarMap,
+    pub trait_map: TraitMap,
+    pub maybe_unused_trait_imports: NodeSet,
 }
 
 #[derive(Copy, Clone)]
@@ -212,26 +219,18 @@ pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,
     /// Visible only in the given crate-local module.
-    Restricted(NodeId),
+    Restricted(DefId),
     /// Not visible anywhere in the local crate. This is the visibility of private external items.
-    PrivateExternal,
+    Invisible,
 }
 
-pub trait NodeIdTree {
-    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool;
+pub trait DefIdTree: Copy {
+    fn parent(self, id: DefId) -> Option<DefId>;
 }
 
-impl<'a> NodeIdTree for ast_map::Map<'a> {
-    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
-        let mut node_ancestor = node;
-        while node_ancestor != ancestor {
-            let node_ancestor_parent = self.get_module_parent(node_ancestor);
-            if node_ancestor_parent == node_ancestor {
-                return false;
-            }
-            node_ancestor = node_ancestor_parent;
-        }
-        true
+impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
+    fn parent(self, id: DefId) -> Option<DefId> {
+        self.def_key(id).parent.map(|index| DefId { index: index, ..id })
     }
 }
 
@@ -239,36 +238,46 @@ impl Visibility {
     pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt) -> Self {
         match *visibility {
             hir::Public => Visibility::Public,
-            hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
+            hir::Visibility::Crate => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
             hir::Visibility::Restricted { ref path, .. } => match path.def {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
                 Def::Err => Visibility::Public,
-                def => Visibility::Restricted(tcx.map.as_local_node_id(def.def_id()).unwrap()),
+                def => Visibility::Restricted(def.def_id()),
             },
-            hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
+            hir::Inherited => {
+                Visibility::Restricted(tcx.map.local_def_id(tcx.map.get_module_parent(id)))
+            }
         }
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: NodeIdTree>(self, block: NodeId, tree: &T) -> bool {
+    pub fn is_accessible_from<T: DefIdTree>(self, mut module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
             // Private items from other crates are visible nowhere.
-            Visibility::PrivateExternal => return false,
+            Visibility::Invisible => return false,
             // Restricted items are visible in an arbitrary local module.
+            Visibility::Restricted(other) if other.krate != module.krate => return false,
             Visibility::Restricted(module) => module,
         };
 
-        tree.is_descendant_of(block, restriction)
+        while module != restriction {
+            match tree.parent(module) {
+                Some(parent) => module = parent,
+                None => return false,
+            }
+        }
+
+        true
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least<T: NodeIdTree>(self, vis: Visibility, tree: &T) -> bool {
+    pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
-            Visibility::PrivateExternal => return true,
+            Visibility::Invisible => return true,
             Visibility::Restricted(module) => module,
         };
 
@@ -1772,7 +1781,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
-        block.map_or(true, |b| self.vis.is_accessible_from(b, &tcx.map)) &&
+        block.map_or(true, |b| tcx.vis_is_accessible_from(self.vis, b)) &&
         self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
@@ -2062,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
         self.associated_items.memoize(def_id, || {
             if !def_id.is_local() {
-                return self.sess.cstore.associated_item(self.global_tcx(), def_id)
+                return self.sess.cstore.associated_item(def_id)
                            .expect("missing AssociatedItem in metadata");
             }
 
@@ -2241,40 +2250,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Convert a `DefId` into its fully expanded `DefPath` (every
     /// `DefId` is really just an interned def-path).
     ///
-    /// Note that if `id` is not local to this crate -- or is
-    /// inlined into this crate -- the result will be a non-local
-    /// `DefPath`.
-    ///
-    /// This function is only safe to use when you are sure that the
-    /// full def-path is accessible. Examples that are known to be
-    /// safe are local def-ids or items; see `opt_def_path` for more
-    /// details.
+    /// Note that if `id` is not local to this crate, the result will
+    //  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> ast_map::DefPath {
-        self.opt_def_path(id).unwrap_or_else(|| {
-            bug!("could not load def-path for {:?}", id)
-        })
-    }
-
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
-    /// `DefId` is really just an interned def-path).
-    ///
-    /// When going across crates, we do not save the full info for
-    /// every cross-crate def-id, and hence we may not always be able
-    /// to create a def-path. Therefore, this returns
-    /// `Option<DefPath>` to cover that possibility. It will always
-    /// return `Some` for local def-ids, however, as well as for
-    /// items. The problems arise with "minor" def-ids like those
-    /// associated with a pattern, `impl Trait`, or other internal
-    /// detail to a fn.
-    ///
-    /// Note that if `id` is not local to this crate -- or is
-    /// inlined into this crate -- the result will be a non-local
-    /// `DefPath`.
-    pub fn opt_def_path(self, id: DefId) -> Option<ast_map::DefPath> {
         if id.is_local() {
-            Some(self.map.def_path(id))
+            self.map.def_path(id)
         } else {
-            self.sess.cstore.relative_def_path(id)
+            self.sess.cstore.def_path(id)
         }
     }
 
@@ -2284,6 +2266,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.sess.cstore.def_span(&self.sess, def_id)
         }
+    }
+
+    pub fn vis_is_accessible_from(self, vis: Visibility, block: NodeId) -> bool {
+        vis.is_accessible_from(self.map.local_def_id(self.map.get_module_parent(block)), self)
     }
 
     pub fn item_name(self, id: DefId) -> ast::Name {
@@ -2540,8 +2526,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// ID of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.associated_item(self.global_tcx(), def_id)
-                       .and_then(|item| {
+            return self.sess.cstore.associated_item(def_id).and_then(|item| {
                 match item.container {
                     TraitContainer(_) => None,
                     ImplContainer(def_id) => Some(def_id),

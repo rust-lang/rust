@@ -1,0 +1,29 @@
+error[E0425]: unresolved value `namespaced_enums::A`
+  --> $DIR/enums-are-namespaced-xc.rs:15:13
+   |
+15 |     let _ = namespaced_enums::A;
+   |             ^^^^^^^^^^^^^^^^^^^ no resolution found
+   |
+   = help: possible candidate is found in another module, you can import it into scope:
+   = help:   `use namespaced_enums::Foo::A;`
+
+error[E0425]: unresolved function `namespaced_enums::B`
+  --> $DIR/enums-are-namespaced-xc.rs:18:13
+   |
+18 |     let _ = namespaced_enums::B(10);
+   |             ^^^^^^^^^^^^^^^^^^^ no resolution found
+   |
+   = help: possible candidate is found in another module, you can import it into scope:
+   = help:   `use namespaced_enums::Foo::B;`
+
+error[E0422]: unresolved struct, variant or union type `namespaced_enums::C`
+  --> $DIR/enums-are-namespaced-xc.rs:21:13
+   |
+21 |     let _ = namespaced_enums::C { a: 10 };
+   |             ^^^^^^^^^^^^^^^^^^^ no resolution found
+   |
+   = help: possible candidate is found in another module, you can import it into scope:
+   = help:   `use namespaced_enums::Foo::C;`
+
+error: aborting due to 3 previous errors
+

@@ -23,7 +23,6 @@ pub type mx_rights_t = u32;
 pub type mx_status_t = i32;
 
 pub type mx_size_t = usize;
-pub type mx_ssize_t = isize;
 
 pub const MX_HANDLE_INVALID: mx_handle_t = 0;
 

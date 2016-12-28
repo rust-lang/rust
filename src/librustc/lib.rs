@@ -24,7 +24,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]

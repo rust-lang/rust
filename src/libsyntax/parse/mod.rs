@@ -222,14 +222,14 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser::new(sess, Box::new(srdr));
+    let mut p1 = Parser::new(sess, Box::new(srdr), None, false);
     panictry!(p1.parse_all_token_trees())
 }
 
 /// Given tts and the ParseSess, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
-    let mut p = Parser::new(sess, Box::new(trdr));
+    let mut p = Parser::new(sess, Box::new(trdr), None, false);
     p.check_unknown_macro_variable();
     p
 }
@@ -633,13 +633,7 @@ mod tests {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
-                        global: false,
-                        segments: vec![
-                            ast::PathSegment {
-                                identifier: Ident::from_str("a"),
-                                parameters: ast::PathParameters::none(),
-                            }
-                        ],
+                        segments: vec![Ident::from_str("a").into()],
                     }),
                     span: sp(0, 1),
                     attrs: ThinVec::new(),
@@ -651,19 +645,11 @@ mod tests {
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 6),
-                            global: true,
-                            segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("a"),
-                                    parameters: ast::PathParameters::none(),
-                                },
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("b"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                            ]
-                        }),
+                        span: sp(0, 6),
+                        segments: vec![ast::PathSegment::crate_root(),
+                                       Ident::from_str("a").into(),
+                                       Ident::from_str("b").into()]
+                    }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
                    }))
@@ -771,13 +757,7 @@ mod tests {
                         id: ast::DUMMY_NODE_ID,
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
-                            global: false,
-                            segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("d"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                            ],
+                            segments: vec![Ident::from_str("d").into()],
                         }),
                         span:sp(7,8),
                         attrs: ThinVec::new(),
@@ -794,13 +774,7 @@ mod tests {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
-                               global:false,
-                               segments: vec![
-                                ast::PathSegment {
-                                    identifier: Ident::from_str("b"),
-                                    parameters: ast::PathParameters::none(),
-                                }
-                               ],
+                               segments: vec![Ident::from_str("b").into()],
                             }),
                            span: sp(0,1),
                            attrs: ThinVec::new()})),
@@ -841,13 +815,7 @@ mod tests {
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
-                                        global:false,
-                                        segments: vec![
-                                            ast::PathSegment {
-                                                identifier: Ident::from_str("i32"),
-                                                parameters: ast::PathParameters::none(),
-                                            }
-                                        ],
+                                        segments: vec![Ident::from_str("i32").into()],
                                         }),
                                         span:sp(10,13)
                                     }),
@@ -889,14 +857,7 @@ mod tests {
                                                 node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
-                                                        global:false,
-                                                        segments: vec![
-                                                            ast::PathSegment {
-                                                                identifier: Ident::from_str("b"),
-                                                                parameters:
-                                                                ast::PathParameters::none(),
-                                                            }
-                                                        ],
+                                                        segments: vec![Ident::from_str("b").into()],
                                                       }),
                                                 span: sp(17,18),
                                                 attrs: ThinVec::new()})),

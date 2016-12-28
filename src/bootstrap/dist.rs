@@ -48,6 +48,11 @@ pub fn tmpdir(build: &Build) -> PathBuf {
 /// Slurps up documentation from the `stage`'s `host`.
 pub fn docs(build: &Build, stage: u32, host: &str) {
     println!("Dist docs stage{} ({})", stage, host);
+    if !build.config.docs {
+        println!("\tskipping - docs disabled");
+        return
+    }
+
     let name = format!("rust-docs-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, name));
     let _ = fs::remove_dir_all(&image);
@@ -92,6 +97,7 @@ pub fn mingw(build: &Build, host: &str) {
     let name = format!("rust-mingw-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, host));
     let _ = fs::remove_dir_all(&image);
+    t!(fs::create_dir_all(&image));
 
     // The first argument to the script is a "temporary directory" which is just
     // thrown away (this contains the runtime DLLs included in the rustc package
@@ -260,6 +266,14 @@ pub fn debugger_scripts(build: &Build,
 pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
              target);
+
+    // The only true set of target libraries came from the build triple, so
+    // let's reduce redundant work by only producing archives from that host.
+    if compiler.host != build.config.build {
+        println!("\tskipping, not a build host");
+        return
+    }
+
     let name = format!("rust-std-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, target));
     let _ = fs::remove_dir_all(&image);
@@ -294,10 +308,15 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist analysis");
 
     if build.config.channel != "nightly" {
-        println!("Skipping dist-analysis - not on nightly channel");
+        println!("\tskipping - not on nightly channel");
         return;
     }
+    if compiler.host != build.config.build {
+        println!("\tskipping - not a build host");
+        return
+    }
     if compiler.stage != 2 {
+        println!("\tskipping - not stage2");
         return
     }
 
@@ -324,18 +343,17 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
     t!(fs::remove_dir_all(&image));
-
-    // Create plain source tarball
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", name))))
-       .arg("analysis")
-       .current_dir(&src);
-    build.run(&mut cmd);
 }
 
 /// Creates the `rust-src` installer component and the plain source tarball
-pub fn rust_src(build: &Build) {
+pub fn rust_src(build: &Build, host: &str) {
     println!("Dist src");
+
+    if host != build.config.build {
+        println!("\tskipping, not a build host");
+        return
+    }
+
     let plain_name = format!("rustc-{}-src", package_vers(build));
     let name = format!("rust-src-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-image", name));

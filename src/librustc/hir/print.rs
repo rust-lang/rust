@@ -1643,17 +1643,14 @@ impl<'a> State<'a> {
                   -> io::Result<()> {
         self.maybe_print_comment(path.span.lo)?;
 
-        let mut first = !path.global;
-        for segment in &path.segments {
-            if first {
-                first = false
-            } else {
+        for (i, segment) in path.segments.iter().enumerate() {
+            if i > 0 {
                 word(&mut self.s, "::")?
             }
-
-            self.print_name(segment.name)?;
-
-            self.print_path_parameters(&segment.parameters, colons_before_params)?;
+            if segment.name != keywords::CrateRoot.name() && segment.name != "$crate" {
+                self.print_name(segment.name)?;
+                self.print_path_parameters(&segment.parameters, colons_before_params)?;
+            }
         }
 
         Ok(())
@@ -1673,15 +1670,14 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.word_space("as")?;
 
-                let mut first = !path.global;
-                for segment in &path.segments[..path.segments.len() - 1] {
-                    if first {
-                        first = false
-                    } else {
+                for (i, segment) in path.segments[..path.segments.len() - 1].iter().enumerate() {
+                    if i > 0 {
                         word(&mut self.s, "::")?
                     }
-                    self.print_name(segment.name)?;
-                    self.print_path_parameters(&segment.parameters, colons_before_params)?;
+                    if segment.name != keywords::CrateRoot.name() && segment.name != "$crate" {
+                        self.print_name(segment.name)?;
+                        self.print_path_parameters(&segment.parameters, colons_before_params)?;
+                    }
                 }
 
                 word(&mut self.s, ">")?;

@@ -481,7 +481,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         (result_ty, arm_ty)
                     };
-                    self.report_mismatched_types(&cause, expected, found, e);
+                    self.report_mismatched_types(&cause, expected, found, e).emit();
                     self.tcx.types.err
                 }
             };

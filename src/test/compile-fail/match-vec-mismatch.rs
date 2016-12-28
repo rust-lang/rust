@@ -34,7 +34,7 @@ fn main() {
         [0, 1, 2, 3, x..] => {} //~ ERROR pattern requires
     };
 
-    match does_not_exist { //~ ERROR unresolved name
+    match does_not_exist { //~ ERROR unresolved value `does_not_exist`
         [] => {}
     };
 }

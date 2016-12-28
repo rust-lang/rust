@@ -127,6 +127,7 @@ pub fn usable_size(size: usize, align: usize) -> usize {
 pub const EMPTY: *mut () = 0x1 as *mut ();
 
 /// The allocator for unique pointers.
+// This function must not unwind. If it does, MIR trans will fail.
 #[cfg(not(test))]
 #[lang = "exchange_malloc"]
 #[inline]
@@ -143,6 +144,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 }
 
 #[cfg(not(test))]
+#[cfg(stage0)]
 #[lang = "exchange_free"]
 #[inline]
 unsafe fn exchange_free(ptr: *mut u8, old_size: usize, align: usize) {

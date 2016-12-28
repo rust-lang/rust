@@ -16,7 +16,7 @@ use rustc_const_eval::ConstEvalErr;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use {debuginfo, machine};
-use base::{self, push_ctxt};
+use base;
 use trans_item::TransItem;
 use common::{CrateContext, val_ty};
 use declare;
@@ -221,7 +221,6 @@ pub fn trans_static(ccx: &CrateContext,
                     attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
     unsafe {
-        let _icx = push_ctxt("trans_static");
         let def_id = ccx.tcx().map.local_def_id(id);
         let g = get_static(ccx, def_id);
 

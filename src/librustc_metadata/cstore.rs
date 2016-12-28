@@ -16,7 +16,7 @@ use schema;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
-use rustc::hir::map::DefKey;
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate};
 use rustc_back::PanicStrategy;
@@ -78,7 +78,7 @@ pub struct CrateMetadata {
     /// hashmap, which gives the reverse mapping.  This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    pub key_map: FxHashMap<DefKey, DefIndex>,
+    pub def_path_table: DefPathTable,
 
     pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,

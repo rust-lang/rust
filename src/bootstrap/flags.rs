@@ -27,8 +27,9 @@ use step;
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
-    pub verbose: bool,
+    pub verbose: usize, // verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
     pub stage: Option<u32>,
+    pub keep_stage: Option<u32>,
     pub build: String,
     pub host: Vec<String>,
     pub target: Vec<String>,
@@ -36,6 +37,17 @@ pub struct Flags {
     pub src: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
+    pub incremental: bool,
+}
+
+impl Flags {
+    pub fn verbose(&self) -> bool {
+        self.verbose > 0
+    }
+
+    pub fn very_verbose(&self) -> bool {
+        self.verbose > 1
+    }
 }
 
 pub enum Subcommand {
@@ -62,12 +74,14 @@ pub enum Subcommand {
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
         let mut opts = Options::new();
-        opts.optflag("v", "verbose", "use verbose output");
+        opts.optflagmulti("v", "verbose", "use verbose output (-vv for very verbose)");
+        opts.optflag("i", "incremental", "use incremental compilation");
         opts.optopt("", "config", "TOML configuration file for build", "FILE");
         opts.optopt("", "build", "build target of the stage0 compiler", "BUILD");
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
         opts.optopt("", "stage", "stage to build", "N");
+        opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -108,7 +122,6 @@ Arguments:
     tests that should be compiled and run. For example:
 
         ./x.py test src/test/run-pass
-        ./x.py test src/test/run-pass/assert-*
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0
 
@@ -255,9 +268,20 @@ To learn more about a subcommand, run `./x.py <command> -h`
             }
         });
 
+        let mut stage = m.opt_str("stage").map(|j| j.parse().unwrap());
+
+        let incremental = m.opt_present("i");
+
+        if incremental {
+            if stage.is_none() {
+                stage = Some(1);
+            }
+        }
+
         Flags {
-            verbose: m.opt_present("v"),
-            stage: m.opt_str("stage").map(|j| j.parse().unwrap()),
+            verbose: m.opt_count("v"),
+            stage: stage,
+            keep_stage: m.opt_str("keep-stage").map(|j| j.parse().unwrap()),
             build: m.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()
             }),
@@ -267,6 +291,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
             src: m.opt_str("src").map(PathBuf::from),
             jobs: m.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd: cmd,
+            incremental: incremental,
         }
     }
 }

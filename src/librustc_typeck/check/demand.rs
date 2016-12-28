@@ -14,8 +14,13 @@ use rustc::ty::Ty;
 use rustc::infer::{InferOk};
 use rustc::traits::ObligationCause;
 
-use syntax_pos::Span;
+use syntax::ast;
+use syntax_pos::{self, Span};
 use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::ty::{self, AssociatedItem};
+
+use super::method::probe;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
@@ -27,7 +32,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.register_predicates(obligations);
             },
             Err(e) => {
-                self.report_mismatched_types(&cause, expected, actual, e);
+                self.report_mismatched_types(&cause, expected, actual, e).emit();
             }
         }
     }
@@ -46,7 +51,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.register_predicates(obligations);
             },
             Err(e) => {
-                self.report_mismatched_types(cause, expected, actual, e);
+                self.report_mismatched_types(cause, expected, actual, e).emit();
             }
         }
     }
@@ -57,7 +62,65 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
-            self.report_mismatched_types(&cause, expected, expr_ty, e);
+            let mode = probe::Mode::MethodCall;
+            let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                         mode,
+                                                         expected,
+                                                         checked_ty,
+                                                         ast::DUMMY_NODE_ID);
+            let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+            if suggestions.len() > 0 {
+                err.help(&format!("here are some functions which \
+                                   might fulfill your needs:\n - {}",
+                                  self.get_best_match(&suggestions)));
+            };
+            err.emit();
+        }
+    }
+
+    fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
+        format!(".{}({})",
+                method.name,
+                if self.has_no_input_arg(method) {
+                    ""
+                } else {
+                    "..."
+                })
+    }
+
+    fn display_suggested_methods(&self, methods: &[AssociatedItem]) -> String {
+        methods.iter()
+               .take(5)
+               .map(|method| self.format_method_suggestion(&*method))
+               .collect::<Vec<String>>()
+               .join("\n - ")
+    }
+
+    fn get_best_match(&self, methods: &[AssociatedItem]) -> String {
+        let no_argument_methods: Vec<_> =
+            methods.iter()
+                   .filter(|ref x| self.has_no_input_arg(&*x))
+                   .map(|x| x.clone())
+                   .collect();
+        if no_argument_methods.len() > 0 {
+            self.display_suggested_methods(&no_argument_methods)
+        } else {
+            self.display_suggested_methods(&methods)
+        }
+    }
+
+    // This function checks if the method isn't static and takes other arguments than `self`.
+    fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
+        match method.def() {
+            Def::Method(def_id) => {
+                match self.tcx.item_type(def_id).sty {
+                    ty::TypeVariants::TyFnDef(_, _, fty) => {
+                        fty.sig.skip_binder().inputs().len() == 1
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
         }
     }
 }

@@ -48,7 +48,7 @@ use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 
 use std::env;
-use std::fs::{self, File};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
@@ -152,6 +152,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -179,6 +180,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: Some(self.sig_base(item)),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -197,6 +199,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: Some(self.sig_base(item)),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -207,6 +210,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
                 filter!(self.span_utils, sub_span, item.span, None);
+
                 Some(Data::ModData(ModData {
                     id: item.id,
                     name: item.ident.to_string(),
@@ -217,6 +221,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -239,6 +244,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
@@ -287,18 +293,34 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &ast::StructField,
-                          scope: NodeId) -> Option<VariableData> {
+    pub fn get_field_data(&self,
+                          field: &ast::StructField,
+                          scope: NodeId)
+                          -> Option<VariableData> {
         if let Some(ident) = field.ident {
+            let name = ident.to_string();
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
-            let def_id = self.tcx.map.local_def_id(field.id);
-            let typ = self.tcx.item_type(def_id).to_string();
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
+            let def_id = self.tcx.map.local_def_id(field.id);
+            let typ = self.tcx.item_type(def_id).to_string();
+
+            let span = field.span;
+            let text = self.span_utils.snippet(field.span);
+            let ident_start = text.find(&name).unwrap();
+            let ident_end = ident_start + name.len();
+            let sig = Signature {
+                span: span,
+                text: text,
+                ident_start: ident_start,
+                ident_end: ident_end,
+                defs: vec![],
+                refs: vec![],
+            };
             Some(VariableData {
                 id: field.id,
                 kind: VariableKind::Field,
-                name: ident.to_string(),
+                name: name,
                 qualname: qualname,
                 span: sub_span.unwrap(),
                 scope: scope,
@@ -307,6 +329,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 type_value: typ,
                 visibility: From::from(&field.vis),
                 docs: docs_for_attrs(&field.attrs),
+                sig: Some(sig),
             })
         } else {
             None
@@ -388,9 +411,23 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
+
+        let name = name.to_string();
+        let text = self.span_utils.signature_string_for_span(span);
+        let ident_start = text.find(&name).unwrap();
+        let ident_end = ident_start + name.len();
+        let sig = Signature {
+            span: span,
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
+        };
+
         Some(FunctionData {
             id: id,
-            name: name.to_string(),
+            name: name,
             qualname: qualname,
             declaration: decl_id,
             span: sub_span.unwrap(),
@@ -400,6 +437,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             visibility: vis,
             parent: parent_scope,
             docs: docs,
+            sig: sig,
         })
     }
 
@@ -695,6 +733,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    fn sig_base(&self, item: &ast::Item) -> Signature {
+        let text = self.span_utils.signature_string_for_span(item.span);
+        let name = item.ident.to_string();
+        let ident_start = text.find(&name).expect("Name not in signature?");
+        let ident_end = ident_start + name.len();
+        Signature {
+            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
+        }
+    }
+
     #[inline]
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.map.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
@@ -832,7 +885,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         },
     };
 
-    if let Err(e) = fs::create_dir_all(&root_path) {
+    if let Err(e) = rustc::util::fs::create_dir_racy(&root_path) {
         tcx.sess.err(&format!("Could not create directory {}: {}",
                               root_path.display(),
                               e));

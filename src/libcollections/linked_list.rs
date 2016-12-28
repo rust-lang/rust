@@ -10,8 +10,15 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `LinkedList` allows pushing and popping elements at either end and is thus
-//! efficiently usable as a double-ended queue.
+//! The `LinkedList` allows pushing and popping elements at either end
+//! in constant time.
+//!
+//! Almost always it is better to use `Vec` or [`VecDeque`] instead of
+//! [`LinkedList`]. In general, array-based containers are faster,
+//! more memory efficient and make better use of CPU cache.
+//!
+//! [`LinkedList`]: ../linked_list/struct.LinkedList.html
+//! [`VecDeque`]: ../vec_deque/struct.VecDeque.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -27,7 +34,14 @@ use core::ptr::{self, Shared};
 
 use super::SpecExtend;
 
-/// A doubly-linked list.
+/// A doubly-linked list with owned nodes.
+///
+/// The `LinkedList` allows pushing and popping elements at either end
+/// in constant time.
+///
+/// Almost always it is better to use `Vec` or `VecDeque` instead of
+/// `LinkedList`. In general, array-based containers are faster,
+/// more memory efficient and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
     head: Option<Shared<Node<T>>>,
@@ -225,15 +239,17 @@ impl<T> LinkedList<T> {
     pub fn append(&mut self, other: &mut Self) {
         match self.tail {
             None => mem::swap(self, other),
-            Some(tail) => if let Some(other_head) = other.head.take() {
-                unsafe {
-                    (**tail).next = Some(other_head);
-                    (**other_head).prev = Some(tail);
-                }
+            Some(tail) => {
+                if let Some(other_head) = other.head.take() {
+                    unsafe {
+                        (**tail).next = Some(other_head);
+                        (**other_head).prev = Some(tail);
+                    }
 
-                self.tail = other.tail.take();
-                self.len += mem::replace(&mut other.len, 0);
-            },
+                    self.tail = other.tail.take();
+                    self.len += mem::replace(&mut other.len, 0);
+                }
+            }
         }
     }
 
@@ -674,7 +690,10 @@ impl<T> LinkedList<T> {
                reason = "method name and placement protocol are subject to change",
                issue = "30172")]
     pub fn front_place(&mut self) -> FrontPlace<T> {
-        FrontPlace { list: self, node: IntermediateBox::make_place() }
+        FrontPlace {
+            list: self,
+            node: IntermediateBox::make_place(),
+        }
     }
 
     /// Returns a place for insertion at the back of the list.
@@ -699,7 +718,10 @@ impl<T> LinkedList<T> {
                reason = "method name and placement protocol are subject to change",
                issue = "30172")]
     pub fn back_place(&mut self) -> BackPlace<T> {
-        BackPlace { list: self, node: IntermediateBox::make_place() }
+        BackPlace {
+            list: self,
+            node: IntermediateBox::make_place(),
+        }
     }
 }
 
@@ -852,7 +874,7 @@ impl<'a, T> IterMut<'a, T> {
                 (**head).prev = node;
 
                 self.list.len += 1;
-            }
+            },
         }
     }
 
@@ -1135,9 +1157,15 @@ impl<'a, T> InPlace<T> for BackPlace<'a, T> {
 // Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> { x }
-    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> { x }
-    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> { x }
+    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> {
+        x
+    }
+    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> {
+        x
+    }
+    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> {
+        x
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1298,10 +1326,10 @@ mod tests {
     fn test_send() {
         let n = list_from(&[1, 2, 3]);
         thread::spawn(move || {
-            check_links(&n);
-            let a: &[_] = &[&1, &2, &3];
-            assert_eq!(a, &n.iter().collect::<Vec<_>>()[..]);
-        })
+                check_links(&n);
+                let a: &[_] = &[&1, &2, &3];
+                assert_eq!(a, &n.iter().collect::<Vec<_>>()[..]);
+            })
             .join()
             .ok()
             .unwrap();

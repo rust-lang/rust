@@ -543,6 +543,7 @@ pub struct ProjectionTy<'tcx> {
 pub struct BareFnTy<'tcx> {
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
+    /// Signature (inputs and output) of this function type.
     pub sig: PolyFnSig<'tcx>,
 }
 

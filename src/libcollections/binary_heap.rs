@@ -225,7 +225,7 @@ pub struct BinaryHeap<T> {
 /// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
-    heap: &'a mut BinaryHeap<T>
+    heap: &'a mut BinaryHeap<T>,
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
@@ -385,9 +385,7 @@ impl<T: Ord> BinaryHeap<T> {
         if self.is_empty() {
             None
         } else {
-            Some(PeekMut {
-                heap: self
-            })
+            Some(PeekMut { heap: self })
         }
     }
 
@@ -1126,7 +1124,9 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
+impl<'a, T> IntoIterator for &'a BinaryHeap<T>
+    where T: Ord
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 

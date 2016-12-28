@@ -11,9 +11,9 @@
 //! OS-specific functionality.
 
 #![stable(feature = "os", since = "1.0.0")]
-#![allow(missing_docs, bad_style)]
+#![allow(missing_docs, bad_style, missing_debug_implementations)]
 
-#[cfg(unix)]
+#[cfg(any(target_os = "redox", unix))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use sys::ext as unix;
 #[cfg(windows)]

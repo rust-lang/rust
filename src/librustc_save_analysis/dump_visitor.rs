@@ -143,19 +143,20 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     // a str representation of the entire prefix.
     fn process_path_prefixes(&self, path: &ast::Path) -> Vec<(Span, String)> {
         let spans = self.span.spans_for_path_segments(path);
+        let segments = &path.segments[if path.is_global() { 1 } else { 0 }..];
 
         // Paths to enums seem to not match their spans - the span includes all the
         // variants too. But they seem to always be at the end, so I hope we can cope with
         // always using the first ones. So, only error out if we don't have enough spans.
         // What could go wrong...?
-        if spans.len() < path.segments.len() {
+        if spans.len() < segments.len() {
             if generated_code(path.span) {
                 return vec![];
             }
             error!("Mis-calculated spans for path '{}'. Found {} spans, expected {}. Found spans:",
                    path_to_string(path),
                    spans.len(),
-                   path.segments.len());
+                   segments.len());
             for s in &spans {
                 let loc = self.sess.codemap().lookup_char_pos(s.lo);
                 error!("    '{}' in {}, line {}",
@@ -170,14 +171,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let mut result: Vec<(Span, String)> = vec![];
 
         let mut segs = vec![];
-        for (i, (seg, span)) in path.segments.iter().zip(&spans).enumerate() {
+        for (i, (seg, span)) in segments.iter().zip(&spans).enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path {
                 span: *span, // span for the last segment
-                global: path.global,
                 segments: segs,
             };
-            let qualname = if i == 0 && path.global {
+            let qualname = if i == 0 && path.is_global() {
                 format!("::{}", path_to_string(&sub_path))
             } else {
                 path_to_string(&sub_path)
@@ -189,20 +189,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         result
     }
 
-    // The global arg allows us to override the global-ness of the path (which
-    // actually means 'does the path start with `::`', rather than 'is the path
-    // semantically global). We use the override for `use` imports (etc.) where
-    // the syntax is non-global, but the semantics are global.
-    fn write_sub_paths(&mut self, path: &ast::Path, global: bool) {
+    fn write_sub_paths(&mut self, path: &ast::Path) {
         let sub_paths = self.process_path_prefixes(path);
-        for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
-            let qualname = if i == 0 && global && !path.global {
-                format!("::{}", qualname)
-            } else {
-                qualname.clone()
-            };
+        for (span, qualname) in sub_paths {
             self.dumper.mod_ref(ModRefData {
-                span: *span,
+                span: span,
                 qualname: qualname,
                 scope: self.cur_scope,
                 ref_id: None
@@ -212,22 +203,16 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
-    fn write_sub_paths_truncated(&mut self, path: &ast::Path, global: bool) {
+    fn write_sub_paths_truncated(&mut self, path: &ast::Path) {
         let sub_paths = self.process_path_prefixes(path);
         let len = sub_paths.len();
         if len <= 1 {
             return;
         }
 
-        let sub_paths = &sub_paths[..len-1];
-        for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
-            let qualname = if i == 0 && global && !path.global {
-                format!("::{}", qualname)
-            } else {
-                qualname.clone()
-            };
+        for (span, qualname) in sub_paths.into_iter().take(len - 1) {
             self.dumper.mod_ref(ModRefData {
-                span: *span,
+                span: span,
                 qualname: qualname,
                 scope: self.cur_scope,
                 ref_id: None
@@ -372,6 +357,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         parent: None,
                         visibility: Visibility::Inherited,
                         docs: String::new(),
+                        sig: None,
                     }.lower(self.tcx));
                 }
             }
@@ -444,6 +430,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: trait_id,
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
+                    sig: method_data.sig,
                 }.lower(self.tcx));
             }
 
@@ -515,6 +502,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     visibility: Visibility::Inherited,
                     parent: None,
                     docs: String::new(),
+                    sig: None,
                 }.lower(self.tcx));
             }
         }
@@ -587,6 +575,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: Some(parent_id),
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
+                sig: None,
             }.lower(self.tcx));
         }
 
@@ -630,11 +619,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 fields: fields,
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
+                sig: self.save_ctxt.sig_base(item),
             }.lower(self.tcx));
         }
 
-
-        // fields
         for field in def.fields() {
             self.process_struct_field_def(field, item.id);
             self.visit_ty(&field.ty);
@@ -663,6 +651,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             qualname.push_str("::");
             qualname.push_str(&name);
 
+            let text = self.span.signature_string_for_span(variant.span);
+            let ident_start = text.find(&name).unwrap();
+            let ident_end = ident_start + name.len();
+            let sig = Signature {
+                span: variant.span,
+                text: text,
+                ident_start: ident_start,
+                ident_end: ident_end,
+                defs: vec![],
+                refs: vec![],
+            };
+
             match variant.node.data {
                 ast::VariantData::Struct(ref fields, _) => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
@@ -684,6 +684,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
+                            sig: sig,
                         }.lower(self.tcx));
                     }
                 }
@@ -709,6 +710,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
+                            sig: sig,
                         }.lower(self.tcx));
                     }
                 }
@@ -793,6 +795,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 items: methods.iter().map(|i| i.id).collect(),
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
+                sig: self.save_ctxt.sig_base(item),
             }.lower(self.tcx));
         }
 
@@ -935,7 +938,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::Union(..) |
             Def::Variant(..) |
             Def::TyAlias(..) |
-            Def::AssociatedTy(..) => self.write_sub_paths_truncated(path, false),
+            Def::AssociatedTy(..) => self.write_sub_paths_truncated(path),
             _ => {}
         }
     }
@@ -946,7 +949,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                           fields: &'l [ast::Field],
                           variant: &'l ty::VariantDef,
                           base: &'l Option<P<ast::Expr>>) {
-        self.write_sub_paths_truncated(path, false);
+        self.write_sub_paths_truncated(path);
 
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(struct_lit_data, TypeRefData, ex.span);
@@ -1058,6 +1061,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: None,
                     visibility: Visibility::Inherited,
                     docs: String::new(),
+                    sig: None,
                 }.lower(self.tcx));
             }
         }
@@ -1201,7 +1205,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                                 visibility: From::from(&item.vis),
                             }.lower(self.tcx));
                         }
-                        self.write_sub_paths_truncated(path, true);
+                        self.write_sub_paths_truncated(path);
                     }
                     ast::ViewPathGlob(ref path) => {
                         // Make a comma-separated list of names of imported modules.
@@ -1225,7 +1229,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                                 visibility: From::from(&item.vis),
                             }.lower(self.tcx));
                         }
-                        self.write_sub_paths(path, true);
+                        self.write_sub_paths(path);
                     }
                     ast::ViewPathList(ref path, ref list) => {
                         for plid in list {
@@ -1237,7 +1241,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             }
                         }
 
-                        self.write_sub_paths(path, true);
+                        self.write_sub_paths(path);
                     }
                 }
             }
@@ -1272,10 +1276,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             Impl(..,
-                          ref ty_params,
-                          ref trait_ref,
-                          ref typ,
-                          ref impl_items) => {
+                 ref ty_params,
+                 ref trait_ref,
+                 ref typ,
+                 ref impl_items) => {
                 self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
             }
             Trait(_, ref generics, ref trait_refs, ref methods) =>
@@ -1298,6 +1302,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         visibility: From::from(&item.vis),
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
+                        sig: Some(self.save_ctxt.sig_base(item)),
                     }.lower(self.tcx));
                 }
 
@@ -1340,7 +1345,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                     }.lower(self.tcx));
                 }
 
-                self.write_sub_paths_truncated(path, false);
+                self.write_sub_paths_truncated(path);
 
                 visit::walk_path(self, path);
             }
@@ -1507,6 +1512,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             parent: None,
                             visibility: Visibility::Inherited,
                             docs: String::new(),
+                            sig: None,
                         }.lower(self.tcx));
                     }
                 }

@@ -11,10 +11,10 @@
 // Check that associated paths starting with `<<` are successfully parsed.
 
 fn main() {
-    let _: <<A>::B>::C; //~ ERROR type name `A` is undefined or not in scope
-    let _ = <<A>::B>::C; //~ ERROR type name `A` is undefined or not in scope
-    let <<A>::B>::C; //~ ERROR type name `A` is undefined or not in scope
-    let 0 ... <<A>::B>::C; //~ ERROR type name `A` is undefined or not in scope
+    let _: <<A>::B>::C; //~ ERROR unresolved type `A`
+    let _ = <<A>::B>::C; //~ ERROR unresolved type `A`
+    let <<A>::B>::C; //~ ERROR unresolved type `A`
+    let 0 ... <<A>::B>::C; //~ ERROR unresolved type `A`
                            //~^ ERROR only char and numeric types are allowed in range patterns
-    <<A>::B>::C; //~ ERROR type name `A` is undefined or not in scope
+    <<A>::B>::C; //~ ERROR unresolved type `A`
 }

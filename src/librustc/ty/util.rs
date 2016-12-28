@@ -24,11 +24,11 @@ use util::nodemap::FxHashMap;
 use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult};
 
 use std::cell::RefCell;
 use std::cmp;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -349,7 +349,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher::new(self, DefaultHasher::default());
+        let mut hasher = TypeIdHasher::new(self);
         hasher.visit_ty(ty);
         hasher.finish()
     }
@@ -395,94 +395,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// When hashing a type this ends up affecting properties like symbol names. We
-/// want these symbol names to be calculated independent of other factors like
-/// what architecture you're compiling *from*.
-///
-/// The hashing just uses the standard `Hash` trait, but the implementations of
-/// `Hash` for the `usize` and `isize` types are *not* architecture independent
-/// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
-/// `isize` completely when hashing. To ensure that these don't leak in we use a
-/// custom hasher implementation here which inflates the size of these to a `u64`
-/// and `i64`.
-///
-/// The same goes for endianess: We always convert multi-byte integers to little
-/// endian before hashing.
-#[derive(Debug)]
-pub struct ArchIndependentHasher<H> {
-    inner: H,
-}
-
-impl<H> ArchIndependentHasher<H> {
-    pub fn new(inner: H) -> ArchIndependentHasher<H> {
-        ArchIndependentHasher { inner: inner }
-    }
-
-    pub fn into_inner(self) -> H {
-        self.inner
-    }
-}
-
-impl<H: Hasher> Hasher for ArchIndependentHasher<H> {
-    fn write(&mut self, bytes: &[u8]) {
-        self.inner.write(bytes)
-    }
-
-    fn finish(&self) -> u64 {
-        self.inner.finish()
-    }
-
-    fn write_u8(&mut self, i: u8) {
-        self.inner.write_u8(i)
-    }
-    fn write_u16(&mut self, i: u16) {
-        self.inner.write_u16(i.to_le())
-    }
-    fn write_u32(&mut self, i: u32) {
-        self.inner.write_u32(i.to_le())
-    }
-    fn write_u64(&mut self, i: u64) {
-        self.inner.write_u64(i.to_le())
-    }
-    fn write_usize(&mut self, i: usize) {
-        self.inner.write_u64((i as u64).to_le())
-    }
-    fn write_i8(&mut self, i: i8) {
-        self.inner.write_i8(i)
-    }
-    fn write_i16(&mut self, i: i16) {
-        self.inner.write_i16(i.to_le())
-    }
-    fn write_i32(&mut self, i: i32) {
-        self.inner.write_i32(i.to_le())
-    }
-    fn write_i64(&mut self, i: i64) {
-        self.inner.write_i64(i.to_le())
-    }
-    fn write_isize(&mut self, i: isize) {
-        self.inner.write_i64((i as i64).to_le())
-    }
-}
-
-pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
+pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, W> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: ArchIndependentHasher<H>,
+    state: StableHasher<W>,
 }
 
-impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
-        TypeIdHasher {
-            tcx: tcx,
-            state: ArchIndependentHasher::new(state),
-        }
+impl<'a, 'gcx, 'tcx, W> TypeIdHasher<'a, 'gcx, 'tcx, W>
+    where W: StableHasherResult
+{
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        TypeIdHasher { tcx: tcx, state: StableHasher::new() }
+    }
+
+    pub fn finish(self) -> W {
+        self.state.finish()
     }
 
     pub fn hash<T: Hash>(&mut self, x: T) {
         x.hash(&mut self.state);
-    }
-
-    pub fn finish(self) -> u64 {
-        self.state.finish()
     }
 
     fn hash_discriminant_u8<T>(&mut self, x: &T) {
@@ -504,13 +434,11 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
     pub fn def_path(&mut self, def_path: &ast_map::DefPath) {
         def_path.deterministic_hash_to(self.tcx, &mut self.state);
     }
-
-    pub fn into_inner(self) -> H {
-        self.state.inner
-    }
 }
 
-impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, H> {
+impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
+    where W: StableHasherResult
+{
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // Distinguish between the Ty variants uniformly.
         self.hash_discriminant_u8(&ty.sty);

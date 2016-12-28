@@ -29,7 +29,6 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(vec_into_iter_as_slice)]
 
 extern crate collections;
 extern crate test;

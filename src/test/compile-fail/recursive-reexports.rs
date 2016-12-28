@@ -10,6 +10,8 @@
 
 // aux-build:recursive_reexports.rs
 
-fn f() -> recursive_reexports::S {} //~ ERROR undeclared
+extern crate recursive_reexports;
+
+fn f() -> recursive_reexports::S {} //~ ERROR unresolved type `recursive_reexports::S`
 
 fn main() {}

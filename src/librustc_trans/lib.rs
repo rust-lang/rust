@@ -26,7 +26,6 @@
 #![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(cell_extras)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
@@ -37,6 +36,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
+#![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
 
@@ -96,8 +96,6 @@ mod asm;
 mod assert_module_sources;
 mod attributes;
 mod base;
-mod basic_block;
-mod build;
 mod builder;
 mod cabi_aarch64;
 mod cabi_arm;
@@ -108,6 +106,7 @@ mod cabi_msp430;
 mod cabi_powerpc;
 mod cabi_powerpc64;
 mod cabi_s390x;
+mod cabi_sparc;
 mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;

@@ -9,18 +9,26 @@
 // except according to those terms.
 
 #[inline]
-pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8) {
-    if *position == vec.len() {
+fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
+    if position == vec.len() {
         vec.push(byte);
     } else {
-        vec[*position] = byte;
+        vec[position] = byte;
     }
-
-    *position += 1;
 }
 
-pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value: u64) -> usize {
-    let mut position = start_position;
+#[inline]
+/// encodes an integer using unsigned leb128 encoding and stores
+/// the result using a callback function.
+///
+/// The callback `write` is called once for each position
+/// that is to be written to with the byte to be encoded
+/// at that position.
+pub fn write_unsigned_leb128_to<W>(mut value: u64, mut write: W) -> usize
+    where W: FnMut(usize, u8)
+{
+    let mut position = 0;
+
     loop {
         let mut byte = (value & 0x7F) as u8;
         value >>= 7;
@@ -28,14 +36,19 @@ pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value
             byte |= 0x80;
         }
 
-        write_to_vec(out, &mut position, byte);
+        write(position, byte);
+        position += 1;
 
         if value == 0 {
             break;
         }
     }
 
-    return position - start_position;
+    position
+}
+
+pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, value: u64) -> usize {
+    write_unsigned_leb128_to(value, |i, v| write_to_vec(out, start_position+i, v))
 }
 
 #[inline]
@@ -56,9 +69,17 @@ pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) 
     (result, position - start_position)
 }
 
-
-pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: i64) -> usize {
-    let mut position = start_position;
+#[inline]
+/// encodes an integer using signed leb128 encoding and stores
+/// the result using a callback function.
+///
+/// The callback `write` is called once for each position
+/// that is to be written to with the byte to be encoded
+/// at that position.
+pub fn write_signed_leb128_to<W>(mut value: i64, mut write: W) -> usize
+    where W: FnMut(usize, u8)
+{
+    let mut position = 0;
 
     loop {
         let mut byte = (value as u8) & 0x7f;
@@ -69,14 +90,19 @@ pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: 
             byte |= 0x80; // Mark this byte to show that more bytes will follow.
         }
 
-        write_to_vec(out, &mut position, byte);
+        write(position, byte);
+        position += 1;
 
         if !more {
             break;
         }
     }
 
-    return position - start_position;
+    position
+}
+
+pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, value: i64) -> usize {
+    write_signed_leb128_to(value, |i, v| write_to_vec(out, start_position+i, v))
 }
 
 #[inline]

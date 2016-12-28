@@ -1,8 +1,8 @@
-error[E0425]: unresolved name `bar`
+error[E0425]: unresolved value `bar`
   --> $DIR/tab.rs:14:2
    |
 14 | \tbar;
-   | \t^^^ unresolved name
+   | \t^^^ no resolution found
 
 error: aborting due to previous error
 

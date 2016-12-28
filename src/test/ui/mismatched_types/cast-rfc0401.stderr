@@ -1,0 +1,240 @@
+error: casting `*const U` as `*const V` is invalid
+  --> $DIR/cast-rfc0401.rs:13:5
+   |
+13 |     u as *const V
+   |     ^^^^^^^^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error: casting `*const U` as `*const str` is invalid
+  --> $DIR/cast-rfc0401.rs:18:5
+   |
+18 |     u as *const str
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error: no field `f` on type `fn() {main}`
+  --> $DIR/cast-rfc0401.rs:75:18
+   |
+75 |     let _ = main.f as *const u32;
+   |                  ^
+
+error: non-scalar cast: `*const u8` as `&u8`
+  --> $DIR/cast-rfc0401.rs:39:13
+   |
+39 |     let _ = v as &u8;
+   |             ^^^^^^^^
+
+error: non-scalar cast: `*const u8` as `E`
+  --> $DIR/cast-rfc0401.rs:40:13
+   |
+40 |     let _ = v as E;
+   |             ^^^^^^
+
+error: non-scalar cast: `*const u8` as `fn()`
+  --> $DIR/cast-rfc0401.rs:41:13
+   |
+41 |     let _ = v as fn();
+   |             ^^^^^^^^^
+
+error: non-scalar cast: `*const u8` as `(u32,)`
+  --> $DIR/cast-rfc0401.rs:42:13
+   |
+42 |     let _ = v as (u32,);
+   |             ^^^^^^^^^^^
+
+error: non-scalar cast: `std::option::Option<&*const u8>` as `*const u8`
+  --> $DIR/cast-rfc0401.rs:43:13
+   |
+43 |     let _ = Some(&v) as *const u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `*const u8` as `f32` is invalid
+  --> $DIR/cast-rfc0401.rs:45:13
+   |
+45 |     let _ = v as f32;
+   |             ^^^^^^^^
+
+error: casting `fn() {main}` as `f64` is invalid
+  --> $DIR/cast-rfc0401.rs:46:13
+   |
+46 |     let _ = main as f64;
+   |             ^^^^^^^^^^^
+
+error: casting `&*const u8` as `usize` is invalid
+  --> $DIR/cast-rfc0401.rs:47:13
+   |
+47 |     let _ = &v as usize;
+   |             ^^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error: casting `f32` as `*const u8` is invalid
+  --> $DIR/cast-rfc0401.rs:48:13
+   |
+48 |     let _ = f as *const u8;
+   |             ^^^^^^^^^^^^^^
+
+error[E0054]: cannot cast as `bool`
+  --> $DIR/cast-rfc0401.rs:49:13
+   |
+49 |     let _ = 3_i32 as bool;
+   |             ^^^^^^^^^^^^^ unsupported cast
+   |
+   = help: compare with zero instead
+
+error[E0054]: cannot cast as `bool`
+  --> $DIR/cast-rfc0401.rs:50:13
+   |
+50 |     let _ = E::A as bool;
+   |             ^^^^^^^^^^^^ unsupported cast
+   |
+   = help: compare with zero instead
+
+error: only `u8` can be cast as `char`, not `u32`
+  --> $DIR/cast-rfc0401.rs:51:13
+   |
+51 |     let _ = 0x61u32 as char;
+   |             ^^^^^^^^^^^^^^^
+
+error: casting `bool` as `f32` is invalid
+  --> $DIR/cast-rfc0401.rs:53:13
+   |
+53 |     let _ = false as f32;
+   |             ^^^^^^^^^^^^
+   |
+   = help: cast through an integer first
+
+error: casting `E` as `f32` is invalid
+  --> $DIR/cast-rfc0401.rs:54:13
+   |
+54 |     let _ = E::A as f32;
+   |             ^^^^^^^^^^^
+   |
+   = help: cast through an integer first
+
+error: casting `char` as `f32` is invalid
+  --> $DIR/cast-rfc0401.rs:55:13
+   |
+55 |     let _ = 'a' as f32;
+   |             ^^^^^^^^^^
+   |
+   = help: cast through an integer first
+
+error: casting `bool` as `*const u8` is invalid
+  --> $DIR/cast-rfc0401.rs:57:13
+   |
+57 |     let _ = false as *const u8;
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: casting `E` as `*const u8` is invalid
+  --> $DIR/cast-rfc0401.rs:58:13
+   |
+58 |     let _ = E::A as *const u8;
+   |             ^^^^^^^^^^^^^^^^^
+
+error: casting `char` as `*const u8` is invalid
+  --> $DIR/cast-rfc0401.rs:59:13
+   |
+59 |     let _ = 'a' as *const u8;
+   |             ^^^^^^^^^^^^^^^^
+
+error: casting `usize` as `*const [u8]` is invalid
+  --> $DIR/cast-rfc0401.rs:61:13
+   |
+61 |     let _ = 42usize as *const [u8];
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
+  --> $DIR/cast-rfc0401.rs:62:13
+   |
+62 |     let _ = v as *const [u8];
+   |             ^^^^^^^^^^^^^^^^
+
+error: casting `&Foo` as `*const str` is invalid
+  --> $DIR/cast-rfc0401.rs:64:13
+   |
+64 |     let _ = foo as *const str;
+   |             ^^^^^^^^^^^^^^^^^
+
+error: casting `&Foo` as `*mut str` is invalid
+  --> $DIR/cast-rfc0401.rs:65:13
+   |
+65 |     let _ = foo as *mut str;
+   |             ^^^^^^^^^^^^^^^
+
+error: casting `fn() {main}` as `*mut str` is invalid
+  --> $DIR/cast-rfc0401.rs:66:13
+   |
+66 |     let _ = main as *mut str;
+   |             ^^^^^^^^^^^^^^^^
+
+error: casting `&f32` as `*mut f32` is invalid
+  --> $DIR/cast-rfc0401.rs:67:13
+   |
+67 |     let _ = &f as *mut f32;
+   |             ^^^^^^^^^^^^^^
+
+error: casting `&f32` as `*const f64` is invalid
+  --> $DIR/cast-rfc0401.rs:68:13
+   |
+68 |     let _ = &f as *const f64;
+   |             ^^^^^^^^^^^^^^^^
+
+error: casting `*const [i8]` as `usize` is invalid
+  --> $DIR/cast-rfc0401.rs:69:13
+   |
+69 |     let _ = fat_sv as usize;
+   |             ^^^^^^^^^^^^^^^
+   |
+   = help: cast through a thin pointer first
+
+error: casting `*const Foo` as `*const [u16]` is invalid
+  --> $DIR/cast-rfc0401.rs:78:13
+   |
+78 |     let _ = cf as *const [u16];
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error: casting `*const Foo` as `*const Bar` is invalid
+  --> $DIR/cast-rfc0401.rs:79:13
+   |
+79 |     let _ = cf as *const Bar;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
+  --> $DIR/cast-rfc0401.rs:63:13
+   |
+63 |     let _ = fat_v as *const Foo;
+   |             ^^^^^ the trait `std::marker::Sized` is not implemented for `[u8]`
+   |
+   = note: `[u8]` does not have a constant size known at compile-time
+   = note: required for the cast to the object type `Foo`
+
+error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+  --> $DIR/cast-rfc0401.rs:72:13
+   |
+72 |     let _ = a as *const Foo;
+   |             ^ the trait `std::marker::Sized` is not implemented for `str`
+   |
+   = note: `str` does not have a constant size known at compile-time
+   = note: required for the cast to the object type `Foo`
+
+error: casting `&{float}` as `f32` is invalid
+  --> $DIR/cast-rfc0401.rs:81:30
+   |
+81 |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
+   |                              ^^^^^^^^ cannot cast `&{float}` as `f32`
+   |
+help: did you mean `*s`?
+  --> $DIR/cast-rfc0401.rs:81:30
+   |
+81 |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
+   |                              ^
+
+error: aborting due to 34 previous errors
+

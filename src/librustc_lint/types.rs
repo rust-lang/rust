@@ -750,7 +750,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 if let Layout::General { ref variants, ref size, discr, .. } = *layout {
                     let discr_size = Primitive::Int(discr).size(&cx.tcx.data_layout).bytes();
 
-                    debug!("enum `{}` is {} bytes large", t, size.bytes());
+                    debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
+                      t, size.bytes(), layout);
 
                     let (largest, slargest, largest_index) = enum_definition.variants
                         .iter()

@@ -30,7 +30,7 @@ use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
-use calculate_svh::hasher::IchHasher;
+use calculate_svh::IchHasher;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,

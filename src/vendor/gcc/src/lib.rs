@@ -353,6 +353,23 @@ impl Config {
         self.compile_objects(&src_dst);
         self.assemble(lib_name, &dst.join(output), &objects);
 
+        if self.get_target().contains("msvc") {
+            let compiler = self.get_base_compiler();
+            let atlmfc_lib = compiler.env().iter().find(|&&(ref var, _)| {
+                var == OsStr::new("LIB")
+            }).and_then(|&(_, ref lib_paths)| {
+                env::split_paths(lib_paths).find(|path| {
+                    let sub = Path::new("atlmfc/lib");
+                    path.ends_with(sub) || path.parent().map_or(false, |p| p.ends_with(sub))
+                })
+            });
+
+            if let Some(atlmfc_lib) = atlmfc_lib {
+                self.print(&format!("cargo:rustc-link-search=native={}",
+                                    atlmfc_lib.display()));
+            }
+        }
+
         self.print(&format!("cargo:rustc-link-lib=static={}",
                             &output[3..output.len() - 2]));
         self.print(&format!("cargo:rustc-link-search=native={}", dst.display()));
@@ -446,17 +463,20 @@ impl Config {
 
         if msvc {
             cmd.args.push("/nologo".into());
-            cmd.args.push("/MD".into()); // link against msvcrt.dll for now
+            let features = env::var("CARGO_CFG_TARGET_FEATURE")
+                              .unwrap_or(String::new());
+            if features.contains("crt-static") {
+                cmd.args.push("/MT".into());
+            } else {
+                cmd.args.push("/MD".into());
+            }
             match &opt_level[..] {
                 "z" | "s" => cmd.args.push("/Os".into()),
                 "2" => cmd.args.push("/O2".into()),
                 "1" => cmd.args.push("/O1".into()),
                 _ => {}
             }
-            if target.contains("i686") {
-                cmd.args.push("/SAFESEH".into());
-            } else if target.contains("i586") {
-                cmd.args.push("/SAFESEH".into());
+            if target.contains("i586") {
                 cmd.args.push("/ARCH:IA32".into());
             }
         } else if nvcc {
@@ -489,27 +509,48 @@ impl Config {
                 cmd.args.push("-Xcompiler".into());
                 cmd.args.push("\'-fPIC\'".into());
             }
+
             if target.contains("musl") {
                 cmd.args.push("-static".into());
             }
 
+            // armv7 targets get to use armv7 instructions
             if target.starts_with("armv7-unknown-linux-") {
                 cmd.args.push("-march=armv7-a".into());
             }
+
+            // On android we can guarantee some extra float instructions
+            // (specified in the android spec online)
             if target.starts_with("armv7-linux-androideabi") {
                 cmd.args.push("-march=armv7-a".into());
                 cmd.args.push("-mfpu=vfpv3-d16".into());
             }
+
+            // For us arm == armv6 by default
             if target.starts_with("arm-unknown-linux-") {
                 cmd.args.push("-march=armv6".into());
                 cmd.args.push("-marm".into());
             }
+
+            // Turn codegen down on i586 to avoid some instructions.
             if target.starts_with("i586-unknown-linux-") {
                 cmd.args.push("-march=pentium".into());
             }
+
+            // Set codegen level for i686 correctly
             if target.starts_with("i686-unknown-linux-") {
                 cmd.args.push("-march=i686".into());
             }
+
+            // Looks like `musl-gcc` makes is hard for `-m32` to make its way
+            // all the way to the linker, so we need to actually instruct the
+            // linker that we're generating 32-bit executables as well. This'll
+            // typically only be used for build scripts which transitively use
+            // these flags that try to compile executables.
+            if target == "i686-unknown-linux-musl" {
+                cmd.args.push("-Wl,-melf_i386".into());
+            }
+
             if target.starts_with("thumb") {
                 cmd.args.push("-mthumb".into());
 
@@ -518,10 +559,14 @@ impl Config {
                 }
             }
             if target.starts_with("thumbv6m") {
-                cmd.args.push("-march=armv6-m".into());
+                cmd.args.push("-march=armv6s-m".into());
             }
             if target.starts_with("thumbv7em") {
                 cmd.args.push("-march=armv7e-m".into());
+
+                if target.ends_with("eabihf") {
+                    cmd.args.push("-mfpu=fpv4-sp-d16".into())
+                }
             }
             if target.starts_with("thumbv7m") {
                 cmd.args.push("-march=armv7-m".into());
@@ -739,6 +784,7 @@ impl Config {
                     "powerpc64-unknown-linux-gnu" => Some("powerpc-linux-gnu"),
                     "powerpc64le-unknown-linux-gnu" => Some("powerpc64le-linux-gnu"),
                     "s390x-unknown-linux-gnu" => Some("s390x-linux-gnu"),
+                    "sparc64-unknown-netbsd" => Some("sparc64--netbsd"),
                     "thumbv6m-none-eabi" => Some("arm-none-eabi"),
                     "thumbv7em-none-eabi" => Some("arm-none-eabi"),
                     "thumbv7em-none-eabihf" => Some("arm-none-eabi"),
@@ -804,6 +850,8 @@ impl Config {
             if target.contains("msvc") {
                 None
             } else if target.contains("darwin") {
+                Some("c++".to_string())
+            } else if target.contains("freebsd") {
                 Some("c++".to_string())
             } else {
                 Some("stdc++".to_string())

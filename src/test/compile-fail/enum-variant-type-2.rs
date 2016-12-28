@@ -14,6 +14,6 @@ enum Foo {
     Bar
 }
 
-fn foo(x: Foo::Bar) {} //~ERROR found value `Foo::Bar` used as a type
+fn foo(x: Foo::Bar) {} //~ ERROR expected type, found variant `Foo::Bar`
 
 fn main() {}

@@ -15,6 +15,6 @@ extern crate collections;
 
 extern crate libc as collections;
 //~^ ERROR E0259
-//~| NOTE `collections` was already imported
+//~| NOTE `collections` already imported
 
 fn main() {}

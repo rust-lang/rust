@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::ptr::*;
+use core::cell::RefCell;
 
 #[test]
 fn test() {
@@ -188,4 +189,26 @@ pub fn test_variadic_fnptr() {
     assert!(!(p < q));
     let mut s = SipHasher::new();
     assert_eq!(p.hash(&mut s), q.hash(&mut s));
+}
+
+#[test]
+fn write_unaligned_drop() {
+    thread_local! {
+        static DROPS: RefCell<Vec<u32>> = RefCell::new(Vec::new());
+    }
+
+    struct Dropper(u32);
+
+    impl Drop for Dropper {
+        fn drop(&mut self) {
+            DROPS.with(|d| d.borrow_mut().push(self.0));
+        }
+    }
+
+    {
+        let c = Dropper(0);
+        let mut t = Dropper(1);
+        unsafe { write_unaligned(&mut t, c); }
+    }
+    DROPS.with(|d| assert_eq!(*d.borrow(), [0]));
 }

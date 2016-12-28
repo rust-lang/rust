@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,9 +10,12 @@
 
 use target::{Target, TargetOptions, TargetResult};
 
+// See https://developer.android.com/ndk/guides/abis.html#v7a
+// for target ABI requirements.
+
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
-    base.features = "+v7,+thumb2,+vfp3,+d16".to_string();
+    base.features = "+v7,+thumb2,+vfp3,+d16,-neon".to_string();
     base.max_atomic_width = Some(64);
 
     Ok(Target {

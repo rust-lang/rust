@@ -214,6 +214,7 @@
 #![no_std]
 
 #![deny(missing_docs)]
+#![deny(missing_debug_implementations)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
@@ -276,6 +277,7 @@
 #![feature(panic_unwind)]
 #![feature(placement_in_syntax)]
 #![feature(prelude_import)]
+#![feature(pub_restricted)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]

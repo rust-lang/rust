@@ -15,5 +15,5 @@
 #![crate_type="metadata"]
 
 fn main() {
-    let _ = Foo; //~ ERROR unresolved name `Foo`
+    let _ = Foo; //~ ERROR unresolved value `Foo`
 }

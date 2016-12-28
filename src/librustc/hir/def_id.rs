@@ -120,9 +120,7 @@ impl fmt::Debug for DefId {
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                if let Some(def_path) = tcx.opt_def_path(*self) {
-                    write!(f, " => {}", def_path.to_string(tcx))?;
-                }
+                write!(f, " => {}", tcx.def_path(*self).to_string(tcx))?;
             }
             Ok(())
         })?;

@@ -621,6 +621,7 @@ opt llvm-assertions 0 "build LLVM with assertions"
 opt debug-assertions 0 "build with debugging assertions"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
+opt sccache 0 "invoke gcc/clang via sccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt local-rebuild 0 "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
@@ -915,6 +916,18 @@ case $CFG_BUILD in
         ;;
 esac
 putvar CFG_LLDB_PYTHON
+
+# Do some sanity checks if running on buildbot
+# (these env vars are set by rust-buildbot)
+if [ -n "$RUST_DIST_SERVER" -a -n "$ALLOW_NONZERO_RLIMIT_CORE" ]; then
+   # Frequently the llvm submodule directory is broken by the build
+   # being killed
+   llvm_lock="${CFG_SRC_DIR}/.git/modules/src/llvm/index.lock"
+   if [ -e "$llvm_lock" ]; then
+       step_msg "removing $llvm_lock"
+       rm -f "$llvm_lock"
+   fi
+fi
 
 step_msg "looking for target specific programs"
 
@@ -1677,11 +1690,23 @@ do
             LLVM_CC_64_ARG1="gcc"
             ;;
         ("gcc")
-            LLVM_CXX_32="g++"
-            LLVM_CC_32="gcc"
+            if [ -z "$CFG_ENABLE_SCCACHE" ]; then
+                LLVM_CXX_32="g++"
+                LLVM_CC_32="gcc"
 
-            LLVM_CXX_64="g++"
-            LLVM_CC_64="gcc"
+                LLVM_CXX_64="g++"
+                LLVM_CC_64="gcc"
+            else
+                LLVM_CXX_32="sccache"
+                LLVM_CC_32="sccache"
+                LLVM_CXX_32_ARG1="g++"
+                LLVM_CC_32_ARG1="gcc"
+
+                LLVM_CXX_64="sccache"
+                LLVM_CC_64="sccache"
+                LLVM_CXX_64_ARG1="g++"
+                LLVM_CC_64_ARG1="gcc"
+            fi
             ;;
 
         (*)

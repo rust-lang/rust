@@ -1425,6 +1425,12 @@ pub trait BufRead: Read {
     ///     println!("{}", line.unwrap());
     /// }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Each line of the iterator has the same error semantics as [`BufRead::read_line()`].
+    ///
+    /// [`BufRead::read_line()`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
@@ -1442,6 +1448,16 @@ pub struct Chain<T, U> {
     first: T,
     second: U,
     done_first: bool,
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Chain")
+            .field("t", &self.first)
+            .field("u", &self.second)
+            .finish()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1485,6 +1501,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 ///
 /// [`take()`]: trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Take<T> {
     inner: T,
     limit: u64,
@@ -1526,8 +1543,6 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(io_take_into_inner)]
-    ///
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1543,7 +1558,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "io_take_into_inner", issue = "23755")]
+    #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
     }
@@ -1604,6 +1619,7 @@ fn read_one_byte(reader: &mut Read) -> Option<Result<u8>> {
 ///
 /// [`bytes()`]: trait.Read.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Bytes<R> {
     inner: R,
 }
@@ -1625,6 +1641,7 @@ impl<R: Read> Iterator for Bytes<R> {
 /// [chars]: trait.Read.html#method.chars
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[derive(Debug)]
 pub struct Chars<R> {
     inner: R,
 }
@@ -1714,6 +1731,7 @@ impl fmt::Display for CharsError {
 ///
 /// [split]: trait.BufRead.html#method.split
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Split<B> {
     buf: B,
     delim: u8,
@@ -1745,6 +1763,7 @@ impl<B: BufRead> Iterator for Split<B> {
 ///
 /// [lines]: trait.BufRead.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Lines<B> {
     buf: B,
 }

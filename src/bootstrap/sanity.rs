@@ -143,7 +143,7 @@ pub fn check(build: &mut Build) {
     // Externally configured LLVM requires FileCheck to exist
     let filecheck = build.llvm_filecheck(&build.config.build);
     if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-        panic!("filecheck executable {:?} does not exist", filecheck);
+        panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
     for target in build.config.target.iter() {
@@ -222,5 +222,9 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
     if build.lldb_version.is_some() {
         build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
+    }
+
+    if let Some(ref s) = build.config.ccache {
+        need_cmd(s.as_ref());
     }
 }

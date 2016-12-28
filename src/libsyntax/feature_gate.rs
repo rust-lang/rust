@@ -304,6 +304,7 @@ declare_features! (
     // Allows using `Self` and associated types in struct expressions and patterns.
     (active, more_struct_aliases, "1.14.0", Some(37544)),
 
+
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406)),
 
@@ -314,6 +315,9 @@ declare_features! (
 
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
+
+    // Allow safe suggestions for potential type conversions.
+    (active, safe_suggestion, "1.0.0", Some(37384)),
 );
 
 declare_features! (

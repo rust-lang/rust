@@ -1,0 +1,14 @@
+error[E0423]: expected value, found struct variant `Homura::Madoka`
+  --> $DIR/issue-19452.rs:19:18
+   |
+19 |     let homura = Homura::Madoka;
+   |                  ^^^^^^^^^^^^^^ did you mean `Homura::Madoka { /* fields */ }`?
+
+error[E0423]: expected value, found struct variant `issue_19452_aux::Homura::Madoka`
+  --> $DIR/issue-19452.rs:22:18
+   |
+22 |     let homura = issue_19452_aux::Homura::Madoka;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `issue_19452_aux::Homura::Madoka { /* fields */ }`?
+
+error: aborting due to 2 previous errors
+

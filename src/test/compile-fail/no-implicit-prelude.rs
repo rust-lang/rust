@@ -17,12 +17,12 @@
 // fail with the same error message).
 
 struct Test;
-impl Add for Test {} //~ ERROR: not in scope
-impl Clone for Test {} //~ ERROR: not in scope
-impl Iterator for Test {} //~ ERROR: not in scope
-impl ToString for Test {} //~ ERROR: not in scope
-impl Writer for Test {} //~ ERROR: not in scope
+impl Add for Test {} //~ ERROR unresolved trait `Add`
+impl Clone for Test {} //~ ERROR unresolved trait `Clone`
+impl Iterator for Test {} //~ ERROR unresolved trait `Iterator`
+impl ToString for Test {} //~ ERROR unresolved trait `ToString`
+impl Writer for Test {} //~ ERROR unresolved trait `Writer`
 
 fn main() {
-    drop(2) //~ ERROR: unresolved name
+    drop(2) //~ ERROR unresolved function `drop`
 }

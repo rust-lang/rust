@@ -85,7 +85,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                               None);
         // attach the crate's exported macros to the top-level module:
         let macro_exports: Vec<_> =
-            krate.exported_macros.iter().map(|def| self.visit_macro(def)).collect();
+            krate.exported_macros.iter().map(|def| self.visit_local_macro(def)).collect();
         self.module.macros.extend(macro_exports);
         self.module.is_crate = true;
     }
@@ -201,6 +201,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     if def_id.krate == LOCAL_CRATE {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
+                    let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
                     let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
                         LoadedMacro::MacroRules(macro_rules) => macro_rules,
                         // FIXME(jseyfried): document proc macro reexports
@@ -210,14 +211,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // FIXME(jseyfried) merge with `self.visit_macro()`
                     let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
                     om.macros.push(Macro {
-                        id: def.id,
+                        def_id: def_id,
                         attrs: def.attrs.clone().into(),
                         name: def.ident.name,
                         whence: def.span,
                         matchers: matchers,
                         stab: self.stability(def.id),
                         depr: self.deprecation(def.id),
-                        imported_from: def.imported_from.map(|ident| ident.name),
+                        imported_from: Some(imported_from),
                     })
                 }
             }
@@ -513,19 +514,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     // convert each exported_macro into a doc item
-    fn visit_macro(&self, def: &hir::MacroDef) -> Macro {
+    fn visit_local_macro(&self, def: &hir::MacroDef) -> Macro {
         // Extract the spans of all matchers. They represent the "interface" of the macro.
         let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
 
         Macro {
-            id: def.id,
+            def_id: self.cx.tcx.map.local_def_id(def.id),
             attrs: def.attrs.clone(),
             name: def.name,
             whence: def.span,
             matchers: matchers,
             stab: self.stability(def.id),
             depr: self.deprecation(def.id),
-            imported_from: def.imported_from,
+            imported_from: None,
         }
     }
 }

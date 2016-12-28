@@ -26,6 +26,7 @@ enum e2 {
     a(u32), b
 }
 
+#[repr(C, u8)]
 enum e3 {
     a([u16; 0], u8), b
 }

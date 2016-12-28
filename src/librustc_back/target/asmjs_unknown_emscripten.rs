@@ -23,6 +23,7 @@ pub fn target() -> Result<Target, String> {
         obj_is_bitcode: true,
         max_atomic_width: Some(32),
         post_link_args: vec!["-s".to_string(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()],
+        target_family: Some("unix".to_string()),
         .. Default::default()
     };
     Ok(Target {

@@ -12,6 +12,7 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
 use cell::{Cell, UnsafeCell};
+use fmt;
 use intrinsics;
 use ptr;
 
@@ -22,6 +23,12 @@ pub struct Key<T> {
     // these variables are thread-local, not global.
     dtor_registered: Cell<bool>,
     dtor_running: Cell<bool>,
+}
+
+impl<T> fmt::Debug for Key<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Key { .. }")
+    }
 }
 
 unsafe impl<T> ::marker::Sync for Key<T> { }

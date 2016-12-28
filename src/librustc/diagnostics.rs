@@ -1236,6 +1236,23 @@ struct Foo<'a, T: 'a> {
     foo: &'a T
 }
 ```
+
+To see why this is important, consider the case where `T` is itself a reference
+(e.g., `T = &str`). If we don't include the restriction that `T: 'a`, the
+following code would be perfectly legal:
+
+```compile_fail,E0309
+struct Foo<'a, T> {
+    foo: &'a T
+}
+
+fn main() {
+    let v = "42".to_string();
+    let f = Foo{foo: &v};
+    drop(v);
+    println!("{}", f.foo); // but we've already dropped v!
+}
+```
 "##,
 
 E0310: r##"
