@@ -156,29 +156,29 @@ sse2
 * [x] `_mm_cmpngt_sd`
 * [x] `_mm_cmpnge_sd`
 * [x] `_mm_cmpeq_pd`
-* [ ] `_mm_cmplt_pd`
-* [ ] `_mm_cmple_pd`
-* [ ] `_mm_cmpgt_pd`
-* [ ] `_mm_cmpge_pd`
-* [ ] `_mm_cmpord_pd`
-* [ ] `_mm_cmpunord_pd`
-* [ ] `_mm_cmpneq_pd`
-* [ ] `_mm_cmpnlt_pd`
-* [ ] `_mm_cmpnle_pd`
-* [ ] `_mm_cmpngt_pd`
-* [ ] `_mm_cmpnge_pd`
-* [ ] `_mm_comieq_sd`
-* [ ] `_mm_comilt_sd`
-* [ ] `_mm_comile_sd`
-* [ ] `_mm_comigt_sd`
-* [ ] `_mm_comige_sd`
-* [ ] `_mm_comineq_sd`
-* [ ] `_mm_ucomieq_sd`
-* [ ] `_mm_ucomilt_sd`
-* [ ] `_mm_ucomile_sd`
-* [ ] `_mm_ucomigt_sd`
-* [ ] `_mm_ucomige_sd`
-* [ ] `_mm_ucomineq_sd`
+* [x] `_mm_cmplt_pd`
+* [x] `_mm_cmple_pd`
+* [x] `_mm_cmpgt_pd`
+* [x] `_mm_cmpge_pd`
+* [x] `_mm_cmpord_pd`
+* [x] `_mm_cmpunord_pd`
+* [x] `_mm_cmpneq_pd`
+* [x] `_mm_cmpnlt_pd`
+* [x] `_mm_cmpnle_pd`
+* [x] `_mm_cmpngt_pd`
+* [x] `_mm_cmpnge_pd`
+* [x] `_mm_comieq_sd`
+* [x] `_mm_comilt_sd`
+* [x] `_mm_comile_sd`
+* [x] `_mm_comigt_sd`
+* [x] `_mm_comige_sd`
+* [x] `_mm_comineq_sd`
+* [x] `_mm_ucomieq_sd`
+* [x] `_mm_ucomilt_sd`
+* [x] `_mm_ucomile_sd`
+* [x] `_mm_ucomigt_sd`
+* [x] `_mm_ucomige_sd`
+* [x] `_mm_ucomineq_sd`
 * [ ] `_mm_cvtpd_ps`
 * [ ] `_mm_cvtps_pd`
 * [ ] `_mm_cvtpd_epi32`

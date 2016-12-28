@@ -4,8 +4,8 @@ use std::env;
 use stdsimd as s;
 
 #[inline(never)]
-fn foobar(a: s::f64x2, b: s::f64x2) -> s::f64x2 {
-    s::_mm_cmpge_sd(a, b)
+fn foobar(a: s::f64x2, b: s::f64x2) -> bool {
+    s::_mm_ucomieq_sd(a, b)
 }
 
 fn main() {
