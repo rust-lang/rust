@@ -268,6 +268,7 @@ All notable changes to this project will be documented in this file.
 [`diverging_sub_expression`]: https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression
 [`doc_markdown`]: https://github.com/Manishearth/rust-clippy/wiki#doc_markdown
 [`double_neg`]: https://github.com/Manishearth/rust-clippy/wiki#double_neg
+[`double_parens`]: https://github.com/Manishearth/rust-clippy/wiki#double_parens
 [`drop_ref`]: https://github.com/Manishearth/rust-clippy/wiki#drop_ref
 [`duplicate_underscore_argument`]: https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument
 [`empty_loop`]: https://github.com/Manishearth/rust-clippy/wiki#empty_loop

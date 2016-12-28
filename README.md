@@ -179,7 +179,7 @@ transparently:
 
 ## Lints
 
-There are 180 lints included in this crate:
+There are 181 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -216,6 +216,7 @@ name                                                                            
 [diverging_sub_expression](https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression)                   | warn    | whether an expression contains a diverging sub expression
 [doc_markdown](https://github.com/Manishearth/rust-clippy/wiki#doc_markdown)                                           | warn    | presence of `_`, `::` or camel-case outside backticks in documentation
 [double_neg](https://github.com/Manishearth/rust-clippy/wiki#double_neg)                                               | warn    | `--x`, which is a double negation of `x` and not a pre-decrement as in C/C++
+[double_parens](https://github.com/Manishearth/rust-clippy/wiki#double_parens)                                         | warn    | Warn on unnecessary double parentheses
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                                   | warn    | calls to `std::mem::drop` with a reference instead of an owned value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument)         | warn    | function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                               | warn    | empty `loop {}`, which should block or sleep
