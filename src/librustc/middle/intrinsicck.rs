@@ -34,13 +34,13 @@ struct ItemVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
-    fn visit_const(&mut self, item_id: ast::NodeId, expr: &'tcx hir::Expr) {
+    fn visit_const(&mut self, item_id: ast::NodeId, body: hir::BodyId) {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
         self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
-            visitor.visit_expr(expr);
+            visitor.visit_nested_body(body);
         });
     }
 }
@@ -122,33 +122,33 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 
     // const, static and N in [T; N].
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
-            visitor.visit_expr(expr);
+            visitor.visit_body(body);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
-            self.visit_const(item.id, expr);
+        if let hir::TraitItemKind::Const(_, Some(body)) = item.node {
+            self.visit_const(item.id, body);
         } else {
             intravisit::walk_trait_item(self, item);
         }
     }
 
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(_, ref expr) = item.node {
-            self.visit_const(item.id, expr);
+        if let hir::ImplItemKind::Const(_, body) = item.node {
+            self.visit_const(item.id, body);
         } else {
             intravisit::walk_impl_item(self, item);
         }
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, id: ast::NodeId) {
+                b: hir::BodyId, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "intrinsicck: closure outside of function")
         }

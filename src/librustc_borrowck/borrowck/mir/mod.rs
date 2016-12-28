@@ -11,10 +11,7 @@
 use borrowck::BorrowckCtxt;
 
 use syntax::ast::{self, MetaItem};
-use syntax_pos::{Span, DUMMY_SP};
-
-use rustc::hir;
-use rustc::hir::intravisit::{FnKind};
+use syntax_pos::DUMMY_SP;
 
 use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
@@ -57,27 +54,14 @@ pub struct MoveDataParamEnv<'tcx> {
 }
 
 pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
-                    fk: FnKind,
-                    _decl: &hir::FnDecl,
-                    body: &hir::Expr,
-                    _sp: Span,
                     id: ast::NodeId,
                     attributes: &[ast::Attribute]) {
-    match fk {
-        FnKind::ItemFn(name, ..) |
-        FnKind::Method(name, ..) => {
-            debug!("borrowck_mir({}) UNIMPLEMENTED", name);
-        }
-        FnKind::Closure(_) => {
-            debug!("borrowck_mir closure (body.id={}) UNIMPLEMENTED", body.id);
-        }
-    }
-
     let tcx = bcx.tcx;
+    let def_id = tcx.map.local_def_id(id);
+    debug!("borrowck_mir({}) UNIMPLEMENTED", tcx.item_path_str(def_id));
+
+    let mir = &tcx.item_mir(def_id);
     let param_env = ty::ParameterEnvironment::for_item(tcx, id);
-
-    let mir = &tcx.item_mir(tcx.map.local_def_id(id));
-
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let flow_inits =

@@ -16,7 +16,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::symbol::{Symbol, keywords};
 
-/// Creates def ids for nodes in the HIR.
+/// Creates def ids for nodes in the AST.
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,

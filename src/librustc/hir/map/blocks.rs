@@ -48,7 +48,7 @@ pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 /// Components shared by fn-like things (fn items, methods, closures).
 pub struct FnParts<'a> {
     pub decl: &'a FnDecl,
-    pub body: ast::ExprId,
+    pub body: ast::BodyId,
     pub kind: FnKind<'a>,
     pub span: Span,
     pub id:   NodeId,
@@ -62,7 +62,10 @@ impl MaybeFnLike for ast::Item {
 
 impl MaybeFnLike for ast::TraitItem {
     fn is_fn_like(&self) -> bool {
-        match self.node { ast::MethodTraitItem(_, Some(_)) => true, _ => false, }
+        match self.node {
+            ast::TraitItemKind::Method(_, ast::TraitMethod::Provided(_)) => true,
+            _ => false,
+        }
     }
 }
 
@@ -115,7 +118,7 @@ struct ItemFnParts<'a> {
     abi:      abi::Abi,
     vis:      &'a ast::Visibility,
     generics: &'a ast::Generics,
-    body:     ast::ExprId,
+    body:     ast::BodyId,
     id:       NodeId,
     span:     Span,
     attrs:    &'a [Attribute],
@@ -125,14 +128,14 @@ struct ItemFnParts<'a> {
 /// for use when implementing FnLikeNode operations.
 struct ClosureParts<'a> {
     decl: &'a FnDecl,
-    body: ast::ExprId,
+    body: ast::BodyId,
     id: NodeId,
     span: Span,
     attrs: &'a [Attribute],
 }
 
 impl<'a> ClosureParts<'a> {
-    fn new(d: &'a FnDecl, b: ast::ExprId, id: NodeId, s: Span, attrs: &'a [Attribute]) -> Self {
+    fn new(d: &'a FnDecl, b: ast::BodyId, id: NodeId, s: Span, attrs: &'a [Attribute]) -> Self {
         ClosureParts {
             decl: d,
             body: b,
@@ -172,9 +175,9 @@ impl<'a> FnLikeNode<'a> {
         }
     }
 
-    pub fn body(self) -> ast::ExprId {
+    pub fn body(self) -> ast::BodyId {
         self.handle(|i: ItemFnParts<'a>|  i.body,
-                    |_, _, _: &'a ast::MethodSig, _, body: ast::ExprId, _, _|  body,
+                    |_, _, _: &'a ast::MethodSig, _, body: ast::BodyId, _, _|  body,
                     |c: ClosureParts<'a>| c.body)
     }
 
@@ -227,7 +230,7 @@ impl<'a> FnLikeNode<'a> {
                   Name,
                   &'a ast::MethodSig,
                   Option<&'a ast::Visibility>,
-                  ast::ExprId,
+                  ast::BodyId,
                   Span,
                   &'a [Attribute])
                   -> A,
@@ -252,7 +255,7 @@ impl<'a> FnLikeNode<'a> {
                 _ => bug!("item FnLikeNode that is not fn-like"),
             },
             map::NodeTraitItem(ti) => match ti.node {
-                ast::MethodTraitItem(ref sig, Some(body)) => {
+                ast::TraitItemKind::Method(ref sig, ast::TraitMethod::Provided(body)) => {
                     method(ti.id, ti.name, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),

@@ -26,42 +26,22 @@ use std::cell::Cell;
 use syntax::ast;
 use syntax_pos::Span;
 
-use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, PatKind};
+use rustc::hir;
 
 ///////////////////////////////////////////////////////////////////////////
-// Entry point functions
+// Entry point
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_expr(&self, e: &'gcx hir::Expr, item_id: ast::NodeId) {
+    pub fn resolve_type_vars_in_body(&self,
+                                     body: &'gcx hir::Body,
+                                     item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
-        wbcx.visit_expr(e);
-        wbcx.visit_upvar_borrow_map();
-        wbcx.visit_closures();
-        wbcx.visit_liberated_fn_sigs();
-        wbcx.visit_fru_field_types();
-        wbcx.visit_deferred_obligations(item_id);
-        wbcx.visit_type_nodes();
-    }
-
-    pub fn resolve_type_vars_in_fn(&self,
-                                   decl: &'gcx hir::FnDecl,
-                                   body: &'gcx hir::Expr,
-                                   item_id: ast::NodeId) {
-        assert_eq!(self.writeback_errors.get(), false);
-        let mut wbcx = WritebackCx::new(self);
-        wbcx.visit_expr(body);
-        for arg in &decl.inputs {
+        for arg in &body.arguments {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
-            wbcx.visit_pat(&arg.pat);
-
-            // Privacy needs the type for the whole pattern, not just each binding
-            if let PatKind::Binding(..) = arg.pat.node {} else {
-                wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.pat.id);
-            }
         }
+        wbcx.visit_body(body);
         wbcx.visit_upvar_borrow_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
@@ -188,7 +168,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
 impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
@@ -211,10 +191,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        if let hir::ExprClosure(_, ref decl, ..) = e.node {
-            for input in &decl.inputs {
-                self.visit_node_id(ResolvingExpr(e.span), input.id);
+        if let hir::ExprClosure(_, _, body, _) = e.node {
+            let body = self.fcx.tcx.map.body(body);
+            for arg in &body.arguments {
+                self.visit_node_id(ResolvingExpr(e.span), arg.id);
             }
+
+            self.visit_body(body);
         }
 
         intravisit::walk_expr(self, e);
@@ -237,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
-               pat_to_string(p),
+               self.tcx().map.node_to_pretty_string(p.id),
                p.id,
                self.tcx().tables().node_id_to_type(p.id));
 
@@ -253,20 +236,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         self.write_ty_to_tcx(l.id, var_ty);
         intravisit::walk_local(self, l);
-    }
-
-    fn visit_ty(&mut self, t: &'gcx hir::Ty) {
-        match t.node {
-            hir::TyArray(ref ty, ref count_expr) => {
-                self.visit_ty(&ty);
-                self.write_ty_to_tcx(count_expr.id, self.tcx().types.usize);
-            }
-            hir::TyBareFn(ref function_declaration) => {
-                intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
-                walk_list!(self, visit_lifetime_def, &function_declaration.lifetimes);
-            }
-            _ => intravisit::walk_ty(self, t)
-        }
     }
 }
 

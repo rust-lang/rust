@@ -41,21 +41,20 @@ mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     fn_id: NodeId,
-                                    decl: &hir::FnDecl,
-                                    body: &hir::Expr)
+                                    body: &hir::Body)
                                     -> (Vec<Loan<'tcx>>,
                                         move_data::MoveData<'tcx>) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         all_loans: Vec::new(),
-        item_ub: bccx.tcx.region_maps.node_extent(body.id),
+        item_ub: bccx.tcx.region_maps.node_extent(body.value.id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
     let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
-    euv::ExprUseVisitor::new(&mut glcx, &infcx).walk_fn(decl, body);
+    euv::ExprUseVisitor::new(&mut glcx, &infcx).consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -548,14 +547,14 @@ impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
 
 pub fn gather_loans_in_static_initializer<'a, 'tcx>(bccx: &mut BorrowckCtxt<'a, 'tcx>,
                                                     item_id: ast::NodeId,
-                                                    expr: &'tcx hir::Expr) {
+                                                    body: hir::BodyId) {
 
-    debug!("gather_loans_in_static_initializer(expr={:?})", expr);
+    debug!("gather_loans_in_static_initializer(expr={:?})", body);
 
     let mut sicx = StaticInitializerCtxt {
         bccx: bccx,
         item_id: item_id
     };
 
-    sicx.visit_expr(expr);
+    sicx.visit_nested_body(body);
 }

@@ -287,20 +287,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn walk_fn(&mut self,
-                   decl: &hir::FnDecl,
-                   body: &hir::Expr) {
-        self.walk_arg_patterns(decl, body);
-        self.consume_expr(body);
-    }
-
-    fn walk_arg_patterns(&mut self,
-                         decl: &hir::FnDecl,
-                         body: &hir::Expr) {
-        for arg in &decl.inputs {
+    pub fn consume_body(&mut self, body: &hir::Body) {
+        for arg in &body.arguments {
             let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
 
-            let fn_body_scope_r = self.tcx().node_scope_region(body.id);
+            let fn_body_scope_r = self.tcx().node_scope_region(body.value.id);
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
                 arg.pat.span,
@@ -309,6 +300,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
             self.walk_irrefutable_pat(arg_cmt, &arg.pat);
         }
+
+        self.consume_expr(&body.value);
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -537,9 +530,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprRepeat(ref base, ref count) => {
+            hir::ExprRepeat(ref base, _) => {
                 self.consume_expr(&base);
-                self.consume_expr(&count);
             }
 
             hir::ExprClosure(.., fn_decl_span) => {

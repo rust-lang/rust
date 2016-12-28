@@ -84,7 +84,7 @@ impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
                 self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
             }
             hir::ExprClosure(.., b, _) => {
-                self.with_context(Closure, |v| v.visit_body(b));
+                self.with_context(Closure, |v| v.visit_nested_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
                 if opt_expr.is_some() {

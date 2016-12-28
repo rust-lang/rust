@@ -159,10 +159,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         }
     }
 
-    fn check_trait_or_impl_item(&mut self,
-                                item_id: ast::NodeId,
-                                span: Span,
-                                sig_if_method: Option<&hir::MethodSig>) {
+    fn check_associated_item(&mut self,
+                             item_id: ast::NodeId,
+                             span: Span,
+                             sig_if_method: Option<&hir::MethodSig>) {
         let code = self.code.clone();
         self.for_id(item_id, span).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -337,7 +337,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn check_item_fn(&mut self,
                      item: &hir::Item,
-                     body_id: hir::ExprId)
+                     body_id: hir::BodyId)
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -354,7 +354,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id());
+            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id);
             this.check_fn_or_method(fcx, item.span, bare_fn_ty, &predicates,
                                     free_id_outlive, &mut implied_bounds);
             implied_bounds
@@ -478,7 +478,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             return;
         }
 
-        let span = method_sig.decl.inputs[0].pat.span;
+        let span = method_sig.decl.inputs[0].span;
 
         let free_substs = &fcx.parameter_environment.free_substs;
         let method_ty = fcx.tcx.item_type(method.def_id);
@@ -607,10 +607,10 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         let method_sig = match trait_item.node {
-            hir::TraitItem_::MethodTraitItem(ref sig, _) => Some(sig),
+            hir::TraitItemKind::Method(ref sig, _) => Some(sig),
             _ => None
         };
-        self.check_trait_or_impl_item(trait_item.id, trait_item.span, method_sig);
+        self.check_associated_item(trait_item.id, trait_item.span, method_sig);
         intravisit::walk_trait_item(self, trait_item)
     }
 
@@ -620,7 +620,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             hir::ImplItemKind::Method(ref sig, _) => Some(sig),
             _ => None
         };
-        self.check_trait_or_impl_item(impl_item.id, impl_item.span, method_sig);
+        self.check_associated_item(impl_item.id, impl_item.span, method_sig);
         intravisit::walk_impl_item(self, impl_item)
     }
 }

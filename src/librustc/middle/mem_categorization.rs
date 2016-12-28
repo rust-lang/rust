@@ -73,7 +73,6 @@ use self::Aliasability::*;
 use hir::def_id::DefId;
 use hir::map as ast_map;
 use infer::InferCtxt;
-use middle::const_qualif::ConstQualif;
 use hir::def::{Def, CtorKind};
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
@@ -705,7 +704,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
 
             match fn_expr.node {
-                hir::ExprClosure(.., body_id, _) => body_id.node_id(),
+                hir::ExprClosure(.., body_id, _) => body_id.node_id,
                 _ => bug!()
             }
         };
@@ -773,23 +772,23 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
-        let qualif = self.tcx().const_qualif_map.borrow().get(&id).cloned()
-                               .unwrap_or(ConstQualif::NOT_CONST);
+        let promotable = self.tcx().rvalue_promotable_to_static.borrow().get(&id).cloned()
+                                   .unwrap_or(false);
 
         // Only promote `[T; 0]` before an RFC for rvalue promotions
         // is accepted.
-        let qualif = match expr_ty.sty {
-            ty::TyArray(_, 0) => qualif,
-            _ => ConstQualif::NOT_CONST
+        let promotable = match expr_ty.sty {
+            ty::TyArray(_, 0) => true,
+            _ => promotable & false
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let re = if qualif.intersects(ConstQualif::NON_STATIC_BORROWS) {
-            self.temporary_scope(id)
-        } else {
+        let re = if promotable {
             self.tcx().mk_region(ty::ReStatic)
+        } else {
+            self.temporary_scope(id)
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);

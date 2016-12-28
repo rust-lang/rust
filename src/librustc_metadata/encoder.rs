@@ -12,8 +12,7 @@ use cstore;
 use index::Index;
 use schema::*;
 
-use rustc::middle::cstore::{InlinedItemRef, LinkMeta};
-use rustc::middle::cstore::{LinkagePreference, NativeLibrary};
+use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::hir::map::definitions::DefPathTable;
@@ -34,6 +33,7 @@ use std::io::Cursor;
 use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
+use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax_pos;
@@ -442,10 +442,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match trait_item.kind {
             ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::MethodTraitItem(ref sig, _) = ast_item.node {
+                let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
+                    let arg_names = match *m {
+                        hir::TraitMethod::Required(ref names) => {
+                            self.encode_fn_arg_names(names)
+                        }
+                        hir::TraitMethod::Provided(body) => {
+                            self.encode_fn_arg_names_for_body(body)
+                        }
+                    };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names: self.encode_fn_arg_names(&sig.decl),
+                        arg_names: arg_names
                     }
                 } else {
                     bug!()
@@ -486,13 +494,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if let hir::ConstTraitItem(_, Some(_)) = ast_item.node {
-                // We only save the HIR for associated consts with bodies
-                // (InlinedItemRef::from_trait_item panics otherwise)
-                let trait_def_id = trait_item.container.id();
-                Some(self.encode_inlined_item(
-                    InlinedItemRef::from_trait_item(trait_def_id, ast_item, tcx)
-                ))
+            ast: if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.node {
+                Some(self.encode_body(body))
             } else {
                 None
             },
@@ -501,12 +504,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
-        let tcx = self.tcx;
-
         let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.map.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
-        let impl_def_id = impl_item.container.id();
 
         let container = match impl_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssociatedContainer::ImplDefault,
@@ -518,10 +518,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
+                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
                         constness: sig.constness,
-                        arg_names: self.encode_fn_arg_names(&sig.decl),
+                        arg_names: self.encode_fn_arg_names_for_body(body),
                     }
                 } else {
                     bug!()
@@ -535,17 +535,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::AssociatedKind::Type => EntryKind::AssociatedType(container)
         };
 
-        let (ast, mir) = if impl_item.kind == ty::AssociatedKind::Const {
-            (true, true)
-        } else if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
+        let (ast, mir) = if let hir::ImplItemKind::Const(_, body) = ast_item.node {
+            (Some(body), true)
+        } else if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
             let generics = self.tcx.item_generics(def_id);
             let types = generics.parent_types as usize + generics.types.len();
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
+            let ast = if is_const_fn { Some(body) } else { None };
             let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-            (is_const_fn, needs_inline || is_const_fn || always_encode_mir)
+            (ast, needs_inline || is_const_fn || always_encode_mir)
         } else {
-            (false, false)
+            (None, false)
         };
 
         Entry {
@@ -563,25 +564,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if ast {
-                Some(self.encode_inlined_item(
-                    InlinedItemRef::from_impl_item(impl_def_id, ast_item, tcx)
-                ))
-            } else {
-                None
-            },
+            ast: ast.map(|body| self.encode_body(body)),
             mir: if mir { self.encode_mir(def_id) } else { None },
         }
     }
 
-    fn encode_fn_arg_names(&mut self, decl: &hir::FnDecl) -> LazySeq<ast::Name> {
-        self.lazy_seq(decl.inputs.iter().map(|arg| {
-            if let PatKind::Binding(_, _, ref path1, _) = arg.pat.node {
-                path1.node
-            } else {
-                Symbol::intern("")
+    fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
+                                    -> LazySeq<ast::Name> {
+        let _ignore = self.tcx.dep_graph.in_ignore();
+        let body = self.tcx.map.body(body_id);
+        self.lazy_seq(body.arguments.iter().map(|arg| {
+            match arg.pat.node {
+                PatKind::Binding(_, _, name, _) => name.node,
+                _ => Symbol::intern("")
             }
         }))
+    }
+
+    fn encode_fn_arg_names(&mut self, names: &[Spanned<ast::Name>])
+                           -> LazySeq<ast::Name> {
+        self.lazy_seq(names.iter().map(|name| name.node))
     }
 
     fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
@@ -619,10 +621,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
             hir::ItemConst(..) => EntryKind::Const,
-            hir::ItemFn(ref decl, _, constness, ..) => {
+            hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
                     constness: constness,
-                    arg_names: self.encode_fn_arg_names(&decl),
+                    arg_names: self.encode_fn_arg_names_for_body(body),
                 };
 
                 EntryKind::Fn(self.lazy(&data))
@@ -793,16 +795,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             },
 
             ast: match item.node {
-                hir::ItemConst(..) |
-                hir::ItemFn(_, _, hir::Constness::Const, ..) => {
-                    Some(self.encode_inlined_item(
-                        InlinedItemRef::from_item(def_id, item, tcx)
-                    ))
+                hir::ItemConst(_, body) |
+                hir::ItemFn(_, _, hir::Constness::Const, _, _, body) => {
+                    Some(self.encode_body(body))
                 }
                 _ => None,
             },
             mir: match item.node {
-                hir::ItemStatic(..) |
+                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
+                    self.encode_mir(def_id)
+                }
                 hir::ItemConst(..) => self.encode_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let tps_len = generics.ty_params.len();
@@ -913,10 +915,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("writing foreign item {}", tcx.node_path_str(nitem.id));
 
         let kind = match nitem.node {
-            hir::ForeignItemFn(ref fndecl, _) => {
+            hir::ForeignItemFn(_, ref names, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
-                    arg_names: self.encode_fn_arg_names(&fndecl),
+                    arg_names: self.encode_fn_arg_names(names),
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
@@ -1161,6 +1163,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem) {}
 
     fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
         // handled in `visit_item` above

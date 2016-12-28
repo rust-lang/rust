@@ -32,7 +32,6 @@ use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
@@ -1030,22 +1029,14 @@ pub struct Method {
     pub abi: Abi,
 }
 
-impl Clean<Method> for hir::MethodSig {
+impl<'a> Clean<Method> for (&'a hir::MethodSig, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
-        let decl = FnDecl {
-            inputs: Arguments {
-                values: self.decl.inputs.clean(cx),
-            },
-            output: self.decl.output.clean(cx),
-            variadic: false,
-            attrs: Attributes::default()
-        };
         Method {
-            generics: self.generics.clean(cx),
-            unsafety: self.unsafety,
-            constness: self.constness,
-            decl: decl,
-            abi: self.abi
+            generics: self.0.generics.clean(cx),
+            unsafety: self.0.unsafety,
+            constness: self.0.constness,
+            decl: (&*self.0.decl, self.1).clean(cx),
+            abi: self.0.abi
         }
     }
 }
@@ -1056,25 +1047,6 @@ pub struct TyMethod {
     pub decl: FnDecl,
     pub generics: Generics,
     pub abi: Abi,
-}
-
-impl Clean<TyMethod> for hir::MethodSig {
-    fn clean(&self, cx: &DocContext) -> TyMethod {
-        let decl = FnDecl {
-            inputs: Arguments {
-                values: self.decl.inputs.clean(cx),
-            },
-            output: self.decl.output.clean(cx),
-            variadic: false,
-            attrs: Attributes::default()
-        };
-        TyMethod {
-            unsafety: self.unsafety.clone(),
-            decl: decl,
-            generics: self.generics.clean(cx),
-            abi: self.abi
-        }
-    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1097,7 +1069,7 @@ impl Clean<Item> for doctree::Function {
             deprecation: self.depr.clean(cx),
             def_id: cx.tcx.map.local_def_id(self.id),
             inner: FunctionItem(Function {
-                decl: self.decl.clean(cx),
+                decl: (&self.decl, self.body).clean(cx),
                 generics: self.generics.clean(cx),
                 unsafety: self.unsafety,
                 constness: self.constness,
@@ -1130,14 +1102,47 @@ pub struct Arguments {
     pub values: Vec<Argument>,
 }
 
-impl Clean<FnDecl> for hir::FnDecl {
+impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], &'a [Spanned<ast::Name>]) {
+    fn clean(&self, cx: &DocContext) -> Arguments {
+        Arguments {
+            values: self.0.iter().enumerate().map(|(i, ty)| {
+                let mut name = self.1.get(i).map(|n| n.node.to_string())
+                                            .unwrap_or(String::new());
+                if name.is_empty() {
+                    name = "_".to_string();
+                }
+                Argument {
+                    name: name,
+                    type_: ty.clean(cx),
+                }
+            }).collect()
+        }
+    }
+}
+
+impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], hir::BodyId) {
+    fn clean(&self, cx: &DocContext) -> Arguments {
+        let body = cx.tcx.map.body(self.1);
+
+        Arguments {
+            values: self.0.iter().enumerate().map(|(i, ty)| {
+                Argument {
+                    name: name_from_pat(&body.arguments[i].pat),
+                    type_: ty.clean(cx),
+                }
+            }).collect()
+        }
+    }
+}
+
+impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
+    where (&'a [P<hir::Ty>], A): Clean<Arguments>
+{
     fn clean(&self, cx: &DocContext) -> FnDecl {
         FnDecl {
-            inputs: Arguments {
-                values: self.inputs.clean(cx),
-            },
-            output: self.output.clean(cx),
-            variadic: self.variadic,
+            inputs: (&self.0.inputs[..], self.1).clean(cx),
+            output: self.0.output.clean(cx),
+            variadic: self.0.variadic,
             attrs: Attributes::default()
         }
     }
@@ -1159,7 +1164,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
                 values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
-                        id: ast::CRATE_NODE_ID,
                         name: names.next().map_or("".to_string(), |name| name.to_string()),
                     }
                 }).collect(),
@@ -1172,7 +1176,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
 pub struct Argument {
     pub type_: Type,
     pub name: String,
-    pub id: ast::NodeId,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
@@ -1184,26 +1187,17 @@ pub enum SelfTy {
 
 impl Argument {
     pub fn to_self(&self) -> Option<SelfTy> {
-        if self.name == "self" {
-            match self.type_ {
-                Infer => Some(SelfValue),
-                BorrowedRef{ref lifetime, mutability, ref type_} if **type_ == Infer => {
-                    Some(SelfBorrowed(lifetime.clone(), mutability))
-                }
-                _ => Some(SelfExplicit(self.type_.clone()))
-            }
-        } else {
-            None
+        if self.name != "self" {
+            return None;
         }
-    }
-}
-
-impl Clean<Argument> for hir::Arg {
-    fn clean(&self, cx: &DocContext) -> Argument {
-        Argument {
-            name: name_from_pat(&*self.pat),
-            type_: (self.ty.clean(cx)),
-            id: self.id
+        if self.type_.is_self_type() {
+            return Some(SelfValue);
+        }
+        match self.type_ {
+            BorrowedRef{ref lifetime, mutability, ref type_} if type_.is_self_type() => {
+                Some(SelfBorrowed(lifetime.clone(), mutability))
+            }
+            _ => Some(SelfExplicit(self.type_.clone()))
         }
     }
 }
@@ -1269,17 +1263,22 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
 impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ConstTraitItem(ref ty, ref default) => {
+            hir::TraitItemKind::Const(ref ty, default) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    default.as_ref().map(|e| pprust::expr_to_string(&e)))
+                                    default.map(|e| print_const_expr(cx, e)))
             }
-            hir::MethodTraitItem(ref sig, Some(_)) => {
-                MethodItem(sig.clean(cx))
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+                MethodItem((sig, body).clean(cx))
             }
-            hir::MethodTraitItem(ref sig, None) => {
-                TyMethodItem(sig.clean(cx))
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+                TyMethodItem(TyMethod {
+                    unsafety: sig.unsafety.clone(),
+                    decl: (&*sig.decl, &names[..]).clean(cx),
+                    generics: sig.generics.clean(cx),
+                    abi: sig.abi
+                })
             }
-            hir::TypeTraitItem(ref bounds, ref default) => {
+            hir::TraitItemKind::Type(ref bounds, ref default) => {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
@@ -1299,12 +1298,12 @@ impl Clean<Item> for hir::TraitItem {
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ImplItemKind::Const(ref ty, ref expr) => {
+            hir::ImplItemKind::Const(ref ty, expr) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    Some(pprust::expr_to_string(expr)))
+                                    Some(print_const_expr(cx, expr)))
             }
-            hir::ImplItemKind::Method(ref sig, _) => {
-                MethodItem(sig.clean(cx))
+            hir::ImplItemKind::Method(ref sig, body) => {
+                MethodItem((sig, body).clean(cx))
             }
             hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
@@ -1353,11 +1352,13 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     };
                     let self_arg_ty = *fty.sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
-                        decl.inputs.values[0].type_ = Infer;
+                        decl.inputs.values[0].type_ = Generic(String::from("Self"));
                     } else if let ty::TyRef(_, mt) = self_arg_ty.sty {
                         if mt.ty == self_ty {
                             match decl.inputs.values[0].type_ {
-                                BorrowedRef{ref mut type_, ..} => **type_ = Infer,
+                                BorrowedRef{ref mut type_, ..} => {
+                                    **type_ = Generic(String::from("Self"))
+                                }
                                 _ => unreachable!(),
                             }
                         }
@@ -1568,6 +1569,13 @@ impl Type {
             _ => false,
         }
     }
+
+    pub fn is_self_type(&self) -> bool {
+        match *self {
+            Generic(ref name) => name == "Self",
+            _ => false
+        }
+    }
 }
 
 impl GetDefId for Type {
@@ -1677,11 +1685,12 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TySlice(ref ty) => Vector(box ty.clean(cx)),
-            TyArray(ref ty, ref e) => {
+            TyArray(ref ty, e) => {
                 use rustc_const_math::{ConstInt, ConstUsize};
                 use rustc_const_eval::eval_const_expr;
                 use rustc::middle::const_val::ConstVal;
 
+                let e = &cx.tcx.map.body(e).value;
                 let n = match eval_const_expr(cx.tcx, e) {
                     ConstVal::Integral(ConstInt::Usize(u)) => match u {
                         ConstUsize::Us16(u) => u.to_string(),
@@ -2332,7 +2341,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 type_params: Vec::new(),
                 where_predicates: Vec::new()
             },
-            decl: self.decl.clean(cx),
+            decl: (&*self.decl, &[][..]).clean(cx),
             abi: self.abi,
         }
     }
@@ -2362,7 +2371,7 @@ impl Clean<Item> for doctree::Static {
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
-                expr: pprust::expr_to_string(&self.expr),
+                expr: print_const_expr(cx, self.expr),
             }),
         }
     }
@@ -2386,7 +2395,7 @@ impl Clean<Item> for doctree::Constant {
             deprecation: self.depr.clean(cx),
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
-                expr: pprust::expr_to_string(&self.expr),
+                expr: print_const_expr(cx, self.expr),
             }),
         }
     }
@@ -2630,9 +2639,9 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
 impl Clean<Item> for hir::ForeignItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ForeignItemFn(ref decl, ref generics) => {
+            hir::ForeignItemFn(ref decl, ref names, ref generics) => {
                 ForeignFunctionItem(Function {
-                    decl: decl.clean(cx),
+                    decl: (&**decl, &names[..]).clean(cx),
                     generics: generics.clean(cx),
                     unsafety: hir::Unsafety::Unsafe,
                     abi: Abi::Rust,
@@ -2712,6 +2721,10 @@ fn name_from_pat(p: &hir::Pat) -> String {
             format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         },
     }
+}
+
+fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
+    cx.tcx.map.node_to_pretty_string(body.node_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

@@ -655,13 +655,12 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                cfg: &cfg::CFG,
                id_range: IdRange,
-               decl: &hir::FnDecl,
-               body: &hir::Expr)
+               body: &hir::Body)
                -> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,
                                  "flowed_move_data_moves",
-                                 Some(decl),
+                                 Some(body),
                                  cfg,
                                  MoveDataFlowOperator,
                                  id_range,
@@ -669,7 +668,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_assign =
             DataFlowContext::new(tcx,
                                  "flowed_move_data_assigns",
-                                 Some(decl),
+                                 Some(body),
                                  cfg,
                                  AssignDataFlowOperator,
                                  id_range,

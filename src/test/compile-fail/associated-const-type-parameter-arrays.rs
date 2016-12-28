@@ -26,7 +26,9 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>() {
     let _array: [u32; <A as Foo>::Y];
-    //~^ ERROR the trait bound `A: Foo` is not satisfied
+    //~^ ERROR cannot use an outer type parameter in this context [E0402]
+    //~| ERROR constant evaluation error [E0080]
+    //~| non-constant path in constant
 }
 
 fn main() {

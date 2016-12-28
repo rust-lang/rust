@@ -571,6 +571,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         if let TyKind::Path(ref qself, ref path) = ty.node {
             self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+        } else if let TyKind::ImplicitSelf = ty.node {
+            let self_ty = keywords::SelfType.ident();
+            let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.span))
+                          .map_or(Def::Err, |d| d.def());
+            self.record_def(ty.id, PathResolution::new(def));
+        } else if let TyKind::Array(ref element, ref length) = ty.node {
+            self.visit_ty(element);
+            self.with_constant_rib(|this| {
+                this.visit_expr(length);
+            });
+            return;
         }
         visit::walk_ty(self, ty);
     }
@@ -739,6 +750,13 @@ impl<'a> LexicalScopeBinding<'a> {
         match self {
             LexicalScopeBinding::Item(binding) => Some(binding),
             _ => None,
+        }
+    }
+
+    fn def(self) -> Def {
+        match self {
+            LexicalScopeBinding::Item(binding) => binding.def(),
+            LexicalScopeBinding::Def(def) => def,
         }
     }
 }
@@ -2720,6 +2738,13 @@ impl<'a> Resolver<'a> {
                 for ty in types.iter() {
                     self.visit_ty(ty);
                 }
+            }
+
+            ExprKind::Repeat(ref element, ref count) => {
+                self.visit_expr(element);
+                self.with_constant_rib(|this| {
+                    this.visit_expr(count);
+                });
             }
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(&expr.node));

@@ -23,14 +23,14 @@ fn main() { }
 mod x {
     #[cfg(rpass1)]
     pub fn x() {
-        println!("1");
+        println!("{}", "1");
     }
 
     #[cfg(rpass2)]
     #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     #[rustc_dirty(label="TransCrateItem", cfg="rpass2")]
     pub fn x() {
-        println!("2");
+        println!("{}", "2");
     }
 }
 

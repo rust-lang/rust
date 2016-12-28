@@ -108,6 +108,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 }
 
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
+    fn nested(&self, state: &mut pprust::State, nested: pprust::Nested) -> io::Result<()> {
+        pprust::PpAnn::nested(&self.tcx.map, state, nested)
+    }
     fn pre(&self,
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
@@ -160,7 +163,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
     }
 }
 
-fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
+fn build_nodeid_to_index(body: Option<&hir::Body>,
                          cfg: &cfg::CFG) -> NodeMap<Vec<CFGIndex>> {
     let mut index = NodeMap();
 
@@ -168,8 +171,8 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
     // into cfg itself?  i.e. introduce a fn-based flow-graph in
     // addition to the current block-based flow-graph, rather than
     // have to put traversals like this here?
-    if let Some(decl) = decl {
-        add_entries_from_fn_decl(&mut index, decl, cfg.entry);
+    if let Some(body) = body {
+        add_entries_from_fn_body(&mut index, body, cfg.entry);
     }
 
     cfg.graph.each_node(|node_idx, node| {
@@ -181,20 +184,24 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
 
     return index;
 
-    fn add_entries_from_fn_decl(index: &mut NodeMap<Vec<CFGIndex>>,
-                                decl: &hir::FnDecl,
+    /// Add mappings from the ast nodes for the formal bindings to
+    /// the entry-node in the graph.
+    fn add_entries_from_fn_body(index: &mut NodeMap<Vec<CFGIndex>>,
+                                body: &hir::Body,
                                 entry: CFGIndex) {
-        //! add mappings from the ast nodes for the formal bindings to
-        //! the entry-node in the graph.
+        use hir::intravisit::Visitor;
+
         struct Formals<'a> {
             entry: CFGIndex,
             index: &'a mut NodeMap<Vec<CFGIndex>>,
         }
         let mut formals = Formals { entry: entry, index: index };
-        intravisit::walk_fn_decl(&mut formals, decl);
-        impl<'a, 'v> intravisit::Visitor<'v> for Formals<'a> {
+        for arg in &body.arguments {
+            formals.visit_pat(&arg.pat);
+        }
+        impl<'a, 'v> Visitor<'v> for Formals<'a> {
             fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
-                panic!("should not encounter fn bodies or items")
+                intravisit::NestedVisitorMap::None
             }
 
             fn visit_pat(&mut self, p: &hir::Pat) {
@@ -227,7 +234,7 @@ pub enum KillFrom {
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                analysis_name: &'static str,
-               decl: Option<&hir::FnDecl>,
+               body: Option<&hir::Body>,
                cfg: &cfg::CFG,
                oper: O,
                id_range: IdRange,
@@ -250,7 +257,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let kills2 = zeroes;
         let on_entry = vec![entry; num_nodes * words_per_id];
 
-        let nodeid_to_index = build_nodeid_to_index(decl, cfg);
+        let nodeid_to_index = build_nodeid_to_index(body, cfg);
 
         DataFlowContext {
             tcx: tcx,
@@ -502,7 +509,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
 impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 //                                ^^^^^^^^^^^^^ only needed for pretty printing
-    pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Expr) {
+    pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Body) {
         //! Performs the data flow analysis.
 
         if self.bits_per_id == 0 {
@@ -526,20 +533,11 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
         }
 
         debug!("Dataflow result for {}:", self.analysis_name);
-        debug!("{}", {
-            let mut v = Vec::new();
-            self.pretty_print_to(box &mut v, body).unwrap();
-            String::from_utf8(v).unwrap()
-        });
-    }
-
-    fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
-                           body: &hir::Expr) -> io::Result<()> {
-        let mut ps = pprust::rust_printer_annotated(wr, self, None);
-        ps.cbox(pprust::indent_unit)?;
-        ps.ibox(0)?;
-        ps.print_expr(body)?;
-        pp::eof(&mut ps.s)
+        debug!("{}", pprust::to_string(self, |s| {
+            s.cbox(pprust::indent_unit)?;
+            s.ibox(0)?;
+            s.print_expr(&body.value)
+        }));
     }
 }
 

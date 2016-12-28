@@ -576,18 +576,18 @@ https://doc.rust-lang.org/reference.html#ffi-attributes
 
 
 E0306: r##"
-In an array literal `[x; N]`, `N` is the number of elements in the array. This
+In an array type `[T; N]`, `N` is the number of elements in the array. This
 must be an unsigned integer. Erroneous code example:
 
 ```compile_fail,E0306
-let x = [0i32; true]; // error: expected positive integer for repeat count,
-                      //        found boolean
+const X: [i32; true] = [0]; // error: expected `usize` for array length,
+                            //        found boolean
 ```
 
 Working example:
 
 ```
-let x = [0i32; 2];
+const X: [i32; 1] = [0];
 ```
 "##,
 }

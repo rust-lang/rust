@@ -1088,7 +1088,7 @@ fn resolve_item_like<'a, 'tcx, F>(visitor: &mut RegionResolutionVisitor<'tcx, 'a
 fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
                         kind: FnKind<'tcx>,
                         decl: &'tcx hir::FnDecl,
-                        body_id: hir::ExprId,
+                        body_id: hir::BodyId,
                         sp: Span,
                         id: ast::NodeId) {
     debug!("region::resolve_fn(id={:?}, \
@@ -1101,22 +1101,22 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
            visitor.cx.parent);
 
     visitor.cx.parent = visitor.new_code_extent(
-        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id() });
+        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id });
 
     let fn_decl_scope = visitor.new_code_extent(
-        CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id() });
+        CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
 
     if let Some(root_id) = visitor.cx.root_id {
-        visitor.region_maps.record_fn_parent(body_id.node_id(), root_id);
+        visitor.region_maps.record_fn_parent(body_id.node_id, root_id);
     }
 
     let outer_cx = visitor.cx;
     let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
-    visitor.terminating_scopes.insert(body_id.node_id());
+    visitor.terminating_scopes.insert(body_id.node_id);
 
     // The arguments and `self` are parented to the fn.
     visitor.cx = Context {
-        root_id: Some(body_id.node_id()),
+        root_id: Some(body_id.node_id),
         parent: ROOT_CODE_EXTENT,
         var_parent: fn_decl_scope,
     };
@@ -1126,11 +1126,11 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
 
     // The body of the every fn is a root scope.
     visitor.cx = Context {
-        root_id: Some(body_id.node_id()),
+        root_id: Some(body_id.node_id),
         parent: fn_decl_scope,
         var_parent: fn_decl_scope
     };
-    visitor.visit_body(body_id);
+    visitor.visit_nested_body(body_id);
 
     // Restore context we had at the start.
     visitor.cx = outer_cx;
@@ -1195,7 +1195,7 @@ impl<'ast, 'a> Visitor<'ast> for RegionResolutionVisitor<'ast, 'a> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl,
-                b: hir::ExprId, s: Span, n: NodeId) {
+                b: hir::BodyId, s: Span, n: NodeId) {
         resolve_fn(self, fk, fd, b, s, n);
     }
     fn visit_arm(&mut self, a: &'ast Arm) {

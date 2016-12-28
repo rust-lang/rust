@@ -1206,13 +1206,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.map.local_def_id(id),
-                            tcx.region_maps.call_site_extent(id, body.node_id()))
+                            tcx.region_maps.call_site_extent(id, body.node_id))
                     }
                 }
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    hir::TypeTraitItem(..) | hir::ConstTraitItem(..) => {
+                    hir::TraitItemKind::Type(..) | hir::TraitItemKind::Const(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
                         let trait_id = tcx.map.get_parent(id);
@@ -1221,13 +1221,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                                                             trait_def_id,
                                                             tcx.region_maps.item_extent(id))
                     }
-                    hir::MethodTraitItem(_, ref body) => {
+                    hir::TraitItemKind::Method(_, ref body) => {
                         // Use call-site for extent (unless this is a
                         // trait method with no default; then fallback
                         // to the method id).
-                        let extent = if let Some(body_id) = *body {
+                        let extent = if let hir::TraitMethod::Provided(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.region_maps.call_site_extent(id, body_id.node_id())
+                            tcx.region_maps.call_site_extent(id, body_id.node_id)
                         } else {
                             // no default impl: use item extent as free_id_outlive bound.
                             tcx.region_maps.item_extent(id)
@@ -1248,7 +1248,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             item.span,
                             fn_def_id,
-                            tcx.region_maps.call_site_extent(id, body_id.node_id()))
+                            tcx.region_maps.call_site_extent(id, body_id.node_id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     tcx.construct_parameter_environment(
                         expr.span,
                         base_def_id,
-                        tcx.region_maps.call_site_extent(id, body.node_id()))
+                        tcx.region_maps.call_site_extent(id, body.node_id))
                 } else {
                     tcx.empty_parameter_environment()
                 }
@@ -2100,10 +2100,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                hir::ItemTrait(.., ref trait_items) => {
-                    for trait_item in trait_items {
+                hir::ItemTrait(.., ref trait_item_refs) => {
+                    for trait_item_ref in trait_item_refs {
                         let assoc_item =
-                            self.associated_item_from_trait_item_ref(parent_def_id, trait_item);
+                            self.associated_item_from_trait_item_ref(parent_def_id, trait_item_ref);
                         self.associated_items.borrow_mut().insert(assoc_item.def_id, assoc_item);
                     }
                 }
@@ -2121,28 +2121,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     fn associated_item_from_trait_item_ref(self,
                                            parent_def_id: DefId,
-                                           trait_item: &hir::TraitItem)
+                                           trait_item_ref: &hir::TraitItemRef)
                                            -> AssociatedItem {
-        let def_id = self.map.local_def_id(trait_item.id);
-
-        let (kind, has_self, has_value) = match trait_item.node {
-            hir::MethodTraitItem(ref sig, ref body) => {
-                (AssociatedKind::Method, sig.decl.get_self().is_some(),
-                 body.is_some())
+        let def_id = self.map.local_def_id(trait_item_ref.id.node_id);
+        let (kind, has_self) = match trait_item_ref.kind {
+            hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
+            hir::AssociatedItemKind::Method { has_self } => {
+                (ty::AssociatedKind::Method, has_self)
             }
-            hir::ConstTraitItem(_, ref value) => {
-                (AssociatedKind::Const, false, value.is_some())
-            }
-            hir::TypeTraitItem(_, ref ty) => {
-                (AssociatedKind::Type, false, ty.is_some())
-            }
+            hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
         };
 
         AssociatedItem {
-            name: trait_item.name,
+            name: trait_item_ref.name,
             kind: kind,
-            vis: Visibility::from_hir(&hir::Inherited, trait_item.id, self),
-            defaultness: hir::Defaultness::Default { has_value: has_value },
+            vis: Visibility::from_hir(&hir::Inherited, trait_item_ref.id.node_id, self),
+            defaultness: trait_item_ref.defaultness,
             def_id: def_id,
             container: TraitContainer(parent_def_id),
             method_has_self_argument: has_self
@@ -2187,11 +2181,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let id = self.map.as_local_node_id(def_id).unwrap();
             let item = self.map.expect_item(id);
             let vec: Vec<_> = match item.node {
-                hir::ItemTrait(.., ref trait_items) => {
-                    trait_items.iter()
-                               .map(|trait_item| trait_item.id)
-                               .map(|id| self.map.local_def_id(id))
-                               .collect()
+                hir::ItemTrait(.., ref trait_item_refs) => {
+                    trait_item_refs.iter()
+                                   .map(|trait_item_ref| trait_item_ref.id)
+                                   .map(|id| self.map.local_def_id(id.node_id))
+                                   .collect()
                 }
                 hir::ItemImpl(.., ref impl_item_refs) => {
                     impl_item_refs.iter()

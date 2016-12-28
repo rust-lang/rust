@@ -67,13 +67,15 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
         }
     }
+}
 
+impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// Checks exactly one impl for orphan rules and other such
     /// restrictions.  In this fn, it can happen that multiple errors
     /// apply to a specific impl, so just return after reporting one
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
-    fn check_item(&self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemImpl(.., None, ref ty, _) => {
@@ -368,7 +370,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                       the crate they're defined in; define a new trait instead")
                         .span_label(item_trait_ref.path.span,
                                     &format!("`{}` trait not defined in this crate",
-                                             item_trait_ref.path))
+                            self.tcx.map.node_to_pretty_string(item_trait_ref.ref_id)))
                         .emit();
                     return;
                 }
@@ -378,11 +380,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
         }
     }
-}
 
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
-        self.check_item(item);
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
     }
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {

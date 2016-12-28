@@ -129,16 +129,17 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx> BuildMir<'a, 'gcx> {
-    fn build_const_integer(&mut self, expr: &'gcx hir::Expr) {
+    fn build_const_integer(&mut self, body: hir::BodyId) {
+        let body = self.tcx.map.body(body);
         // FIXME(eddyb) Closures should have separate
         // function definition IDs and expression IDs.
         // Type-checking should not let closures get
         // this far in an integer constant position.
-        if let hir::ExprClosure(..) = expr.node {
+        if let hir::ExprClosure(..) = body.value.node {
             return;
         }
-        self.cx(MirSource::Const(expr.id)).build(|cx| {
-            build::construct_const(cx, expr.id, expr)
+        self.cx(MirSource::Const(body.value.id)).build(|cx| {
+            build::construct_const(cx, body.value.id, body.id())
         });
     }
 }
@@ -151,12 +152,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Const and static items.
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemConst(_, ref expr) => {
+            hir::ItemConst(_, expr) => {
                 self.cx(MirSource::Const(item.id)).build(|cx| {
                     build::construct_const(cx, item.id, expr)
                 });
             }
-            hir::ItemStatic(_, m, ref expr) => {
+            hir::ItemStatic(_, m, expr) => {
                 self.cx(MirSource::Static(item.id, m)).build(|cx| {
                     build::construct_const(cx, item.id, expr)
                 });
@@ -168,7 +169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Trait associated const defaults.
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
+        if let hir::TraitItemKind::Const(_, Some(expr)) = item.node {
             self.cx(MirSource::Const(item.id)).build(|cx| {
                 build::construct_const(cx, item.id, expr)
             });
@@ -178,7 +179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Impl associated const.
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(_, ref expr) = item.node {
+        if let hir::ImplItemKind::Const(_, expr) = item.node {
             self.cx(MirSource::Const(item.id)).build(|cx| {
                 build::construct_const(cx, item.id, expr)
             });
@@ -188,7 +189,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Repeat counts, i.e. [expr; constant].
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprRepeat(_, ref count) = expr.node {
+        if let hir::ExprRepeat(_, count) = expr.node {
             self.build_const_integer(count);
         }
         intravisit::walk_expr(self, expr);
@@ -196,7 +197,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Array lengths, i.e. [T; constant].
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyArray(_, ref length) = ty.node {
+        if let hir::TyArray(_, length) = ty.node {
             self.build_const_integer(length);
         }
         intravisit::walk_ty(self, ty);
@@ -205,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Enum variant discriminant values.
     fn visit_variant(&mut self, v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics, item_id: ast::NodeId) {
-        if let Some(ref expr) = v.node.disr_expr {
+        if let Some(expr) = v.node.disr_expr {
             self.build_const_integer(expr);
         }
         intravisit::walk_variant(self, v, g, item_id);
@@ -214,7 +215,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'tcx>,
                 decl: &'tcx hir::FnDecl,
-                body_id: hir::ExprId,
+                body_id: hir::BodyId,
                 span: Span,
                 id: ast::NodeId) {
         // fetch the fully liberated fn signature (that is, all bound
@@ -227,21 +228,20 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
         };
 
         let (abi, implicit_argument) = if let FnKind::Closure(..) = fk {
-            (Abi::Rust, Some((closure_self_ty(self.tcx, id, body_id.node_id()), None)))
+            (Abi::Rust, Some((closure_self_ty(self.tcx, id, body_id.node_id), None)))
         } else {
             let def_id = self.tcx.map.local_def_id(id);
             (self.tcx.item_type(def_id).fn_abi(), None)
         };
 
+        let body = self.tcx.map.body(body_id);
         let explicit_arguments =
-            decl.inputs
+            body.arguments
                 .iter()
                 .enumerate()
                 .map(|(index, arg)| {
                     (fn_sig.inputs()[index], Some(&*arg.pat))
                 });
-
-        let body = self.tcx.map.expr(body_id);
 
         let arguments = implicit_argument.into_iter().chain(explicit_arguments);
         self.cx(MirSource::Fn(id)).build(|cx| {

@@ -30,7 +30,6 @@ use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
-use rustc::hir::print::pat_to_string;
 use rustc::hir::{self, Pat, PatKind};
 
 use rustc_back::slice;
@@ -43,39 +42,17 @@ struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, _expr: &'tcx hir::Expr) {
-        return // const, static and N in [T; N] - shouldn't contain anything
-    }
-
-    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::ConstTraitItem(..) = item.node {
-            return // nothing worth match checking in a constant
-        } else {
-            intravisit::walk_trait_item(self, item);
-        }
-    }
-
-    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(..) = item.node {
-            return // nothing worth match checking in a constant
-        } else {
-            intravisit::walk_impl_item(self, item);
-        }
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, id: ast::NodeId) {
-        if let FnKind::Closure(..) = fk {
-            span_bug!(s, "check_match: closure outside of function")
-        }
+                b: hir::BodyId, s: Span, id: ast::NodeId) {
+        intravisit::walk_fn(self, fk, fd, b, s, id);
 
         MatchVisitor {
             tcx: self.tcx,
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
-        }.visit_fn(fk, fd, b, s, id);
+        }.visit_body(self.tcx.map.body(b));
     }
 }
 
@@ -96,7 +73,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
@@ -119,13 +96,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         self.check_patterns(false, slice::ref_slice(&loc.pat));
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::ExprId, s: Span, n: ast::NodeId) {
-        intravisit::walk_fn(self, fk, fd, b, s, n);
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        intravisit::walk_body(self, body);
 
-        for input in &fd.inputs {
-            self.check_irrefutable(&input.pat, true);
-            self.check_patterns(false, slice::ref_slice(&input.pat));
+        for arg in &body.arguments {
+            self.check_irrefutable(&arg.pat, true);
+            self.check_patterns(false, slice::ref_slice(&arg.pat));
         }
     }
 }
@@ -254,7 +230,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 Useful => bug!()
             };
 
-            let pattern_string = pat_to_string(witness[0].single_pattern());
+            let pattern_string = hir::print::to_string(&self.tcx.map, |s| {
+                s.print_pat(witness[0].single_pattern())
+            });
             let mut diag = struct_span_err!(
                 self.tcx.sess, pat.span, E0005,
                 "refutable pattern in {}: `{}` not covered",
@@ -405,7 +383,9 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         },
                         _ => bug!(),
                     };
-                    let pattern_string = pat_to_string(witness);
+                    let pattern_string = hir::print::to_string(&cx.tcx.map, |s| {
+                        s.print_pat(witness)
+                    });
                     struct_span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
@@ -415,7 +395,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 },
                 _ => {
                     let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
-                        pat_to_string(w)
+                        hir::print::to_string(&cx.tcx.map, |s| s.print_pat(w))
                     }).collect();
                     const LIMIT: usize = 3;
                     let joined_patterns = match pattern_strings.len() {

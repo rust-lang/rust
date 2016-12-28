@@ -737,14 +737,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().drop_glues
     }
 
-    pub fn local_node_for_inlined_defid<'a>(&'a self, def_id: DefId) -> Option<ast::NodeId> {
-        self.sess().cstore.local_node_for_inlined_defid(def_id)
-    }
-
-    pub fn defid_for_inlined_node<'a>(&'a self, node_id: ast::NodeId) -> Option<DefId> {
-        self.sess().cstore.defid_for_inlined_node(node_id)
-    }
-
     pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
         &self.local().instances
     }
