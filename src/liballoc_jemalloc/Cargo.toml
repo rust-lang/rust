@@ -9,6 +9,7 @@ links = "jemalloc"
 name = "alloc_jemalloc"
 path = "lib.rs"
 test = false
+doc = false
 
 [dependencies]
 core = { path = "../libcore" }
