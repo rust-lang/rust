@@ -69,6 +69,7 @@ pub mod copies;
 pub mod cyclomatic_complexity;
 pub mod derive;
 pub mod doc;
+pub mod double_parens;
 pub mod drop_ref;
 pub mod entry;
 pub mod enum_clike;
@@ -283,6 +284,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
     reg.register_early_lint_pass(box reference::Pass);
+    reg.register_early_lint_pass(box double_parens::DoubleParens);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -355,6 +357,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         derive::DERIVE_HASH_XOR_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
         doc::DOC_MARKDOWN,
+        double_parens::DOUBLE_PARENS,
         drop_ref::DROP_REF,
         entry::MAP_ENTRY,
         enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
