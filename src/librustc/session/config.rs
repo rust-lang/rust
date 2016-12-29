@@ -156,6 +156,19 @@ impl OutputTypes {
     pub fn values<'a>(&'a self) -> BTreeMapValuesIter<'a, OutputType, Option<PathBuf>> {
         self.0.values()
     }
+
+    // True if any of the output types require codegen or linking.
+    pub fn should_trans(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Bitcode |
+            OutputType::Assembly |
+            OutputType::LlvmAssembly |
+            OutputType::Object |
+            OutputType::Exe => true,
+            OutputType::Metadata |
+            OutputType::DepInfo => false,
+        })
+    }
 }
 
 
