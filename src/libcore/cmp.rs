@@ -429,7 +429,7 @@ impl PartialOrd for Ordering {
 /// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
 /// ordering based on the top-to-bottom declaration order of the struct's members.
 ///
-/// ## How can I implement `Ord`?
+/// ## How can I implement `PartialOrd`?
 ///
 /// PartialOrd only requires implementation of the `partial_cmp` method, with the others generated
 /// from default implementations.
