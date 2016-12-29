@@ -117,14 +117,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
                     !implements_trait(cx, self_ty, default_trait_id, Vec::new())
                 ], {
-                    if can_derive_default(self_ty, cx, default_trait_id) {
+                    if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
                         span_lint_and_then(cx,
                                            NEW_WITHOUT_DEFAULT_DERIVE, span,
                                            &format!("you should consider deriving a \
                                                      `Default` implementation for `{}`",
                                                     self_ty),
                                            |db| {
-                            db.suggest_item_with_attr(cx, span, "try this", "#[derive(Default)]");
+                            db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
                         });
                     } else {
                         span_lint_and_then(cx,
@@ -151,17 +151,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
     }
 }
 
-fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> bool {
+fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
     match ty.sty {
         ty::TyAdt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
                 if !implements_trait(cx, f_ty, default_trait_id, Vec::new()) {
-                    return false;
+                    return None;
                 }
             }
-            true
+            cx.tcx.map.span_if_local(adt_def.did)
         },
-        _ => false,
+        _ => None,
     }
 }
