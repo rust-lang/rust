@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
 // compile-flags: --emit=metadata
+// no-prefer-dynamic
+// must-compile-successfully
 
-#![crate_type="rlib"]
+#[deny(warnings)]
 
-pub struct Foo {
-    pub field: i32,
+// Test that we don't get warnings for non-pub main when only emitting metadata.
+// (#38273)
+
+fn main() {
 }

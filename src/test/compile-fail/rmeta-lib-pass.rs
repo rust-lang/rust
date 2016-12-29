@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --emit=metadata
 // aux-build:rmeta_rlib.rs
 // no-prefer-dynamic
 // must-compile-successfully
 
 // Check that building a metadata crate works with a dependent, rlib crate.
 // This is a cfail test since there is no executable to run.
-
-#![crate_type="metadata"]
 
 extern crate rmeta_rlib;
 use rmeta_rlib::Foo;

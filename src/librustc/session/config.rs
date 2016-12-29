@@ -73,6 +73,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
+    Metadata,
     Object,
     Exe,
     DepInfo,
@@ -86,7 +87,8 @@ impl OutputType {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
-            OutputType::Object => false,
+            OutputType::Object |
+            OutputType::Metadata => false,
         }
     }
 
@@ -96,6 +98,7 @@ impl OutputType {
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
             OutputType::Object => "obj",
+            OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
         }
@@ -107,6 +110,7 @@ impl OutputType {
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
             OutputType::Object => "o",
+            OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
         }
@@ -151,6 +155,19 @@ impl OutputTypes {
 
     pub fn values<'a>(&'a self) -> BTreeMapValuesIter<'a, OutputType, Option<PathBuf>> {
         self.0.values()
+    }
+
+    // True if any of the output types require codegen or linking.
+    pub fn should_trans(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Bitcode |
+            OutputType::Assembly |
+            OutputType::LlvmAssembly |
+            OutputType::Object |
+            OutputType::Exe => true,
+            OutputType::Metadata |
+            OutputType::DepInfo => false,
+        })
     }
 }
 
@@ -482,7 +499,6 @@ pub enum CrateType {
     CrateTypeStaticlib,
     CrateTypeCdylib,
     CrateTypeProcMacro,
-    CrateTypeMetadata,
 }
 
 #[derive(Clone, Hash)]
@@ -1159,12 +1175,12 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              assumed.", "[KIND=]NAME"),
         opt::multi_s("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                   "[bin|lib|rlib|dylib|cdylib|staticlib|metadata]"),
+                   "[bin|lib|rlib|dylib|cdylib|staticlib]"),
         opt::opt_s("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout", &print_opts.join("|")),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
@@ -1293,7 +1309,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
-    let crate_types = parse_crate_types_from_list(unparsed_crate_types)
+    let (crate_types, emit_metadata) = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut lint_opts = vec![];
@@ -1327,6 +1343,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     "llvm-ir" => OutputType::LlvmAssembly,
                     "llvm-bc" => OutputType::Bitcode,
                     "obj" => OutputType::Object,
+                    "metadata" => OutputType::Metadata,
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
                     part => {
@@ -1339,7 +1356,9 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
         }
     };
-    if output_types.is_empty() {
+    if emit_metadata {
+        output_types.insert(OutputType::Metadata, None);
+    } else if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
     }
 
@@ -1541,8 +1560,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     cfg)
 }
 
-pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
+pub fn parse_crate_types_from_list(list_list: Vec<String>)
+                                   -> Result<(Vec<CrateType>, bool), String> {
     let mut crate_types: Vec<CrateType> = Vec::new();
+    let mut emit_metadata = false;
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
@@ -1553,7 +1574,13 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
-                "metadata"  => CrateTypeMetadata,
+                // FIXME(#38640) remove this when Cargo is fixed.
+                "metadata"  => {
+                    early_warn(ErrorOutputType::default(), "--crate-type=metadata is deprecated, \
+                                                            prefer --emit=metadata");
+                    emit_metadata = true;
+                    CrateTypeRlib
+                }
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1565,7 +1592,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
         }
     }
 
-    return Ok(crate_types);
+    return Ok((crate_types, emit_metadata));
 }
 
 pub mod nightly_options {
@@ -1638,7 +1665,6 @@ impl fmt::Display for CrateType {
             CrateTypeStaticlib => "staticlib".fmt(f),
             CrateTypeCdylib => "cdylib".fmt(f),
             CrateTypeProcMacro => "proc-macro".fmt(f),
-            CrateTypeMetadata => "metadata".fmt(f),
         }
     }
 }

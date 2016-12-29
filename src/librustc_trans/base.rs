@@ -807,8 +807,7 @@ fn write_metadata(cx: &SharedCrateContext,
             config::CrateTypeStaticlib |
             config::CrateTypeCdylib => MetadataKind::None,
 
-            config::CrateTypeRlib |
-            config::CrateTypeMetadata => MetadataKind::Uncompressed,
+            config::CrateTypeRlib => MetadataKind::Uncompressed,
 
             config::CrateTypeDylib |
             config::CrateTypeProcMacro => MetadataKind::Compressed,
@@ -1191,7 +1190,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
-       tcx.sess.crate_types.borrow().iter().all(|ct| ct == &config::CrateTypeMetadata) {
+       tcx.sess.opts.output_types.contains_key(&config::OutputType::Metadata) {
         let linker_info = LinkerInfo::new(&shared_ccx, &ExportedSymbols::empty());
         return CrateTranslation {
             modules: modules,
