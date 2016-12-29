@@ -12,7 +12,7 @@
 #![crate_type = "rlib"]
 #![no_std]
 #![allocator]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",

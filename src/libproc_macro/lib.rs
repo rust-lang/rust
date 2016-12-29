@@ -30,7 +30,7 @@
 #![unstable(feature = "proc_macro_lib", issue = "27812")]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![deny(missing_docs)]
 
 #![feature(rustc_private)]
