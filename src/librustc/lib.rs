@@ -30,7 +30,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0, feature(item_like_imports))]
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(pub_restricted)]
