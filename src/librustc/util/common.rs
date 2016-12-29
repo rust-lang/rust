@@ -27,13 +27,27 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 #[derive(Clone, Copy, Debug)]
 pub struct ErrorReported;
 
+thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
+
+/// Read the current depth of `time()` calls. This is used to
+/// encourage indentation across threads.
+pub fn time_depth() -> usize {
+    TIME_DEPTH.with(|slot| slot.get())
+}
+
+/// Set the current depth of `time()` calls. The idea is to call
+/// `set_time_depth()` with the result from `time_depth()` in the
+/// parent thread.
+pub fn set_time_depth(depth: usize) {
+    TIME_DEPTH.with(|slot| slot.set(depth));
+}
+
 pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
-    thread_local!(static DEPTH: Cell<usize> = Cell::new(0));
     if !do_it { return f(); }
 
-    let old = DEPTH.with(|slot| {
+    let old = TIME_DEPTH.with(|slot| {
         let r = slot.get();
         slot.set(r + 1);
         r
@@ -56,7 +70,7 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
              mem_string,
              what);
 
-    DEPTH.with(|slot| slot.set(old));
+    TIME_DEPTH.with(|slot| slot.set(old));
 
     rv
 }
