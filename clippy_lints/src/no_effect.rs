@@ -1,6 +1,6 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::Def;
-use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource};
+use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource, BiAnd, BiOr};
 use utils::{in_macro, span_lint, snippet_opt, span_lint_and_then};
 use std::ops::Deref;
 
@@ -134,8 +134,10 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         return None;
     }
     match expr.node {
-        Expr_::ExprIndex(ref a, ref b) |
-        Expr_::ExprBinary(_, ref a, ref b) => Some(vec![&**a, &**b]),
+        Expr_::ExprIndex(ref a, ref b) => Some(vec![&**a, &**b]),
+        Expr_::ExprBinary(ref binop, ref a, ref b) if binop.node != BiAnd && binop.node != BiOr => {
+            Some(vec![&**a, &**b])
+        },
         Expr_::ExprArray(ref v) |
         Expr_::ExprTup(ref v) => Some(v.iter().collect()),
         Expr_::ExprRepeat(ref inner, _) |

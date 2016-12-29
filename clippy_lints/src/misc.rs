@@ -154,6 +154,25 @@ declare_lint! {
     "using a binding which is prefixed with an underscore"
 }
 
+/// **What it does:** Checks for the use of short circuit boolean conditions as a
+/// statement.
+///
+/// **Why is this bad?** Using a short circuit boolean condition as a statement may
+/// hide the fact that the second part is executed or not depending on the outcome of
+/// the first part.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// f() && g();  // We should write `if f() { g(); }`.
+/// ```
+declare_lint! {
+    pub SHORT_CIRCUIT_STATEMENT,
+    Warn,
+    "using a short circuit boolean condition as a statement"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -165,7 +184,8 @@ impl LintPass for Pass {
                     CMP_OWNED,
                     MODULO_ONE,
                     REDUNDANT_PATTERN,
-                    USED_UNDERSCORE_BINDING)
+                    USED_UNDERSCORE_BINDING,
+                    SHORT_CIRCUIT_STATEMENT)
     }
 }
 
@@ -224,7 +244,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                                initref=initref));
                 }
             );
-        }}
+        }};
+        if_let_chain! {[
+            let StmtSemi(ref expr, _) = s.node,
+            let Expr_::ExprBinary(ref binop, ref a, ref b) = expr.node,
+            binop.node == BiAnd || binop.node == BiOr,
+            let Some(sugg) = Sugg::hir_opt(cx, a),
+        ], {
+            span_lint_and_then(cx,
+                SHORT_CIRCUIT_STATEMENT,
+                s.span,
+                "boolean short circuit operator in statement may be clearer using an explicit test",
+                |db| {
+                    let sugg = if binop.node == BiOr { !sugg } else { sugg };
+                    db.span_suggestion(s.span, "replace it with",
+                                       format!("if {} {{ {}; }}", sugg, &snippet(cx, b.span, "..")));
+                });
+        }};
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

@@ -12,7 +12,7 @@ impl A {
     fn foo(&self) -> ! { diverge() }
 }
 
-#[allow(unused_variables, unnecessary_operation)]
+#[allow(unused_variables, unnecessary_operation, short_circuit_statement)]
 fn main() {
     let b = true;
     b || diverge(); //~ ERROR sub-expression diverges
