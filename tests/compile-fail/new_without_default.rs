@@ -5,23 +5,23 @@
 #![deny(new_without_default, new_without_default_derive)]
 
 pub struct Foo;
+//~^HELP try this
+//~^^SUGGESTION #[derive(Default)]
+//~^^SUGGESTION pub struct Foo
 
 impl Foo {
     pub fn new() -> Foo { Foo }
     //~^ERROR: you should consider deriving a `Default` implementation for `Foo`
-    //~|HELP try this
-    //~^^^SUGGESTION #[derive(Default)]
-    //~^^^SUGGESTION pub fn new
 }
 
 pub struct Bar;
+//~^HELP try this
+//~^^SUGGESTION #[derive(Default)]
+//~^^SUGGESTION pub struct Bar
 
 impl Bar {
     pub fn new() -> Self { Bar }
     //~^ERROR: you should consider deriving a `Default` implementation for `Bar`
-    //~|HELP try this
-    //~^^^SUGGESTION #[derive(Default)]
-    //~^^^SUGGESTION pub fn new
 }
 
 pub struct Ok;
