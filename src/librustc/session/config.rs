@@ -482,6 +482,7 @@ pub enum CrateType {
     CrateTypeStaticlib,
     CrateTypeCdylib,
     CrateTypeProcMacro,
+    // Should not be present.
     CrateTypeMetadata,
 }
 
@@ -1558,7 +1559,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
-                "metadata"  => CrateTypeMetadata,
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1643,7 +1643,7 @@ impl fmt::Display for CrateType {
             CrateTypeStaticlib => "staticlib".fmt(f),
             CrateTypeCdylib => "cdylib".fmt(f),
             CrateTypeProcMacro => "proc-macro".fmt(f),
-            CrateTypeMetadata => "metadata".fmt(f),
+            CrateTypeMetadata => unreachable!(),
         }
     }
 }
