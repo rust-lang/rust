@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustbook"
 version = "0.0.0"
+build = false
 
 [[bin]]
 name = "rustbook"
