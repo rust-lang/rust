@@ -103,7 +103,7 @@ pub fn calculate(sess: &session::Session) {
 
 fn calculate_type(sess: &session::Session,
                   ty: config::CrateType) -> DependencyList {
-    if sess.opts.output_types.contains_key(&config::OutputType::Metadata) {
+    if !sess.opts.output_types.should_trans() {
         return Vec::new();
     }
 
