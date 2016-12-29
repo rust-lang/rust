@@ -205,7 +205,8 @@
 //!
 //! Last, but certainly not least, is [`io::Result`]. This type is used
 //! as the return type of many `std::io` functions that can cause an error, and
-//! can be returned from your own functions as well.
+//! can be returned from your own functions as well. Many of the examples in this
+//! module use the [`?` operator]:
 //!
 //! ```
 //! use std::io;
@@ -249,6 +250,7 @@
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
+//! [`?` operator]: ../../book/syntax-index.html
 //! [`read()`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
