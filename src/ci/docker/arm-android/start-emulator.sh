@@ -11,5 +11,7 @@
 
 set -ex
 ANDROID_EMULATOR_FORCE_32BIT=true \
-  emulator @arm-18 -no-window -partition-size 2047 &
+  nohup nohup emulator @arm-18 -no-window -partition-size 2047 \
+  0<&- &>/dev/null &
+adb wait-for-device
 exec "$@"
