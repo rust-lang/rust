@@ -75,8 +75,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
             config::CrateTypeCdylib |
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib => true,
-            config::CrateTypeRlib |
-            config::CrateTypeMetadata => false,
+            config::CrateTypeRlib => false,
         }
     });
     if !needs_check {

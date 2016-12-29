@@ -1182,9 +1182,6 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          Some(ref n) if *n == "rlib" => {
                              Some(config::CrateTypeRlib)
                          }
-                         Some(ref n) if *n == "metadata" => {
-                             Some(config::CrateTypeMetadata)
-                         }
                          Some(ref n) if *n == "dylib" => {
                              Some(config::CrateTypeDylib)
                          }

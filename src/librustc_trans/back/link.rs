@@ -191,7 +191,8 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
-        if sess.opts.debugging_opts.no_trans &&
+        if (sess.opts.debugging_opts.no_trans ||
+            !sess.opts.output_types.should_trans()) &&
            crate_type == config::CrateTypeExecutable {
             continue;
         }
@@ -200,15 +201,16 @@ pub fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let out_file = link_binary_output(sess, trans, crate_type, outputs,
-                                          crate_name);
-        out_filenames.push(out_file);
+        let mut out_files = link_binary_output(sess, trans, crate_type, outputs, crate_name);
+        out_filenames.append(&mut out_files);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        for obj in object_filenames(trans, outputs) {
-            remove(sess, &obj);
+        if sess.opts.output_types.should_trans() {
+            for obj in object_filenames(trans, outputs) {
+                remove(sess, &obj);
+            }
         }
         remove(sess, &outputs.with_extension("metadata.o"));
     }
@@ -254,17 +256,24 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
+fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
+    let out_filename = outputs.single_output_file.clone()
+        .unwrap_or(outputs
+            .out_directory
+            .join(&format!("lib{}{}.rmeta", crate_name, sess.opts.cg.extra_filename)));
+    check_file_is_writeable(&out_filename, sess);
+    out_filename
+}
+
 pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
                           crate_name: &str,
                           outputs: &OutputFilenames) -> PathBuf {
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
+
     match crate_type {
         config::CrateTypeRlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
-        }
-        config::CrateTypeMetadata => {
-            outputs.out_directory.join(&format!("lib{}.rmeta", libname))
         }
         config::CrateTypeCdylib |
         config::CrateTypeProcMacro |
@@ -323,27 +332,41 @@ pub fn each_linked_rlib(sess: &Session,
     }
 }
 
-fn link_binary_output(sess: &Session,
-                      trans: &CrateTranslation,
-                      crate_type: config::CrateType,
-                      outputs: &OutputFilenames,
-                      crate_name: &str) -> PathBuf {
-    let objects = object_filenames(trans, outputs);
-    let default_filename = filename_for_input(sess, crate_type, crate_name,
-                                              outputs);
+fn out_filename(sess: &Session,
+                crate_type: config::CrateType,
+                outputs: &OutputFilenames,
+                crate_name: &str)
+                -> PathBuf {
+    let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
     let out_filename = outputs.outputs.get(&OutputType::Exe)
                               .and_then(|s| s.to_owned())
                               .or_else(|| outputs.single_output_file.clone())
                               .unwrap_or(default_filename);
 
-    // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
-    // check this already -- however, the Linux linker will happily overwrite a
-    // read-only file.  We should be consistent.
-    for file in objects.iter().chain(Some(&out_filename)) {
-        if !is_writeable(file) {
-            sess.fatal(&format!("output file {} is not writeable -- check its \
-                                permissions", file.display()));
-        }
+    check_file_is_writeable(&out_filename, sess);
+
+    out_filename
+}
+
+// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+// check this already -- however, the Linux linker will happily overwrite a
+// read-only file.  We should be consistent.
+fn check_file_is_writeable(file: &Path, sess: &Session) {
+    if !is_writeable(file) {
+        sess.fatal(&format!("output file {} is not writeable -- check its \
+                            permissions", file.display()));
+    }
+}
+
+fn link_binary_output(sess: &Session,
+                      trans: &CrateTranslation,
+                      crate_type: config::CrateType,
+                      outputs: &OutputFilenames,
+                      crate_name: &str) -> Vec<PathBuf> {
+    let objects = object_filenames(trans, outputs);
+
+    for file in &objects {
+        check_file_is_writeable(file, sess);
     }
 
     let tmpdir = match TempDir::new("rustc") {
@@ -351,24 +374,33 @@ fn link_binary_output(sess: &Session,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
 
-    match crate_type {
-        config::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &objects, &out_filename,
-                      tmpdir.path()).build();
-        }
-        config::CrateTypeStaticlib => {
-            link_staticlib(sess, &objects, &out_filename, tmpdir.path());
-        }
-        config::CrateTypeMetadata => {
-            emit_metadata(sess, trans, &out_filename);
-        }
-        _ => {
-            link_natively(sess, crate_type, &objects, &out_filename, trans,
-                          outputs, tmpdir.path());
-        }
+    let mut out_filenames = vec![];
+
+    if outputs.outputs.contains_key(&OutputType::Metadata) {
+        let out_filename = filename_for_metadata(sess, crate_name, outputs);
+        emit_metadata(sess, trans, &out_filename);
+        out_filenames.push(out_filename);
     }
 
-    out_filename
+    if outputs.outputs.should_trans() {
+        let out_filename = out_filename(sess, crate_type, outputs, crate_name);
+        match crate_type {
+            config::CrateTypeRlib => {
+                link_rlib(sess, Some(trans), &objects, &out_filename,
+                          tmpdir.path()).build();
+            }
+            config::CrateTypeStaticlib => {
+                link_staticlib(sess, &objects, &out_filename, tmpdir.path());
+            }
+            _ => {
+                link_natively(sess, crate_type, &objects, &out_filename, trans,
+                              outputs, tmpdir.path());
+            }
+        }
+        out_filenames.push(out_filename);
+    }
+
+    out_filenames
 }
 
 fn object_filenames(trans: &CrateTranslation,

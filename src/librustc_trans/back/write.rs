@@ -701,8 +701,8 @@ pub fn run_passes(sess: &Session,
 
     for output_type in output_types.keys() {
         match *output_type {
-            OutputType::Bitcode => { modules_config.emit_bc = true; },
-            OutputType::LlvmAssembly => { modules_config.emit_ir = true; },
+            OutputType::Bitcode => { modules_config.emit_bc = true; }
+            OutputType::LlvmAssembly => { modules_config.emit_ir = true; }
             OutputType::Assembly => {
                 modules_config.emit_asm = true;
                 // If we're not using the LLVM assembler, this function
@@ -711,8 +711,9 @@ pub fn run_passes(sess: &Session,
                 if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
                     metadata_config.emit_obj = true;
                 }
-            },
-            OutputType::Object => { modules_config.emit_obj = true; },
+            }
+            OutputType::Object => { modules_config.emit_obj = true; }
+            OutputType::Metadata => { metadata_config.emit_obj = true; }
             OutputType::Exe => {
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
@@ -853,6 +854,7 @@ pub fn run_passes(sess: &Session,
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
+            OutputType::Metadata |
             OutputType::Exe |
             OutputType::DepInfo => {}
         }
