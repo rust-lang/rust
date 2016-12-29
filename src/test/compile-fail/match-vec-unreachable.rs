@@ -10,13 +10,14 @@
 
 #![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
+#![allow(unused_variables)]
 
 fn main() {
     let x: Vec<(isize, isize)> = Vec::new();
     let x: &[(isize, isize)] = &x;
     match *x {
-        [_, (2, 3), _] => (),
-        [(1, 2), (2, 3), _] => (), //~ ERROR unreachable pattern
+        [a, (2, 3), _] => (),
+        [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
         _ => ()
     }
 
