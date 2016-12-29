@@ -19,6 +19,8 @@ pub fn target() -> TargetResult {
     // Pass the -vector feature string to LLVM to respect this assumption.
     base.features = "-vector".to_string();
     base.max_atomic_width = Some(64);
+    // see #36994
+    base.exe_allocation_crate = "alloc_system".to_string();
 
     Ok(Target {
         llvm_target: "s390x-unknown-linux-gnu".to_string(),
