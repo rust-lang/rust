@@ -150,7 +150,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        MatchCheckCtxt::create_and_enter(self.tcx, scrut.id, |ref mut cx| {
+        let module = self.tcx.map.local_def_id(self.tcx.map.get_module_parent(scrut.id));
+        MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
@@ -192,7 +193,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             "local binding"
         };
 
-        MatchCheckCtxt::create_and_enter(self.tcx, pat.id, |ref mut cx| {
+        let module = self.tcx.map.local_def_id(self.tcx.map.get_module_parent(pat.id));
+        MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
