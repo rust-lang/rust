@@ -30,37 +30,8 @@ use gcc;
 use Build;
 use util::{self, up_to_date};
 
-/// Compile LLVM for `target`.
-pub fn llvm(build: &Build, target: &str) {
-    // If we're using a custom LLVM bail out here, but we can only use a
-    // custom LLVM for the build triple.
-    if let Some(config) = build.config.target_config.get(target) {
-        if let Some(ref s) = config.llvm_config {
-            return check_llvm_version(build, s);
-        }
-    }
-
-    // If the cleaning trigger is newer than our built artifacts (or if the
-    // artifacts are missing) then we keep going, otherwise we bail out.
-    let dst = build.llvm_out(target);
-    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut stamp_contents = String::new();
-    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
-    let done_stamp = dst.join("llvm-finished-building");
-    if done_stamp.exists() {
-        let mut done_contents = String::new();
-        t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
-        if done_contents == stamp_contents {
-            return
-        }
-    }
-    drop(fs::remove_dir_all(&dst));
-
-    println!("Building LLVM for {}", target);
-
-    let _time = util::timeit();
-    let _ = fs::remove_dir_all(&dst.join("build"));
-    t!(fs::create_dir_all(&dst.join("build")));
+/// Configure LLVM for `target`.
+fn configure_llvm(build: &Build, target: &str, dst: &Path) -> cmake::Config {
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     // http://llvm.org/docs/CMake.html
@@ -83,7 +54,7 @@ pub fn llvm(build: &Build, target: &str) {
 
     cfg.target(target)
        .host(&build.config.build)
-       .out_dir(&dst)
+       .out_dir(dst)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
@@ -128,6 +99,43 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
     }
+
+    cfg
+}
+
+/// Compile LLVM for `target`.
+pub fn llvm(build: &Build, target: &str) {
+    // If we're using a custom LLVM bail out here, but we can only use a
+    // custom LLVM for the build triple.
+    if let Some(config) = build.config.target_config.get(target) {
+        if let Some(ref s) = config.llvm_config {
+            return check_llvm_version(build, s);
+        }
+    }
+
+    // If the cleaning trigger is newer than our built artifacts (or if the
+    // artifacts are missing) then we keep going, otherwise we bail out.
+    let dst = build.llvm_out(target);
+    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut stamp_contents = String::new();
+    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
+    let done_stamp = dst.join("llvm-finished-building");
+    if done_stamp.exists() {
+        let mut done_contents = String::new();
+        t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+        if done_contents == stamp_contents {
+            return
+        }
+    }
+    drop(fs::remove_dir_all(&dst));
+
+    println!("Building LLVM for {}", target);
+
+    let _time = util::timeit();
+    let _ = fs::remove_dir_all(&dst.join("build"));
+    t!(fs::create_dir_all(&dst.join("build")));
+
+    let mut cfg = configure_llvm(build, target, &dst);
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
     //        libraries here, e.g. we just want a few components and a few
