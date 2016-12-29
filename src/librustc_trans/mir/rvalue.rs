@@ -48,7 +48,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                let tr_operand = self.trans_operand(&bcx, operand);
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-               self.store_operand(&bcx, dest.llval, tr_operand);
+               self.store_operand(&bcx, dest.llval, tr_operand, None);
                bcx
            }
 
@@ -59,7 +59,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(&bcx, dest.llval, temp);
+                    self.store_operand(&bcx, dest.llval, temp, None);
                     return bcx;
                 }
 
@@ -95,7 +95,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
-                    self.store_operand(bcx, llslot, tr_elem);
+                    self.store_operand(bcx, llslot, tr_elem, None);
                 })
             }
 
@@ -113,7 +113,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 let field_index = active_field_index.unwrap_or(i);
                                 let lldest_i = adt::trans_field_ptr(&bcx, dest_ty, val, disr,
                                     field_index);
-                                self.store_operand(&bcx, lldest_i, op);
+                                self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }
                     },
@@ -138,7 +138,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     i
                                 };
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
-                                self.store_operand(&bcx, dest, op);
+                                self.store_operand(&bcx, dest, op, None);
                             }
                         }
                     }
@@ -163,7 +163,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(&bcx, dest.llval, temp);
+                self.store_operand(&bcx, dest.llval, temp, None);
                 bcx
             }
         }
