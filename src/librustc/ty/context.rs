@@ -33,7 +33,7 @@ use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
-use ty::inhabitedness::NodeForrest;
+use ty::inhabitedness::DefIdForrest;
 use ty::maps;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
@@ -460,7 +460,7 @@ pub struct GlobalCtxt<'tcx> {
     // FIXME dep tracking -- should be harmless enough
     pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
-    pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, NodeForrest>>,
+    pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForrest>>,
 
     pub lang_items: middle::lang_items::LanguageItems,
 

@@ -22,7 +22,7 @@ use std::fmt;
 use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
 use util::nodemap::FxHashSet;
 
@@ -979,11 +979,11 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Checks whether a type is visibly uninhabited from a particular node.
-    pub fn is_uninhabited_from(&self, block: NodeId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    /// Checks whether a type is visibly uninhabited from a particular module.
+    pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
-        let node_set = self.uninhabited_from(&mut visited, tcx);
-        node_set.contains(tcx, block)
+        let forrest = self.uninhabited_from(&mut visited, tcx);
+        forrest.contains(tcx, module)
     }
 
     /// Checks whether a type is uninhabited.

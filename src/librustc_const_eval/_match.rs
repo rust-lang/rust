@@ -29,7 +29,8 @@ use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
 
-use syntax::ast::NodeId;
+use syntax::ast::DUMMY_NODE_ID;
+use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
@@ -145,14 +146,13 @@ impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    /// (roughly) where in the code the match occurs. This is necessary for
+    /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
-    /// not. eg.
-    ///     struct Foo { _private: ! }
-    /// can not be seen to be empty outside it's module and should not
-    /// be matchable with an empty match statement.
-    pub node: NodeId,
+    /// not. eg. `struct Foo { _private: ! }` cannot be seen to be empty
+    /// outside it's module and should not be matchable with an empty match
+    /// statement.
+    pub module: DefId,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
     pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
@@ -160,7 +160,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        node: NodeId,
+        module: DefId,
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
     {
@@ -168,7 +168,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
         f(MatchCheckCtxt {
             tcx: tcx,
-            node: node,
+            module: module,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap(),
         })
@@ -379,14 +379,14 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(ref sub_ty) => {
-            if sub_ty.is_uninhabited_from(cx.node, cx.tcx) {
+            if sub_ty.is_uninhabited_from(cx.module, cx.tcx) {
                 vec![Slice(0)]
             } else {
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
         ty::TyArray(ref sub_ty, length) => {
-            if length == 0 || !sub_ty.is_uninhabited_from(cx.node, cx.tcx) {
+            if length == 0 || !sub_ty.is_uninhabited_from(cx.module, cx.tcx) {
                 vec![Slice(length)]
             } else {
                 vec![]
@@ -395,10 +395,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
             def.variants.iter().filter_map(|v| {
                 let mut visited = FxHashSet::default();
-                let node_set = v.uninhabited_from(&mut visited,
+                let forrest = v.uninhabited_from(&mut visited,
                                                   cx.tcx, substs,
                                                   AdtKind::Enum);
-                if node_set.contains(cx.tcx, cx.node) {
+                if forrest.contains(cx.tcx, cx.module) {
                     None
                 } else {
                     Some(Variant(v.did))
@@ -406,7 +406,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect()
         }
         _ => {
-            if pcx.ty.is_uninhabited_from(cx.node, cx.tcx) {
+            if pcx.ty.is_uninhabited_from(cx.module, cx.tcx) {
                 vec![]
             } else {
                 vec![Single]

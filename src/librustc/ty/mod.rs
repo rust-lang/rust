@@ -227,6 +227,20 @@ pub enum Visibility {
 
 pub trait DefIdTree: Copy {
     fn parent(self, id: DefId) -> Option<DefId>;
+
+    fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
+        if descendant.krate != ancestor.krate {
+            return false;
+        }
+
+        while descendant != ancestor {
+            match self.parent(descendant) {
+                Some(parent) => descendant = parent,
+                None => return false,
+            }
+        }
+        true
+    }
 }
 
 impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
@@ -253,7 +267,7 @@ impl Visibility {
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: DefIdTree>(self, mut module: DefId, tree: T) -> bool {
+    pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
@@ -264,14 +278,7 @@ impl Visibility {
             Visibility::Restricted(module) => module,
         };
 
-        while module != restriction {
-            match tree.parent(module) {
-                Some(parent) => module = parent,
-                None => return false,
-            }
-        }
-
-        true
+        tree.is_descendant_of(module, restriction)
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
