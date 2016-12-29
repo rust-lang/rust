@@ -70,7 +70,7 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(allocator)]
 #![feature(box_syntax)]
