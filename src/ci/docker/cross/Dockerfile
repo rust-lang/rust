@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   sudo \
   gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
   gcc-arm-linux-gnueabi libc6-dev-armel-cross \
@@ -70,6 +69,3 @@ ENV AR_s390x_unknown_linux_gnu=s390x-linux-gnu-ar \
 
 # FIXME(rust-lang/rust#36150): powerpc unfortunately aborts right now
 ENV NO_LLVM_ASSERTIONS=1
-
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj
