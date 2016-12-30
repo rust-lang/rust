@@ -248,6 +248,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                "libstd-link",
                "build-crate-std_shim",
                compile::std_link)
+        .dep(|s| s.name("startup-objects"))
         .dep(|s| s.name("create-sysroot").target(s.host));
     crate_rule(build,
                &mut rules,
@@ -264,6 +265,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
 
     for (krate, path, _default) in krates("std_shim") {
         rules.build(&krate.build_step, path)
+             .dep(|s| s.name("startup-objects"))
              .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
              .run(move |s| compile::std(build, s.target, &s.compiler()));
     }
@@ -278,6 +280,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
              .run(move |s| compile::rustc(build, s.target, &s.compiler()));
     }
+
+    rules.build("startup-objects", "src/rtstartup")
+         .dep(|s| s.name("create-sysroot").target(s.host))
+         .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
 
     // ========================================================================
     // Test targets
@@ -349,6 +355,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("librustc"))
+                 .dep(|s| s.name("test-helpers"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
                  .default(mode != "pretty")
                  .host(true)

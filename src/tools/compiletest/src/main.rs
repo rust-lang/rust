@@ -271,8 +271,7 @@ pub fn run_tests(config: &Config) {
             Mode::Codegen |
             Mode::CodegenUnits |
             Mode::Pretty |
-            Mode::Rustdoc |
-            Mode::Incremental => {}
+            Mode::Rustdoc => {}
 
             _ => {
                 env::set_var("RUST_TEST_THREADS", "1");
