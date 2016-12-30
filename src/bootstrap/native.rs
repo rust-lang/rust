@@ -247,12 +247,23 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
 
-    // If the cleaning trigger is newer than our built artifacts (or if the
-    // artifacts are missing) then we keep going, otherwise we bail out.
+    // Read the clean trigger for generation and comparison of build stamps
+    // below.
     let dst = build.llvm_out(target);
-    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut stamp_contents = String::new();
-    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
+    let trigger = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut trigger_contents = String::new();
+    t!(t!(File::open(&trigger)).read_to_string(&mut trigger_contents));
+
+    // Configure LLVM and generate the expected stamp for this build.
+    let cfg = configure_llvm(build, target, &dst, &trigger_contents);
+    let stamp_contents = format!("{}", cfg);
+
+    // If any of the following is true, then clean and rebuild LLVM, otherwise
+    // do nothing:
+    //
+    // * the cleaning trigger is newer than our built artifacts,
+    // * the artifacts are missing, or
+    // * the built LLVM is configured differently.
     let done_stamp = dst.join("llvm-finished-building");
     if done_stamp.exists() {
         let mut done_contents = String::new();
@@ -269,7 +280,7 @@ pub fn llvm(build: &Build, target: &str) {
     let _ = fs::remove_dir_all(&dst.join("build"));
     t!(fs::create_dir_all(&dst.join("build")));
 
-    let cfg = configure_llvm(build, target, &dst, &stamp_contents);
+    // Prepare the CMake config for build.
     let mut cmake_cfg = cfg.into_cmake();
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
