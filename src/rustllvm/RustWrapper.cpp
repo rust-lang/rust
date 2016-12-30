@@ -66,7 +66,7 @@ LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
 
 extern "C" char *LLVMRustGetLastError(void) {
   char *ret = LastError;
-  LastError = NULL;
+  LastError = nullptr;
   return ret;
 }
 
@@ -319,7 +319,7 @@ inline Metadata **unwrap(LLVMRustMetadataRef *Vals) {
 }
 
 template <typename DIT> DIT *unwrapDIptr(LLVMRustMetadataRef ref) {
-  return (DIT *)(ref ? unwrap<MDNode>(ref) : NULL);
+  return (DIT *)(ref ? unwrap<MDNode>(ref) : nullptr);
 }
 
 #define DIDescriptor DIScope
@@ -574,7 +574,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Context, const char *Name,
     const char *LinkageName, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool isLocalToUnit, LLVMValueRef Val,
-    LLVMRustMetadataRef Decl = NULL, uint64_t AlignInBits = 0) {
+    LLVMRustMetadataRef Decl = nullptr, uint64_t AlignInBits = 0) {
   Constant *InitVal = cast<Constant>(unwrap(Val));
 
 #if LLVM_VERSION_GE(4, 0)
@@ -1012,14 +1012,14 @@ extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef Builder,
                                                 const char *Name) {
 #if LLVM_VERSION_GE(3, 8)
   Value **Args = unwrap(LLArgs);
-  if (ParentPad == NULL) {
+  if (ParentPad == nullptr) {
     Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
     ParentPad = wrap(Constant::getNullValue(Ty));
   }
   return wrap(unwrap(Builder)->CreateCleanupPad(
       unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCnt), Name));
 #else
-  return NULL;
+  return nullptr;
 #endif
 }
 
@@ -1030,7 +1030,7 @@ extern "C" LLVMValueRef LLVMRustBuildCleanupRet(LLVMBuilderRef Builder,
   CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
   return wrap(unwrap(Builder)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
 #else
-  return NULL;
+  return nullptr;
 #endif
 }
 
@@ -1042,7 +1042,7 @@ LLVMRustBuildCatchPad(LLVMBuilderRef Builder, LLVMValueRef ParentPad,
   return wrap(unwrap(Builder)->CreateCatchPad(
       unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCnt), Name));
 #else
-  return NULL;
+  return nullptr;
 #endif
 }
 
@@ -1053,7 +1053,7 @@ extern "C" LLVMValueRef LLVMRustBuildCatchRet(LLVMBuilderRef Builder,
   return wrap(unwrap(Builder)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
                                               unwrap(BB)));
 #else
-  return NULL;
+  return nullptr;
 #endif
 }
 
@@ -1063,14 +1063,14 @@ extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef Builder,
                                                  unsigned NumHandlers,
                                                  const char *Name) {
 #if LLVM_VERSION_GE(3, 8)
-  if (ParentPad == NULL) {
+  if (ParentPad == nullptr) {
     Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
     ParentPad = wrap(Constant::getNullValue(Ty));
   }
   return wrap(unwrap(Builder)->CreateCatchSwitch(unwrap(ParentPad), unwrap(BB),
                                                  NumHandlers, Name));
 #else
-  return NULL;
+  return nullptr;
 #endif
 }
 
@@ -1126,7 +1126,7 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
 extern "C" void *LLVMRustBuildOperandBundleDef(const char *Name,
                                                LLVMValueRef *Inputs,
                                                unsigned NumInputs) {
-  return NULL;
+  return nullptr;
 }
 
 extern "C" void LLVMRustFreeOperandBundleDef(void *Bundle) {}

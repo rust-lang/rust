@@ -83,7 +83,7 @@ extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
   if (PI) {
     return wrap(PI->createPass());
   }
-  return NULL;
+  return nullptr;
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef rust_pass) {
@@ -317,9 +317,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Triple Trip(Triple::normalize(triple));
   const llvm::Target *TheTarget =
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
-  if (TheTarget == NULL) {
+  if (TheTarget == nullptr) {
     LLVMRustSetLastError(Error.c_str());
-    return NULL;
+    return nullptr;
   }
 
   StringRef real_cpu = cpu;
@@ -549,7 +549,7 @@ extern "C" void LLVMRustMarkAllFunctionsNounwind(LLVMModuleRef M) {
        ++GV) {
     GV->setDoesNotThrow();
     Function *F = dyn_cast<Function>(GV);
-    if (F == NULL)
+    if (F == nullptr)
       continue;
 
     for (Function::iterator B = F->begin(), BE = F->end(); B != BE; ++B) {

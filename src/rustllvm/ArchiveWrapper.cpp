@@ -22,11 +22,11 @@ struct RustArchiveMember {
   Archive::Child child;
 
   RustArchiveMember()
-      : filename(NULL), name(NULL),
+      : filename(nullptr), name(nullptr),
 #if LLVM_VERSION_GE(3, 8)
-        child(NULL, NULL, NULL)
+        child(nullptr, nullptr, nullptr)
 #else
-        child(NULL, NULL)
+        child(nullptr, nullptr)
 #endif
   {
   }
@@ -118,7 +118,7 @@ LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
   if (rai->err) {
     LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
     delete rai;
-    return NULL;
+    return nullptr;
   }
 #endif
   rai->end = ar->child_end();
@@ -183,12 +183,12 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef child, size_t *size) {
     // in the future, and in the mean time this tells LLVM that the error was
     // not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(name_or_err.takeError()).c_str());
-    return NULL;
+    return nullptr;
   }
 #else
   ErrorOr<StringRef> name_or_err = child->getName();
   if (name_or_err.getError())
-    return NULL;
+    return nullptr;
 #endif
   StringRef name = name_or_err.get();
   *size = name.size();
@@ -202,13 +202,13 @@ extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef child,
   Expected<StringRef> buf_or_err = child->getBuffer();
   if (!buf_or_err) {
     LLVMRustSetLastError(toString(buf_or_err.takeError()).c_str());
-    return NULL;
+    return nullptr;
   }
 #else
   ErrorOr<StringRef> buf_or_err = child->getBuffer();
   if (buf_or_err.getError()) {
     LLVMRustSetLastError(buf_or_err.getError().message().c_str());
-    return NULL;
+    return nullptr;
   }
 #endif
   buf = buf_or_err.get();
