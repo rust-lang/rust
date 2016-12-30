@@ -982,8 +982,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
     pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
-        let forrest = self.uninhabited_from(&mut visited, tcx);
-        forrest.contains(tcx, module)
+        let forest = self.uninhabited_from(&mut visited, tcx);
+        forest.contains(tcx, module)
     }
 
     /// Checks whether a type is uninhabited.
