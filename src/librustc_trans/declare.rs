@@ -23,6 +23,7 @@
 use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty;
+use rustc::session::config::Sanitizer;
 use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
@@ -70,6 +71,21 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     if ccx.tcx().sess.opts.cg.no_redzone
         .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
+    }
+
+    if let Some(ref sanitizer) = ccx.tcx().sess.opts.debugging_opts.sanitizer {
+        match *sanitizer {
+            Sanitizer::Address => {
+                llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
+            },
+            Sanitizer::Memory => {
+                llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
+            },
+            Sanitizer::Thread => {
+                llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
+            },
+            _ => {}
+        }
     }
 
     // If we're compiling the compiler-builtins crate, e.g. the equivalent of

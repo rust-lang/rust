@@ -23,13 +23,23 @@ compiler_builtins = { path = "../libcompiler_builtins" }
 std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
 
+[target.x86_64-unknown-linux-gnu.dependencies]
+rustc_asan = { path = "../librustc_asan", optional = true }
+rustc_lsan = { path = "../librustc_lsan", optional = true }
+rustc_msan = { path = "../librustc_msan", optional = true }
+rustc_tsan = { path = "../librustc_tsan", optional = true }
+
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.27"
 
 [features]
+asan = ["rustc_asan"]
 backtrace = []
 debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []
+lsan = ["rustc_lsan"]
+msan = ["rustc_msan"]
 panic-unwind = ["panic_unwind"]
+tsan = ["rustc_tsan"]

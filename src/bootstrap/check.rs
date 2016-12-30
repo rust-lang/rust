@@ -332,7 +332,10 @@ pub fn krate(build: &Build,
              krate: Option<&str>) {
     let (name, path, features, root) = match mode {
         Mode::Libstd => {
-            ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
+            ("libstd",
+             "src/rustc/std_shim",
+             build.std_features(),
+             "std_shim")
         }
         Mode::Libtest => {
             ("libtest", "src/rustc/test_shim", String::new(), "test_shim")

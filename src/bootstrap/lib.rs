@@ -599,7 +599,8 @@ impl Build {
     /// Get the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
-        let mut features = "panic-unwind".to_string();
+        let mut features = "panic-unwind asan lsan msan tsan".to_string();
+
         if self.config.debug_jemalloc {
             features.push_str(" debug-jemalloc");
         }
@@ -714,6 +715,10 @@ impl Build {
             self.llvm_out(&self.config.build).join("bin")
                 .join(exe("llvm-config", target))
         }
+    }
+
+    fn system_llvm(&self, target: &str) -> bool {
+        self.config.target_config.get(target).map(|t| t.system_llvm).unwrap_or(false)
     }
 
     /// Returns the path to `FileCheck` binary for the specified target

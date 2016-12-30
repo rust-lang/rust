@@ -51,6 +51,14 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
+#[derive(Clone)]
+pub enum Sanitizer {
+    Address,
+    Leak,
+    Memory,
+    Thread,
+}
+
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum OptLevel {
     No, // -O0
@@ -626,11 +634,13 @@ macro_rules! options {
             Some("a number");
         pub const parse_panic_strategy: Option<&'static str> =
             Some("either `panic` or `abort`");
+        pub const parse_sanitizer: Option<&'static str> =
+            Some("one of: `address`, `leak`, `memory` or `thread`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
         use rustc_back::PanicStrategy;
 
         $(
@@ -748,6 +758,17 @@ macro_rules! options {
                 Some("unwind") => *slot = Some(PanicStrategy::Unwind),
                 Some("abort") => *slot = Some(PanicStrategy::Abort),
                 _ => return false
+            }
+            true
+        }
+
+        fn parse_sanitizer(slote: &mut Option<Sanitizer>, v: Option<&str>) -> bool {
+            match v {
+                Some("address") => *slote = Some(Sanitizer::Address),
+                Some("leak") => *slote = Some(Sanitizer::Leak),
+                Some("memory") => *slote = Some(Sanitizer::Memory),
+                Some("thread") => *slote = Some(Sanitizer::Thread),
+                _ => return false,
             }
             true
         }
@@ -949,6 +970,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
           "pass `-install_name @rpath/...` to the OSX linker"),
+    sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [UNTRACKED],
+                                   "Use a sanitizer"),
 }
 
 pub fn default_lib_output() -> CrateType {
