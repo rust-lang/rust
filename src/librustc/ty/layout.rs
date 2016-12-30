@@ -575,6 +575,10 @@ impl<'a, 'gcx, 'tcx> Struct {
             });
         }
 
+        // Disable field reordering until we can decide what to do.
+        // The odd pattern here avoids a warning about the value never being read.
+        if can_optimize { can_optimize = false }
+
         let (optimize, sort_ascending) = match kind {
             StructKind::AlwaysSizedUnivariant => (can_optimize, false),
             StructKind::MaybeUnsizedUnivariant => (can_optimize, false),

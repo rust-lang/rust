@@ -8,10 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:recursive_reexports.rs
+#![feature(rustc_attrs)]
+#![allow(unused)]
 
-extern crate recursive_reexports;
+pub struct Foo;
 
-fn f() -> recursive_reexports::S {} //~ ERROR type name `recursive_reexports::S` is undefined
+mod bar {
+    struct Foo;
 
-fn main() {}
+    mod baz {
+        use *; //~ NOTE `Foo` could resolve to the name imported here
+        use bar::*; //~ NOTE `Foo` could also resolve to the name imported here
+        fn f(_: Foo) {}
+        //~^ WARN `Foo` is ambiguous
+        //~| WARN hard error in a future release
+        //~| NOTE see issue #38260
+    }
+}
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

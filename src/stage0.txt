@@ -13,4 +13,4 @@
 # released on `$date`
 
 rustc: 1.14.0-2016-12-18
-cargo: nightly-2016-11-16
+cargo: fbeea902d2c9a5be6d99cc35681565d8f7832592
