@@ -198,7 +198,7 @@ To be most effective, this will involve some changes both at a process and core-
 [RFCs README]: https://github.com/rust-lang/rfcs/blob/master/README.md
 [What the process is]: https://github.com/rust-lang/rfcs/blob/master/README.md#what-the-process-is
 
-This is also an opportunity to allow/enable non-core-team members with less experience to contribute more actively to _The Rust Programming Language_, _Rust by Example_, and the Rust Reference.
+This is also an opportunity to allow/enable community members with less experience to contribute more actively to _The Rust Programming Language_, _Rust by Example_, and the Rust Reference.
 
 1. We should write issues for feature documentation, and may flag them as approachable entry points for new users.
 
