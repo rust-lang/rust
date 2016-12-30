@@ -94,6 +94,7 @@ pub struct Config {
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
+    pub configure_args: Vec<String>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -518,6 +519,11 @@ impl Config {
                 }
                 "CFG_ENABLE_SCCACHE" if value == "1" => {
                     self.ccache = Some("sccache".to_string());
+                }
+                "CFG_CONFIGURE_ARGS" if value.len() > 0 => {
+                    self.configure_args = value.split_whitespace()
+                                               .map(|s| s.to_string())
+                                               .collect();
                 }
                 _ => {}
             }
