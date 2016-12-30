@@ -35,15 +35,10 @@ use {Build, Compiler, Mode};
 /// created will also be linked into the sysroot directory.
 pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let libdir = build.sysroot_libdir(compiler, target);
-    let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
 
     println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
-
-    // Some platforms have startup objects that may be required to produce the
-    // libstd dynamic library, for example.
-    build_startup_objects(build, target, &libdir);
 
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
@@ -111,12 +106,15 @@ fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
 /// They don't require any library support as they're just plain old object
 /// files, so we just use the nightly snapshot compiler to always build them (as
 /// no other compilers are guaranteed to be available).
-fn build_startup_objects(build: &Build, target: &str, into: &Path) {
+pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &str) {
     if !target.contains("pc-windows-gnu") {
         return
     }
+
     let compiler = Compiler::new(0, &build.config.build);
     let compiler_path = build.compiler_path(&compiler);
+    let into = build.sysroot_libdir(for_compiler, target);
+    t!(fs::create_dir_all(&into));
 
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
@@ -124,7 +122,7 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
         build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
                      .arg("--target").arg(target)
                      .arg("--emit=obj")
-                     .arg("--out-dir").arg(into)
+                     .arg("--out-dir").arg(&into)
                      .arg(file.path()));
     }
 
@@ -155,6 +153,12 @@ pub fn test_link(build: &Build,
                  compiler: &Compiler,
                  target_compiler: &Compiler,
                  target: &str) {
+    println!("Copying stage{} test from stage{} ({} -> {} / {})",
+             target_compiler.stage,
+             compiler.stage,
+             compiler.host,
+             target_compiler.host,
+             target);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(&compiler, Mode::Libtest, target);
     add_to_sysroot(&out_dir, &libdir);
@@ -224,6 +228,12 @@ pub fn rustc_link(build: &Build,
                   compiler: &Compiler,
                   target_compiler: &Compiler,
                   target: &str) {
+    println!("Copying stage{} rustc from stage{} ({} -> {} / {})",
+             target_compiler.stage,
+             compiler.stage,
+             compiler.host,
+             target_compiler.host,
+             target);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(&compiler, Mode::Librustc, target);
     add_to_sysroot(&out_dir, &libdir);

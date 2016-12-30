@@ -52,12 +52,6 @@ const TEST_REPOS: &'static [Test] = &[
         sha: "999001b223152441198f117a68fb81f57bc086dd",
         lock: None,
     },
-    Test {
-        name: "xsv",
-        repo: "https://github.com/BurntSushi/xsv",
-        sha: "5ec4fff4a3f507eda887049469897f02c6fae036",
-        lock: None,
-    },
 ];
 
 fn main() {
