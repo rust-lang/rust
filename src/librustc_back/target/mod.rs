@@ -157,6 +157,8 @@ supported_targets! {
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
 
+    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
+
     ("i686-linux-android", i686_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
     ("armv7-linux-androideabi", armv7_linux_androideabi),
