@@ -958,12 +958,16 @@ macro_rules! atomic_int {
 
             /// Loads a value from the atomic integer.
             ///
-            /// `load` takes an `Ordering` argument which describes the memory ordering of this
+            /// `load` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
             ///
             /// # Panics
             ///
-            /// Panics if `order` is `Release` or `AcqRel`.
+            /// Panics if `order` is [`Release`] or [`AcqRel`].
+            ///
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
@@ -982,8 +986,10 @@ macro_rules! atomic_int {
 
             /// Stores a value into the atomic integer.
             ///
-            /// `store` takes an `Ordering` argument which describes the memory ordering of this
+            /// `store` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -1007,8 +1013,10 @@ macro_rules! atomic_int {
 
             /// Stores a value into the atomic integer, returning the old value.
             ///
-            /// `swap` takes an `Ordering` argument which describes the memory ordering of this
+            /// `swap` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -1031,8 +1039,10 @@ macro_rules! atomic_int {
             /// The return value is always the previous value. If it is equal to `current`, then the
             /// value was updated.
             ///
-            /// `compare_and_swap` also takes an `Ordering` argument which describes the memory
+            /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
             /// ordering of this operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -1069,11 +1079,15 @@ macro_rules! atomic_int {
             /// containing the previous value. On success this value is guaranteed to be equal to
             /// `current`.
             ///
-            /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of
-            /// this operation. The first describes the required ordering if the operation succeeds
-            /// while the second describes the required ordering when the operation fails. The
-            /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker
-            /// than the success ordering.
+            /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
+            /// ordering of this operation. The first describes the required ordering if
+            /// the operation succeeds while the second describes the required ordering when
+            /// the operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
+            /// must be equivalent or weaker than the success ordering.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
@@ -1107,16 +1121,21 @@ macro_rules! atomic_int {
             /// Stores a value into the atomic integer if the current value is the same as the
             /// `current` value.
             ///
-            /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
-            /// comparison succeeds, which can result in more efficient code on some platforms. The
-            /// return value is a result indicating whether the new value was written and containing
-            /// the previous value.
+            /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even
+            /// when the comparison succeeds, which can result in more efficient code on some
+            /// platforms. The return value is a result indicating whether the new value was
+            /// written and containing the previous value.
             ///
-            /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+            /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
             /// ordering of this operation. The first describes the required ordering if the
             /// operation succeeds while the second describes the required ordering when the
-            /// operation fails. The failure ordering can't be `Release` or `AcqRel` and must be
-            /// equivalent or weaker than the success ordering.
+            /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
+            /// must be equivalent or weaker than the success ordering.
+            ///
+            /// [`compare_exchange`]: #method.compare_exchange
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
