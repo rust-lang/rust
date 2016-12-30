@@ -1031,6 +1031,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
+            _ if sess.cstore.is_sanitizer_runtime(cnum) => {
+                link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
+            }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
@@ -1048,6 +1051,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         }
     }
 
+    // compiler-builtins are always placed last to ensure that they're
+    // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
     // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
     // is used)
@@ -1062,6 +1067,34 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         } else {
             stem
         }
+    }
+
+    // We must link the sanitizer runtime using -Wl,--whole-archive but since
+    // it's packed in a .rlib, it contains stuff that are not objects that will
+    // make the linker error. So we must remove those bits from the .rlib before
+    // linking it.
+    fn link_sanitizer_runtime(cmd: &mut Linker,
+                              sess: &Session,
+                              tmpdir: &Path,
+                              cnum: CrateNum) {
+        let src = sess.cstore.used_crate_source(cnum);
+        let cratepath = &src.rlib.unwrap().0;
+        let dst = tmpdir.join(cratepath.file_name().unwrap());
+        let cfg = archive_config(sess, &dst, Some(cratepath));
+        let mut archive = ArchiveBuilder::new(cfg);
+        archive.update_symbols();
+
+        for f in archive.src_files() {
+            if f.ends_with("bytecode.deflate") ||
+                f == sess.cstore.metadata_filename() {
+                    archive.remove_file(&f);
+                    continue
+                }
+        }
+
+        archive.build();
+
+        cmd.link_whole_rlib(&dst);
     }
 
     // Adds the static "rlib" versions of all crates to the command line.

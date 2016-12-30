@@ -108,6 +108,8 @@ pub struct Config {
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
 pub struct Target {
+    // `true` if compiling against system LLVM or a pre-built LLVM
+    pub system_llvm: bool,
     pub llvm_config: Option<PathBuf>,
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
@@ -512,6 +514,7 @@ impl Config {
                                      .or_insert(Target::default());
                     let root = parse_configure_path(value);
                     target.llvm_config = Some(push_exe_path(root, &["bin", "llvm-config"]));
+                    target.system_llvm = true;
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
