@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use iter::Sum;
 use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
@@ -353,6 +354,20 @@ impl Div<u32> for Duration {
 impl DivAssign<u32> for Duration {
     fn div_assign(&mut self, rhs: u32) {
         *self = *self / rhs;
+    }
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl Sum for Duration {
+    fn sum<I: Iterator<Item=Duration>>(iter: I) -> Duration {
+        iter.fold(Duration::new(0, 0), |a, b| a + b)
+    }
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl<'a> Sum<&'a Duration> for Duration {
+    fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
+        iter.fold(Duration::new(0, 0), |a, b| a + *b)
     }
 }
 
