@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use syntax::codemap::Span;
 use utils::{match_def_path, paths, span_note_and_lint};
 
 /// **What it does:** Checks for calls to `std::mem::drop` with a reference
@@ -37,29 +36,23 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprCall(ref path, ref args) = expr.node {
-            if let ExprPath(ref qpath) = path.node {
-                let def_id = cx.tcx.tables().qpath_def(qpath, path.id).def_id();
-                if match_def_path(cx, def_id, &paths::DROP) {
-                    if args.len() != 1 {
-                        return;
-                    }
-                    check_drop_arg(cx, expr.span, &args[0]);
-                }
+        if_let_chain!{[
+            let ExprCall(ref path, ref args) = expr.node,
+            let ExprPath(ref qpath) = path.node,
+            match_def_path(cx, cx.tcx.tables().qpath_def(qpath, path.id).def_id(), &paths::DROP),
+            args.len() == 1,
+        ], {
+            let arg = &args[0];
+            let arg_ty = cx.tcx.tables().expr_ty(arg);
+            if let ty::TyRef(..) = arg_ty.sty {
+                span_note_and_lint(cx,
+                                   DROP_REF,
+                                   expr.span,
+                                   "call to `std::mem::drop` with a reference argument. \
+                                   Dropping a reference does nothing",
+                                   arg.span,
+                                   &format!("argument has type {}", arg_ty.sty));
             }
-        }
-    }
-}
-
-fn check_drop_arg(cx: &LateContext, call_span: Span, arg: &Expr) {
-    let arg_ty = cx.tcx.tables().expr_ty(arg);
-    if let ty::TyRef(..) = arg_ty.sty {
-        span_note_and_lint(cx,
-                           DROP_REF,
-                           call_span,
-                           "call to `std::mem::drop` with a reference argument. \
-                           Dropping a reference does nothing",
-                           arg.span,
-                           &format!("argument has type {}", arg_ty.sty));
+        }}
     }
 }
