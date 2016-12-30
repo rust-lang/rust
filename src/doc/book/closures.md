@@ -283,7 +283,7 @@ fn call_with_one<F>(some_closure: F) -> i32
 #    some_closure(1) }
 ```
 
-We take one parameter, and it has the type `F`. We also return a `i32`. This part
+We take one parameter, and it has the type `F`. We also return an `i32`. This part
 isn’t interesting. The next part is:
 
 ```rust
@@ -293,7 +293,7 @@ isn’t interesting. The next part is:
 ```
 
 Because `Fn` is a trait, we can use it as a bound for our generic type. In
-this case, our closure takes a `i32` as an argument and returns an `i32`, and
+this case, our closure takes an `i32` as an argument and returns an `i32`, and
 so the generic bound we use is `Fn(i32) -> i32`.
 
 There’s one other key point here: because we’re bounding a generic with a
