@@ -284,7 +284,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     //
     // Various unit tests and tests suites we can run
     {
-        let mut suite = |name, path, dir, mode| {
+        let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
@@ -296,9 +296,9 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                          Step::noop()
                      }
                  })
-                 .default(true)
+                 .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
-                     check::compiletest(build, &s.compiler(), s.target, dir, mode)
+                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
                  });
         };
 
@@ -346,14 +346,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                                          s.target));
 
     {
-        let mut suite = |name, path, dir, mode| {
+        let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("librustc"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
-                 .default(true)
+                 .default(mode != "pretty")
                  .host(true)
                  .run(move |s| {
-                     check::compiletest(build, &s.compiler(), s.target, dir, mode)
+                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
                  });
         };
 
@@ -366,13 +366,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         suite("check-pretty", "src/test/pretty", "pretty", "pretty");
         suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
               "run-pass");
-        suite("check-pretty-rfail", "src/test/run-pass/pretty", "pretty",
+        suite("check-pretty-rfail", "src/test/run-fail/pretty", "pretty",
               "run-fail");
-        suite("check-pretty-valgrind", "src/test/run-pass-valgrind", "pretty",
+        suite("check-pretty-valgrind", "src/test/run-pass-valgrind/pretty", "pretty",
               "run-pass-valgrind");
-        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps",
+        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps/pretty",
               "pretty", "run-pass-fulldeps");
-        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps",
+        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps/pretty",
               "pretty", "run-fail-fulldeps");
     }
 

@@ -21,7 +21,7 @@ environment:
   # MSVC cargotest
   - MSYS_BITS: 64
     NO_VENDOR: 1
-    RUST_CHECK_TARGET: check-cargotest
+    RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
   # 32/64-bit MinGW builds.
