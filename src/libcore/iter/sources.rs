@@ -12,7 +12,7 @@ use fmt;
 use marker;
 use usize;
 
-use super::FusedIterator;
+use super::{FusedIterator, TrustedLen};
 
 /// An iterator that repeats an element endlessly.
 ///
@@ -138,6 +138,9 @@ impl<T> ExactSizeIterator for Empty<T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Empty<T> {}
+
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for Empty<T> {}
 
@@ -215,6 +218,9 @@ impl<T> ExactSizeIterator for Once<T> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Once<T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for Once<T> {}
