@@ -366,11 +366,10 @@
 //! These can all be interpreted as flags for a particular formatter.
 //!
 //! * `+` - This is intended for numeric types and indicates that the sign
-//!         should always be printed. Positive signs are never printed by
-//!         default, and the negative sign is only printed by default for the
-//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
-//!         should always be printed.
-//! * `-` - Currently not used
+//!         (`+` or `-`) should always be printed. Positive signs are never
+//!         printed by default.  This behavior is controlled by the
+//!         [`pad_integral`][pad_integral] method.
+//! * `-` - Currently not used.
 //! * `#` - This flag is indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
 //!     * `#?` - pretty-print the `Debug` formatting
@@ -383,6 +382,8 @@
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
+//!
+//! [pad_integral]: struct.Formatter.html#method.pad_integral
 //!
 //! ## Width
 //!
