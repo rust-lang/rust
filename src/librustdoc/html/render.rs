@@ -2057,7 +2057,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         let item_type = m.type_();
         let id = derive_id(format!("{}.{}", item_type, name));
         let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(w, "<h3 id='{id}' class='method stab {stab}'>\
+        write!(w, "<h3 id='{id}' class='method {stab}'>\
                    <span id='{ns_id}' class='invisible'><code>",
                id = id,
                stab = m.stability_class(),
