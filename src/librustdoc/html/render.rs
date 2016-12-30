@@ -2057,10 +2057,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         let item_type = m.type_();
         let id = derive_id(format!("{}.{}", item_type, name));
         let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(w, "<h3 id='{id}' class='method stab {stab}'>\
+        write!(w, "<h3 id='{id}' class='method'>\
                    <span id='{ns_id}' class='invisible'><code>",
                id = id,
-               stab = m.stability_class(),
                ns_id = ns_id)?;
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl)?;
         write!(w, "</code>")?;

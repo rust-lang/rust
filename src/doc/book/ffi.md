@@ -574,6 +574,31 @@ The [`libc` crate on crates.io][libc] includes type aliases and function
 definitions for the C standard library in the `libc` module, and Rust links
 against `libc` and `libm` by default.
 
+# Variadic functions
+
+In C, functions can be 'variadic', meaning they accept a variable number of arguments. This can
+be achieved in Rust by specifying `...` within the argument list of a foreign function declaration:
+
+```no_run
+extern {
+    fn foo(x: i32, ...);
+}
+
+fn main() {
+    unsafe {
+        foo(10, 20, 30, 40, 50);
+    }
+}
+```
+
+Normal Rust functions can *not* be variadic:
+
+```ignore
+// This will not compile
+
+fn foo(x: i32, ...) { }
+```
+
 # The "nullable pointer optimization"
 
 Certain Rust types are defined to never be `null`. This includes references (`&T`,

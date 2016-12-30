@@ -95,6 +95,7 @@ static VOID: Type = Type::Void;
 mod x86;
 mod arm;
 mod aarch64;
+mod nvptx;
 
 impl Intrinsic {
     pub fn find(name: &str) -> Option<Intrinsic> {
@@ -104,6 +105,8 @@ impl Intrinsic {
             arm::find(name)
         } else if name.starts_with("aarch64_") {
             aarch64::find(name)
+        } else if name.starts_with("nvptx_") {
+            nvptx::find(name)
         } else {
             None
         }

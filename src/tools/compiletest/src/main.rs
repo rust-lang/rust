@@ -261,7 +261,23 @@ pub fn run_tests(config: &Config) {
         // android debug-info test uses remote debugger
         // so, we test 1 thread at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        env::set_var("RUST_TEST_THREADS","1");
+        match config.mode {
+            // These tests don't actually run code or don't run for android, so
+            // we don't need to limit ourselves there
+            Mode::Ui |
+            Mode::CompileFail |
+            Mode::ParseFail |
+            Mode::RunMake |
+            Mode::Codegen |
+            Mode::CodegenUnits |
+            Mode::Pretty |
+            Mode::Rustdoc => {}
+
+            _ => {
+                env::set_var("RUST_TEST_THREADS", "1");
+            }
+
+        }
     }
 
     match config.mode {

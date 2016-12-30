@@ -19,7 +19,8 @@ matrix:
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=x86_64-freebsd
     - env: IMAGE=x86_64-gnu
-    - env: IMAGE=x86_64-gnu-cargotest
+    - env: IMAGE=x86_64-gnu-full-bootstrap
+    - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-make
@@ -66,10 +67,10 @@ script:
       if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
           echo skipping, not a full build;
       elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          git submodule update --init;
+          git submodule update --init &&
           src/ci/run.sh;
       else
-          git submodule update --init;
+          git submodule update --init &&
           src/ci/docker/run.sh $IMAGE;
       fi
 
@@ -78,7 +79,7 @@ before_cache:
   - docker history -q rust-ci |
     grep -v missing |
     xargs docker save |
-    gzip -9 > $HOME/docker/rust-ci.tar.gz
+    gzip > $HOME/docker/rust-ci.tar.gz
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
 

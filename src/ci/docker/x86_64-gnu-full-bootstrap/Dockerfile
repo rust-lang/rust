@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++-multilib \
+  g++ \
   make \
   file \
   curl \
@@ -22,5 +22,7 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu --disable-optimize-tests
-ENV RUST_CHECK_TARGET check
+ENV RUST_CONFIGURE_ARGS \
+      --build=x86_64-unknown-linux-gnu \
+      --enable-full-bootstrap
+ENV RUST_CHECK_TARGET ""

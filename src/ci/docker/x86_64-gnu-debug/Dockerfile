@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   sudo \
   gdb \
   xz-utils
@@ -28,5 +27,3 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-debug \
       --enable-optimize
 ENV RUST_CHECK_TARGET ""
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

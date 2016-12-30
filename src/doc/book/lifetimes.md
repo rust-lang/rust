@@ -128,7 +128,7 @@ _descriptive_, not _prescriptive_. This means that how long a reference is valid
 is determined by the code, not by the annotations. The annotations, however,
 give information about lifetimes to the compiler that uses them to check the
 validity of references. The compiler can do so without annotations in simple
-cases, but needs the programmers support in complex scenarios.
+cases, but needs the programmer's support in complex scenarios.
 
 [traits]: traits.html
 

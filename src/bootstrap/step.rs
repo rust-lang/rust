@@ -44,7 +44,7 @@ pub fn run(build: &Build) {
     rules.run(&steps);
 }
 
-pub fn build_rules(build: &Build) -> Rules {
+pub fn build_rules<'a>(build: &'a Build) -> Rules {
     let mut rules = Rules::new(build);
 
     // This is the first rule that we're going to define for rustbuild, which is
@@ -117,6 +117,7 @@ pub fn build_rules(build: &Build) -> Rules {
 
     // the compiler with no target libraries ready to go
     rules.build("rustc", "src/rustc")
+         .dep(|s| s.name("create-sysroot").target(s.host))
          .dep(move |s| {
              if s.stage == 0 {
                  Step::noop()
@@ -151,77 +152,145 @@ pub fn build_rules(build: &Build) -> Rules {
     // Crate compilations
     //
     // Tools used during the build system but not shipped
+    rules.build("create-sysroot", "path/to/nowhere")
+         .run(move |s| compile::create_sysroot(build, &s.compiler()));
+
+    // These rules are "pseudo rules" that don't actually do any work
+    // themselves, but represent a complete sysroot with the relevant compiler
+    // linked into place.
+    //
+    // That is, depending on "libstd" means that when the rule is completed then
+    // the `stage` sysroot for the compiler `host` will be available with a
+    // standard library built for `target` linked in place. Not all rules need
+    // the compiler itself to be available, just the standard library, so
+    // there's a distinction between the two.
     rules.build("libstd", "src/libstd")
-         .dep(|s| s.name("build-crate-std_shim"));
+         .dep(|s| s.name("rustc").target(s.host))
+         .dep(|s| s.name("libstd-link"));
     rules.build("libtest", "src/libtest")
-         .dep(|s| s.name("build-crate-test_shim"));
+         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("libtest-link"))
+         .default(true);
     rules.build("librustc", "src/librustc")
-         .dep(|s| s.name("build-crate-rustc-main"));
+         .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("librustc-link"))
+         .host(true)
+         .default(true);
+
+    // Helper method to define the rules to link a crate into its place in the
+    // sysroot.
+    //
+    // The logic here is a little subtle as there's a few cases to consider.
+    // Not all combinations of (stage, host, target) actually require something
+    // to be compiled, but rather libraries could get propagated from a
+    // different location. For example:
+    //
+    // * Any crate with a `host` that's not the build triple will not actually
+    //   compile something. A different `host` means that the build triple will
+    //   actually compile the libraries, and then we'll copy them over from the
+    //   build triple to the `host` directory.
+    //
+    // * Some crates aren't even compiled by the build triple, but may be copied
+    //   from previous stages. For example if we're not doing a full bootstrap
+    //   then we may just depend on the stage1 versions of libraries to be
+    //   available to get linked forward.
+    //
+    // * Finally, there are some cases, however, which do indeed comiple crates
+    //   and link them into place afterwards.
+    //
+    // The rule definition below mirrors these three cases. The `dep` method
+    // calculates the correct dependency which either comes from stage1, a
+    // different compiler, or from actually building the crate itself (the `dep`
+    // rule). The `run` rule then mirrors these three cases and links the cases
+    // forward into the compiler sysroot specified from the correct location.
+    fn crate_rule<'a, 'b>(build: &'a Build,
+                          rules: &'b mut Rules<'a>,
+                          krate: &'a str,
+                          dep: &'a str,
+                          link: fn(&Build, &Compiler, &Compiler, &str))
+                          -> RuleBuilder<'a, 'b> {
+        let mut rule = rules.build(&krate, "path/to/nowhere");
+        rule.dep(move |s| {
+                if build.force_use_stage1(&s.compiler(), s.target) {
+                    s.host(&build.config.build).stage(1)
+                } else if s.host == build.config.build {
+                    s.name(dep)
+                } else {
+                    s.host(&build.config.build)
+                }
+            })
+            .run(move |s| {
+                if build.force_use_stage1(&s.compiler(), s.target) {
+                    link(build,
+                         &s.stage(1).host(&build.config.build).compiler(),
+                         &s.compiler(),
+                         s.target)
+                } else if s.host == build.config.build {
+                    link(build, &s.compiler(), &s.compiler(), s.target)
+                } else {
+                    link(build,
+                         &s.host(&build.config.build).compiler(),
+                         &s.compiler(),
+                         s.target)
+                }
+            });
+            return rule
+    }
+
+    // Similar to the `libstd`, `libtest`, and `librustc` rules above, except
+    // these rules only represent the libraries being available in the sysroot,
+    // not the compiler itself. This is done as not all rules need a compiler in
+    // the sysroot, but may just need the libraries.
+    //
+    // All of these rules use the helper definition above.
+    crate_rule(build,
+               &mut rules,
+               "libstd-link",
+               "build-crate-std_shim",
+               compile::std_link)
+        .dep(|s| s.name("startup-objects"))
+        .dep(|s| s.name("create-sysroot").target(s.host));
+    crate_rule(build,
+               &mut rules,
+               "libtest-link",
+               "build-crate-test_shim",
+               compile::test_link)
+        .dep(|s| s.name("libstd-link"));
+    crate_rule(build,
+               &mut rules,
+               "librustc-link",
+               "build-crate-rustc-main",
+               compile::rustc_link)
+        .dep(|s| s.name("libtest-link"));
+
     for (krate, path, _default) in krates("std_shim") {
         rules.build(&krate.build_step, path)
+             .dep(|s| s.name("startup-objects"))
              .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
-             .dep(move |s| {
-                 if s.host == build.config.build {
-                     Step::noop()
-                 } else {
-                    s.host(&build.config.build)
-                 }
-             })
-             .run(move |s| {
-                 if s.host == build.config.build {
-                    compile::std(build, s.target, &s.compiler())
-                 } else {
-                    compile::std_link(build, s.target, s.stage, s.host)
-                 }
-             });
+             .run(move |s| compile::std(build, s.target, &s.compiler()));
     }
-    for (krate, path, default) in krates("test_shim") {
+    for (krate, path, _default) in krates("test_shim") {
         rules.build(&krate.build_step, path)
-             .dep(|s| s.name("libstd"))
-             .dep(move |s| {
-                 if s.host == build.config.build {
-                    Step::noop()
-                 } else {
-                    s.host(&build.config.build)
-                 }
-             })
-             .default(default)
-             .run(move |s| {
-                 if s.host == build.config.build {
-                    compile::test(build, s.target, &s.compiler())
-                 } else {
-                    compile::test_link(build, s.target, s.stage, s.host)
-                 }
-             });
+             .dep(|s| s.name("libstd-link"))
+             .run(move |s| compile::test(build, s.target, &s.compiler()));
     }
-    for (krate, path, default) in krates("rustc-main") {
+    for (krate, path, _default) in krates("rustc-main") {
         rules.build(&krate.build_step, path)
-             .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("libtest-link"))
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
-             .dep(move |s| {
-                 if s.host == build.config.build {
-                    Step::noop()
-                 } else {
-                    s.host(&build.config.build)
-                 }
-             })
-             .host(true)
-             .default(default)
-             .run(move |s| {
-                 if s.host == build.config.build {
-                    compile::rustc(build, s.target, &s.compiler())
-                 } else {
-                    compile::rustc_link(build, s.target, s.stage, s.host)
-                 }
-             });
+             .run(move |s| compile::rustc(build, s.target, &s.compiler()));
     }
+
+    rules.build("startup-objects", "src/rtstartup")
+         .dep(|s| s.name("create-sysroot").target(s.host))
+         .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
 
     // ========================================================================
     // Test targets
     //
     // Various unit tests and tests suites we can run
     {
-        let mut suite = |name, path, dir, mode| {
+        let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
@@ -233,9 +302,9 @@ pub fn build_rules(build: &Build) -> Rules {
                          Step::noop()
                      }
                  })
-                 .default(true)
+                 .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
-                     check::compiletest(build, &s.compiler(), s.target, dir, mode)
+                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
                  });
         };
 
@@ -254,13 +323,6 @@ pub fn build_rules(build: &Build) -> Rules {
         suite("check-incremental", "src/test/incremental", "incremental",
               "incremental");
         suite("check-ui", "src/test/ui", "ui", "ui");
-        suite("check-pretty", "src/test/pretty", "pretty", "pretty");
-        suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
-              "run-pass");
-        suite("check-pretty-rfail", "src/test/run-pass/pretty", "pretty",
-              "run-fail");
-        suite("check-pretty-valgrind", "src/test/run-pass-valgrind", "pretty",
-              "run-pass-valgrind");
     }
 
     if build.config.build.contains("msvc") {
@@ -290,14 +352,15 @@ pub fn build_rules(build: &Build) -> Rules {
                                          s.target));
 
     {
-        let mut suite = |name, path, dir, mode| {
+        let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("librustc"))
+                 .dep(|s| s.name("test-helpers"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
-                 .default(true)
+                 .default(mode != "pretty")
                  .host(true)
                  .run(move |s| {
-                     check::compiletest(build, &s.compiler(), s.target, dir, mode)
+                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
                  });
         };
 
@@ -307,9 +370,16 @@ pub fn build_rules(build: &Build) -> Rules {
               "compile-fail", "compile-fail-fulldeps");
         suite("check-rmake", "src/test/run-make", "run-make", "run-make");
         suite("check-rustdoc", "src/test/rustdoc", "rustdoc", "rustdoc");
-        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps",
+        suite("check-pretty", "src/test/pretty", "pretty", "pretty");
+        suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
+              "run-pass");
+        suite("check-pretty-rfail", "src/test/run-fail/pretty", "pretty",
+              "run-fail");
+        suite("check-pretty-valgrind", "src/test/run-pass-valgrind/pretty", "pretty",
+              "run-pass-valgrind");
+        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps/pretty",
               "pretty", "run-pass-fulldeps");
-        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps",
+        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps/pretty",
               "pretty", "run-fail-fulldeps");
     }
 
@@ -444,25 +514,25 @@ pub fn build_rules(build: &Build) -> Rules {
          .run(move |s| doc::standalone(build, s.stage, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
          .dep(move |s| s.name("tool-error-index").target(&build.config.build))
-         .dep(move |s| s.name("librustc"))
+         .dep(move |s| s.name("librustc-link"))
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::error_index(build, s.stage, s.target));
     for (krate, path, default) in krates("std_shim") {
         rules.doc(&krate.doc_step, path)
-             .dep(|s| s.name("libstd"))
+             .dep(|s| s.name("libstd-link"))
              .default(default && build.config.docs)
              .run(move |s| doc::std(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("test_shim") {
         rules.doc(&krate.doc_step, path)
-             .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("libtest-link"))
              .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
         rules.doc(&krate.doc_step, path)
-             .dep(|s| s.name("librustc"))
+             .dep(|s| s.name("librustc-link"))
              .host(true)
              .default(default && build.config.compiler_docs)
              .run(move |s| doc::rustc(build, s.stage, s.target));
@@ -481,9 +551,9 @@ pub fn build_rules(build: &Build) -> Rules {
              // for the `rust-std` package, so if this is a host target we
              // depend on librustc and otherwise we just depend on libtest.
              if build.config.host.iter().any(|t| t == s.target) {
-                 s.name("librustc")
+                 s.name("librustc-link")
              } else {
-                 s.name("libtest")
+                 s.name("libtest-link")
              }
          })
          .default(true)

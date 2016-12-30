@@ -46,6 +46,7 @@ pub struct Config {
     pub docs: bool,
     pub vendor: bool,
     pub target_config: HashMap<String, Target>,
+    pub full_bootstrap: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -54,6 +55,7 @@ pub struct Config {
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
+    pub llvm_targets: Option<String>,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -134,6 +136,7 @@ struct Build {
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
+    full_bootstrap: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -152,6 +155,7 @@ struct Llvm {
     release_debuginfo: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
+    targets: Option<String>,
 }
 
 #[derive(RustcDecodable)]
@@ -264,6 +268,7 @@ impl Config {
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
         set(&mut config.vendor, build.vendor);
+        set(&mut config.full_bootstrap, build.full_bootstrap);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone();
@@ -285,6 +290,7 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            config.llvm_targets = llvm.targets.clone();
         }
 
         if let Some(ref rust) = toml.rust {
@@ -393,6 +399,7 @@ impl Config {
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
                 ("VENDOR", self.vendor),
+                ("FULL_BOOTSTRAP", self.full_bootstrap),
             }
 
             match key {

@@ -42,6 +42,17 @@
 # example.
 #ninja = false
 
+# LLVM targets to build support for.
+# Note: this is NOT related to Rust compilation targets. However, as Rust is
+# dependent on LLVM for code generation, turning targets off here WILL lead to
+# the resulting rustc being unable to compile for the disabled architectures.
+# Also worth pointing out is that, in case support for new targets are added to
+# LLVM, enabling them here doesn't mean Rust is automatically gaining said
+# support. You'll need to write a target specification at least, and most
+# likely, teach rustc about the C ABI of the target. Get in touch with the
+# Rust team and file an issue if you need assistance in porting!
+#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX"
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -99,6 +110,13 @@
 
 # Indicate whether the vendored sources are used for Rust dependencies or not
 #vendor = false
+
+# Typically the build system will build the rust compiler twice. The second
+# compiler, however, will simply use its own libraries to link against. If you
+# would rather to perform a full bootstrap, compiling the compiler three times,
+# then you can set this option to true. You shouldn't ever need to set this
+# option to true.
+#full-bootstrap = false
 
 # =============================================================================
 # General install configuration options
