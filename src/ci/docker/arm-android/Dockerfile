@@ -11,7 +11,6 @@ RUN dpkg --add-architecture i386 && \
   python2.7 \
   git \
   cmake \
-  ccache \
   unzip \
   expect \
   openjdk-9-jre \
@@ -50,5 +49,3 @@ ENV RUST_CONFIGURE_ARGS \
       --i686-linux-android-ndk=/android/ndk-x86-9 \
       --aarch64-linux-android-ndk=/android/ndk-aarch64
 ENV XPY_CHECK test --target arm-linux-androideabi
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj
