@@ -376,6 +376,11 @@ pub fn initialize_available_targets() {
                  LLVMInitializeSparcTargetMC,
                  LLVMInitializeSparcAsmPrinter,
                  LLVMInitializeSparcAsmParser);
+    init_target!(llvm_component = "nvptx",
+                 LLVMInitializeNVPTXTargetInfo,
+                 LLVMInitializeNVPTXTarget,
+                 LLVMInitializeNVPTXTargetMC,
+                 LLVMInitializeNVPTXAsmPrinter);
 }
 
 pub fn last_error() -> Option<String> {
