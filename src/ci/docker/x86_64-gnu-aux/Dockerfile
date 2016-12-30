@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   libssl-dev \
   sudo \
   xz-utils \
@@ -25,7 +24,5 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
-ENV RUST_CHECK_TARGET check-cargotest
+ENV RUST_CHECK_TARGET check-aux
 ENV NO_VENDOR 1
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

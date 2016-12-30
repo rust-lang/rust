@@ -33,12 +33,15 @@ struct RustArchiveMember {
 
 
 struct RustArchiveIterator {
+    bool first;
     Archive::child_iterator cur;
     Archive::child_iterator end;
 #if LLVM_VERSION_GE(3, 9)
     Error err;
 
-    RustArchiveIterator() : err(Error::success()) { }
+    RustArchiveIterator() : first(true), err(Error::success()) { }
+#else
+    RustArchiveIterator() : first(true) { }
 #endif
 };
 
@@ -120,6 +123,7 @@ LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
     rai->cur = ar->child_begin(rai->err);
     if (rai->err) {
         LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+        delete rai;
         return NULL;
     }
 #endif
@@ -129,19 +133,33 @@ LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
 
 extern "C" LLVMRustArchiveChildConstRef
 LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
+    if (rai->cur == rai->end) return nullptr;
+
+    // Advancing the iterator validates the next child, and this can
+    // uncover an error. LLVM requires that we check all Errors,
+    // so we only advance the iterator if we actually need to fetch
+    // the next child.
+    // This means we must not advance the iterator in the *first* call,
+    // but instead advance it *before* fetching the child in all later calls.
+    if (!rai->first) {
+        ++rai->cur;
 #if LLVM_VERSION_GE(3, 9)
-    if (rai->err) {
-        LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
-        return NULL;
-    }
+        if (rai->err) {
+            LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+            return nullptr;
+        }
 #endif
-    if (rai->cur == rai->end)
-        return NULL;
+    } else {
+      rai->first = false;
+    }
+
+    if (rai->cur == rai->end) return nullptr;
+
 #if LLVM_VERSION_EQ(3, 8)
     const ErrorOr<Archive::Child>* cur = rai->cur.operator->();
     if (!*cur) {
         LLVMRustSetLastError(cur->getError().message().c_str());
-        return NULL;
+        return nullptr;
     }
     const Archive::Child &child = cur->get();
 #else
@@ -149,7 +167,6 @@ LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
 #endif
     Archive::Child *ret = new Archive::Child(child);
 
-    ++rai->cur;
     return ret;
 }
 

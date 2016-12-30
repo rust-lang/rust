@@ -21,19 +21,38 @@ struct Test {
     lock: Option<&'static str>,
 }
 
-const TEST_REPOS: &'static [Test] = &[Test {
-                                          name: "cargo",
-                                          repo: "https://github.com/rust-lang/cargo",
-                                          sha: "b7be4f2ef2cf743492edc6dfb55d087ed88f2d76",
-                                          lock: None,
-                                      },
-                                      Test {
-                                          name: "iron",
-                                          repo: "https://github.com/iron/iron",
-                                          sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
-                                          lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
-                                      }];
-
+const TEST_REPOS: &'static [Test] = &[
+    Test {
+        name: "cargo",
+        repo: "https://github.com/rust-lang/cargo",
+        sha: "b7be4f2ef2cf743492edc6dfb55d087ed88f2d76",
+        lock: None,
+    },
+    Test {
+        name: "iron",
+        repo: "https://github.com/iron/iron",
+        sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
+        lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
+    },
+    Test {
+        name: "ripgrep",
+        repo: "https://github.com/BurntSushi/ripgrep",
+        sha: "b65bb37b14655e1a89c7cd19c8b011ef3e312791",
+        lock: None,
+    },
+    Test {
+        name: "tokei",
+        repo: "https://github.com/Aaronepower/tokei",
+        sha: "5e11c4852fe4aa086b0e4fe5885822fbe57ba928",
+        lock: None,
+    },
+    Test {
+        name: "treeify",
+        repo: "https://github.com/dzamlo/treeify",
+        sha: "999001b223152441198f117a68fb81f57bc086dd",
+        lock: None,
+    },
+];
 
 fn main() {
     // One of the projects being tested here is Cargo, and when being tested

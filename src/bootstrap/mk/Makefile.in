@@ -51,8 +51,16 @@ standalone-docs:
 	$(Q)$(BOOTSTRAP) doc src/doc $(BOOTSTRAP_ARGS)
 check:
 	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
-check-cargotest:
-	$(Q)$(BOOTSTRAP) test src/tools/cargotest $(BOOTSTRAP_ARGS)
+check-aux:
+	$(Q)$(BOOTSTRAP) test \
+		src/tools/cargotest \
+		src/test/pretty \
+		src/test/run-pass/pretty \
+		src/test/run-fail/pretty \
+		src/test/run-pass-valgrind/pretty \
+		src/test/run-pass-fulldeps/pretty \
+		src/test/run-fail-fulldeps/pretty \
+		$(BOOTSTRAP_ARGS)
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:

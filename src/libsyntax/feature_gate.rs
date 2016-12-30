@@ -318,6 +318,9 @@ declare_features! (
 
     // Allow safe suggestions for potential type conversions.
     (active, safe_suggestion, "1.0.0", Some(37384)),
+
+    // `extern "ptx-*" fn()`
+    (active, abi_ptx, "1.15.0", None),
 );
 
 declare_features! (
@@ -986,7 +989,19 @@ impl<'a> PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, abi_sysv64, span,
                                    "sysv64 ABI is experimental and subject to change");
             },
-            _ => {}
+            Abi::PtxKernel => {
+                gate_feature_post!(&self, abi_ptx, span,
+                                   "PTX ABIs are experimental and subject to change");
+            }
+            // Stable
+            Abi::Cdecl |
+            Abi::Stdcall |
+            Abi::Fastcall |
+            Abi::Aapcs |
+            Abi::Win64 |
+            Abi::Rust |
+            Abi::C |
+            Abi::System => {}
         }
     }
 }

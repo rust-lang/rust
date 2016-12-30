@@ -237,11 +237,16 @@ impl AtomicBool {
 
     /// Loads a value from the bool.
     ///
-    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `load` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
     ///
     /// # Panics
     ///
-    /// Panics if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.Release
     ///
     /// # Examples
     ///
@@ -260,7 +265,10 @@ impl AtomicBool {
 
     /// Stores a value into the bool.
     ///
-    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `store` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -286,7 +294,10 @@ impl AtomicBool {
 
     /// Stores a value into the bool, returning the old value.
     ///
-    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `swap` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -309,8 +320,10 @@ impl AtomicBool {
     /// The return value is always the previous value. If it is equal to `current`, then the value
     /// was updated.
     ///
-    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
-    /// this operation.
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -339,10 +352,15 @@ impl AtomicBool {
     /// The return value is a result indicating whether the new value was written and containing
     /// the previous value. On success this value is guaranteed to be equal to `current`.
     ///
-    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
-    /// operation. The first describes the required ordering if the operation succeeds while the
-    /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if the
+    /// operation succeeds while the second describes the required ordering when the
+    /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and must
+    /// be equivalent or weaker than the success ordering.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.Release
     ///
     /// # Examples
     ///
@@ -387,11 +405,15 @@ impl AtomicBool {
     /// return value is a result indicating whether the new value was written and containing the
     /// previous value.
     ///
-    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
-    /// success ordering.
+    /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
+    /// weaker than the success ordering.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.Release
     ///
     /// # Examples
     ///
@@ -619,11 +641,16 @@ impl<T> AtomicPtr<T> {
 
     /// Loads a value from the pointer.
     ///
-    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `load` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
     ///
     /// # Panics
     ///
-    /// Panics if `order` is `Release` or `AcqRel`.
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -643,7 +670,10 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer.
     ///
-    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `store` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -671,7 +701,10 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer, returning the old value.
     ///
-    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    /// `swap` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -696,8 +729,10 @@ impl<T> AtomicPtr<T> {
     /// The return value is always the previous value. If it is equal to `current`, then the value
     /// was updated.
     ///
-    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
-    /// this operation.
+    /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
     ///
     /// # Examples
     ///
@@ -726,10 +761,15 @@ impl<T> AtomicPtr<T> {
     /// The return value is a result indicating whether the new value was written and containing
     /// the previous value. On success this value is guaranteed to be equal to `current`.
     ///
-    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
-    /// operation. The first describes the required ordering if the operation succeeds while the
-    /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if
+    /// the operation succeeds while the second describes the required ordering when
+    /// the operation fails. The failure ordering can't be [`Release`] or [`AcqRel`]
+    /// and must be equivalent or weaker than the success ordering.
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -768,16 +808,21 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
-    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
     /// return value is a result indicating whether the new value was written and containing the
     /// previous value.
     ///
-    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
-    /// success ordering.
+    /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
+    /// weaker than the success ordering.
+    ///
+    /// [`compare_exchange`]: #method.compare_exchange
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -913,12 +958,16 @@ macro_rules! atomic_int {
 
             /// Loads a value from the atomic integer.
             ///
-            /// `load` takes an `Ordering` argument which describes the memory ordering of this
+            /// `load` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
             ///
             /// # Panics
             ///
-            /// Panics if `order` is `Release` or `AcqRel`.
+            /// Panics if `order` is [`Release`] or [`AcqRel`].
+            ///
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
@@ -937,8 +986,10 @@ macro_rules! atomic_int {
 
             /// Stores a value into the atomic integer.
             ///
-            /// `store` takes an `Ordering` argument which describes the memory ordering of this
+            /// `store` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -962,8 +1013,10 @@ macro_rules! atomic_int {
 
             /// Stores a value into the atomic integer, returning the old value.
             ///
-            /// `swap` takes an `Ordering` argument which describes the memory ordering of this
+            /// `swap` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -986,8 +1039,10 @@ macro_rules! atomic_int {
             /// The return value is always the previous value. If it is equal to `current`, then the
             /// value was updated.
             ///
-            /// `compare_and_swap` also takes an `Ordering` argument which describes the memory
+            /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
             /// ordering of this operation.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
             ///
             /// # Examples
             ///
@@ -1024,11 +1079,15 @@ macro_rules! atomic_int {
             /// containing the previous value. On success this value is guaranteed to be equal to
             /// `current`.
             ///
-            /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of
-            /// this operation. The first describes the required ordering if the operation succeeds
-            /// while the second describes the required ordering when the operation fails. The
-            /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker
-            /// than the success ordering.
+            /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
+            /// ordering of this operation. The first describes the required ordering if
+            /// the operation succeeds while the second describes the required ordering when
+            /// the operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
+            /// must be equivalent or weaker than the success ordering.
+            ///
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
@@ -1062,16 +1121,21 @@ macro_rules! atomic_int {
             /// Stores a value into the atomic integer if the current value is the same as the
             /// `current` value.
             ///
-            /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
-            /// comparison succeeds, which can result in more efficient code on some platforms. The
-            /// return value is a result indicating whether the new value was written and containing
-            /// the previous value.
+            /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even
+            /// when the comparison succeeds, which can result in more efficient code on some
+            /// platforms. The return value is a result indicating whether the new value was
+            /// written and containing the previous value.
             ///
-            /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+            /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
             /// ordering of this operation. The first describes the required ordering if the
             /// operation succeeds while the second describes the required ordering when the
-            /// operation fails. The failure ordering can't be `Release` or `AcqRel` and must be
-            /// equivalent or weaker than the success ordering.
+            /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
+            /// must be equivalent or weaker than the success ordering.
+            ///
+            /// [`compare_exchange`]: #method.compare_exchange
+            /// [`Ordering`]: enum.Ordering.html
+            /// [`Release`]: enum.Ordering.html#variant.Release
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             ///
             /// # Examples
             ///
@@ -1431,24 +1495,31 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// An atomic fence.
 ///
-/// A fence 'A' which has `Release` ordering semantics, synchronizes with a
-/// fence 'B' with (at least) `Acquire` semantics, if and only if there exists
+/// A fence 'A' which has [`Release`] ordering semantics, synchronizes with a
+/// fence 'B' with (at least) [`Acquire`] semantics, if and only if there exists
 /// atomic operations X and Y, both operating on some atomic object 'M' such
 /// that A is sequenced before X, Y is synchronized before B and Y observes
 /// the change to M. This provides a happens-before dependence between A and B.
 ///
-/// Atomic operations with `Release` or `Acquire` semantics can also synchronize
+/// Atomic operations with [`Release`] or [`Acquire`] semantics can also synchronize
 /// with a fence.
 ///
-/// A fence which has `SeqCst` ordering, in addition to having both `Acquire`
-/// and `Release` semantics, participates in the global program order of the
-/// other `SeqCst` operations and/or fences.
+/// A fence which has [`SeqCst`] ordering, in addition to having both [`Acquire`]
+/// and [`Release`] semantics, participates in the global program order of the
+/// other [`SeqCst`] operations and/or fences.
 ///
-/// Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
+/// Accepts [`Acquire`], [`Release`], [`AcqRel`] and [`SeqCst`] orderings.
 ///
 /// # Panics
 ///
-/// Panics if `order` is `Relaxed`.
+/// Panics if `order` is [`Relaxed`].
+///
+/// [`Ordering`]: enum.Ordering.html
+/// [`Acquire`]: enum.Ordering.html#variant.Acquire
+/// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
+/// [`Release`]: enum.Ordering.html#variant.Release
+/// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+/// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn fence(order: Ordering) {

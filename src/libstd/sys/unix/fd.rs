@@ -10,8 +10,9 @@
 
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
+use cmp;
 use io::{self, Read};
-use libc::{self, c_int, c_void};
+use libc::{self, c_int, c_void, ssize_t};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
@@ -21,6 +22,22 @@ use sys_common::io::read_to_end_uninitialized;
 #[derive(Debug)]
 pub struct FileDesc {
     fd: c_int,
+}
+
+fn max_len() -> usize {
+    // The maximum read limit on most posix-like systems is `SSIZE_MAX`,
+    // with the man page quoting that if the count of bytes to read is
+    // greater than `SSIZE_MAX` the result is "unspecified".
+    //
+    // On OSX, however, apparently the 64-bit libc is either buggy or
+    // intentionally showing odd behavior by rejecting any read with a size
+    // larger than or equal to INT_MAX. To handle both of these the read
+    // size is capped on both platforms.
+    if cfg!(target_os = "macos") {
+        <c_int>::max_value() as usize - 1
+    } else {
+        <ssize_t>::max_value() as usize
+    }
 }
 
 impl FileDesc {
@@ -41,7 +58,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
-                       buf.len())
+                       cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
@@ -69,7 +86,7 @@ impl FileDesc {
         unsafe {
             cvt_pread64(self.fd,
                         buf.as_mut_ptr() as *mut c_void,
-                        buf.len(),
+                        cmp::min(buf.len(), max_len()),
                         offset as i64)
                 .map(|n| n as usize)
         }
@@ -79,7 +96,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
-                        buf.len())
+                        cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
@@ -102,7 +119,7 @@ impl FileDesc {
         unsafe {
             cvt_pwrite64(self.fd,
                          buf.as_ptr() as *const c_void,
-                         buf.len(),
+                         cmp::min(buf.len(), max_len()),
                          offset as i64)
                 .map(|n| n as usize)
         }

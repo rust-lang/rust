@@ -1657,6 +1657,15 @@ Functions within external blocks may be called by Rust code, just like
 functions defined in Rust. The Rust compiler automatically translates between
 the Rust ABI and the foreign ABI.
 
+Functions within external blocks may be variadic by specifying `...` after one
+or more named arguments in the argument list:
+
+```ignore
+extern {
+    fn foo(x: i32, ...);
+}
+```
+
 A number of [attributes](#ffi-attributes) control the behavior of external blocks.
 
 By default external blocks assume that the library they are calling uses the
