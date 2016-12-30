@@ -41,6 +41,7 @@ pub enum Abi {
     Aapcs,
     Win64,
     SysV64,
+    PtxKernel,
 
     // Multiplatform / generic ABIs
     Rust,
@@ -82,6 +83,7 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Abi::Aapcs, name: "aapcs", generic: false },
     AbiData {abi: Abi::Win64, name: "win64", generic: false },
     AbiData {abi: Abi::SysV64, name: "sysv64", generic: false },
+    AbiData {abi: Abi::PtxKernel, name: "ptx-kernel", generic: false },
 
     // Cross-platform ABIs
     AbiData {abi: Abi::Rust, name: "Rust", generic: true },
