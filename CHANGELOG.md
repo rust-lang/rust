@@ -298,6 +298,7 @@ All notable changes to this project will be documented in this file.
 [`for_kv_map`]: https://github.com/Manishearth/rust-clippy/wiki#for_kv_map
 [`for_loop_over_option`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option
 [`for_loop_over_result`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result
+[`forget_ref`]: https://github.com/Manishearth/rust-clippy/wiki#forget_ref
 [`get_unwrap`]: https://github.com/Manishearth/rust-clippy/wiki#get_unwrap
 [`identity_op`]: https://github.com/Manishearth/rust-clippy/wiki#identity_op
 [`if_let_redundant_pattern_matching`]: https://github.com/Manishearth/rust-clippy/wiki#if_let_redundant_pattern_matching
