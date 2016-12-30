@@ -327,24 +327,28 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
 
     if build.config.build.contains("msvc") {
         // nothing to do for debuginfo tests
-    } else if build.config.build.contains("apple") {
-        rules.test("check-debuginfo", "src/test/debuginfo")
-             .default(true)
+    } else {
+        rules.test("check-debuginfo-lldb", "src/test/debuginfo-lldb")
              .dep(|s| s.name("libtest"))
              .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-lldb", "debuginfo"));
-    } else {
-        rules.test("check-debuginfo", "src/test/debuginfo")
-             .default(true)
+        rules.test("check-debuginfo-gdb", "src/test/debuginfo-gdb")
              .dep(|s| s.name("libtest"))
              .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
+        let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
+        rule.default(true);
+        if build.config.build.contains("apple") {
+            rule.dep(|s| s.name("check-debuginfo-lldb"));
+        } else {
+            rule.dep(|s| s.name("check-debuginfo-gdb"));
+        }
     }
 
     rules.test("debugger-scripts", "src/etc/lldb_batchmode.py")
