@@ -590,6 +590,7 @@ name = "std"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
+ "alloc_frame 0.0.0",
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",

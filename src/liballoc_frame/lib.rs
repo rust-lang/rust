@@ -21,7 +21,6 @@
 #![feature(const_fn)]
 #![feature(staged_api)]
 #![feature(libc)]
-#![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
 
 extern crate libc;
 
@@ -104,7 +103,8 @@ pub extern "C" fn __rust_usable_size(size: usize, _align: usize) -> usize {
 
 #[cfg(any(unix, target_os = "redox"))]
 mod imp {
-    use core::cmp;
+    use libc;
+    use core::ptr;
     use MIN_ALIGN;
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {

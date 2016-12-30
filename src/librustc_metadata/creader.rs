@@ -771,14 +771,17 @@ impl<'a> CrateLoader<'a> {
         // also bail out as we don't need to implicitly inject one.
         let mut needs_allocator = false;
         let mut found_required_allocator = false;
+        println!("injecting allocator for {}", self.local_crate_name);
         self.cstore.iter_crate_data(|cnum, data| {
             needs_allocator = needs_allocator || data.needs_allocator();
             if data.is_allocator() {
-                info!("{} required by rlib and is an allocator", data.name());
+                println!("{} required by rlib and is an allocator", data.name());
                 self.inject_dependency_if(cnum, "an allocator",
                                           &|data| data.needs_allocator());
-                found_required_allocator = found_required_allocator ||
-                    data.dep_kind.get() == DepKind::Explicit;
+                let explicit_dep = data.dep_kind.get() == DepKind::Explicit;
+                println!("{} {} an explicit dependency", data.name(), 
+                    if explicit_dep {"is"} else {"is not"});
+                found_required_allocator = found_required_allocator || explicit_dep;
             }
         });
         if !needs_allocator || found_required_allocator { return }
@@ -820,7 +823,7 @@ impl<'a> CrateLoader<'a> {
         // * Binaries use jemalloc
         // * Staticlibs and Rust dylibs use system malloc
         // * Rust dylibs used as dependencies to rust use jemalloc
-        let name = if cfg!(rustc_alloc_frame) && (cfg!(stage0) || cfg!(stage1)) {
+        let name = if cfg!(feature = "rustc_alloc_frame") && cfg!(stage0) {
             // HACK to make stage1/2 with alloc_frame
             Symbol::intern(&"alloc_frame")
         } else if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
@@ -828,6 +831,7 @@ impl<'a> CrateLoader<'a> {
         } else {
             Symbol::intern(&self.sess.target.target.options.exe_allocation_crate)
         };
+        println!("Injecting {} for {}", name, self.local_crate_name);
         let dep_kind = DepKind::Implicit;
         let (cnum, data) =
             self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, dep_kind);
