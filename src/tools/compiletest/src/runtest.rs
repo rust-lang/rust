@@ -1619,8 +1619,46 @@ actual:\n\
     }
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
+        self.try_print_open_handles();
         self.error(err);
         proc_res.fatal(None);
+    }
+
+    // This function is a poor man's attempt to debug rust-lang/rust#38620, if
+    // that's closed then this should be deleted
+    //
+    // This is a very "opportunistic" debugging attempt, so we ignore all
+    // errors here.
+    fn try_print_open_handles(&self) {
+        if !cfg!(windows) {
+            return
+        }
+        if self.config.mode != Incremental {
+            return
+        }
+
+        let filename = match self.testpaths.file.file_stem() {
+            Some(path) => path,
+            None => return,
+        };
+
+        let mut cmd = Command::new("handle.exe");
+        cmd.arg("-a").arg("-u");
+        cmd.arg(filename);
+        cmd.arg("-nobanner");
+        let output = match cmd.output() {
+            Ok(output) => output,
+            Err(_) => return,
+        };
+        println!("---------------------------------------------------");
+        println!("ran extra command to debug rust-lang/rust#38620: ");
+        println!("{:?}", cmd);
+        println!("result: {}", output.status);
+        println!("--- stdout ----------------------------------------");
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        println!("--- stderr ----------------------------------------");
+        println!("{}", String::from_utf8_lossy(&output.stderr));
+        println!("---------------------------------------------------");
     }
 
     fn _arm_exec_compiled_test(&self, env: Vec<(String, String)>) -> ProcRes {
