@@ -361,13 +361,12 @@ impl<'tcx> Witness<'tcx> {
 
 /// This determines the set of all possible constructors of a pattern matching
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
+/// but is instead bounded by the maximum fixed length of slice patterns in
+/// the column of patterns being analyzed.
 ///
 /// This intentionally does not list ConstantValue specializations for
 /// non-booleans, because we currently assume that there is always a
 /// "non-standard constant" that matches. See issue #12483.
-///
-/// but is instead bounded by the maximum fixed length of slice patterns in
-/// the column of patterns being analyzed.
 ///
 /// We make sure to omit constructors that are statically impossible. eg for
 /// Option<!> we do not include Some(_) in the returned list of constructors.
