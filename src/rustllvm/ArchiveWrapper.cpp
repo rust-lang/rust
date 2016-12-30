@@ -21,52 +21,51 @@ struct RustArchiveMember {
   const char *name;
   Archive::Child child;
 
-  RustArchiveMember(): filename(NULL), name(NULL),
+  RustArchiveMember()
+      : filename(nullptr), name(nullptr),
 #if LLVM_VERSION_GE(3, 8)
-    child(NULL, NULL, NULL)
+        child(nullptr, nullptr, nullptr)
 #else
-    child(NULL, NULL)
+        child(nullptr, nullptr)
 #endif
-  {}
+  {
+  }
   ~RustArchiveMember() {}
 };
 
-
 struct RustArchiveIterator {
-    bool first;
-    Archive::child_iterator cur;
-    Archive::child_iterator end;
+  bool first;
+  Archive::child_iterator cur;
+  Archive::child_iterator end;
 #if LLVM_VERSION_GE(3, 9)
-    Error err;
+  Error err;
 
-    RustArchiveIterator() : first(true), err(Error::success()) { }
+  RustArchiveIterator() : first(true), err(Error::success()) {}
 #else
-    RustArchiveIterator() : first(true) { }
+  RustArchiveIterator() : first(true) {}
 #endif
 };
 
 enum class LLVMRustArchiveKind {
-    Other,
-    GNU,
-    MIPS64,
-    BSD,
-    COFF,
+  Other,
+  GNU,
+  MIPS64,
+  BSD,
+  COFF,
 };
 
-static Archive::Kind
-from_rust(LLVMRustArchiveKind kind)
-{
-    switch (kind) {
-    case LLVMRustArchiveKind::GNU:
-        return Archive::K_GNU;
-    case LLVMRustArchiveKind::MIPS64:
-        return Archive::K_MIPS64;
-    case LLVMRustArchiveKind::BSD:
-        return Archive::K_BSD;
-    case LLVMRustArchiveKind::COFF:
-        return Archive::K_COFF;
-    default:
-      llvm_unreachable("Bad ArchiveKind.");
+static Archive::Kind from_rust(LLVMRustArchiveKind kind) {
+  switch (kind) {
+  case LLVMRustArchiveKind::GNU:
+    return Archive::K_GNU;
+  case LLVMRustArchiveKind::MIPS64:
+    return Archive::K_MIPS64;
+  case LLVMRustArchiveKind::BSD:
+    return Archive::K_BSD;
+  case LLVMRustArchiveKind::COFF:
+    return Archive::K_COFF;
+  default:
+    llvm_unreachable("Bad ArchiveKind.");
   }
 }
 
@@ -76,174 +75,166 @@ typedef Archive::Child *LLVMRustArchiveChildRef;
 typedef Archive::Child const *LLVMRustArchiveChildConstRef;
 typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
 
-extern "C" LLVMRustArchiveRef
-LLVMRustOpenArchive(char *path) {
-    ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path,
-                                                                          -1,
-                                                                          false);
-    if (!buf_or) {
-        LLVMRustSetLastError(buf_or.getError().message().c_str());
-        return nullptr;
-    }
+extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(char *path) {
+  ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or =
+      MemoryBuffer::getFile(path, -1, false);
+  if (!buf_or) {
+    LLVMRustSetLastError(buf_or.getError().message().c_str());
+    return nullptr;
+  }
 
 #if LLVM_VERSION_LE(3, 8)
-    ErrorOr<std::unique_ptr<Archive>> archive_or =
+  ErrorOr<std::unique_ptr<Archive>> archive_or =
 #else
-    Expected<std::unique_ptr<Archive>> archive_or =
+  Expected<std::unique_ptr<Archive>> archive_or =
 #endif
-        Archive::create(buf_or.get()->getMemBufferRef());
+      Archive::create(buf_or.get()->getMemBufferRef());
 
-    if (!archive_or) {
+  if (!archive_or) {
 #if LLVM_VERSION_LE(3, 8)
-        LLVMRustSetLastError(archive_or.getError().message().c_str());
+    LLVMRustSetLastError(archive_or.getError().message().c_str());
 #else
-        LLVMRustSetLastError(toString(archive_or.takeError()).c_str());
+    LLVMRustSetLastError(toString(archive_or.takeError()).c_str());
 #endif
-        return nullptr;
-    }
+    return nullptr;
+  }
 
-    OwningBinary<Archive> *ret = new OwningBinary<Archive>(
-            std::move(archive_or.get()), std::move(buf_or.get()));
+  OwningBinary<Archive> *ret = new OwningBinary<Archive>(
+      std::move(archive_or.get()), std::move(buf_or.get()));
 
-    return ret;
+  return ret;
 }
 
-extern "C" void
-LLVMRustDestroyArchive(LLVMRustArchiveRef ar) {
-    delete ar;
-}
+extern "C" void LLVMRustDestroyArchive(LLVMRustArchiveRef ar) { delete ar; }
 
 extern "C" LLVMRustArchiveIteratorRef
 LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
-    Archive *ar = ra->getBinary();
-    RustArchiveIterator *rai = new RustArchiveIterator();
+  Archive *ar = ra->getBinary();
+  RustArchiveIterator *rai = new RustArchiveIterator();
 #if LLVM_VERSION_LE(3, 8)
-    rai->cur = ar->child_begin();
+  rai->cur = ar->child_begin();
 #else
-    rai->cur = ar->child_begin(rai->err);
-    if (rai->err) {
-        LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
-        delete rai;
-        return NULL;
-    }
+  rai->cur = ar->child_begin(rai->err);
+  if (rai->err) {
+    LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+    delete rai;
+    return nullptr;
+  }
 #endif
-    rai->end = ar->child_end();
-    return rai;
+  rai->end = ar->child_end();
+  return rai;
 }
 
 extern "C" LLVMRustArchiveChildConstRef
 LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
-    if (rai->cur == rai->end) return nullptr;
+  if (rai->cur == rai->end)
+    return nullptr;
 
-    // Advancing the iterator validates the next child, and this can
-    // uncover an error. LLVM requires that we check all Errors,
-    // so we only advance the iterator if we actually need to fetch
-    // the next child.
-    // This means we must not advance the iterator in the *first* call,
-    // but instead advance it *before* fetching the child in all later calls.
-    if (!rai->first) {
-        ++rai->cur;
+  // Advancing the iterator validates the next child, and this can
+  // uncover an error. LLVM requires that we check all Errors,
+  // so we only advance the iterator if we actually need to fetch
+  // the next child.
+  // This means we must not advance the iterator in the *first* call,
+  // but instead advance it *before* fetching the child in all later calls.
+  if (!rai->first) {
+    ++rai->cur;
 #if LLVM_VERSION_GE(3, 9)
-        if (rai->err) {
-            LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
-            return nullptr;
-        }
-#endif
-    } else {
-      rai->first = false;
+    if (rai->err) {
+      LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+      return nullptr;
     }
+#endif
+  } else {
+    rai->first = false;
+  }
 
-    if (rai->cur == rai->end) return nullptr;
+  if (rai->cur == rai->end)
+    return nullptr;
 
 #if LLVM_VERSION_EQ(3, 8)
-    const ErrorOr<Archive::Child>* cur = rai->cur.operator->();
-    if (!*cur) {
-        LLVMRustSetLastError(cur->getError().message().c_str());
-        return nullptr;
-    }
-    const Archive::Child &child = cur->get();
+  const ErrorOr<Archive::Child> *cur = rai->cur.operator->();
+  if (!*cur) {
+    LLVMRustSetLastError(cur->getError().message().c_str());
+    return nullptr;
+  }
+  const Archive::Child &child = cur->get();
 #else
-    const Archive::Child &child = *rai->cur.operator->();
+  const Archive::Child &child = *rai->cur.operator->();
 #endif
-    Archive::Child *ret = new Archive::Child(child);
+  Archive::Child *ret = new Archive::Child(child);
 
-    return ret;
+  return ret;
 }
 
-extern "C" void
-LLVMRustArchiveChildFree(LLVMRustArchiveChildRef child) {
-    delete child;
+extern "C" void LLVMRustArchiveChildFree(LLVMRustArchiveChildRef child) {
+  delete child;
 }
 
-extern "C" void
-LLVMRustArchiveIteratorFree(LLVMRustArchiveIteratorRef rai) {
-    delete rai;
+extern "C" void LLVMRustArchiveIteratorFree(LLVMRustArchiveIteratorRef rai) {
+  delete rai;
 }
 
-extern "C" const char*
+extern "C" const char *
 LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef child, size_t *size) {
 #if LLVM_VERSION_GE(4, 0)
-    Expected<StringRef> name_or_err = child->getName();
-    if (!name_or_err) {
-        // rustc_llvm currently doesn't use this error string, but it might be useful
-        // in the future, and in the mean time this tells LLVM that the error was
-        // not ignored and that it shouldn't abort the process.
-        LLVMRustSetLastError(toString(name_or_err.takeError()).c_str());
-        return NULL;
-    }
+  Expected<StringRef> name_or_err = child->getName();
+  if (!name_or_err) {
+    // rustc_llvm currently doesn't use this error string, but it might be useful
+    // in the future, and in the mean time this tells LLVM that the error was
+    // not ignored and that it shouldn't abort the process.
+    LLVMRustSetLastError(toString(name_or_err.takeError()).c_str());
+    return nullptr;
+  }
 #else
-    ErrorOr<StringRef> name_or_err = child->getName();
-    if (name_or_err.getError())
-        return NULL;
+  ErrorOr<StringRef> name_or_err = child->getName();
+  if (name_or_err.getError())
+    return nullptr;
 #endif
-    StringRef name = name_or_err.get();
-    *size = name.size();
-    return name.data();
+  StringRef name = name_or_err.get();
+  *size = name.size();
+  return name.data();
 }
 
-extern "C" const char*
-LLVMRustArchiveChildData(LLVMRustArchiveChildRef child, size_t *size) {
-    StringRef buf;
+extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef child,
+                                                size_t *size) {
+  StringRef buf;
 #if LLVM_VERSION_GE(4, 0)
-    Expected<StringRef> buf_or_err = child->getBuffer();
-    if (!buf_or_err) {
-      LLVMRustSetLastError(toString(buf_or_err.takeError()).c_str());
-      return NULL;
-    }
+  Expected<StringRef> buf_or_err = child->getBuffer();
+  if (!buf_or_err) {
+    LLVMRustSetLastError(toString(buf_or_err.takeError()).c_str());
+    return nullptr;
+  }
 #else
-    ErrorOr<StringRef> buf_or_err = child->getBuffer();
-    if (buf_or_err.getError()) {
-      LLVMRustSetLastError(buf_or_err.getError().message().c_str());
-      return NULL;
-    }
+  ErrorOr<StringRef> buf_or_err = child->getBuffer();
+  if (buf_or_err.getError()) {
+    LLVMRustSetLastError(buf_or_err.getError().message().c_str());
+    return nullptr;
+  }
 #endif
-    buf = buf_or_err.get();
-    *size = buf.size();
-    return buf.data();
+  buf = buf_or_err.get();
+  *size = buf.size();
+  return buf.data();
 }
 
 extern "C" LLVMRustArchiveMemberRef
 LLVMRustArchiveMemberNew(char *Filename, char *Name,
-			 LLVMRustArchiveChildRef child) {
-    RustArchiveMember *Member = new RustArchiveMember;
-    Member->filename = Filename;
-    Member->name = Name;
-    if (child)
-        Member->child = *child;
-    return Member;
+                         LLVMRustArchiveChildRef child) {
+  RustArchiveMember *Member = new RustArchiveMember;
+  Member->filename = Filename;
+  Member->name = Name;
+  if (child)
+    Member->child = *child;
+  return Member;
 }
 
-extern "C" void
-LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
-    delete Member;
+extern "C" void LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
+  delete Member;
 }
 
 extern "C" LLVMRustResult
-LLVMRustWriteArchive(char *Dst,
-                     size_t NumMembers,
+LLVMRustWriteArchive(char *Dst, size_t NumMembers,
                      const LLVMRustArchiveMemberRef *NewMembers,
-                     bool WriteSymbtab,
-                     LLVMRustArchiveKind rust_kind) {
+                     bool WriteSymbtab, LLVMRustArchiveKind rust_kind) {
 
 #if LLVM_VERSION_LE(3, 8)
   std::vector<NewArchiveIterator> Members;
@@ -257,7 +248,8 @@ LLVMRustWriteArchive(char *Dst,
     assert(Member->name);
     if (Member->filename) {
 #if LLVM_VERSION_GE(3, 9)
-      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getFile(Member->filename, true);
+      Expected<NewArchiveMember> MOrErr =
+          NewArchiveMember::getFile(Member->filename, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
@@ -272,7 +264,8 @@ LLVMRustWriteArchive(char *Dst,
 #if LLVM_VERSION_LE(3, 8)
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
 #else
-      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
+      Expected<NewArchiveMember> MOrErr =
+          NewArchiveMember::getOldMember(Member->child, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
