@@ -29,8 +29,7 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
         }
     }
 
-    fn visit_mac(&mut self, _mac: &Mac) {
-    }
+    fn visit_mac(&mut self, _mac: &Mac) {}
 }
 
 pub struct CustomDerive {
