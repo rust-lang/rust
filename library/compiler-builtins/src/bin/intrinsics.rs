@@ -403,5 +403,6 @@ pub fn _Unwind_Resume() {}
 extern "C" fn eh_personality() {}
 
 #[cfg(not(test))]
+#[no_mangle]
 #[lang = "panic_fmt"]
 extern "C" fn panic_fmt() {}
