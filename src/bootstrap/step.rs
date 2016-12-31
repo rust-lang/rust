@@ -293,7 +293,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         let mut suite = |name, path, mode, dir| {
             rules.test(name, path)
                  .dep(|s| s.name("libtest"))
-                 .dep(|s| s.name("tool-compiletest").target(s.host))
+                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .dep(|s| s.name("test-helpers"))
                  .dep(|s| s.name("android-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
@@ -325,7 +325,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         rules.test("check-debuginfo", "src/test/debuginfo")
              .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").target(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
@@ -334,7 +334,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         rules.test("check-debuginfo", "src/test/debuginfo")
              .default(true)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("tool-compiletest").target(s.host))
+             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
              .dep(|s| s.name("android-copy-libs"))
@@ -351,7 +351,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
             rules.test(name, path)
                  .dep(|s| s.name("librustc"))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(|s| s.name("tool-compiletest").target(s.host))
+                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .default(mode != "pretty")
                  .host(true)
                  .run(move |s| {
@@ -441,13 +441,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                                     Mode::Librustc, TestKind::Test, None));
 
     rules.test("check-linkchecker", "src/tools/linkchecker")
-         .dep(|s| s.name("tool-linkchecker"))
+         .dep(|s| s.name("tool-linkchecker").stage(0))
          .dep(|s| s.name("default:doc"))
          .default(true)
          .host(true)
-         .run(move |s| check::linkcheck(build, s.stage, s.target));
+         .run(move |s| check::linkcheck(build, s.target));
     rules.test("check-cargotest", "src/tools/cargotest")
-         .dep(|s| s.name("tool-cargotest"))
+         .dep(|s| s.name("tool-cargotest").stage(0))
          .dep(|s| s.name("librustc"))
          .host(true)
          .run(move |s| check::cargotest(build, s.stage, s.target));
@@ -455,10 +455,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("tool-tidy").stage(0))
          .default(true)
          .host(true)
-         .run(move |s| check::tidy(build, 0, s.target));
+         .run(move |s| check::tidy(build, s.target));
     rules.test("check-error-index", "src/tools/error_index_generator")
          .dep(|s| s.name("libstd"))
-         .dep(|s| s.name("tool-error-index").host(s.host))
+         .dep(|s| s.name("tool-error-index").host(s.host).stage(0))
          .default(true)
          .host(true)
          .run(move |s| check::error_index(build, &s.compiler()));
@@ -504,23 +504,23 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     // ========================================================================
     // Documentation targets
     rules.doc("doc-book", "src/doc/book")
-         .dep(move |s| s.name("tool-rustbook").target(&build.config.build))
+         .dep(move |s| s.name("tool-rustbook").target(&build.config.build).stage(0))
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.stage, s.target, "book"));
+         .run(move |s| doc::rustbook(build, s.target, "book"));
     rules.doc("doc-nomicon", "src/doc/nomicon")
-         .dep(move |s| s.name("tool-rustbook").target(&build.config.build))
+         .dep(move |s| s.name("tool-rustbook").target(&build.config.build).stage(0))
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.stage, s.target, "nomicon"));
+         .run(move |s| doc::rustbook(build, s.target, "nomicon"));
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| s.name("rustc").host(&build.config.build).target(&build.config.build))
          .default(build.config.docs)
          .run(move |s| doc::standalone(build, s.stage, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
-         .dep(move |s| s.name("tool-error-index").target(&build.config.build))
-         .dep(move |s| s.name("librustc-link"))
+         .dep(move |s| s.name("tool-error-index").target(&build.config.build).stage(0))
+         .dep(move |s| s.name("librustc-link").stage(0))
          .default(build.config.docs)
          .host(true)
-         .run(move |s| doc::error_index(build, s.stage, s.target));
+         .run(move |s| doc::error_index(build, s.target));
     for (krate, path, default) in krates("std_shim") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libstd-link"))

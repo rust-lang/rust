@@ -570,6 +570,15 @@ impl Build {
     /// `host`.
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
+        self.prepare_tool_cmd(compiler, &mut cmd);
+        return cmd
+    }
+
+    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
+    ///
+    /// Notably this munges the dynamic library lookup path to point to the
+    /// right location to run `compiler`.
+    fn prepare_tool_cmd(&self, compiler: &Compiler, cmd: &mut Command) {
         let host = compiler.host;
         let mut paths = vec![
             self.sysroot_libdir(compiler, compiler.host),
@@ -593,8 +602,7 @@ impl Build {
                 }
             }
         }
-        add_lib_path(paths, &mut cmd);
-        return cmd
+        add_lib_path(paths, cmd);
     }
 
     /// Get the space-separated set of activated features for the standard
