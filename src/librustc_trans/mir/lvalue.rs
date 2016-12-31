@@ -14,8 +14,8 @@ use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use adt;
-use base;
-use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
+use builder::Builder;
+use common::{self, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
 use type_of::type_of;
@@ -44,16 +44,6 @@ impl<'tcx> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
-    pub fn alloca<'a>(bcx: &BlockAndBuilder<'a, 'tcx>,
-                        ty: Ty<'tcx>,
-                        name: &str)
-                        -> LvalueRef<'tcx>
-    {
-        assert!(!ty.has_erasable_regions());
-        let lltemp = base::alloc_ty(bcx, ty, name);
-        LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
-    }
-
     pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         let ty = self.ty.to_ty(ccx.tcx());
         match ty.sty {
@@ -69,13 +59,13 @@ impl<'tcx> LvalueRef<'tcx> {
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_lvalue(&mut self,
-                        bcx: &BlockAndBuilder<'a, 'tcx>,
+                        bcx: &Builder<'a, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
                         -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
         let ccx = bcx.ccx;
-        let tcx = bcx.tcx();
+        let tcx = ccx.tcx();
 
         if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
@@ -177,7 +167,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let llindex = C_uint(bcx.ccx, from);
                         let llbase = project_index(llindex);
 
-                        let base_ty = tr_base.ty.to_ty(bcx.tcx());
+                        let base_ty = tr_base.ty.to_ty(bcx.ccx.tcx());
                         match base_ty.sty {
                             ty::TyArray(..) => {
                                 // must cast the lvalue pointer type to the new
@@ -214,7 +204,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     // Perform an action using the given Lvalue.
     // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
     // is created first, then used as an operand to update the Lvalue.
-    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
+    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &Builder<'a, 'tcx>,
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
@@ -223,9 +213,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 LocalRef::Lvalue(lvalue) => f(self, lvalue),
                 LocalRef::Operand(None) => {
                     let lvalue_ty = self.monomorphized_lvalue_ty(lvalue);
-                    let lvalue = LvalueRef::alloca(bcx,
-                                                   lvalue_ty,
-                                                   "lvalue_temp");
+                    assert!(!lvalue_ty.has_erasable_regions());
+                    let lltemp = bcx.alloca_ty(lvalue_ty, "lvalue_temp");
+                    let lvalue = LvalueRef::new_sized(lltemp, LvalueTy::from_ty(lvalue_ty));
                     let ret = f(self, lvalue);
                     let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
                     self.locals[index] = LocalRef::Operand(Some(op));
@@ -254,18 +244,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     /// than we are.
     ///
     /// nmatsakis: is this still necessary? Not sure.
-    fn prepare_index(&mut self,
-                     bcx: &BlockAndBuilder<'a, 'tcx>,
-                     llindex: ValueRef)
-                     -> ValueRef
-    {
-        let ccx = bcx.ccx;
+    fn prepare_index(&mut self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
         let index_size = machine::llbitsize_of_real(bcx.ccx, common::val_ty(llindex));
-        let int_size = machine::llbitsize_of_real(bcx.ccx, ccx.int_type());
+        let int_size = machine::llbitsize_of_real(bcx.ccx, bcx.ccx.int_type());
         if index_size < int_size {
-            bcx.zext(llindex, ccx.int_type())
+            bcx.zext(llindex, bcx.ccx.int_type())
         } else if index_size > int_size {
-            bcx.trunc(llindex, ccx.int_type())
+            bcx.trunc(llindex, bcx.ccx.int_type())
         } else {
             llindex
         }

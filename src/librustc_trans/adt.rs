@@ -49,6 +49,7 @@ use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
 use common::*;
+use builder::Builder;
 use glue;
 use base;
 use machine;
@@ -303,7 +304,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>
 /// Obtain a representation of the discriminant sufficient to translate
 /// destructuring; this may or may not involve the actual discriminant.
 pub fn trans_switch<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     t: Ty<'tcx>,
     scrutinee: ValueRef,
     range_assert: bool
@@ -331,7 +332,7 @@ pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     t: Ty<'tcx>,
     scrutinee: ValueRef,
     cast_to: Option<Type>,
@@ -374,7 +375,7 @@ pub fn trans_get_discr<'a, 'tcx>(
 }
 
 fn struct_wrapped_nullable_bitdiscr(
-    bcx: &BlockAndBuilder,
+    bcx: &Builder,
     nndiscr: u64,
     discrfield: &layout::FieldPath,
     scrutinee: ValueRef
@@ -387,7 +388,7 @@ fn struct_wrapped_nullable_bitdiscr(
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
+fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
               range_assert: bool)
     -> ValueRef {
     let llty = Type::from_integer(bcx.ccx, ity);
@@ -415,7 +416,7 @@ fn load_discr(bcx: &BlockAndBuilder, ity: layout::Integer, ptr: ValueRef, min: u
 /// discriminant-like value returned by `trans_switch`.
 ///
 /// This should ideally be less tightly tied to `_match`.
-pub fn trans_case<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, value: Disr) -> ValueRef {
+pub fn trans_case<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, value: Disr) -> ValueRef {
     let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum { discr, .. }
@@ -436,7 +437,7 @@ pub fn trans_case<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, value:
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
 pub fn trans_set_discr<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr
+    bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr
 ) {
     let l = bcx.ccx.layout_of(t);
     match *l {
@@ -484,8 +485,8 @@ pub fn trans_set_discr<'a, 'tcx>(
     }
 }
 
-fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>) -> bool {
-    bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
+fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &Builder<'a, 'tcx>) -> bool {
+    bcx.ccx.sess().target.target.arch == "arm" || bcx.ccx.sess().target.target.arch == "aarch64"
 }
 
 fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
@@ -498,7 +499,7 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     t: Ty<'tcx>,
     val: MaybeSizedValue,
     discr: Disr,
@@ -560,7 +561,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
 }
 
 fn struct_field_ptr<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     st: &layout::Struct,
     fields: &Vec<Ty<'tcx>>,
     val: MaybeSizedValue,
