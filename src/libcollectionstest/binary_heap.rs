@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::collections::BinaryHeap;
-use std::collections::binary_heap::Drain;
+use std::collections::binary_heap::{Drain, PeekMut};
 
 #[test]
 fn test_iterator() {
@@ -90,6 +90,19 @@ fn test_peek_mut() {
     {
         let mut top = heap.peek_mut().unwrap();
         *top -= 2;
+    }
+    assert_eq!(heap.peek(), Some(&9));
+}
+
+#[test]
+fn test_peek_mut_pop() {
+    let data = vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
+    let mut heap = BinaryHeap::from(data);
+    assert_eq!(heap.peek(), Some(&10));
+    {
+        let mut top = heap.peek_mut().unwrap();
+        *top -= 2;
+        assert_eq!(PeekMut::pop(top), 8);
     }
     assert_eq!(heap.peek(), Some(&9));
 }
