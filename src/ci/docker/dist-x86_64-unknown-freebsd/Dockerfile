@@ -28,7 +28,11 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
 
 ENV \
     AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-ar \
-    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-gcc
+    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-gcc \
+    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-g++
 
-ENV RUST_CONFIGURE_ARGS --target=x86_64-unknown-freebsd
-ENV RUST_CHECK_TARGET ""
+ENV RUST_CONFIGURE_ARGS --host=x86_64-unknown-freebsd
+ENV XPY_RUN \
+      dist \
+      --host x86_64-unknown-freebsd \
+      --target x86_64-unknown-freebsd
