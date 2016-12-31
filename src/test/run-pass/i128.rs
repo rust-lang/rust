@@ -91,5 +91,9 @@ fn main() {
                format!("{:b}", j));
     assert_eq!("-147573952589676412928", format!("{:?}", j));
     // common traits
-    x.clone();
+    assert_eq!(x, b(x.clone()));
+    // overflow checks
+    assert_eq!((-z).checked_mul(-z), Some(0x734C_C2F2_A521));
+    assert_eq!((z).checked_mul(z), Some(0x734C_C2F2_A521));
+    assert_eq!((k).checked_mul(k), None);
 }
