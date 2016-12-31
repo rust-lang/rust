@@ -26,7 +26,7 @@ esac
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 case $1 in
     thumb*)
-        RUSTFLAGS="-C debug-assertions=no -C link-arg=-nostartfiles" xargo rustc --no-default-features --features c --target $1 --bin intrinsics -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" xargo rustc --no-default-features --features c --target $1 --bin intrinsics -- -C lto -C link-arg=-nostartfiles
         xargo rustc --no-default-features --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
     *)
@@ -61,18 +61,22 @@ case $TRAVIS_OS_NAME in
         ;;
 esac
 
-# NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
 if [ $TRAVIS_OS_NAME = osx ]; then
-    path=target/${1}/debug/libcompiler_builtins.rlib
+    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
 else
-    path=/target/${1}/debug/libcompiler_builtins.rlib
+    path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
 fi
 
-stdout=$($PREFIX$NM -g --defined-only $path)
+for rlib in $(echo $path); do
+    stdout=$($PREFIX$NM -g --defined-only $rlib)
 
-set +e
-echo "$stdout" | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
+    # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
+    set +e
+    echo "$stdout" | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
 
-if test $? = 0; then
-    exit 1
-fi
+    if test $? = 0; then
+        exit 1
+    fi
+done
+
+true

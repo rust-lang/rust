@@ -1,8 +1,7 @@
 cache: cargo
 dist: trusty
 language: rust
-# NOTE(nightly-2016-12-05) work around for rust-lang/rust#38281
-rust: nightly-2016-12-05
+rust: nightly
 services: docker
 sudo: required
 
