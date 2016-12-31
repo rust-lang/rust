@@ -980,20 +980,51 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     /// Checks whether a type is visibly uninhabited from a particular module.
+    /// # Example
+    /// ```rust
+    /// enum Void {}
+    /// mod a {
+    ///     pub mod b {
+    ///         pub struct SecretlyUninhabited {
+    ///             _priv: !,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// mod c {
+    ///     pub struct AlsoSecretlyUninhabited {
+    ///         _priv: Void,
+    ///     }
+    ///     mod d {
+    ///     }
+    /// }
+    ///
+    /// struct Foo {
+    ///     x: a::b::SecretlyUninhabited,
+    ///     y: c::AlsoSecretlyUninhabited,
+    /// }
+    /// ```
+    /// In this code, the type `Foo` will only be visibly uninhabited inside the
+    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
+    /// contain `Foo`.
+    /// 
+    /// # Example
+    /// ```rust
+    /// let foo_result: Result<T, Foo> = ... ;
+    /// let Ok(t) = foo_result;
+    /// ```
+    /// This code should only compile in modules where the uninhabitedness of Foo is
+    /// visible.
     pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
         let forest = self.uninhabited_from(&mut visited, tcx);
-        forest.contains(tcx, module)
-    }
 
-    /// Checks whether a type is uninhabited.
-    /// Note: just because a type is uninhabited, that doesn't mean that it's
-    /// *visibly* uninhabited outside its module. You sometimes may want
-    /// `is_uninhabited_from` instead.
-    pub fn is_uninhabited_anywhere(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        let mut visited = FxHashSet::default();
-        let node_set = self.uninhabited_from(&mut visited, tcx);
-        !node_set.is_empty()
+        // To check whether this type is uninhabited at all (not just from the
+        // given node) you could check whether the forest is empty.
+        // ```
+        // forest.is_empty()
+        // ```
+        forest.contains(tcx, module)
     }
 
     pub fn is_primitive(&self) -> bool {
