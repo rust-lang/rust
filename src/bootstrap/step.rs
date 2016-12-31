@@ -295,13 +295,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(move |s| {
-                     if s.target.contains("android") {
-                         s.name("android-copy-libs")
-                     } else {
-                         Step::noop()
-                     }
-                 })
+                 .dep(|s| s.name("android-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
                      check::compiletest(build, &s.compiler(), s.target, mode, dir)
@@ -343,6 +337,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(|s| s.name("tool-compiletest").target(s.host))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
+             .dep(|s| s.name("android-copy-libs"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
     }
@@ -386,12 +381,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std_shim") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("android-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("android-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Test, None));
@@ -400,12 +397,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std_shim") {
         rules.bench(&krate.bench_step, path)
              .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("android-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Bench,
                                         Some(&krate.name)));
     }
     rules.bench("bench-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("android-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Bench, None));
@@ -413,18 +412,21 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("test_shim") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("android-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libtest, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("android-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
+             .dep(|s| s.name("android-copy-libs"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, TestKind::Test,
@@ -432,6 +434,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("android-copy-libs"))
          .default(true)
          .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
