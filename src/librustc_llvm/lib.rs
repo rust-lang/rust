@@ -126,11 +126,11 @@ pub enum RustString_opaque {}
 pub type RustStringRef = *mut RustString_opaque;
 type RustStringRepr = *mut RefCell<Vec<u8>>;
 
-/// Appending to a Rust string -- used by raw_rust_string_ostream.
+/// Appending to a Rust string -- used by RawRustStringOstream.
 #[no_mangle]
-pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
-                                                     ptr: *const c_char,
-                                                     size: size_t) {
+pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: RustStringRef,
+                                                 ptr: *const c_char,
+                                                 size: size_t) {
     let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
     let sr = sr as RustStringRepr;
