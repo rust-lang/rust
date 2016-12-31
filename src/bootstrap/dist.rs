@@ -397,6 +397,13 @@ pub fn rust_src(build: &Build, host: &str) {
             }
         }
 
+        // If we're inside the vendor directory then we need to preserve
+        // everything as Cargo's vendoring support tracks all checksums and we
+        // want to be sure we don't accidentally leave out a file.
+        if spath.contains("vendor") {
+            return true
+        }
+
         let excludes = [
             "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules",
             ".gitattributes", ".cvsignore", ".svn", ".arch-ids", "{arch}",
