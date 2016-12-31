@@ -57,12 +57,12 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
 /// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
 ///
 /// In the end, this is just a glorified wrapper around rustdoc!
-pub fn standalone(build: &Build, stage: u32, target: &str) {
-    println!("Documenting stage{} standalone ({})", stage, target);
+pub fn standalone(build: &Build, target: &str) {
+    println!("Documenting standalone ({})", target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
 
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(0, &build.config.build);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
