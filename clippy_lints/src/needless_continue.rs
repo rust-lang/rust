@@ -33,7 +33,6 @@ use syntax::ast;
 use syntax::codemap::{original_sp,DUMMY_SP};
 
 use utils::{in_macro, span_help_and_lint, snippet_block, snippet};
-use self::LintType::*;
 
 /// **What it does:** The lint checks for `if`-statements appearing in loops
 /// that contain a `continue` statement in either their main blocks or their
@@ -117,34 +116,78 @@ impl EarlyLintPass for NeedlessContinue {
     }
 }
 
-/// Given an Expr, returns true if either of the following is true
+/* This lint has to mainly deal with two cases of needless continue statements.
+ *
+ * Case 1 [Continue inside else block]:
+ *
+ *     loop {
+ *         // region A
+ *         if cond {
+ *             // region B
+ *         } else {
+ *             continue;
+ *         }
+ *         // region C
+ *     }
+ *
+ * This code can better be written as follows:
+ *
+ *     loop {
+ *         // region A
+ *         if cond {
+ *             // region B
+ *             // region C
+ *         }
+ *     }
+ *
+ * Case 2 [Continue inside then block]:
+ *
+ *     loop {
+ *       // region A
+ *       if cond {
+ *           continue;
+ *           // potentially more code here.
+ *       } else {
+ *           // region B
+ *       }
+ *       // region C
+ *     }
+ *
+ *
+ * This snippet can be refactored to:
+ *
+ *     loop {
+ *       // region A
+ *       if !cond {
+ *           // region B
+ *           // region C
+ *       }
+ *     }
+ */
+
+/// Given an expression, returns true if either of the following is true
 ///
-/// - The Expr is a `continue` node.
-/// - The Expr node is a block with the first statement being a `continue`.
+/// - The expression is a `continue` node.
+/// - The expression node is a block with the first statement being a `continue`.
 ///
 fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
-    let mut found = false;
     match else_expr.node {
-        ast::ExprKind::Block(ref else_block) => {
-            found = is_first_block_stmt_continue(else_block);
-        },
-        ast::ExprKind::Continue(_) => { found = true },
-        _ => { },
-    };
-    found
+        ast::ExprKind::Block(ref else_block) => is_first_block_stmt_continue(else_block),
+        ast::ExprKind::Continue(_) => true,
+        _ => false,
+    }
 }
 
 fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
-    let mut ret = false;
-    block.stmts.get(0).map(|stmt| {
-        if_let_chain! {[
-            let ast::StmtKind::Semi(ref e) = stmt.node,
-            let ast::ExprKind::Continue(_) = e.node,
-        ], {
-            ret = true;
-        }}
-    });
-    ret
+    block.stmts.get(0).map_or(false, |stmt| match stmt.node {
+        ast::StmtKind::Semi(ref e) |
+        ast::StmtKind::Expr(ref e) => if let ast::ExprKind::Continue(_) = e.node {
+            true
+        } else {
+            false
+        },
+        _ => false,
+    })
 }
 
 /// If `expr` is a loop expression (while/while let/for/loop), calls `func` with
@@ -159,13 +202,13 @@ fn with_loop_block<F>(expr: &ast::Expr, mut func: F) where F: FnMut(&ast::Block)
     }
 }
 
-/// If `stmt` is an if expression node with an else branch, calls func with the
+/// If `stmt` is an if expression node with an `else` branch, calls func with the
 /// following:
 ///
-/// - The if Expr,
-/// - The if condition Expr,
-/// - The then block of this if Expr, and
-/// - The else expr.
+/// - The `if` expression itself,
+/// - The `if` condition expression,
+/// - The `then` block, and
+/// - The `else` expression.
 ///
 fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
         where F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr) {
@@ -188,15 +231,19 @@ enum LintType {
 
 /// Data we pass around for construction of help messages.
 struct LintData<'a> {
-    if_expr:     &'a ast::Expr,    // The `if` expr encountered in the above loop.
-    if_cond:     &'a ast::Expr,    // The condition expression for the above `if`.
-    if_block:    &'a ast::Block,   // The `then` block of the `if` statement.
-    else_expr:   &'a ast::Expr,    /* The `else` block of the `if` statement.
-                                      Note that we only work with `if` exprs that
-                                      have an `else` branch. */
-    stmt_idx:    usize,            /* The 0-based index of the `if` statement in
-                                      the containing loop block. */
-    block_stmts: &'a [ast::Stmt],  // The statements of the loop block.
+    /// The `if` expression encountered in the above loop.
+    if_expr: &'a ast::Expr,
+    /// The condition expression for the above `if`.
+    if_cond: &'a ast::Expr,
+    /// The `then` block of the `if` statement.
+    if_block: &'a ast::Block,
+    /// The `else` block of the `if` statement.
+    /// Note that we only work with `if` exprs that have an `else` branch.
+    else_expr: &'a ast::Expr,
+    /// The 0-based index of the `if` statement in the containing loop block.
+    stmt_idx: usize,
+    /// The statements of the loop block.
+    block_stmts: &'a [ast::Stmt],
 }
 
 const MSG_REDUNDANT_ELSE_BLOCK: &'static str = "This else block is redundant.\n";
@@ -219,12 +266,12 @@ fn emit_warning<'a>(ctx: &EarlyContext,
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
-        ContinueInsideElseBlock => {
+        LintType::ContinueInsideElseBlock => {
             (suggestion_snippet_for_continue_inside_else(ctx, data, header),
              MSG_REDUNDANT_ELSE_BLOCK,
              data.else_expr)
         },
-        ContinueInsideThenBlock => {
+        LintType::ContinueInsideThenBlock => {
             (suggestion_snippet_for_continue_inside_if(ctx, data, header),
              MSG_ELSE_BLOCK_NOT_NEEDED,
              data.if_expr)
@@ -236,7 +283,7 @@ fn emit_warning<'a>(ctx: &EarlyContext,
 fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
                                                 data: &'a LintData,
                                                 header: &str) -> String {
-    let cond_code = &snippet(ctx, data.if_cond.span, "..").into_owned();
+    let cond_code = snippet(ctx, data.if_cond.span, "..");
 
     let if_code   = format!("if {} {{\n    continue;\n}}\n", cond_code);
                                    /*  ^^^^--- Four spaces of indentation. */
@@ -256,14 +303,14 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
                                                    data: &'a LintData,
                                                    header: &str) -> String
 {
-    let cond_code = &snippet(ctx, data.if_cond.span, "..").into_owned();
+    let cond_code = snippet(ctx, data.if_cond.span, "..");
     let mut if_code   = format!("if {} {{\n", cond_code);
 
     // Region B
     let block_code = &snippet(ctx, data.if_block.span, "..").into_owned();
     let block_code = erode_block(block_code);
     let block_code = trim_indent(&block_code, false);
-    let block_code = left_pad_lines_with_spaces(&block_code, 4usize);
+    let block_code = left_pad_lines_with_spaces(&block_code, 4_usize);
 
     if_code.push_str(&block_code);
 
@@ -300,9 +347,9 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
                     block_stmts: &loop_block.stmts,
                 };
                 if needless_continue_in_else(else_expr) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, ContinueInsideElseBlock);
+                    emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
                 } else if is_first_block_stmt_continue(then_block) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, ContinueInsideThenBlock);
+                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
                 }
             });
         }
@@ -361,7 +408,7 @@ fn indent_level(s: &str) -> usize {
     s.chars()
      .enumerate()
      .find(|&(_, c)| !c.is_whitespace())
-     .map_or(0usize, |(i, _)| i)
+     .map_or(0_usize, |(i, _)| i)
 }
 
 /// Trims indentation from a snippet such that the line with the minimum
@@ -372,7 +419,7 @@ fn trim_indent(s: &str, skip_first_line: bool) -> String {
                             .skip(skip_first_line as usize)
                             .map(indent_level)
                             .min()
-                            .unwrap_or(0usize);
+                            .unwrap_or(0_usize);
     let ret = s.lines().map(|line| {
         if is_null(line) {
             String::from(line)
@@ -421,14 +468,14 @@ fn align_two_snippets(s: &str, t: &str) -> String {
                          .rev()
                          .skip_while(|line| line.is_empty() || is_all_whitespace(line))
                          .next()
-                         .map_or(0usize, indent_level);
+                         .map_or(0_usize, indent_level);
 
     // We want to align the first nonempty, non-all-whitespace line of t to
     // have the same indent level as target_ilevel
     let level = t.lines()
                  .skip_while(|line| line.is_empty() || is_all_whitespace(line))
                  .next()
-                 .map_or(0usize, indent_level);
+                 .map_or(0_usize, indent_level);
 
     let add_or_not_remove = target_ilevel > level; /* when true, we add spaces,
                                                       otherwise eat. */
@@ -440,11 +487,14 @@ fn align_two_snippets(s: &str, t: &str) -> String {
     };
 
     let new_t = t.lines()
-                 .filter(|line| !is_null(line))
-                 .map(|line| if add_or_not_remove {
-                     left_pad_with_spaces(line, delta)
-                 } else {
-                     remove_whitespace_from_left(line, delta)
+                 .filter_map(|line| {
+                     if is_null(line) {
+                         None
+                     } else if add_or_not_remove {
+                         Some(left_pad_with_spaces(line, delta))
+                     } else {
+                         Some(remove_whitespace_from_left(line, delta))
+                     }
                  })
                  .collect::<Vec<_>>().join("\n");
 
@@ -452,16 +502,14 @@ fn align_two_snippets(s: &str, t: &str) -> String {
 }
 
 fn align_snippets(xs: &[&str]) -> String {
-    match xs.len() {
-        0 => String::from(""),
-        _ => {
-            let mut ret = String::new();
-            ret.push_str(xs[0]);
-            for x in xs.iter().skip(1usize) {
-                ret = align_two_snippets(&ret, x);
-            }
-            ret
+    if xs.is_empty() {
+        String::from("")
+    } else {
+        let mut ret = xs[0].to_string();
+        for x in xs.iter().skip(1_usize) {
+            ret = align_two_snippets(&ret, x);
         }
+        ret
     }
 }
 
