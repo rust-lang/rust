@@ -5,7 +5,7 @@ name = "compiler_builtins"
 version = "0.1.0"
 
 [build-dependencies]
-rustc-cfg = "0.2.0"
+rustc-cfg = "0.3.0"
 gcc = "0.3.36"
 
 [dev-dependencies]
