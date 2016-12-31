@@ -76,9 +76,9 @@ pub fn cp_r(src: &Path, dst: &Path) {
 /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
 /// when this function is called. Unwanted files or directories can be skipped
 /// by returning `false` from the filter function.
-pub fn cp_filtered<F: Fn(&Path) -> bool>(src: &Path, dst: &Path, filter: &F) {
+pub fn cp_filtered(src: &Path, dst: &Path, filter: &Fn(&Path) -> bool) {
     // Inner function does the actual work
-    fn recurse<F: Fn(&Path) -> bool>(src: &Path, dst: &Path, relative: &Path, filter: &F) {
+    fn recurse(src: &Path, dst: &Path, relative: &Path, filter: &Fn(&Path) -> bool) {
         for f in t!(fs::read_dir(src)) {
             let f = t!(f);
             let path = f.path();

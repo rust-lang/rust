@@ -562,6 +562,7 @@ pub fn distcheck(build: &Build) {
        .current_dir(&dir);
     build.run(&mut cmd);
     build.run(Command::new("./configure")
+                     .args(&build.config.configure_args)
                      .current_dir(&dir));
     build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")
