@@ -33,7 +33,7 @@ pub enum LLVMRustResult {
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,

@@ -20,7 +20,8 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
-use rustc_i128::{i128, u128};
+use rustc_i128::u128;
+use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -1198,20 +1199,25 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max, mut non_zero) = (i128::max_value(),
-                                                            i128::min_value(),
+                    let (mut min, mut max, mut non_zero) = (i64::max_value(),
+                                                            i64::min_value(),
                                                             true);
                     for v in &def.variants {
-                        let x = v.disr_val.to_u128_unchecked() as i128;
+                        let x = match v.disr_val.erase_type() {
+                            ConstInt::InferSigned(i) => i as i64,
+                            ConstInt::Infer(i) => i as u64 as i64,
+                            _ => bug!()
+                        };
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
                     }
 
-                    // FIXME: should take i128?
+                    // FIXME: should handle i128? signed-value based impl is weird and hard to
+                    // grok.
                     let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..],
-                                                              min as i64,
-                                                              max as i64);
+                                                              min,
+                                                              max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
