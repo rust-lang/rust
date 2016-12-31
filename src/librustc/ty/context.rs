@@ -817,10 +817,8 @@ pub trait Lift<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
-        if let Some(&Interned(ty)) = tcx.interners.type_.borrow().get(&self.sty) {
-            if *self as *const _ == ty as *const _ {
-                return Some(ty);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -837,10 +835,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
         if self.len() == 0 {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(&self[..]) {
-            if *self as *const _ == substs as *const _ {
-                return Some(substs);
-            }
+        if tcx.interners.arena.in_arena(&self[..] as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -854,10 +850,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Region {
     type Lifted = &'tcx Region;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Region> {
-        if let Some(&Interned(region)) = tcx.interners.region.borrow().get(*self) {
-            if *self as *const _ == region as *const _ {
-                return Some(region);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -875,10 +869,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
         if self.len() == 0 {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(list)) = tcx.interners.type_list.borrow().get(&self[..]) {
-            if *self as *const _ == list as *const _ {
-                return Some(list);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -896,10 +888,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
         if self.is_empty() {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(eps)) = tcx.interners.existential_predicates.borrow().get(&self[..]) {
-            if *self as *const _ == eps as *const _ {
-                return Some(eps);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -914,10 +904,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a BareFnTy<'a> {
     type Lifted = &'tcx BareFnTy<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<&'tcx BareFnTy<'tcx>> {
-        if let Some(&Interned(fty)) = tcx.interners.bare_fn.borrow().get(*self) {
-            if *self as *const _ == fty as *const _ {
-                return Some(fty);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -1201,7 +1189,7 @@ macro_rules! intern_method {
                     }
                 }
 
-                let i = ($alloc_to_ret)(self.global_interners.arena.$alloc_method(v));
+                let i = ($alloc_to_ret)(self.interners.arena.$alloc_method(v));
                 self.interners.$name.borrow_mut().insert(Interned(i));
                 i
             }

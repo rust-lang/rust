@@ -301,6 +301,17 @@ impl DroplessArena {
         }
     }
 
+    pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
+        let ptr = ptr as *const u8 as *mut u8;
+        for chunk in &*self.chunks.borrow() {
+            if chunk.start() <= ptr && ptr < chunk.end() {
+                return true;
+            }
+        }
+
+        false
+    }
+
     fn align_for<T>(&self) {
         let align = mem::align_of::<T>();
         let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
@@ -330,12 +341,11 @@ impl DroplessArena {
                     }
                 }
             } else {
-                new_capacity = needed_bytes;
+                new_capacity = cmp::max(needed_bytes, PAGE);
             }
             chunk = TypedArenaChunk::<u8>::new(new_capacity);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
-            self.align_for::<T>();
             chunks.push(chunk);
         }
     }
