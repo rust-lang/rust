@@ -61,6 +61,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
@@ -1005,13 +1006,14 @@ impl PrimitiveTypeTable {
         table.intern("i16", TyInt(IntTy::I16));
         table.intern("i32", TyInt(IntTy::I32));
         table.intern("i64", TyInt(IntTy::I64));
+        table.intern("i128", TyInt(IntTy::I128));
         table.intern("str", TyStr);
         table.intern("usize", TyUint(UintTy::Us));
         table.intern("u8", TyUint(UintTy::U8));
         table.intern("u16", TyUint(UintTy::U16));
         table.intern("u32", TyUint(UintTy::U32));
         table.intern("u64", TyUint(UintTy::U64));
-
+        table.intern("u128", TyUint(UintTy::U128));
         table
     }
 
@@ -2308,8 +2310,20 @@ impl<'a> Resolver<'a> {
             PathResult::Module(..) | PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
+                let prim = self.primitive_type_table.primitive_types[&path[0].name];
+                match prim {
+                    TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
+                        if !self.session.features.borrow().i128_type {
+                            emit_feature_err(&self.session.parse_sess,
+                                                "i128_type", span, GateIssue::Language,
+                                                "128-bit type is unstable");
+
+                        }
+                    }
+                    _ => {}
+                }
                 PathResolution {
-                    base_def: Def::PrimTy(self.primitive_type_table.primitive_types[&path[0].name]),
+                    base_def: Def::PrimTy(prim),
                     depth: path.len() - 1,
                 }
             }

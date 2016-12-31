@@ -64,6 +64,8 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice;
 
+use rustc_i128::u128;
+
 bitflags! {
     flags Restrictions: u8 {
         const RESTRICTION_STMT_EXPR         = 1 << 0,
@@ -2044,7 +2046,7 @@ impl<'a> Parser<'a> {
     pub fn mk_lit_u32(&mut self, i: u32, attrs: ThinVec<Attribute>) -> P<Expr> {
         let span = &self.span;
         let lv_lit = P(codemap::Spanned {
-            node: LitKind::Int(i as u64, ast::LitIntType::Unsigned(UintTy::U32)),
+            node: LitKind::Int(i as u128, ast::LitIntType::Unsigned(UintTy::U32)),
             span: *span
         });
 

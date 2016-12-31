@@ -249,6 +249,7 @@ dependencies = [
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_i128 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
@@ -308,6 +309,7 @@ dependencies = [
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -318,6 +320,7 @@ name = "rustc_const_math"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -327,6 +330,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
 ]
 
@@ -373,6 +377,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_i128"
+version = "0.0.0"
+
+[[package]]
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
@@ -380,6 +388,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -393,6 +402,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_eval 0.0.0",
+ "rustc_i128 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -418,6 +428,7 @@ dependencies = [
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_i128 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
@@ -437,6 +448,7 @@ dependencies = [
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_i128 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -519,6 +531,7 @@ dependencies = [
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_i128 0.0.0",
  "rustc_incremental 0.0.0",
  "rustc_llvm 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
@@ -574,6 +587,7 @@ name = "serialize"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_i128 0.0.0",
 ]
 
 [[package]]
@@ -619,6 +633,7 @@ dependencies = [
  "rustc_bitflags 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
  "syntax_pos 0.0.0",
 ]

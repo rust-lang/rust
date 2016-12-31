@@ -20,6 +20,7 @@ use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
+use rustc_i128::{i128, u128};
 
 pub trait Encoder {
     type Error;
@@ -27,11 +28,13 @@ pub trait Encoder {
     // Primitive types:
     fn emit_nil(&mut self) -> Result<(), Self::Error>;
     fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
+    fn emit_u128(&mut self, v: u128) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
     fn emit_u32(&mut self, v: u32) -> Result<(), Self::Error>;
     fn emit_u16(&mut self, v: u16) -> Result<(), Self::Error>;
     fn emit_u8(&mut self, v: u8) -> Result<(), Self::Error>;
     fn emit_isize(&mut self, v: isize) -> Result<(), Self::Error>;
+    fn emit_i128(&mut self, v: i128) -> Result<(), Self::Error>;
     fn emit_i64(&mut self, v: i64) -> Result<(), Self::Error>;
     fn emit_i32(&mut self, v: i32) -> Result<(), Self::Error>;
     fn emit_i16(&mut self, v: i16) -> Result<(), Self::Error>;
@@ -144,11 +147,13 @@ pub trait Decoder {
     // Primitive types:
     fn read_nil(&mut self) -> Result<(), Self::Error>;
     fn read_usize(&mut self) -> Result<usize, Self::Error>;
+    fn read_u128(&mut self) -> Result<u128, Self::Error>;
     fn read_u64(&mut self) -> Result<u64, Self::Error>;
     fn read_u32(&mut self) -> Result<u32, Self::Error>;
     fn read_u16(&mut self) -> Result<u16, Self::Error>;
     fn read_u8(&mut self) -> Result<u8, Self::Error>;
     fn read_isize(&mut self) -> Result<isize, Self::Error>;
+    fn read_i128(&mut self) -> Result<i128, Self::Error>;
     fn read_i64(&mut self) -> Result<i64, Self::Error>;
     fn read_i32(&mut self) -> Result<i32, Self::Error>;
     fn read_i16(&mut self) -> Result<i16, Self::Error>;
@@ -328,6 +333,20 @@ impl Decodable for u64 {
     }
 }
 
+#[cfg(not(stage0))]
+impl Encodable for u128 {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u128(*self)
+    }
+}
+
+#[cfg(not(stage0))]
+impl Decodable for u128 {
+    fn decode<D: Decoder>(d: &mut D) -> Result<u128, D::Error> {
+        d.read_u128()
+    }
+}
+
 impl Encodable for isize {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_isize(*self)
@@ -385,6 +404,20 @@ impl Encodable for i64 {
 impl Decodable for i64 {
     fn decode<D: Decoder>(d: &mut D) -> Result<i64, D::Error> {
         d.read_i64()
+    }
+}
+
+#[cfg(not(stage0))]
+impl Encodable for i128 {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_i128(*self)
+    }
+}
+
+#[cfg(not(stage0))]
+impl Decodable for i128 {
+    fn decode<D: Decoder>(d: &mut D) -> Result<i128, D::Error> {
+        d.read_i128()
     }
 }
 

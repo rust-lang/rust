@@ -79,7 +79,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn immediate(self) -> ValueRef {
         match self.val {
             OperandValue::Immediate(s) => s,
-            _ => bug!()
+            _ => bug!("not immediate: {:?}", self)
         }
     }
 

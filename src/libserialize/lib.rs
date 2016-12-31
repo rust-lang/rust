@@ -44,6 +44,8 @@ Core encoding and decoding interfaces.
 extern crate std_unicode;
 extern crate collections;
 
+extern crate rustc_i128;
+
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
 
 pub use self::serialize::{SpecializationError, SpecializedEncoder, SpecializedDecoder};

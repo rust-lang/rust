@@ -298,6 +298,8 @@ macro_rules! wrapping_impl {
 }
 
 wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+#[cfg(not(stage0))]
+wrapping_impl! { u128 i128 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]

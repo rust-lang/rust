@@ -32,6 +32,8 @@ use syntax::symbol::Symbol;
 use rustc::session::Session;
 use syntax_pos::Span;
 
+use rustc_i128::u128;
+
 use std::cmp::Ordering;
 use std::iter;
 
@@ -1019,7 +1021,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u64 * 2;
+        let total_len = in_len as u128 * 2;
 
         let vector = llargs[2];
 
@@ -1027,7 +1029,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
             .map(|i| {
                 let arg_idx = i;
                 let val = const_get_elt(vector, &[i as libc::c_uint]);
-                match const_to_opt_uint(val) {
+                match const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
                         None
@@ -1167,6 +1169,8 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 // Returns the width of an int TypeVariant, and if it's signed or not
 // Returns None if the type is not an integer
+// FIXME: there’s multiple of this functions, investigate using some of the already existing
+// stuffs.
 fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
         -> Option<(u64, bool)> {
     use rustc::ty::{TyInt, TyUint};
@@ -1184,6 +1188,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
             ast::IntTy::I64 => 64,
+            ast::IntTy::I128 => 128,
         }, true)),
         TyUint(t) => Some((match t {
             ast::UintTy::Us => {
@@ -1198,6 +1203,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,
             ast::UintTy::U64 => 64,
+            ast::UintTy::U128 => 128,
         }, false)),
         _ => None,
     }
