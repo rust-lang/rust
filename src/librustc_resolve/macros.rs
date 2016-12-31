@@ -29,6 +29,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::fold::Folder;
+use syntax::fold;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -116,6 +117,10 @@ impl<'a> base::Resolver for Resolver<'a> {
                     }
                 }
                 path
+            }
+
+            fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+                fold::noop_fold_mac(mac, self)
             }
         }
 
