@@ -1007,7 +1007,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// In this code, the type `Foo` will only be visibly uninhabited inside the
     /// modules b, c and d. This effects pattern-matching on `Foo` or types that
     /// contain `Foo`.
-    /// 
+    ///
     /// # Example
     /// ```rust
     /// let foo_result: Result<T, Foo> = ... ;

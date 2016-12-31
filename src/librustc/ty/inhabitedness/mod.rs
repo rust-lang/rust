@@ -53,7 +53,7 @@ mod def_id_forest;
 //
 // We need this information for pattern-matching on Foo or types that contain
 // Foo.
-// 
+//
 // # Example
 // ```rust
 // let foo_result: Result<T, Foo> = ... ;
