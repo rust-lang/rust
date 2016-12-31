@@ -507,6 +507,10 @@ fn find_tests(dir: &Path,
 pub fn android_copy_libs(build: &Build,
                          compiler: &Compiler,
                          target: &str) {
+    if !target.contains("android") {
+        return
+    }
+
     println!("Android copy libs to emulator ({})", target);
     build.run(Command::new("adb").arg("remount"));
     build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
