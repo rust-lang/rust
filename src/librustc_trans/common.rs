@@ -12,7 +12,6 @@
 
 //! Code that is useful in various trans modules.
 
-use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
@@ -37,7 +36,6 @@ use rustc::hir;
 use libc::{c_uint, c_char};
 use std::borrow::Cow;
 use std::iter;
-use std::ops::Deref;
 use std::ffi::CString;
 
 use syntax::ast;
@@ -235,8 +233,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
-
-    alloca_builder: Builder<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
@@ -247,30 +243,18 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             llfn: llfndecl,
             alloca_insert_pt: None,
             ccx: ccx,
-            alloca_builder: Builder::with_ccx(ccx),
         };
 
-        let val = {
-            let entry_bcx = fcx.build_new_block("entry-block");
-            let val = entry_bcx.load(C_null(Type::i8p(ccx)));
-            fcx.alloca_builder.position_at_start(entry_bcx.llbb());
-            val
-        };
-
+        let entry_bcx = Builder::new_block(fcx.ccx, fcx.llfn, "entry-block");
+        entry_bcx.position_at_start(entry_bcx.llbb());
         // Use a dummy instruction as the insertion point for all allocas.
         // This is later removed in the drop of FunctionContext.
-        fcx.alloca_insert_pt = Some(val);
+        fcx.alloca_insert_pt = Some(entry_bcx.load(C_null(Type::i8p(ccx))));
 
         fcx
     }
 
-    pub fn get_entry_block(&'a self) -> BlockAndBuilder<'a, 'tcx> {
-        BlockAndBuilder::new(unsafe {
-            llvm::LLVMGetFirstBasicBlock(self.llfn)
-        }, self)
-    }
-
-    pub fn new_block(&'a self, name: &str) -> BasicBlockRef {
+    pub fn new_block(&self, name: &str) -> BasicBlockRef {
         unsafe {
             let name = CString::new(name).unwrap();
             llvm::LLVMAppendBasicBlockInContext(
@@ -281,12 +265,14 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn build_new_block(&'a self, name: &str) -> BlockAndBuilder<'a, 'tcx> {
-        BlockAndBuilder::new(self.new_block(name), self)
+    pub fn build_new_block(&self, name: &str) -> Builder<'a, 'tcx> {
+        Builder::new_block(self.ccx, self.llfn, name)
     }
 
-    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
-        self.alloca_builder.dynamic_alloca(ty, name)
+    pub fn get_entry_block(&'a self) -> Builder<'a, 'tcx> {
+        let builder = Builder::with_ccx(self.ccx);
+        builder.position_at_end(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn) });
+        builder
     }
 }
 
@@ -295,65 +281,6 @@ impl<'a, 'tcx> Drop for FunctionContext<'a, 'tcx> {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
         }
-    }
-}
-
-#[must_use]
-pub struct BlockAndBuilder<'a, 'tcx: 'a> {
-    // The BasicBlockRef returned from a call to
-    // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
-    // block to the function pointed to by llfn.  We insert
-    // instructions into that block by way of this block context.
-    // The block pointing to this one in the function's digraph.
-    llbb: BasicBlockRef,
-
-    // The function context for the function to which this block is
-    // attached.
-    fcx: &'a FunctionContext<'a, 'tcx>,
-
-    builder: Builder<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> BlockAndBuilder<'a, 'tcx> {
-    pub fn new(llbb: BasicBlockRef, fcx: &'a FunctionContext<'a, 'tcx>) -> Self {
-        let builder = Builder::with_ccx(fcx.ccx);
-        // Set the builder's position to this block's end.
-        builder.position_at_end(llbb);
-        BlockAndBuilder {
-            llbb: llbb,
-            fcx: fcx,
-            builder: builder,
-        }
-    }
-
-    pub fn at_start<F, R>(&self, f: F) -> R
-        where F: FnOnce(&BlockAndBuilder<'a, 'tcx>) -> R
-    {
-        self.position_at_start(self.llbb);
-        let r = f(self);
-        self.position_at_end(self.llbb);
-        r
-    }
-
-    pub fn fcx(&self) -> &'a FunctionContext<'a, 'tcx> {
-        self.fcx
-    }
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.ccx.tcx()
-    }
-    pub fn sess(&self) -> &'a Session {
-        self.ccx.sess()
-    }
-
-    pub fn llbb(&self) -> BasicBlockRef {
-        self.llbb
-    }
-}
-
-impl<'a, 'tcx> Deref for BlockAndBuilder<'a, 'tcx> {
-    type Target = Builder<'a, 'tcx>;
-    fn deref(&self) -> &Self::Target {
-        &self.builder
     }
 }
 
@@ -725,7 +652,7 @@ pub fn langcall(tcx: TyCtxt,
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef
 ) -> ValueRef {
@@ -736,7 +663,7 @@ pub fn build_unchecked_lshift<'a, 'tcx>(
 }
 
 pub fn build_unchecked_rshift<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
+    bcx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -749,13 +676,13 @@ pub fn build_unchecked_rshift<'a, 'tcx>(
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
     bcx.and(rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     llty: Type,
     mask_llty: Type,
     invert: bool

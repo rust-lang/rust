@@ -13,6 +13,7 @@ use llvm::{ValueRef, get_params};
 use rustc::traits;
 use callee::{Callee, CalleeData};
 use common::*;
+use builder::Builder;
 use consts;
 use declare;
 use glue;
@@ -27,7 +28,7 @@ use rustc::ty;
 const VTABLE_OFFSET: usize = 3;
 
 /// Extracts a method from a trait object's vtable, at the specified index.
-pub fn get_virtual_method<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+pub fn get_virtual_method<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                     llvtable: ValueRef,
                                     vtable_index: usize)
                                     -> ValueRef {

@@ -24,10 +24,11 @@ use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
-use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
+use builder::Builder;
+use common::{self, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
-use common::{const_to_opt_u128};
+use common::const_to_opt_u128;
 use consts;
 use monomorphize::{self, Instance};
 use type_of;
@@ -900,7 +901,7 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_constant(&mut self,
-                          bcx: &BlockAndBuilder<'a, 'tcx>,
+                          bcx: &Builder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {

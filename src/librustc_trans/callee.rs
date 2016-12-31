@@ -23,7 +23,6 @@ use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
 use base;
-use base::*;
 use common::{
     self, CrateContext, FunctionContext, SharedCrateContext
 };
@@ -348,7 +347,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llenv = if env_arg.is_indirect() {
         llargs[self_idx]
     } else {
-        let scratch = alloc_ty(&bcx, closure_ty, "self");
+        let scratch = bcx.alloca_ty(closure_ty, "self");
         let mut llarg_idx = self_idx;
         env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
         scratch
@@ -365,12 +364,12 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.schedule_drop_mem(MaybeSizedValue::sized(llenv), closure_ty);
+    let self_scope = fcx.schedule_drop_mem(&bcx, MaybeSizedValue::sized(llenv), closure_ty);
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
     if let Some(landing_pad) = self_scope.landing_pad {
-        let normal_bcx = bcx.fcx().build_new_block("normal-return");
+        let normal_bcx = bcx.build_new_block("normal-return");
         llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {
