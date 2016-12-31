@@ -13,6 +13,7 @@ crate-type = ["dylib", "rlib"]
 alloc = { path = "../liballoc" }
 alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
+alloc_frame = { path = "../liballoc_frame" }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 collections = { path = "../libcollections" }

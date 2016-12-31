@@ -637,6 +637,7 @@ opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
 opt vendor 0 "enable usage of vendored Rust crates"
+opt rustc-alloc-frame 0 "enable the frame allocator in rustc"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -1063,6 +1064,12 @@ then
     CFG_USING_LIBCPP="1"
 else
     CFG_USING_LIBCPP="0"
+fi
+
+# Disable jemalloc if using alloc frame.
+if [ -n "$CFG_ENABLE_RUSTC_ALLOC_FRAME" ]
+then
+    CFG_DISABLE_JEMALLOC=1
 fi
 
 # Same with jemalloc.  save the setting here.

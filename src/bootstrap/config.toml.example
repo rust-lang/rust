@@ -155,6 +155,12 @@
 # Whether or not jemalloc is built with its debug option set
 #debug-jemalloc = false
 
+# Whether or not the frame allocator is built and enabled in std
+#use-alloc-frame = false
+
+# Whether or not the frame allocator is built and enabled in rustc
+#rustc-use-alloc-frame = false
+
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 

@@ -82,6 +82,7 @@ pub struct Config {
     pub backtrace: bool, // support for RUST_BACKTRACE
 
     // misc
+    pub rustc_alloc_frame: bool,
     pub channel: String,
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
@@ -180,6 +181,7 @@ struct Rust {
     debuginfo_lines: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
+    rustc_alloc_frame: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
     default_ar: Option<String>,
@@ -207,6 +209,7 @@ impl Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.use_jemalloc = true;
+        config.rustc_alloc_frame = false;
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
@@ -306,6 +309,7 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
+            set(&mut config.rustc_alloc_frame, rust.rustc_alloc_frame);
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
@@ -391,6 +395,7 @@ impl Config {
                 ("DEBUGINFO_LINES", self.rust_debuginfo_lines),
                 ("JEMALLOC", self.use_jemalloc),
                 ("DEBUG_JEMALLOC", self.debug_jemalloc),
+                ("RUSTC_ALLOC_FRAME", self.rustc_alloc_frame),
                 ("RPATH", self.rust_rpath),
                 ("OPTIMIZE_TESTS", self.rust_optimize_tests),
                 ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),

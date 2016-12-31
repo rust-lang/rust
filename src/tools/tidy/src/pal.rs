@@ -28,6 +28,7 @@
 //! - core may not have platform-specific code
 //! - liballoc_system may have platform-specific code
 //! - liballoc_jemalloc may have platform-specific code
+//! - liballoc_frame may have platform-specific code
 //! - libpanic_abort may have platform-specific code
 //! - libpanic_unwind may have platform-specific code
 //! - libunwind may have platform-specific code
@@ -53,6 +54,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     // std crates
     "src/liballoc_jemalloc",
     "src/liballoc_system",
+    "src/liballoc_frame",
     "src/liblibc",
     "src/libpanic_abort",
     "src/libpanic_unwind",
