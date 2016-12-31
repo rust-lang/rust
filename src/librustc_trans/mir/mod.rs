@@ -205,6 +205,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     sig: &ty::FnSig<'tcx>,
     abi: Abi,
 ) {
+    debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir);
     let bcx = fcx.get_entry_block();

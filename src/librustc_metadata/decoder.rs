@@ -43,6 +43,7 @@ use syntax::attr;
 use syntax::ast::{self, NodeId};
 use syntax::codemap;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
+use rustc_i128::{u128, i128};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -211,12 +212,14 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
     decoder_methods! {
         read_nil -> ();
 
+        read_u128 -> u128;
         read_u64 -> u64;
         read_u32 -> u32;
         read_u16 -> u16;
         read_u8 -> u8;
         read_usize -> usize;
 
+        read_i128 -> i128;
         read_i64 -> i64;
         read_i32 -> i32;
         read_i16 -> i16;

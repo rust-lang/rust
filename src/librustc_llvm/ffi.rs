@@ -33,7 +33,7 @@ pub enum LLVMRustResult {
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
@@ -578,9 +578,12 @@ extern "C" {
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
+    pub fn LLVMConstIntOfArbitraryPrecision(IntTy: TypeRef, Wn: c_uint, Ws: *const u64) -> ValueRef;
     pub fn LLVMConstReal(RealTy: TypeRef, N: f64) -> ValueRef;
     pub fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> c_ulonglong;
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
+    pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
+                                  high: *mut u64, low: *mut u64) -> bool;
 
 
     // Operations on composite constants

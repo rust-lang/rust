@@ -145,6 +145,8 @@ macro_rules! zero_one_impl {
     )*)
 }
 zero_one_impl! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+#[cfg(not(stage0))]
+zero_one_impl! { u128 i128 }
 
 macro_rules! zero_one_impl_float {
     ($($t:ty)*) => ($(
@@ -191,7 +193,7 @@ macro_rules! int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn min_value() -> Self {
-            (-1 as Self) << ($BITS - 1)
+            !0 ^ ((!0 as $UnsignedT) >> 1) as Self
         }
 
         /// Returns the largest value that can be represented by this integer type.
@@ -1298,6 +1300,16 @@ impl i64 {
         intrinsics::mul_with_overflow }
 }
 
+// SNAP
+#[cfg(not(stage0))]
+#[lang = "i128"]
+impl i128 {
+    int_impl! { i128, u128, 128,
+        intrinsics::add_with_overflow,
+        intrinsics::sub_with_overflow,
+        intrinsics::mul_with_overflow }
+}
+
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
@@ -2330,6 +2342,20 @@ impl u64 {
         intrinsics::mul_with_overflow }
 }
 
+// SNAP
+#[cfg(not(stage0))]
+#[lang = "u128"]
+impl u128 {
+    uint_impl! { u128, 128,
+        intrinsics::ctpop,
+        intrinsics::ctlz,
+        intrinsics::cttz,
+        intrinsics::bswap,
+        intrinsics::add_with_overflow,
+        intrinsics::sub_with_overflow,
+        intrinsics::mul_with_overflow }
+}
+
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
@@ -2543,6 +2569,8 @@ macro_rules! from_str_radix_int_impl {
     )*}
 }
 from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
+#[cfg(not(stage0))]
+from_str_radix_int_impl! { u128 i128 }
 
 /// The error type returned when a checked integral type conversion fails.
 #[unstable(feature = "try_from", issue = "33417")]
@@ -2567,7 +2595,7 @@ impl fmt::Display for TryFromIntError {
     }
 }
 
-macro_rules! same_sign_from_int_impl {
+macro_rules! same_sign_try_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
@@ -2586,16 +2614,51 @@ macro_rules! same_sign_from_int_impl {
     )*}
 }
 
-same_sign_from_int_impl!(u64, u8, u8, u16, u32, u64, usize);
-same_sign_from_int_impl!(i64, i8, i8, i16, i32, i64, isize);
-same_sign_from_int_impl!(u64, u16, u8, u16, u32, u64, usize);
-same_sign_from_int_impl!(i64, i16, i8, i16, i32, i64, isize);
-same_sign_from_int_impl!(u64, u32, u8, u16, u32, u64, usize);
-same_sign_from_int_impl!(i64, i32, i8, i16, i32, i64, isize);
-same_sign_from_int_impl!(u64, u64, u8, u16, u32, u64, usize);
-same_sign_from_int_impl!(i64, i64, i8, i16, i32, i64, isize);
-same_sign_from_int_impl!(u64, usize, u8, u16, u32, u64, usize);
-same_sign_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u8, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i8, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u16, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i16, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u32, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i32, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u64, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i64, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, usize, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
+
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, u8, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, i8, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, u16, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, i16, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, u32, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, i32, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, u64, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, i64, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, u128, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, i128, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(u128, usize, u8, u16, u32, u64, u128, usize);
+#[cfg(not(stage0))]
+same_sign_try_from_int_impl!(i128, isize, i8, i16, i32, i64, i128, isize);
 
 macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
@@ -2629,11 +2692,29 @@ macro_rules! cross_sign_from_int_impl {
     )*}
 }
 
+#[cfg(stage0)]
 cross_sign_from_int_impl!(u8, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
 cross_sign_from_int_impl!(u16, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
 cross_sign_from_int_impl!(u32, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
 cross_sign_from_int_impl!(u64, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
 cross_sign_from_int_impl!(usize, i8, i16, i32, i64, isize);
+
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(u8, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(u16, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(u32, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(u64, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(u128, i8, i16, i32, i64, i128, isize);
+#[cfg(not(stage0))]
+cross_sign_from_int_impl!(usize, i8, i16, i32, i64, i128, isize);
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
@@ -2662,6 +2743,8 @@ macro_rules! doit {
     })*)
 }
 doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+#[cfg(not(stage0))]
+doit! { i128 u128 }
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
@@ -2795,27 +2878,51 @@ macro_rules! impl_from {
 impl_from! { u8, u16 }
 impl_from! { u8, u32 }
 impl_from! { u8, u64 }
+#[cfg(not(stage0))]
+impl_from! { u8, u128 }
 impl_from! { u8, usize }
 impl_from! { u16, u32 }
 impl_from! { u16, u64 }
+#[cfg(not(stage0))]
+impl_from! { u16, u128 }
 impl_from! { u32, u64 }
+#[cfg(not(stage0))]
+impl_from! { u32, u128 }
+#[cfg(not(stage0))]
+impl_from! { u64, u128 }
 
 // Signed -> Signed
 impl_from! { i8, i16 }
 impl_from! { i8, i32 }
 impl_from! { i8, i64 }
+#[cfg(not(stage0))]
+impl_from! { i8, i128 }
 impl_from! { i8, isize }
 impl_from! { i16, i32 }
 impl_from! { i16, i64 }
+#[cfg(not(stage0))]
+impl_from! { i16, i128 }
 impl_from! { i32, i64 }
+#[cfg(not(stage0))]
+impl_from! { i32, i128 }
+#[cfg(not(stage0))]
+impl_from! { i64, i128 }
 
 // Unsigned -> Signed
 impl_from! { u8, i16 }
 impl_from! { u8, i32 }
 impl_from! { u8, i64 }
+#[cfg(not(stage0))]
+impl_from! { u8, i128 }
 impl_from! { u16, i32 }
 impl_from! { u16, i64 }
+#[cfg(not(stage0))]
+impl_from! { u16, i128 }
 impl_from! { u32, i64 }
+#[cfg(not(stage0))]
+impl_from! { u32, i128 }
+#[cfg(not(stage0))]
+impl_from! { u64, i128 }
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.

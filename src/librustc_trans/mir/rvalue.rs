@@ -711,11 +711,13 @@ fn get_overflow_intrinsic(oop: OverflowOp, bcx: &BlockAndBuilder, ty: Ty) -> Val
             TyInt(I16) => "llvm.sadd.with.overflow.i16",
             TyInt(I32) => "llvm.sadd.with.overflow.i32",
             TyInt(I64) => "llvm.sadd.with.overflow.i64",
+            TyInt(I128) => "llvm.sadd.with.overflow.i128",
 
             TyUint(U8) => "llvm.uadd.with.overflow.i8",
             TyUint(U16) => "llvm.uadd.with.overflow.i16",
             TyUint(U32) => "llvm.uadd.with.overflow.i32",
             TyUint(U64) => "llvm.uadd.with.overflow.i64",
+            TyUint(U128) => "llvm.uadd.with.overflow.i128",
 
             _ => unreachable!(),
         },
@@ -724,11 +726,13 @@ fn get_overflow_intrinsic(oop: OverflowOp, bcx: &BlockAndBuilder, ty: Ty) -> Val
             TyInt(I16) => "llvm.ssub.with.overflow.i16",
             TyInt(I32) => "llvm.ssub.with.overflow.i32",
             TyInt(I64) => "llvm.ssub.with.overflow.i64",
+            TyInt(I128) => "llvm.ssub.with.overflow.i128",
 
             TyUint(U8) => "llvm.usub.with.overflow.i8",
             TyUint(U16) => "llvm.usub.with.overflow.i16",
             TyUint(U32) => "llvm.usub.with.overflow.i32",
             TyUint(U64) => "llvm.usub.with.overflow.i64",
+            TyUint(U128) => "llvm.usub.with.overflow.i128",
 
             _ => unreachable!(),
         },
@@ -737,11 +741,13 @@ fn get_overflow_intrinsic(oop: OverflowOp, bcx: &BlockAndBuilder, ty: Ty) -> Val
             TyInt(I16) => "llvm.smul.with.overflow.i16",
             TyInt(I32) => "llvm.smul.with.overflow.i32",
             TyInt(I64) => "llvm.smul.with.overflow.i64",
+            TyInt(I128) => "llvm.smul.with.overflow.i128",
 
             TyUint(U8) => "llvm.umul.with.overflow.i8",
             TyUint(U16) => "llvm.umul.with.overflow.i16",
             TyUint(U32) => "llvm.umul.with.overflow.i32",
             TyUint(U64) => "llvm.umul.with.overflow.i64",
+            TyUint(U128) => "llvm.umul.with.overflow.i128",
 
             _ => unreachable!(),
         },

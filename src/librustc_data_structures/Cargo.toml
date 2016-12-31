@@ -11,3 +11,4 @@ crate-type = ["dylib"]
 [dependencies]
 log = { path = "../liblog" }
 serialize = { path = "../libserialize" }
+rustc_i128 = { path = "../librustc_i128" }

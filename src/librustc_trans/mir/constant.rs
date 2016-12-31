@@ -13,7 +13,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::{ErrKind, ConstEvalErr, report_const_eval_err};
 use rustc_const_math::ConstInt::*;
 use rustc_const_math::ConstFloat::*;
-use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstMathErr};
+use rustc_const_math::{ConstInt, ConstMathErr};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
@@ -25,16 +25,15 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
 use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
-use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral};
+use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
-use common::{const_to_opt_int, const_to_opt_uint};
+use common::{const_to_opt_u128};
 use consts;
 use monomorphize::{self, Instance};
 use type_of;
 use type_::Type;
 use value::Value;
 
-use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
@@ -42,6 +41,8 @@ use std::ptr;
 
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
+
+use rustc_i128::{u128, i128};
 
 /// A sized constant rvalue.
 /// The LLVM type might not be the same for a single Rust type,
@@ -75,6 +76,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
             ConstVal::Integral(I32(v)) => C_integral(Type::i32(ccx), v as u64, true),
             ConstVal::Integral(I64(v)) => C_integral(Type::i64(ccx), v as u64, true),
+            ConstVal::Integral(I128(v)) => C_big_integral(Type::i128(ccx), v as u128, true),
             ConstVal::Integral(Isize(v)) => {
                 let i = v.as_i64(ccx.tcx().sess.target.int_type);
                 C_integral(Type::int(ccx), i as u64, true)
@@ -83,6 +85,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(U16(v)) => C_integral(Type::i16(ccx), v as u64, false),
             ConstVal::Integral(U32(v)) => C_integral(Type::i32(ccx), v as u64, false),
             ConstVal::Integral(U64(v)) => C_integral(Type::i64(ccx), v, false),
+            ConstVal::Integral(U128(v)) => C_big_integral(Type::i128(ccx), v, false),
             ConstVal::Integral(Usize(v)) => {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 C_integral(Type::int(ccx), u, false)
@@ -428,7 +431,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::ProjectionElem::Index(ref index) => {
                         let llindex = self.const_operand(index, span)?.llval;
 
-                        let iv = if let Some(iv) = common::const_to_opt_uint(llindex) {
+                        let iv = if let Some(iv) = common::const_to_opt_u128(llindex, false) {
                             iv
                         } else {
                             span_bug!(span, "index is not an integer-constant expression")
@@ -436,7 +439,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                         // Produce an undef instead of a LLVM assertion on OOB.
                         let len = common::const_to_uint(tr_base.len(self.ccx));
-                        let llelem = if iv < len {
+                        let llelem = if iv < len as u128 {
                             const_get_elt(base.llval, &[iv as u32])
                         } else {
                             C_undef(type_of::type_of(self.ccx, projected_ty))
@@ -794,49 +797,14 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
 fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
     match t.sty {
-        ty::TyInt(int_type) => const_to_opt_int(value).and_then(|input| match int_type {
-            ast::IntTy::I8 => {
-                assert_eq!(input as i8 as i64, input);
-                Some(ConstInt::I8(input as i8))
-            },
-            ast::IntTy::I16 => {
-                assert_eq!(input as i16 as i64, input);
-                Some(ConstInt::I16(input as i16))
-            },
-            ast::IntTy::I32 => {
-                assert_eq!(input as i32 as i64, input);
-                Some(ConstInt::I32(input as i32))
-            },
-            ast::IntTy::I64 => {
-                Some(ConstInt::I64(input))
-            },
-            ast::IntTy::Is => {
-                ConstIsize::new(input, tcx.sess.target.int_type)
-                    .ok().map(ConstInt::Isize)
-            },
-        }),
-        ty::TyUint(uint_type) => const_to_opt_uint(value).and_then(|input| match uint_type {
-            ast::UintTy::U8 => {
-                assert_eq!(input as u8 as u64, input);
-                Some(ConstInt::U8(input as u8))
-            },
-            ast::UintTy::U16 => {
-                assert_eq!(input as u16 as u64, input);
-                Some(ConstInt::U16(input as u16))
-            },
-            ast::UintTy::U32 => {
-                assert_eq!(input as u32 as u64, input);
-                Some(ConstInt::U32(input as u32))
-            },
-            ast::UintTy::U64 => {
-                Some(ConstInt::U64(input))
-            },
-            ast::UintTy::Us => {
-                ConstUsize::new(input, tcx.sess.target.uint_type)
-                    .ok().map(ConstInt::Usize)
-            },
-        }),
-        _ => None,
+        ty::TyInt(int_type) => const_to_opt_u128(value, true)
+            .and_then(|input| ConstInt::new_signed(input as i128, int_type,
+                                                   tcx.sess.target.int_type)),
+        ty::TyUint(uint_type) => const_to_opt_u128(value, false)
+            .and_then(|input| ConstInt::new_unsigned(input, uint_type,
+                                                     tcx.sess.target.uint_type)),
+        _ => None
+
     }
 }
 

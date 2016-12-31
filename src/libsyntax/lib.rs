@@ -46,8 +46,9 @@ pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_i128;
 
+extern crate serialize as rustc_serialize; // used by deriving
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing

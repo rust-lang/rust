@@ -346,11 +346,12 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = match (const_to_opt_uint(sized_align), const_to_opt_uint(unsized_align)) {
+            let align = match (const_to_opt_u128(sized_align, false),
+                               const_to_opt_u128(unsized_align, false)) {
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
-                    C_uint(ccx, std::cmp::max(sized_align, unsized_align))
+                    C_uint(ccx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => bcx.select(bcx.icmp(llvm::IntUGT, sized_align, unsized_align),
                                 sized_align,
