@@ -12,7 +12,7 @@ use std::panic;
 
 use errors::FatalError;
 use proc_macro::{TokenStream, __internal};
-use syntax::ast::{self, ItemKind, Attribute};
+use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
@@ -27,6 +27,9 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
             mark_used(attr);
             mark_known(attr);
         }
+    }
+
+    fn visit_mac(&mut self, _mac: &Mac) {
     }
 }
 
