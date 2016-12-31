@@ -25,5 +25,4 @@ struct S {
     x: int!(),
 }
 
-fn main() {
-}
+fn main() {}
