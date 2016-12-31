@@ -25,6 +25,7 @@
 extern crate libc;
 
 use core::ptr;
+use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
@@ -47,8 +48,8 @@ const MIN_ALIGN: usize = 16;
 const CHUNK_SIZE: usize = 4096 * 16;
 const CHUNK_ALIGN: usize = 4096;
 
-static mut HEAP: *mut u8 = ptr::null_mut();
-static mut HEAP_LEFT: usize = 0;
+static HEAP: AtomicPtr<u8> = AtomicPtr::new(ptr::null_mut());
+static HEAP_LEFT: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
 pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
@@ -56,17 +57,20 @@ pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
     let new_size = (size + new_align - 1) & !(new_align - 1);
 
     unsafe {
-        if new_size < HEAP_LEFT {
-            HEAP_LEFT -= new_size;
-            let p = HEAP;
-            HEAP = HEAP.offset(new_size as isize);
-            return p;
-        } else if new_size > CHUNK_SIZE {
+        if new_size > CHUNK_SIZE {
             return imp::allocate(size, align);
+        }
+        
+        let heap = HEAP.load(Ordering::SeqCst);
+        let heap_left = HEAP_LEFT.load(Ordering::SeqCst);
+        if new_size < heap_left {
+            HEAP_LEFT.store(heap_left - new_size, Ordering::SeqCst);
+            HEAP.store(heap.offset(new_size as isize), Ordering::SeqCst);
+            return heap;
         } else {
-            HEAP_LEFT = CHUNK_SIZE - new_size;
+            HEAP_LEFT.store(CHUNK_SIZE - new_size, Ordering::SeqCst);
             let p = imp::allocate(CHUNK_SIZE, CHUNK_ALIGN);
-            HEAP = p.offset(new_size as isize);
+            HEAP.store(p.offset(new_size as isize), Ordering::SeqCst);
             return p;
         }
     }
