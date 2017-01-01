@@ -110,10 +110,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let val = adt::MaybeSizedValue::sized(dest.llval);
+                                let val = LvalueRef::new_sized_ty(dest.llval, dest_ty);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr(&bcx, dest_ty, val, disr,
-                                    field_index);
+                                let lldest_i = adt::trans_field_ptr(&bcx, val, disr, field_index);
                                 self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }

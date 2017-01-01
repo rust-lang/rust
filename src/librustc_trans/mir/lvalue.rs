@@ -44,6 +44,18 @@ impl<'tcx> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
+    pub fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef::new_sized(llval, LvalueTy::from_ty(ty))
+    }
+
+    pub fn new_unsized_ty(llval: ValueRef, llextra: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef {
+            llval: llval,
+            llextra: llextra,
+            ty: LvalueTy::from_ty(ty),
+        }
+    }
+
     pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         let ty = self.ty.to_ty(ccx.tcx());
         match ty.sty {
@@ -54,6 +66,10 @@ impl<'tcx> LvalueRef<'tcx> {
             }
             _ => bug!("unexpected type `{}` in LvalueRef::len", ty)
         }
+    }
+
+    pub fn has_extra(&self) -> bool {
+        !self.llextra.is_null()
     }
 }
 
@@ -132,11 +148,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let discr = discr as u64;
                         let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
                         let base = if is_sized {
-                            adt::MaybeSizedValue::sized(tr_base.llval)
+                            LvalueRef::new_sized_ty(tr_base.llval, base_ty)
                         } else {
-                            adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
+                            LvalueRef::new_unsized_ty(tr_base.llval, tr_base.llextra, base_ty)
                         };
-                        let llprojected = adt::trans_field_ptr(bcx, base_ty, base, Disr(discr),
+                        let llprojected = adt::trans_field_ptr(bcx, base, Disr(discr),
                             field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()

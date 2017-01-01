@@ -16,6 +16,7 @@ use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType};
 use adt;
+use mir::lvalue::LvalueRef;
 use base::*;
 use common::*;
 use declare;
@@ -549,10 +550,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
-                        let arg = adt::MaybeSizedValue::sized(llarg);
+                        let arg = LvalueRef::new_sized_ty(llarg, arg_type);
                         (0..contents.len())
                             .map(|i| {
-                                bcx.load(adt::trans_field_ptr(bcx, arg_type, arg, Disr(0), i))
+                                bcx.load(adt::trans_field_ptr(bcx, arg, Disr(0), i))
                             })
                             .collect()
                     }

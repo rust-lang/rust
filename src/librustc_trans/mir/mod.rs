@@ -38,7 +38,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 pub use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
-use self::lvalue::{LvalueRef};
+use self::lvalue::LvalueRef;
 use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
@@ -578,7 +578,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-mod lvalue;
+pub mod lvalue;
 mod operand;
 mod rvalue;
 mod statement;

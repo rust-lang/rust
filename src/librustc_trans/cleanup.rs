@@ -20,12 +20,12 @@
 
 use llvm::BasicBlockRef;
 use base;
-use adt::MaybeSizedValue;
+use mir::lvalue::LvalueRef;
+use rustc::mir::tcx::LvalueTy;
 use builder::Builder;
 use common::Funclet;
 use glue;
 use type_::Type;
-use rustc::ty::Ty;
 
 pub struct CleanupScope<'tcx> {
     // Cleanup to run upon scope exit.
@@ -37,14 +37,13 @@ pub struct CleanupScope<'tcx> {
 
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
-    val: MaybeSizedValue,
-    ty: Ty<'tcx>,
+    val: LvalueRef<'tcx>,
     skip_dtor: bool,
 }
 
 impl<'tcx> DropValue<'tcx> {
     fn trans<'a>(&self, funclet: Option<&'a Funclet>, bcx: &Builder<'a, 'tcx>) {
-        glue::call_drop_glue(bcx, self.val, self.ty, self.skip_dtor, funclet)
+        glue::call_drop_glue(bcx, self.val, self.skip_dtor, funclet)
     }
 
     /// Creates a landing pad for the top scope. The landing pad will perform all cleanups necessary
@@ -96,12 +95,16 @@ impl<'tcx> DropValue<'tcx> {
 impl<'a, 'tcx> CleanupScope<'tcx> {
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
     pub fn schedule_drop_mem(
-        bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
+        bcx: &Builder<'a, 'tcx>, val: LvalueRef<'tcx>
     ) -> CleanupScope<'tcx> {
-        if !bcx.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+        if let LvalueTy::Downcast { .. } = val.ty {
+            bug!("Cannot drop downcast ty yet");
+        }
+        if !bcx.ccx.shared().type_needs_drop(val.ty.to_ty(bcx.tcx())) {
+            return CleanupScope::noop();
+        }
         let drop = DropValue {
             val: val,
-            ty: ty,
             skip_dtor: false,
         };
 
@@ -114,15 +117,19 @@ impl<'a, 'tcx> CleanupScope<'tcx> {
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
     pub fn schedule_drop_adt_contents(
-        bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
+        bcx: &Builder<'a, 'tcx>, val: LvalueRef<'tcx>
     ) -> CleanupScope<'tcx> {
+        if let LvalueTy::Downcast { .. } = val.ty {
+            bug!("Cannot drop downcast ty yet");
+        }
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
-        if !bcx.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+        if !bcx.ccx.shared().type_needs_drop(val.ty.to_ty(bcx.tcx())) {
+            return CleanupScope::noop();
+        }
 
         let drop = DropValue {
             val: val,
-            ty: ty,
             skip_dtor: true,
         };
 

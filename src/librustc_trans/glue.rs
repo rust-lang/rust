@@ -22,7 +22,8 @@ use rustc::ty::subst::{Substs};
 use rustc::traits;
 use rustc::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
-use adt::{self, MaybeSizedValue};
+use mir::lvalue::LvalueRef;
+use adt;
 use base::*;
 use callee::Callee;
 use cleanup::CleanupScope;
@@ -39,11 +40,8 @@ use builder::Builder;
 
 use syntax_pos::DUMMY_SP;
 
-pub fn trans_exchange_free_ty<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
-    ptr: MaybeSizedValue,
-    content_ty: Ty<'tcx>
-) {
+pub fn trans_exchange_free_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) {
+    let content_ty = ptr.ty.to_ty(bcx.tcx());
     let def_id = langcall(bcx.tcx(), None, "", BoxFreeFnLangItem);
     let substs = bcx.tcx().mk_substs(iter::once(Kind::from(content_ty)));
     let callee = Callee::def(bcx.ccx, def_id, substs);
@@ -51,7 +49,7 @@ pub fn trans_exchange_free_ty<'a, 'tcx>(
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
 
     let llret = bcx.call(callee.reify(bcx.ccx),
-        &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize], None);
+        &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize], None);
     fn_ty.apply_attrs_callsite(llret);
 }
 
@@ -94,17 +92,17 @@ pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'t
     }
 }
 
-fn drop_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, args: MaybeSizedValue, t: Ty<'tcx>) {
-    call_drop_glue(bcx, args, t, false, None)
+fn drop_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, args: LvalueRef<'tcx>) {
+    call_drop_glue(bcx, args, false, None)
 }
 
 pub fn call_drop_glue<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
-    mut args: MaybeSizedValue,
-    t: Ty<'tcx>,
+    mut args: LvalueRef<'tcx>,
     skip_dtor: bool,
     funclet: Option<&'a Funclet>,
 ) {
+    let t = args.ty.to_ty(bcx.tcx());
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("call_drop_glue(t={:?}, skip_dtor={})", t, skip_dtor);
     if bcx.ccx.shared().type_needs_drop(t) {
@@ -117,11 +115,11 @@ pub fn call_drop_glue<'a, 'tcx>(
         let glue = get_drop_glue_core(ccx, g);
         let glue_type = get_drop_glue_type(ccx.shared(), t);
         if glue_type != t {
-            args.value = bcx.pointercast(args.value, type_of(ccx, glue_type).ptr_to());
+            args.llval = bcx.pointercast(args.llval, type_of(ccx, glue_type).ptr_to());
         }
 
         // No drop-hint ==> call standard drop glue
-        bcx.call(glue, &[args.value, args.meta][..1 + args.has_meta() as usize],
+        bcx.call(glue, &[args.llval, args.llextra][..1 + args.has_extra() as usize],
             funclet.map(|b| b.bundle()));
     }
 }
@@ -194,9 +192,9 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
 
     let value = get_param(llfn, 0);
     let ptr = if ccx.shared().type_is_sized(t) {
-        MaybeSizedValue::sized(value)
+        LvalueRef::new_sized_ty(value, t)
     } else {
-        MaybeSizedValue::unsized_(value, get_param(llfn, 1))
+        LvalueRef::new_unsized_ty(value, get_param(llfn, 1), t)
     };
 
     let skip_dtor = match g {
@@ -211,14 +209,14 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
             let ptr = if !bcx.ccx.shared().type_is_sized(content_ty) {
-                let llbox = bcx.load(get_dataptr(&bcx, ptr.value));
-                let info = bcx.load(get_meta(&bcx, ptr.value));
-                MaybeSizedValue::unsized_(llbox, info)
+                let llbox = bcx.load(get_dataptr(&bcx, ptr.llval));
+                let info = bcx.load(get_meta(&bcx, ptr.llval));
+                LvalueRef::new_unsized_ty(llbox, info, content_ty)
             } else {
-                MaybeSizedValue::sized(bcx.load(ptr.value))
+                LvalueRef::new_sized_ty(bcx.load(ptr.llval), content_ty)
             };
-            drop_ty(&bcx, ptr, content_ty);
-            trans_exchange_free_ty(&bcx, ptr, content_ty);
+            drop_ty(&bcx, ptr);
+            trans_exchange_free_ty(&bcx, ptr);
             bcx
         }
         ty::TyDynamic(..) => {
@@ -226,8 +224,8 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
             assert!(!skip_dtor);
-            let dtor = bcx.load(ptr.meta);
-            bcx.call(dtor, &[ptr.value], None);
+            let dtor = bcx.load(ptr.llextra);
+            bcx.call(dtor, &[ptr.llval], None);
             bcx
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
@@ -245,7 +243,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // Issue #23611: schedule cleanup of contents, re-inspecting the
             // discriminant (if any) in case of variant swap in drop code.
             let contents_scope = if !shallow_drop {
-                CleanupScope::schedule_drop_adt_contents(&bcx, ptr, t)
+                CleanupScope::schedule_drop_adt_contents(&bcx, ptr)
             } else {
                 CleanupScope::noop()
             };
@@ -262,7 +260,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
             let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
             let llret;
-            let args = &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize];
+            let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
             if let Some(landing_pad) = contents_scope.landing_pad {
                 let normal_bcx = bcx.build_new_block("normal-return");
                 llret = bcx.invoke(callee.reify(ccx), args, normal_bcx.llbb(), landing_pad, None);
@@ -279,7 +277,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
         }
         _ => {
             if bcx.ccx.shared().type_needs_drop(t) {
-                drop_structural_ty(bcx, ptr, t)
+                drop_structural_ty(bcx, ptr)
             } else {
                 bcx
             }
@@ -396,60 +394,57 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 }
 
 // Iterates through the elements of a structural type, dropping them.
-fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
-                                ptr: MaybeSizedValue,
-                                t: Ty<'tcx>)
-                                -> Builder<'a, 'tcx> {
+fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> Builder<'a, 'tcx> {
     fn iter_variant<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
-                              t: Ty<'tcx>,
-                              av: adt::MaybeSizedValue,
+                              av: LvalueRef<'tcx>,
                               variant: &'tcx ty::VariantDef,
                               substs: &Substs<'tcx>) {
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
-            let field_ptr = adt::trans_field_ptr(&cx, t, av, Disr::from(variant.disr_val), i);
-            drop_ty(&cx, MaybeSizedValue::sized(field_ptr), arg);
+            let field_ptr = adt::trans_field_ptr(&cx, av, Disr::from(variant.disr_val), i);
+            drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg));
         }
     }
 
     let mut cx = cx;
+    let t = ptr.ty.to_ty(cx.tcx());
     match t.sty {
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
-                let llupvar = adt::trans_field_ptr(&cx, t, ptr, Disr(0), i);
-                drop_ty(&cx, MaybeSizedValue::sized(llupvar), upvar_ty);
+                let llupvar = adt::trans_field_ptr(&cx, ptr, Disr(0), i);
+                drop_ty(&cx, LvalueRef::new_sized_ty(llupvar, upvar_ty));
             }
         }
         ty::TyArray(_, n) => {
-            let base = get_dataptr(&cx, ptr.value);
+            let base = get_dataptr(&cx, ptr.llval);
             let len = C_uint(cx.ccx, n);
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, base, unit_ty, len,
-                |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
+                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty)));
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::slice_for_each(&cx, ptr.value, unit_ty, ptr.meta,
-                |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
+            cx = tvec::slice_for_each(&cx, ptr.llval, unit_ty, ptr.llextra,
+                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty)));
         }
         ty::TyTuple(ref args) => {
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(&cx, t, ptr, Disr(0), i);
-                drop_ty(&cx, MaybeSizedValue::sized(llfld_a), *arg);
+                let llfld_a = adt::trans_field_ptr(&cx, ptr, Disr(0), i);
+                drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg));
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
                 let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let llfld_a = adt::trans_field_ptr(&cx, t, ptr, Disr::from(discr), i);
+                    let llfld_a = adt::trans_field_ptr(&cx, ptr, Disr::from(discr), i);
                     let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
-                        MaybeSizedValue::sized(llfld_a)
+                        LvalueRef::new_sized_ty(llfld_a, field_ty)
                     } else {
-                        MaybeSizedValue::unsized_(llfld_a, ptr.meta)
+                        LvalueRef::new_unsized_ty(llfld_a, ptr.llextra, field_ty)
                     };
-                    drop_ty(&cx, ptr, field_ty);
+                    drop_ty(&cx, ptr);
                 }
             }
             AdtKind::Union => {
@@ -461,16 +456,16 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
                 // NB: we must hit the discriminant first so that structural
                 // comparison know not to proceed when the discriminants differ.
 
-                match adt::trans_switch(&cx, t, ptr.value, false) {
+                match adt::trans_switch(&cx, t, ptr.llval, false) {
                     (adt::BranchKind::Single, None) => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            iter_variant(&cx, t, ptr, &adt.variants[0], substs);
+                            iter_variant(&cx, ptr, &adt.variants[0], substs);
                         }
                     }
                     (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
                         let tcx = cx.tcx();
-                        drop_ty(&cx, MaybeSizedValue::sized(lldiscrim_a), tcx.types.isize);
+                        drop_ty(&cx, LvalueRef::new_sized_ty(lldiscrim_a, tcx.types.isize));
 
                         // Create a fall-through basic block for the "else" case of
                         // the switch instruction we're about to generate. Note that
@@ -496,7 +491,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
                             let variant_cx = cx.build_new_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
-                            iter_variant(&variant_cx, t, ptr, variant, substs);
+                            iter_variant(&variant_cx, ptr, variant, substs);
                             variant_cx.br(next_cx.llbb());
                         }
                         cx = next_cx;
