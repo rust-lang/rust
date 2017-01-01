@@ -31,7 +31,6 @@ use syntax::symbol::keywords;
 use syntax::abi::Abi;
 
 use std::iter;
-use std::ffi::CString;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -218,17 +217,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // Allocate a `Block` for every basic block
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
-            let name = if bb == mir::START_BLOCK {
-                CString::new("start").unwrap()
+            if bb == mir::START_BLOCK {
+                bcx.build_new_block("start").llbb()
             } else {
-                CString::new(format!("{:?}", bb)).unwrap()
-            };
-            unsafe {
-                llvm::LLVMAppendBasicBlockInContext(
-                    ccx.llcx(),
-                    llfn,
-                    name.as_ptr()
-                )
+                bcx.build_new_block(&format!("{:?}", bb)).llbb()
             }
         }).collect();
 
