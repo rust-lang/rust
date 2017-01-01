@@ -14,12 +14,13 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
 
+use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -103,6 +104,158 @@ pub enum PatternKind<'tcx> {
         slice: Option<Pattern<'tcx>>,
         suffix: Vec<Pattern<'tcx>>,
     },
+}
+
+fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
+    match *value {
+        ConstVal::Float(ref x) => write!(f, "{}", x),
+        ConstVal::Integral(ref i) => write!(f, "{}", i),
+        ConstVal::Str(ref s) => write!(f, "{:?}", &s[..]),
+        ConstVal::ByteStr(ref b) => write!(f, "{:?}", &b[..]),
+        ConstVal::Bool(b) => write!(f, "{:?}", b),
+        ConstVal::Char(c) => write!(f, "{:?}", c),
+        ConstVal::Struct(_) |
+        ConstVal::Tuple(_) |
+        ConstVal::Function(_) |
+        ConstVal::Array(..) |
+        ConstVal::Repeat(..) |
+        ConstVal::Dummy => bug!("{:?} not printable in a pattern", value)
+    }
+}
+
+impl<'tcx> fmt::Display for Pattern<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self.kind {
+            PatternKind::Wild => write!(f, "_"),
+            PatternKind::Binding { mutability, name, mode, ref subpattern, .. } => {
+                let is_mut = match mode {
+                    BindingMode::ByValue => mutability == Mutability::Mut,
+                    BindingMode::ByRef(_, bk) => {
+                        write!(f, "ref ")?;
+                        bk == BorrowKind::Mut
+                    }
+                };
+                if is_mut {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{}", name)?;
+                if let Some(ref subpattern) = *subpattern {
+                    write!(f, " @ {}", subpattern)?;
+                }
+                Ok(())
+            }
+            PatternKind::Variant { ref subpatterns, .. } |
+            PatternKind::Leaf { ref subpatterns } => {
+                let variant = match *self.kind {
+                    PatternKind::Variant { adt_def, variant_index, .. } => {
+                        Some(&adt_def.variants[variant_index])
+                    }
+                    _ => if let ty::TyAdt(adt, _) = self.ty.sty {
+                        Some(adt.struct_variant())
+                    } else {
+                        None
+                    }
+                };
+
+                let mut first = true;
+                let mut start_or_continue = || if first { first = false; "" } else { ", " };
+
+                if let Some(variant) = variant {
+                    write!(f, "{}", variant.name)?;
+
+                    // Only for TyAdt we can have `S {...}`,
+                    // which we handle separately here.
+                    if variant.ctor_kind == CtorKind::Fictive {
+                        write!(f, " {{ ")?;
+
+                        let mut printed = 0;
+                        for p in subpatterns {
+                            if let PatternKind::Wild = *p.pattern.kind {
+                                continue;
+                            }
+                            let name = variant.fields[p.field.index()].name;
+                            write!(f, "{}{}: {}", start_or_continue(), name, p.pattern)?;
+                            printed += 1;
+                        }
+
+                        if printed < variant.fields.len() {
+                            write!(f, "{}..", start_or_continue())?;
+                        }
+
+                        return write!(f, " }}");
+                    }
+                }
+
+                let num_fields = variant.map_or(subpatterns.len(), |v| v.fields.len());
+                if num_fields != 0 || variant.is_none() {
+                    write!(f, "(")?;
+                    for i in 0..num_fields {
+                        write!(f, "{}", start_or_continue())?;
+
+                        // Common case: the field is where we expect it.
+                        if let Some(p) = subpatterns.get(i) {
+                            if p.field.index() == i {
+                                write!(f, "{}", p.pattern)?;
+                                continue;
+                            }
+                        }
+
+                        // Otherwise, we have to go looking for it.
+                        if let Some(p) = subpatterns.iter().find(|p| p.field.index() == i) {
+                            write!(f, "{}", p.pattern)?;
+                        } else {
+                            write!(f, "_")?;
+                        }
+                    }
+                    write!(f, ")")?;
+                }
+
+                Ok(())
+            }
+            PatternKind::Deref { ref subpattern } => {
+                match self.ty.sty {
+                    ty::TyBox(_) => write!(f, "box ")?,
+                    ty::TyRef(_, mt) => {
+                        write!(f, "&")?;
+                        if mt.mutbl == hir::MutMutable {
+                            write!(f, "mut ")?;
+                        }
+                    }
+                    _ => bug!("{} is a bad Deref pattern type", self.ty)
+                }
+                write!(f, "{}", subpattern)
+            }
+            PatternKind::Constant { ref value } => {
+                print_const_val(value, f)
+            }
+            PatternKind::Range { ref lo, ref hi } => {
+                print_const_val(lo, f)?;
+                write!(f, "...")?;
+                print_const_val(hi, f)
+            }
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } |
+            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
+                let mut first = true;
+                let mut start_or_continue = || if first { first = false; "" } else { ", " };
+                write!(f, "[")?;
+                for p in prefix {
+                    write!(f, "{}{}", start_or_continue(), p)?;
+                }
+                if let Some(ref slice) = *slice {
+                    write!(f, "{}", start_or_continue())?;
+                    match *slice.kind {
+                        PatternKind::Wild => {}
+                        _ => write!(f, "{}", slice)?
+                    }
+                    write!(f, "..")?;
+                }
+                for p in suffix {
+                    write!(f, "{}{}", start_or_continue(), p)?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
 }
 
 pub struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
