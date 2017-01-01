@@ -13,20 +13,20 @@ osx_image: xcode8.2
 matrix:
   include:
     # Linux builders, all docker images
-    - env: IMAGE=arm-android
-    - env: IMAGE=cross
-    - env: IMAGE=dist-arm-unknown-linux-gnueabi
-    - env: IMAGE=dist-x86_64-unknown-freebsd
-    - env: IMAGE=i686-gnu
+    - env: IMAGE=arm-android DEPLOY=1
+    - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=dist-arm-unknown-linux-gnueabi DEPLOY=1
+    - env: IMAGE=dist-x86_64-unknown-freebsd DEPLOY=1
+    - env: IMAGE=i686-gnu DEPLOY=1
     - env: IMAGE=i686-gnu-nopt
-    - env: IMAGE=x86_64-gnu
+    - env: IMAGE=x86_64-gnu DEPLOY=1
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
-    - env: IMAGE=x86_64-musl
+    - env: IMAGE=x86_64-musl DEPLOY=1
     - env: IMAGE=x86_64-gnu-distcheck
 
     # OSX builders
@@ -39,9 +39,10 @@ matrix:
         curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
           tar xJf - -C /usr/local/bin --strip-components=1
     - env: >
-        RUST_CHECK_TARGET=check
+        SCRIPT="./x.py test && ./x.py dist"
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
+        DEPLOY=1
       os: osx
       install: *osx_install_sccache
     - env: >
@@ -51,9 +52,10 @@ matrix:
       os: osx
       install: *osx_install_sccache
     - env: >
-        RUST_CHECK_TARGET=
+        RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS=--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios
         SRC=.
+        DEPLOY=1
       os: osx
       install: *osx_install_sccache
 
@@ -91,3 +93,29 @@ notifications:
 cache:
   directories:
     - $HOME/docker
+
+before_deploy:
+  - mkdir -p deploy/$TRAVIS_COMMIT
+  - >
+      if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
+          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'shasum -a 256 -b "{}" > "{}.sha256"' \;;
+      else
+          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
+          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'sha256sum -b "{}" > "{}.sha256"' \;;
+      fi
+
+deploy:
+  - provider: s3
+    bucket: rust-lang-ci
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds
+    acl: public_read
+    region: us-east-1
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+    on:
+      branch: auto
+      condition: $DEPLOY = 1

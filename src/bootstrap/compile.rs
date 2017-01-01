@@ -16,7 +16,6 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
-use std::cmp;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
@@ -59,7 +58,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     }
 
     build.run(&mut cargo);
-    update_mtime(&libstd_stamp(build, &compiler, target));
+    update_mtime(build, &libstd_stamp(build, &compiler, target));
 }
 
 /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -145,7 +144,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
-    update_mtime(&libtest_stamp(build, compiler, target));
+    update_mtime(build, &libtest_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for libtest
@@ -390,26 +389,39 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
 }
 
 /// Updates the mtime of a stamp file if necessary, only changing it if it's
-/// older than some other file in the same directory.
+/// older than some other library file in the same directory.
 ///
 /// We don't know what file Cargo is going to output (because there's a hash in
 /// the file name) but we know where it's going to put it. We use this helper to
 /// detect changes to that output file by looking at the modification time for
 /// all files in a directory and updating the stamp if any are newer.
-fn update_mtime(path: &Path) {
-    let mut max = None;
-    if let Ok(entries) = path.parent().unwrap().join("deps").read_dir() {
-        for entry in entries.map(|e| t!(e)) {
-            if t!(entry.file_type()).is_file() {
-                let meta = t!(entry.metadata());
-                let time = FileTime::from_last_modification_time(&meta);
-                max = cmp::max(max, Some(time));
-            }
-        }
-    }
+///
+/// Note that we only consider Rust libraries as that's what we're interested in
+/// propagating changes from. Files like executables are tracked elsewhere.
+fn update_mtime(build: &Build, path: &Path) {
+    let entries = match path.parent().unwrap().join("deps").read_dir() {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+    let files = entries.map(|e| t!(e)).filter(|e| t!(e.file_type()).is_file());
+    let files = files.filter(|e| {
+        let filename = e.file_name();
+        let filename = filename.to_str().unwrap();
+        filename.ends_with(".rlib") ||
+            filename.ends_with(".lib") ||
+            is_dylib(&filename)
+    });
+    let max = files.max_by_key(|entry| {
+        let meta = t!(entry.metadata());
+        FileTime::from_last_modification_time(&meta)
+    });
+    let max = match max {
+        Some(max) => max,
+        None => return,
+    };
 
-    if !max.is_none() && max <= Some(mtime(path)) {
-        return
+    if mtime(&max.path()) > mtime(path) {
+        build.verbose(&format!("updating {:?} as {:?} changed", path, max.path()));
+        t!(File::create(path));
     }
-    t!(File::create(path));
 }
