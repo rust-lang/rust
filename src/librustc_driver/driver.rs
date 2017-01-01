@@ -19,7 +19,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, Resolutions};
+use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::util::common::time;
 use rustc::util::nodemap::{NodeSet, NodeMap};
 use rustc_borrowck as borrowck;
@@ -55,6 +55,7 @@ use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
+use arena::DroplessArena;
 
 use derive_registrar;
 
@@ -123,7 +124,8 @@ pub fn compile_input(sess: &Session,
 
         write_out_deps(sess, &outputs, &crate_name);
 
-        let arenas = ty::CtxtArenas::new();
+        let arena = DroplessArena::new();
+        let arenas = GlobalArenas::new();
 
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
@@ -138,6 +140,7 @@ pub fn compile_input(sess: &Session,
                                                                   sess,
                                                                   outdir,
                                                                   output,
+                                                                  &arena,
                                                                   &arenas,
                                                                   &cstore,
                                                                   &hir_map,
@@ -164,6 +167,7 @@ pub fn compile_input(sess: &Session,
                                     hir_map,
                                     analysis,
                                     resolutions,
+                                    &arena,
                                     &arenas,
                                     &crate_name,
                                     |tcx, analysis, incremental_hashes_map, result| {
@@ -331,7 +335,8 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
-    pub arenas: Option<&'tcx ty::CtxtArenas<'tcx>>,
+    pub arena: Option<&'tcx DroplessArena>,
+    pub arenas: Option<&'tcx GlobalArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub ast_map: Option<&'a hir_map::Map<'tcx>>,
@@ -351,6 +356,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             session: session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
+            arena: None,
             arenas: None,
             krate: None,
             registry: None,
@@ -405,7 +411,8 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 session: &'tcx Session,
                                 out_dir: &'a Option<PathBuf>,
                                 out_file: &'a Option<PathBuf>,
-                                arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                arena: &'tcx DroplessArena,
+                                arenas: &'tcx GlobalArenas<'tcx>,
                                 cstore: &'a CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
                                 analysis: &'a ty::CrateAnalysis<'static>,
@@ -416,6 +423,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 -> Self {
         CompileState {
             crate_name: Some(crate_name),
+            arena: Some(arena),
             arenas: Some(arenas),
             cstore: Some(cstore),
             ast_map: Some(hir_map),
@@ -800,7 +808,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis<'tcx>,
                                                resolutions: Resolutions,
-                                               arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                               arena: &'tcx DroplessArena,
+                                               arenas: &'tcx GlobalArenas<'tcx>,
                                                name: &str,
                                                f: F)
                                                -> Result<R, usize>
@@ -858,6 +867,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     TyCtxt::create_and_enter(sess,
                              arenas,
+                             arena,
                              resolutions,
                              named_region_map,
                              hir_map,

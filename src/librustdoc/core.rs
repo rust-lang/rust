@@ -15,7 +15,7 @@ use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::{Def, ExportMap};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, Ty};
+use rustc::ty::{self, TyCtxt, GlobalArenas, Ty};
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
@@ -37,6 +37,7 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 use html::render::RenderInfo;
+use arena::DroplessArena;
 
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
@@ -160,13 +161,15 @@ pub fn run_core(search_paths: SearchPaths,
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
-    let arenas = ty::CtxtArenas::new();
+    let arena = DroplessArena::new();
+    let arenas = GlobalArenas::new();
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      hir_map,
                                                      analysis,
                                                      resolutions,
+                                                     &arena,
                                                      &arenas,
                                                      &name,
                                                      |tcx, analysis, _, result| {
