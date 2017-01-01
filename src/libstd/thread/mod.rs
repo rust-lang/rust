@@ -648,6 +648,23 @@ pub fn park_timeout(dur: Duration) {
 /// A `ThreadId` is an opaque object that has a unique value for each thread
 /// that creates one. `ThreadId`s do not correspond to a thread's system-
 /// designated identifier.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(thread_id)]
+///
+/// use std::thread;
+///
+/// let handler = thread::Builder::new()
+///     .spawn(|| {
+///         let thread = thread::current();
+///         let thread_id = thread.id();
+///     })
+///     .unwrap();
+///
+/// handler.join().unwrap();
+/// ```
 #[unstable(feature = "thread_id", issue = "21507")]
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub struct ThreadId(u64);
@@ -700,6 +717,22 @@ struct Inner {
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
+///
+/// # Examples
+///
+/// ```
+/// use std::thread;
+///
+/// let handler = thread::Builder::new()
+///     .name("foo".into())
+///     .spawn(|| {
+///         let thread = thread::current();
+///         println!("thread name: {}", thread.name().unwrap());
+///     })
+///     .unwrap();
+///
+/// handler.join().unwrap();
+/// ```
 pub struct Thread {
     inner: Arc<Inner>,
 }
@@ -723,6 +756,21 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let handler = thread::Builder::new()
+    ///     .spawn(|| {
+    ///         let thread = thread::current();
+    ///         thread.unpark();
+    ///     })
+    ///     .unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();
@@ -733,6 +781,23 @@ impl Thread {
     }
 
     /// Gets the thread's unique identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_id)]
+    ///
+    /// use std::thread;
+    ///
+    /// let handler = thread::Builder::new()
+    ///     .spawn(|| {
+    ///         let thread = thread::current();
+    ///         println!("thread id: {:?}", thread.id());
+    ///     })
+    ///     .unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[unstable(feature = "thread_id", issue = "21507")]
     pub fn id(&self) -> ThreadId {
         self.inner.id
