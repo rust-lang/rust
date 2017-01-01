@@ -1301,6 +1301,11 @@ trait SplitIter: DoubleEndedIterator {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function.
+///
+/// This struct is created by the [`split`] method on [slices].
+///
+/// [`split`]: ../../std/primitive.slice.html#method.split
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
@@ -1387,6 +1392,11 @@ impl<'a, T, P> FusedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
+///
+/// This struct is created by the [`split_mut`] method on [slices].
+///
+/// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a mut [T],
@@ -1512,6 +1522,11 @@ impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+///
+/// This struct is created by the [`splitn`] method on [slices].
+///
+/// [`splitn`]: ../../std/primitive.slice.html#method.splitn
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
@@ -1529,6 +1544,11 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for SplitN<'a, T, P> where P: FnMut(&
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+///
+/// This struct is created by the [`rsplitn`] method on [slices].
+///
+/// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
@@ -1545,6 +1565,11 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for RSplitN<'a, T, P> where P: FnMut(
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+///
+/// This struct is created by the [`splitn_mut`] method on [slices].
+///
+/// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
@@ -1562,6 +1587,11 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for SplitNMut<'a, T, P> where P: FnMu
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+///
+/// This struct is created by the [`rsplitn_mut`] method on [slices].
+///
+/// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
+/// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
@@ -1607,6 +1637,11 @@ forward_iterator! { SplitNMut: T, &'a mut [T] }
 forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
+///
+/// This struct is created by the [`windows`] method on [slices].
+///
+/// [`windows`]: ../../std/primitive.slice.html#method.windows
+/// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T:'a> {
@@ -1704,6 +1739,11 @@ impl<'a, T> FusedIterator for Windows<'a, T> {}
 ///
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
+///
+/// This struct is created by the [`chunks`] method on [slices].
+///
+/// [`chunks`]: ../../std/primitive.slice.html#method.chunks
+/// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
@@ -1808,6 +1848,11 @@ impl<'a, T> FusedIterator for Chunks<'a, T> {}
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
+///
+/// This struct is created by the [`chunks_mut`] method on [slices].
+///
+/// [`chunks_mut`]: ../../std/primitive.slice.html#method.chunks_mut
+/// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ChunksMut<'a, T:'a> {
