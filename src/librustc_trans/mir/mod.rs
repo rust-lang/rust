@@ -326,7 +326,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
-            let bcx = mircx.build_block(bb);
+            let bcx = mircx.get_builder(bb);
             bcx.set_personality_fn(mircx.ccx.eh_personality());
             if base::wants_msvc_seh(ccx.sess()) {
                 return Some(Funclet::new(bcx.cleanup_pad(None, &[])));

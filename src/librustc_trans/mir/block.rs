@@ -44,7 +44,7 @@ use super::operand::OperandValue::{Pair, Ref, Immediate};
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock,
         funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
-        let mut bcx = self.build_block(bb);
+        let mut bcx = self.get_builder(bb);
         let data = &self.mir[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
@@ -75,7 +75,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
         };
 
-        let llblock = |this: &mut Self, bcx: &Builder, target: mir::BasicBlock| {
+        let llblock = |this: &mut Self, target: mir::BasicBlock| {
             let lltarget = this.blocks[target];
 
             if let Some(cp) = cleanup_pad {
@@ -85,7 +85,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                         debug!("llblock: creating cleanup trampoline for {:?}", target);
                         let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
-                        let trampoline = bcx.build_new_block(name);
+                        let trampoline = this.new_block(name);
                         trampoline.cleanup_ret(cp, Some(lltarget));
                         trampoline.llbb()
                     }
@@ -139,8 +139,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::If { ref cond, targets: (true_bb, false_bb) } => {
                 let cond = self.trans_operand(&bcx, cond);
 
-                let lltrue = llblock(self, &bcx, true_bb);
-                let llfalse = llblock(self, &bcx, false_bb);
+                let lltrue = llblock(self, true_bb);
+                let llfalse = llblock(self, false_bb);
                 bcx.cond_br(cond.immediate(), lltrue, llfalse);
             }
 
@@ -159,7 +159,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // code. This is especially helpful in cases like an if-let on a huge enum.
                     // Note: This optimization is only valid for exhaustive matches.
                     Some((&&bb, &c)) if c > targets.len() / 2 => {
-                        (Some(bb), llblock(self, &bcx, bb))
+                        (Some(bb), llblock(self, bb))
                     }
                     // We're generating an exhaustive switch, so the else branch
                     // can't be hit.  Branching to an unreachable instruction
@@ -170,7 +170,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, &target) in adt_def.variants.iter().zip(targets) {
                     if default_bb != Some(target) {
-                        let llbb = llblock(self, &bcx, target);
+                        let llbb = llblock(self, target);
                         let llval = adt::trans_case(&bcx, ty, Disr::from(adt_variant.disr_val));
                         bcx.add_case(switch, llval, llbb)
                     }
@@ -181,10 +181,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (otherwise, targets) = targets.split_last().unwrap();
                 let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
                 let discr = base::to_immediate(&bcx, discr, switch_ty);
-                let switch = bcx.switch(discr, llblock(self, &bcx, *otherwise), values.len());
+                let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
                     let val = Const::from_constval(bcx.ccx, value.clone(), switch_ty);
-                    let llbb = llblock(self, &bcx, *target);
+                    let llbb = llblock(self, *target);
                     bcx.add_case(switch, val.llval, llbb)
                 }
             }
@@ -261,7 +261,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         drop_fn,
                         args,
                         self.blocks[target],
-                        llblock(self, &bcx, unwind),
+                        llblock(self, unwind),
                         cleanup_bundle
                     );
                 } else {
@@ -301,8 +301,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx, expected)], None);
 
                 // Create the failure block and the conditional branch to it.
-                let lltarget = llblock(self, &bcx, target);
-                let panic_block = bcx.build_new_block("panic");
+                let lltarget = llblock(self, target);
+                let panic_block = self.new_block("panic");
                 if expected {
                     bcx.cond_br(cond, lltarget, panic_block.llbb());
                 } else {
@@ -382,7 +382,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bcx.invoke(llfn,
                                &args,
                                self.unreachable_block(),
-                               llblock(self, &bcx, unwind),
+                               llblock(self, unwind),
                                cleanup_bundle);
                 } else {
                     bcx.call(llfn, &args, cleanup_bundle);
@@ -580,12 +580,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let invokeret = bcx.invoke(fn_ptr,
                                                &llargs,
                                                ret_bcx,
-                                               llblock(self, &bcx, cleanup),
+                                               llblock(self, cleanup),
                                                cleanup_bundle);
                     fn_ty.apply_attrs_callsite(invokeret);
 
                     if let Some((_, target)) = *destination {
-                        let ret_bcx = self.build_block(target);
+                        let ret_bcx = self.get_builder(target);
                         ret_bcx.position_at_start(ret_bcx.llbb());
                         self.set_debug_loc(&ret_bcx, terminator.source_info);
                         let op = OperandRef {
@@ -791,9 +791,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return self.blocks[target_bb];
         }
 
-        let target = self.build_block(target_bb);
+        let target = self.get_builder(target_bb);
 
-        let bcx = target.build_new_block("cleanup");
+        let bcx = self.new_block("cleanup");
         self.landing_pads[target_bb] = Some(bcx.llbb());
 
         let ccx = bcx.ccx;
@@ -809,14 +809,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     fn unreachable_block(&mut self) -> BasicBlockRef {
         self.unreachable_block.unwrap_or_else(|| {
-            let bl = self.build_block(mir::START_BLOCK).build_new_block("unreachable");
+            let bl = self.new_block("unreachable");
             bl.unreachable();
             self.unreachable_block = Some(bl.llbb());
             bl.llbb()
         })
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
+    pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
+        Builder::new_block(self.ccx, self.llfn, name)
+    }
+
+    pub fn get_builder(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
         let builder = Builder::with_ccx(self.ccx);
         builder.position_at_end(self.blocks[bb]);
         builder
