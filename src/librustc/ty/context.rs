@@ -39,7 +39,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
-use arena::TypedArena;
+use arena::{TypedArena, DroplessArena};
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
@@ -55,16 +55,9 @@ use syntax::symbol::{Symbol, keywords};
 use hir;
 
 /// Internal storage
-pub struct CtxtArenas<'tcx> {
+pub struct GlobalArenas<'tcx> {
     // internings
-    type_: TypedArena<TyS<'tcx>>,
-    type_list: TypedArena<Ty<'tcx>>,
-    substs: TypedArena<Kind<'tcx>>,
-    bare_fn: TypedArena<BareFnTy<'tcx>>,
-    region: TypedArena<Region>,
-    stability: TypedArena<attr::Stability>,
     layout: TypedArena<Layout>,
-    existential_predicates: TypedArena<ExistentialPredicate<'tcx>>,
 
     // references
     generics: TypedArena<ty::Generics<'tcx>>,
@@ -73,29 +66,21 @@ pub struct CtxtArenas<'tcx> {
     mir: TypedArena<RefCell<Mir<'tcx>>>,
 }
 
-impl<'tcx> CtxtArenas<'tcx> {
-    pub fn new() -> CtxtArenas<'tcx> {
-        CtxtArenas {
-            type_: TypedArena::new(),
-            type_list: TypedArena::new(),
-            substs: TypedArena::new(),
-            bare_fn: TypedArena::new(),
-            region: TypedArena::new(),
-            stability: TypedArena::new(),
+impl<'tcx> GlobalArenas<'tcx> {
+    pub fn new() -> GlobalArenas<'tcx> {
+        GlobalArenas {
             layout: TypedArena::new(),
-            existential_predicates: TypedArena::new(),
-
             generics: TypedArena::new(),
             trait_def: TypedArena::new(),
             adt_def: TypedArena::new(),
-            mir: TypedArena::new()
+            mir: TypedArena::new(),
         }
     }
 }
 
 pub struct CtxtInterners<'tcx> {
-    /// The arenas that types etc are allocated from.
-    arenas: &'tcx CtxtArenas<'tcx>,
+    /// The arena that types, regions, etc are allocated from
+    arena: &'tcx DroplessArena,
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
@@ -104,22 +89,18 @@ pub struct CtxtInterners<'tcx> {
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
     bare_fn: RefCell<FxHashSet<Interned<'tcx, BareFnTy<'tcx>>>>,
     region: RefCell<FxHashSet<Interned<'tcx, Region>>>,
-    stability: RefCell<FxHashSet<&'tcx attr::Stability>>,
-    layout: RefCell<FxHashSet<&'tcx Layout>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
-    fn new(arenas: &'tcx CtxtArenas<'tcx>) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
-            arenas: arenas,
+            arena: arena,
             type_: RefCell::new(FxHashSet()),
             type_list: RefCell::new(FxHashSet()),
             substs: RefCell::new(FxHashSet()),
             bare_fn: RefCell::new(FxHashSet()),
             region: RefCell::new(FxHashSet()),
-            stability: RefCell::new(FxHashSet()),
-            layout: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
         }
     }
@@ -158,7 +139,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                     let ty_struct: TyS<'gcx> = unsafe {
                         mem::transmute(ty_struct)
                     };
-                    let ty: Ty<'gcx> = interner.arenas.type_.alloc(ty_struct);
+                    let ty: Ty<'gcx> = interner.arena.alloc(ty_struct);
                     global_interner.unwrap().insert(Interned(ty));
                     return ty;
                 }
@@ -174,7 +155,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             }
 
             // Don't be &mut TyS.
-            let ty: Ty<'tcx> = self.arenas.type_.alloc(ty_struct);
+            let ty: Ty<'tcx> = self.arena.alloc(ty_struct);
             interner.insert(Interned(ty));
             ty
         };
@@ -391,6 +372,7 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
+    global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
 
     pub specializes_cache: RefCell<traits::SpecializesCache>,
@@ -586,6 +568,10 @@ pub struct GlobalCtxt<'tcx> {
     /// Map from function to the `#[derive]` mode that it's defining. Only used
     /// by `proc-macro` crates.
     pub derive_macros: RefCell<NodeMap<Symbol>>,
+
+    stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
+
+    layout_interner: RefCell<FxHashSet<&'tcx Layout>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -649,15 +635,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn alloc_generics(self, generics: ty::Generics<'gcx>)
                           -> &'gcx ty::Generics<'gcx> {
-        self.global_interners.arenas.generics.alloc(generics)
+        self.global_arenas.generics.alloc(generics)
     }
 
     pub fn alloc_mir(self, mir: Mir<'gcx>) -> &'gcx RefCell<Mir<'gcx>> {
-        self.global_interners.arenas.mir.alloc(RefCell::new(mir))
+        self.global_arenas.mir.alloc(RefCell::new(mir))
     }
 
     pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
-        self.global_interners.arenas.trait_def.alloc(def)
+        self.global_arenas.trait_def.alloc(def)
     }
 
     pub fn alloc_adt_def(self,
@@ -666,32 +652,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          variants: Vec<ty::VariantDef>)
                          -> &'gcx ty::AdtDef {
         let def = ty::AdtDef::new(self, did, kind, variants);
-        self.global_interners.arenas.adt_def.alloc(def)
+        self.global_arenas.adt_def.alloc(def)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
-        if let Some(st) = self.global_interners.stability.borrow().get(&stab) {
+        if let Some(st) = self.stability_interner.borrow().get(&stab) {
             return st;
         }
 
-        let interned = self.global_interners.arenas.stability.alloc(stab);
-        if let Some(prev) = self.global_interners.stability
-                                .borrow_mut()
-                                .replace(interned) {
+        let interned = self.global_interners.arena.alloc(stab);
+        if let Some(prev) = self.stability_interner.borrow_mut().replace(interned) {
             bug!("Tried to overwrite interned Stability: {:?}", prev)
         }
         interned
     }
 
     pub fn intern_layout(self, layout: Layout) -> &'gcx Layout {
-        if let Some(layout) = self.global_interners.layout.borrow().get(&layout) {
+        if let Some(layout) = self.layout_interner.borrow().get(&layout) {
             return layout;
         }
 
-        let interned = self.global_interners.arenas.layout.alloc(layout);
-        if let Some(prev) = self.global_interners.layout
-                                .borrow_mut()
-                                .replace(interned) {
+        let interned = self.global_arenas.layout.alloc(layout);
+        if let Some(prev) = self.layout_interner.borrow_mut().replace(interned) {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
         }
         interned
@@ -728,24 +710,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
-                                  arenas: &'tcx CtxtArenas<'tcx>,
+                                  arenas: &'tcx GlobalArenas<'tcx>,
+                                  arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   map: ast_map::Map<'tcx>,
                                   region_maps: RegionMaps,
                                   lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,
-                                 crate_name: &str,
+                                  crate_name: &str,
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
-        let interners = CtxtInterners::new(arenas);
+        let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter_global(GlobalCtxt {
             specializes_cache: RefCell::new(traits::SpecializesCache::new()),
+            global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
@@ -794,18 +778,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
             layout_cache: RefCell::new(FxHashMap()),
+            layout_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
+            stability_interner: RefCell::new(FxHashSet()),
        }, f)
     }
 }
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
-    /// Call the closure with a local `TyCtxt` using the given arenas.
-    pub fn enter_local<F, R>(&self, arenas: &'tcx CtxtArenas<'tcx>, f: F) -> R
+    /// Call the closure with a local `TyCtxt` using the given arena.
+    pub fn enter_local<F, R>(&self, arena: &'tcx DroplessArena, f: F) -> R
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
-        let interners = CtxtInterners::new(arenas);
+        let interners = CtxtInterners::new(arena);
         tls::enter(self, &interners, f)
     }
 }
@@ -835,10 +821,8 @@ pub trait Lift<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
-        if let Some(&Interned(ty)) = tcx.interners.type_.borrow().get(&self.sty) {
-            if *self as *const _ == ty as *const _ {
-                return Some(ty);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -855,10 +839,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
         if self.len() == 0 {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(&self[..]) {
-            if *self as *const _ == substs as *const _ {
-                return Some(substs);
-            }
+        if tcx.interners.arena.in_arena(&self[..] as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -872,10 +854,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Region {
     type Lifted = &'tcx Region;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Region> {
-        if let Some(&Interned(region)) = tcx.interners.region.borrow().get(*self) {
-            if *self as *const _ == region as *const _ {
-                return Some(region);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -893,10 +873,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
         if self.len() == 0 {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(list)) = tcx.interners.type_list.borrow().get(&self[..]) {
-            if *self as *const _ == list as *const _ {
-                return Some(list);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -914,10 +892,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
         if self.is_empty() {
             return Some(Slice::empty());
         }
-        if let Some(&Interned(eps)) = tcx.interners.existential_predicates.borrow().get(&self[..]) {
-            if *self as *const _ == eps as *const _ {
-                return Some(eps);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -932,10 +908,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a BareFnTy<'a> {
     type Lifted = &'tcx BareFnTy<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<&'tcx BareFnTy<'tcx>> {
-        if let Some(&Interned(fty)) = tcx.interners.bare_fn.borrow().get(*self) {
-            if *self as *const _ == fty as *const _ {
-                return Some(fty);
-            }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
         if !tcx.is_global() {
@@ -1101,8 +1075,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
-        println!("Stability interner: #{}", self.interners.stability.borrow().len());
-        println!("Layout interner: #{}", self.interners.layout.borrow().len());
+        println!("Stability interner: #{}", self.stability_interner.borrow().len());
+        println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }
 
@@ -1205,8 +1179,7 @@ macro_rules! intern_method {
                         let v = unsafe {
                             mem::transmute(v)
                         };
-                        let i = ($alloc_to_ret)(self.global_interners.arenas.$name
-                                                    .$alloc_method(v));
+                        let i = ($alloc_to_ret)(self.global_interners.arena.$alloc_method(v));
                         self.global_interners.$name.borrow_mut().insert(Interned(i));
                         return i;
                     }
@@ -1220,7 +1193,7 @@ macro_rules! intern_method {
                     }
                 }
 
-                let i = ($alloc_to_ret)(self.interners.arenas.$name.$alloc_method(v));
+                let i = ($alloc_to_ret)(self.interners.arena.$alloc_method(v));
                 self.interners.$name.borrow_mut().insert(Interned(i));
                 i
             }

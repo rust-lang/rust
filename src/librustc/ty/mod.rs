@@ -68,8 +68,8 @@ pub use self::sty::Region::*;
 pub use self::sty::TypeVariants::*;
 
 pub use self::contents::TypeContents;
-pub use self::context::{TyCtxt, tls};
-pub use self::context::{CtxtArenas, Lift, Tables};
+pub use self::context::{TyCtxt, GlobalArenas, tls};
+pub use self::context::{Lift, Tables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 

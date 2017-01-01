@@ -462,6 +462,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                                      &state.expanded_crate.take().unwrap(),
                                                      state.crate_name.unwrap(),
                                                      ppm,
+                                                     state.arena.unwrap(),
                                                      state.arenas.unwrap(),
                                                      opt_uii.clone(),
                                                      state.out_file);

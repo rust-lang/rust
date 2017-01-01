@@ -17,7 +17,7 @@ use self::NodesMatchingUII::*;
 
 use {abort_on_err, driver};
 
-use rustc::ty::{self, TyCtxt, Resolutions};
+use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
 use rustc::dep_graph::DepGraph;
@@ -50,6 +50,8 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
 use rustc::hir;
 use rustc::hir::print as pprust_hir;
+
+use arena::DroplessArena;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
@@ -201,7 +203,8 @@ impl PpSourceMode {
                                                ast_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis<'tcx>,
                                                resolutions: &Resolutions,
-                                               arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                               arena: &'tcx DroplessArena,
+                                               arenas: &'tcx GlobalArenas<'tcx>,
                                                id: &str,
                                                payload: B,
                                                f: F)
@@ -229,6 +232,7 @@ impl PpSourceMode {
                                                                  ast_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
+                                                                 arena,
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
@@ -846,7 +850,8 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 krate: &ast::Crate,
                                                 crate_name: &str,
                                                 ppm: PpMode,
-                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                                arena: &'tcx DroplessArena,
+                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
@@ -858,6 +863,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                             analysis,
                             resolutions,
                             crate_name,
+                            arena,
                             arenas,
                             ppm,
                             opt_uii,
@@ -894,6 +900,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            ast_map,
                                            analysis,
                                            resolutions,
+                                           arena,
                                            arenas,
                                            crate_name,
                                            box out,
@@ -917,6 +924,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            ast_map,
                                            analysis,
                                            resolutions,
+                                           arena,
                                            arenas,
                                            crate_name,
                                            (out, uii),
@@ -959,7 +967,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        analysis: &ty::CrateAnalysis<'tcx>,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
-                                       arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                       arena: &'tcx DroplessArena,
+                                       arenas: &'tcx GlobalArenas<'tcx>,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
                                        ofile: Option<&Path>) {
@@ -977,6 +986,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      ast_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
+                                                     arena,
                                                      arenas,
                                                      crate_name,
                                                      |tcx, _, _, _| {

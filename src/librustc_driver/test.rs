@@ -38,6 +38,7 @@ use errors::{Level, DiagnosticBuilder};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
+use arena::DroplessArena;
 
 use rustc::hir;
 
@@ -128,7 +129,8 @@ fn test_env<F>(source_string: &str,
     };
     let _ignore = dep_graph.in_ignore();
 
-    let arenas = ty::CtxtArenas::new();
+    let arena = DroplessArena::new();
+    let arenas = ty::GlobalArenas::new();
     let ast_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
@@ -138,6 +140,7 @@ fn test_env<F>(source_string: &str,
     let index = stability::Index::new(&ast_map);
     TyCtxt::create_and_enter(&sess,
                              &arenas,
+                             &arena,
                              resolutions,
                              named_region_map.unwrap(),
                              ast_map,
