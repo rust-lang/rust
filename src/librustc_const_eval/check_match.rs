@@ -116,13 +116,6 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn report_inlining_errors(&self, patcx: PatternContext, pat_span: Span) {
         for error in patcx.errors {
             match error {
-                PatternError::BadConstInPattern(span, def_id) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        &format!("constants of the type `{}` \
-                                  cannot be used in patterns",
-                                 self.tcx.item_path_str(def_id)));
-                }
                 PatternError::StaticInPattern(span) => {
                     span_err!(self.tcx.sess, span, E0158,
                               "statics cannot be referenced in patterns");

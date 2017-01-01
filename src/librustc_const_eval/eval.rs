@@ -18,7 +18,7 @@ use self::EvalHint::*;
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits;
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
@@ -26,16 +26,12 @@ use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::DefIdMap;
-use rustc::lint;
 
 use graphviz::IntoCow;
 use syntax::ast;
-use rustc::hir::{Expr, PatKind};
-use rustc::hir;
-use syntax::ptr::P;
-use syntax::codemap;
+use rustc::hir::{self, Expr};
 use syntax::attr::IntType;
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -184,126 +180,6 @@ fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             None
         }
     }
-}
-
-pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   expr: &Expr,
-                                   pat_id: ast::NodeId,
-                                   span: Span)
-                                   -> Result<P<hir::Pat>, DefId> {
-    let pat_ty = tcx.tables().expr_ty(expr);
-    debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
-    match pat_ty.sty {
-        ty::TyFloat(_) => {
-            tcx.sess.add_lint(
-                lint::builtin::ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
-                pat_id,
-                span,
-                format!("floating point constants cannot be used in patterns"));
-        }
-        ty::TyAdt(adt_def, _) if adt_def.is_union() => {
-            // Matching on union fields is unsafe, we can't hide it in constants
-            tcx.sess.span_err(span, "cannot use unions in constant patterns");
-        }
-        ty::TyAdt(adt_def, _) => {
-            if !tcx.has_attr(adt_def.did, "structural_match") {
-                tcx.sess.add_lint(
-                    lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
-                    pat_id,
-                    span,
-                    format!("to use a constant of type `{}` \
-                             in a pattern, \
-                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                            tcx.item_path_str(adt_def.did),
-                            tcx.item_path_str(adt_def.did)));
-            }
-        }
-        _ => { }
-    }
-    let pat = match expr.node {
-        hir::ExprTup(ref exprs) =>
-            PatKind::Tuple(exprs.iter()
-                                .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
-                                .collect::<Result<_, _>>()?, None),
-
-        hir::ExprCall(ref callee, ref args) => {
-            let qpath = match callee.node {
-                hir::ExprPath(ref qpath) => qpath,
-                _ => bug!()
-            };
-            let def = tcx.tables().qpath_def(qpath, callee.id);
-            let ctor_path = if let hir::QPath::Resolved(_, ref path) = *qpath {
-                match def {
-                    Def::StructCtor(_, CtorKind::Fn) |
-                    Def::VariantCtor(_, CtorKind::Fn) => {
-                        Some(path.clone())
-                    }
-                    _ => None
-                }
-            } else {
-                None
-            };
-            match (def, ctor_path) {
-                (Def::Fn(..), None) | (Def::Method(..), None) => {
-                    PatKind::Lit(P(expr.clone()))
-                }
-                (_, Some(ctor_path)) => {
-                    let pats = args.iter()
-                                   .map(|expr| const_expr_to_pat(tcx, expr, pat_id, span))
-                                   .collect::<Result<_, _>>()?;
-                    PatKind::TupleStruct(hir::QPath::Resolved(None, ctor_path), pats, None)
-                }
-                _ => bug!()
-            }
-        }
-
-        hir::ExprStruct(ref qpath, ref fields, None) => {
-            let field_pats =
-                fields.iter()
-                      .map(|field| Ok(codemap::Spanned {
-                          span: syntax_pos::DUMMY_SP,
-                          node: hir::FieldPat {
-                              name: field.name.node,
-                              pat: const_expr_to_pat(tcx, &field.expr, pat_id, span)?,
-                              is_shorthand: false,
-                          },
-                      }))
-                      .collect::<Result<_, _>>()?;
-            PatKind::Struct(qpath.clone(), field_pats, false)
-        }
-
-        hir::ExprArray(ref exprs) => {
-            let pats = exprs.iter()
-                            .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
-                            .collect::<Result<_, _>>()?;
-            PatKind::Slice(pats, None, hir::HirVec::new())
-        }
-
-        hir::ExprPath(ref qpath) => {
-            let def = tcx.tables().qpath_def(qpath, expr.id);
-            match def {
-                Def::StructCtor(_, CtorKind::Const) |
-                Def::VariantCtor(_, CtorKind::Const) => {
-                    match expr.node {
-                        hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
-                            PatKind::Path(hir::QPath::Resolved(None, path.clone()))
-                        }
-                        _ => bug!()
-                    }
-                }
-                Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    let substs = Some(tcx.tables().node_id_item_substs(expr.id)
-                        .unwrap_or_else(|| tcx.intern_substs(&[])));
-                    let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
-                    return const_expr_to_pat(tcx, expr, pat_id, span);
-                },
-                _ => bug!(),
-            }
-        }
-
-        _ => PatKind::Lit(P(expr.clone()))
-    };
-    Ok(P(hir::Pat { id: expr.id, node: pat, span: span }))
 }
 
 pub fn report_const_eval_err<'a, 'tcx>(
