@@ -29,6 +29,7 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
 ENV RUST_CONFIGURE_ARGS \
       --target=x86_64-unknown-linux-musl \
       --musl-root-x86_64=/musl-x86_64
-ENV RUST_CHECK_TARGET check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu
 ENV PATH=$PATH:/musl-x86_64/bin
-ENV XPY_CHECK test --target x86_64-unknown-linux-musl
+ENV SCRIPT \
+      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
+      python2.7 ../x.py dist --target x86_64-unknown-linux-musl

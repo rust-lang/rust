@@ -48,4 +48,9 @@ ENV RUST_CONFIGURE_ARGS \
       --armv7-linux-androideabi-ndk=/android/ndk-arm-9 \
       --i686-linux-android-ndk=/android/ndk-x86-9 \
       --aarch64-linux-android-ndk=/android/ndk-aarch64
-ENV XPY_CHECK test --target arm-linux-androideabi
+
+# Just a smoke test in dist to see if this works for now, we should expand this
+# to all the targets above eventually.
+ENV SCRIPT \
+  python2.7 ../x.py test --target arm-linux-androideabi && \
+  python2.7 ../x.py dist --target arm-linux-androideabi

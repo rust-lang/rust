@@ -56,7 +56,12 @@ ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
 ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
       --enable-rustbuild
-ENV RUST_CHECK_TARGET ""
+
+# Just a smoke test in dist to see if this works for now, we should expand this
+# to all the targets above eventually.
+ENV SCRIPT \
+  python2.7 ../x.py build && \
+  python2.7 ../x.py dist --target wasm32-unknown-emscripten
 
 ENV AR_s390x_unknown_linux_gnu=s390x-linux-gnu-ar \
     CC_s390x_unknown_linux_gnu=s390x-linux-gnu-gcc \

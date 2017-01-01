@@ -43,14 +43,10 @@ else
     ncpus=$(nproc)
 fi
 
-if [ ! -z "$XPY_RUN" ]; then
-  exec python2.7 $SRC/x.py $XPY_RUN
+if [ ! -z "$SCRIPT" ]; then
+  sh -x -c "$SCRIPT"
 else
   make -j $ncpus tidy
   make -j $ncpus
-  if [ ! -z "$XPY_CHECK" ]; then
-    exec python2.7 $SRC/x.py $XPY_CHECK
-  else
-    exec make $RUST_CHECK_TARGET -j $ncpus
-  fi
+  make $RUST_CHECK_TARGET -j $ncpus
 fi

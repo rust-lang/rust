@@ -32,7 +32,7 @@ ENV \
     CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-g++
 
 ENV RUST_CONFIGURE_ARGS --host=x86_64-unknown-freebsd
-ENV XPY_RUN \
-      dist \
-      --host x86_64-unknown-freebsd \
-      --target x86_64-unknown-freebsd
+ENV SCRIPT \
+      python2.7 ../x.py dist \
+        --host x86_64-unknown-freebsd \
+        --target x86_64-unknown-freebsd

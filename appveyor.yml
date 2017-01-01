@@ -8,10 +8,12 @@ environment:
   # 32/64 bit MSVC
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
-    RUST_CHECK_TARGET: check
+    SCRIPT: python x.py test && python x.py dist
+    DEPLOY: 1
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-    RUST_CHECK_TARGET: check
+    SCRIPT: python x.py test && python x.py dist
+    DEPLOY: 1
 
   # MSVC makefiles
   - MSYS_BITS: 64
@@ -50,10 +52,11 @@ environment:
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    RUST_CHECK_TARGET: check
+    SCRIPT: python x.py test && python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
+    DEPLOY: 1
 
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --disable-rustbuild
@@ -63,11 +66,12 @@ environment:
     MINGW_DIR: mingw32
 
   - MSYS_BITS: 64
-    RUST_CHECK_TARGET: check
+    SCRIPT: python x.py test && python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
+    DEPLOY: 1
 
 clone_depth: 1
 build: false
@@ -122,6 +126,32 @@ cache:
 branches:
   only:
     - auto
+
+before_deploy:
+  - ps: |
+        New-Item -Path deploy -ItemType directory
+        Get-ChildItem -Path build\dist -Filter '*.tar.gz' | Move-Item -Destination deploy
+        Get-FileHash .\deploy\* | ForEach-Object {
+          [io.file]::WriteAllText($_.Path + ".sha256", $_.Hash.ToLower() + "`n")
+        }
+        Get-ChildItem -Path deploy | Foreach-Object {
+          Push-AppveyorArtifact $_.FullName -FileName ${env:APPVEYOR_REPO_COMMIT}/$_
+        }
+
+deploy:
+  - provider: S3
+    skip_cleanup: true
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: +11jsUNFTQ9dq5Ad1i2+PeUJaXluFJ0zIJAXESE1dFT3Kdjku4/eDdgyjgsB6GnV
+    bucket: rust-lang-ci
+    set_public: true
+    region: us-east-1
+    artifact: /.*\.(tar.gz|sha256)/
+    folder: rustc-builds
+    on:
+      branch: auto
+      DEPLOY: 1
 
 # init:
 #   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
