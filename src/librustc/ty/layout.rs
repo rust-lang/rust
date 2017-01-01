@@ -20,6 +20,8 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
+use rustc_i128::u128;
+use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -35,6 +37,7 @@ pub struct TargetDataLayout {
     pub i16_align: Align,
     pub i32_align: Align,
     pub i64_align: Align,
+    pub i128_align: Align,
     pub f32_align: Align,
     pub f64_align: Align,
     pub pointer_size: Size,
@@ -55,6 +58,7 @@ impl Default for TargetDataLayout {
             i16_align: Align::from_bits(16, 16).unwrap(),
             i32_align: Align::from_bits(32, 32).unwrap(),
             i64_align: Align::from_bits(32, 64).unwrap(),
+            i128_align: Align::from_bits(32, 64).unwrap(),
             f32_align: Align::from_bits(32, 32).unwrap(),
             f64_align: Align::from_bits(64, 64).unwrap(),
             pointer_size: Size::from_bits(64),
@@ -99,6 +103,7 @@ impl TargetDataLayout {
         };
 
         let mut dl = TargetDataLayout::default();
+        let mut i128_align_src = 64;
         for spec in sess.target.target.data_layout.split("-") {
             match &spec.split(":").collect::<Vec<_>>()[..] {
                 &["e"] => dl.endian = Endian::Little,
@@ -111,19 +116,28 @@ impl TargetDataLayout {
                     dl.pointer_align = align(a, p);
                 }
                 &[s, ref a..] if s.starts_with("i") => {
-                    let ty_align = match s[1..].parse::<u64>() {
-                        Ok(1) => &mut dl.i8_align,
-                        Ok(8) => &mut dl.i8_align,
-                        Ok(16) => &mut dl.i16_align,
-                        Ok(32) => &mut dl.i32_align,
-                        Ok(64) => &mut dl.i64_align,
-                        Ok(_) => continue,
+                    let bits = match s[1..].parse::<u64>() {
+                        Ok(bits) => bits,
                         Err(_) => {
                             size(&s[1..], "i"); // For the user error.
                             continue;
                         }
                     };
-                    *ty_align = align(a, s);
+                    let a = align(a, s);
+                    match bits {
+                        1 => dl.i1_align = a,
+                        8 => dl.i8_align = a,
+                        16 => dl.i16_align = a,
+                        32 => dl.i32_align = a,
+                        64 => dl.i64_align = a,
+                        _ => {}
+                    }
+                    if bits >= i128_align_src && bits <= 128 {
+                        // Default alignment for i128 is decided by taking the alignment of
+                        // largest-sized i{64...128}.
+                        i128_align_src = bits;
+                        dl.i128_align = a;
+                    }
                 }
                 &[s, ref a..] if s.starts_with("v") => {
                     let v_size = size(&s[1..], "v");
@@ -325,7 +339,8 @@ pub enum Integer {
     I8,
     I16,
     I32,
-    I64
+    I64,
+    I128,
 }
 
 impl Integer {
@@ -336,6 +351,7 @@ impl Integer {
             I16 => Size::from_bytes(2),
             I32 => Size::from_bytes(4),
             I64  => Size::from_bytes(8),
+            I128  => Size::from_bytes(16),
         }
     }
 
@@ -346,6 +362,7 @@ impl Integer {
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
+            I128 => dl.i128_align,
         }
     }
 
@@ -357,33 +374,37 @@ impl Integer {
             (I16, false) => tcx.types.u16,
             (I32, false) => tcx.types.u32,
             (I64, false) => tcx.types.u64,
+            (I128, false) => tcx.types.u128,
             (I1, true) => tcx.types.i8,
             (I8, true) => tcx.types.i8,
             (I16, true) => tcx.types.i16,
             (I32, true) => tcx.types.i32,
             (I64, true) => tcx.types.i64,
+            (I128, true) => tcx.types.i128,
         }
     }
 
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i64) -> Integer {
         match x {
-            -0x0000_0001...0x0000_0000 => I1,
-            -0x0000_0080...0x0000_007f => I8,
-            -0x0000_8000...0x0000_7fff => I16,
-            -0x8000_0000...0x7fff_ffff => I32,
-            _ => I64
+            -0x0000_0000_0000_0001...0x0000_0000_0000_0000 => I1,
+            -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
+            -0x0000_0000_0000_8000...0x0000_0000_0000_7fff => I16,
+            -0x0000_0000_8000_0000...0x0000_0000_7fff_ffff => I32,
+            -0x8000_0000_0000_0000...0x7fff_ffff_ffff_ffff => I64,
+            _ => I128
         }
     }
 
     /// Find the smallest Integer type which can represent the unsigned value.
     pub fn fit_unsigned(x: u64) -> Integer {
         match x {
-            0...0x0000_0001 => I1,
-            0...0x0000_00ff => I8,
-            0...0x0000_ffff => I16,
-            0...0xffff_ffff => I32,
-            _ => I64
+            0...0x0000_0000_0000_0001 => I1,
+            0...0x0000_0000_0000_00ff => I8,
+            0...0x0000_0000_0000_ffff => I16,
+            0...0x0000_0000_ffff_ffff => I32,
+            0...0xffff_ffff_ffff_ffff => I64,
+            _ => I128,
         }
     }
 
@@ -406,6 +427,7 @@ impl Integer {
             attr::SignedInt(IntTy::I16) | attr::UnsignedInt(UintTy::U16) => I16,
             attr::SignedInt(IntTy::I32) | attr::UnsignedInt(UintTy::U32) => I32,
             attr::SignedInt(IntTy::I64) | attr::UnsignedInt(UintTy::U64) => I64,
+            attr::SignedInt(IntTy::I128) | attr::UnsignedInt(UintTy::U128) => I128,
             attr::SignedInt(IntTy::Is) | attr::UnsignedInt(UintTy::Us) => {
                 dl.ptr_sized_integer()
             }
@@ -486,6 +508,7 @@ impl Primitive {
             Int(I16) => Size::from_bits(16),
             Int(I32) | F32 => Size::from_bits(32),
             Int(I64) | F64 => Size::from_bits(64),
+            Int(I128) => Size::from_bits(128),
             Pointer => dl.pointer_size
         }
     }
@@ -497,6 +520,7 @@ impl Primitive {
             Int(I16) => dl.i16_align,
             Int(I32) => dl.i32_align,
             Int(I64) => dl.i64_align,
+            Int(I128) => dl.i128_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             Pointer => dl.pointer_align
@@ -1175,19 +1199,30 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max, mut non_zero) = (i64::MAX, i64::MIN, true);
+                    let (mut min, mut max, mut non_zero) = (i64::max_value(),
+                                                            i64::min_value(),
+                                                            true);
                     for v in &def.variants {
-                        let x = v.disr_val.to_u64_unchecked() as i64;
+                        let x = match v.disr_val.erase_type() {
+                            ConstInt::InferSigned(i) => i as i64,
+                            ConstInt::Infer(i) => i as u64 as i64,
+                            _ => bug!()
+                        };
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..], min, max);
+                    // FIXME: should handle i128? signed-value based impl is weird and hard to
+                    // grok.
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..],
+                                                              min,
+                                                              max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
                         non_zero: non_zero,
+                        // FIXME: should be u128?
                         min: min as u64,
                         max: max as u64
                     });
@@ -1232,7 +1267,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
-                    if i as u64 != v.disr_val.to_u64_unchecked() {
+                    if i as u128 != v.disr_val.to_u128_unchecked() {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }

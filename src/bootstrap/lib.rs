@@ -521,7 +521,7 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
-        if self.config.channel == "nightly" && compiler.stage == 2 {
+        if self.config.channel == "nightly" && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
@@ -570,11 +570,18 @@ impl Build {
     /// `host`.
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
+        self.prepare_tool_cmd(compiler, &mut cmd);
+        return cmd
+    }
+
+    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
+    ///
+    /// Notably this munges the dynamic library lookup path to point to the
+    /// right location to run `compiler`.
+    fn prepare_tool_cmd(&self, compiler: &Compiler, cmd: &mut Command) {
         let host = compiler.host;
         let mut paths = vec![
-            self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
-            self.cargo_out(compiler, Mode::Libtest, host).join("deps"),
-            self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
+            self.sysroot_libdir(compiler, compiler.host),
             self.cargo_out(compiler, Mode::Tool, host).join("deps"),
         ];
 
@@ -595,8 +602,7 @@ impl Build {
                 }
             }
         }
-        add_lib_path(paths, &mut cmd);
-        return cmd
+        add_lib_path(paths, cmd);
     }
 
     /// Get the space-separated set of activated features for the standard
@@ -880,6 +886,30 @@ impl Build {
     fn python(&self) -> &Path {
         self.config.python.as_ref().unwrap()
     }
+
+    /// Tests whether the `compiler` compiling for `target` should be forced to
+    /// use a stage1 compiler instead.
+    ///
+    /// Currently, by default, the build system does not perform a "full
+    /// bootstrap" by default where we compile the compiler three times.
+    /// Instead, we compile the compiler two times. The final stage (stage2)
+    /// just copies the libraries from the previous stage, which is what this
+    /// method detects.
+    ///
+    /// Here we return `true` if:
+    ///
+    /// * The build isn't performing a full bootstrap
+    /// * The `compiler` is in the final stage, 2
+    /// * We're not cross-compiling, so the artifacts are already available in
+    ///   stage1
+    ///
+    /// When all of these conditions are met the build will lift artifacts from
+    /// the previous stage forward.
+    fn force_use_stage1(&self, compiler: &Compiler, target: &str) -> bool {
+        !self.config.full_bootstrap &&
+            compiler.stage >= 2 &&
+            self.config.host.iter().any(|h| h == target)
+    }
 }
 
 impl<'a> Compiler<'a> {
@@ -891,5 +921,14 @@ impl<'a> Compiler<'a> {
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.config.build
+    }
+
+    /// Returns if this compiler should be treated as a final stage one in the
+    /// current build session.
+    /// This takes into account whether we're performing a full bootstrap or
+    /// not; don't directly compare the stage with `2`!
+    fn is_final_stage(&self, build: &Build) -> bool {
+        let final_stage = if build.config.full_bootstrap { 2 } else { 1 };
+        self.stage >= final_stage
     }
 }

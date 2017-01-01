@@ -13,7 +13,7 @@
 // issue #17123
 
 fn main() {
-    100000000000000000000000000000000 //~ ERROR int literal is too large
-
+    9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999
+    //~^ ERROR int literal is too large
         ; // the span shouldn't point to this.
 }

@@ -26,6 +26,8 @@ use cabi_asmjs;
 use cabi_msp430;
 use cabi_sparc;
 use cabi_sparc64;
+use cabi_nvptx;
+use cabi_nvptx64;
 use machine::{llalign_of_min, llsize_of, llsize_of_alloc};
 use type_::Type;
 use type_of;
@@ -312,7 +314,7 @@ impl ArgType {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FnType {
     /// The LLVM types of each argument.
     pub args: Vec<ArgType>,
@@ -351,9 +353,11 @@ impl FnType {
             Fastcall => llvm::X86FastcallCallConv,
             Vectorcall => llvm::X86_VectorCall,
             C => llvm::CCallConv,
+            Unadjusted => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
             SysV64 => llvm::X86_64_SysV,
             Aapcs => llvm::ArmAapcsCallConv,
+            PtxKernel => llvm::PtxKernel,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
@@ -526,6 +530,8 @@ impl FnType {
                                     ccx: &CrateContext<'a, 'tcx>,
                                     abi: Abi,
                                     sig: &ty::FnSig<'tcx>) {
+        if abi == Abi::Unadjusted { return }
+
         if abi == Abi::Rust || abi == Abi::RustCall ||
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType| {
@@ -610,6 +616,8 @@ impl FnType {
             "msp430" => cabi_msp430::compute_abi_info(ccx, self),
             "sparc" => cabi_sparc::compute_abi_info(ccx, self),
             "sparc64" => cabi_sparc64::compute_abi_info(ccx, self),
+            "nvptx" => cabi_nvptx::compute_abi_info(ccx, self),
+            "nvptx64" => cabi_nvptx64::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 

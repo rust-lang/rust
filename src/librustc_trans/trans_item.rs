@@ -397,11 +397,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyInt(ast::IntTy::I16)   => output.push_str("i16"),
             ty::TyInt(ast::IntTy::I32)   => output.push_str("i32"),
             ty::TyInt(ast::IntTy::I64)   => output.push_str("i64"),
+            ty::TyInt(ast::IntTy::I128)   => output.push_str("i128"),
             ty::TyUint(ast::UintTy::Us)   => output.push_str("usize"),
             ty::TyUint(ast::UintTy::U8)   => output.push_str("u8"),
             ty::TyUint(ast::UintTy::U16)  => output.push_str("u16"),
             ty::TyUint(ast::UintTy::U32)  => output.push_str("u32"),
             ty::TyUint(ast::UintTy::U64)  => output.push_str("u64"),
+            ty::TyUint(ast::UintTy::U128)  => output.push_str("u128"),
             ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
             ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
             ty::TyAdt(adt_def, substs) => {

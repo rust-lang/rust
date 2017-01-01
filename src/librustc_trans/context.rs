@@ -1022,6 +1022,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     let t_i16 = Type::i16(ccx);
     let t_i32 = Type::i32(ccx);
     let t_i64 = Type::i64(ccx);
+    let t_i128 = Type::i128(ccx);
     let t_f32 = Type::f32(ccx);
     let t_f64 = Type::f64(ccx);
 
@@ -1088,50 +1089,60 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.ctpop.i16", fn(t_i16) -> t_i16);
     ifn!("llvm.ctpop.i32", fn(t_i32) -> t_i32);
     ifn!("llvm.ctpop.i64", fn(t_i64) -> t_i64);
+    ifn!("llvm.ctpop.i128", fn(t_i128) -> t_i128);
 
     ifn!("llvm.ctlz.i8", fn(t_i8 , i1) -> t_i8);
     ifn!("llvm.ctlz.i16", fn(t_i16, i1) -> t_i16);
     ifn!("llvm.ctlz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.ctlz.i64", fn(t_i64, i1) -> t_i64);
+    ifn!("llvm.ctlz.i128", fn(t_i128, i1) -> t_i128);
 
     ifn!("llvm.cttz.i8", fn(t_i8 , i1) -> t_i8);
     ifn!("llvm.cttz.i16", fn(t_i16, i1) -> t_i16);
     ifn!("llvm.cttz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.cttz.i64", fn(t_i64, i1) -> t_i64);
+    ifn!("llvm.cttz.i128", fn(t_i128, i1) -> t_i128);
 
     ifn!("llvm.bswap.i16", fn(t_i16) -> t_i16);
     ifn!("llvm.bswap.i32", fn(t_i32) -> t_i32);
     ifn!("llvm.bswap.i64", fn(t_i64) -> t_i64);
+    ifn!("llvm.bswap.i128", fn(t_i128) -> t_i128);
 
     ifn!("llvm.sadd.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.sadd.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.sadd.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.sadd.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.sadd.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.uadd.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.uadd.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.uadd.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.uadd.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.uadd.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.ssub.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.ssub.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.ssub.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.ssub.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.ssub.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.usub.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.usub.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.usub.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.usub.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.usub.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.smul.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.smul.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.smul.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.smul.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.smul.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.umul.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.umul.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.umul.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.umul.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
+    ifn!("llvm.umul.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
     ifn!("llvm.lifetime.start", fn(t_i64,i8p) -> void);
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);

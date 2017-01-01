@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   xz-utils \
   sudo \
   gdb
@@ -33,6 +32,3 @@ ENV RUST_CONFIGURE_ARGS \
 ENV RUST_CHECK_TARGET check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu
 ENV PATH=$PATH:/musl-x86_64/bin
 ENV XPY_CHECK test --target x86_64-unknown-linux-musl
-
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

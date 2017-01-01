@@ -29,19 +29,19 @@ use util::{up_to_date, cp_r};
 ///
 /// This will not actually generate any documentation if the documentation has
 /// already been generated.
-pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str) {
+pub fn rustbook(build: &Build, target: &str, name: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
 
     let out = out.join(name);
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(0, &build.config.build);
     let src = build.src.join("src/doc").join(name);
     let index = out.join("index.html");
     let rustbook = build.tool(&compiler, "rustbook");
     if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
         return
     }
-    println!("Rustbook stage{} ({}) - {}", stage, target, name);
+    println!("Rustbook ({}) - {}", target, name);
     let _ = fs::remove_dir_all(&out);
     build.run(build.tool_cmd(&compiler, "rustbook")
                    .arg("build")
@@ -137,6 +137,11 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Libstd)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
@@ -146,7 +151,8 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
-         .arg("--features").arg(build.std_features());
+         .arg("--features").arg(build.std_features())
+         .arg("-p").arg("std");
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
 }
@@ -160,6 +166,11 @@ pub fn test(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Libtest)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
@@ -182,6 +193,11 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = if build.force_use_stage1(&compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler
+    };
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
@@ -198,11 +214,11 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
 
 /// Generates the HTML rendered error-index by running the
 /// `error_index_generator` tool.
-pub fn error_index(build: &Build, stage: u32, target: &str) {
-    println!("Documenting stage{} error index ({})", stage, target);
+pub fn error_index(build: &Build, target: &str) {
+    println!("Documenting error index ({})", target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(0, &build.config.build);
     let mut index = build.tool_cmd(&compiler, "error_index_generator");
     index.arg("html");
     index.arg(out.join("error-index.html"));

@@ -160,6 +160,13 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                                   "i64",
                                                   item.span);
                     }
+                    ty::TyInt(ast::IntTy::I128) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.i128_impl(),
+                                                  "i128",
+                                                  "i128",
+                                                  item.span);
+                    }
                     ty::TyInt(ast::IntTy::Is) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.isize_impl(),
@@ -193,6 +200,13 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                                   self.tcx.lang_items.u64_impl(),
                                                   "u64",
                                                   "u64",
+                                                  item.span);
+                    }
+                    ty::TyUint(ast::UintTy::U128) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.u128_impl(),
+                                                  "u128",
+                                                  "u128",
                                                   item.span);
                     }
                     ty::TyUint(ast::UintTy::Us) => {
