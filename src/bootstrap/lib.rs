@@ -910,6 +910,10 @@ impl Build {
             compiler.stage >= 2 &&
             self.config.host.iter().any(|h| h == target)
     }
+
+    fn final_stage(&self) -> u32 {
+        self.config.final_stage()
+    }
 }
 
 impl<'a> Compiler<'a> {
