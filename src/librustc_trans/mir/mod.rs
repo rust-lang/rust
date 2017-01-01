@@ -20,7 +20,7 @@ use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, FunctionContext, C_null, Funclet};
+use common::{self, CrateContext, C_null, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
 use abi::FnType;
@@ -31,6 +31,7 @@ use syntax::symbol::keywords;
 use syntax::abi::Abi;
 
 use std::iter;
+use std::ffi::CString;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -49,7 +50,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     debug_context: debuginfo::FunctionDebugContext,
 
-    fcx: &'a common::FunctionContext<'a, 'tcx>,
+    llfn: ValueRef,
 
     ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -199,7 +200,8 @@ impl<'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'a, 'tcx: 'a>(
-    fcx: &'a FunctionContext<'a, 'tcx>,
+    ccx: &'a CrateContext<'a, 'tcx>,
+    llfn: ValueRef,
     fn_ty: FnType,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
@@ -208,29 +210,36 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 ) {
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir);
-    let bcx = fcx.get_entry_block();
+        debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfn, mir);
+    let bcx = Builder::entry_block(ccx, llfn);
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
     // Allocate a `Block` for every basic block
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
-            if bb == mir::START_BLOCK {
-                fcx.new_block("start")
+            let name = if bb == mir::START_BLOCK {
+                CString::new("start").unwrap()
             } else {
-                fcx.new_block(&format!("{:?}", bb))
+                CString::new(format!("{:?}", bb)).unwrap()
+            };
+            unsafe {
+                llvm::LLVMAppendBasicBlockInContext(
+                    ccx.llcx(),
+                    llfn,
+                    name.as_ptr()
+                )
             }
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(fcx, mir, &debug_context);
+    let scopes = debuginfo::create_mir_scopes(ccx, mir, &debug_context);
 
     let mut mircx = MirContext {
         mir: mir,
-        fcx: fcx,
+        llfn: llfn,
         fn_ty: fn_ty,
-        ccx: fcx.ccx,
+        ccx: ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
         unreachable_block: None,
@@ -281,7 +290,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 // Temporary or return pointer
                 if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
-                    let llretptr = llvm::get_param(fcx.llfn, 0);
+                    let llretptr = llvm::get_param(llfn, 0);
                     LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
                 } else if lvalue_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> lvalue", local);
@@ -319,7 +328,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         if let CleanupKind::Funclet = *cleanup_kind {
             let bcx = mircx.build_block(bb);
             bcx.set_personality_fn(mircx.ccx.eh_personality());
-            if base::wants_msvc_seh(fcx.ccx.sess()) {
+            if base::wants_msvc_seh(ccx.sess()) {
                 return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
             }
         }
@@ -358,7 +367,6 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             lvalue_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
     let mir = mircx.mir;
-    let fcx = mircx.fcx;
     let tcx = bcx.ccx.tcx();
     let mut idx = 0;
     let mut llarg_idx = mircx.fn_ty.ret.is_indirect() as usize;
@@ -433,7 +441,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             if arg.pad.is_some() {
                 llarg_idx += 1;
             }
-            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             llarg
         } else if !lvalue_locals.contains(local.index()) &&
@@ -449,13 +457,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             if arg.pad.is_some() {
                 llarg_idx += 1;
             }
-            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
                 assert_eq!((meta.cast, meta.pad), (None, None));
-                let llmeta = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+                let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
                 OperandValue::Pair(llarg, llmeta)
             } else {

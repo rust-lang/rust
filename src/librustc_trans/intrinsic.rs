@@ -89,7 +89,6 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                      fcx: &FunctionContext,
                                       callee_ty: Ty<'tcx>,
                                       fn_ty: &FnType,
                                       llargs: &[ValueRef],
@@ -127,7 +126,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             bcx.call(expect, &[llargs[0], C_bool(ccx, false)], None)
         }
         "try" => {
-            try_intrinsic(bcx, fcx, llargs[0], llargs[1], llargs[2], llresult);
+            try_intrinsic(bcx, ccx, llargs[0], llargs[1], llargs[2], llresult);
             C_nil(ccx)
         }
         "breakpoint" => {
@@ -689,7 +688,7 @@ fn memset_intrinsic<'a, 'tcx>(
 
 fn try_intrinsic<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
-    fcx: &FunctionContext,
+    ccx: &CrateContext,
     func: ValueRef,
     data: ValueRef,
     local_ptr: ValueRef,
@@ -701,7 +700,7 @@ fn try_intrinsic<'a, 'tcx>(
     } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, fcx, func, data, local_ptr, dest);
     } else {
-        trans_gnu_try(bcx, fcx, func, data, local_ptr, dest);
+        trans_gnu_try(bcx, ccx, func, data, local_ptr, dest);
     }
 }
 
@@ -713,12 +712,12 @@ fn try_intrinsic<'a, 'tcx>(
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
 fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                            fcx: &FunctionContext,
+                            ccx: &CrateContext,
                             func: ValueRef,
                             data: ValueRef,
                             local_ptr: ValueRef,
                             dest: ValueRef) {
-    let llfn = get_rust_try_fn(fcx, &mut |bcx| {
+    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
         let ccx = bcx.ccx;
 
         bcx.set_personality_fn(bcx.ccx.eh_personality());
@@ -817,12 +816,12 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
 fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                           fcx: &FunctionContext,
+                           ccx: &CrateContext,
                            func: ValueRef,
                            data: ValueRef,
                            local_ptr: ValueRef,
                            dest: ValueRef) {
-    let llfn = get_rust_try_fn(fcx, &mut |bcx| {
+    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
         let ccx = bcx.ccx;
 
         // Translates the shims described above:
@@ -874,13 +873,12 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
 // Helper function to give a Block to a closure to translate a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
-fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
                     output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let ccx = fcx.ccx;
     let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
 
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
@@ -889,8 +887,8 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let fcx = FunctionContext::new(ccx, llfn);
-    trans(fcx.get_entry_block());
+    let bcx = Builder::entry_block(ccx, llfn);
+    trans(bcx);
     llfn
 }
 
@@ -898,10 +896,9 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
-fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
-    let ccx = fcx.ccx;
     if let Some(llfn) = ccx.rust_try_fn().get() {
         return llfn;
     }
@@ -915,7 +912,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(tcx.mk_fn_sig(iter::once(i8p), tcx.mk_nil(), false)),
     }));
     let output = tcx.types.i32;
-    let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
+    let rust_try = gen_fn(ccx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));
     return rust_try
 }

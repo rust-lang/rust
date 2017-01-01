@@ -22,7 +22,7 @@ use llvm::BasicBlockRef;
 use base;
 use adt::MaybeSizedValue;
 use builder::Builder;
-use common::{FunctionContext, Funclet};
+use common::Funclet;
 use glue;
 use type_::Type;
 use rustc::ty::Ty;
@@ -93,12 +93,12 @@ impl<'tcx> DropValue<'tcx> {
     }
 }
 
-impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
+impl<'a, 'tcx> CleanupScope<'tcx> {
     /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
     pub fn schedule_drop_mem(
-        &self, bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
+        bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
     ) -> CleanupScope<'tcx> {
-        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+        if !bcx.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
         let drop = DropValue {
             val: val,
             ty: ty,
@@ -114,11 +114,11 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
     pub fn schedule_drop_adt_contents(
-        &self, bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
+        bcx: &Builder<'a, 'tcx>, val: MaybeSizedValue, ty: Ty<'tcx>
     ) -> CleanupScope<'tcx> {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
-        if !self.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
+        if !bcx.ccx.shared().type_needs_drop(ty) { return CleanupScope::noop(); }
 
         let drop = DropValue {
             val: val,
@@ -128,10 +128,8 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
         CleanupScope::new(bcx, drop)
     }
-}
 
-impl<'tcx> CleanupScope<'tcx> {
-    fn new<'a>(bcx: &Builder<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
+    fn new(bcx: &Builder<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
         CleanupScope {
             cleanup: Some(drop_val),
             landing_pad: if !bcx.ccx.sess().no_landing_pads() {
@@ -149,7 +147,7 @@ impl<'tcx> CleanupScope<'tcx> {
         }
     }
 
-    pub fn trans<'a>(self, bcx: &'a Builder<'a, 'tcx>) {
+    pub fn trans(self, bcx: &'a Builder<'a, 'tcx>) {
         if let Some(cleanup) = self.cleanup {
             cleanup.trans(None, &bcx);
         }
