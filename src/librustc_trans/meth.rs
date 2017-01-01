@@ -76,10 +76,9 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let fcx = FunctionContext::new(ccx, llfn);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::entry_block(ccx, llfn);
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(llfn);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 

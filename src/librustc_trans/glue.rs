@@ -25,6 +25,7 @@ use rustc::ty::subst::Kind;
 use adt::{self, MaybeSizedValue};
 use base::*;
 use callee::Callee;
+use cleanup::CleanupScope;
 use common::*;
 use machine::*;
 use monomorphize;
@@ -34,7 +35,6 @@ use type_of::{type_of, sizing_type_of, align_of};
 use type_::Type;
 use value::Value;
 use Disr;
-use cleanup::CleanupScope;
 use builder::Builder;
 
 use syntax_pos::DUMMY_SP;
@@ -174,8 +174,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     assert_eq!(g.ty(), get_drop_glue_type(ccx.shared(), g.ty()));
     let (llfn, _) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
-    let fcx = FunctionContext::new(ccx, llfn);
-    let mut bcx = fcx.get_entry_block();
+    let mut bcx = Builder::entry_block(ccx, llfn);
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a
@@ -246,7 +245,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // Issue #23611: schedule cleanup of contents, re-inspecting the
             // discriminant (if any) in case of variant swap in drop code.
             let contents_scope = if !shallow_drop {
-                fcx.schedule_drop_adt_contents(&bcx, ptr, t)
+                CleanupScope::schedule_drop_adt_contents(&bcx, ptr, t)
             } else {
                 CleanupScope::noop()
             };

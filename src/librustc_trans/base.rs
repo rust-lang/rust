@@ -54,7 +54,7 @@ use callee::{Callee};
 use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef};
-use common::{CrateContext, FunctionContext};
+use common::CrateContext;
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -590,18 +590,17 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, lldecl);
     let mir = ccx.tcx().item_mir(instance.def);
-    mir::trans_mir(&fcx, fn_ty, &mir, instance, &sig, abi);
+    mir::trans_mir(ccx, lldecl, fn_ty, &mir, instance, &sig, abi);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                  def_id: DefId,
                                  substs: &'tcx Substs<'tcx>,
                                  disr: Disr,
-                                 llfndecl: ValueRef) {
-    attributes::inline(llfndecl, attributes::InlineAttr::Hint);
-    attributes::set_frame_pointer_elimination(ccx, llfndecl);
+                                 llfn: ValueRef) {
+    attributes::inline(llfn, attributes::InlineAttr::Hint);
+    attributes::set_frame_pointer_elimination(ccx, llfn);
 
     let ctor_ty = ccx.tcx().item_type(def_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
@@ -609,13 +608,12 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, llfndecl);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::entry_block(ccx, llfn);
     if !fn_ty.ret.is_ignore() {
         // But if there are no nested returns, we skip the indirection
         // and have a single retslot
         let dest = if fn_ty.ret.is_indirect() {
-            get_param(fcx.llfn, 0)
+            get_param(llfn, 0)
         } else {
             // We create an alloca to hold a pointer of type `ret.original_ty`
             // which will hold the pointer to the right alloca which has the

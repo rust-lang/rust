@@ -13,7 +13,7 @@
 //! Code that is useful in various trans modules.
 
 use llvm;
-use llvm::{ValueRef, BasicBlockRef, ContextRef, TypeKind};
+use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -36,7 +36,6 @@ use rustc::hir;
 use libc::{c_uint, c_char};
 use std::borrow::Cow;
 use std::iter;
-use std::ffi::CString;
 
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
@@ -215,71 +214,6 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
             _ => {
                 bug!("cannot get field types from the type {:?}", ty);
             }
-        }
-    }
-}
-
-// Function context. Every LLVM function we create will have one of these.
-pub struct FunctionContext<'a, 'tcx: 'a> {
-    // The ValueRef returned from a call to llvm::LLVMAddFunction; the
-    // address of the first instruction in the sequence of
-    // instructions for this function that will go in the .text
-    // section of the executable we're generating.
-    pub llfn: ValueRef,
-
-    // A marker for the place where we want to insert the function's static
-    // allocas, so that LLVM will coalesce them into a single alloca call.
-    alloca_insert_pt: Option<ValueRef>,
-
-    // This function's enclosing crate context.
-    pub ccx: &'a CrateContext<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    /// Create a function context for the given function.
-    /// Call FunctionContext::get_entry_block for the first entry block.
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>, llfndecl: ValueRef) -> FunctionContext<'a, 'tcx> {
-        let mut fcx = FunctionContext {
-            llfn: llfndecl,
-            alloca_insert_pt: None,
-            ccx: ccx,
-        };
-
-        let entry_bcx = Builder::new_block(fcx.ccx, fcx.llfn, "entry-block");
-        entry_bcx.position_at_start(entry_bcx.llbb());
-        // Use a dummy instruction as the insertion point for all allocas.
-        // This is later removed in the drop of FunctionContext.
-        fcx.alloca_insert_pt = Some(entry_bcx.load(C_null(Type::i8p(ccx))));
-
-        fcx
-    }
-
-    pub fn new_block(&self, name: &str) -> BasicBlockRef {
-        unsafe {
-            let name = CString::new(name).unwrap();
-            llvm::LLVMAppendBasicBlockInContext(
-                self.ccx.llcx(),
-                self.llfn,
-                name.as_ptr()
-            )
-        }
-    }
-
-    pub fn build_new_block(&self, name: &str) -> Builder<'a, 'tcx> {
-        Builder::new_block(self.ccx, self.llfn, name)
-    }
-
-    pub fn get_entry_block(&'a self) -> Builder<'a, 'tcx> {
-        let builder = Builder::with_ccx(self.ccx);
-        builder.position_at_end(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn) });
-        builder
-    }
-}
-
-impl<'a, 'tcx> Drop for FunctionContext<'a, 'tcx> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
         }
     }
 }

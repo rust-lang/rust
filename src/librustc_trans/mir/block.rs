@@ -302,7 +302,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, &bcx, target);
-                let panic_block = self.fcx.build_new_block("panic");
+                let panic_block = bcx.build_new_block("panic");
                 if expected {
                     bcx.cond_br(cond, lltarget, panic_block.llbb());
                 } else {
@@ -546,7 +546,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bug!("Cannot use direct operand with an intrinsic call")
                         };
 
-                        trans_intrinsic_call(&bcx, self.fcx, callee.ty, &fn_ty, &llargs, dest,
+                        trans_intrinsic_call(&bcx, callee.ty, &fn_ty, &llargs, dest,
                             terminator.source_info.span);
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -793,13 +793,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let target = self.build_block(target_bb);
 
-        let bcx = self.fcx.build_new_block("cleanup");
+        let bcx = target.build_new_block("cleanup");
         self.landing_pads[target_bb] = Some(bcx.llbb());
 
         let ccx = bcx.ccx;
         let llpersonality = self.ccx.eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-        let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.fcx.llfn);
+        let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.llfn);
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
         bcx.store(llretval, slot, None);
@@ -809,7 +809,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     fn unreachable_block(&mut self) -> BasicBlockRef {
         self.unreachable_block.unwrap_or_else(|| {
-            let bl = self.fcx.build_new_block("unreachable");
+            let bl = self.build_block(mir::START_BLOCK).build_new_block("unreachable");
             bl.unreachable();
             self.unreachable_block = Some(bl.llbb());
             bl.llbb()
@@ -817,7 +817,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
-        let builder = Builder::with_ccx(self.fcx.ccx);
+        let builder = Builder::with_ccx(self.ccx);
         builder.position_at_end(self.blocks[bb]);
         builder
     }

@@ -23,9 +23,9 @@ use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
 use base;
-use common::{
-    self, CrateContext, FunctionContext, SharedCrateContext
-};
+use builder::Builder;
+use common::{self, CrateContext, SharedCrateContext};
+use cleanup::CleanupScope;
 use adt::MaybeSizedValue;
 use consts;
 use declare;
@@ -329,8 +329,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let orig_fn_ty = fn_ty;
-    let fcx = FunctionContext::new(ccx, lloncefn);
-    let mut bcx = fcx.get_entry_block();
+    let mut bcx = Builder::entry_block(ccx, lloncefn);
 
     let callee = Callee {
         data: Fn(llreffn),
@@ -339,7 +338,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // the first argument (`self`) will be the (by value) closure env.
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(lloncefn);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let self_idx = fn_ty.ret.is_indirect() as usize;
@@ -364,7 +363,9 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.schedule_drop_mem(&bcx, MaybeSizedValue::sized(llenv), closure_ty);
+    let self_scope = CleanupScope::schedule_drop_mem(
+        &bcx, MaybeSizedValue::sized(llenv), closure_ty
+    );
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
@@ -488,10 +489,9 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let fcx = FunctionContext::new(ccx, llfn);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::entry_block(ccx, llfn);
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(llfn);
 
     let self_arg = llargs.remove(fn_ty.ret.is_indirect() as usize);
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
