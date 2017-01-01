@@ -110,6 +110,7 @@ mod cabi_powerpc;
 mod cabi_powerpc64;
 mod cabi_s390x;
 mod cabi_sparc;
+mod cabi_sparc64;
 mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
