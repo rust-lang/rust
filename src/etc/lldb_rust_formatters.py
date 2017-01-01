@@ -90,6 +90,7 @@ def print_val(lldb_val, internal_dict):
     type_kind = val.type.get_type_kind()
 
     if (type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or
+        type_kind == rustpp.TYPE_KIND_REGULAR_UNION or
         type_kind == rustpp.TYPE_KIND_EMPTY):
         return print_struct_val(val,
                                 internal_dict,
@@ -175,7 +176,8 @@ def print_struct_val(val, internal_dict, omit_first_field, omit_type_name, is_tu
     Prints a struct, tuple, or tuple struct value with Rust syntax.
     Ignores any fields before field_start_index.
     """
-    assert val.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT
+    assert (val.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT or
+            val.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_UNION)
 
     if omit_type_name:
         type_name = ""
