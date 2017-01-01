@@ -694,7 +694,7 @@ fn try_intrinsic<'a, 'tcx>(
     local_ptr: ValueRef,
     dest: ValueRef,
 ) {
-    if bcx.ccx.sess().no_landing_pads() {
+    if bcx.sess().no_landing_pads() {
         bcx.call(func, &[data], None);
         bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
     } else if wants_msvc_seh(bcx.sess()) {
@@ -937,7 +937,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bcx.ccx.sess(), span,
+                bcx.sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
                                  $msg),
                          name, $($fmt)*));
@@ -959,7 +959,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 
 
-    let tcx = bcx.ccx.tcx();
+    let tcx = bcx.tcx();
     let sig = tcx.erase_late_bound_regions_and_normalize(callee_ty.fn_sig());
     let arg_tys = sig.inputs();
 

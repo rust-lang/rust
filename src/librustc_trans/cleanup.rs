@@ -59,7 +59,7 @@ impl<'tcx> DropValue<'tcx> {
         let llpersonality = bcx.ccx.eh_personality();
         bcx.set_personality_fn(llpersonality);
 
-        if base::wants_msvc_seh(bcx.ccx.sess()) {
+        if base::wants_msvc_seh(bcx.sess()) {
             let pad = bcx.cleanup_pad(None, &[]);
             let funclet = Some(Funclet::new(pad));
             self.trans(funclet.as_ref(), &bcx);
@@ -80,7 +80,7 @@ impl<'tcx> DropValue<'tcx> {
             // Insert cleanup instructions into the cleanup block
             self.trans(None, &bcx);
 
-            if !bcx.ccx.sess().target.target.options.custom_unwind_resume {
+            if !bcx.sess().target.target.options.custom_unwind_resume {
                 bcx.resume(llretval);
             } else {
                 let exc_ptr = bcx.extract_value(llretval, 0);
@@ -132,7 +132,7 @@ impl<'a, 'tcx> CleanupScope<'tcx> {
     fn new(bcx: &Builder<'a, 'tcx>, drop_val: DropValue<'tcx>) -> CleanupScope<'tcx> {
         CleanupScope {
             cleanup: Some(drop_val),
-            landing_pad: if !bcx.ccx.sess().no_landing_pads() {
+            landing_pad: if !bcx.sess().no_landing_pads() {
                 Some(drop_val.get_landing_pad(bcx))
             } else {
                 None

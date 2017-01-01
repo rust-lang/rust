@@ -38,7 +38,7 @@ pub fn set_source_location(
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        debug!("set_source_location: {}", builder.ccx.sess().codemap().span_to_string(span));
+        debug!("set_source_location: {}", builder.sess().codemap().span_to_string(span));
         let loc = span_start(builder.ccx, span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {

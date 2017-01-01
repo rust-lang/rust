@@ -211,7 +211,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // for most lvalues, to consume them we just load them
         // out from their home
         let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-        let ty = tr_lvalue.ty.to_ty(bcx.ccx.tcx());
+        let ty = tr_lvalue.ty.to_ty(bcx.tcx());
         self.trans_load(bcx, tr_lvalue.llval, ty)
     }
 
