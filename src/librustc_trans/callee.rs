@@ -26,7 +26,7 @@ use base;
 use builder::Builder;
 use common::{self, CrateContext, SharedCrateContext};
 use cleanup::CleanupScope;
-use adt::MaybeSizedValue;
+use mir::lvalue::LvalueRef;
 use consts;
 use declare;
 use value::Value;
@@ -364,7 +364,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
     let self_scope = CleanupScope::schedule_drop_mem(
-        &bcx, MaybeSizedValue::sized(llenv), closure_ty
+        &bcx, LvalueRef::new_sized_ty(llenv, closure_ty)
     );
 
     let llfn = callee.reify(bcx.ccx);

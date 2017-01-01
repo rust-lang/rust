@@ -14,7 +14,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, layout};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
-use adt::{self, MaybeSizedValue};
+use adt;
 use base::{self, Lifetime};
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use builder::Builder;
@@ -37,7 +37,7 @@ use std::cmp;
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
 use super::constant::Const;
-use super::lvalue::{LvalueRef};
+use super::lvalue::LvalueRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
@@ -251,11 +251,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     } else {
                         lvalue.llval
                     };
-                    MaybeSizedValue::sized(value)
+                    LvalueRef::new_sized_ty(value, ty)
                 } else {
-                    MaybeSizedValue::unsized_(lvalue.llval, lvalue.llextra)
+                    LvalueRef::new_unsized_ty(lvalue.llval, lvalue.llextra, ty)
                 };
-                let args = &[ptr.value, ptr.meta][..1 + ptr.has_meta() as usize];
+                let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
                 if let Some(unwind) = unwind {
                     bcx.invoke(
                         drop_fn,
@@ -707,9 +707,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval) => {
-                let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let ptr = adt::trans_field_ptr(bcx, tuple.ty, base, Disr(0), n);
+                    let ptr = adt::trans_field_ptr(
+                        bcx, LvalueRef::new_sized_ty(llval, tuple.ty), Disr(0), n
+                    );
                     let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
                         let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
                         Pair(lldata, llextra)

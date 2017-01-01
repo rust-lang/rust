@@ -47,6 +47,7 @@ use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
 use abi::{self, Abi, FnType};
+use mir::lvalue::LvalueRef;
 use adt;
 use attributes;
 use builder::Builder;
@@ -278,8 +279,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 monomorphize::field_ty(bcx.tcx(), substs_b, f)
             });
 
-            let src = adt::MaybeSizedValue::sized(src);
-            let dst = adt::MaybeSizedValue::sized(dst);
+            let src = LvalueRef::new_sized_ty(src, src_ty);
+            let dst = LvalueRef::new_sized_ty(dst, dst_ty);
 
             let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
@@ -287,8 +288,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
+                let src_f = adt::trans_field_ptr(bcx, src, Disr(0), i);
+                let dst_f = adt::trans_field_ptr(bcx, dst, Disr(0), i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
@@ -620,11 +621,12 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // final ret value
             bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
         };
-        let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
+        // Can return unsized value
+        let dest_val = LvalueRef::new_sized_ty(dest, sig.output());
         let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(&bcx, dest_val, Disr::from(disr), i);
             let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {

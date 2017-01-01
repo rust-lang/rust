@@ -48,6 +48,7 @@ use std;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
+use mir::lvalue::LvalueRef;
 use common::*;
 use builder::Builder;
 use glue;
@@ -62,32 +63,6 @@ use value::Value;
 pub enum BranchKind {
     Switch,
     Single
-}
-
-#[derive(Copy, Clone)]
-pub struct MaybeSizedValue {
-    pub value: ValueRef,
-    pub meta: ValueRef,
-}
-
-impl MaybeSizedValue {
-    pub fn sized(value: ValueRef) -> MaybeSizedValue {
-        MaybeSizedValue {
-            value: value,
-            meta: std::ptr::null_mut()
-        }
-    }
-
-    pub fn unsized_(value: ValueRef, meta: ValueRef) -> MaybeSizedValue {
-        MaybeSizedValue {
-            value: value,
-            meta: meta
-        }
-    }
-
-    pub fn has_meta(&self) -> bool {
-        !self.meta.is_null()
-    }
 }
 
 /// Given an enum, struct, closure, or tuple, extracts fields.
@@ -500,11 +475,11 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
-    t: Ty<'tcx>,
-    val: MaybeSizedValue,
+    val: LvalueRef<'tcx>,
     discr: Disr,
     ix: usize
 ) -> ValueRef {
+    let t = val.ty.to_ty(bcx.tcx());
     let l = bcx.ccx.layout_of(t);
     debug!("trans_field_ptr on {} represented as {:#?}", t, l);
     // Note: if this ever needs to generate conditionals (e.g., if we
@@ -520,7 +495,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
         layout::Vector { count, .. } => {
             assert_eq!(discr.0, 0);
             assert!((ix as u64) < count);
-            bcx.struct_gep(val.value, ix)
+            bcx.struct_gep(val.llval, ix)
         }
         layout::General { discr: d, ref variants, .. } => {
             let mut fields = compute_fields(bcx.ccx, t, discr.0 as usize, false);
@@ -532,7 +507,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
         layout::UntaggedUnion { .. } => {
             let fields = compute_fields(bcx.ccx, t, 0, false);
             let ty = type_of::in_memory_type_of(bcx.ccx, fields[ix]);
-            bcx.pointercast(val.value, ty.ptr_to())
+            bcx.pointercast(val.llval, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } |
         layout::StructWrappedNullablePointer { nndiscr,  .. } if discr.0 != nndiscr => {
@@ -541,14 +516,14 @@ pub fn trans_field_ptr<'a, 'tcx>(
             // (e.d., Result of Either with (), as one side.)
             let ty = type_of::type_of(bcx.ccx, nullfields[ix]);
             assert_eq!(machine::llsize_of_alloc(bcx.ccx, ty), 0);
-            bcx.pointercast(val.value, ty.ptr_to())
+            bcx.pointercast(val.llval, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } => {
             let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             assert_eq!(ix, 0);
             assert_eq!(discr.0, nndiscr);
             let ty = type_of::type_of(bcx.ccx, nnty);
-            bcx.pointercast(val.value, ty.ptr_to())
+            bcx.pointercast(val.llval, ty.ptr_to())
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr.0, nndiscr);
@@ -564,7 +539,7 @@ fn struct_field_ptr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     st: &layout::Struct,
     fields: &Vec<Ty<'tcx>>,
-    val: MaybeSizedValue,
+    val: LvalueRef,
     ix: usize,
     needs_cast: bool
 ) -> ValueRef {
@@ -576,9 +551,9 @@ fn struct_field_ptr<'a, 'tcx>(
             type_of::in_memory_type_of(ccx, fields[i])
         }).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, &fields[..], st.packed);
-        bcx.pointercast(val.value, real_ty.ptr_to())
+        bcx.pointercast(val.llval, real_ty.ptr_to())
     } else {
-        val.value
+        val.llval
     };
 
     // Simple case - we can just GEP the field
@@ -600,7 +575,7 @@ fn struct_field_ptr<'a, 'tcx>(
     }
 
     // There's no metadata available, log the case and just do the GEP.
-    if !val.has_meta() {
+    if !val.has_extra() {
         debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
                ix, Value(ptr_val));
         return bcx.struct_gep(ptr_val, ix);
@@ -621,7 +596,7 @@ fn struct_field_ptr<'a, 'tcx>(
     // The type Foo<Foo<Trait>> is represented in LLVM as { u16, { u16, u8 }}, meaning that
     // the `y` field has 16-bit alignment.
 
-    let meta = val.meta;
+    let meta = val.llextra;
 
 
     let offset = st.offsets[ix].bytes();
