@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   git \
   cmake \
-  ccache \
   sudo \
   bzip2 \
   xz-utils \
@@ -33,5 +32,3 @@ ENV \
 
 ENV RUST_CONFIGURE_ARGS --target=x86_64-unknown-freebsd
 ENV RUST_CHECK_TARGET ""
-RUN mkdir /tmp/obj
-RUN chmod 777 /tmp/obj

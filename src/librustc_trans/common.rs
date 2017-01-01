@@ -44,6 +44,8 @@ use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::Span;
 
+use rustc_i128::u128;
+
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -425,6 +427,17 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
+pub fn C_big_integral(t: Type, u: u128, sign_extend: bool) -> ValueRef {
+    if ::std::mem::size_of::<u128>() == 16 {
+        unsafe {
+            llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, &u as *const u128 as *const u64)
+        }
+    } else {
+        // SNAP: remove after snapshot
+        C_integral(t, u as u64, sign_extend)
+    }
+}
+
 pub fn C_floating_f64(f: f64, t: Type) -> ValueRef {
     unsafe {
         llvm::LLVMConstReal(t.to_ref(), f)
@@ -580,20 +593,29 @@ fn is_const_integral(v: ValueRef) -> bool {
     }
 }
 
-pub fn const_to_opt_int(v: ValueRef) -> Option<i64> {
-    unsafe {
-        if is_const_integral(v) {
-            Some(llvm::LLVMConstIntGetSExtValue(v))
-        } else {
-            None
-        }
-    }
+#[inline]
+#[cfg(stage0)]
+fn hi_lo_to_u128(lo: u64, _: u64) -> u128 {
+    lo as u128
 }
 
-pub fn const_to_opt_uint(v: ValueRef) -> Option<u64> {
+#[inline]
+#[cfg(not(stage0))]
+fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
+    ((hi as u128) << 64) | (lo as u128)
+}
+
+pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
     unsafe {
         if is_const_integral(v) {
-            Some(llvm::LLVMConstIntGetZExtValue(v))
+            let (mut lo, mut hi) = (0u64, 0u64);
+            let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
+                                                       &mut hi as *mut u64, &mut lo as *mut u64);
+            if success {
+                Some(hi_lo_to_u128(lo, hi))
+            } else {
+                None
+            }
         } else {
             None
         }

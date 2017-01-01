@@ -318,6 +318,15 @@ declare_features! (
 
     // Allow safe suggestions for potential type conversions.
     (active, safe_suggestion, "1.0.0", Some(37384)),
+
+    // `extern "ptx-*" fn()`
+    (active, abi_ptx, "1.15.0", None),
+
+    // The `i128` type
+    (active, i128_type, "1.16.0", Some(35118)),
+
+    // The `unadjusted` ABI. Perma unstable.
+    (active, abi_unadjusted, "1.16.0", None),
 );
 
 declare_features! (
@@ -986,7 +995,23 @@ impl<'a> PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, abi_sysv64, span,
                                    "sysv64 ABI is experimental and subject to change");
             },
-            _ => {}
+            Abi::PtxKernel => {
+                gate_feature_post!(&self, abi_ptx, span,
+                                   "PTX ABIs are experimental and subject to change");
+            },
+            Abi::Unadjusted => {
+                gate_feature_post!(&self, abi_unadjusted, span,
+                                   "unadjusted ABI is an implementation detail and perma-unstable");
+            },
+            // Stable
+            Abi::Cdecl |
+            Abi::Stdcall |
+            Abi::Fastcall |
+            Abi::Aapcs |
+            Abi::Win64 |
+            Abi::Rust |
+            Abi::C |
+            Abi::System => {}
         }
     }
 }
@@ -1199,6 +1224,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Break(_, Some(_)) => {
                 gate_feature_post!(&self, loop_break_value, e.span,
                                    "`break` with a value is experimental");
+            }
+            ast::ExprKind::Lit(ref lit) => {
+                if let ast::LitKind::Int(_, ref ty) = lit.node {
+                    match *ty {
+                        ast::LitIntType::Signed(ast::IntTy::I128) |
+                        ast::LitIntType::Unsigned(ast::UintTy::U128) => {
+                            gate_feature_post!(&self, i128_type, e.span,
+                                               "128-bit integers are not stable");
+                        }
+                        _ => {}
+                    }
+                }
             }
             _ => {}
         }

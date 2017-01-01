@@ -21,7 +21,7 @@ environment:
   # MSVC cargotest
   - MSYS_BITS: 64
     NO_VENDOR: 1
-    RUST_CHECK_TARGET: check-cargotest
+    RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
   # 32/64-bit MinGW builds.
@@ -95,6 +95,13 @@ install:
   - 7z x -y sccache.tar.bz2 > nul
   - 7z x -y sccache.tar > nul
   - set PATH=%PATH%;%CD%\sccache2
+
+  # Help debug some handle issues on AppVeyor
+  - ps: Invoke-WebRequest -Uri https://download.sysinternals.com/files/Handle.zip -OutFile handle.zip
+  - mkdir handle
+  - ps: Expand-Archive handle.zip -dest handle
+  - set PATH=%PATH%;%CD%\handle
+  - handle.exe -accepteula -help
 
 test_script:
   - git submodule update --init

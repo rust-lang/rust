@@ -75,13 +75,18 @@ pub fn llvm(build: &Build, target: &str) {
         (true, true) => "RelWithDebInfo",
     };
 
+    // NOTE: remember to also update `config.toml.example` when changing the defaults!
+    let llvm_targets = match build.config.llvm_targets {
+        Some(ref s) => s,
+        None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX",
+    };
+
     cfg.target(target)
        .host(&build.config.build)
        .out_dir(&dst)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
-       .define("LLVM_TARGETS_TO_BUILD",
-               "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc")
+       .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
        .define("LLVM_INCLUDE_EXAMPLES", "OFF")
        .define("LLVM_INCLUDE_TESTS", "OFF")
        .define("LLVM_INCLUDE_DOCS", "OFF")

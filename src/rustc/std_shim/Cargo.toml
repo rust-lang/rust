@@ -27,6 +27,7 @@ authors = ["The Rust Project Developers"]
 [lib]
 name = "std_shim"
 path = "lib.rs"
+doc = false
 
 [dependencies]
 std = { path = "../../libstd" }

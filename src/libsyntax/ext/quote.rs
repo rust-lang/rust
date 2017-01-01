@@ -19,6 +19,7 @@ use parse::token;
 use ptr::P;
 use tokenstream::{self, TokenTree};
 
+
 /// Quasiquoting works via token trees.
 ///
 /// This is registered as a set of expression syntax extension called quote!
@@ -40,6 +41,7 @@ pub mod rt {
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP};
     pub use codemap::{dummy_spanned};
+    use rustc_i128::{u128};
 
     pub trait ToTokens {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree>;
@@ -288,7 +290,7 @@ pub mod rt {
                     } else {
                         *self
                     };
-                    let lit = ast::LitKind::Int(val as u64, ast::LitIntType::Signed($tag));
+                    let lit = ast::LitKind::Int(val as u128, ast::LitIntType::Signed($tag));
                     let lit = P(ast::Expr {
                         id: ast::DUMMY_NODE_ID,
                         node: ast::ExprKind::Lit(P(dummy_spanned(lit))),
@@ -310,7 +312,7 @@ pub mod rt {
         (unsigned, $t:ty, $tag:expr) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-                    let lit = ast::LitKind::Int(*self as u64, ast::LitIntType::Unsigned($tag));
+                    let lit = ast::LitKind::Int(*self as u128, ast::LitIntType::Unsigned($tag));
                     dummy_spanned(lit).to_tokens(cx)
                 }
             }

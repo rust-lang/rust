@@ -1330,6 +1330,13 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 
     let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);
+    if repr_type_ty == ccx.tcx.types.i128 || repr_type_ty == ccx.tcx.types.u128 {
+        if !ccx.tcx.sess.features.borrow().i128_type {
+            emit_feature_err(&ccx.tcx.sess.parse_sess,
+                             "i128_type", sp, GateIssue::Language, "128-bit type is unstable");
+        }
+    }
+
     for v in vs {
         if let Some(e) = v.node.disr_expr {
             check_const_with_type(ccx, e, repr_type_ty, e.node_id);

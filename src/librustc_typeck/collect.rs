@@ -1060,11 +1060,13 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
                     (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) |
                     (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) |
+                    (attr::SignedInt(ast::IntTy::I128), ConstInt::I128(_)) |
                     (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) |
                     (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) |
                     (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) |
                     (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
                     (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
+                    (attr::UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) |
                     (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Some(i),
                     (_, i) => {
                         print_err(ConstVal::Integral(i));

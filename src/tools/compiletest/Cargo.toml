@@ -7,4 +7,4 @@ build = "build.rs"
 [dependencies]
 log = "0.3"
 env_logger = { version = "0.3.5", default-features = false }
-serialize = { path = "../../libserialize" }
+rustc-serialize = "0.3"

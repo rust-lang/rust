@@ -13,13 +13,14 @@ use std::marker::PhantomData;
 use std::mem;
 use blake2b::Blake2bHasher;
 use rustc_serialize::leb128;
+use rustc_i128::{u128,i128};
 
 fn write_unsigned_leb128_to_buf(buf: &mut [u8; 16], value: u64) -> usize {
-    leb128::write_unsigned_leb128_to(value, |i, v| buf[i] = v)
+    leb128::write_unsigned_leb128_to(value as u128, |i, v| buf[i] = v)
 }
 
 fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
-    leb128::write_signed_leb128_to(value, |i, v| buf[i] = v)
+    leb128::write_signed_leb128_to(value as i128, |i, v| buf[i] = v)
 }
 
 /// When hashing something that ends up affecting properties like symbol names. We

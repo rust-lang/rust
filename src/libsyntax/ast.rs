@@ -33,6 +33,8 @@ use std::u32;
 
 use serialize::{self, Encodable, Decodable, Encoder, Decoder};
 
+use rustc_i128::{u128, i128};
+
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros That Work Together"
@@ -1062,7 +1064,7 @@ pub enum LitKind {
     /// A character literal (`'a'`)
     Char(char),
     /// An integer literal (`1`)
-    Int(u64, LitIntType),
+    Int(u128, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
     Float(Symbol, FloatTy),
     /// A float literal without a suffix (`1.0 or 1.0E10`)
@@ -1171,6 +1173,7 @@ pub enum IntTy {
     I16,
     I32,
     I64,
+    I128,
 }
 
 impl fmt::Debug for IntTy {
@@ -1192,24 +1195,16 @@ impl IntTy {
             IntTy::I8 => "i8",
             IntTy::I16 => "i16",
             IntTy::I32 => "i32",
-            IntTy::I64 => "i64"
+            IntTy::I64 => "i64",
+            IntTy::I128 => "i128",
         }
     }
 
-    pub fn val_to_string(&self, val: i64) -> String {
-        // cast to a u64 so we can correctly print INT64_MIN. All integral types
-        // are parsed as u64, so we wouldn't want to print an extra negative
+    pub fn val_to_string(&self, val: i128) -> String {
+        // cast to a u128 so we can correctly print INT128_MIN. All integral types
+        // are parsed as u128, so we wouldn't want to print an extra negative
         // sign.
-        format!("{}{}", val as u64, self.ty_to_string())
-    }
-
-    pub fn ty_max(&self) -> u64 {
-        match *self {
-            IntTy::I8 => 0x80,
-            IntTy::I16 => 0x8000,
-            IntTy::Is | IntTy::I32 => 0x80000000, // FIXME: actually ni about Is
-            IntTy::I64 => 0x8000000000000000
-        }
+        format!("{}{}", val as u128, self.ty_to_string())
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1219,6 +1214,7 @@ impl IntTy {
             IntTy::I16 => 16,
             IntTy::I32 => 32,
             IntTy::I64 => 64,
+            IntTy::I128 => 128,
         })
     }
 }
@@ -1230,6 +1226,7 @@ pub enum UintTy {
     U16,
     U32,
     U64,
+    U128,
 }
 
 impl UintTy {
@@ -1239,21 +1236,13 @@ impl UintTy {
             UintTy::U8 => "u8",
             UintTy::U16 => "u16",
             UintTy::U32 => "u32",
-            UintTy::U64 => "u64"
+            UintTy::U64 => "u64",
+            UintTy::U128 => "u128",
         }
     }
 
-    pub fn val_to_string(&self, val: u64) -> String {
+    pub fn val_to_string(&self, val: u128) -> String {
         format!("{}{}", val, self.ty_to_string())
-    }
-
-    pub fn ty_max(&self) -> u64 {
-        match *self {
-            UintTy::U8 => 0xff,
-            UintTy::U16 => 0xffff,
-            UintTy::Us | UintTy::U32 => 0xffffffff, // FIXME: actually ni about Us
-            UintTy::U64 => 0xffffffffffffffff
-        }
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1263,6 +1252,7 @@ impl UintTy {
             UintTy::U16 => 16,
             UintTy::U32 => 32,
             UintTy::U64 => 64,
+            UintTy::U128 => 128,
         })
     }
 }

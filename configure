@@ -693,6 +693,7 @@ opt_nosave manage-submodules 1 "let the build manage the git submodules"
 opt_nosave clang 0 "prefer clang to gcc for building the runtime"
 opt_nosave jemalloc 1 "build liballoc with jemalloc"
 opt elf-tls 1 "elf thread local storage on platforms where supported"
+opt full-bootstrap 0 "build three compilers instead of two"
 
 valopt_nosave prefix "/usr/local" "set installation prefix"
 valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
