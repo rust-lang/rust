@@ -268,7 +268,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 // User variable
                 let source_info = decl.source_info.unwrap();
                 let debug_scope = mircx.scopes[source_info.scope];
-                let dbg = debug_scope.is_valid() && bcx.ccx.sess().opts.debuginfo == FullDebugInfo;
+                let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !lvalue_locals.contains(local.index()) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
@@ -367,13 +367,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             lvalue_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
     let mir = mircx.mir;
-    let tcx = bcx.ccx.tcx();
+    let tcx = bcx.tcx();
     let mut idx = 0;
     let mut llarg_idx = mircx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
-    let arg_scope = if arg_scope.is_valid() && bcx.ccx.sess().opts.debuginfo == FullDebugInfo {
+    let arg_scope = if arg_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo {
         Some(arg_scope.scope_metadata)
     } else {
         None
@@ -433,7 +433,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         let arg = &mircx.fn_ty.args[idx];
         idx += 1;
-        let llval = if arg.is_indirect() && bcx.ccx.sess().opts.debuginfo != FullDebugInfo {
+        let llval = if arg.is_indirect() && bcx.sess().opts.debuginfo != FullDebugInfo {
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up, unless
             // we emit extra-debug-info, which requires local allocas :(.

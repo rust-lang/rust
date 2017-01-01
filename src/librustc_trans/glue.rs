@@ -44,8 +44,8 @@ pub fn trans_exchange_free_ty<'a, 'tcx>(
     ptr: MaybeSizedValue,
     content_ty: Ty<'tcx>
 ) {
-    let def_id = langcall(bcx.ccx.tcx(), None, "", BoxFreeFnLangItem);
-    let substs = bcx.ccx.tcx().mk_substs(iter::once(Kind::from(content_ty)));
+    let def_id = langcall(bcx.tcx(), None, "", BoxFreeFnLangItem);
+    let substs = bcx.tcx().mk_substs(iter::once(Kind::from(content_ty)));
     let callee = Callee::def(bcx.ccx, def_id, substs);
 
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
@@ -232,7 +232,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
         }
         ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
             let shallow_drop = def.is_union();
-            let tcx = bcx.ccx.tcx();
+            let tcx = bcx.tcx();
 
             let def = t.ty_adt_def().unwrap();
 
@@ -330,7 +330,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let last_field = def.struct_variant().fields.last().unwrap();
-            let field_ty = monomorphize::field_ty(bcx.ccx.tcx(), substs, last_field);
+            let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
@@ -382,7 +382,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             (bcx.load(size_ptr), bcx.load(align_ptr))
         }
         ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = t.sequence_element_type(bcx.ccx.tcx());
+            let unit_ty = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx, unit_ty);
@@ -405,7 +405,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
                               av: adt::MaybeSizedValue,
                               variant: &'tcx ty::VariantDef,
                               substs: &Substs<'tcx>) {
-        let tcx = cx.ccx.tcx();
+        let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             let field_ptr = adt::trans_field_ptr(&cx, t, av, Disr::from(variant.disr_val), i);
@@ -416,7 +416,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
     let mut cx = cx;
     match t.sty {
         ty::TyClosure(def_id, substs) => {
-            for (i, upvar_ty) in substs.upvar_tys(def_id, cx.ccx.tcx()).enumerate() {
+            for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
                 let llupvar = adt::trans_field_ptr(&cx, t, ptr, Disr(0), i);
                 drop_ty(&cx, MaybeSizedValue::sized(llupvar), upvar_ty);
             }
@@ -424,12 +424,12 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
         ty::TyArray(_, n) => {
             let base = get_dataptr(&cx, ptr.value);
             let len = C_uint(cx.ccx, n);
-            let unit_ty = t.sequence_element_type(cx.ccx.tcx());
+            let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, base, unit_ty, len,
                 |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
         }
         ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = t.sequence_element_type(cx.ccx.tcx());
+            let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, ptr.value, unit_ty, ptr.meta,
                 |bb, vv| drop_ty(bb, MaybeSizedValue::sized(vv), unit_ty));
         }
@@ -441,7 +441,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
-                let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.ccx.tcx(), t, None);
+                let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
                     let llfld_a = adt::trans_field_ptr(&cx, t, ptr, Disr::from(discr), i);
                     let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
@@ -469,7 +469,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
                         }
                     }
                     (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
-                        let tcx = cx.ccx.tcx();
+                        let tcx = cx.tcx();
                         drop_ty(&cx, MaybeSizedValue::sized(lldiscrim_a), tcx.types.isize);
 
                         // Create a fall-through basic block for the "else" case of
@@ -501,13 +501,13 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>,
                         }
                         cx = next_cx;
                     }
-                    _ => cx.ccx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
+                    _ => cx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
                 }
             }
         },
 
         _ => {
-            cx.ccx.sess().unimpl(&format!("type in drop_structural_ty: {}", t))
+            cx.sess().unimpl(&format!("type in drop_structural_ty: {}", t))
         }
     }
     return cx;

@@ -122,7 +122,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let ps = self.get_personality_slot(&bcx);
                     let lp = bcx.load(ps);
                     Lifetime::End.call(&bcx, ps);
-                    if !bcx.ccx.sess().target.target.options.custom_unwind_resume {
+                    if !bcx.sess().target.target.options.custom_unwind_resume {
                         bcx.resume(lp);
                     } else {
                         let exc_ptr = bcx.extract_value(lp, 0);
@@ -146,7 +146,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
-                let ty = discr_lvalue.ty.to_ty(bcx.ccx.tcx());
+                let ty = discr_lvalue.ty.to_ty(bcx.tcx());
                 let discr = adt::trans_get_discr(&bcx, ty, discr_lvalue.llval, None, true);
 
                 let mut bb_hist = FxHashMap();
@@ -203,7 +203,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         LocalRef::Lvalue(tr_lvalue) => {
                             OperandRef {
                                 val: Ref(tr_lvalue.llval),
-                                ty: tr_lvalue.ty.to_ty(bcx.ccx.tcx())
+                                ty: tr_lvalue.ty.to_ty(bcx.tcx())
                             }
                         }
                     };
@@ -233,7 +233,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(&self.mir, bcx.ccx.tcx()).to_ty(bcx.ccx.tcx());
+                let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
 
                 // Double check for necessity to drop
@@ -314,7 +314,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 self.set_debug_loc(&bcx, terminator.source_info);
 
                 // Get the location information.
-                let loc = bcx.ccx.sess().codemap().lookup_char_pos(span.lo);
+                let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
                 let filename = Symbol::intern(&loc.file.name).as_str();
                 let filename = C_str_slice(bcx.ccx, filename);
                 let line = C_u32(bcx.ccx, loc.line as u32);
@@ -364,15 +364,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
                         let err = ConstEvalErr{ span: span, kind: err };
-                        let mut diag = bcx.ccx.tcx().sess.struct_span_warn(
+                        let mut diag = bcx.tcx().sess.struct_span_warn(
                             span, "this expression will panic at run-time");
-                        note_const_eval_err(bcx.ccx.tcx(), &err, span, "expression", &mut diag);
+                        note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
                         diag.emit();
                     }
                 }
 
                 // Obtain the panic entry point.
-                let def_id = common::langcall(bcx.ccx.tcx(), Some(span), "", lang_item);
+                let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let callee = Callee::def(bcx.ccx, def_id,
                     bcx.ccx.empty_substs_for_def_id(def_id));
                 let llfn = callee.reify(bcx.ccx);
@@ -411,12 +411,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
-                let sig = bcx.ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(sig);
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
                     (&ty::TyFnDef(def_id, ..), &Intrinsic) => {
-                        Some(bcx.ccx.tcx().item_name(def_id).as_str())
+                        Some(bcx.tcx().item_name(def_id).as_str())
                     }
                     _ => None
                 };
@@ -444,7 +444,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let extra_args = &args[sig.inputs().len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
-                    let op_ty = op_arg.ty(&self.mir, bcx.ccx.tcx());
+                    let op_ty = op_arg.ty(&self.mir, bcx.tcx());
                     self.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
                 let fn_ty = callee.direct_fn_type(bcx.ccx, &extra_args);
@@ -635,7 +635,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let imm_op = |x| OperandRef {
                     val: Immediate(x),
                     // We won't be checking the type again.
-                    ty: bcx.ccx.tcx().types.err
+                    ty: bcx.tcx().types.err
                 };
                 self.trans_argument(bcx, imm_op(ptr), llargs, fn_ty, next_idx, callee);
                 self.trans_argument(bcx, imm_op(meta), llargs, fn_ty, next_idx, callee);
@@ -875,13 +875,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                        src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
         let mut val = self.trans_operand(bcx, src);
         if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
-            let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.ccx.tcx()));
+            let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.tcx()));
             let out_type_size = llbitsize_of_real(bcx.ccx, llouttype);
             if out_type_size != 0 {
                 // FIXME #19925 Remove this hack after a release cycle.
                 let f = Callee::def(bcx.ccx, def_id, substs);
                 let ty = match f.ty.sty {
-                    ty::TyFnDef(.., f) => bcx.ccx.tcx().mk_fn_ptr(f),
+                    ty::TyFnDef(.., f) => bcx.tcx().mk_fn_ptr(f),
                     _ => f.ty
                 };
                 val = OperandRef {

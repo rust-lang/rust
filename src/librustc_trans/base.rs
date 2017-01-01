@@ -272,10 +272,10 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             assert_eq!(def_a, def_b);
 
             let src_fields = def_a.variants[0].fields.iter().map(|f| {
-                monomorphize::field_ty(bcx.ccx.tcx(), substs_a, f)
+                monomorphize::field_ty(bcx.tcx(), substs_a, f)
             });
             let dst_fields = def_b.variants[0].fields.iter().map(|f| {
-                monomorphize::field_ty(bcx.ccx.tcx(), substs_b, f)
+                monomorphize::field_ty(bcx.tcx(), substs_b, f)
             });
 
             let src = adt::MaybeSizedValue::sized(src);

@@ -359,7 +359,7 @@ pub fn trans_get_discr<'a, 'tcx>(
         layout::RawNullablePointer { nndiscr, .. } => {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx,
-                monomorphize::field_ty(bcx.ccx.tcx(), substs,
+                monomorphize::field_ty(bcx.tcx(), substs,
                 &def.variants[nndiscr as usize].fields[0]));
             bcx.icmp(cmp, bcx.load(scrutinee), C_null(llptrty))
         }
@@ -486,7 +486,7 @@ pub fn trans_set_discr<'a, 'tcx>(
 }
 
 fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &Builder<'a, 'tcx>) -> bool {
-    bcx.ccx.sess().target.target.arch == "arm" || bcx.ccx.sess().target.target.arch == "aarch64"
+    bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
 fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
@@ -524,7 +524,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
         }
         layout::General { discr: d, ref variants, .. } => {
             let mut fields = compute_fields(bcx.ccx, t, discr.0 as usize, false);
-            fields.insert(0, d.to_ty(&bcx.ccx.tcx(), false));
+            fields.insert(0, d.to_ty(&bcx.tcx(), false));
             struct_field_ptr(bcx, &variants[discr.0 as usize],
              &fields,
              val, ix + 1, true)

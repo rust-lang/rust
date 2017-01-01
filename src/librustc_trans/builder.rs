@@ -19,7 +19,8 @@ use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
 use libc::{c_uint, c_char};
-use rustc::ty::{Ty, TypeFoldable};
+use rustc::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc::session::Session;
 use type_of;
 
 use std::borrow::Cow;
@@ -91,6 +92,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         builder.position_at_end(llbb);
         builder
+    }
+
+    pub fn sess(&self) -> &Session {
+        self.ccx.sess()
+    }
+
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.ccx.tcx()
     }
 
     pub fn llfn(&self) -> ValueRef {

@@ -167,7 +167,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let llindex = C_uint(bcx.ccx, from);
                         let llbase = project_index(llindex);
 
-                        let base_ty = tr_base.ty.to_ty(bcx.ccx.tcx());
+                        let base_ty = tr_base.ty.to_ty(bcx.tcx());
                         match base_ty.sty {
                             ty::TyArray(..) => {
                                 // must cast the lvalue pointer type to the new
