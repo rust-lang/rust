@@ -106,24 +106,24 @@ typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
 typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
 typedef struct LLVMOpaqueRustJITMemoryManager *LLVMRustJITMemoryManagerRef;
 
-extern "C" void rust_llvm_string_write_impl(RustStringRef str, const char *ptr,
-                                            size_t size);
+extern "C" void LLVMRustStringWriteImpl(RustStringRef Str, const char *Ptr,
+                                        size_t Size);
 
-class raw_rust_string_ostream : public llvm::raw_ostream {
-  RustStringRef str;
-  uint64_t pos;
+class RawRustStringOstream : public llvm::raw_ostream {
+  RustStringRef Str;
+  uint64_t Pos;
 
-  void write_impl(const char *ptr, size_t size) override {
-    rust_llvm_string_write_impl(str, ptr, size);
-    pos += size;
+  void write_impl(const char *Ptr, size_t Size) override {
+    LLVMRustStringWriteImpl(Str, Ptr, Size);
+    Pos += Size;
   }
 
-  uint64_t current_pos() const override { return pos; }
+  uint64_t current_pos() const override { return Pos; }
 
 public:
-  explicit raw_rust_string_ostream(RustStringRef str) : str(str), pos(0) {}
+  explicit RawRustStringOstream(RustStringRef Str) : Str(Str), Pos(0) {}
 
-  ~raw_rust_string_ostream() {
+  ~RawRustStringOstream() {
     // LLVM requires this.
     flush();
   }
