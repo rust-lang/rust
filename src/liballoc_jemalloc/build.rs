@@ -151,6 +151,12 @@ fn main() {
     cmd.arg(format!("--host={}", build_helper::gnu_target(&target)));
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
 
+    // for some reason, jemalloc configure doesn't detect this value
+    // automatically for this target
+    if target == "sparc64-unknown-linux-gnu" {
+        cmd.arg("--with-lg-quantum=4");
+    }
+
     run(&mut cmd);
     let mut make = Command::new(build_helper::make(&host));
     make.current_dir(&build_dir)

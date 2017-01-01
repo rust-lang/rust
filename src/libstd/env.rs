@@ -712,6 +712,7 @@ pub mod consts {
     /// - powerpc
     /// - powerpc64
     /// - s390x
+    /// - sparc64
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
@@ -841,6 +842,11 @@ mod arch {
 #[cfg(target_arch = "s390x")]
 mod arch {
     pub const ARCH: &'static str = "s390x";
+}
+
+#[cfg(target_arch = "sparc64")]
+mod arch {
+    pub const ARCH: &'static str = "sparc64";
 }
 
 #[cfg(target_arch = "le32")]
