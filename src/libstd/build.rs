@@ -14,6 +14,7 @@ extern crate gcc;
 extern crate build_helper;
 
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -67,7 +68,9 @@ fn main() {
 
 fn build_libbacktrace(host: &str, target: &str) {
     let src_dir = env::current_dir().unwrap().join("../libbacktrace");
-    let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let build_dir =
+        PathBuf::from(env::var_os("RUSTBUILD_NATIVE_DIR").unwrap()).join("libbacktrace");
+    let _ = fs::create_dir_all(&build_dir);
 
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
@@ -89,21 +92,23 @@ fn build_libbacktrace(host: &str, target: &str) {
     let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
     let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
                          .collect::<Vec<_>>().join(" ");
-    run(Command::new("sh")
-                .current_dir(&build_dir)
-                .arg(src_dir.join("configure").to_str().unwrap()
-                            .replace("C:\\", "/c/")
-                            .replace("\\", "/"))
-                .arg("--with-pic")
-                .arg("--disable-multilib")
-                .arg("--disable-shared")
-                .arg("--disable-host-shared")
-                .arg(format!("--host={}", build_helper::gnu_target(target)))
-                .arg(format!("--build={}", build_helper::gnu_target(host)))
-                .env("CC", compiler.path())
-                .env("AR", &ar)
-                .env("RANLIB", format!("{} s", ar.display()))
-                .env("CFLAGS", cflags));
+    if !build_dir.join("Makefile").metadata().is_ok() {
+        run(Command::new("sh")
+                    .current_dir(&build_dir)
+                    .arg(src_dir.join("configure").to_str().unwrap()
+                                .replace("C:\\", "/c/")
+                                .replace("\\", "/"))
+                    .arg("--with-pic")
+                    .arg("--disable-multilib")
+                    .arg("--disable-shared")
+                    .arg("--disable-host-shared")
+                    .arg(format!("--host={}", build_helper::gnu_target(target)))
+                    .arg(format!("--build={}", build_helper::gnu_target(host)))
+                    .env("CC", compiler.path())
+                    .env("AR", &ar)
+                    .env("RANLIB", format!("{} s", ar.display()))
+                    .env("CFLAGS", cflags));
+    }
     run(Command::new(build_helper::make(host))
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
