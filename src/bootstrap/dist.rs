@@ -320,10 +320,18 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
         return
     }
 
+    // Package save-analysis from stage1 if not doing a full bootstrap, as the
+    // stage2 artifacts is simply copied from stage1 in that case.
+    let compiler = if build.force_use_stage1(compiler, target) {
+        Compiler::new(1, compiler.host)
+    } else {
+        compiler.clone()
+    };
+
     let name = format!("rust-analysis-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, target));
 
-    let src = build.stage_out(compiler, Mode::Libstd).join(target).join("release").join("deps");
+    let src = build.stage_out(&compiler, Mode::Libstd).join(target).join("release").join("deps");
 
     let image_src = src.join("save-analysis");
     let dst = image.join("lib/rustlib").join(target).join("analysis");
