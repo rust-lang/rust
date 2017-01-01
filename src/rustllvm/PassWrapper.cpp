@@ -64,8 +64,8 @@ enum class LLVMRustPassKind {
   Module,
 };
 
-static LLVMRustPassKind to_rust(PassKind kind) {
-  switch (kind) {
+static LLVMRustPassKind toRust(PassKind Kind) {
+  switch (Kind) {
   case PT_Function:
     return LLVMRustPassKind::Function;
   case PT_Module:
@@ -86,17 +86,17 @@ extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
   return nullptr;
 }
 
-extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef rust_pass) {
-  assert(rust_pass);
-  Pass *pass = unwrap(rust_pass);
-  return to_rust(pass->getPassKind());
+extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
+  assert(RustPass);
+  Pass *Pass = unwrap(RustPass);
+  return toRust(Pass->getPassKind());
 }
 
-extern "C" void LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
-  assert(rust_pass);
-  Pass *pass = unwrap(rust_pass);
-  PassManagerBase *pm = unwrap(PM);
-  pm->add(pass);
+extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
+  assert(RustPass);
+  Pass *Pass = unwrap(RustPass);
+  PassManagerBase *PMB = unwrap(PMR);
+  PMB->add(Pass);
 }
 
 #ifdef LLVM_COMPONENT_X86
@@ -167,7 +167,7 @@ GEN_SUBTARGETS
 #undef SUBTARGET
 
 extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
-                                   const char *feature) {
+                                   const char *Feature) {
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const FeatureBitset &Bits = MCInfo->getFeatureBits();
@@ -181,7 +181,7 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
   GEN_SUBTARGETS { return false; }
 #undef SUBTARGET
 
-  while (strcmp(feature, FeatureEntry->Key) != 0)
+  while (strcmp(Feature, FeatureEntry->Key) != 0)
     FeatureEntry++;
 
   return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
@@ -197,8 +197,8 @@ enum class LLVMRustCodeModel {
   Large,
 };
 
-static CodeModel::Model from_rust(LLVMRustCodeModel model) {
-  switch (model) {
+static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
+  switch (Model) {
   case LLVMRustCodeModel::Default:
     return CodeModel::Default;
   case LLVMRustCodeModel::JITDefault:
@@ -224,8 +224,8 @@ enum class LLVMRustCodeGenOptLevel {
   Aggressive,
 };
 
-static CodeGenOpt::Level from_rust(LLVMRustCodeGenOptLevel level) {
-  switch (level) {
+static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
+  switch (Level) {
   case LLVMRustCodeGenOptLevel::None:
     return CodeGenOpt::None;
   case LLVMRustCodeGenOptLevel::Less:
@@ -289,9 +289,9 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
 #endif
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
-    const char *triple, const char *cpu, const char *feature,
-    LLVMRustCodeModel rust_CM, LLVMRelocMode Reloc,
-    LLVMRustCodeGenOptLevel rust_OptLevel, bool UseSoftFloat,
+    const char *TripleStr, const char *CPU, const char *Feature,
+    LLVMRustCodeModel RustCM, LLVMRelocMode Reloc,
+    LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections) {
 
@@ -300,8 +300,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 #else
   Optional<Reloc::Model> RM;
 #endif
-  auto CM = from_rust(rust_CM);
-  auto OptLevel = from_rust(rust_OptLevel);
+  auto CM = fromRust(RustCM);
+  auto OptLevel = fromRust(RustOptLevel);
 
   switch (Reloc) {
   case LLVMRelocStatic:
@@ -321,7 +321,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
   std::string Error;
-  Triple Trip(Triple::normalize(triple));
+  Triple Trip(Triple::normalize(TripleStr));
   const llvm::Target *TheTarget =
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
   if (TheTarget == nullptr) {
@@ -329,9 +329,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     return nullptr;
   }
 
-  StringRef real_cpu = cpu;
-  if (real_cpu == "native") {
-    real_cpu = sys::getHostCPUName();
+  StringRef RealCPU = CPU;
+  if (RealCPU == "native") {
+    RealCPU = sys::getHostCPUName();
   }
 
   TargetOptions Options;
@@ -347,7 +347,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.FunctionSections = FunctionSections;
 
   TargetMachine *TM = TheTarget->createTargetMachine(
-      Trip.getTriple(), real_cpu, feature, Options, RM, CM, OptLevel);
+      Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
 }
 
@@ -367,45 +367,45 @@ extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 }
 
 extern "C" void LLVMRustConfigurePassManagerBuilder(
-    LLVMPassManagerBuilderRef PMB, LLVMRustCodeGenOptLevel OptLevel,
+    LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
     bool MergeFunctions, bool SLPVectorize, bool LoopVectorize) {
   // Ignore mergefunc for now as enabling it causes crashes.
-  // unwrap(PMB)->MergeFunctions = MergeFunctions;
-  unwrap(PMB)->SLPVectorize = SLPVectorize;
-  unwrap(PMB)->OptLevel = from_rust(OptLevel);
-  unwrap(PMB)->LoopVectorize = LoopVectorize;
+  // unwrap(PMBR)->MergeFunctions = MergeFunctions;
+  unwrap(PMBR)->SLPVectorize = SLPVectorize;
+  unwrap(PMBR)->OptLevel = fromRust(OptLevel);
+  unwrap(PMBR)->LoopVectorize = LoopVectorize;
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
 // field of a PassManagerBuilder, we expose our own method of doing so.
-extern "C" void LLVMRustAddBuilderLibraryInfo(LLVMPassManagerBuilderRef PMB,
+extern "C" void LLVMRustAddBuilderLibraryInfo(LLVMPassManagerBuilderRef PMBR,
                                               LLVMModuleRef M,
                                               bool DisableSimplifyLibCalls) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
   TargetLibraryInfoImpl *TLI = new TargetLibraryInfoImpl(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLI->disableAllFunctions();
-  unwrap(PMB)->LibraryInfo = TLI;
+  unwrap(PMBR)->LibraryInfo = TLI;
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to create the
 // TargetLibraryInfo pass, so we use this method to do so.
-extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMB, LLVMModuleRef M,
+extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                        bool DisableSimplifyLibCalls) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
   TargetLibraryInfoImpl TLII(TargetTriple);
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
-  unwrap(PMB)->add(new TargetLibraryInfoWrapperPass(TLII));
+  unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
 }
 
 // Unfortunately, the LLVM C API doesn't provide an easy way of iterating over
 // all the functions in a module, so we do that manually here. You'll find
 // similar code in clang's BackendUtil.cpp file.
-extern "C" void LLVMRustRunFunctionPassManager(LLVMPassManagerRef PM,
+extern "C" void LLVMRustRunFunctionPassManager(LLVMPassManagerRef PMR,
                                                LLVMModuleRef M) {
   llvm::legacy::FunctionPassManager *P =
-      unwrap<llvm::legacy::FunctionPassManager>(PM);
+      unwrap<llvm::legacy::FunctionPassManager>(PMR);
   P->doInitialization();
 
   // Upgrade all calls to old intrinsics first.
@@ -425,10 +425,10 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // check if they've already been initialized.  (This could happen if we're
   // being called from rustpkg, for example). If the arguments change, then
   // that's just kinda unfortunate.
-  static bool initialized = false;
-  if (initialized)
+  static bool Initialized = false;
+  if (Initialized)
     return;
-  initialized = true;
+  Initialized = true;
   cl::ParseCommandLineOptions(Argc, Argv);
 }
 
@@ -438,8 +438,8 @@ enum class LLVMRustFileType {
   ObjectFile,
 };
 
-static TargetMachine::CodeGenFileType from_rust(LLVMRustFileType type) {
-  switch (type) {
+static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
+  switch (Type) {
   case LLVMRustFileType::AssemblyFile:
     return TargetMachine::CGFT_AssemblyFile;
   case LLVMRustFileType::ObjectFile:
@@ -451,14 +451,14 @@ static TargetMachine::CodeGenFileType from_rust(LLVMRustFileType type) {
 
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
-                        LLVMModuleRef M, const char *path,
-                        LLVMRustFileType rust_FileType) {
+                        LLVMModuleRef M, const char *Path,
+                        LLVMRustFileType RustFileType) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
-  auto FileType = from_rust(rust_FileType);
+  auto FileType = fromRust(RustFileType);
 
   std::string ErrorInfo;
   std::error_code EC;
-  raw_fd_ostream OS(path, EC, sys::fs::F_None);
+  raw_fd_ostream OS(Path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
   if (ErrorInfo != "") {
@@ -477,12 +477,12 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
 }
 
 extern "C" void LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                                    const char *path) {
+                                    const char *Path) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   std::string ErrorInfo;
 
   std::error_code EC;
-  raw_fd_ostream OS(path, EC, sys::fs::F_None);
+  raw_fd_ostream OS(Path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
 
@@ -496,10 +496,10 @@ extern "C" void LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
 extern "C" void LLVMRustPrintPasses() {
   LLVMInitializePasses();
   struct MyListener : PassRegistrationListener {
-    void passEnumerate(const PassInfo *info) {
+    void passEnumerate(const PassInfo *Info) {
 #if LLVM_VERSION_GE(4, 0)
-      StringRef PassArg = info->getPassArgument();
-      StringRef PassName = info->getPassName();
+      StringRef PassArg = Info->getPassArgument();
+      StringRef PassName = Info->getPassName();
       if (!PassArg.empty()) {
         // These unsigned->signed casts could theoretically overflow, but
         // realistically never will (and even if, the result is implementation
@@ -508,37 +508,37 @@ extern "C" void LLVMRustPrintPasses() {
                (int)PassName.size(), PassName.data());
       }
 #else
-      if (info->getPassArgument() && *info->getPassArgument()) {
-        printf("%15s - %s\n", info->getPassArgument(), info->getPassName());
+      if (Info->getPassArgument() && *Info->getPassArgument()) {
+        printf("%15s - %s\n", Info->getPassArgument(), Info->getPassName());
       }
 #endif
     }
-  } listener;
+  } Listener;
 
   PassRegistry *PR = PassRegistry::getPassRegistry();
-  PR->enumerateWith(&listener);
+  PR->enumerateWith(&Listener);
 }
 
-extern "C" void LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMB,
+extern "C" void LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMBR,
                                             bool AddLifetimes) {
 #if LLVM_VERSION_GE(4, 0)
-  unwrap(PMB)->Inliner = llvm::createAlwaysInlinerLegacyPass(AddLifetimes);
+  unwrap(PMBR)->Inliner = llvm::createAlwaysInlinerLegacyPass(AddLifetimes);
 #else
-  unwrap(PMB)->Inliner = createAlwaysInlinerPass(AddLifetimes);
+  unwrap(PMBR)->Inliner = createAlwaysInlinerPass(AddLifetimes);
 #endif
 }
 
-extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **symbols,
-                                           size_t len) {
+extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
+                                           size_t Len) {
   llvm::legacy::PassManager passes;
 
 #if LLVM_VERSION_LE(3, 8)
-  ArrayRef<const char *> ref(symbols, len);
-  passes.add(llvm::createInternalizePass(ref));
+  ArrayRef<const char *> Ref(Symbols, Len);
+  passes.add(llvm::createInternalizePass(Ref));
 #else
   auto PreserveFunctions = [=](const GlobalValue &GV) {
-    for (size_t i = 0; i < len; i++) {
-      if (GV.getName() == symbols[i]) {
+    for (size_t I = 0; I < Len; I++) {
+      if (GV.getName() == Symbols[I]) {
         return true;
       }
     }
