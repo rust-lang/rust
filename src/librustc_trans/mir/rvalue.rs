@@ -118,7 +118,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     substs: self.monomorphize(&substs),
                                     variant_index: disr.0 as usize,
                                 };
-                                let lldest_i = adt::trans_field_ptr(&bcx, val, field_index);
+                                let lldest_i = val.trans_field_ptr(&bcx, field_index);
                                 self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }

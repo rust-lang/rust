@@ -289,8 +289,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, src, i);
-                let dst_f = adt::trans_field_ptr(bcx, dst, i);
+                let src_f = src.trans_field_ptr(bcx, i);
+                let dst_f = dst.trans_field_ptr(bcx, i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
@@ -632,7 +632,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(&bcx, dest_val, i);
+            let lldestptr = dest_val.trans_field_ptr(&bcx, i);
             let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
