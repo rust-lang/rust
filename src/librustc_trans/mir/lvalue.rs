@@ -50,13 +50,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         LvalueRef::new_sized(llval, LvalueTy::from_ty(ty))
     }
 
-    pub fn new_unsized(llval: ValueRef, llextra: ValueRef, ty: LvalueTy<'tcx>) -> LvalueRef<'tcx> {
-        LvalueRef {
-            llval: llval,
-            llextra: llextra,
-            ty: ty,
-        }
-    }
     pub fn new_unsized_ty(llval: ValueRef, llextra: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
         LvalueRef {
             llval: llval,
@@ -81,7 +74,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         !self.llextra.is_null()
     }
 
-    pub fn struct_field_ptr(
+    fn struct_field_ptr(
         self,
         bcx: &Builder<'a, 'tcx>,
         st: &layout::Struct,
@@ -298,14 +291,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
-                        let base = if is_sized {
-                            LvalueRef::new_sized(tr_base.llval, tr_base.ty)
+                        let llextra = if self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx)) {
+                            ptr::null_mut()
                         } else {
-                            LvalueRef::new_unsized(tr_base.llval, tr_base.llextra, tr_base.ty)
+                            tr_base.llextra
                         };
-                        let llprojected = base.trans_field_ptr(bcx, field.index());
-                        (llprojected, base.llextra)
+                        (tr_base.trans_field_ptr(bcx, field.index()), llextra)
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
