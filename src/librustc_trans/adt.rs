@@ -48,6 +48,7 @@ use std;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
+use rustc::mir::tcx::LvalueTy;
 use mir::lvalue::LvalueRef;
 use common::*;
 use builder::Builder;
@@ -476,31 +477,33 @@ fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
 pub fn trans_field_ptr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     val: LvalueRef<'tcx>,
-    discr: Disr,
-    ix: usize
+    ix: usize,
 ) -> ValueRef {
+    let discr = match val.ty {
+        LvalueTy::Ty { .. } => 0,
+        LvalueTy::Downcast { variant_index, .. } => variant_index,
+    };
     let t = val.ty.to_ty(bcx.tcx());
     let l = bcx.ccx.layout_of(t);
-    debug!("trans_field_ptr on {} represented as {:#?}", t, l);
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
     match *l {
         layout::Univariant { ref variant, .. } => {
-            assert_eq!(discr, Disr(0));
+            assert_eq!(discr, 0);
             struct_field_ptr(bcx, &variant,
              &compute_fields(bcx.ccx, t, 0, false),
              val, ix, false)
         }
         layout::Vector { count, .. } => {
-            assert_eq!(discr.0, 0);
+            assert_eq!(discr, 0);
             assert!((ix as u64) < count);
             bcx.struct_gep(val.llval, ix)
         }
         layout::General { discr: d, ref variants, .. } => {
-            let mut fields = compute_fields(bcx.ccx, t, discr.0 as usize, false);
+            let mut fields = compute_fields(bcx.ccx, t, discr, false);
             fields.insert(0, d.to_ty(&bcx.tcx(), false));
-            struct_field_ptr(bcx, &variants[discr.0 as usize],
+            struct_field_ptr(bcx, &variants[discr],
              &fields,
              val, ix + 1, true)
         }
@@ -510,7 +513,7 @@ pub fn trans_field_ptr<'a, 'tcx>(
             bcx.pointercast(val.llval, ty.ptr_to())
         }
         layout::RawNullablePointer { nndiscr, .. } |
-        layout::StructWrappedNullablePointer { nndiscr,  .. } if discr.0 != nndiscr => {
+        layout::StructWrappedNullablePointer { nndiscr,  .. } if discr as u64 != nndiscr => {
             let nullfields = compute_fields(bcx.ccx, t, (1-nndiscr) as usize, false);
             // The unit-like case might have a nonzero number of unit-like fields.
             // (e.d., Result of Either with (), as one side.)
@@ -521,14 +524,14 @@ pub fn trans_field_ptr<'a, 'tcx>(
         layout::RawNullablePointer { nndiscr, .. } => {
             let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             assert_eq!(ix, 0);
-            assert_eq!(discr.0, nndiscr);
+            assert_eq!(discr as u64, nndiscr);
             let ty = type_of::type_of(bcx.ccx, nnty);
             bcx.pointercast(val.llval, ty.ptr_to())
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
-            assert_eq!(discr.0, nndiscr);
+            assert_eq!(discr as u64, nndiscr);
             struct_field_ptr(bcx, &nonnull,
-             &compute_fields(bcx.ccx, t, discr.0 as usize, false),
+             &compute_fields(bcx.ccx, t, discr, false),
              val, ix, false)
         }
         _ => bug!("element access in type without elements: {} represented as {:#?}", t, l)

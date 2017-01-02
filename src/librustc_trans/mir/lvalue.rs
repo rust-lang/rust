@@ -20,7 +20,6 @@ use consts;
 use machine;
 use type_of::type_of;
 use type_of;
-use Disr;
 
 use std::ptr;
 
@@ -48,6 +47,13 @@ impl<'tcx> LvalueRef<'tcx> {
         LvalueRef::new_sized(llval, LvalueTy::from_ty(ty))
     }
 
+    pub fn new_unsized(llval: ValueRef, llextra: ValueRef, ty: LvalueTy<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef {
+            llval: llval,
+            llextra: llextra,
+            ty: ty,
+        }
+    }
     pub fn new_unsized_ty(llval: ValueRef, llextra: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
         LvalueRef {
             llval: llval,
@@ -140,26 +146,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let base_ty = tr_base.ty.to_ty(tcx);
-                        let discr = match tr_base.ty {
-                            LvalueTy::Ty { .. } => 0,
-                            LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
-                        };
-                        let discr = discr as u64;
                         let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
                         let base = if is_sized {
-                            LvalueRef::new_sized_ty(tr_base.llval, base_ty)
+                            LvalueRef::new_sized(tr_base.llval, tr_base.ty)
                         } else {
-                            LvalueRef::new_unsized_ty(tr_base.llval, tr_base.llextra, base_ty)
+                            LvalueRef::new_unsized(tr_base.llval, tr_base.llextra, tr_base.ty)
                         };
-                        let llprojected = adt::trans_field_ptr(bcx, base, Disr(discr),
-                            field.index());
-                        let llextra = if is_sized {
-                            ptr::null_mut()
-                        } else {
-                            tr_base.llextra
-                        };
-                        (llprojected, llextra)
+                        let llprojected = adt::trans_field_ptr(bcx, base, field.index());
+                        (llprojected, base.llextra)
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);

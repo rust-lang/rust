@@ -12,6 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
+use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
 
@@ -102,7 +103,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                    mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
                         adt::trans_set_discr(&bcx, dest_ty, dest.llval, Disr::from(disr));
@@ -110,9 +111,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let val = LvalueRef::new_sized_ty(dest.llval, dest_ty);
+                                let mut val = LvalueRef::new_sized(dest.llval, dest.ty);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr(&bcx, val, disr, field_index);
+                                val.ty = LvalueTy::Downcast {
+                                    adt_def: adt_def,
+                                    substs: self.monomorphize(&substs),
+                                    variant_index: disr.0 as usize,
+                                };
+                                let lldest_i = adt::trans_field_ptr(&bcx, val, field_index);
                                 self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }

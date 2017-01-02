@@ -709,7 +709,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             Ref(llval) => {
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let ptr = adt::trans_field_ptr(
-                        bcx, LvalueRef::new_sized_ty(llval, tuple.ty), Disr(0), n
+                        bcx, LvalueRef::new_sized_ty(llval, tuple.ty), n
                     );
                     let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
                         let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
