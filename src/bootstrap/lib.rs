@@ -375,7 +375,7 @@ impl Build {
             submodules.push(Submodule { path: path, state: state })
         }
 
-        self.run(git_submodule().arg("sync"));
+        self.run(self.git_quiet_unless_verbose(git_submodule().arg("sync")));
 
         for submodule in submodules {
             // If using llvm-root then don't touch the llvm submodule.
@@ -404,8 +404,8 @@ impl Build {
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().current_dir(&submodule_path)
-                                  .args(&["reset", "--hard"]));
+                    self.run(self.git_quiet_unless_verbose(git().current_dir(&submodule_path)
+                                                                .args(&["reset", "--hard"])));
                     // drops unstaged changes
                     self.run(git().current_dir(&submodule_path)
                                   .args(&["clean", "-fdx"]));
@@ -793,11 +793,24 @@ impl Build {
         run_silent(cmd)
     }
 
+    /// Whether this build is configured in verbose mode.
+    fn is_verbose(&self) -> bool {
+        self.flags.verbose() || self.config.verbose()
+    }
+
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
-        if self.flags.verbose() || self.config.verbose() {
+        if self.is_verbose() {
             println!("{}", msg);
         }
+    }
+
+    /// Make a git command quiet unless this build is configured in verbose mode.
+    fn git_quiet_unless_verbose<'a>(&self, command: &'a mut Command) -> &'a mut Command {
+        if !self.is_verbose() {
+            command.arg("--quiet");
+        }
+        command
     }
 
     /// Returns the number of parallel jobs that have been configured for this
