@@ -23,18 +23,12 @@ use rustc_data_structures::indexed_vec::Idx;
 use pattern::{FieldPattern, Pattern, PatternKind};
 use pattern::{PatternFoldable, PatternFolder};
 
-use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
-use rustc::hir;
-use rustc::hir::def::CtorKind;
-use rustc::hir::{Pat, PatKind};
+use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
 
-use syntax::ast::{self, DUMMY_NODE_ID};
-use syntax::codemap::Spanned;
-use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
@@ -73,12 +67,6 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
         }
     }
 }
-
-pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
-    id: DUMMY_NODE_ID,
-    node: PatKind::Wild,
-    span: DUMMY_SP
-};
 
 impl<'tcx> Pattern<'tcx> {
     fn is_wildcard(&self) -> bool {
@@ -224,23 +212,32 @@ pub enum Constructor {
 }
 
 impl<'tcx> Constructor {
-    fn variant_for_adt(&self, adt: &'tcx ty::AdtDef) -> &'tcx ty::VariantDef {
+    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> usize {
         match self {
-            &Variant(vid) => adt.variant_with_id(vid),
+            &Variant(vid) => adt.variant_index_with_id(vid),
             &Single => {
                 assert_eq!(adt.variants.len(), 1);
-                &adt.variants[0]
+                0
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }
     }
 }
 
-#[derive(Clone, PartialEq)]
-pub enum Usefulness {
+#[derive(Clone)]
+pub enum Usefulness<'tcx> {
     Useful,
-    UsefulWithWitness(Vec<Witness>),
+    UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful
+}
+
+impl<'tcx> Usefulness<'tcx> {
+    fn is_useful(&self) -> bool {
+        match *self {
+            NotUseful => false,
+            _ => true
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -255,31 +252,17 @@ struct PatternContext<'tcx> {
     max_slice_length: usize,
 }
 
-
-fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
-    let node = match value {
-        &ConstVal::Bool(b) => ast::LitKind::Bool(b),
-        _ => bug!()
-    };
-    P(hir::Expr {
-        id: DUMMY_NODE_ID,
-        node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
-        span: DUMMY_SP,
-        attrs: ast::ThinVec::new(),
-    })
-}
-
 /// A stack of patterns in reverse order of construction
-#[derive(Clone, PartialEq, Eq)]
-pub struct Witness(Vec<P<Pat>>);
+#[derive(Clone)]
+pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
 
-impl Witness {
-    pub fn single_pattern(&self) -> &Pat {
+impl<'tcx> Witness<'tcx> {
+    pub fn single_pattern(&self) -> &Pattern<'tcx> {
         assert_eq!(self.0.len(), 1);
         &self.0[0]
     }
 
-    fn push_wild_constructor<'a, 'tcx>(
+    fn push_wild_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ctor: &Constructor,
@@ -287,7 +270,7 @@ impl Witness {
         -> Self
     {
         let arity = constructor_arity(cx, ctor, ty);
-        self.0.extend(repeat(DUMMY_WILD_PAT).take(arity).map(|p| P(p.clone())));
+        self.0.extend(repeat(cx.wild_pattern).take(arity).cloned());
         self.apply_constructor(cx, ctor, ty)
     }
 
@@ -305,7 +288,7 @@ impl Witness {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor<'a, 'tcx>(
+    fn apply_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a,'tcx>,
         ctor: &Constructor,
@@ -318,60 +301,56 @@ impl Witness {
             let mut pats = self.0.drain(len-arity..).rev();
 
             match ty.sty {
-                ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
+                ty::TyAdt(..) |
+                ty::TyTuple(..) => {
+                    let pats = pats.enumerate().map(|(i, p)| {
+                        FieldPattern {
+                            field: Field::new(i),
+                            pattern: p
+                        }
+                    }).collect();
 
-                ty::TyAdt(adt, _) => {
-                    let v = ctor.variant_for_adt(adt);
-                    let qpath = hir::QPath::Resolved(None, P(hir::Path {
-                        span: DUMMY_SP,
-                        def: Def::Err,
-                        segments: vec![hir::PathSegment::from_name(v.name)].into(),
-                    }));
-                    match v.ctor_kind {
-                        CtorKind::Fictive => {
-                            let field_pats: hir::HirVec<_> = v.fields.iter()
-                                .zip(pats)
-                                .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
-                                .map(|(field, pat)| Spanned {
-                                    span: DUMMY_SP,
-                                    node: hir::FieldPat {
-                                        name: field.name,
-                                        pat: pat,
-                                        is_shorthand: false,
-                                    }
-                                }).collect();
-                            let has_more_fields = field_pats.len() < arity;
-                            PatKind::Struct(qpath, field_pats, has_more_fields)
+                    if let ty::TyAdt(adt, _) = ty.sty {
+                        if adt.variants.len() > 1 {
+                            PatternKind::Variant {
+                                adt_def: adt,
+                                variant_index: ctor.variant_index_for_adt(adt),
+                                subpatterns: pats
+                            }
+                        } else {
+                            PatternKind::Leaf { subpatterns: pats }
                         }
-                        CtorKind::Fn => {
-                            PatKind::TupleStruct(qpath, pats.collect(), None)
-                        }
-                        CtorKind::Const => PatKind::Path(qpath)
+                    } else {
+                        PatternKind::Leaf { subpatterns: pats }
                     }
                 }
 
-                ty::TyRef(_, ty::TypeAndMut { mutbl, .. }) => {
-                    PatKind::Ref(pats.nth(0).unwrap(), mutbl)
+                ty::TyRef(..) => {
+                    PatternKind::Deref { subpattern: pats.nth(0).unwrap() }
                 }
 
                 ty::TySlice(_) | ty::TyArray(..) => {
-                    PatKind::Slice(pats.collect(), None, hir::HirVec::new())
+                    PatternKind::Slice {
+                        prefix: pats.collect(),
+                        slice: None,
+                        suffix: vec![]
+                    }
                 }
 
                 _ => {
                     match *ctor {
-                        ConstantValue(ref v) => PatKind::Lit(const_val_to_expr(v)),
-                        _ => PatKind::Wild,
+                        ConstantValue(ref v) => PatternKind::Constant { value: v.clone() },
+                        _ => PatternKind::Wild,
                     }
                 }
             }
         };
 
-        self.0.push(P(hir::Pat {
-            id: DUMMY_NODE_ID,
-            node: pat,
-            span: DUMMY_SP
-        }));
+        self.0.push(Pattern {
+            ty: ty,
+            span: DUMMY_SP,
+            kind: Box::new(pat),
+        });
 
         self
     }
@@ -528,13 +507,13 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                            matrix: &Matrix<'a, 'tcx>,
                            v: &[&'a Pattern<'tcx>],
                            witness: WitnessPreference)
-                           -> Usefulness {
+                           -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:?}, {:?})", matrix, v);
     if rows.is_empty() {
         return match witness {
             ConstructWitness => UsefulWithWitness(vec![Witness(
-                repeat(DUMMY_WILD_PAT).take(v.len()).map(|p| P(p.clone())).collect()
+                repeat(cx.wild_pattern).take(v.len()).cloned().collect()
             )]),
             LeaveOutWitness => Useful
         };
@@ -559,7 +538,7 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         debug!("is_useful - expanding constructors: {:?}", constructors);
         constructors.into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
-        ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+        ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
         let constructors = missing_constructors(cx, matrix, pcx);
@@ -567,7 +546,7 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         if constructors.is_empty() {
             all_constructors(cx, pcx).into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
-            }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+            }).find(|result| result.is_useful()).unwrap_or(NotUseful)
         } else {
             let matrix = rows.iter().filter_map(|r| {
                 if r[0].is_wildcard() {
@@ -597,7 +576,7 @@ fn is_useful_specialized<'a, 'tcx>(
     v: &[&'a Pattern<'tcx>],
     ctor: Constructor,
     lty: Ty<'tcx>,
-    witness: WitnessPreference) -> Usefulness
+    witness: WitnessPreference) -> Usefulness<'tcx>
 {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().flat_map(|r| {
@@ -672,7 +651,7 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize 
         },
         ty::TyRef(..) => 1,
         ty::TyAdt(adt, _) => {
-            ctor.variant_for_adt(adt).fields.len()
+            adt.variants[ctor.variant_index_for_adt(adt)].fields.len()
         }
         _ => 0
     }

@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use _match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
-use _match::{DUMMY_WILD_PAT};
 use _match::Usefulness::*;
 use _match::WitnessPreference::*;
 
-use pattern::{Pattern, PatternContext, PatternError};
+use pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
 use eval::report_const_eval_err;
 
@@ -117,13 +116,6 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn report_inlining_errors(&self, patcx: PatternContext, pat_span: Span) {
         for error in patcx.errors {
             match error {
-                PatternError::BadConstInPattern(span, def_id) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        &format!("constants of the type `{}` \
-                                  cannot be used in patterns",
-                                 self.tcx.item_path_str(def_id)));
-                }
                 PatternError::StaticInPattern(span) => {
                     span_err!(self.tcx.sess, span, E0158,
                               "statics cannot be referenced in patterns");
@@ -230,9 +222,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 Useful => bug!()
             };
 
-            let pattern_string = hir::print::to_string(&self.tcx.map, |s| {
-                s.print_pat(witness[0].single_pattern())
-            });
+            let pattern_string = witness[0].single_pattern().to_string();
             let mut diag = struct_span_err!(
                 self.tcx.sess, pat.span, E0005,
                 "refutable pattern in {}: `{}` not covered",
@@ -369,23 +359,21 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     match is_useful(cx, matrix, &[cx.wild_pattern], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witnesses = if pats.is_empty() {
-                vec![DUMMY_WILD_PAT]
+                vec![cx.wild_pattern]
             } else {
                 pats.iter().map(|w| w.single_pattern()).collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
                     // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
-                    let witness = match witnesses[0].node {
-                        PatKind::TupleStruct(_, ref pats, _) => match &pats[..] {
-                            &[ref pat] => &**pat,
+                    let witness = match *witnesses[0].kind {
+                        PatternKind::Variant { ref subpatterns, .. } => match &subpatterns[..] {
+                            &[ref pat] => &pat.pattern,
                             _ => bug!(),
                         },
                         _ => bug!(),
                     };
-                    let pattern_string = hir::print::to_string(&cx.tcx.map, |s| {
-                        s.print_pat(witness)
-                    });
+                    let pattern_string = witness.to_string();
                     struct_span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
@@ -394,24 +382,23 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         .emit();
                 },
                 _ => {
-                    let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
-                        hir::print::to_string(&cx.tcx.map, |s| s.print_pat(w))
-                    }).collect();
                     const LIMIT: usize = 3;
-                    let joined_patterns = match pattern_strings.len() {
+                    let joined_patterns = match witnesses.len() {
                         0 => bug!(),
-                        1 => format!("`{}`", pattern_strings[0]),
+                        1 => format!("`{}`", witnesses[0]),
                         2...LIMIT => {
-                            let (tail, head) = pattern_strings.split_last().unwrap();
-                            format!("`{}`", head.join("`, `") + "` and `" + tail)
+                            let (tail, head) = witnesses.split_last().unwrap();
+                            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+                            format!("`{}` and `{}`", head.join("`, `"), tail)
                         },
                         _ => {
-                            let (head, tail) = pattern_strings.split_at(LIMIT);
+                            let (head, tail) = witnesses.split_at(LIMIT);
+                            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
                             format!("`{}` and {} more", head.join("`, `"), tail.len())
                         }
                     };
 
-                    let label_text = match pattern_strings.len(){
+                    let label_text = match witnesses.len() {
                         1 => format!("pattern {} not covered", joined_patterns),
                         _ => format!("patterns {} not covered", joined_patterns)
                     };
