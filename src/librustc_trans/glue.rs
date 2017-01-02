@@ -173,7 +173,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     assert_eq!(g.ty(), get_drop_glue_type(ccx.shared(), g.ty()));
     let (llfn, _) = ccx.drop_glues().borrow().get(&g).unwrap().clone();
 
-    let mut bcx = Builder::entry_block(ccx, llfn);
+    let mut bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a

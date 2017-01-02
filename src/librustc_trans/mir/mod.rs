@@ -210,7 +210,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfn, mir);
-    let bcx = Builder::entry_block(ccx, llfn);
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 

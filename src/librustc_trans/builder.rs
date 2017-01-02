@@ -51,10 +51,6 @@ fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn entry_block(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef) -> Self {
-        Builder::new_block(ccx, llfn, "entry-block")
-    }
-
     pub fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
         let builder = Builder::with_ccx(ccx);
         let llbb = unsafe {

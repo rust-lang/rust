@@ -329,7 +329,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let orig_fn_ty = fn_ty;
-    let mut bcx = Builder::entry_block(ccx, lloncefn);
+    let mut bcx = Builder::new_block(ccx, lloncefn, "entry-block");
 
     let callee = Callee {
         data: Fn(llreffn),
@@ -489,7 +489,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let bcx = Builder::entry_block(ccx, llfn);
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     let mut llargs = get_params(llfn);
 
