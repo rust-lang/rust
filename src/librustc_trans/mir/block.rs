@@ -242,20 +242,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     return;
                 }
 
-                let lvalue = self.trans_lvalue(&bcx, location);
+                let mut lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
-                let ptr = if bcx.ccx.shared().type_is_sized(ty) {
-                    let value = if drop_ty != ty {
-                        bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to())
-                    } else {
-                        lvalue.llval
-                    };
-                    LvalueRef::new_sized_ty(value, ty)
-                } else {
-                    LvalueRef::new_unsized_ty(lvalue.llval, lvalue.llextra, ty)
-                };
-                let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
+                if bcx.ccx.shared().type_is_sized(ty) && drop_ty != ty {
+                    lvalue.llval = bcx.pointercast(
+                        lvalue.llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to());
+                }
+                let args = &[lvalue.llval, lvalue.llextra][..1 + lvalue.has_extra() as usize];
                 if let Some(unwind) = unwind {
                     bcx.invoke(
                         drop_fn,
