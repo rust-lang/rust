@@ -10,8 +10,6 @@
 
 // aux-build:derive-a-b.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_a_b;
 

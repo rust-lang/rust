@@ -10,8 +10,6 @@
 
 // aux-build:derive-same-struct.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_same_struct;
 

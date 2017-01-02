@@ -11,8 +11,6 @@
 // aux-build:derive-atob.rs
 // aux-build:derive-ctod.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_atob;
 #[macro_use]

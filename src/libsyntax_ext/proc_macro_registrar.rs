@@ -17,7 +17,6 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
-use syntax::feature_gate::Features;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -47,8 +46,7 @@ pub fn modify(sess: &ParseSess,
               is_proc_macro_crate: bool,
               is_test_crate: bool,
               num_crate_types: usize,
-              handler: &errors::Handler,
-              features: &Features) -> ast::Crate {
+              handler: &errors::Handler) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver);
 
@@ -66,12 +64,6 @@ pub fn modify(sess: &ParseSess,
 
     if !is_proc_macro_crate {
         return krate
-    } else if !features.proc_macro {
-        let mut err = handler.struct_err("the `proc-macro` crate type is \
-                                          experimental");
-        err.help("add #![feature(proc_macro)] to the crate attributes to \
-                  enable");
-        err.emit();
     }
 
     if num_crate_types > 1 {

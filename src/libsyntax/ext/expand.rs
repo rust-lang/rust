@@ -926,7 +926,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn enable_pushpop_unsafe = pushpop_unsafe,
-        fn enable_proc_macro = proc_macro,
     }
 }
 

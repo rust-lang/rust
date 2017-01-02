@@ -716,8 +716,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                                      is_proc_macro_crate,
                                                      is_test_crate,
                                                      num_crate_types,
-                                                     sess.diagnostic(),
-                                                     &sess.features.borrow())
+                                                     sess.diagnostic())
         });
     }
 
