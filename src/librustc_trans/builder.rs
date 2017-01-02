@@ -80,18 +80,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn build_new_block<'b>(&self, name: &'b str) -> Builder<'a, 'tcx> {
-        let builder = Builder::with_ccx(self.ccx);
-        let llbb = unsafe {
-            let name = CString::new(name).unwrap();
-            llvm::LLVMAppendBasicBlockInContext(
-                self.ccx.llcx(),
-                self.llfn(),
-                name.as_ptr()
-            )
-        };
-        builder.position_at_end(llbb);
-        builder
+    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'tcx> {
+        Builder::new_block(self.ccx, self.llfn(), name)
     }
 
     pub fn sess(&self) -> &Session {

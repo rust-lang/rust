@@ -54,7 +54,7 @@ impl<'tcx> DropValue<'tcx> {
     /// This should only be called once per function, as it creates an alloca for the landingpad.
     fn get_landing_pad<'a>(&self, bcx: &Builder<'a, 'tcx>) -> BasicBlockRef {
         debug!("get_landing_pad");
-        let bcx = bcx.build_new_block("cleanup_unwind");
+        let bcx = bcx.build_sibling_block("cleanup_unwind");
         let llpersonality = bcx.ccx.eh_personality();
         bcx.set_personality_fn(llpersonality);
 

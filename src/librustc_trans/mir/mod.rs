@@ -218,9 +218,9 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK {
-                bcx.build_new_block("start").llbb()
+                bcx.build_sibling_block("start").llbb()
             } else {
-                bcx.build_new_block(&format!("{:?}", bb)).llbb()
+                bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
         }).collect();
 

@@ -370,7 +370,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llfn = callee.reify(bcx.ccx);
     let llret;
     if let Some(landing_pad) = self_scope.landing_pad {
-        let normal_bcx = bcx.build_new_block("normal-return");
+        let normal_bcx = bcx.build_sibling_block("normal-return");
         llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {
