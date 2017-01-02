@@ -9,18 +9,18 @@ macro_rules! mul {
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let half_bits = <$ty>::bits() / 4;
             let lower_mask = !0 >> half_bits;
-            let mut low = (a.low() & lower_mask) * (b.low() & lower_mask);
+            let mut low = (a.low() & lower_mask).wrapping_mul(b.low() & lower_mask);
             let mut t = low >> half_bits;
             low &= lower_mask;
-            t += (a.low() >> half_bits) * (b.low() & lower_mask);
+            t += (a.low() >> half_bits).wrapping_mul(b.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
             let mut high = t >> half_bits;
             t = low >> half_bits;
             low &= lower_mask;
-            t += (b.low() >> half_bits) * (a.low() & lower_mask);
+            t += (b.low() >> half_bits).wrapping_mul(a.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
             high += t >> half_bits;
-            high += (a.low() >> half_bits) * (b.low() >> half_bits);
+            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits);
             high = high.wrapping_add(a.high().wrapping_mul(b.low()).wrapping_add(a.low().wrapping_mul(b.high())));
             <$ty>::from_parts(low, high)
         }
