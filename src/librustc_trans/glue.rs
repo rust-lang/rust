@@ -263,7 +263,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             let llret;
             let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
             if let Some(landing_pad) = contents_scope.landing_pad {
-                let normal_bcx = bcx.build_new_block("normal-return");
+                let normal_bcx = bcx.build_sibling_block("normal-return");
                 llret = bcx.invoke(callee.reify(ccx), args, normal_bcx.llbb(), landing_pad, None);
                 bcx = normal_bcx;
             } else {
@@ -503,15 +503,15 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                         // from the outer function, and any other use case will only
                         // call this for an already-valid enum in which case the `ret
                         // void` will never be hit.
-                        let ret_void_cx = cx.build_new_block("enum-iter-ret-void");
+                        let ret_void_cx = cx.build_sibling_block("enum-iter-ret-void");
                         ret_void_cx.ret_void();
                         let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
-                        let next_cx = cx.build_new_block("enum-iter-next");
+                        let next_cx = cx.build_sibling_block("enum-iter-next");
 
                         for (i, variant) in adt.variants.iter().enumerate() {
                             let variant_cx_name = format!("enum-iter-variant-{}",
                                 &variant.disr_val.to_string());
-                            let variant_cx = cx.build_new_block(&variant_cx_name);
+                            let variant_cx = cx.build_sibling_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
                             iter_variant(&variant_cx, ptr, &adt, i, substs);

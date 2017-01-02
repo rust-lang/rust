@@ -718,10 +718,10 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         bcx.set_personality_fn(bcx.ccx.eh_personality());
 
-        let normal = bcx.build_new_block("normal");
-        let catchswitch = bcx.build_new_block("catchswitch");
-        let catchpad = bcx.build_new_block("catchpad");
-        let caught = bcx.build_new_block("caught");
+        let normal = bcx.build_sibling_block("normal");
+        let catchswitch = bcx.build_sibling_block("catchswitch");
+        let catchpad = bcx.build_sibling_block("catchpad");
+        let caught = bcx.build_sibling_block("caught");
 
         let func = llvm::get_param(bcx.llfn(), 0);
         let data = llvm::get_param(bcx.llfn(), 1);
@@ -837,8 +837,8 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bcx.build_new_block("then");
-        let catch = bcx.build_new_block("catch");
+        let then = bcx.build_sibling_block("then");
+        let catch = bcx.build_sibling_block("catch");
 
         let func = llvm::get_param(bcx.llfn(), 0);
         let data = llvm::get_param(bcx.llfn(), 1);
