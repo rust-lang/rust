@@ -185,11 +185,17 @@ impl fmt::Debug for TestFn {
 /// This is fed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Bencher {
-    iterations: u64,
-    dur: Duration,
+    mode: BenchMode,
+    summary: Option<stats::Summary>,
     pub bytes: u64,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum BenchMode {
+    Auto,
+    Single,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -1444,138 +1450,148 @@ impl Bencher {
     pub fn iter<T, F>(&mut self, mut inner: F)
         where F: FnMut() -> T
     {
-        let start = Instant::now();
-        let k = self.iterations;
-        for _ in 0..k {
-            black_box(inner());
+        if self.mode == BenchMode::Single {
+            ns_iter_inner(&mut inner, 1);
+            return;
         }
-        self.dur = start.elapsed();
+
+        self.summary = Some(iter(&mut inner));
     }
 
-    pub fn ns_elapsed(&mut self) -> u64 {
-        self.dur.as_secs() * 1_000_000_000 + (self.dur.subsec_nanos() as u64)
-    }
-
-    pub fn ns_per_iter(&mut self) -> u64 {
-        if self.iterations == 0 {
-            0
-        } else {
-            self.ns_elapsed() / cmp::max(self.iterations, 1)
-        }
-    }
-
-    pub fn bench_n<F>(&mut self, n: u64, f: F)
-        where F: FnOnce(&mut Bencher)
-    {
-        self.iterations = n;
-        f(self);
-    }
-
-    // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary
+    pub fn bench<F>(&mut self, mut f: F) -> Option<stats::Summary>
         where F: FnMut(&mut Bencher)
     {
-        // Initial bench run to get ballpark figure.
-        let mut n = 1;
-        self.bench_n(n, |x| f(x));
+        f(self);
+        return self.summary;
+    }
+}
 
-        // Try to estimate iter count for 1ms falling back to 1m
-        // iterations if first run took < 1ns.
-        if self.ns_per_iter() == 0 {
-            n = 1_000_000;
-        } else {
-            n = 1_000_000 / cmp::max(self.ns_per_iter(), 1);
+fn ns_from_dur(dur: Duration) -> u64 {
+    dur.as_secs() * 1_000_000_000 + (dur.subsec_nanos() as u64)
+}
+
+fn ns_iter_inner<T, F>(inner: &mut F, k: u64) -> u64
+    where F: FnMut() -> T
+{
+    let start = Instant::now();
+    for _ in 0..k {
+        black_box(inner());
+    }
+    return ns_from_dur(start.elapsed());
+}
+
+
+pub fn iter<T, F>(inner: &mut F) -> stats::Summary
+    where F: FnMut() -> T
+{
+    // Initial bench run to get ballpark figure.
+    let ns_single = ns_iter_inner(inner, 1);
+
+    // Try to estimate iter count for 1ms falling back to 1m
+    // iterations if first run took < 1ns.
+    let ns_target_total = 1_000_000; // 1ms
+    let mut n = ns_target_total / cmp::max(1, ns_single);
+
+    // if the first run took more than 1ms we don't want to just
+    // be left doing 0 iterations on every loop. The unfortunate
+    // side effect of not being able to do as many runs is
+    // automatically handled by the statistical analysis below
+    // (i.e. larger error bars).
+    n = cmp::max(1, n);
+
+    let mut total_run = Duration::new(0, 0);
+    let samples: &mut [f64] = &mut [0.0_f64; 50];
+    loop {
+        let loop_start = Instant::now();
+
+        for p in &mut *samples {
+            *p = ns_iter_inner(inner, n) as f64 / n as f64;
         }
-        // if the first run took more than 1ms we don't want to just
-        // be left doing 0 iterations on every loop. The unfortunate
-        // side effect of not being able to do as many runs is
-        // automatically handled by the statistical analysis below
-        // (i.e. larger error bars).
-        if n == 0 {
-            n = 1;
+
+        stats::winsorize(samples, 5.0);
+        let summ = stats::Summary::new(samples);
+
+        for p in &mut *samples {
+            let ns = ns_iter_inner(inner, 5 * n);
+            *p = ns as f64 / (5 * n) as f64;
         }
 
-        let mut total_run = Duration::new(0, 0);
-        let samples: &mut [f64] = &mut [0.0_f64; 50];
-        loop {
-            let loop_start = Instant::now();
+        stats::winsorize(samples, 5.0);
+        let summ5 = stats::Summary::new(samples);
 
-            for p in &mut *samples {
-                self.bench_n(n, |x| f(x));
-                *p = self.ns_per_iter() as f64;
-            }
+        let loop_run = loop_start.elapsed();
 
-            stats::winsorize(samples, 5.0);
-            let summ = stats::Summary::new(samples);
+        // If we've run for 100ms and seem to have converged to a
+        // stable median.
+        if loop_run > Duration::from_millis(100) && summ.median_abs_dev_pct < 1.0 &&
+           summ.median - summ5.median < summ5.median_abs_dev {
+            return summ5;
+        }
 
-            for p in &mut *samples {
-                self.bench_n(5 * n, |x| f(x));
-                *p = self.ns_per_iter() as f64;
-            }
+        total_run = total_run + loop_run;
+        // Longest we ever run for is 3s.
+        if total_run > Duration::from_secs(3) {
+            return summ5;
+        }
 
-            stats::winsorize(samples, 5.0);
-            let summ5 = stats::Summary::new(samples);
-            let loop_run = loop_start.elapsed();
-
-            // If we've run for 100ms and seem to have converged to a
-            // stable median.
-            if loop_run > Duration::from_millis(100) && summ.median_abs_dev_pct < 1.0 &&
-               summ.median - summ5.median < summ5.median_abs_dev {
+        // If we overflow here just return the results so far. We check a
+        // multiplier of 10 because we're about to multiply by 2 and the
+        // next iteration of the loop will also multiply by 5 (to calculate
+        // the summ5 result)
+        n = match n.checked_mul(10) {
+            Some(_) => n * 2,
+            None => {
                 return summ5;
             }
-
-            total_run = total_run + loop_run;
-            // Longest we ever run for is 3s.
-            if total_run > Duration::from_secs(3) {
-                return summ5;
-            }
-
-            // If we overflow here just return the results so far. We check a
-            // multiplier of 10 because we're about to multiply by 2 and the
-            // next iteration of the loop will also multiply by 5 (to calculate
-            // the summ5 result)
-            n = match n.checked_mul(10) {
-                Some(_) => n * 2,
-                None => return summ5,
-            };
-        }
+        };
     }
 }
 
 pub mod bench {
     use std::cmp;
-    use std::time::Duration;
-    use super::{Bencher, BenchSamples};
+    use stats;
+    use super::{Bencher, BenchSamples, BenchMode};
 
     pub fn benchmark<F>(f: F) -> BenchSamples
         where F: FnMut(&mut Bencher)
     {
         let mut bs = Bencher {
-            iterations: 0,
-            dur: Duration::new(0, 0),
+            mode: BenchMode::Auto,
+            summary: None,
             bytes: 0,
         };
 
-        let ns_iter_summ = bs.auto_bench(f);
+        return match bs.bench(f) {
+            Some(ns_iter_summ) => {
+                let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
+                let mb_s = bs.bytes * 1000 / ns_iter;
 
-        let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
-        let mb_s = bs.bytes * 1000 / ns_iter;
-
-        BenchSamples {
-            ns_iter_summ: ns_iter_summ,
-            mb_s: mb_s as usize,
-        }
+                BenchSamples {
+                    ns_iter_summ: ns_iter_summ,
+                    mb_s: mb_s as usize,
+                }
+            }
+            None => {
+                // iter not called, so no data.
+                // FIXME: error in this case?
+                let samples: &mut [f64] = &mut [0.0_f64; 1];
+                BenchSamples {
+                    ns_iter_summ: stats::Summary::new(samples),
+                    mb_s: 0,
+                }
+            }
+        };
     }
 
     pub fn run_once<F>(f: F)
-        where F: FnOnce(&mut Bencher)
+        where F: FnMut(&mut Bencher)
     {
         let mut bs = Bencher {
-            iterations: 0,
-            dur: Duration::new(0, 0),
+            mode: BenchMode::Single,
+            summary: None,
             bytes: 0,
         };
-        bs.bench_n(1, f);
+        bs.bench(f);
     }
 }
 
@@ -1585,6 +1601,8 @@ mod tests {
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
                DynTestFn, ShouldPanic};
     use std::sync::mpsc::channel;
+    use bench;
+    use Bencher;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1879,5 +1897,35 @@ mod tests {
 
         m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
         m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
+    }
+
+    #[test]
+    pub fn test_bench_once_no_iter() {
+        fn f(_: &mut Bencher) {}
+        bench::run_once(f);
+    }
+
+    #[test]
+    pub fn test_bench_once_iter() {
+        fn f(b: &mut Bencher) {
+            b.iter(|| {
+            })
+        }
+        bench::run_once(f);
+    }
+
+    #[test]
+    pub fn test_bench_no_iter() {
+        fn f(_: &mut Bencher) {}
+        bench::benchmark(f);
+    }
+
+    #[test]
+    pub fn test_bench_iter() {
+        fn f(b: &mut Bencher) {
+            b.iter(|| {
+            })
+        }
+        bench::benchmark(f);
     }
 }
