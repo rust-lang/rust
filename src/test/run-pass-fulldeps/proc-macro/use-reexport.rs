@@ -11,8 +11,6 @@
 // aux-build:derive-a.rs
 // aux-build:derive-reexport.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_reexport;
 

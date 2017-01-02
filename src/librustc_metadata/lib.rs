@@ -21,7 +21,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(core_intrinsics)]
 #![feature(proc_macro_internals)]
-#![feature(proc_macro_lib)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
