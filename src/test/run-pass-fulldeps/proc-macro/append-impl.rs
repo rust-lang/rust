@@ -10,7 +10,6 @@
 
 // aux-build:append-impl.rs
 
-#![feature(proc_macro)]
 #![allow(warnings)]
 
 #[macro_use]
