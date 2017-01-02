@@ -56,12 +56,6 @@ use monomorphize;
 use type_::Type;
 use type_of;
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum BranchKind {
-    Switch,
-    Single
-}
-
 /// Given an enum, struct, closure, or tuple, extracts fields.
 /// Treats closures as a struct with one variant.
 /// `empty_if_no_variants` is a switch to deal with empty enums.
@@ -270,28 +264,6 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>
             .map(|ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
         fields.map(|ty| type_of::in_memory_type_of(cx, ty)).collect()
-    }
-}
-
-/// Obtain a representation of the discriminant sufficient to translate
-/// destructuring; this may or may not involve the actual discriminant.
-pub fn trans_switch<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
-    t: Ty<'tcx>,
-    scrutinee: ValueRef,
-    range_assert: bool
-) -> (BranchKind, Option<ValueRef>) {
-    let l = bcx.ccx.layout_of(t);
-    match *l {
-        layout::CEnum { .. } | layout::General { .. } |
-        layout::RawNullablePointer { .. } | layout::StructWrappedNullablePointer { .. } => {
-            (BranchKind::Switch, Some(trans_get_discr(bcx, t, scrutinee, None, range_assert)))
-        }
-        layout::Univariant { .. } | layout::UntaggedUnion { .. } => {
-            // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
-            (BranchKind::Single, None)
-        },
-        _ => bug!("{} is not an enum.", t)
     }
 }
 

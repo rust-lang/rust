@@ -20,7 +20,7 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::BoxFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::ty::{self, AdtDef, AdtKind, Ty, TypeFoldable};
+use rustc::ty::{self, layout, AdtDef, AdtKind, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use rustc::mir::tcx::LvalueTy;
 use mir::lvalue::LvalueRef;
@@ -471,14 +471,22 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                 // NB: we must hit the discriminant first so that structural
                 // comparison know not to proceed when the discriminants differ.
 
-                match adt::trans_switch(&cx, t, ptr.llval, false) {
-                    (adt::BranchKind::Single, None) => {
+                // Obtain a representation of the discriminant sufficient to translate
+                // destructuring; this may or may not involve the actual discriminant.
+                let l = cx.ccx.layout_of(t);
+                match *l {
+                    layout::Univariant { .. } |
+                    layout::UntaggedUnion { .. } => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
                             iter_variant(&cx, ptr, &adt, 0, substs);
                         }
                     }
-                    (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
+                    layout::CEnum { .. } |
+                    layout::General { .. } |
+                    layout::RawNullablePointer { .. } |
+                    layout::StructWrappedNullablePointer { .. } => {
+                        let lldiscrim_a = adt::trans_get_discr(&cx, t, ptr.llval, None, false);
                         let tcx = cx.tcx();
                         drop_ty(&cx, LvalueRef::new_sized_ty(lldiscrim_a, tcx.types.isize));
 
@@ -511,7 +519,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                         }
                         cx = next_cx;
                     }
-                    _ => cx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
+                    _ => bug!("{} is not an enum.", t),
                 }
             }
         },
