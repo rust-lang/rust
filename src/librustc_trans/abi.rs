@@ -294,9 +294,7 @@ impl ArgType {
         }
     }
 
-    pub fn store_fn_arg(
-        &self, bcx: &Builder, idx: &mut usize, dst: ValueRef
-    ) {
+    pub fn store_fn_arg(&self, bcx: &Builder, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
