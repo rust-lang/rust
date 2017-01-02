@@ -22,7 +22,7 @@ Well, Rust *has* a safe programming language. Let's step back a bit.
 Rust can be thought of as being composed of two programming languages: *Safe
 Rust* and *Unsafe Rust*. Safe Rust is For Reals  Totally Safe. Unsafe Rust,
 unsurprisingly, is *not* For Reals Totally Safe.  In fact, Unsafe Rust lets you
-do some really crazy unsafe things.
+do some really, *really* unsafe things.
 
 Safe Rust is the *true* Rust programming language. If all you do is write Safe
 Rust, you will never have to worry about type-safety or memory-safety. You will

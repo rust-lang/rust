@@ -207,7 +207,7 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 // loop to basically match Unix semantics. If we don't reach a fixed point
 // after a short while then we just inevitably leak something most likely.
 //
-// # The article mentions crazy stuff about "/INCLUDE"?
+// # The article mentions weird stuff about "/INCLUDE"?
 //
 // It sure does! Specifically we're talking about this quote:
 //
