@@ -610,7 +610,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let bcx = Builder::entry_block(ccx, llfn);
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
     if !fn_ty.ret.is_ignore() {
         // But if there are no nested returns, we skip the indirection
         // and have a single retslot

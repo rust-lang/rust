@@ -883,7 +883,7 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let bcx = Builder::entry_block(ccx, llfn);
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
     trans(bcx);
     llfn
 }
