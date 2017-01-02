@@ -15,15 +15,13 @@
 //! Currently the primary use of this crate is to provide the ability to define
 //! new custom derive modes through `#[proc_macro_derive]`.
 //!
-//! Added recently as part of [RFC 1681] this crate is stable as of Rust 1.15.0.
-//!
-//! [RFC 1681]: https://github.com/rust-lang/rfcs/blob/master/text/1681-macros-1.1.md
-//!
 //! Note that this crate is intentionally very bare-bones currently. The main
 //! type, `TokenStream`, only supports `fmt::Display` and `FromStr`
 //! implementations, indicating that it can only go to and come from a string.
 //! This functionality is intended to be expanded over time as more surface
 //! area for macro authors is stabilized.
+//!
+//! See [the book](../../book/procedural-macros.html) for more.
 
 #![crate_name = "proc_macro"]
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
