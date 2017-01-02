@@ -25,9 +25,6 @@
 
 import fileinput, re, os, sys, operator
 
-bytes_old = 0
-bytes_new = 0
-
 preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -379,8 +376,6 @@ def compute_trie(rawdata, chunksize):
     return (root, child_data)
 
 def emit_bool_trie(f, name, t_data, is_pub=True):
-    global bytes_old, bytes_new
-    bytes_old += 8 * len(t_data)
     CHUNK = 64
     rawdata = [False] * 0x110000
     for (lo, hi) in t_data:
@@ -433,7 +428,6 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     f.write("\n        ],\n")
 
     f.write("    };\n\n")
-    bytes_new += 256 + 992 + 256 + 8 * len(r3) + len(r5) + 8 * len(r6)
 
 def emit_property_module(f, mod, tbl, emit):
     f.write("pub mod %s {\n" % mod)
@@ -543,4 +537,3 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
         emit_conversions_module(rf, to_upper, to_lower, to_title)
-    #print 'bytes before = %d, bytes after = %d' % (bytes_old, bytes_new)
