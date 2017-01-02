@@ -550,11 +550,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // etc.
                         assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
                         let arg = LvalueRef::new_sized_ty(llarg, arg_type);
-                        (0..contents.len())
-                            .map(|i| {
-                                bcx.load(adt::trans_field_ptr(bcx, arg, i))
-                            })
-                            .collect()
+                        (0..contents.len()).map(|i| bcx.load(arg.trans_field_ptr(bcx, i))).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
                         let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));

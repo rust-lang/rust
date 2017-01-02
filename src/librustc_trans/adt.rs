@@ -48,17 +48,13 @@ use std;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
-use rustc::mir::tcx::LvalueTy;
-use mir::lvalue::LvalueRef;
 use common::*;
 use builder::Builder;
-use glue;
 use base;
 use machine;
 use monomorphize;
 use type_::Type;
 use type_of;
-use value::Value;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum BranchKind {
@@ -469,163 +465,6 @@ pub fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
     } else {
         assert!(min <= discr || discr <= max)
     }
-}
-
-/// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
-    val: LvalueRef<'tcx>,
-    ix: usize,
-) -> ValueRef {
-    let discr = match val.ty {
-        LvalueTy::Ty { .. } => 0,
-        LvalueTy::Downcast { variant_index, .. } => variant_index,
-    };
-    let t = val.ty.to_ty(bcx.tcx());
-    let l = bcx.ccx.layout_of(t);
-    // Note: if this ever needs to generate conditionals (e.g., if we
-    // decide to do some kind of cdr-coding-like non-unique repr
-    // someday), it will need to return a possibly-new bcx as well.
-    match *l {
-        layout::Univariant { ref variant, .. } => {
-            assert_eq!(discr, 0);
-            struct_field_ptr(bcx, &variant,
-             &compute_fields(bcx.ccx, t, 0, false),
-             val, ix, false)
-        }
-        layout::Vector { count, .. } => {
-            assert_eq!(discr, 0);
-            assert!((ix as u64) < count);
-            bcx.struct_gep(val.llval, ix)
-        }
-        layout::General { discr: d, ref variants, .. } => {
-            let mut fields = compute_fields(bcx.ccx, t, discr, false);
-            fields.insert(0, d.to_ty(&bcx.tcx(), false));
-            struct_field_ptr(bcx, &variants[discr],
-             &fields,
-             val, ix + 1, true)
-        }
-        layout::UntaggedUnion { .. } => {
-            let fields = compute_fields(bcx.ccx, t, 0, false);
-            let ty = type_of::in_memory_type_of(bcx.ccx, fields[ix]);
-            bcx.pointercast(val.llval, ty.ptr_to())
-        }
-        layout::RawNullablePointer { nndiscr, .. } |
-        layout::StructWrappedNullablePointer { nndiscr,  .. } if discr as u64 != nndiscr => {
-            let nullfields = compute_fields(bcx.ccx, t, (1-nndiscr) as usize, false);
-            // The unit-like case might have a nonzero number of unit-like fields.
-            // (e.d., Result of Either with (), as one side.)
-            let ty = type_of::type_of(bcx.ccx, nullfields[ix]);
-            assert_eq!(machine::llsize_of_alloc(bcx.ccx, ty), 0);
-            bcx.pointercast(val.llval, ty.ptr_to())
-        }
-        layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
-            assert_eq!(ix, 0);
-            assert_eq!(discr as u64, nndiscr);
-            let ty = type_of::type_of(bcx.ccx, nnty);
-            bcx.pointercast(val.llval, ty.ptr_to())
-        }
-        layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
-            assert_eq!(discr as u64, nndiscr);
-            struct_field_ptr(bcx, &nonnull,
-             &compute_fields(bcx.ccx, t, discr, false),
-             val, ix, false)
-        }
-        _ => bug!("element access in type without elements: {} represented as {:#?}", t, l)
-    }
-}
-
-fn struct_field_ptr<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
-    st: &layout::Struct,
-    fields: &Vec<Ty<'tcx>>,
-    val: LvalueRef,
-    ix: usize,
-    needs_cast: bool
-) -> ValueRef {
-    let fty = fields[ix];
-    let ccx = bcx.ccx;
-
-    let ptr_val = if needs_cast {
-        let fields = st.field_index_by_increasing_offset().map(|i| {
-            type_of::in_memory_type_of(ccx, fields[i])
-        }).collect::<Vec<_>>();
-        let real_ty = Type::struct_(ccx, &fields[..], st.packed);
-        bcx.pointercast(val.llval, real_ty.ptr_to())
-    } else {
-        val.llval
-    };
-
-    // Simple case - we can just GEP the field
-    //   * First field - Always aligned properly
-    //   * Packed struct - There is no alignment padding
-    //   * Field is sized - pointer is properly aligned already
-    if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
-        bcx.ccx.shared().type_is_sized(fty) {
-        return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
-    }
-
-    // If the type of the last field is [T] or str, then we don't need to do
-    // any adjusments
-    match fty.sty {
-        ty::TySlice(..) | ty::TyStr => {
-            return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
-        }
-        _ => ()
-    }
-
-    // There's no metadata available, log the case and just do the GEP.
-    if !val.has_extra() {
-        debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-               ix, Value(ptr_val));
-        return bcx.struct_gep(ptr_val, ix);
-    }
-
-    // We need to get the pointer manually now.
-    // We do this by casting to a *i8, then offsetting it by the appropriate amount.
-    // We do this instead of, say, simply adjusting the pointer from the result of a GEP
-    // because the field may have an arbitrary alignment in the LLVM representation
-    // anyway.
-    //
-    // To demonstrate:
-    //   struct Foo<T: ?Sized> {
-    //      x: u16,
-    //      y: T
-    //   }
-    //
-    // The type Foo<Foo<Trait>> is represented in LLVM as { u16, { u16, u8 }}, meaning that
-    // the `y` field has 16-bit alignment.
-
-    let meta = val.llextra;
-
-
-    let offset = st.offsets[ix].bytes();
-    let unaligned_offset = C_uint(bcx.ccx, offset);
-
-    // Get the alignment of the field
-    let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
-
-    // Bump the unaligned offset up to the appropriate alignment using the
-    // following expression:
-    //
-    //   (unaligned offset + (align - 1)) & -align
-
-    // Calculate offset
-    let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx, 1u64));
-    let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
-                         bcx.neg(align));
-
-    debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
-
-    // Cast and adjust pointer
-    let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx));
-    let byte_ptr = bcx.gep(byte_ptr, &[offset]);
-
-    // Finally, cast back to the type expected
-    let ll_fty = type_of::in_memory_type_of(bcx.ccx, fty);
-    debug!("struct_field_ptr: Field type is {:?}", ll_fty);
-    bcx.pointercast(byte_ptr, ll_fty.ptr_to())
 }
 
 // FIXME this utility routine should be somewhere more general

@@ -411,7 +411,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                 substs: substs,
                 variant_index: variant_index,
             };
-            let field_ptr = adt::trans_field_ptr(&cx, av, i);
+            let field_ptr = av.trans_field_ptr(&cx, i);
             drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg));
         }
     }
@@ -421,7 +421,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
     match t.sty {
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
-                let llupvar = adt::trans_field_ptr(&cx, ptr, i);
+                let llupvar = ptr.trans_field_ptr(&cx, i);
                 drop_ty(&cx, LvalueRef::new_sized_ty(llupvar, upvar_ty));
             }
         }
@@ -439,7 +439,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
         }
         ty::TyTuple(ref args) => {
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(&cx, ptr, i);
+                let llfld_a = ptr.trans_field_ptr(&cx, i);
                 drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg));
             }
         }
@@ -453,7 +453,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                         substs: substs,
                         variant_index: Disr::from(discr).0 as usize,
                     };
-                    let llfld_a = adt::trans_field_ptr(&cx, ptr, i);
+                    let llfld_a = ptr.trans_field_ptr(&cx, i);
                     let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
                         LvalueRef::new_sized_ty(llfld_a, field_ty)
                     } else {
