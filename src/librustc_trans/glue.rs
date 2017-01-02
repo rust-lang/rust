@@ -20,8 +20,9 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::BoxFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::ty::{self, AdtKind, Ty, TypeFoldable};
+use rustc::ty::{self, AdtDef, AdtKind, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
+use rustc::mir::tcx::LvalueTy;
 use mir::lvalue::LvalueRef;
 use adt;
 use base::*;
@@ -395,14 +396,22 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
 // Iterates through the elements of a structural type, dropping them.
 fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> Builder<'a, 'tcx> {
-    fn iter_variant<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
+    fn iter_variant<'a, 'tcx>(cx: &'a Builder<'a, 'tcx>,
                               av: LvalueRef<'tcx>,
-                              variant: &'tcx ty::VariantDef,
-                              substs: &Substs<'tcx>) {
+                              adt_def: &'tcx AdtDef,
+                              variant_index: usize,
+                              substs: &'tcx Substs<'tcx>) {
+        let variant = &adt_def.variants[variant_index];
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
-            let field_ptr = adt::trans_field_ptr(&cx, av, Disr::from(variant.disr_val), i);
+            let mut av = av.clone();
+            av.ty = LvalueTy::Downcast {
+                adt_def: adt_def,
+                substs: substs,
+                variant_index: variant_index,
+            };
+            let field_ptr = adt::trans_field_ptr(&cx, av, i);
             drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg));
         }
     }
@@ -412,7 +421,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
     match t.sty {
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
-                let llupvar = adt::trans_field_ptr(&cx, ptr, Disr(0), i);
+                let llupvar = adt::trans_field_ptr(&cx, ptr, i);
                 drop_ty(&cx, LvalueRef::new_sized_ty(llupvar, upvar_ty));
             }
         }
@@ -430,7 +439,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
         }
         ty::TyTuple(ref args) => {
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(&cx, ptr, Disr(0), i);
+                let llfld_a = adt::trans_field_ptr(&cx, ptr, i);
                 drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg));
             }
         }
@@ -438,7 +447,13 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
             AdtKind::Struct => {
                 let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let llfld_a = adt::trans_field_ptr(&cx, ptr, Disr::from(discr), i);
+                    let mut ptr = ptr.clone();
+                    ptr.ty = LvalueTy::Downcast {
+                        adt_def: adt,
+                        substs: substs,
+                        variant_index: Disr::from(discr).0 as usize,
+                    };
+                    let llfld_a = adt::trans_field_ptr(&cx, ptr, i);
                     let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
                         LvalueRef::new_sized_ty(llfld_a, field_ty)
                     } else {
@@ -460,7 +475,7 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                     (adt::BranchKind::Single, None) => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            iter_variant(&cx, ptr, &adt.variants[0], substs);
+                            iter_variant(&cx, ptr, &adt, 0, substs);
                         }
                     }
                     (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
@@ -485,13 +500,13 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                         let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
                         let next_cx = cx.build_new_block("enum-iter-next");
 
-                        for variant in &adt.variants {
+                        for (i, variant) in adt.variants.iter().enumerate() {
                             let variant_cx_name = format!("enum-iter-variant-{}",
                                 &variant.disr_val.to_string());
                             let variant_cx = cx.build_new_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
-                            iter_variant(&variant_cx, ptr, variant, substs);
+                            iter_variant(&variant_cx, ptr, &adt, i, substs);
                             variant_cx.br(next_cx.llbb());
                         }
                         cx = next_cx;

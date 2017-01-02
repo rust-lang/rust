@@ -25,7 +25,6 @@ use type_of;
 use machine;
 use type_::Type;
 use rustc::ty::{self, Ty};
-use Disr;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -553,7 +552,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let arg = LvalueRef::new_sized_ty(llarg, arg_type);
                         (0..contents.len())
                             .map(|i| {
-                                bcx.load(adt::trans_field_ptr(bcx, arg, Disr(0), i))
+                                bcx.load(adt::trans_field_ptr(bcx, arg, i))
                             })
                             .collect()
                     }

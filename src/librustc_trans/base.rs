@@ -37,6 +37,7 @@ use llvm;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::StartFnLangItem;
 use rustc::ty::subst::Substs;
+use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
@@ -288,8 +289,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, dst, Disr(0), i);
+                let src_f = adt::trans_field_ptr(bcx, src, i);
+                let dst_f = adt::trans_field_ptr(bcx, dst, i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
@@ -622,11 +623,16 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
         };
         // Can return unsized value
-        let dest_val = LvalueRef::new_sized_ty(dest, sig.output());
+        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output());
+        dest_val.ty = LvalueTy::Downcast {
+            adt_def: sig.output().ty_adt_def().unwrap(),
+            substs: substs,
+            variant_index: disr.0 as usize,
+        };
         let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(&bcx, dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(&bcx, dest_val, i);
             let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
