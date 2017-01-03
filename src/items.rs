@@ -539,6 +539,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 
         if result.chars().last().unwrap() == '{' {
             result.push('\n');
+            result.push_str(&offset.to_string(context.config));
         }
         result.push('}');
 
@@ -698,8 +699,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         if offset.width() + last_line_width(&result) + trait_bound_str.len() >
            context.config.ideal_width {
             result.push('\n');
-            let width = context.block_indent.width() + context.config.tab_spaces;
-            let trait_indent = Indent::new(0, width);
+            let trait_indent = context.block_indent.block_indent(context.config);
             result.push_str(&trait_indent.to_string(context.config));
         }
         result.push_str(&trait_bound_str);
