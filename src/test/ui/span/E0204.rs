@@ -13,15 +13,23 @@ struct Foo {
 }
 
 impl Copy for Foo { }
-//~^ ERROR E0204
-//~| NOTE field `foo` does not implement `Copy`
 
 #[derive(Copy)]
-//~^ ERROR E0204
-//~| NOTE field `ty` does not implement `Copy`
-//~| NOTE in this expansion of #[derive(Copy)]
 struct Foo2<'a> {
     ty: &'a mut bool,
+}
+
+enum EFoo {
+    Bar { x: Vec<u32> },
+    Baz,
+}
+
+impl Copy for EFoo { }
+
+#[derive(Copy)]
+enum EFoo2<'a> {
+    Bar(&'a mut bool),
+    Baz,
 }
 
 fn main() {

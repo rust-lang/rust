@@ -15,7 +15,7 @@ use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as ast_map;
 use traits::{self, Reveal};
-use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
@@ -120,9 +120,8 @@ impl IntTypeExt for attr::IntType {
 
 
 #[derive(Copy, Clone)]
-pub enum CopyImplementationError {
-    InfrigingField(Name),
-    InfrigingVariant(Name),
+pub enum CopyImplementationError<'tcx> {
+    InfrigingField(&'tcx ty::FieldDef),
     NotAnAdt,
     HasDestructor
 }
@@ -145,7 +144,7 @@ pub enum Representability {
 impl<'tcx> ParameterEnvironment<'tcx> {
     pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
-                                       -> Result<(),CopyImplementationError> {
+                                       -> Result<(), CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt(None, Some(self.clone()), Reveal::NotSpecializable).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
@@ -161,23 +160,10 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                 }
             };
 
-            match adt.adt_kind() {
-                AdtKind::Struct | AdtKind::Union => {
-                    for field in adt.all_fields() {
-                        if !field_implements_copy(field) {
-                            return Err(CopyImplementationError::InfrigingField(
-                                field.name))
-                        }
-                    }
-                }
-                AdtKind::Enum => {
-                    for variant in &adt.variants {
-                        for field in &variant.fields {
-                            if !field_implements_copy(field) {
-                                return Err(CopyImplementationError::InfrigingVariant(
-                                    variant.name))
-                            }
-                        }
+            for variant in &adt.variants {
+                for field in &variant.fields {
+                    if !field_implements_copy(field) {
+                        return Err(CopyImplementationError::InfrigingField(field));
                     }
                 }
             }
