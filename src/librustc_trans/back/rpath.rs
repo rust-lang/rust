@@ -51,7 +51,13 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths {
-        ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
+        if rpath.contains(',') {
+            ret.push("-Wl,-rpath".into());
+            ret.push("-Xlinker".into());
+            ret.push(rpath.clone());
+        } else {
+            ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
+        }
     }
     return ret;
 }
@@ -257,5 +263,20 @@ mod tests {
                                                    Path::new("lib/libstd.so"));
             assert_eq!(res, "$ORIGIN/../lib");
         }
+    }
+
+    #[test]
+    fn test_xlinker() {
+        let args = rpaths_to_flags(&[
+            "a/normal/path".to_string(),
+            "a,comma,path".to_string()
+        ]);
+
+        assert_eq!(args, vec![
+            "-Wl,-rpath,a/normal/path".to_string(),
+            "-Wl,-rpath".to_string(),
+            "-Xlinker".to_string(),
+            "a,comma,path".to_string()
+        ]);
     }
 }
