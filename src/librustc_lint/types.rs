@@ -35,32 +35,6 @@ use rustc::hir;
 
 use rustc_i128::{i128, u128};
 
-register_long_diagnostics! {
-E0519: r##"
-It is not allowed to negate an unsigned integer.
-You can negate a signed integer and cast it to an
-unsigned integer or use the `!` operator.
-
-```
-let x: usize = -1isize as usize;
-let y: usize = !0;
-assert_eq!(x, y);
-```
-
-Alternatively you can use the `Wrapping` newtype
-or the `wrapping_neg` operation that all
-integral types support:
-
-```
-use std::num::Wrapping;
-let x: Wrapping<usize> = -Wrapping(1);
-let Wrapping(x) = x;
-let y: usize = 1.wrapping_neg();
-assert_eq!(x, y);
-```
-"##
-}
-
 declare_lint! {
     UNUSED_COMPARISONS,
     Warn,
@@ -109,24 +83,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
-                if let hir::ExprLit(ref lit) = expr.node {
-                    match lit.node {
-                        ast::LitKind::Int(_, ast::LitIntType::Unsigned(_)) => {
-                            forbid_unsigned_negation(cx, e.span);
-                        }
-                        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
-                            if let ty::TyUint(_) = cx.tcx.tables().node_id_to_type(e.id).sty {
-                                forbid_unsigned_negation(cx, e.span);
-                            }
-                        }
-                        _ => (),
-                    }
-                } else {
-                    let t = cx.tcx.tables().node_id_to_type(expr.id);
-                    if let ty::TyUint(_) = t.sty {
-                        forbid_unsigned_negation(cx, e.span);
-                    }
-                }
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;
@@ -368,13 +324,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => true,
                 _ => false,
             }
-        }
-
-        fn forbid_unsigned_negation(cx: &LateContext, span: Span) {
-            cx.sess()
-                .struct_span_err_with_code(span, "unary negation of unsigned integer", "E0519")
-                .span_help(span, "use a cast or the `!` operator")
-                .emit();
         }
     }
 }
