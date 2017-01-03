@@ -52,7 +52,7 @@ pub struct TcpStream(net_imp::TcpStream);
 ///     // ...
 /// }
 ///
-/// // accept connections and process them, spawning a new thread for each one
+/// // accept connections and process them serially
 /// for stream in listener.incoming() {
 ///     match stream {
 ///         Ok(stream) => {
