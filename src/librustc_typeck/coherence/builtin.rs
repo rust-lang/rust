@@ -121,15 +121,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
 
     match param_env.can_type_implement_copy(tcx, self_type, span) {
         Ok(()) => {}
-        Err(CopyImplementationError::InfrigingField(name)) => {
-            struct_span_err!(tcx.sess,
-                             span,
-                             E0204,
-                             "the trait `Copy` may not be implemented for this type")
-                .span_label(span, &format!("field `{}` does not implement `Copy`", name))
-                .emit()
-        }
-        Err(CopyImplementationError::InfrigingVariant(name)) => {
+        Err(CopyImplementationError::InfrigingField(field)) => {
             let item = tcx.map.expect_item(impl_node_id);
             let span = if let ItemImpl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
@@ -139,10 +131,11 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
 
             struct_span_err!(tcx.sess,
                              span,
-                             E0205,
+                             E0204,
                              "the trait `Copy` may not be implemented for this type")
-                .span_label(span,
-                            &format!("variant `{}` does not implement `Copy`", name))
+                .span_label(
+                    tcx.def_span(field.did),
+                    &"this field does not implement `Copy`")
                 .emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
