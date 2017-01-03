@@ -542,19 +542,19 @@ pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
 pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
     match *tt {
         TokenTree::Token(span, ref tok) =>
-            TokenTree::Token(span, fld.fold_token(tok.clone())),
+            TokenTree::Token(fld.new_span(span), fld.fold_token(tok.clone())),
         TokenTree::Delimited(span, ref delimed) => {
-            TokenTree::Delimited(span, Rc::new(
+            TokenTree::Delimited(fld.new_span(span), Rc::new(
                             Delimited {
                                 delim: delimed.delim,
-                                open_span: delimed.open_span,
+                                open_span: fld.new_span(delimed.open_span),
                                 tts: fld.fold_tts(&delimed.tts),
-                                close_span: delimed.close_span,
+                                close_span: fld.new_span(delimed.close_span),
                             }
                         ))
         },
         TokenTree::Sequence(span, ref seq) =>
-            TokenTree::Sequence(span,
+            TokenTree::Sequence(fld.new_span(span),
                        Rc::new(SequenceRepetition {
                            tts: fld.fold_tts(&seq.tts),
                            separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
@@ -647,7 +647,7 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
         inputs: inputs.move_map(|x| fld.fold_arg(x)),
         output: match output {
             FunctionRetTy::Ty(ty) => FunctionRetTy::Ty(fld.fold_ty(ty)),
-            FunctionRetTy::Default(span) => FunctionRetTy::Default(span),
+            FunctionRetTy::Default(span) => FunctionRetTy::Default(fld.new_span(span)),
         },
         variadic: variadic
     })
@@ -674,7 +674,7 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
         ident: fld.fold_ident(ident),
         bounds: fld.fold_bounds(bounds),
         default: default.map(|x| fld.fold_ty(x)),
-        span: span
+        span: fld.new_span(span),
     }
 }
 
