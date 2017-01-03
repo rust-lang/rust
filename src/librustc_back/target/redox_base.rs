@@ -25,14 +25,7 @@ pub fn opts() -> TargetOptions {
             "-Wl,--as-needed".to_string(),
 
             // Always enable NX protection when it is available
-            "-Wl,-z,noexecstack".to_string(),
-
-            // Static link
-            "-static".to_string()
-        ],
-        late_link_args: vec![
-            "-lc".to_string(),
-            "-lm".to_string()
+            "-Wl,-z,noexecstack".to_string()
         ],
         executables: true,
         relocation_model: "static".to_string(),
@@ -40,7 +33,6 @@ pub fn opts() -> TargetOptions {
         eliminate_frame_pointer: false,
         target_family: None,
         linker_is_gnu: true,
-        no_default_libraries: true,
         lib_allocation_crate: "alloc_system".to_string(),
         exe_allocation_crate: "alloc_system".to_string(),
         has_elf_tls: true,
