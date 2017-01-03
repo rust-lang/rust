@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let MethodTraitItem(ref sig, _) = item.node {
+        if let TraitItemKind::Method(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }

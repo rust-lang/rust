@@ -1,7 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::const_qualif::ConstQualif;
 use rustc::ty;
 use rustc::hir::def::Def;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
@@ -638,7 +637,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let item = cx.tcx.map.expect_item(parent);
         if_let_chain! {[
             let hir::ImplItemKind::Method(ref sig, _) = implitem.node,
-            let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
+            let Some(first_arg) = sig.decl.inputs.get(0),
             let hir::ItemImpl(_, _, _, None, _, _) = item.node,
         ], {
             // check missing trait implementations
@@ -646,7 +645,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if &*name.as_str() == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&explicit_self, false) {
+                   self_kind.matches(&first_arg, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -752,11 +751,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
-        if let Some(qualif) = cx.tcx.const_qualif_map.borrow().get(&arg.id) {
-            if !qualif.contains(ConstQualif::NOT_CONST) {
-                return;
-            }
+        let promotable = cx.tcx().rvalue_promotable_to_static.borrow()
+                             .get(&arg.id).cloned().unwrap_or(true);
+        if !promotable {
+            return;
         }
+
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] =
             &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
@@ -1347,7 +1347,10 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches(self, slf: &hir::ExplicitSelf, allow_value_for_ref: bool) -> bool {
+    fn matches(self, slf: &hir::Arg, allow_value_for_ref: bool) -> bool {
+        if !slf.has_self() {
+            return self == No;
+        }
         match (self, &slf.node) {
             (SelfKind::Value, &hir::SelfKind::Value(_)) |
             (SelfKind::Ref, &hir::SelfKind::Region(_, hir::Mutability::MutImmutable)) |

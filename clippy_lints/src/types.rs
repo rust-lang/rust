@@ -87,9 +87,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
-            ConstTraitItem(ref ty, _) |
-            TypeTraitItem(_, Some(ref ty)) => check_ty(cx, ty),
-            MethodTraitItem(ref sig, _) => check_fn_decl(cx, &sig.decl),
+            TraitItemKind::Const(ref ty, _) |
+            TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty),
+            TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
             _ => (),
         }
     }
@@ -624,9 +624,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.node {
-            ConstTraitItem(ref ty, _) |
-            TypeTraitItem(_, Some(ref ty)) => self.check_type(cx, ty),
-            MethodTraitItem(MethodSig { ref decl, .. }, None) => self.check_fndecl(cx, decl),
+            TraitItemKind::Const(ref ty, _) |
+            TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
+            TraitItemKind::Method(MethodSig { ref decl, .. }, None) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }

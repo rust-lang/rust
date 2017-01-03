@@ -106,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let MethodTraitItem(_, Some(eid)) = item.node {
+        if let TraitItemKind::Method(_, Some(eid)) = item.node {
             self.check(cx, cx.tcx.map.expr(eid), item.span);
         }
     }

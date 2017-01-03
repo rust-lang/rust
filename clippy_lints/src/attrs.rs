@@ -172,8 +172,8 @@ fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
 
 fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
     match item.node {
-        MethodTraitItem(_, None) => true,
-        MethodTraitItem(_, Some(eid)) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
+        TraitItemKind::Method(_, None) => true,
+        TraitItemKind::Method(_, Some(eid)) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
         _ => false,
     }
 }
