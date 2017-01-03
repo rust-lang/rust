@@ -163,8 +163,8 @@ let hachi = &dog[0..2];
 with this error:
 
 ```text
-thread 'main' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
-character boundary'
+thread 'main' panicked at 'byte index 2 is not a char boundary; it is inside '忠'
+(bytes 0..3) of `忠犬ハチ公`'
 ```
 
 ## Concatenation
