@@ -28,15 +28,13 @@ use rustc::hir::{self, ItemImpl};
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if let Some(drop_trait) = tcx.lang_items.drop_trait() {
-        tcx.lookup_trait_def(drop_trait).for_each_impl(tcx, |impl_did| {
-            visit_implementation_of_drop(tcx, impl_did)
-        });
+        tcx.lookup_trait_def(drop_trait)
+            .for_each_impl(tcx, |impl_did| visit_implementation_of_drop(tcx, impl_did));
     }
 
     if let Some(copy_trait) = tcx.lang_items.copy_trait() {
-        tcx.lookup_trait_def(copy_trait).for_each_impl(tcx, |impl_did| {
-            visit_implementation_of_copy(tcx, impl_did)
-        });
+        tcx.lookup_trait_def(copy_trait)
+            .for_each_impl(tcx, |impl_did| visit_implementation_of_copy(tcx, impl_did));
     }
 
     if let Some(coerce_unsized_trait) = tcx.lang_items.coerce_unsized_trait() {
@@ -48,8 +46,10 @@ pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         };
 
         tcx.lookup_trait_def(coerce_unsized_trait).for_each_impl(tcx, |impl_did| {
-            visit_implementation_of_coerce_unsized(tcx, impl_did,
-                                                   unsize_trait, coerce_unsized_trait)
+            visit_implementation_of_coerce_unsized(tcx,
+                                                   impl_did,
+                                                   unsize_trait,
+                                                   coerce_unsized_trait)
         });
     }
 }
@@ -81,8 +81,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
                                          E0120,
                                          "the Drop trait may only be implemented on \
                                          structures")
-                            .span_label(span,
-                                        &format!("implementing Drop requires a struct"))
+                            .span_label(span, &format!("implementing Drop requires a struct"))
                             .emit();
                     }
                     _ => {
@@ -173,10 +172,10 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId,
-    unsize_trait: DefId, coerce_unsized_trait: DefId)
-{
+fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                    impl_did: DefId,
+                                                    unsize_trait: DefId,
+                                                    coerce_unsized_trait: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
 
@@ -212,10 +211,10 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
                            mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
             if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                 infcx.report_mismatched_types(&cause,
-                                              mk_ptr(mt_b.ty),
-                                              target,
-                                              ty::error::TypeError::Mutability)
-                         .emit();
+                                             mk_ptr(mt_b.ty),
+                                             target,
+                                             ty::error::TypeError::Mutability)
+                    .emit();
             }
             (mt_a.ty, mt_b.ty, unsize_trait, None)
         };
@@ -232,8 +231,8 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
                 check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
             }
 
-            (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b))
-                if def_a.is_struct() && def_b.is_struct() => {
+            (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) if def_a.is_struct() &&
+                                                                          def_b.is_struct() => {
                 if def_a != def_b {
                     let source_path = tcx.item_path_str(def_a.did);
                     let target_path = tcx.item_path_str(def_b.did);
@@ -299,11 +298,11 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
                     err.note(&format!("currently, {} fields need coercions: {}",
                                       diff_fields.len(),
                                       diff_fields.iter()
-                                      .map(|&(i, a, b)| {
-                                          format!("{} ({} to {})", fields[i].name, a, b)
-                                      })
-                                      .collect::<Vec<_>>()
-                                      .join(", ")));
+                                          .map(|&(i, a, b)| {
+                                              format!("{} ({} to {})", fields[i].name, a, b)
+                                          })
+                                          .collect::<Vec<_>>()
+                                          .join(", ")));
                     err.span_label(span, &format!("requires multiple coercions"));
                     err.emit();
                     return;
@@ -328,8 +327,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_node_id);
-        let predicate =
-            tcx.predicate_for_trait_def(cause, trait_def_id, 0, source, &[target]);
+        let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0, source, &[target]);
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
         // Check that all transitive obligations are satisfied.
@@ -340,7 +338,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(
         // Finally, resolve all regions.
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
-                                                         .caller_bounds);
+            .caller_bounds);
         infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
         if let Some(kind) = kind {
