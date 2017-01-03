@@ -445,6 +445,11 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !has_allow_dead_code_or_lang_attr(&variant.attrs)
     }
 
+    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem) -> bool {
+        !self.symbol_is_live(fi.id, None)
+            && !has_allow_dead_code_or_lang_attr(&fi.attrs)
+    }
+
     // id := node id of an item's definition.
     // ctor_id := `Some` if the item is a struct_ctor (tuple struct),
     //            `None` otherwise.
@@ -534,7 +539,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
-        if !self.symbol_is_live(fi.id, None) {
+        if self.should_warn_about_foreign_item(fi) {
             self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
         intravisit::walk_foreign_item(self, fi);
