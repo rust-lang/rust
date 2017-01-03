@@ -391,7 +391,7 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
 /// all files in a directory and updating the stamp if any are newer.
 fn update_mtime(path: &Path) {
     let mut max = None;
-    if let Ok(entries) = path.parent().unwrap().read_dir() {
+    if let Ok(entries) = path.parent().unwrap().join("deps").read_dir() {
         for entry in entries.map(|e| t!(e)) {
             if t!(entry.file_type()).is_file() {
                 let meta = t!(entry.metadata());
