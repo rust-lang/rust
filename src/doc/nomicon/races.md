@@ -21,11 +21,11 @@ prevent *all* race conditions would be pretty awful to use, if not just
 incorrect.
 
 So it's perfectly "fine" for a Safe Rust program to get deadlocked or do
-something incredibly stupid with incorrect synchronization. Obviously such a
-program isn't very good, but Rust can only hold your hand so far. Still, a
-race condition can't violate memory safety in a Rust program on
-its own. Only in conjunction with some other unsafe code can a race condition
-actually violate memory safety. For instance:
+something nonsensical with incorrect synchronization. Obviously such a program
+isn't very good, but Rust can only hold your hand so far. Still, a race
+condition can't violate memory safety in a Rust program on its own. Only in
+conjunction with some other unsafe code can a race condition actually violate
+memory safety. For instance:
 
 ```rust,no_run
 use std::thread;

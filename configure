@@ -1568,7 +1568,7 @@ do
     then
         LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
         LLVM_INST_DIR=$LLVM_BUILD_DIR
-        # For some crazy reason the MSVC output dir is different than Unix
+        # For some weird reason the MSVC output dir is different than Unix
         if [ ${is_msvc} -ne 0 ]; then
             if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
             then
