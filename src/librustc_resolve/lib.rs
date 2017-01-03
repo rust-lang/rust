@@ -2314,7 +2314,7 @@ impl<'a> Resolver<'a> {
             _ => return None,
         };
 
-        if path.len() == 1 || result.base_def == Def::Err {
+        if path.len() == 1 || result.base_def == Def::Err || global {
             return Some(result);
         }
 
