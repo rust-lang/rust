@@ -258,11 +258,6 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
 }
 
 pub fn create_sysroot(build: &Build, compiler: &Compiler) {
-    // nothing to do in stage0
-    if compiler.stage == 0 {
-        return
-    }
-
     let sysroot = build.sysroot(compiler);
     let _ = fs::remove_dir_all(&sysroot);
     t!(fs::create_dir_all(&sysroot));
