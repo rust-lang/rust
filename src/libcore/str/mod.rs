@@ -1746,13 +1746,31 @@ fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
 #[cold]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
-    let (truncated, s) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
+    let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
     let ellipsis = if truncated { "[...]" } else { "" };
 
+    // 1. out of bounds
+    if begin > s.len() || end > s.len() {
+        let oob_index = if begin > s.len() { begin } else { end };
+        panic!("byte index {} is out of bounds of `{}`{}", oob_index, s_trunc, ellipsis);
+    }
+
+    // 2. begin <= end
     assert!(begin <= end, "begin <= end ({} <= {}) when slicing `{}`{}",
-            begin, end, s, ellipsis);
-    panic!("index {} and/or {} in `{}`{} do not lie on character boundary",
-          begin, end, s, ellipsis);
+            begin, end, s_trunc, ellipsis);
+
+    // 3. character boundary
+    let index = if !s.is_char_boundary(begin) { begin } else { end };
+    // find the character
+    let mut char_start = index;
+    while !s.is_char_boundary(char_start) {
+        char_start -= 1;
+    }
+    // `char_start` must be less than len and a char boundary
+    let ch = s[char_start..].chars().next().unwrap();
+    let char_range = char_start .. char_start + ch.len_utf8();
+    panic!("byte index {} is not a char boundary; it is inside {:?} (bytes {:?}) of `{}`{}",
+           index, ch, char_range, s_trunc, ellipsis);
 }
 
 #[stable(feature = "core", since = "1.6.0")]
