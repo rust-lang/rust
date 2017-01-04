@@ -906,6 +906,17 @@ pub fn is_self(slf: &Arg) -> bool {
     }
 }
 
+pub fn is_self_ty(slf: &Ty) -> bool {
+    if_let_chain! {[
+        let TyPath(ref qp) = slf.node,
+        let QPath::Resolved(None, ref path) = *qp,
+        let Def::SelfTy(..) = path.def,
+    ], {
+        return true
+    }}
+    false
+}
+
 pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<Item=&'tcx Arg> {
     (0..decl.inputs.len()).map(move |i| &body.arguments[i])
 }
