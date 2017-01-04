@@ -13,6 +13,7 @@
 // Code relating to drop glue.
 
 use std;
+use std::ptr;
 use std::iter;
 
 use llvm;
@@ -444,21 +445,15 @@ fn drop_structural_ty<'a, 'tcx>(
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
-                let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
-                for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let mut ptr = ptr.clone();
-                    ptr.ty = LvalueTy::Downcast {
-                        adt_def: adt,
-                        substs: substs,
-                        variant_index: Disr::from(discr).0 as usize,
-                    };
-                    let llfld_a = ptr.trans_field_ptr(&cx, i);
-                    let ptr = if cx.ccx.shared().type_is_sized(field_ty) {
-                        LvalueRef::new_sized_ty(llfld_a, field_ty)
-                    } else {
-                        LvalueRef::new_unsized_ty(llfld_a, ptr.llextra, field_ty)
-                    };
-                    drop_ty(&cx, ptr);
+                for (i, field) in adt.variants[0].fields.iter().enumerate() {
+                    let field_ty = monomorphize::field_ty(cx.tcx(), substs, field);
+                    let mut field_ptr = ptr.clone();
+                    field_ptr.llval = ptr.trans_field_ptr(&cx, i);
+                    field_ptr.ty = LvalueTy::from_ty(field_ty);
+                    if cx.ccx.shared().type_is_sized(field_ty) {
+                        field_ptr.llextra = ptr::null_mut();
+                    }
+                    drop_ty(&cx, field_ptr);
                 }
             }
             AdtKind::Union => {

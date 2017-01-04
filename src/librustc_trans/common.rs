@@ -15,7 +15,6 @@
 use llvm;
 use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
-use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::util::common::MemoizationMap;
@@ -38,7 +37,7 @@ use std::borrow::Cow;
 use std::iter;
 
 use syntax::ast;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
 use rustc_i128::u128;
@@ -168,55 +167,6 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 * some helper task such as bringing a task to life, allocating memory, etc.
 *
 */
-
-use Disr;
-
-/// The concrete version of ty::FieldDef. The name is the field index if
-/// the field is numeric.
-pub struct Field<'tcx>(pub ast::Name, pub Ty<'tcx>);
-
-/// The concrete version of ty::VariantDef
-pub struct VariantInfo<'tcx> {
-    pub discr: Disr,
-    pub fields: Vec<Field<'tcx>>
-}
-
-impl<'a, 'tcx> VariantInfo<'tcx> {
-    pub fn from_ty(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   ty: Ty<'tcx>,
-                   opt_def: Option<Def>)
-                   -> Self
-    {
-        match ty.sty {
-            ty::TyAdt(adt, substs) => {
-                let variant = match opt_def {
-                    None => adt.struct_variant(),
-                    Some(def) => adt.variant_of_def(def)
-                };
-
-                VariantInfo {
-                    discr: Disr::from(variant.disr_val),
-                    fields: variant.fields.iter().map(|f| {
-                        Field(f.name, monomorphize::field_ty(tcx, substs, f))
-                    }).collect()
-                }
-            }
-
-            ty::TyTuple(ref v) => {
-                VariantInfo {
-                    discr: Disr(0),
-                    fields: v.iter().enumerate().map(|(i, &t)| {
-                        Field(Symbol::intern(&i.to_string()), t)
-                    }).collect()
-                }
-            }
-
-            _ => {
-                bug!("cannot get field types from the type {:?}", ty);
-            }
-        }
-    }
-}
 
 /// A structure representing an active landing pad for the duration of a basic
 /// block.
