@@ -29,8 +29,6 @@ use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
 
-use syntax::ast::DUMMY_NODE_ID;
-use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
@@ -272,8 +270,14 @@ impl<'tcx> Witness<'tcx> {
         ty: Ty<'tcx>)
         -> Self
     {
-        let arity = constructor_arity(cx, ctor, ty);
-        self.0.extend(repeat(cx.wild_pattern).take(arity).cloned());
+        let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
+        self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
+            Pattern {
+                ty: ty,
+                span: DUMMY_SP,
+                kind: box PatternKind::Wild,
+            }
+        }));
         self.apply_constructor(cx, ctor, ty)
     }
 
@@ -313,10 +317,11 @@ impl<'tcx> Witness<'tcx> {
                         }
                     }).collect();
 
-                    if let ty::TyAdt(adt, _) = ty.sty {
+                    if let ty::TyAdt(adt, substs) = ty.sty {
                         if adt.variants.len() > 1 {
                             PatternKind::Variant {
                                 adt_def: adt,
+                                substs: substs,
                                 variant_index: ctor.variant_index_for_adt(adt),
                                 subpatterns: pats
                             }
@@ -604,11 +609,11 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor
                         pats.into_iter().map(|mut witness| {
-                            witness.0.push(P(hir::Pat {
-                                id: DUMMY_NODE_ID,
-                                node: PatKind::Wild,
+                            witness.0.push(Pattern {
+                                ty: pcx.ty,
                                 span: DUMMY_SP,
-                            }));
+                                kind: box PatternKind::Wild,
+                            });
                             witness
                         }).collect()
                     } else {
@@ -740,7 +745,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
         },
         ty::TyRef(_, ref ty_and_mut) => vec![ty_and_mut.ty],
         ty::TyAdt(adt, substs) => {
-            ctor.variant_for_adt(adt).fields.iter().map(|field| {
+            adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
                 field.ty(cx.tcx, substs)
             }).collect()
         }
