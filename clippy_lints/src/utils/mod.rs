@@ -906,6 +906,3 @@ pub fn is_self(slf: &Arg) -> bool {
     }
 }
 
-pub fn has_self(slf: &FnDecl) -> bool {
-    slf.inputs.get(0).map(|arg| is_self(&arg)).unwrap_or(false)
-}

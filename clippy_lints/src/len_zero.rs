@@ -4,8 +4,7 @@ use rustc::ty;
 use rustc::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
-use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty,
-    is_self, has_self};
+use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for getting the length of something via `.len()`
 /// just to compare to zero, and suggests using `.is_empty()` where applicable.
@@ -88,16 +87,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
-    fn is_named_self(item: &TraitItem, name: &str) -> bool {
-        if let TraitItemKind::Method(ref sig, _) = item.node {
-            return has_self(&*sig.decl) && &*item.name.as_str() == name && sig.decl.inputs.len() == 1;
+fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]) {
+    fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
+        &*item.name.as_str() == name &&
+        if let AssociatedItemKind::Method { has_self } = item.kind {
+            has_self &&
+            {
+                let did = cx.tcx.map.local_def_id(item.id.node_id);
+                let impl_ty = cx.tcx.item_type(did);
+                impl_ty.fn_args().skip_binder().len() == 1
+            }
+        } else {
+            false
         }
-        false
     }
 
-    if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        if let Some(i) = trait_items.iter().find(|i| is_named_self(i, "len")) {
+    if !trait_items.iter().any(|i| is_named_self(cx, i, "is_empty")) {
+        if let Some(i) = trait_items.iter().find(|i| is_named_self(cx, i, "len")) {
             if cx.access_levels.is_exported(i.id) {
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
