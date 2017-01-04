@@ -338,7 +338,7 @@ pub fn krate(build: &Build,
             ("libtest", "src/rustc/test_shim", String::new(), "test_shim")
         }
         Mode::Librustc => {
-            ("librustc", "src/rustc", build.rustc_features(), "rustc-main")
+            ("librustc", "src/rustc", String::new(), "rustc-main")
         }
         _ => panic!("can only test libraries"),
     };
@@ -373,12 +373,6 @@ pub fn krate(build: &Build,
             let mut visited = HashSet::new();
             let mut next = vec![root];
             while let Some(name) = next.pop() {
-                // Right now jemalloc is our only target-specific crate in the sense
-                // that it's not present on all platforms. Custom skip it here for now,
-                // but if we add more this probably wants to get more generalized.
-                if !name.contains("jemalloc") {
-                    cargo.arg("-p").arg(name);
-                }
                 for dep in build.crates[name].deps.iter() {
                     if visited.insert(dep) {
                         next.push(dep);

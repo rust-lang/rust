@@ -29,7 +29,7 @@ pub fn opts() -> TargetOptions {
             "-Wl,-z,noexecstack".to_string(),
         ],
         position_independent_executables: true,
-        exe_allocation_crate: super::maybe_jemalloc(),
+        exe_allocation_crate: "alloc_system".to_owned(),
         .. Default::default()
     }
 }

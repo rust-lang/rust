@@ -44,7 +44,7 @@ pub fn opts() -> TargetOptions {
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
         pre_link_args: Vec::new(),
-        exe_allocation_crate: super::maybe_jemalloc(),
+        exe_allocation_crate: "alloc_system".to_owned(),
         has_elf_tls: version >= (10, 7),
         .. Default::default()
     }

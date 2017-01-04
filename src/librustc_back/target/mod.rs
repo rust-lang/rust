@@ -795,11 +795,3 @@ impl ToJson for Target {
         Json::Object(d)
     }
 }
-
-fn maybe_jemalloc() -> String {
-    if cfg!(feature = "jemalloc") {
-        "alloc_jemalloc".to_string()
-    } else {
-        "alloc_system".to_string()
-    }
-}

@@ -206,8 +206,7 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
     }
     let mut cargo = build.cargo(&compiler, Mode::Librustc, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/Cargo.toml"))
-         .arg("--features").arg(build.rustc_features());
+         .arg(build.src.join("src/rustc/Cargo.toml"));
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
 }
