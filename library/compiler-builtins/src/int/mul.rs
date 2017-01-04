@@ -1,9 +1,8 @@
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
 use int::LargeInt;
 use int::Int;
 
 macro_rules! mul {
-    ($intrinsic:ident: $ty:ty) => {
+    ($intrinsic:ident: $ty:ty, $tyh:ty) => {
         /// Returns `a * b`
         #[cfg_attr(not(test), no_mangle)]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
@@ -14,14 +13,15 @@ macro_rules! mul {
             low &= lower_mask;
             t += (a.low() >> half_bits).wrapping_mul(b.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            let mut high = t >> half_bits;
+            let mut high = (t >> half_bits) as $tyh;
             t = low >> half_bits;
             low &= lower_mask;
             t += (b.low() >> half_bits).wrapping_mul(a.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            high += t >> half_bits;
-            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits);
-            high = high.wrapping_add(a.high().wrapping_mul(b.low()).wrapping_add(a.low().wrapping_mul(b.high())));
+            high += (t >> half_bits) as $tyh;
+            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits) as $tyh;
+            high = high.wrapping_add(a.high().wrapping_mul(b.low() as $tyh))
+                       .wrapping_add((a.low() as $tyh).wrapping_mul(b.high()));
             <$ty>::from_parts(low, high)
         }
     }
@@ -29,9 +29,13 @@ macro_rules! mul {
 
 macro_rules! mulo {
     ($intrinsic:ident: $ty:ty) => {
+        // Default is "C" ABI
+        mulo!($intrinsic: $ty, "C");
+    };
+    ($intrinsic:ident: $ty:ty, $abi:tt) => {
         /// Returns `a * b` and sets `*overflow = 1` if `a * b` overflows
         #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
+        pub extern $abi fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
             *overflow = 0;
             let result = a.wrapping_mul(b);
             if a == <$ty>::min_value() {
@@ -69,10 +73,17 @@ macro_rules! mulo {
 }
 
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
-mul!(__muldi3: u64);
+mul!(__muldi3: u64, u32);
+
+mul!(__multi3: i128, i64);
 
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+mulo!(__muloti4: i128, "unadjusted");
+#[cfg(not(all(windows, target_pointer_width="64")))]
+mulo!(__muloti4: i128);
 
 #[cfg(test)]
 mod tests {

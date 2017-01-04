@@ -206,8 +206,8 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [ ] floatuntisf.c
 - [ ] lshrti3.c
 - [ ] modti3.c
-- [ ] muloti4.c
-- [ ] multi3.c
+- [x] muloti4.c
+- [x] multi3.c
 - [ ] udivmodti4.c
 - [ ] udivti3.c
 - [ ] umodti3.c

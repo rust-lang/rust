@@ -14,6 +14,9 @@
 #![feature(naked_functions)]
 #![feature(staged_api)]
 #![feature(i128_type)]
+#![feature(repr_simd)]
+#![feature(abi_unadjusted)]
+#![allow(unused_features)]
 #![no_builtins]
 #![unstable(feature = "compiler_builtins_lib",
             reason = "Compiler builtins. Will never become stable.",
