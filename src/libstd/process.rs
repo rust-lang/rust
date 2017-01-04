@@ -932,7 +932,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn smoke() {
-        let p = if cfg!(target_os = "windows"){
+        let p = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 0"]).spawn()
         } else {
             Command::new("true").spawn()
@@ -954,7 +954,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn exit_reported_right() {
-        let p = if cfg!(target_os = "windows"){
+        let p = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn()
         } else {
             Command::new("false").spawn()
@@ -997,7 +997,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn stdout_works() {
-        if cfg!(target_os = "windows"){
+        if cfg!(target_os = "windows") {
             let mut cmd = Command::new("cmd");
             cmd.args(&["/C", "echo foobar"]).stdout(Stdio::piped());
             assert_eq!(run_output(cmd), "foobar\r\n");
@@ -1065,14 +1065,14 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_status() {
-        let mut status = if cfg!(target_os = "windows"){
+        let mut status = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
         } else {
             Command::new("false").status().unwrap()
         };
         assert!(status.code() == Some(1));
 
-        status = if cfg!(target_os = "windows"){
+        status = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
         } else {
             Command::new("true").status().unwrap()
@@ -1092,7 +1092,7 @@ mod tests {
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
-             = if cfg!(target_os = "windows"){
+             = if cfg!(target_os = "windows") {
                  Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
              } else {
                  Command::new("echo").arg("hello").output().unwrap()
@@ -1108,7 +1108,7 @@ mod tests {
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_error() {
         let Output {status, stdout, stderr}
-             = if cfg!(target_os = "windows"){
+             = if cfg!(target_os = "windows") {
                  Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
              } else {
                  Command::new("mkdir").arg(".").output().unwrap()
@@ -1122,7 +1122,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_once() {
-        let mut prog = if cfg!(target_os = "windows"){
+        let mut prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
         } else {
             Command::new("false").spawn().unwrap()
@@ -1133,7 +1133,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_twice() {
-        let mut prog = if cfg!(target_os = "windows"){
+        let mut prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
         } else {
             Command::new("false").spawn().unwrap()
@@ -1145,7 +1145,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_wait_with_output_once() {
-        let prog = if cfg!(target_os = "windows"){
+        let prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
         } else {
             Command::new("echo").arg("hello").stdout(Stdio::piped()).spawn().unwrap()
