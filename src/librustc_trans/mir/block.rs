@@ -209,7 +209,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let llscratch = bcx.fcx().alloca(ret.original_ty, "ret");
+                            let llscratch = bcx.alloca(ret.original_ty, "ret");
                             self.store_operand(&bcx, llscratch, op, None);
                             llscratch
                         }
@@ -651,7 +651,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let (mut llval, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let llscratch = bcx.fcx().alloca(arg.original_ty, "arg");
+                    let llscratch = bcx.alloca(arg.original_ty, "arg");
                     self.store_operand(bcx, llscratch, op, None);
                     (llscratch, true)
                 } else {
