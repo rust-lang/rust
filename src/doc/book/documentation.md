@@ -651,6 +651,16 @@ through the `#![doc(test(..))]` attribute.
 This allows unused variables within the examples, but will fail the test for any
 other lint warning thrown.
 
+You can also ignore tests for a given item and all the nested items under it
+with:
+
+```rust
+#![doc(test(ignore))]
+```
+
+Tests for documentation examples for that item or nested items won't be
+generated.
+
 ## Generation options
 
 `rustdoc` also contains a few other options on the command line, for further customization:
