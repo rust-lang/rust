@@ -580,14 +580,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                     if let Some((_, target)) = *destination {
                         let ret_bcx = self.get_builder(target);
-                        ret_bcx.position_at_start(ret_bcx.llbb());
                         self.set_debug_loc(&ret_bcx, terminator.source_info);
                         let op = OperandRef {
                             val: Immediate(invokeret),
                             ty: sig.output(),
                         };
                         self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
-                        ret_bcx.position_at_end(ret_bcx.llbb());
                     }
                 } else {
                     let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
