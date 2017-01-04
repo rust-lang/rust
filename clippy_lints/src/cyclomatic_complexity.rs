@@ -94,20 +94,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemFn(_, _, _, _, _, eid) = item.node {
             if !attr::contains_name(&item.attrs, "test") {
-                self.check(cx, cx.tcx.map.expr(eid), item.span);
+                self.check(cx, &cx.tcx.map.body(eid).value, item.span);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(_, eid) = item.node {
-            self.check(cx, cx.tcx.map.expr(eid), item.span);
+            self.check(cx, &cx.tcx.map.body(eid).value, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(_, Some(eid)) = item.node {
-            self.check(cx, cx.tcx.map.expr(eid), item.span);
+        if let TraitItemKind::Method(_, TraitMethod::Provided(eid)) = item.node {
+            self.check(cx, &cx.tcx.map.body(eid).value, item.span);
         }
     }
 

@@ -49,14 +49,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
     if let ExprClosure(_, ref decl, eid, _) = expr.node {
-        let ex = cx.tcx.map.expr(eid);
+        let ex = cx.tcx.map.body(eid).value;
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there
                 // is no way the closure is the same as the function
                 return;
             }
-            if is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
+            if is_adjusted(cx, &ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
                 // Are the expression or the arguments type-adjusted? Then we need the closure
                 return;
             }
@@ -72,7 +72,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 _ => (),
             }
             for (a1, a2) in decl.inputs.iter().zip(args) {
-                if let PatKind::Binding(_, _, ident, _) = a1.pat.node {
+                if let PatKind::Binding(_, _, ident, _) = a1.node {
                     // XXXManishearth Should I be checking the binding mode here?
                     if let ExprPath(QPath::Resolved(None, ref p)) = a2.node {
                         if p.segments.len() != 1 {

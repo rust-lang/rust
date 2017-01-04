@@ -175,7 +175,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         cx: &LateContext<'a, 'tcx>,
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        _: &'tcx Expr,
+        _: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
@@ -184,10 +184,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         for arg in &decl.inputs {
-            if let PatKind::Binding(BindByRef(_), _, _, _) = arg.pat.node {
+            if let PatKind::Binding(BindByRef(_), _, _, _) = arg.node {
                 span_lint(cx,
                           TOPLEVEL_REF_ARG,
-                          arg.pat.span,
+                          arg.span,
                           "`ref` directly on a function argument is ignored. Consider using a reference type instead.");
             }
         }

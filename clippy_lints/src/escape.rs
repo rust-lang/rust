@@ -64,8 +64,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         _: visit::FnKind<'tcx>,
-        decl: &'tcx FnDecl,
-        body: &'tcx Expr,
+        _: &'tcx FnDecl,
+        body: &'tcx Body,
         _: Span,
         id: NodeId
     ) {
@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
         {
             let mut vis = ExprUseVisitor::new(&mut v, &infcx);
-            vis.walk_fn(decl, body);
+            vis.consume_body(body);
         }
 
         for node in v.set {

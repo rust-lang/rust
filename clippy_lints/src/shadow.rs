@@ -85,21 +85,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        expr: &'tcx Expr,
+        body: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx, body.value.span) {
             return;
         }
-        check_fn(cx, decl, expr);
+        check_fn(cx, decl, &body.value);
     }
 }
 
 fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
-        if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
+        if let PatKind::Binding(_, _, ident, _) = arg.node {
             bindings.push((ident.node, ident.span))
         }
     }
@@ -341,9 +341,9 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
     match ty.node {
         TyObjectSum(ref sty, _) |
         TySlice(ref sty) => check_ty(cx, sty, bindings),
-        TyArray(ref fty, ref expr) => {
+        TyArray(ref fty, bodyId) => {
             check_ty(cx, fty, bindings);
-            check_expr(cx, expr, bindings);
+            check_expr(cx, &cx.tcx.map.body(bodyId).value, bindings);
         },
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
@@ -352,7 +352,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
                 check_ty(cx, t, bindings)
             }
         },
-        TyTypeof(ref expr) => check_expr(cx, expr, bindings),
+        TyTypeof(bodyId) => check_expr(cx, &cx.tcx.map.body(bodyId).value, bindings),
         _ => (),
     }
 }
@@ -371,7 +371,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 }
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
-    !path.global && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
 }
 
 struct ContainsSelf<'a, 'tcx: 'a> {

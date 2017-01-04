@@ -31,18 +31,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if &*name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
                     ExprClosure(_, ref decl, closure_eid, _) => {
-                        let closure_expr = remove_blocks(cx.tcx.map.expr(closure_eid));
+                        let closure_expr = remove_blocks(&cx.tcx.map.body(closure_eid).value);
                         if_let_chain! {[
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
-                            let Some(arg_ident) = get_arg_name(&*decl.inputs[0].pat),
+                            let Some(arg_ident) = get_arg_name(&*decl.inputs[0]),
                             // the method is being called on a known type (option or iterator)
                             let Some(type_name) = get_type_name(cx, expr, &args[0])
                         ], {
                             // look for derefs, for .map(|x| *x)
                             if only_derefs(cx, &*closure_expr, arg_ident) &&
                                 // .cloned() only removes one level of indirection, don't lint on more
-                                walk_ptrs_ty_depth(cx.tcx.tables().pat_ty(&*decl.inputs[0].pat)).1 == 1
+                                walk_ptrs_ty_depth(cx.tcx.tables().pat_ty(&*decl.inputs[0])).1 == 1
                             {
                                 span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                     "you seem to be using .map() to clone the contents of an {}, consider \
@@ -90,7 +90,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
                                    name: id,
                                    parameters: PathParameters::none(),
                                }];
-            !path.global && path.segments[..] == arg_segment
+            !path.is_global() && path.segments[..] == arg_segment
         },
         _ => false,
     }

@@ -258,8 +258,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, ref number) => {
-                self.binop_apply(value, number, |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
+            ExprRepeat(ref value, numberId) => {
+                if let Some(lcx) = self.lcx {
+                    self.binop_apply(value, &lcx.tcx.map.body(numberId).value, |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
+                } else {
+                    None
+                }
             },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| {

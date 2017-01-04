@@ -99,13 +99,13 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
             if match_type(cx, ty, &paths::VEC) {
                 span_lint(cx,
                           PTR_ARG,
-                          arg.ty.span,
+                          arg.span,
                           "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
                            with non-Vec-based slices. Consider changing the type to `&[...]`");
             } else if match_type(cx, ty, &paths::STRING) {
                 span_lint(cx,
                           PTR_ARG,
-                          arg.ty.span,
+                          arg.span,
                           "writing `&String` instead of `&str` involves a new object where a slice will do. \
                            Consider changing the type to `&str`");
             }

@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx hir::FnDecl,
-        body: &'tcx hir::Expr,
+        body: &'tcx hir::Body,
         span: Span,
         fn_id: ast::NodeId
     ) {
@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
             cx: cx,
             labels: HashMap::new(),
         };
-        walk_fn(&mut v, kind, decl, body.expr_id(), span, fn_id);
+        walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
 
         for (label, span) in v.labels {
             span_lint(cx, UNUSED_LABEL, span, &format!("unused label `{}`", label));

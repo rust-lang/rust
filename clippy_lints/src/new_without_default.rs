@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx hir::FnDecl,
-        _: &'tcx hir::Expr,
+        _: &'tcx hir::Body,
         span: Span,
         id: ast::NodeId
     ) {

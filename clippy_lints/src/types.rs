@@ -70,7 +70,7 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, id: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
         if let Some(map::NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent(id)) {
             if let ItemImpl(_, _, _, Some(..), _, _) = item.node {
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
 
 fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     for input in &decl.inputs {
-        check_ty(cx, &input.ty);
+        check_ty(cx, &input);
     }
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
@@ -601,7 +601,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        _: &'tcx Expr,
+        _: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
@@ -626,7 +626,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         match item.node {
             TraitItemKind::Const(ref ty, _) |
             TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
-            TraitItemKind::Method(MethodSig { ref decl, .. }, None) => self.check_fndecl(cx, decl),
+            TraitItemKind::Method(MethodSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }
@@ -651,7 +651,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 impl<'a, 'tcx> TypeComplexityPass {
     fn check_fndecl(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl) {
         for arg in &decl.inputs {
-            self.check_type(cx, &arg.ty);
+            self.check_type(cx, &arg);
         }
         if let Return(ref ty) = decl.output {
             self.check_type(cx, ty);

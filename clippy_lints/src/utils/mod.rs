@@ -19,6 +19,7 @@ use syntax::attr;
 use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 
 pub mod cargo;
 pub mod comparisons;
@@ -487,7 +488,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
         match node {
             Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, eid), .. }) => {
-                match cx.tcx.map.expr(eid).node {
+                match cx.tcx.map.body(eid).value.node {
                     ExprBlock(ref block) => Some(block),
                     _ => None,
                 }
@@ -895,4 +896,16 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
 
         Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
     }
+}
+
+pub fn is_self(slf: &Arg) -> bool {
+    if let PatKind::Binding(_, _, name, _) = slf.pat.node {
+        name.node == keywords::SelfValue.name()
+    } else {
+        false
+    }
+}
+
+pub fn has_self(slf: &FnDecl) -> bool {
+    slf.inputs.get(0).map(|arg| is_self(&arg)).unwrap_or(false)
 }

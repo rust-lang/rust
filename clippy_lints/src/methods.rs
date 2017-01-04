@@ -11,7 +11,7 @@ use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
             span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
-            match_def_path};
+            match_def_path, is_self};
 use utils::paths;
 use utils::sugg;
 
@@ -645,7 +645,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if &*name.as_str() == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&first_arg, false) {
+                   self_kind.matches(&**first_arg, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -658,8 +658,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
-                    !self_kinds.iter().any(|k| k.matches(&explicit_self, is_copy)),
+                    let Some(explicit_self) = sig.decl.inputs.get(0),
+                    !self_kinds.iter().any(|k| k.matches(&**explicit_self, is_copy)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION
@@ -684,7 +684,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
-                          explicit_self.span,
+                          first_arg.span,
                           "methods called `new` usually return `Self`");
             }
         }}
@@ -751,7 +751,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
-        let promotable = cx.tcx().rvalue_promotable_to_static.borrow()
+        let promotable = cx.tcx.rvalue_promotable_to_static.borrow()
                              .get(&arg.id).cloned().unwrap_or(true);
         if !promotable {
             return;
@@ -1338,7 +1338,7 @@ const PATTERN_METHODS: [(&'static str, usize); 17] = [
 ];
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum SelfKind {
     Value,
     Ref,
@@ -1348,18 +1348,19 @@ enum SelfKind {
 
 impl SelfKind {
     fn matches(self, slf: &hir::Arg, allow_value_for_ref: bool) -> bool {
-        if !slf.has_self() {
-            return self == No;
-        }
-        match (self, &slf.node) {
-            (SelfKind::Value, &hir::SelfKind::Value(_)) |
-            (SelfKind::Ref, &hir::SelfKind::Region(_, hir::Mutability::MutImmutable)) |
-            (SelfKind::RefMut, &hir::SelfKind::Region(_, hir::Mutability::MutMutable)) => true,
-            (SelfKind::Ref, &hir::SelfKind::Value(_)) |
-            (SelfKind::RefMut, &hir::SelfKind::Value(_)) => allow_value_for_ref,
-            (_, &hir::SelfKind::Explicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
+        if is_self(slf) {
+           match (self, &slf.pat.node) {
+                (SelfKind::Value, &hir::PatKind::Binding(hir::BindingMode::BindByValue(_), ..)) |
+                (SelfKind::Ref, &hir::PatKind::Ref(_, hir::Mutability::MutImmutable)) |
+                (SelfKind::RefMut, &hir::PatKind::Ref(_, hir::Mutability::MutMutable)) => true,
+                (SelfKind::Ref, &hir::PatKind::Binding(hir::BindingMode::BindByRef(hir::Mutability::MutImmutable), ..)) |
+                (SelfKind::RefMut, &hir::PatKind::Binding(hir::BindingMode::BindByRef(hir::Mutability::MutMutable), ..)) => allow_value_for_ref,
+//                (_, &hir::PatKind::Explicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
 
-            _ => false,
+                _ => false,
+            }
+        } else {
+            self == SelfKind::No
         }
     }
 

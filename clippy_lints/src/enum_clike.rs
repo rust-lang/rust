@@ -42,9 +42,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
         if let ItemEnum(ref def, _) = item.node {
             for var in &def.variants {
                 let variant = &var.node;
-                if let Some(ref disr) = variant.disr_expr {
+                if let Some(bodyId) = variant.disr_expr {
                     use rustc_const_eval::*;
-                    let bad = match eval_const_expr_partial(cx.tcx, &**disr, EvalHint::ExprTypeChecked, None) {
+                    let bad = match eval_const_expr_partial(cx.tcx, &cx.tcx.map.body(bodyId).value, EvalHint::ExprTypeChecked, None) {
                         Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
                         Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
                         _ => false,

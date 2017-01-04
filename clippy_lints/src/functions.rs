@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         cx: &LateContext<'a, 'tcx>,
         kind: intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr,
+        body: &'tcx hir::Body,
         span: Span,
         nodeid: ast::NodeId
     ) {
@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, expr, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, &body.value, nodeid);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
@@ -112,9 +112,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                 self.check_arg_number(cx, &sig.decl, item.span);
             }
 
-            if let Some(eid) = eid {
-                let expr = cx.tcx.map.expr(eid);
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, expr, item.id);
+            if let hir::TraitMethod::Provided(eid) = eid {
+                let expr = cx.tcx.map.body(eid).value;
+                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, &expr, item.id);
             }
         }
     }
@@ -154,8 +154,8 @@ impl<'a, 'tcx> Functions {
     }
 }
 
-fn raw_ptr_arg(_cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
-    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
+fn raw_ptr_arg(cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
+    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &cx.tcx.map.get(arg.id)) {
         Some(def_id)
     } else {
         None
