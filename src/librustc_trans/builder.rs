@@ -512,13 +512,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         value
     }
 
-    pub fn store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
+    pub fn store(&self, val: ValueRef, ptr: ValueRef, align: Option<u32>) -> ValueRef {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         let ptr = self.check_store(val, ptr);
         unsafe {
-            llvm::LLVMBuildStore(self.llbuilder, val, ptr)
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            if let Some(align) = align {
+                llvm::LLVMSetAlignment(store, align as c_uint);
+            }
+            store
         }
     }
 

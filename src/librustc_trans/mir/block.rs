@@ -23,13 +23,15 @@ use consts;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
-use type_of;
+use type_of::{self, align_of};
 use glue;
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::symbol::Symbol;
+
+use std::cmp;
 
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
@@ -207,7 +209,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
                             let llscratch = bcx.fcx().alloca(ret.original_ty, "ret");
-                            self.store_operand(&bcx, llscratch, op);
+                            self.store_operand(&bcx, llscratch, op, None);
                             llscratch
                         }
                         Ref(llval) => llval
@@ -424,7 +426,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // The first argument is a thin destination pointer.
                     let llptr = self.trans_operand(&bcx, &args[0]).immediate();
                     let val = self.trans_operand(&bcx, &args[1]);
-                    self.store_operand(&bcx, llptr, val);
+                    self.store_operand(&bcx, llptr, val, None);
                     funclet_br(self, bcx, target);
                     return;
                 }
@@ -657,7 +659,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
                     let llscratch = bcx.fcx().alloca(arg.original_ty, "arg");
-                    self.store_operand(bcx, llscratch, op);
+                    self.store_operand(bcx, llscratch, op, None);
                     (llscratch, true)
                 } else {
                     (op.pack_if_pair(bcx).immediate(), false)
@@ -799,7 +801,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.fcx.llfn);
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
-        bcx.store(llretval, slot);
+        bcx.store(llretval, slot, None);
         bcx.br(target.llbb());
         bcx.llbb()
     }
@@ -884,7 +886,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let llty = type_of::type_of(bcx.ccx, val.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
-        self.store_operand(bcx, cast_ptr, val);
+        let in_type = val.ty;
+        let out_type = dst.ty.to_ty(bcx.tcx());;
+        let llalign = cmp::min(align_of(bcx.ccx, in_type), align_of(bcx.ccx, out_type));
+        self.store_operand(bcx, cast_ptr, val, Some(llalign));
     }
 
 

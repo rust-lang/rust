@@ -290,8 +290,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
                             let result = bcx.extract_value(val, 0);
                             let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(ccx));
-                            bcx.store(result, bcx.struct_gep(llresult, 0));
-                            bcx.store(overflow, bcx.struct_gep(llresult, 1));
+                            bcx.store(result, bcx.struct_gep(llresult, 0), None);
+                            bcx.store(overflow, bcx.struct_gep(llresult, 1), None);
 
                             C_nil(bcx.ccx)
                         },
@@ -409,8 +409,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             failorder, weak);
                         let result = bcx.extract_value(val, 0);
                         let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
-                        bcx.store(result, bcx.struct_gep(llresult, 0));
-                        bcx.store(success, bcx.struct_gep(llresult, 1));
+                        bcx.store(result, bcx.struct_gep(llresult, 0), None);
+                        bcx.store(success, bcx.struct_gep(llresult, 1), None);
                     } else {
                         invalid_monomorphization(sty);
                     }
@@ -615,7 +615,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
                     for i in 0..elems.len() {
                         let val = bcx.extract_value(val, i);
-                        bcx.store(val, bcx.struct_gep(llresult, i));
+                        bcx.store(val, bcx.struct_gep(llresult, i), None);
                     }
                     C_nil(ccx)
                 }
@@ -627,10 +627,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     if val_ty(llval) != Type::void(ccx) && machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
         if let Some(ty) = fn_ty.ret.cast {
             let ptr = bcx.pointercast(llresult, ty.ptr_to());
-            let store = bcx.store(llval, ptr);
-            unsafe {
-                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, ret_ty));
-            }
+            bcx.store(llval, ptr, Some(type_of::align_of(ccx, ret_ty)));
         } else {
             store_ty(bcx, llval, llresult, ret_ty);
         }
@@ -697,7 +694,7 @@ fn try_intrinsic<'a, 'tcx>(
 ) {
     if bcx.sess().no_landing_pads() {
         bcx.call(func, &[data], None);
-        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest);
+        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
     } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, func, data, local_ptr, dest);
     } else {
@@ -791,8 +788,8 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         let val1 = C_i32(ccx, 1);
         let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]));
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        catchpad.store(arg1, local_ptr);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]));
+        catchpad.store(arg1, local_ptr, None);
+        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), None);
         catchpad.catch_ret(tok, caught.llbb());
 
         caught.ret(C_i32(ccx, 1));
@@ -801,7 +798,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest);
+    bcx.store(ret, dest, None);
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model
@@ -860,14 +857,14 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.fcx().llfn);
         catch.add_clause(vals, C_null(Type::i8p(ccx)));
         let ptr = catch.extract_value(vals, 0);
-        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()));
+        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()), None);
         catch.ret(C_i32(ccx, 1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest);
+    bcx.store(ret, dest, None);
 }
 
 // Helper function to give a Block to a closure to translate a shim function.
