@@ -10,8 +10,6 @@
 
 // aux-build:derive-bad.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_bad;
 

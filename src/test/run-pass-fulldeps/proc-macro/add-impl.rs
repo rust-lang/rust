@@ -10,8 +10,6 @@
 
 // aux-build:add-impl.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate add_impl;
 
