@@ -18,7 +18,7 @@ use ast;
 use ast::{AttrId, Attribute, Name};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, Expr, Item, Local, Stmt, StmtKind};
-use codemap::{spanned, dummy_spanned, mk_sp};
+use codemap::{Spanned, spanned, dummy_spanned, mk_sp};
 use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
@@ -959,6 +959,13 @@ pub trait HasAttrs: Sized {
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
 }
 
+impl<T: HasAttrs> HasAttrs for Spanned<T> {
+    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
+        Spanned { node: self.node.map_attrs(f), span: self.span }
+    }
+}
+
 impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         &self
@@ -1012,26 +1019,31 @@ impl HasAttrs for StmtKind {
     }
 }
 
-macro_rules! derive_has_attrs_from_field {
-    ($($ty:path),*) => { derive_has_attrs_from_field!($($ty: .attrs),*); };
-    ($($ty:path : $(.$field:ident)*),*) => { $(
+impl HasAttrs for Stmt {
+    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
+        Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
+    }
+}
+
+macro_rules! derive_has_attrs {
+    ($($ty:path),*) => { $(
         impl HasAttrs for $ty {
             fn attrs(&self) -> &[Attribute] {
-                self $(.$field)* .attrs()
+                &self.attrs
             }
 
             fn map_attrs<F>(mut self, f: F) -> Self
                 where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>,
             {
-                self $(.$field)* = self $(.$field)* .map_attrs(f);
+                self.attrs = self.attrs.map_attrs(f);
                 self
             }
         }
     )* }
 }
 
-derive_has_attrs_from_field! {
-    Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm
+derive_has_attrs! {
+    Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
+    ast::Field, ast::FieldPat, ast::Variant_
 }
-
-derive_has_attrs_from_field! { Stmt: .node, ast::Variant: .node.attrs }
