@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 fn check_closure(cx: &LateContext, expr: &Expr) {
     if let ExprClosure(_, ref decl, eid, _) = expr.node {
         let body = cx.tcx.map.body(eid);
-        let ex = body.value;
+        let ref ex = body.value;
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there

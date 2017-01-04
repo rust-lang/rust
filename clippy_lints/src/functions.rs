@@ -158,7 +158,7 @@ impl<'a, 'tcx> Functions {
 }
 
 fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<hir::def_id::DefId> {
-    if let (&hir::PatKind::Binding(_, def_id, _, _), hir::TyPtr(_)) = (&arg.pat.node, ty.node) {
+    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &ty.node) {
         Some(def_id)
     } else {
         None

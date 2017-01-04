@@ -341,9 +341,9 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
     match ty.node {
         TyObjectSum(ref sty, _) |
         TySlice(ref sty) => check_ty(cx, sty, bindings),
-        TyArray(ref fty, bodyId) => {
+        TyArray(ref fty, body_id) => {
             check_ty(cx, fty, bindings);
-            check_expr(cx, &cx.tcx.map.body(bodyId).value, bindings);
+            check_expr(cx, &cx.tcx.map.body(body_id).value, bindings);
         },
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
@@ -352,7 +352,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
                 check_ty(cx, t, bindings)
             }
         },
-        TyTypeof(bodyId) => check_expr(cx, &cx.tcx.map.body(bodyId).value, bindings),
+        TyTypeof(body_id) => check_expr(cx, &cx.tcx.map.body(body_id).value, bindings),
         _ => (),
     }
 }

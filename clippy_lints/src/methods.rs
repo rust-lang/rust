@@ -637,8 +637,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let item = cx.tcx.map.expect_item(parent);
         if_let_chain! {[
             let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
-            let body = cx.tcx.map.body(id),
-            let Some(first_arg) = iter_input_pats(&sig.decl, body).next(),
+            let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.map.body(id)).next(),
             let hir::ItemImpl(_, _, _, None, _, _) = item.node,
         ], {
             // check missing trait implementations

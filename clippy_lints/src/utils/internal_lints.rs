@@ -106,7 +106,7 @@ impl LintPass for LintWithoutLintPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemStatic(ref ty, MutImmutable, bodyId) = item.node {
+        if let ItemStatic(ref ty, MutImmutable, body_id) = item.node {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
             } else if is_lint_array_type(ty) && item.vis == Visibility::Inherited && item.name == "ARRAY" {
@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                     output: &mut self.registered_lints,
                     cx: cx,
                 };
-                collector.visit_expr(&cx.tcx.map.body(bodyId).value);
+                collector.visit_expr(&cx.tcx.map.body(body_id).value);
             }
         }
     }

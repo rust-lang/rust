@@ -60,9 +60,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             println!("default");
         }
         match item.node {
-            hir::ImplItemKind::Const(_, bodyId) => {
+            hir::ImplItemKind::Const(_, body_id) => {
                 println!("associated constant");
-                print_expr(cx, &cx.tcx.map.body(bodyId).value, 1);
+                print_expr(cx, &cx.tcx.map.body(body_id).value, 1);
             },
             hir::ImplItemKind::Method(..) => println!("method"),
             hir::ImplItemKind::Type(_) => println!("associated type"),
@@ -324,12 +324,12 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, base, indent + 1);
             }
         },
-        hir::ExprRepeat(ref val, bodyId) => {
+        hir::ExprRepeat(ref val, body_id) => {
             println!("{}Repeat, {}", ind, ty);
             println!("{}value:", ind);
             print_expr(cx, val, indent + 1);
             println!("{}repeat count:", ind);
-            print_expr(cx, &cx.tcx.map.body(bodyId).value, indent + 1);
+            print_expr(cx, &cx.tcx.map.body(body_id).value, indent + 1);
         },
     }
 }
