@@ -185,6 +185,7 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U16)) => Constant::Int(ConstInt::U16(value as u16)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U32)) => Constant::Int(ConstInt::U32(value as u32)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U64)) => Constant::Int(ConstInt::U64(value as u64)),
+        LitKind::Int(value, LitIntType::Unsigned(UintTy::U128)) => Constant::Int(ConstInt::U128(value as u128)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::Us)) => {
             Constant::Int(ConstInt::Usize(ConstUsize::Us32(value as u32)))
         },
@@ -192,6 +193,7 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Int(value, LitIntType::Signed(IntTy::I16)) => Constant::Int(ConstInt::I16(value as i16)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I32)) => Constant::Int(ConstInt::I32(value as i32)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I64)) => Constant::Int(ConstInt::I64(value as i64)),
+        LitKind::Int(value, LitIntType::Signed(IntTy::I128)) => Constant::Int(ConstInt::I128(value as i128)),
         LitKind::Int(value, LitIntType::Signed(IntTy::Is)) => {
             Constant::Int(ConstInt::Isize(ConstIsize::Is32(value as i32)))
         },
