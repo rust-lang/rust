@@ -694,7 +694,7 @@ fn try_intrinsic<'a, 'tcx>(
         bcx.call(func, &[data], None);
         bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
     } else if wants_msvc_seh(bcx.sess()) {
-        trans_msvc_try(bcx, fcx, func, data, local_ptr, dest);
+        trans_msvc_try(bcx, ccx, func, data, local_ptr, dest);
     } else {
         trans_gnu_try(bcx, ccx, func, data, local_ptr, dest);
     }
