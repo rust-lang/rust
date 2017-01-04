@@ -395,22 +395,21 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 }
 
 // Iterates through the elements of a structural type, dropping them.
-fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> Builder<'a, 'tcx> {
-    fn iter_variant<'a, 'tcx>(cx: &'a Builder<'a, 'tcx>,
-                              av: LvalueRef<'tcx>,
-                              adt_def: &'tcx AdtDef,
-                              variant_index: usize,
-                              substs: &'tcx Substs<'tcx>) {
+fn drop_structural_ty<'a, 'tcx>(
+    cx: Builder<'a, 'tcx>,
+    mut ptr: LvalueRef<'tcx>
+) -> Builder<'a, 'tcx> {
+    fn iter_variant_fields<'a, 'tcx>(
+        cx: &'a Builder<'a, 'tcx>,
+        av: LvalueRef<'tcx>,
+        adt_def: &'tcx AdtDef,
+        variant_index: usize,
+        substs: &'tcx Substs<'tcx>
+    ) {
         let variant = &adt_def.variants[variant_index];
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
-            let mut av = av.clone();
-            av.ty = LvalueTy::Downcast {
-                adt_def: adt_def,
-                substs: substs,
-                variant_index: variant_index,
-            };
             let field_ptr = av.trans_field_ptr(&cx, i);
             drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg));
         }
@@ -479,7 +478,12 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                     layout::UntaggedUnion { .. } => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            iter_variant(&cx, ptr, &adt, 0, substs);
+                            ptr.ty = LvalueTy::Downcast {
+                                adt_def: adt,
+                                substs: substs,
+                                variant_index: 0,
+                            };
+                            iter_variant_fields(&cx, ptr, &adt, 0, substs);
                         }
                     }
                     layout::CEnum { .. } |
@@ -514,7 +518,12 @@ fn drop_structural_ty<'a, 'tcx>(cx: Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) -> 
                             let variant_cx = cx.build_sibling_block(&variant_cx_name);
                             let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
-                            iter_variant(&variant_cx, ptr, &adt, i, substs);
+                            ptr.ty = LvalueTy::Downcast {
+                                adt_def: adt,
+                                substs: substs,
+                                variant_index: i,
+                            };
+                            iter_variant_fields(&variant_cx, ptr, &adt, i, substs);
                             variant_cx.br(next_cx.llbb());
                         }
                         cx = next_cx;
