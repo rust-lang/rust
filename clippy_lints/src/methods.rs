@@ -11,7 +11,7 @@ use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
             span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
-            match_def_path, is_self};
+            match_def_path, is_self, iter_input_pats};
 use utils::paths;
 use utils::sugg;
 
@@ -636,8 +636,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let parent = cx.tcx.map.get_parent(implitem.id);
         let item = cx.tcx.map.expect_item(parent);
         if_let_chain! {[
-            let hir::ImplItemKind::Method(ref sig, _) = implitem.node,
-            let Some(first_arg) = sig.decl.inputs.get(0),
+            let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
+            let body = cx.tcx.map.body(id),
+            let Some(first_arg) = iter_input_pats(&sig.decl, body).next(),
             let hir::ItemImpl(_, _, _, None, _, _) = item.node,
         ], {
             // check missing trait implementations
@@ -645,7 +646,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if &*name.as_str() == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&**first_arg, false) {
+                   self_kind.matches(&first_arg, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -658,8 +659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    let Some(explicit_self) = sig.decl.inputs.get(0),
-                    !self_kinds.iter().any(|k| k.matches(&**explicit_self, is_copy)),
+                    !self_kinds.iter().any(|k| k.matches(&first_arg, is_copy)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION
@@ -668,7 +668,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     };
                     span_lint(cx,
                               lint,
-                              explicit_self.span,
+                              first_arg.pat.span,
                               &format!("methods called `{}` usually take {}; consider choosing a less \
                                         ambiguous name",
                                        conv,
@@ -684,7 +684,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
-                          first_arg.span,
+                          implitem.span,
                           "methods called `new` usually return `Self`");
             }
         }}

@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use utils::{snippet_opt, span_lint_and_then, is_adjusted};
+use utils::{snippet_opt, span_lint_and_then, is_adjusted, iter_input_pats};
 
 #[allow(missing_copy_implementations)]
 pub struct EtaPass;
@@ -49,7 +49,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
     if let ExprClosure(_, ref decl, eid, _) = expr.node {
-        let ex = cx.tcx.map.body(eid).value;
+        let body = cx.tcx.map.body(eid);
+        let ex = body.value;
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there
@@ -71,8 +72,8 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 },
                 _ => (),
             }
-            for (a1, a2) in decl.inputs.iter().zip(args) {
-                if let PatKind::Binding(_, _, ident, _) = a1.node {
+            for (a1, a2) in iter_input_pats(decl, body).zip(args) {
+                if let PatKind::Binding(_, _, ident, _) = a1.pat.node {
                     // XXXManishearth Should I be checking the binding mode here?
                     if let ExprPath(QPath::Resolved(None, ref p)) = a2.node {
                         if p.segments.len() != 1 {

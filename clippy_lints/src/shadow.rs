@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, FnKind, NestedVisitorMap};
 use rustc::ty;
 use syntax::codemap::Span;
-use utils::{higher, in_external_macro, snippet, span_lint_and_then};
+use utils::{higher, in_external_macro, snippet, span_lint_and_then, iter_input_pats};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.
@@ -92,18 +92,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if in_external_macro(cx, body.value.span) {
             return;
         }
-        check_fn(cx, decl, &body.value);
+        check_fn(cx, decl, &body);
     }
 }
 
-fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body) {
     let mut bindings = Vec::new();
-    for arg in &decl.inputs {
-        if let PatKind::Binding(_, _, ident, _) = arg.node {
+    for arg in iter_input_pats(decl, body) {
+        if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
             bindings.push((ident.node, ident.span))
         }
     }
-    check_expr(cx, expr, &mut bindings);
+    check_expr(cx, &body.value, &mut bindings);
 }
 
 fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {

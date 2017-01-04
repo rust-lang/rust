@@ -8,6 +8,7 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(repeat_str)]
+#![feature(conservative_impl_trait)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
 #![allow(needless_lifetimes)]

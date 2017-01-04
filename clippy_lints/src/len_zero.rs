@@ -104,7 +104,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
 
     if !trait_items.iter().any(|i| is_named_self(cx, i, "is_empty")) {
         if let Some(i) = trait_items.iter().find(|i| is_named_self(cx, i, "len")) {
-            if cx.access_levels.is_exported(i.id) {
+            if cx.access_levels.is_exported(i.id.node_id) {
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
                           i.span,

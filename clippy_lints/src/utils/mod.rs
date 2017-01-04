@@ -906,3 +906,6 @@ pub fn is_self(slf: &Arg) -> bool {
     }
 }
 
+pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<Item=&'tcx Arg> {
+    (0..decl.inputs.len()).map(move |i| &body.arguments[i])
+}
