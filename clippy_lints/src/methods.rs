@@ -751,8 +751,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
-        let promotable = cx.tcx.rvalue_promotable_to_static.borrow()
-                             .get(&arg.id).cloned().unwrap_or(true);
+        let promotable = cx.tcx
+            .rvalue_promotable_to_static
+            .borrow()
+            .get(&arg.id)
+            .cloned()
+            .unwrap_or(true);
         if promotable {
             return;
         }
@@ -1348,19 +1352,18 @@ enum SelfKind {
 
 impl SelfKind {
     fn matches(self, ty: &hir::Ty, arg: &hir::Arg, self_ty: &hir::Ty, allow_value_for_ref: bool) -> bool {
-        // Self types in the HIR are desugared to explicit self types. So it will always be `self: SomeType`,
+        // Self types in the HIR are desugared to explicit self types. So it will always be `self:
+        // SomeType`,
         // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if the impl is on `Foo`)
         // Thus, we only need to test equality against the impl self type or if it is an explicit
         // `Self`. Furthermore, the only possible types for `self: ` are `&Self`, `Self`, `&mut Self`,
         // and `Box<Self>`, including the equivalent types with `Foo`.
-        let is_actually_self = |ty| {
-            is_self_ty(ty) || ty == self_ty
-        };
+        let is_actually_self = |ty| is_self_ty(ty) || ty == self_ty;
         if is_self(arg) {
-           match self {
+            match self {
                 SelfKind::Value => is_actually_self(ty),
                 SelfKind::Ref | SelfKind::RefMut if allow_value_for_ref => is_actually_self(ty),
-                SelfKind::Ref | SelfKind::RefMut=> {
+                SelfKind::Ref | SelfKind::RefMut => {
                     match ty.node {
                         hir::TyRptr(_, ref mt_ty) => {
                             let mutability_match = if self == SelfKind::Ref {
@@ -1370,10 +1373,10 @@ impl SelfKind {
                             };
                             is_actually_self(&mt_ty.ty) && mutability_match
 
-                        }
-                        _ => false
+                        },
+                        _ => false,
                     }
-                }
+                },
                 _ => false,
             }
         } else {

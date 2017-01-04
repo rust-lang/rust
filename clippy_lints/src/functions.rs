@@ -141,9 +141,10 @@ impl<'a, 'tcx> Functions {
     ) {
         let expr = &body.value;
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
-            let raw_ptrs = iter_input_pats(decl, body).zip(decl.inputs.iter())
-                                                      .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
-                                                      .collect::<HashSet<_>>();
+            let raw_ptrs = iter_input_pats(decl, body)
+                .zip(decl.inputs.iter())
+                .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
+                .collect::<HashSet<_>>();
 
             if !raw_ptrs.is_empty() {
                 let mut v = DerefVisitor {

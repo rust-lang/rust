@@ -53,7 +53,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match item.vis {
             hir::Visibility::Public => println!("public"),
             hir::Visibility::Crate => println!("visible crate wide"),
-            hir::Visibility::Restricted { ref path, .. } => println!("visible in module `{}`", print::to_string(print::NO_ANN, |s| s.print_path(path, false))),
+            hir::Visibility::Restricted { ref path, .. } => {
+                println!("visible in module `{}`",
+                         print::to_string(print::NO_ANN, |s| s.print_path(path, false)))
+            },
             hir::Visibility::Inherited => println!("visibility inherited from outer item"),
         }
         if item.defaultness.is_default() {
@@ -340,7 +343,10 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
     match item.vis {
         hir::Visibility::Public => println!("public"),
         hir::Visibility::Crate => println!("visible crate wide"),
-        hir::Visibility::Restricted { ref path, .. } => println!("visible in module `{}`", print::to_string(print::NO_ANN, |s| s.print_path(path, false))),
+        hir::Visibility::Restricted { ref path, .. } => {
+            println!("visible in module `{}`",
+                     print::to_string(print::NO_ANN, |s| s.print_path(path, false)))
+        },
         hir::Visibility::Inherited => println!("visibility inherited from outer item"),
     }
     match item.node {
@@ -414,7 +420,9 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
         },
         hir::PatKind::Struct(ref path, ref fields, ignore) => {
             println!("{}Struct", ind);
-            println!("{}name: {}", ind, print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
+            println!("{}name: {}",
+                     ind,
+                     print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
             println!("{}ignore leftover fields: {}", ind, ignore);
             println!("{}fields:", ind);
             for field in fields {
@@ -427,7 +435,9 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
         },
         hir::PatKind::TupleStruct(ref path, ref fields, opt_dots_position) => {
             println!("{}TupleStruct", ind);
-            println!("{}path: {}", ind, print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
+            println!("{}path: {}",
+                     ind,
+                     print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
             if let Some(dot_position) = opt_dots_position {
                 println!("{}dot position: {}", ind, dot_position);
             }

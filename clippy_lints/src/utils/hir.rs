@@ -112,7 +112,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 !self.ignore_fn && l_name.node == r_name.node && over(l_tys, r_tys, |l, r| self.eq_ty(l, r)) &&
                 self.eq_exprs(l_args, r_args)
             },
-            (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => self.eq_expr(le, re) && self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value),
+            (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
+                self.eq_expr(le, re) &&
+                self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value)
+            },
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),
             (&ExprStruct(ref l_path, ref lf, ref lo), &ExprStruct(ref r_path, ref rf, ref ro)) => {
@@ -183,7 +186,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     fn eq_path(&self, left: &Path, right: &Path) -> bool {
-        left.is_global() == right.is_global() && over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
+        left.is_global() == right.is_global() &&
+        over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
     }
 
     fn eq_path_parameters(&self, left: &PathParameters, right: &PathParameters) -> bool {
@@ -211,7 +215,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyArray(ref lt, ll_id), &TyArray(ref rt, rl_id)) => self.eq_ty(lt, rt) && self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value),
+            (&TyArray(ref lt, ll_id), &TyArray(ref rt, rl_id)) => {
+                self.eq_ty(lt, rt) &&
+                self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value)
+            },
             (&TyPtr(ref l_mut), &TyPtr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
             (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(&*l_rmut.ty, &*r_rmut.ty)
