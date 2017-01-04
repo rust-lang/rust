@@ -65,6 +65,7 @@ pub struct GlobalArenas<'tcx> {
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
+    tables: TypedArena<ty::Tables<'tcx>>,
 }
 
 impl<'tcx> GlobalArenas<'tcx> {
@@ -75,6 +76,7 @@ impl<'tcx> GlobalArenas<'tcx> {
             trait_def: TypedArena::new(),
             adt_def: TypedArena::new(),
             mir: TypedArena::new(),
+            tables: TypedArena::new(),
         }
     }
 }
@@ -189,6 +191,7 @@ pub struct CommonTypes<'tcx> {
     pub err: Ty<'tcx>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct Tables<'tcx> {
     /// Resolved definitions for `<T>::X` associated paths.
     pub type_relative_path_defs: NodeMap<Def>,
@@ -399,7 +402,7 @@ pub struct GlobalCtxt<'tcx> {
     free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
     // FIXME: jroesch make this a refcell
 
-    pub tables: RefCell<Tables<'tcx>>,
+    pub tables: RefCell<DepTrackingMap<maps::Tables<'tcx>>>,
 
     /// Maps from a trait item to the trait item "descriptor"
     pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
@@ -651,6 +654,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.mir.alloc(RefCell::new(mir))
     }
 
+    pub fn alloc_tables(self, tables: ty::Tables<'gcx>) -> &'gcx ty::Tables<'gcx> {
+        self.global_arenas.tables.alloc(tables)
+    }
+
     pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
         self.global_arenas.trait_def.alloc(def)
     }
@@ -749,7 +756,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             variance_computed: Cell::new(false),
             sess: s,
             trait_map: resolutions.trait_map,
-            tables: RefCell::new(Tables::empty()),
+            tables: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
