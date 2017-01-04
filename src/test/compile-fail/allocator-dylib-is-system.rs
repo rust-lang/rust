@@ -15,25 +15,13 @@
 // error-pattern: cannot link together two allocators
 
 // Verify that the allocator for statically linked dynamic libraries is the
-// system allocator. Do this by linking in jemalloc and making sure that we get
-// an error.
+// system allocator. Do this by linking some other allocator and making sure
+// that we get an error.
 
 // ignore-emscripten FIXME: What "other allocator" should we use for emcc?
 
-#![feature(alloc_jemalloc)]
-
 extern crate allocator_dylib;
 
-// The main purpose of this test is to ensure that `alloc_jemalloc` **fails**
-// here (specifically the jemalloc allocator), but currently jemalloc is
-// disabled on quite a few platforms (bsds, emscripten, msvc, etc). To ensure
-// that this just passes on those platforms we link in some other allocator to
-// ensure we get the same error.
-//
-// So long as we CI linux/OSX we should be good.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-extern crate alloc_jemalloc;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 extern crate allocator1;
 
 fn main() {
