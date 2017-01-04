@@ -17,6 +17,7 @@ Coercion is allowed between the following types:
     * `&T` to `*const T`
     * `&mut T` to `*mut T`
 * Unsizing: `T` to `U` if `T` implements `CoerceUnsized<U>`
+* Deref coercion: Expression `&x` of type `&T` to `&*x` of type `&U` if `T` derefs to `U` (i.e. `T: Deref<Target=U>`)
 
 `CoerceUnsized<Pointer<U>> for Pointer<T> where T: Unsize<U>` is implemented
 for all pointer types (including smart pointers like Box and Rc). Unsize is
@@ -27,8 +28,9 @@ only implemented automatically, and enables the following transformations:
 * `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
     * `T: Unsize<U>`
     * `Foo` is a struct
-    * Only the last field of `Foo` has type `T`
+    * Only the last field of `Foo` has type involving `T`
     * `T` is not part of the type of any other fields
+    * `Bar<T>: Unsize<Bar<U>>`, if the last field of `Foo` has type `Bar<T>`
 
 Coercions occur at a *coercion site*. Any location that is explicitly typed
 will cause a coercion to its type. If inference is necessary, the coercion will
