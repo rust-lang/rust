@@ -57,7 +57,7 @@ There are some shortcomings in this design:
 
 */
 
-use astconv::{AstConv, ast_region_to_region, Bounds, PartitionedBounds, partition_bounds};
+use astconv::{AstConv, Bounds, PartitionedBounds, partition_bounds};
 use lint;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
@@ -1472,7 +1472,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 index: own_start + i as u32,
                 def_id: tcx.hir.local_def_id(l.lifetime.id),
                 bounds: l.bounds.iter().map(|l| {
-                    ast_region_to_region(tcx, l)
+                    AstConv::ast_region_to_region(&ccx.icx(&()), l)
                 }).collect(),
                 pure_wrt_drop: l.pure_wrt_drop,
             }
@@ -1765,7 +1765,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             name: param.lifetime.name
         }));
         for bound in &param.bounds {
-            let bound_region = ast_region_to_region(ccx.tcx, bound);
+            let bound_region = AstConv::ast_region_to_region(&ccx.icx(&()), bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
             predicates.push(outlives.to_predicate());
         }
@@ -1816,7 +1816,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         }
 
                         &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
-                            let region = ast_region_to_region(tcx, lifetime);
+                            let region = AstConv::ast_region_to_region(&ccx.icx(&()), lifetime);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
                             predicates.push(ty::Predicate::TypeOutlives(pred))
                         }
@@ -1825,9 +1825,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
 
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
-                let r1 = ast_region_to_region(tcx, &region_pred.lifetime);
+                let r1 = AstConv::ast_region_to_region(&ccx.icx(&()), &region_pred.lifetime);
                 for bound in &region_pred.bounds {
-                    let r2 = ast_region_to_region(tcx, bound);
+                    let r2 = AstConv::ast_region_to_region(&ccx.icx(&()), bound);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
                     predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
@@ -1935,7 +1935,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                       hir::TraitTyParamBound(..) =>
                           None,
                       hir::RegionTyParamBound(ref lifetime) =>
-                          Some(ast_region_to_region(ccx.tcx, lifetime)),
+                          Some(AstConv::ast_region_to_region(&ccx.icx(&()), lifetime)),
                   }
               })
               .collect()
@@ -1981,7 +1981,6 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         span: Span)
                                         -> Bounds<'tcx>
 {
-    let tcx = astconv.tcx();
     let PartitionedBounds {
         trait_bounds,
         region_bounds
@@ -1998,7 +1997,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }).collect();
 
     let region_bounds = region_bounds.into_iter().map(|r| {
-        ast_region_to_region(tcx, r)
+        astconv.ast_region_to_region(r)
     }).collect();
 
     trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
@@ -2040,7 +2039,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .collect()
         }
         hir::RegionTyParamBound(ref lifetime) => {
-            let region = ast_region_to_region(astconv.tcx(), lifetime);
+            let region = astconv.ast_region_to_region(lifetime);
             let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
