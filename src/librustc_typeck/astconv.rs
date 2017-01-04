@@ -306,9 +306,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 ast_region_to_region(self.tcx(), lifetime)
             }
 
-            None => self.tcx().mk_region(match rscope.anon_regions(default_span, 1) {
-                Ok(rs) => rs[0],
-                Err(params) => {
+            None => {
+                self.tcx().mk_region(rscope.anon_region(default_span).unwrap_or_else(|params| {
                     let ampersand_span = Span { hi: default_span.lo, ..default_span};
 
                     let mut err = struct_span_err!(self.tcx().sess, ampersand_span, E0106,
@@ -320,8 +319,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     }
                     err.emit();
                     ty::ReStatic
-                }
-            })
+                }))
+            }
         };
 
         debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {:?}",
@@ -412,8 +411,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let regions = if expected_num_region_params == supplied_num_region_params {
             lifetimes.iter().map(|l| *ast_region_to_region(tcx, l)).collect()
         } else {
-            let anon_regions =
-                rscope.anon_regions(span, expected_num_region_params);
+            let anon_regions = (0..expected_num_region_params).map(|_| {
+                rscope.anon_region(span)
+            }).collect::<Result<Vec<_>, _>>();
 
             if supplied_num_region_params != 0 || anon_regions.is_err() {
                 report_lifetime_number_error(tcx, span,

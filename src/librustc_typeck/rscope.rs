@@ -33,18 +33,16 @@ pub type ElidedLifetime = Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
 /// Defines strategies for handling regions that are omitted.  For
 /// example, if one writes the type `&Foo`, then the lifetime of
 /// this reference has been omitted. When converting this
-/// type, the generic functions in astconv will invoke `anon_regions`
+/// type, the generic functions in astconv will invoke `anon_region`
 /// on the provided region-scope to decide how to translate this
 /// omitted region.
 ///
-/// It is not always legal to omit regions, therefore `anon_regions`
+/// It is not always legal to omit regions, therefore `anon_region`
 /// can return `Err(())` to indicate that this is not a scope in which
 /// regions can legally be omitted.
 pub trait RegionScope {
-    fn anon_regions(&self,
-                    span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>;
+    fn anon_region(&self, span: Span)
+                    -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
 
     /// If an object omits any explicit lifetime bound, and none can
     /// be derived from the object traits, what should we use? If
@@ -117,11 +115,9 @@ impl<R: RegionScope> RegionScope for MaybeWithAnonTypes<R> {
         self.base_scope.object_lifetime_default(span)
     }
 
-    fn anon_regions(&self,
-                    span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
-        self.base_scope.anon_regions(span, count)
+    fn anon_region(&self, span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
+        self.base_scope.anon_region(span)
     }
 
     fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
@@ -139,10 +135,8 @@ impl<R: RegionScope> RegionScope for MaybeWithAnonTypes<R> {
 pub struct ExplicitRscope;
 
 impl RegionScope for ExplicitRscope {
-    fn anon_regions(&self,
-                    _span: Span,
-                    _count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
+    fn anon_region(&self, _span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
         Err(None)
     }
 
@@ -165,12 +159,9 @@ impl UnelidableRscope {
 }
 
 impl RegionScope for UnelidableRscope {
-    fn anon_regions(&self,
-                    _span: Span,
-                    _count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
-        let UnelidableRscope(ref v) = *self;
-        Err(v.clone())
+    fn anon_region(&self, _span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
+        Err(self.0.clone())
     }
 
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
@@ -208,12 +199,10 @@ impl RegionScope for ElidableRscope {
         ty::ReStatic
     }
 
-    fn anon_regions(&self,
-                    _span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
+    fn anon_region(&self, _span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
     {
-        Ok(vec![self.default; count])
+        Ok(self.default)
     }
 }
 
@@ -232,10 +221,8 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> StaticRscope<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx> {
-    fn anon_regions(&self,
-                    span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
+    fn anon_region(&self, span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
         if !self.tcx.sess.features.borrow().static_in_const {
             self.tcx
                 .sess
@@ -244,7 +231,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx>
                                  `static_in_const` feature, see #35897")
                 .emit();
         }
-        Ok(vec![ty::ReStatic; count])
+        Ok(ty::ReStatic)
     }
 
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
@@ -268,12 +255,6 @@ impl BindingRscope {
             anon_bindings: Cell::new(0),
         }
     }
-
-    fn next_region(&self) -> ty::Region {
-        let idx = self.anon_bindings.get();
-        self.anon_bindings.set(idx + 1);
-        ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(idx))
-    }
 }
 
 impl RegionScope for BindingRscope {
@@ -288,12 +269,12 @@ impl RegionScope for BindingRscope {
         ty::ReStatic
     }
 
-    fn anon_regions(&self,
-                    _: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
+    fn anon_region(&self, _: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
     {
-        Ok((0..count).map(|_| self.next_region()).collect())
+        let idx = self.anon_bindings.get();
+        self.anon_bindings.set(idx + 1);
+        Ok(ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(idx)))
     }
 }
 
@@ -334,12 +315,10 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
         self.base_scope.base_object_lifetime_default(span)
     }
 
-    fn anon_regions(&self,
-                    span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
+    fn anon_region(&self, span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
     {
-        self.base_scope.anon_regions(span, count)
+        self.base_scope.anon_region(span)
     }
 
     fn anon_type_scope(&self) -> Option<AnonTypeScope> {
@@ -369,22 +348,10 @@ impl<'r> RegionScope for ShiftedRscope<'r> {
         ty::fold::shift_region(self.base_scope.base_object_lifetime_default(span), 1)
     }
 
-    fn anon_regions(&self,
-                    span: Span,
-                    count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
+    fn anon_region(&self, span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
     {
-        match self.base_scope.anon_regions(span, count) {
-            Ok(mut v) => {
-                for r in &mut v {
-                    *r = ty::fold::shift_region(*r, 1);
-                }
-                Ok(v)
-            }
-            Err(errs) => {
-                Err(errs)
-            }
-        }
+        self.base_scope.anon_region(span).map(|r| ty::fold::shift_region(r, 1))
     }
 
     fn anon_type_scope(&self) -> Option<AnonTypeScope> {

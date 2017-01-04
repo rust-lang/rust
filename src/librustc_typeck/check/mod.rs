@@ -1466,11 +1466,9 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
         *self.next_region_var(infer::MiscVariable(span))
     }
 
-    fn anon_regions(&self, span: Span, count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
-        Ok((0..count).map(|_| {
-            *self.next_region_var(infer::MiscVariable(span))
-        }).collect())
+    fn anon_region(&self, span: Span)
+                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
+        Ok(*self.next_region_var(infer::MiscVariable(span)))
     }
 }
 
