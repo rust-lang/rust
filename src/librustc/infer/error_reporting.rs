@@ -113,6 +113,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
+            match item.node {
+                hir::TraitItemKind::Method(..) => "method body",
+                hir::TraitItemKind::Const(..) |
+                hir::TraitItemKind::Type(..) => "associated item"
+            }
+        }
+
+        fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
+            match item.node {
+                hir::ImplItemKind::Method(..) => "method body",
+                hir::ImplItemKind::Const(..) |
+                hir::ImplItemKind::Type(_) => "associated item"
+            }
+        }
+
         fn explain_span<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                         heading: &str, span: Span)
                                         -> (String, Option<Span>) {
@@ -148,6 +164,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     },
                     Some(ast_map::NodeStmt(_)) => "statement",
                     Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
+                    Some(ast_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
+                    Some(ast_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -186,23 +204,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                match self.map.find(fr.scope.node_id(&self.region_maps)) {
-                    Some(ast_map::NodeBlock(ref blk)) => {
-                        let (msg, opt_span) = explain_span(self, "block", blk.span);
-                        (format!("{} {}", prefix, msg), opt_span)
+                let node = fr.scope.node_id(&self.region_maps);
+                let unknown;
+                let tag = match self.map.find(node) {
+                    Some(ast_map::NodeBlock(_)) |
+                    Some(ast_map::NodeExpr(_)) => "body",
+                    Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
+                    Some(ast_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
+                    Some(ast_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
+
+                    // this really should not happen, but it does:
+                    // FIXME(#27942)
+                    Some(_) => {
+                        unknown = format!("unexpected node ({}) for scope {:?}.  \
+                                           Please report a bug.",
+                                          self.map.node_to_string(node), fr.scope);
+                        &unknown
                     }
-                    Some(ast_map::NodeItem(it)) => {
-                        let tag = item_scope_tag(&it);
-                        let (msg, opt_span) = explain_span(self, tag, it.span);
-                        (format!("{} {}", prefix, msg), opt_span)
+                    None => {
+                        unknown = format!("unknown node for scope {:?}.  \
+                                           Please report a bug.", fr.scope);
+                        &unknown
                     }
-                    Some(_) | None => {
-                        // this really should not happen, but it does:
-                        // FIXME(#27942)
-                        (format!("{} unknown free region bounded by scope {:?}",
-                                 prefix, fr.scope), None)
-                    }
-                }
+                };
+                let (msg, opt_span) = explain_span(self, tag, self.map.span(node));
+                (format!("{} {}", prefix, msg), opt_span)
             }
 
             ty::ReStatic => ("the static lifetime".to_owned(), None),
