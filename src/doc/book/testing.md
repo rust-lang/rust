@@ -499,6 +499,10 @@ be imported in every test with `mod common;`
 That's all there is to the `tests` directory. The `tests` module isn't needed
 here, since the whole thing is focused on tests.
 
+Note, when building integration tests, cargo will not pass the `test` attribute
+to the compiler. It means that all parts in `cfg(test)` won't be included in
+the build used in your integration tests.
+
 Let's finally check out that third section: documentation tests.
 
 # Documentation tests
