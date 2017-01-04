@@ -611,7 +611,7 @@ pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
 }
 
 /// Check whether the given expression is a constant literal of the given value.
-pub fn is_integer_literal(expr: &Expr, value: u64) -> bool {
+pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
     // FIXME: use constant folding
     if let ExprLit(ref spanned) = expr.node {
         if let LitKind::Int(v, _) = spanned.node {

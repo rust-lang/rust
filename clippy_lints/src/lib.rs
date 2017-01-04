@@ -3,6 +3,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(custom_attribute)]
+#![feature(i128_type)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]

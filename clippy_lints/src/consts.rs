@@ -74,7 +74,7 @@ impl PartialEq for Constant {
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
             (&Constant::Int(l), &Constant::Int(r)) => {
-                l.is_negative() == r.is_negative() && l.to_u64_unchecked() == r.to_u64_unchecked()
+                l.is_negative() == r.is_negative() && l.to_u128_unchecked() == r.to_u128_unchecked()
             },
             (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
@@ -110,7 +110,7 @@ impl Hash for Constant {
                 c.hash(state);
             },
             Constant::Int(i) => {
-                i.to_u64_unchecked().hash(state);
+                i.to_u128_unchecked().hash(state);
                 i.is_negative().hash(state);
             },
             Constant::Float(ref f, _) => {
