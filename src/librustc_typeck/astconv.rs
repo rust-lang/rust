@@ -64,7 +64,7 @@ use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
              ElisionFailureInfo, ElidedLifetime};
-use rscope::{AnonTypeScope, MaybeWithAnonTypes};
+use rscope::{AnonTypeScope, MaybeWithAnonTypes, ExplicitRscope};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FxHashSet};
 
@@ -161,70 +161,6 @@ struct ConvertedBinding<'tcx> {
 /// This type must not appear anywhere in other converted types.
 const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
 
-pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            lifetime: &hir::Lifetime)
-                                            -> &'tcx ty::Region {
-    let r = match tcx.named_region_map.defs.get(&lifetime.id) {
-        None => {
-            // should have been recorded by the `resolve_lifetime` pass
-            span_bug!(lifetime.span, "unresolved lifetime");
-        }
-
-        Some(&rl::DefStaticRegion) => {
-            ty::ReStatic
-        }
-
-        Some(&rl::DefLateBoundRegion(debruijn, id)) => {
-            // If this region is declared on a function, it will have
-            // an entry in `late_bound`, but if it comes from
-            // `for<'a>` in some type or something, it won't
-            // necessarily have one. In that case though, we won't be
-            // changed from late to early bound, so we can just
-            // substitute false.
-            let issue_32330 = tcx.named_region_map
-                                 .late_bound
-                                 .get(&id)
-                                 .cloned()
-                                 .unwrap_or(ty::Issue32330::WontChange);
-            ty::ReLateBound(debruijn, ty::BrNamed(tcx.hir.local_def_id(id),
-                                                  lifetime.name,
-                                                  issue_32330))
-        }
-
-        Some(&rl::DefEarlyBoundRegion(index, _)) => {
-            ty::ReEarlyBound(ty::EarlyBoundRegion {
-                index: index,
-                name: lifetime.name
-            })
-        }
-
-        Some(&rl::DefFreeRegion(scope, id)) => {
-            // As in DefLateBoundRegion above, could be missing for some late-bound
-            // regions, but also for early-bound regions.
-            let issue_32330 = tcx.named_region_map
-                                 .late_bound
-                                 .get(&id)
-                                 .cloned()
-                                 .unwrap_or(ty::Issue32330::WontChange);
-            ty::ReFree(ty::FreeRegion {
-                    scope: scope.to_code_extent(&tcx.region_maps),
-                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id),
-                                              lifetime.name,
-                                              issue_32330)
-            })
-
-                // (*) -- not late-bound, won't change
-        }
-    };
-
-    debug!("ast_region_to_region(lifetime={:?} id={}) yields {:?}",
-           lifetime,
-           lifetime.id,
-           r);
-
-    tcx.mk_region(r)
-}
-
 fn report_elision_failure(
     tcx: TyCtxt,
     db: &mut DiagnosticBuilder,
@@ -296,38 +232,98 @@ fn report_elision_failure(
 }
 
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
-    pub fn opt_ast_region_to_region(&self,
+    pub fn ast_region_to_region(&self, lifetime: &hir::Lifetime) -> &'tcx ty::Region {
+        self.opt_ast_region_to_region(&ExplicitRscope, lifetime.span, Some(lifetime), None)
+    }
+
+    fn try_opt_ast_region_to_region(&self,
         rscope: &RegionScope,
         default_span: Span,
-        opt_lifetime: &Option<hir::Lifetime>) -> &'tcx ty::Region
+        opt_lifetime: Option<&hir::Lifetime>,
+        def: Option<&ty::RegionParameterDef>)
+        -> Result<&'tcx ty::Region, Option<Vec<ElisionFailureInfo>>>
     {
-        let r = match *opt_lifetime {
-            Some(ref lifetime) => {
-                ast_region_to_region(self.tcx(), lifetime)
+        let tcx = self.tcx();
+        let name = opt_lifetime.map(|l| l.name);
+        let resolved = opt_lifetime.and_then(|l| tcx.named_region_map.defs.get(&l.id));
+        let r = tcx.mk_region(match resolved {
+            Some(&rl::DefStaticRegion) => {
+                ty::ReStatic
             }
 
-            None => {
-                self.tcx().mk_region(rscope.anon_region(default_span).unwrap_or_else(|params| {
-                    let ampersand_span = Span { hi: default_span.lo, ..default_span};
-
-                    let mut err = struct_span_err!(self.tcx().sess, ampersand_span, E0106,
-                                                 "missing lifetime specifier");
-                    err.span_label(ampersand_span, &format!("expected lifetime parameter"));
-
-                    if let Some(params) = params {
-                        report_elision_failure(self.tcx(), &mut err, params);
-                    }
-                    err.emit();
-                    ty::ReStatic
-                }))
+            Some(&rl::DefLateBoundRegion(debruijn, id)) => {
+                // If this region is declared on a function, it will have
+                // an entry in `late_bound`, but if it comes from
+                // `for<'a>` in some type or something, it won't
+                // necessarily have one. In that case though, we won't be
+                // changed from late to early bound, so we can just
+                // substitute false.
+                let issue_32330 = tcx.named_region_map
+                                     .late_bound
+                                     .get(&id)
+                                     .cloned()
+                                     .unwrap_or(ty::Issue32330::WontChange);
+                ty::ReLateBound(debruijn, ty::BrNamed(tcx.hir.local_def_id(id),
+                                                      name.unwrap(),
+                                                      issue_32330))
             }
-        };
+
+            Some(&rl::DefEarlyBoundRegion(index, _)) => {
+                ty::ReEarlyBound(ty::EarlyBoundRegion {
+                    index: index,
+                    name: name.unwrap()
+                })
+            }
+
+            Some(&rl::DefFreeRegion(scope, id)) => {
+                // As in DefLateBoundRegion above, could be missing for some late-bound
+                // regions, but also for early-bound regions.
+                let issue_32330 = tcx.named_region_map
+                                     .late_bound
+                                     .get(&id)
+                                     .cloned()
+                                     .unwrap_or(ty::Issue32330::WontChange);
+                ty::ReFree(ty::FreeRegion {
+                        scope: scope.to_code_extent(&tcx.region_maps),
+                        bound_region: ty::BrNamed(tcx.hir.local_def_id(id),
+                                                  name.unwrap(),
+                                                  issue_32330)
+                })
+
+                    // (*) -- not late-bound, won't change
+            }
+
+            None => rscope.anon_region(default_span, def)?
+        });
 
         debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {:?}",
                 opt_lifetime,
                 r);
 
-        r
+        Ok(r)
+    }
+
+    pub fn opt_ast_region_to_region(&self,
+        rscope: &RegionScope,
+        default_span: Span,
+        opt_lifetime: Option<&hir::Lifetime>,
+        def: Option<&ty::RegionParameterDef>) -> &'tcx ty::Region
+    {
+        let tcx = self.tcx();
+        self.try_opt_ast_region_to_region(rscope, default_span, opt_lifetime, def)
+            .unwrap_or_else(|params| {
+                let ampersand_span = Span { hi: default_span.lo, ..default_span};
+
+                let mut err = struct_span_err!(tcx.sess, ampersand_span, E0106,
+                                               "missing lifetime specifier");
+                err.span_label(ampersand_span, &format!("expected lifetime parameter"));
+
+                if let Some(params) = params {
+                    report_elision_failure(tcx, &mut err, params);
+                }
+                err.emit();
+                tcx.mk_region(ty::ReStatic)
+            })
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
@@ -408,24 +404,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
-        let regions = if expected_num_region_params == supplied_num_region_params {
-            lifetimes.iter().map(|l| *ast_region_to_region(tcx, l)).collect()
-        } else {
-            let anon_regions = (0..expected_num_region_params).map(|_| {
-                rscope.anon_region(span)
-            }).collect::<Result<Vec<_>, _>>();
-
-            if supplied_num_region_params != 0 || anon_regions.is_err() {
+        let has_exact_lifetimes = expected_num_region_params == supplied_num_region_params;
+        let mut can_report_lifetime_count_mismatch = !has_exact_lifetimes;
+        let mut maybe_report_lifetime_count_mismatch = || {
+            if can_report_lifetime_count_mismatch {
+                can_report_lifetime_count_mismatch = false;
                 report_lifetime_number_error(tcx, span,
                                              supplied_num_region_params,
                                              expected_num_region_params);
             }
-
-            match anon_regions {
-                Ok(anon_regions) => anon_regions,
-                Err(_) => (0..expected_num_region_params).map(|_| ty::ReStatic).collect()
-            }
         };
+
+        if supplied_num_region_params != 0 {
+            maybe_report_lifetime_count_mismatch();
+        }
 
         // If a self-type was declared, one should be provided.
         assert_eq!(decl_generics.has_self, self_ty.is_some());
@@ -452,7 +444,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
             let i = def.index as usize - self_ty.is_some() as usize;
-            tcx.mk_region(regions[i])
+            let l = if has_exact_lifetimes {
+                Some(&lifetimes[i])
+            } else {
+                None
+            };
+            self.try_opt_ast_region_to_region(rscope, span, l, Some(def)).unwrap_or_else(|_| {
+                maybe_report_lifetime_count_mismatch();
+                tcx.mk_region(ty::ReStatic)
+            })
         }, |def, substs| {
             let i = def.index as usize;
 
@@ -1472,7 +1472,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 })
             }
             hir::TyRptr(ref region, ref mt) => {
-                let r = self.opt_ast_region_to_region(rscope, ast_ty.span, region);
+                let r = self.opt_ast_region_to_region(rscope, ast_ty.span, region.as_ref(), None);
                 debug!("TyRef r={:?}", r);
                 let rscope1 =
                     &ObjectLifetimeDefaultRscope::new(
@@ -1823,7 +1823,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if let Some(&r) = explicit_region_bounds.get(0) {
             // Explicitly specified region bound. Use that.
-            return Some(ast_region_to_region(tcx, r));
+            return Some(self.ast_region_to_region(r));
         }
 
         if let Some(principal) = existential_predicates.principal() {

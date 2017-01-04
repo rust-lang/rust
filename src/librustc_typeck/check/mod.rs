@@ -80,7 +80,7 @@ pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
-use astconv::{AstConv, ast_region_to_region};
+use astconv::AstConv;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
@@ -1466,9 +1466,13 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
         *self.next_region_var(infer::MiscVariable(span))
     }
 
-    fn anon_region(&self, span: Span)
+    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
                    -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        Ok(*self.next_region_var(infer::MiscVariable(span)))
+        let v = match def {
+            Some(def) => infer::EarlyBoundRegion(span, def.name),
+            None => infer::MiscVariable(span)
+        };
+        Ok(*self.next_region_var(v))
     }
 }
 
@@ -4404,11 +4408,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => &[]
             };
 
-            if let Some(ast_lifetime) = lifetimes.get(i) {
-                ast_region_to_region(self.tcx, ast_lifetime)
-            } else {
-                self.region_var_for_def(span, def)
-            }
+            AstConv::opt_ast_region_to_region(self, self, span, lifetimes.get(i), Some(def))
         }, |def, substs| {
             let mut i = def.index as usize;
 
