@@ -2122,9 +2122,25 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <ul class='item-list' id='implementors-list'>
     ")?;
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
-        for i in implementors {
+        let mut implementor_count: FxHashMap<&str, usize> = FxHashMap();
+        for implementor in implementors {
+            if let clean::Type::ResolvedPath {ref path, ..} = implementor.impl_.for_ {
+                *implementor_count.entry(path.last_name()).or_insert(0) += 1;
+            }
+        }
+
+        for implementor in implementors {
             write!(w, "<li><code>")?;
-            fmt_impl_for_trait_page(&i.impl_, w)?;
+            // If there's already another implementor that has the same abbridged name, use the
+            // full path, for example in `std::iter::ExactSizeIterator`
+            let use_absolute = if let clean::Type::ResolvedPath {
+                ref path, ..
+            } = implementor.impl_.for_ {
+                implementor_count[path.last_name()] > 1
+            } else {
+                false
+            };
+            fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
             writeln!(w, "</code></li>")?;
         }
     }
