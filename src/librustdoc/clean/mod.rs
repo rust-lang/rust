@@ -2219,8 +2219,8 @@ impl Path {
         }
     }
 
-    pub fn last_name(&self) -> String {
-        self.segments.last().unwrap().name.clone()
+    pub fn last_name(&self) -> &str {
+        self.segments.last().unwrap().name.as_str()
     }
 }
 
