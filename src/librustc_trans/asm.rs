@@ -105,7 +105,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
     for (i, (_, &(val, _))) in outputs.enumerate() {
         let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i) };
-        bcx.store(v, val);
+        bcx.store(v, val, None);
     }
 
     // Store expn_id in a metadata node so we can map LLVM errors

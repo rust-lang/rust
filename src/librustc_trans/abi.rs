@@ -251,11 +251,8 @@ impl ArgType {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_dst = bcx.pointercast(dst, ty.ptr_to());
-                let store = bcx.store(val, cast_dst);
                 let llalign = llalign_of_min(ccx, self.ty);
-                unsafe {
-                    llvm::LLVMSetAlignment(store, llalign);
-                }
+                bcx.store(val, cast_dst, Some(llalign));
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -276,7 +273,7 @@ impl ArgType {
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
-                bcx.store(val, llscratch);
+                bcx.store(val, llscratch, None);
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bcx,
@@ -292,7 +289,7 @@ impl ArgType {
             if self.original_ty == Type::i1(ccx) {
                 val = bcx.zext(val, Type::i8(ccx));
             }
-            bcx.store(val, dst);
+            bcx.store(val, dst, None);
         }
     }
 

@@ -290,7 +290,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
                 let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
                 if src_fty == dst_fty {
-                    memcpy_ty(bcx, dst_f, src_f, src_fty);
+                    memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
                     coerce_unsized_into(bcx, src_f, src_fty, dst_f, dst_fty);
                 }
@@ -429,7 +429,7 @@ pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: Valu
         let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
         store_fat_ptr(cx, lladdr, llextra, dst, t);
     } else {
-        cx.store(from_immediate(cx, v), dst);
+        cx.store(from_immediate(cx, v), dst, None);
     }
 }
 
@@ -439,8 +439,8 @@ pub fn store_fat_ptr<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>,
                                dst: ValueRef,
                                _ty: Ty<'tcx>) {
     // FIXME: emit metadata
-    cx.store(data, get_dataptr(cx, dst));
-    cx.store(extra, get_meta(cx, dst));
+    cx.store(data, get_dataptr(cx, dst), None);
+    cx.store(extra, get_meta(cx, dst), None);
 }
 
 pub fn load_fat_ptr<'a, 'tcx>(
@@ -523,26 +523,21 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>
-) {
+pub fn memcpy_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+                           dst: ValueRef,
+                           src: ValueRef,
+                           t: Ty<'tcx>,
+                           align: Option<u32>) {
     let ccx = bcx.ccx;
 
     if type_is_zero_size(ccx, t) {
         return;
     }
 
-    if t.is_structural() {
-        let llty = type_of::type_of(ccx, t);
-        let llsz = llsize_of(ccx, llty);
-        let llalign = type_of::align_of(ccx, t);
-        call_memcpy(bcx, dst, src, llsz, llalign as u32);
-    } else if common::type_is_fat_ptr(bcx.ccx, t) {
-        let (data, extra) = load_fat_ptr(bcx, src, t);
-        store_fat_ptr(bcx, data, extra, dst, t);
-    } else {
-        store_ty(bcx, load_ty(bcx, src, t), dst, t);
-    }
+    let llty = type_of::type_of(ccx, t);
+    let llsz = llsize_of(ccx, llty);
+    let llalign = align.unwrap_or_else(|| type_of::align_of(ccx, t));
+    call_memcpy(bcx, dst, src, llsz, llalign as u32);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,

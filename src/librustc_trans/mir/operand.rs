@@ -244,21 +244,24 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn store_operand(&mut self,
                          bcx: &BlockAndBuilder<'a, 'tcx>,
                          lldest: ValueRef,
-                         operand: OperandRef<'tcx>) {
-        debug!("store_operand: operand={:?}", operand);
+                         operand: OperandRef<'tcx>,
+                         align: Option<u32>) {
+        debug!("store_operand: operand={:?}, align={:?}", operand, align);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
         if common::type_is_zero_size(bcx.ccx, operand.ty) {
             return;
         }
         match operand.val {
-            OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
-            OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
+            OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty, align),
+            OperandValue::Immediate(s) => {
+                bcx.store(base::from_immediate(bcx, s), lldest, align);
+            }
             OperandValue::Pair(a, b) => {
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, 0));
-                bcx.store(b, bcx.struct_gep(lldest, 1));
+                bcx.store(a, bcx.struct_gep(lldest, 0), align);
+                bcx.store(b, bcx.struct_gep(lldest, 1), align);
             }
         }
     }

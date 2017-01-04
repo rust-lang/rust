@@ -443,11 +443,11 @@ pub fn trans_set_discr<'a, 'tcx>(
         layout::CEnum{ discr, min, max, .. } => {
             assert_discr_in_range(Disr(min), Disr(max), to);
             bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
-                  val);
+                  val, None);
         }
         layout::General{ discr, .. } => {
             bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
-                  bcx.struct_gep(val, 0));
+                  bcx.struct_gep(val, 0), None);
         }
         layout::Univariant { .. }
         | layout::UntaggedUnion { .. }
@@ -458,7 +458,7 @@ pub fn trans_set_discr<'a, 'tcx>(
             let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             if to.0 != nndiscr {
                 let llptrty = type_of::sizing_type_of(bcx.ccx, nnty);
-                bcx.store(C_null(llptrty), val);
+                bcx.store(C_null(llptrty), val, None);
             }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
@@ -476,7 +476,7 @@ pub fn trans_set_discr<'a, 'tcx>(
                     let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
                     let llptrptr = bcx.gepi(val, &path[..]);
                     let llptrty = val_ty(llptrptr).element_type();
-                    bcx.store(C_null(llptrty), llptrptr);
+                    bcx.store(C_null(llptrty), llptrptr, None);
                 }
             }
         }
