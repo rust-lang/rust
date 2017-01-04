@@ -568,3 +568,14 @@ pub fn distcheck(build: &Build) {
                      .arg("check")
                      .current_dir(&dir));
 }
+
+/// Test the build system itself
+pub fn bootstrap(build: &Build) {
+    let mut cmd = Command::new(&build.cargo);
+    cmd.arg("test")
+       .current_dir(build.src.join("src/bootstrap"))
+       .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
+       .env("RUSTC", &build.rustc);
+    cmd.arg("--").args(&build.flags.cmd.test_args());
+    build.run(&mut cmd);
+}
