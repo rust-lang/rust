@@ -264,19 +264,15 @@ impl Stdio {
             }
 
             Stdio::MakePipe => {
-                let (reader, writer) = pipe::anon_pipe()?;
-                let (ours, theirs) = if stdio_id == c::STD_INPUT_HANDLE {
-                    (writer, reader)
-                } else {
-                    (reader, writer)
-                };
-                *pipe = Some(ours);
+                let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
+                let pipes = pipe::anon_pipe(ours_readable)?;
+                *pipe = Some(pipes.ours);
                 cvt(unsafe {
-                    c::SetHandleInformation(theirs.handle().raw(),
+                    c::SetHandleInformation(pipes.theirs.handle().raw(),
                                             c::HANDLE_FLAG_INHERIT,
                                             c::HANDLE_FLAG_INHERIT)
                 })?;
-                Ok(theirs.into_handle())
+                Ok(pipes.theirs.into_handle())
             }
 
             Stdio::Handle(ref handle) => {
