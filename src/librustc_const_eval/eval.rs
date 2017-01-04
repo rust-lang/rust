@@ -52,21 +52,20 @@ macro_rules! math {
 
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   variant_def: DefId)
-                                  -> Option<(&'tcx Expr, &'a ty::Tables<'tcx>)> {
+                                  -> Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>)> {
     if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
         let enum_node_id = tcx.map.get_parent(variant_node_id);
         if let Some(ast_map::NodeItem(it)) = tcx.map.find(enum_node_id) {
-            match it.node {
-                hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
-                    for variant in variants {
-                        if variant.node.data.id() == variant_node_id {
-                            return variant.node.disr_expr.map(|e| {
-                                (&tcx.map.body(e).value, tcx.body_tables(e))
-                            });
-                        }
+            if let hir::ItemEnum(ref edef, _) = it.node {
+                for variant in &edef.variants {
+                    if variant.node.data.id() == variant_node_id {
+                        return variant.node.disr_expr.map(|e| {
+                            let def_id = tcx.map.body_owner_def_id(e);
+                            (&tcx.map.body(e).value,
+                             tcx.tables.borrow().get(&def_id).cloned())
+                        });
                     }
                 }
-                _ => {}
             }
         }
     }
@@ -81,7 +80,8 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         substs: Option<&'tcx Substs<'tcx>>)
-                                        -> Option<(&'tcx Expr, &'a ty::Tables<'tcx>,
+                                        -> Option<(&'tcx Expr,
+                                                   Option<&'a ty::Tables<'tcx>>,
                                                    Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -92,7 +92,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(ast_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Const(ref ty, body), ..
             })) => {
-                Some((&tcx.map.body(body).value, tcx.item_tables(def_id),
+                Some((&tcx.map.body(body).value,
+                      tcx.tables.borrow().get(&def_id).cloned(),
                       tcx.ast_ty_to_prim_ty(ty)))
             }
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
@@ -104,7 +105,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let trait_id = tcx.map.get_parent(node_id);
                         let trait_id = tcx.map.local_def_id(trait_id);
                         let default_value = default.map(|body| {
-                            (&tcx.map.body(body).value, tcx.item_tables(def_id),
+                            (&tcx.map.body(body).value,
+                             tcx.tables.borrow().get(&def_id).cloned(),
                              tcx.ast_ty_to_prim_ty(ty))
                         });
                         resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
@@ -124,7 +126,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     } else {
         let expr_tables_ty = tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
-            (&body.value, tcx.item_tables(def_id),
+            (&body.value, Some(tcx.item_tables(def_id)),
              Some(tcx.sess.cstore.item_type(tcx, def_id)))
         });
         match tcx.sess.cstore.describe_def(def_id) {
@@ -152,12 +154,13 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                   -> Option<(&'tcx hir::Body, &'a ty::Tables<'tcx>)>
+                                   -> Option<(&'tcx hir::Body, Option<&'a ty::Tables<'tcx>>)>
 {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         FnLikeNode::from_node(tcx.map.get(node_id)).and_then(|fn_like| {
             if fn_like.constness() == hir::Constness::Const {
-                Some((tcx.map.body(fn_like.body()), tcx.body_tables(fn_like.body())))
+                Some((tcx.map.body(fn_like.body()),
+                      tcx.tables.borrow().get(&def_id).cloned()))
             } else {
                 None
             }
@@ -165,7 +168,7 @@ fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     } else {
         if tcx.sess.cstore.is_const_fn(def_id) {
             tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
-                (body, tcx.item_tables(def_id))
+                (body, Some(tcx.item_tables(def_id)))
             })
         } else {
             None
@@ -223,19 +226,24 @@ pub fn note_const_eval_err<'a, 'tcx>(
 
 pub struct ConstContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: Option<&'a ty::Tables<'tcx>>,
     fn_args: Option<DefIdMap<ConstVal>>
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: hir::BodyId) -> Self {
-        ConstContext::with_tables(tcx, tcx.body_tables(body))
+        let def_id = tcx.map.body_owner_def_id(body);
+        ConstContext {
+            tcx: tcx,
+            tables: tcx.tables.borrow().get(&def_id).cloned(),
+            fn_args: None
+        }
     }
 
     pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::Tables<'tcx>) -> Self {
         ConstContext {
             tcx: tcx,
-            tables: tables,
+            tables: Some(tables),
             fn_args: None
         }
     }
@@ -436,7 +444,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
     let ety = match ty_hint {
         ExprTypeChecked => {
             // After type-checking, expr_ty is guaranteed to succeed.
-            Some(cx.tables.expr_ty(e))
+            cx.tables.map(|tables| tables.expr_ty(e))
         }
         UncheckedExprHint(ty) => {
             // Use the type hint; it's not guaranteed to be right, but it's
@@ -447,7 +455,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             // This expression might not be type-checked, and we have no hint.
             // Try to query the context for a type anyway; we might get lucky
             // (for example, if the expression was imported from another crate).
-            cx.tables.expr_ty_opt(e)
+            cx.tables.and_then(|tables| tables.expr_ty_opt(e))
         }
     };
     let result = match e.node {
@@ -594,7 +602,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         let base_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked
         } else {
-            match cx.tables.expr_ty_opt(&base) {
+            match cx.tables.and_then(|tables| tables.expr_ty_opt(&base)) {
                 Some(t) => UncheckedExprHint(t),
                 None => ty_hint
             }
@@ -623,12 +631,18 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprPath(ref qpath) => {
-          let def = cx.tables.qpath_def(qpath, e.id);
+          let def = cx.tables.map(|tables| tables.qpath_def(qpath, e.id)).unwrap_or_else(|| {
+            // There are no tables so we can only handle already-resolved HIR.
+            match *qpath {
+                hir::QPath::Resolved(_, ref path) => path.def,
+                hir::QPath::TypeRelative(..) => Def::Err
+            }
+          });
           match def {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                   let substs = if let ExprTypeChecked = ty_hint {
-                      Some(cx.tables.node_id_item_substs(e.id)
+                      Some(cx.tables.and_then(|tables| tables.node_id_item_substs(e.id))
                         .unwrap_or_else(|| tcx.intern_substs(&[])))
                   } else {
                       None
@@ -638,7 +652,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                           Some(ty) => ty_hint.checked_or(ty),
                           None => ty_hint,
                       };
-                      let cx = ConstContext::with_tables(tcx, tables);
+                      let cx = ConstContext { tcx: tcx, tables: tables, fn_args: None };
                       match cx.eval(expr, item_hint) {
                           Ok(val) => val,
                           Err(err) => {
@@ -652,7 +666,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
               },
               Def::VariantCtor(variant_def, ..) => {
                   if let Some((expr, tables)) = lookup_variant_by_id(tcx, variant_def) {
-                      let cx = ConstContext::with_tables(tcx, tables);
+                      let cx = ConstContext { tcx: tcx, tables: tables, fn_args: None };
                       match cx.eval(expr, ty_hint) {
                           Ok(val) => val,
                           Err(err) => {
@@ -903,10 +917,10 @@ fn infer<'a, 'tcx>(i: ConstInt,
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_item_id: DefId,
-    default_value: Option<(&'tcx Expr, &'a ty::Tables<'tcx>, Option<ty::Ty<'tcx>>)>,
+    default_value: Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>, Option<ty::Ty<'tcx>>)>,
     trait_id: DefId,
     rcvr_substs: &'tcx Substs<'tcx>
-) -> Option<(&'tcx Expr, &'a ty::Tables<'tcx>, Option<ty::Ty<'tcx>>)>
+) -> Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>, Option<ty::Ty<'tcx>>)>
 {
     let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, rcvr_substs));
     debug!("resolve_trait_associated_const: trait_ref={:?}",

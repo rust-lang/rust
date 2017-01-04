@@ -1738,14 +1738,6 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let tcx = cx.tcx();
 
-    // Don't create debuginfo for globals inlined from other crates. The other
-    // crate should already contain debuginfo for it. More importantly, the
-    // global might not even exist in un-inlined form anywhere which would lead
-    // to a linker errors.
-    if tcx.map.is_inlined_node_id(node_id) {
-        return;
-    }
-
     let node_def_id = tcx.map.local_def_id(node_id);
     let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
 

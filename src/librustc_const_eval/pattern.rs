@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                     Some((const_expr, const_tables, _const_ty)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = const_tables;
+                        self.tables = const_tables.expect("missing tables after typeck");
                         let pat = self.lower_const_expr(const_expr, pat_id, span);
                         self.tables = old_tables;
                         return pat;
