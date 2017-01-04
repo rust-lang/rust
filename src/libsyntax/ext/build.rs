@@ -699,7 +699,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(b.span, ast::ExprKind::Block(b))
     }
     fn field_imm(&self, span: Span, name: Ident, e: P<ast::Expr>) -> ast::Field {
-        ast::Field { ident: respan(span, name), expr: e, span: span, is_shorthand: false }
+        ast::Field {
+            ident: respan(span, name),
+            expr: e,
+            span: span,
+            is_shorthand: false,
+            attrs: ast::ThinVec::new(),
+        }
     }
     fn expr_struct(&self, span: Span, path: ast::Path, fields: Vec<ast::Field>) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Struct(path, fields, None))

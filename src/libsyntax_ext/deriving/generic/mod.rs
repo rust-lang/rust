@@ -1550,6 +1550,7 @@ impl<'a> TraitDef<'a> {
                                 ident: ident.unwrap(),
                                 pat: pat,
                                 is_shorthand: false,
+                                attrs: ast::ThinVec::new(),
                             },
                         }
                     })

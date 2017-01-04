@@ -427,6 +427,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields {
+                walk_list!(visitor, visit_attribute, field.node.attrs.iter());
                 visitor.visit_ident(field.span, field.node.ident);
                 visitor.visit_pat(&field.node.pat)
             }
@@ -659,6 +660,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
             for field in fields {
+                walk_list!(visitor, visit_attribute, field.attrs.iter());
                 visitor.visit_ident(field.ident.span, field.ident.node);
                 visitor.visit_expr(&field.expr)
             }
