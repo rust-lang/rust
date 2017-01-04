@@ -555,26 +555,24 @@ mod a {
 # fn main() {}
 ```
 
-# Syntax extensions
+# Macros
 
 A number of minor features of Rust are not central enough to have their own
 syntax, and yet are not implementable as functions. Instead, they are given
 names, and invoked through a consistent syntax: `some_extension!(...)`.
 
-Users of `rustc` can define new syntax extensions in two ways:
-
-* [Compiler plugins][plugin] can include arbitrary Rust code that
-  manipulates syntax trees at compile time. Note that the interface
-  for compiler plugins is considered highly unstable.
+Users of `rustc` can define new macros in two ways:
 
 * [Macros](book/macros.html) define new syntax in a higher-level,
   declarative way.
+* [Procedural Macros][procedural macros] can be used to implement custom derive.
+
+And one unstable way: [compiler plugins][plugin].
 
 ## Macros
 
 `macro_rules` allows users to define syntax extension in a declarative way.  We
-call such extensions "macros by example" or simply "macros" — to be distinguished
-from the "procedural macros" defined in [compiler plugins][plugin].
+call such extensions "macros by example" or simply "macros".
 
 Currently, macros can expand to expressions, statements, items, or patterns.
 
@@ -651,6 +649,28 @@ Rust syntax is restricted in two ways:
    requiring a distinctive token in front can solve the problem.
 
 [RFC 550]: https://github.com/rust-lang/rfcs/blob/master/text/0550-macro-future-proofing.md
+
+## Procedrual Macros
+
+"Procedrual macros" are the second way to implement a macro. For now, the only
+thing they can be used for is to implement derive on your own types. See
+[the book][procedural macros] for a tutorial.
+
+Procedural macros involve a few different parts of the language and its
+standard libraries. First is the `proc_macro` crate, included with Rust,
+that defines an interface for building a procedrual macro. The 
+`#[proc_macro_derive(Foo)]` attribute is used to mark the the deriving
+function. This function must have the type signature:
+
+```rust,ignore
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Hello)]
+pub fn hello_world(input: TokenStream) -> TokenStream
+```
+
+Finally, procedural macros must be in their own crate, with the `proc-macro`
+crate type.
 
 # Crates and source files
 
@@ -2318,6 +2338,9 @@ impl<T: PartialEq> PartialEq for Foo<T> {
     }
 }
 ```
+
+You can implement `derive` for your own type through [procedural
+macros](#procedural-macros).
 
 ### Compiler Features
 
@@ -4122,6 +4145,16 @@ be ignored in favor of only building the artifacts specified by command line.
   in dynamic libraries. This form of output is used to produce statically linked
   executables as well as `staticlib` outputs.
 
+* `--crate-type=proc-macro`, `#[crate_type = "proc-macro"]` - The output
+  produced is not specified, but if a `-L` path is provided to it then the
+  compiler will recognize the output artifacts as a macro and it can be loaded
+  for a program. If a crate is compiled with the `proc-macro` crate type it
+  will forbid exporting any items in the crate other than those functions
+  tagged `#[proc_macro_derive]` and those functions must also be placed at the
+  crate root. Finally, the compiler will automatically set the
+  `cfg(proc_macro)` annotation whenever any crate type of a compilation is the
+  `proc-macro` crate type.
+
 Note that these outputs are stackable in the sense that if multiple are
 specified, then the compiler will produce each form of output at once without
 having to recompile. However, this only applies for outputs specified by the
@@ -4299,3 +4332,4 @@ that have since been removed):
 
 [ffi]: book/ffi.html
 [plugin]: book/compiler-plugins.html
+[procedural macros]: book/procedural-macros.html
