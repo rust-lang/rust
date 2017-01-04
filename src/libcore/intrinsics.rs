@@ -1156,10 +1156,58 @@ extern "rust-intrinsic" {
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
 
-    /// Returns the number of leading bits unset in an integer type `T`
+    /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::ctlz;
+    ///
+    /// let x = 0b0001_1100_u8;
+    /// let num_leading = unsafe { ctlz(x) };
+    /// assert_eq!(num_leading, 3);
+    /// ```
+    ///
+    /// An `x` with value `0` will return the bit width of `T`.
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::ctlz;
+    ///
+    /// let x = 0u16;
+    /// let num_leading = unsafe { ctlz(x) };
+    /// assert_eq!(num_leading, 16);
+    /// ```
     pub fn ctlz<T>(x: T) -> T;
 
-    /// Returns the number of trailing bits unset in an integer type `T`
+    /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::cttz;
+    ///
+    /// let x = 0b0011_1000_u8;
+    /// let num_trailing = unsafe { cttz(x) };
+    /// assert_eq!(num_trailing, 3);
+    /// ```
+    ///
+    /// An `x` with value `0` will return the bit width of `T`:
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::cttz;
+    ///
+    /// let x = 0u16;
+    /// let num_trailing = unsafe { cttz(x) };
+    /// assert_eq!(num_trailing, 16);
+    /// ```
     pub fn cttz<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
