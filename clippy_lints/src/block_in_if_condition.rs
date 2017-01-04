@@ -58,9 +58,9 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let ExprClosure(_, _, eid, _) = expr.node {
             let body = self.cx.tcx.map.body(eid);
-            let expr = &body.value;
-            if matches!(expr.node, ExprBlock(_)) {
-                self.found_block = Some(&expr);
+            let ex = &body.value;
+            if matches!(ex.node, ExprBlock(_)) {
+                self.found_block = Some(ex);
                 return;
             }
         }

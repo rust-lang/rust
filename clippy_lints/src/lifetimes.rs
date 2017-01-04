@@ -137,7 +137,7 @@ fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
 
     // extract lifetimes in input argument types
     for arg in &func.inputs {
-        input_visitor.visit_ty(&arg);
+        input_visitor.visit_ty(arg);
     }
     // extract lifetimes in output type
     if let Return(ref ty) = func.output {

@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, &body, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 
             if let hir::TraitMethod::Provided(eid) = *eid {
                 let body = cx.tcx.map.body(eid);
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, &body, item.id);
+                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, body, item.id);
             }
         }
     }
@@ -141,9 +141,9 @@ impl<'a, 'tcx> Functions {
     ) {
         let expr = &body.value;
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
-            let raw_ptrs = iter_input_pats(&decl, body).zip(decl.inputs.iter())
-                                                            .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
-                                                            .collect::<HashSet<_>>();
+            let raw_ptrs = iter_input_pats(decl, body).zip(decl.inputs.iter())
+                                                      .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
+                                                      .collect::<HashSet<_>>();
 
             if !raw_ptrs.is_empty() {
                 let mut v = DerefVisitor {

@@ -50,14 +50,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 fn check_closure(cx: &LateContext, expr: &Expr) {
     if let ExprClosure(_, ref decl, eid, _) = expr.node {
         let body = cx.tcx.map.body(eid);
-        let ref ex = body.value;
+        let ex = &body.value;
         if let ExprCall(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there
                 // is no way the closure is the same as the function
                 return;
             }
-            if is_adjusted(cx, &ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
+            if is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
                 // Are the expression or the arguments type-adjusted? Then we need the closure
                 return;
             }

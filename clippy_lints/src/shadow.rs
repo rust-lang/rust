@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if in_external_macro(cx, body.value.span) {
             return;
         }
-        check_fn(cx, decl, &body);
+        check_fn(cx, decl, body);
     }
 }
 
