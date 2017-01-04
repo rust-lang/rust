@@ -919,10 +919,19 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 fn_once_adjustment: fn_once_adjustment,
             }
         }
-        // Trait object and function pointer shims are always
-        // instantiated in-place, and as they are just an ABI-adjusting
-        // indirect call they do not have any dependencies.
-        traits::VtableFnPointer(..) |
+        traits::VtableFnPointer(ref data) => {
+            // If we know the destination of this fn-pointer, we'll have to make
+            // sure that this destination actually gets instantiated.
+            if let ty::TyFnDef(def_id, substs, _) = data.fn_ty.sty {
+                // The destination of the pointer might be something that needs
+                // further dispatching, such as a trait method, so we do that.
+                do_static_dispatch(scx, def_id, substs, param_substs)
+            } else {
+                StaticDispatchResult::Unknown
+            }
+        }
+        // Trait object shims are always instantiated in-place, and as they are
+        // just an ABI-adjusting indirect call they do not have any dependencies.
         traits::VtableObject(..) => {
             StaticDispatchResult::Unknown
         }
