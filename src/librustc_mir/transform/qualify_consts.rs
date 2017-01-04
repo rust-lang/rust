@@ -993,9 +993,9 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
                     Entry::Vacant(entry) => {
                         // Guard against `const` recursion.
                         entry.insert(Qualif::RECURSIVE);
+                        Mode::Const
                     }
                 }
-                Mode::Const
             }
             MirSource::Static(_, hir::MutImmutable) => Mode::Static,
             MirSource::Static(_, hir::MutMutable) => Mode::StaticMut,
