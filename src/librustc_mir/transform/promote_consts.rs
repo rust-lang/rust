@@ -66,6 +66,7 @@ impl TempState {
 /// A "root candidate" for promotion, which will become the
 /// returned value in a promoted MIR, unless it's a subset
 /// of a larger candidate.
+#[derive(Debug)]
 pub enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
@@ -190,15 +191,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
         let old_keep_original = self.keep_original;
-        let (bb, stmt_idx) = match self.temps[temp] {
-            TempState::Defined {
-                location: Location { block, statement_index },
-                uses
-            } if uses > 0 => {
+        let loc = match self.temps[temp] {
+            TempState::Defined { location, uses } if uses > 0 => {
                 if uses > 1 {
                     self.keep_original = true;
                 }
-                (block, statement_index)
+                location
             }
             state =>  {
                 span_bug!(self.promoted.span, "{:?} not promotable: {:?}",
@@ -209,91 +207,80 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.temps[temp] = TempState::PromotedOut;
         }
 
-        let no_stmts = self.source[bb].statements.len();
+        let no_stmts = self.source[loc.block].statements.len();
+        let new_temp = self.promoted.local_decls.push(
+            LocalDecl::new_temp(self.source.local_decls[temp].ty));
+
+        debug!("promote({:?} @ {:?}/{:?}, {:?})",
+               temp, loc, no_stmts, self.keep_original);
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        let (mut rvalue, mut call) = (None, None);
-        let source_info = if stmt_idx < no_stmts {
-            let statement = &mut self.source[bb].statements[stmt_idx];
-            let rhs = match statement.kind {
-                StatementKind::Assign(_, ref mut rhs) => rhs,
-                _ => {
-                    span_bug!(statement.source_info.span, "{:?} is not an assignment",
-                              statement);
+        if loc.statement_index < no_stmts {
+            let (mut rvalue, source_info) = {
+                let statement = &mut self.source[loc.block].statements[loc.statement_index];
+                let rhs = match statement.kind {
+                    StatementKind::Assign(_, ref mut rhs) => rhs,
+                    _ => {
+                        span_bug!(statement.source_info.span, "{:?} is not an assignment",
+                                  statement);
+                    }
+                };
+
+                (if self.keep_original {
+                    rhs.clone()
+                } else {
+                    let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
+                    mem::replace(rhs, unit)
+                }, statement.source_info)
+            };
+
+            self.visit_rvalue(&mut rvalue, loc);
+            self.assign(new_temp, rvalue, source_info.span);
+        } else {
+            let mut terminator = if self.keep_original {
+                self.source[loc.block].terminator().clone()
+            } else {
+                let terminator = self.source[loc.block].terminator_mut();
+                let target = match terminator.kind {
+                    TerminatorKind::Call { destination: Some((_, target)), .. } => target,
+                    ref kind => {
+                        span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
+                    }
+                };
+                Terminator {
+                    source_info: terminator.source_info,
+                    kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto {
+                        target: target
+                    })
                 }
             };
-            if self.keep_original {
-                rvalue = Some(rhs.clone());
-            } else {
-                let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
-                rvalue = Some(mem::replace(rhs, unit));
-            }
-            statement.source_info
-        } else if self.keep_original {
-            let terminator = self.source[bb].terminator().clone();
-            call = Some(terminator.kind);
-            terminator.source_info
-        } else {
-            let terminator = self.source[bb].terminator_mut();
-            let target = match terminator.kind {
-                TerminatorKind::Call {
-                    destination: ref mut dest @ Some(_),
-                    ref mut cleanup, ..
-                } => {
-                    // No cleanup necessary.
-                    cleanup.take();
 
-                    // We'll put a new destination in later.
-                    dest.take().unwrap().1
+            let last = self.promoted.basic_blocks().last().unwrap();
+            let new_target = self.new_block();
+
+            terminator.kind = match terminator.kind {
+                TerminatorKind::Call { mut func, mut args, .. } => {
+                    self.visit_operand(&mut func, loc);
+                    for arg in &mut args {
+                        self.visit_operand(arg, loc);
+                    }
+                    TerminatorKind::Call {
+                        func: func,
+                        args: args,
+                        cleanup: None,
+                        destination: Some((Lvalue::Local(new_temp), new_target))
+                    }
                 }
                 ref kind => {
                     span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                 }
             };
-            call = Some(mem::replace(&mut terminator.kind, TerminatorKind::Goto {
-                target: target
-            }));
-            terminator.source_info
+
+            *self.promoted[last].terminator_mut() = terminator;
         };
 
-        // Then, recurse for components in the Rvalue or Call.
-        if stmt_idx < no_stmts {
-            self.visit_rvalue(rvalue.as_mut().unwrap(), Location {
-                block: bb,
-                statement_index: stmt_idx
-            });
-        } else {
-            self.visit_terminator_kind(bb, call.as_mut().unwrap(), Location {
-                block: bb,
-                statement_index: no_stmts
-            });
-        }
-
-        let new_temp = self.promoted.local_decls.push(
-            LocalDecl::new_temp(self.source.local_decls[temp].ty));
-
-        // Inject the Rvalue or Call into the promoted MIR.
-        if stmt_idx < no_stmts {
-            self.assign(new_temp, rvalue.unwrap(), source_info.span);
-        } else {
-            let last = self.promoted.basic_blocks().last().unwrap();
-            let new_target = self.new_block();
-            let mut call = call.unwrap();
-            match call {
-                TerminatorKind::Call { ref mut destination, ..}  => {
-                    *destination = Some((Lvalue::Local(new_temp), new_target));
-                }
-                _ => bug!()
-            }
-            let terminator = self.promoted[last].terminator_mut();
-            terminator.source_info.span = source_info.span;
-            terminator.kind = call;
-        }
-
-        // Restore the old duplication state.
         self.keep_original = old_keep_original;
-
         new_temp
     }
 
@@ -355,6 +342,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.
+    debug!("promote_candidates({:?})", candidates);
     for candidate in candidates.into_iter().rev() {
         let (span, ty) = match candidate {
             Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
