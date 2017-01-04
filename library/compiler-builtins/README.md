@@ -193,8 +193,8 @@ features = ["c"]
 
 These builtins are needed to support 128-bit integers, which are in the process of being added to Rust.
 
-- [ ] ashlti3.c
-- [ ] ashrti3.c
+- [x] ashlti3.c
+- [x] ashrti3.c
 - [ ] divti3.c
 - [ ] fixdfti.c
 - [ ] fixsfti.c
@@ -204,7 +204,7 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [ ] floattisf.c
 - [ ] floatuntidf.c
 - [ ] floatuntisf.c
-- [ ] lshrti3.c
+- [x] lshrti3.c
 - [ ] modti3.c
 - [x] muloti4.c
 - [x] multi3.c

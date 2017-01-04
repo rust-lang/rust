@@ -1,4 +1,3 @@
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
 use int::{Int, LargeInt};
 
 macro_rules! ashl {
@@ -58,11 +57,17 @@ macro_rules! lshr {
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashl!(__ashldi3: u64);
 
+ashl!(__ashlti3: u128);
+
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashr!(__ashrdi3: i64);
 
+ashr!(__ashrti3: i128);
+
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 lshr!(__lshrdi3: u64);
+
+lshr!(__lshrti3: u128);
 
 #[cfg(test)]
 mod tests {
