@@ -115,9 +115,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
             match item.node {
-                hir::MethodTraitItem(..) => "method body",
-                hir::ConstTraitItem(..) |
-                hir::TypeTraitItem(..) => "associated item"
+                hir::TraitItemKind::Method(..) => "method body",
+                hir::TraitItemKind::Const(..) |
+                hir::TraitItemKind::Type(..) => "associated item"
             }
         }
 
