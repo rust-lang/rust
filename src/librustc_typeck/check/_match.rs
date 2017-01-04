@@ -223,9 +223,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .span_to_snippet(pat.span)
                                     {
                                         err.help(&format!("did you mean `{}: &{}`?",
-                                                          snippet,
-                                                          expected));
-                                        err.help(&format!("did you mean `{}: {}`?",
                                                           &snippet[1..],
                                                           expected));
                                     }

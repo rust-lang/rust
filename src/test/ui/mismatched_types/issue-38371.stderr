@@ -6,8 +6,7 @@ error[E0308]: mismatched types
    |
    = note: expected type `Foo`
    = note:    found type `&_`
-   = help: did you mean `&foo: &Foo`?
-   = help: did you mean `foo: Foo`?
+   = help: did you mean `foo: &Foo`?
 
 error: aborting due to previous error
 
