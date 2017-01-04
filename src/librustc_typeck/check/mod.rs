@@ -679,7 +679,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
 
         fcx.regionck_fn(fn_id, body);
-        fcx.resolve_type_vars_in_body(body, fn_id);
+        fcx.resolve_type_vars_in_body(body);
     });
 }
 
@@ -1246,7 +1246,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         fcx.select_all_obligations_or_error();
 
         fcx.regionck_expr(body);
-        fcx.resolve_type_vars_in_body(body, id);
+        fcx.resolve_type_vars_in_body(body);
     });
 }
 
