@@ -27,34 +27,34 @@ use rustc::hir::map as hir_map;
 use rustc::hir::{self, ItemImpl};
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    if let Some(drop_trait) = tcx.lang_items.drop_trait() {
-        tcx.lookup_trait_def(drop_trait)
-            .for_each_impl(tcx, |impl_did| visit_implementation_of_drop(tcx, impl_did));
-    }
+    check_trait(tcx, tcx.lang_items.drop_trait(), visit_implementation_of_drop);
+    check_trait(tcx, tcx.lang_items.copy_trait(), visit_implementation_of_copy);
+    check_trait(
+        tcx,
+        tcx.lang_items.coerce_unsized_trait(),
+        visit_implementation_of_coerce_unsized);
+}
 
-    if let Some(copy_trait) = tcx.lang_items.copy_trait() {
-        tcx.lookup_trait_def(copy_trait)
-            .for_each_impl(tcx, |impl_did| visit_implementation_of_copy(tcx, impl_did));
-    }
-
-    if let Some(coerce_unsized_trait) = tcx.lang_items.coerce_unsized_trait() {
-        let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
-            Ok(id) => id,
-            Err(err) => {
-                tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
-            }
-        };
-
-        tcx.lookup_trait_def(coerce_unsized_trait).for_each_impl(tcx, |impl_did| {
-            visit_implementation_of_coerce_unsized(tcx,
-                                                   impl_did,
-                                                   unsize_trait,
-                                                   coerce_unsized_trait)
+fn check_trait<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            trait_def_id: Option<DefId>,
+                            mut f: F)
+    where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId, DefId)
+{
+    if let Some(trait_def_id) = trait_def_id {
+        let mut impls = vec![];
+        tcx.lookup_trait_def(trait_def_id).for_each_impl(tcx, |did| {
+            impls.push(did);
         });
+        impls.sort();
+        for impl_def_id in impls {
+            f(tcx, trait_def_id, impl_def_id);
+        }
     }
 }
 
-fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          _drop_did: DefId,
+                                          impl_did: DefId) {
     let items = tcx.associated_item_def_ids(impl_did);
     if items.is_empty() {
         // We'll error out later. For now, just don't ICE.
@@ -96,7 +96,9 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     }
 }
 
-fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          _copy_did: DefId,
+                                          impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
@@ -166,11 +168,17 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
 }
 
 fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    impl_did: DefId,
-                                                    unsize_trait: DefId,
-                                                    coerce_unsized_trait: DefId) {
+                                                    coerce_unsized_trait: DefId,
+                                                    impl_did: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
+
+    let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
+        Ok(id) => id,
+        Err(err) => {
+            tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+        }
+    };
 
     let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
         n
