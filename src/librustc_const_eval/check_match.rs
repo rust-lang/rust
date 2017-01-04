@@ -358,7 +358,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witnesses = if pats.is_empty() {
-                vec![cx.wild_pattern]
+                vec![&wild_pattern]
             } else {
                 pats.iter().map(|w| w.single_pattern()).collect()
             };
