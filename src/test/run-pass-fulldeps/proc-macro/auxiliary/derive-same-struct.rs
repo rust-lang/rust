@@ -11,9 +11,6 @@
 // no-prefer-dynamic
 // compile-flags:--crate-type proc-macro
 
-#![feature(proc_macro)]
-#![feature(proc_macro_lib)]
-
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

@@ -10,7 +10,6 @@
 
 // aux-build:derive-unstable-2.rs
 
-#![feature(proc_macro)]
 #![allow(warnings)]
 
 #[macro_use]
