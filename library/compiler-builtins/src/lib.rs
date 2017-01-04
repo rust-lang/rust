@@ -13,6 +13,7 @@
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
 #![feature(staged_api)]
+#![feature(i128_type)]
 #![no_builtins]
 #![unstable(feature = "compiler_builtins_lib",
             reason = "Compiler builtins. Will never become stable.",
