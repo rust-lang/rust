@@ -2336,20 +2336,19 @@ impl<'a> Resolver<'a> {
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
-        if path.len() == 1 || global_by_default || result.base_def == Def::Err {
-            return Some(result);
-        }
-
-        let unqualified_result = {
-            match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                PathResult::NonModule(path_res) => path_res.base_def,
-                PathResult::Module(module) => module.def().unwrap(),
-                _ => return Some(result),
+        if path.len() > 1 && !global_by_default && result.base_def != Def::Err &&
+           path[0].name != keywords::CrateRoot.name() && path[0].name != "$crate" {
+            let unqualified_result = {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
+                    PathResult::NonModule(path_res) => path_res.base_def,
+                    PathResult::Module(module) => module.def().unwrap(),
+                    _ => return Some(result),
+                }
+            };
+            if result.base_def == unqualified_result {
+                let lint = lint::builtin::UNUSED_QUALIFICATIONS;
+                self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
             }
-        };
-        if result.base_def == unqualified_result && path[0].name != "$crate" {
-            let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-            self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
         }
 
         Some(result)
