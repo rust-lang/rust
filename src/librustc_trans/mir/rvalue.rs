@@ -260,22 +260,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx, operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx, cast_ty);
-                        let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let l = bcx.ccx.layout_of(operand.ty);
-                            let discr = match operand.val {
-                                OperandValue::Immediate(llval) => llval,
-                                OperandValue::Ref(llptr) => {
-                                    adt::trans_get_discr(&bcx, operand.ty, llptr, None, true)
-                                }
-                                OperandValue::Pair(..) => bug!("Unexpected Pair operand")
-                            };
-                            let (signed, min, max) = match l {
-                                &Layout::CEnum { signed, min, max, .. } => {
-                                    (signed, min, max)
-                                }
-                                _ => bug!("CEnum {:?} is not an enum", operand)
-                            };
-
+                        let llval = operand.immediate();
+                        let l = bcx.ccx.layout_of(operand.ty);
+                        let signed = if let Layout::CEnum { signed, min, max, .. } = *l {
                             if max > min {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
@@ -283,14 +270,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
-                                    discr,
-                                    C_integral(common::val_ty(discr), max, false)
-                                ))
+                                    llval,
+                                    C_integral(common::val_ty(llval), max, false)
+                                ));
                             }
 
-                            (discr, signed)
+                            signed
                         } else {
-                            (operand.immediate(), operand.ty.is_signed())
+                            operand.ty.is_signed()
                         };
 
                         let newval = match (r_t_in, r_t_out) {
