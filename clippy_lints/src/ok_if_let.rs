@@ -52,7 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         ], {
             let is_result_type = match_type(cx, cx.tcx.tables().expr_ty(&result_types[0]), &paths::RESULT);
             let some_expr_string = snippet(cx, y[0].span, "");
-            if print::path_to_string(x) == "Some" && is_result_type {
+            if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type {
                 span_help_and_lint(cx, IF_LET_SOME_RESULT, expr.span,
                 "Matching on `Some` with `ok()` is redundant",
                 &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string));

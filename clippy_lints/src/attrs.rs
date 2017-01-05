@@ -157,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 
 fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, eid) = item.node {
-        is_relevant_expr(cx, cx.tcx.map.expr(eid))
+        is_relevant_expr(cx, &cx.tcx.map.body(eid).value)
     } else {
         false
     }
@@ -165,15 +165,15 @@ fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
 
 fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
+        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, &cx.tcx.map.body(eid).value),
         _ => false,
     }
 }
 
 fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
     match item.node {
-        MethodTraitItem(_, None) => true,
-        MethodTraitItem(_, Some(eid)) => is_relevant_expr(cx, cx.tcx.map.expr(eid)),
+        TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
+        TraitItemKind::Method(_, TraitMethod::Provided(eid)) => is_relevant_expr(cx, &cx.tcx.map.body(eid).value),
         _ => false,
     }
 }

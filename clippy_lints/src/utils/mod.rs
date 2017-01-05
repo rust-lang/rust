@@ -19,6 +19,7 @@ use syntax::attr;
 use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 
 pub mod cargo;
 pub mod comparisons;
@@ -487,7 +488,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
         match node {
             Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, eid), .. }) => {
-                match cx.tcx.map.expr(eid).node {
+                match cx.tcx.map.body(eid).value.node {
                     ExprBlock(ref block) => Some(block),
                     _ => None,
                 }
@@ -610,7 +611,7 @@ pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
 }
 
 /// Check whether the given expression is a constant literal of the given value.
-pub fn is_integer_literal(expr: &Expr, value: u64) -> bool {
+pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
     // FIXME: use constant folding
     if let ExprLit(ref spanned) = expr.node {
         if let LitKind::Int(v, _) = spanned.node {
@@ -895,4 +896,27 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
 
         Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
     }
+}
+
+pub fn is_self(slf: &Arg) -> bool {
+    if let PatKind::Binding(_, _, name, _) = slf.pat.node {
+        name.node == keywords::SelfValue.name()
+    } else {
+        false
+    }
+}
+
+pub fn is_self_ty(slf: &Ty) -> bool {
+    if_let_chain! {[
+        let TyPath(ref qp) = slf.node,
+        let QPath::Resolved(None, ref path) = *qp,
+        let Def::SelfTy(..) = path.def,
+    ], {
+        return true
+    }}
+    false
+}
+
+pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<Item = &'tcx Arg> {
+    (0..decl.inputs.len()).map(move |i| &body.arguments[i])
 }

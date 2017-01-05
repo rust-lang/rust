@@ -70,7 +70,7 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, id: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
         if let Some(map::NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent(id)) {
             if let ItemImpl(_, _, _, Some(..), _, _) = item.node {
@@ -87,9 +87,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
-            ConstTraitItem(ref ty, _) |
-            TypeTraitItem(_, Some(ref ty)) => check_ty(cx, ty),
-            MethodTraitItem(ref sig, _) => check_fn_decl(cx, &sig.decl),
+            TraitItemKind::Const(ref ty, _) |
+            TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty),
+            TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
             _ => (),
         }
     }
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
 
 fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     for input in &decl.inputs {
-        check_ty(cx, &input.ty);
+        check_ty(cx, input);
     }
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
@@ -326,7 +326,7 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// let y: i8 = -1;
-/// y as u64  // will return 18446744073709551615
+/// y as u128  // will return 18446744073709551615
 /// ```
 declare_lint! {
     pub CAST_SIGN_LOSS,
@@ -601,7 +601,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        _: &'tcx Expr,
+        _: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
@@ -624,9 +624,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.node {
-            ConstTraitItem(ref ty, _) |
-            TypeTraitItem(_, Some(ref ty)) => self.check_type(cx, ty),
-            MethodTraitItem(MethodSig { ref decl, .. }, None) => self.check_fndecl(cx, decl),
+            TraitItemKind::Const(ref ty, _) |
+            TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
+            TraitItemKind::Method(MethodSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }
@@ -651,7 +651,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 impl<'a, 'tcx> TypeComplexityPass {
     fn check_fndecl(&self, cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl) {
         for arg in &decl.inputs {
-            self.check_type(cx, &arg.ty);
+            self.check_type(cx, arg);
         }
         if let Return(ref ty) = decl.output {
             self.check_type(cx, ty);
@@ -889,12 +889,14 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MIN))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MIN))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MIN))) |
+        (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MIN))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MIN)))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MIN)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MIN))) |
         (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MIN))) |
         (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MIN))) |
-        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MIN))) => Minimum,
+        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MIN))) |
+        (&ty::TyUint(UintTy::U128), Integral(U128(::std::u128::MIN))) => Minimum,
 
         (&ty::TyBool, Bool(true)) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MAX)))) |
@@ -903,12 +905,14 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MAX))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MAX))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MAX))) |
+        (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MAX))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MAX)))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MAX)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MAX))) |
         (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MAX))) |
         (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MAX))) |
-        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MAX))) => Maximum,
+        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MAX))) |
+        (&ty::TyUint(UintTy::U128), Integral(U128(::std::u128::MAX))) => Maximum,
 
         _ => return None,
     };
@@ -985,19 +989,19 @@ impl LintPass for InvalidUpcastComparisons {
 
 #[derive(Copy, Clone, Debug, Eq)]
 enum FullInt {
-    S(i64),
-    U(u64),
+    S(i128),
+    U(u128),
 }
 
 impl FullInt {
     #[allow(cast_sign_loss)]
-    fn cmp_s_u(s: i64, u: u64) -> Ordering {
+    fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
-        } else if u > (i64::max_value() as u64) {
+        } else if u > (i128::max_value() as u128) {
             Ordering::Greater
         } else {
-            (s as u64).cmp(&u)
+            (s as u128).cmp(&u)
         }
     }
 }
@@ -1034,20 +1038,22 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
         match cx.tcx.tables().expr_ty(cast_exp).sty {
             TyInt(int_ty) => {
                 Some(match int_ty {
-                    IntTy::I8 => (FullInt::S(i8::min_value() as i64), FullInt::S(i8::max_value() as i64)),
-                    IntTy::I16 => (FullInt::S(i16::min_value() as i64), FullInt::S(i16::max_value() as i64)),
-                    IntTy::I32 => (FullInt::S(i32::min_value() as i64), FullInt::S(i32::max_value() as i64)),
-                    IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
-                    IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
+                    IntTy::I8 => (FullInt::S(i8::min_value() as i128), FullInt::S(i8::max_value() as i128)),
+                    IntTy::I16 => (FullInt::S(i16::min_value() as i128), FullInt::S(i16::max_value() as i128)),
+                    IntTy::I32 => (FullInt::S(i32::min_value() as i128), FullInt::S(i32::max_value() as i128)),
+                    IntTy::I64 => (FullInt::S(i64::min_value() as i128), FullInt::S(i64::max_value() as i128)),
+                    IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
+                    IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
                 })
             },
             TyUint(uint_ty) => {
                 Some(match uint_ty {
-                    UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
-                    UintTy::U16 => (FullInt::U(u16::min_value() as u64), FullInt::U(u16::max_value() as u64)),
-                    UintTy::U32 => (FullInt::U(u32::min_value() as u64), FullInt::U(u32::max_value() as u64)),
-                    UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
-                    UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
+                    UintTy::U8 => (FullInt::U(u8::min_value() as u128), FullInt::U(u8::max_value() as u128)),
+                    UintTy::U16 => (FullInt::U(u16::min_value() as u128), FullInt::U(u16::max_value() as u128)),
+                    UintTy::U32 => (FullInt::U(u32::min_value() as u128), FullInt::U(u32::max_value() as u128)),
+                    UintTy::U64 => (FullInt::U(u64::min_value() as u128), FullInt::U(u64::max_value() as u128)),
+                    UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
+                    UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
                 })
             },
             _ => None,
@@ -1067,8 +1073,8 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
         Ok(val) => {
             if let Integral(const_int) = val {
                 Some(match const_int.erase_type() {
-                    ConstInt::InferSigned(x) => FullInt::S(x as i64),
-                    ConstInt::Infer(x) => FullInt::U(x as u64),
+                    ConstInt::InferSigned(x) => FullInt::S(x as i128),
+                    ConstInt::Infer(x) => FullInt::U(x as u128),
                     _ => unreachable!(),
                 })
             } else {

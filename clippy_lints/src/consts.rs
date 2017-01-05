@@ -74,7 +74,7 @@ impl PartialEq for Constant {
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
             (&Constant::Int(l), &Constant::Int(r)) => {
-                l.is_negative() == r.is_negative() && l.to_u64_unchecked() == r.to_u64_unchecked()
+                l.is_negative() == r.is_negative() && l.to_u128_unchecked() == r.to_u128_unchecked()
             },
             (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
@@ -110,7 +110,7 @@ impl Hash for Constant {
                 c.hash(state);
             },
             Constant::Int(i) => {
-                i.to_u64_unchecked().hash(state);
+                i.to_u128_unchecked().hash(state);
                 i.is_negative().hash(state);
             },
             Constant::Float(ref f, _) => {
@@ -185,6 +185,7 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U16)) => Constant::Int(ConstInt::U16(value as u16)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U32)) => Constant::Int(ConstInt::U32(value as u32)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U64)) => Constant::Int(ConstInt::U64(value as u64)),
+        LitKind::Int(value, LitIntType::Unsigned(UintTy::U128)) => Constant::Int(ConstInt::U128(value as u128)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::Us)) => {
             Constant::Int(ConstInt::Usize(ConstUsize::Us32(value as u32)))
         },
@@ -192,6 +193,7 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Int(value, LitIntType::Signed(IntTy::I16)) => Constant::Int(ConstInt::I16(value as i16)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I32)) => Constant::Int(ConstInt::I32(value as i32)),
         LitKind::Int(value, LitIntType::Signed(IntTy::I64)) => Constant::Int(ConstInt::I64(value as i64)),
+        LitKind::Int(value, LitIntType::Signed(IntTy::I128)) => Constant::Int(ConstInt::I128(value as i128)),
         LitKind::Int(value, LitIntType::Signed(IntTy::Is)) => {
             Constant::Int(ConstInt::Isize(ConstIsize::Is32(value as i32)))
         },
@@ -258,8 +260,14 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, ref number) => {
-                self.binop_apply(value, number, |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
+            ExprRepeat(ref value, number_id) => {
+                if let Some(lcx) = self.lcx {
+                    self.binop_apply(value,
+                                     &lcx.tcx.map.body(number_id).value,
+                                     |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
+                } else {
+                    None
+                }
             },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| {

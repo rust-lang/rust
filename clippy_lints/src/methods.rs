@@ -1,7 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::const_qualif::ConstQualif;
 use rustc::ty;
 use rustc::hir::def::Def;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
@@ -12,7 +11,7 @@ use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
             span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
-            match_def_path};
+            match_def_path, is_self, is_self_ty, iter_input_pats};
 use utils::paths;
 use utils::sugg;
 
@@ -637,16 +636,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let parent = cx.tcx.map.get_parent(implitem.id);
         let item = cx.tcx.map.expect_item(parent);
         if_let_chain! {[
-            let hir::ImplItemKind::Method(ref sig, _) = implitem.node,
-            let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
-            let hir::ItemImpl(_, _, _, None, _, _) = item.node,
+            let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
+            let Some(first_arg_ty) = sig.decl.inputs.get(0),
+            let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.map.body(id)).next(),
+            let hir::ItemImpl(_, _, _, None, ref self_ty, _) = item.node,
         ], {
             // check missing trait implementations
             for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                 if &*name.as_str() == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&explicit_self, false) {
+                   self_kind.matches(&first_arg_ty, &first_arg, &self_ty, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -659,8 +659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
-                    !self_kinds.iter().any(|k| k.matches(&explicit_self, is_copy)),
+                    !self_kinds.iter().any(|k| k.matches(&first_arg_ty, &first_arg, &self_ty, is_copy)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION
@@ -669,7 +668,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     };
                     span_lint(cx,
                               lint,
-                              explicit_self.span,
+                              first_arg.pat.span,
                               &format!("methods called `{}` usually take {}; consider choosing a less \
                                         ambiguous name",
                                        conv,
@@ -685,7 +684,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
-                          explicit_self.span,
+                          implitem.span,
                           "methods called `new` usually return `Self`");
             }
         }}
@@ -752,11 +751,16 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
-        if let Some(qualif) = cx.tcx.const_qualif_map.borrow().get(&arg.id) {
-            if !qualif.contains(ConstQualif::NOT_CONST) {
-                return;
-            }
+        let promotable = cx.tcx
+            .rvalue_promotable_to_static
+            .borrow()
+            .get(&arg.id)
+            .cloned()
+            .unwrap_or(true);
+        if promotable {
+            return;
         }
+
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] =
             &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
@@ -1338,7 +1342,7 @@ const PATTERN_METHODS: [(&'static str, usize); 17] = [
 ];
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum SelfKind {
     Value,
     Ref,
@@ -1347,27 +1351,36 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches(self, slf: &hir::ExplicitSelf, allow_value_for_ref: bool) -> bool {
-        match (self, &slf.node) {
-            (SelfKind::Value, &hir::SelfKind::Value(_)) |
-            (SelfKind::Ref, &hir::SelfKind::Region(_, hir::Mutability::MutImmutable)) |
-            (SelfKind::RefMut, &hir::SelfKind::Region(_, hir::Mutability::MutMutable)) => true,
-            (SelfKind::Ref, &hir::SelfKind::Value(_)) |
-            (SelfKind::RefMut, &hir::SelfKind::Value(_)) => allow_value_for_ref,
-            (_, &hir::SelfKind::Explicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
+    fn matches(self, ty: &hir::Ty, arg: &hir::Arg, self_ty: &hir::Ty, allow_value_for_ref: bool) -> bool {
+        // Self types in the HIR are desugared to explicit self types. So it will always be `self:
+        // SomeType`,
+        // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if the impl is on `Foo`)
+        // Thus, we only need to test equality against the impl self type or if it is an explicit
+        // `Self`. Furthermore, the only possible types for `self: ` are `&Self`, `Self`, `&mut Self`,
+        // and `Box<Self>`, including the equivalent types with `Foo`.
+        let is_actually_self = |ty| is_self_ty(ty) || ty == self_ty;
+        if is_self(arg) {
+            match self {
+                SelfKind::Value => is_actually_self(ty),
+                SelfKind::Ref | SelfKind::RefMut if allow_value_for_ref => is_actually_self(ty),
+                SelfKind::Ref | SelfKind::RefMut => {
+                    match ty.node {
+                        hir::TyRptr(_, ref mt_ty) => {
+                            let mutability_match = if self == SelfKind::Ref {
+                                mt_ty.mutbl == hir::MutImmutable
+                            } else {
+                                mt_ty.mutbl == hir::MutMutable
+                            };
+                            is_actually_self(&mt_ty.ty) && mutability_match
 
-            _ => false,
-        }
-    }
-
-    fn matches_explicit_type(self, ty: &hir::Ty, allow_value_for_ref: bool) -> bool {
-        match (self, &ty.node) {
-            (SelfKind::Value, &hir::TyPath(..)) |
-            (SelfKind::Ref, &hir::TyRptr(_, hir::MutTy { mutbl: hir::Mutability::MutImmutable, .. })) |
-            (SelfKind::RefMut, &hir::TyRptr(_, hir::MutTy { mutbl: hir::Mutability::MutMutable, .. })) => true,
-            (SelfKind::Ref, &hir::TyPath(..)) |
-            (SelfKind::RefMut, &hir::TyPath(..)) => allow_value_for_ref,
-            _ => false,
+                        },
+                        _ => false,
+                    }
+                },
+                _ => false,
+            }
+        } else {
+            self == SelfKind::No
         }
     }
 

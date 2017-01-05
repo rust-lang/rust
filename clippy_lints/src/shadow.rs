@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, FnKind, NestedVisitorMap};
 use rustc::ty;
 use syntax::codemap::Span;
-use utils::{higher, in_external_macro, snippet, span_lint_and_then};
+use utils::{higher, in_external_macro, snippet, span_lint_and_then, iter_input_pats};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.
@@ -85,25 +85,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         cx: &LateContext<'a, 'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        expr: &'tcx Expr,
+        body: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx, body.value.span) {
             return;
         }
-        check_fn(cx, decl, expr);
+        check_fn(cx, decl, body);
     }
 }
 
-fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, expr: &'tcx Expr) {
+fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body) {
     let mut bindings = Vec::new();
-    for arg in &decl.inputs {
+    for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
             bindings.push((ident.node, ident.span))
         }
     }
-    check_expr(cx, expr, &mut bindings);
+    check_expr(cx, &body.value, &mut bindings);
 }
 
 fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, bindings: &mut Vec<(Name, Span)>) {
@@ -341,9 +341,9 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
     match ty.node {
         TyObjectSum(ref sty, _) |
         TySlice(ref sty) => check_ty(cx, sty, bindings),
-        TyArray(ref fty, ref expr) => {
+        TyArray(ref fty, body_id) => {
             check_ty(cx, fty, bindings);
-            check_expr(cx, expr, bindings);
+            check_expr(cx, &cx.tcx.map.body(body_id).value, bindings);
         },
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
@@ -352,7 +352,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
                 check_ty(cx, t, bindings)
             }
         },
-        TyTypeof(ref expr) => check_expr(cx, expr, bindings),
+        TyTypeof(body_id) => check_expr(cx, &cx.tcx.map.body(body_id).value, bindings),
         _ => (),
     }
 }
@@ -371,7 +371,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 }
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
-    !path.global && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
 }
 
 struct ContainsSelf<'a, 'tcx: 'a> {

@@ -9,7 +9,7 @@ use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
-            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment};
+            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
@@ -175,7 +175,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         cx: &LateContext<'a, 'tcx>,
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        _: &'tcx Expr,
+        body: &'tcx Body,
         _: Span,
         _: NodeId
     ) {
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // Does not apply to closures
             return;
         }
-        for arg in &decl.inputs {
+        for arg in iter_input_pats(decl, body) {
             if let PatKind::Binding(BindByRef(_), _, _, _) = arg.pat.node {
                 span_lint(cx,
                           TOPLEVEL_REF_ARG,

@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::Span;
-use utils::{span_lint, type_is_unsafe_function};
+use utils::{span_lint, type_is_unsafe_function, iter_input_pats};
 
 /// **What it does:** Checks for functions with too many parameters.
 ///
@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         cx: &LateContext<'a, 'tcx>,
         kind: intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr,
+        body: &'tcx hir::Body,
         span: Span,
         nodeid: ast::NodeId
     ) {
@@ -102,19 +102,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, expr, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
-        if let hir::MethodTraitItem(ref sig, eid) = item.node {
+        if let hir::TraitItemKind::Method(ref sig, ref eid) = item.node {
             // don't lint extern functions decls, it's not their fault
             if sig.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span);
             }
 
-            if let Some(eid) = eid {
-                let expr = cx.tcx.map.expr(eid);
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, expr, item.id);
+            if let hir::TraitMethod::Provided(eid) = *eid {
+                let body = cx.tcx.map.body(eid);
+                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, body, item.id);
             }
         }
     }
@@ -136,11 +136,15 @@ impl<'a, 'tcx> Functions {
         cx: &LateContext<'a, 'tcx>,
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,
-        expr: &'tcx hir::Expr,
+        body: &'tcx hir::Body,
         nodeid: ast::NodeId
     ) {
+        let expr = &body.value;
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
-            let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
+            let raw_ptrs = iter_input_pats(decl, body)
+                .zip(decl.inputs.iter())
+                .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
+                .collect::<HashSet<_>>();
 
             if !raw_ptrs.is_empty() {
                 let mut v = DerefVisitor {
@@ -154,8 +158,8 @@ impl<'a, 'tcx> Functions {
     }
 }
 
-fn raw_ptr_arg(_cx: &LateContext, arg: &hir::Arg) -> Option<hir::def_id::DefId> {
-    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &arg.ty.node) {
+fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<hir::def_id::DefId> {
+    if let (&hir::PatKind::Binding(_, def_id, _, _), &hir::TyPtr(_)) = (&arg.pat.node, &ty.node) {
         Some(def_id)
     } else {
         None

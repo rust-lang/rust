@@ -42,7 +42,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                     .expect("A function with an unknown type is called. If this happened, the compiler would have \
                              aborted the compilation long ago");
                 if let ExprPath(ref path) = fn_expr.node {
-                    check_arguments(cx, arguments, function_type, &path.to_string());
+                    check_arguments(cx,
+                                    arguments,
+                                    function_type,
+                                    &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
                 }
             },
             ExprMethodCall(ref name, _, ref arguments) => {

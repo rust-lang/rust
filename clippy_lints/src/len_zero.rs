@@ -87,23 +87,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
-    fn is_named_self(item: &TraitItem, name: &str) -> bool {
+fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]) {
+    fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
         &*item.name.as_str() == name &&
-        if let MethodTraitItem(ref sig, _) = item.node {
-            if sig.decl.has_self() {
-                sig.decl.inputs.len() == 1
-            } else {
-                false
+        if let AssociatedItemKind::Method { has_self } = item.kind {
+            has_self &&
+            {
+                let did = cx.tcx.map.local_def_id(item.id.node_id);
+                let impl_ty = cx.tcx.item_type(did);
+                impl_ty.fn_args().skip_binder().len() == 1
             }
         } else {
             false
         }
     }
 
-    if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        if let Some(i) = trait_items.iter().find(|i| is_named_self(i, "len")) {
-            if cx.access_levels.is_exported(i.id) {
+    if !trait_items.iter().any(|i| is_named_self(cx, i, "is_empty")) {
+        if let Some(i) = trait_items.iter().find(|i| is_named_self(cx, i, "len")) {
+            if cx.access_levels.is_exported(i.id.node_id) {
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
                           i.span,

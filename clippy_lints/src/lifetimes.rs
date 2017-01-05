@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let MethodTraitItem(ref sig, _) = item.node {
+        if let TraitItemKind::Method(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }
@@ -137,7 +137,7 @@ fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
 
     // extract lifetimes in input argument types
     for arg in &func.inputs {
-        input_visitor.visit_ty(&arg.ty);
+        input_visitor.visit_ty(arg);
     }
     // extract lifetimes in output type
     if let Return(ref ty) = func.output {
