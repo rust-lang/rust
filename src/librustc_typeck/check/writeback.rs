@@ -123,8 +123,17 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     // as potentially overloaded. But then, during writeback, if
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
-    fn fix_scalar_binary_expr(&mut self, e: &hir::Expr) {
+    fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
         match e.node {
+            hir::ExprUnary(hir::UnNeg, ref inner) |
+            hir::ExprUnary(hir::UnNot, ref inner)  => {
+                let inner_ty = self.fcx.node_ty(inner.id);
+                let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
+
+                if inner_ty.is_scalar() {
+                    self.fcx.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
+                }
+            }
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
             hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
                 let lhs_ty = self.fcx.node_ty(lhs.id);
@@ -185,7 +194,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        self.fix_scalar_binary_expr(e);
+        self.fix_scalar_builtin_expr(e);
 
         self.visit_node_id(ResolvingExpr(e.span), e.id);
         self.visit_method_map_entry(ResolvingExpr(e.span),
