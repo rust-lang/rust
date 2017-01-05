@@ -58,24 +58,23 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
 }
 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
+    let layout = ccx.layout_of(ty);
+    match *layout {
+        Layout::CEnum { .. } |
+        Layout::Scalar { .. } |
+        Layout::Vector { .. } => true,
 
-    let simple = ty.is_scalar() ||
-        ty.is_unique() || ty.is_region_ptr() ||
-        ty.is_simd();
-    if simple && !type_is_fat_ptr(ccx, ty) {
-        return true;
-    }
-    if !ccx.shared().type_is_sized(ty) {
-        return false;
-    }
-    match ty.sty {
-        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
-            let llty = sizing_type_of(ccx, ty);
-            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
+        Layout::FatPointer { .. } => false,
+
+        Layout::Array { .. } |
+        Layout::Univariant { .. } |
+        Layout::General { .. } |
+        Layout::UntaggedUnion { .. } |
+        Layout::RawNullablePointer { .. } |
+        Layout::StructWrappedNullablePointer { .. } => {
+            let dl = &ccx.tcx().data_layout;
+            !layout.is_unsized() && layout.size(dl) <= dl.pointer_size
         }
-        _ => type_is_zero_size(ccx, ty)
     }
 }
 
