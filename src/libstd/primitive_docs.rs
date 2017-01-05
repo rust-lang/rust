@@ -502,7 +502,7 @@ mod prim_str { }
 /// [`Hash`]: hash/trait.Hash.html
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only
-/// implemented on tuples of arity 32 or less. In the future, this may change.
+/// implemented on tuples of arity 12 or less. In the future, this may change.
 ///
 /// # Examples
 ///
