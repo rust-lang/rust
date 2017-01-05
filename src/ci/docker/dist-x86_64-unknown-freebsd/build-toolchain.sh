@@ -77,7 +77,7 @@ cd gcc-$GCC
 mkdir ../gcc-build
 cd ../gcc-build
 ../gcc-$GCC/configure                            \
-  --enable-languages=c                           \
+  --enable-languages=c,c++                       \
   --target=$ARCH-unknown-freebsd10               \
   --disable-multilib                             \
   --disable-nls                                  \
