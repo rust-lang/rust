@@ -45,15 +45,10 @@ use rustc_i128::u128;
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyBox(ty) => {
-            !ccx.shared().type_is_sized(ty)
-        }
-        _ => {
-            false
-        }
+    if let Layout::FatPointer { .. } = *ccx.layout_of(ty) {
+        true
+    } else {
+        false
     }
 }
 
