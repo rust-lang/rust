@@ -26,7 +26,7 @@ pub struct NodeCollector<'ast> {
     /// If true, completely ignore nested items. We set this when loading
     /// HIR from metadata, since in that case we only want the HIR for
     /// one specific item (and not the ones nested inside of it).
-    pub ignore_nested_items: bool
+    pub ignore_nested_items: bool,
 }
 
 impl<'ast> NodeCollector<'ast> {
@@ -35,7 +35,7 @@ impl<'ast> NodeCollector<'ast> {
             krate: krate,
             map: vec![],
             parent_node: CRATE_NODE_ID,
-            ignore_nested_items: false
+            ignore_nested_items: false,
         };
         collector.insert_entry(CRATE_NODE_ID, RootCrate);
 
@@ -51,7 +51,7 @@ impl<'ast> NodeCollector<'ast> {
             krate: krate,
             map: map,
             parent_node: parent_node,
-            ignore_nested_items: true
+            ignore_nested_items: true,
         };
 
         collector.insert_entry(parent_node, RootInlinedParent(parent));

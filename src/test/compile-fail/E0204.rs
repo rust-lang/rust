@@ -10,18 +10,20 @@
 
 struct Foo {
     foo: Vec<u32>,
+    //~^ this field doesn't implement `Copy`
 }
 
 impl Copy for Foo { }
 //~^ ERROR E0204
-//~| NOTE field `foo` does not implement `Copy`
+//~| NOTE field `foo` doesn't implement `Copy`
 
 #[derive(Copy)]
 //~^ ERROR E0204
-//~| NOTE field `ty` does not implement `Copy`
+//~| NOTE field `ty` doesn't implement `Copy`
 //~| NOTE in this expansion of #[derive(Copy)]
 struct Foo2<'a> {
     ty: &'a mut bool,
+    //~^ this field doesn't implement `Copy`
 }
 
 fn main() {

@@ -18,6 +18,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
+use std::fmt;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
@@ -217,6 +218,18 @@ impl DefPath {
         tcx.original_crate_name(self.krate).as_str().hash(state);
         tcx.crate_disambiguator(self.krate).as_str().hash(state);
         self.data.hash(state);
+    }
+}
+
+impl fmt::Display for DefPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, component) in self.data.iter().enumerate() {
+            write!(f,
+                   "{}{}",
+                   if i == 0 { "" } else {"::"},
+                   component.data.as_interned_str())?;
+        }
+        Ok(())
     }
 }
 

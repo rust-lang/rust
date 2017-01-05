@@ -1,0 +1,11 @@
+error[E0204]: the trait `Copy` may not be implemented for type `Bar`
+  --> $DIR/issue-19950-1.rs:17:1
+   |
+14 |     item: NoCopy,
+   |     ------------ this field doesn't implement `Copy`
+...
+17 | impl Copy for Bar {}
+   | ^^^^^^^^^^^^^^^^^^^^ field `item` doesn't implement `Copy`
+
+error: aborting due to previous error
+

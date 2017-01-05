@@ -253,29 +253,43 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             match param_env.can_type_implement_copy(tcx, self_type, span) {
                 Ok(()) => {}
-                Err(CopyImplementationError::InfrigingField(name)) => {
-                    struct_span_err!(tcx.sess,
-                                     span,
-                                     E0204,
-                                     "the trait `Copy` may not be implemented for this type")
-                        .span_label(span, &format!("field `{}` does not implement `Copy`", name))
-                        .emit()
+                Err(CopyImplementationError::InfrigingField(did, name)) => {
+                    let mut err = struct_span_err!(tcx.sess,
+                                                   span,
+                                                   E0204,
+                                                   "the trait `Copy` may not be implemented for \
+                                                   type `{}`",
+                                                   self_type);
+                    err.span_label(span,
+                                   &format!("field `{}` doesn't implement `Copy`",
+                                            name));
+                    if let Some(def_span) = tcx.map.span_if_local(did) {
+                        err.span_label(def_span, &"this field doesn't implement `Copy`");
+                    }
+                    err.emit()
                 }
-                Err(CopyImplementationError::InfrigingVariant(name)) => {
+                Err(CopyImplementationError::InfrigingVariant(did, _)) => {
                     let item = tcx.map.expect_item(impl_node_id);
+                    let item_def_path = tcx.map.def_path(did);
                     let span = if let ItemImpl(.., Some(ref tr), _, _) = item.node {
                         tr.path.span
                     } else {
                         span
                     };
 
-                    struct_span_err!(tcx.sess,
-                                     span,
-                                     E0205,
-                                     "the trait `Copy` may not be implemented for this type")
-                        .span_label(span,
-                                    &format!("variant `{}` does not implement `Copy`", name))
-                        .emit()
+                    let mut err = struct_span_err!(tcx.sess,
+                                                   span,
+                                                   E0205,
+                                                   "the trait `Copy` may not be implemented for \
+                                                   type `{}`",
+                                                   self_type);
+                    err.span_label(span,
+                                   &format!("variant `{}` doesn't implement `Copy`",
+                                            item_def_path));
+                    if let Some(def_span) = tcx.map.span_if_local(did) {
+                        err.span_label(def_span, &"this variant doesn't implement `Copy`");
+                    }
+                    err.emit()
                 }
                 Err(CopyImplementationError::NotAnAdt) => {
                     let item = tcx.map.expect_item(impl_node_id);

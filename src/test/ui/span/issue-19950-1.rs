@@ -8,19 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(untagged_unions)]
+struct NoCopy;
 
-#[derive(Clone)]
-union U {
-    a: u8
+struct Bar {
+    item: NoCopy,
 }
 
-#[derive(Clone)]
-union W {
-    a: String
-}
-
-impl Copy for U {} // OK
-impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for type `W`
+impl Copy for Bar {}
 
 fn main() {}
