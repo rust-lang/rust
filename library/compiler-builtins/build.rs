@@ -207,10 +207,7 @@ fn main() {
                              "subtf3.c",
                              "subvti3.c",
                              "trampoline_setup.c",
-                             "ucmpti2.c",
-                             "udivmodti4.c",
-                             "udivti3.c",
-                             "umodti3.c"]);
+                             "ucmpti2.c"]);
         }
 
         if target_vendor == "apple" {

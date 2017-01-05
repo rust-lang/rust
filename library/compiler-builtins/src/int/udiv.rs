@@ -96,23 +96,44 @@ pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
     q
 }
 
-/// Returns `n / d`
-#[cfg_attr(not(test), no_mangle)]
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
-    __udivmoddi4(n, d, None)
+macro_rules! div_mod_intrinsics {
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty) => {
+        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
+                            __udivmoddi4);
+    };
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr) => {
+        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
+                            $divmod_intr, $ty, |i|{ i });
+    };
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr,
+     $tyret:ty, $conv:expr) => {
+        /// Returns `n / d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn $udiv_intr(n: $ty, d: $ty) -> $tyret {
+            let r = $divmod_intr(n, d, None);
+            ($conv)(r)
+        }
+
+        /// Returns `n % d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn $umod_intr(a: $ty, b: $ty) -> $tyret {
+            use core::mem;
+
+            let mut rem = unsafe { mem::uninitialized() };
+            $divmod_intr(a, b, Some(&mut rem));
+            ($conv)(rem)
+        }
+    }
 }
 
-/// Returns `n % d`
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
-#[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __umoddi3(a: u64, b: u64) -> u64 {
-    use core::mem;
+div_mod_intrinsics!(__udivdi3, __umoddi3: u64);
 
-    let mut rem = unsafe { mem::uninitialized() };
-    __udivmoddi4(a, b, Some(&mut rem));
-    rem
-}
+#[cfg(not(all(windows, target_pointer_width="64")))]
+div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod, ::U64x2, ::conv);
 
 macro_rules! udivmod_inner {
     ($n:expr, $d:expr, $rem:expr, $ty:ty) => {{
@@ -268,6 +289,28 @@ macro_rules! udivmod_inner {
 pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
     udivmod_inner!(n, d, rem, u64)
 }
+
+macro_rules! udivmodti4 {
+    ($tyret:ty, $conv:expr) => {
+        /// Returns `n / d` and sets `*rem = n % d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> $tyret {
+            let r = u128_div_mod(n, d, rem);
+            ($conv)(r)
+        }
+    }
+}
+
+/// Returns `n / d` and sets `*rem = n % d`
+fn u128_div_mod(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
+    udivmod_inner!(n, d, rem, u128)
+}
+
+#[cfg(all(windows, target_pointer_width="64"))]
+udivmodti4!(::U64x2, ::conv);
+
+#[cfg(not(all(windows, target_pointer_width="64")))]
+udivmodti4!(u128, |i|{ i });
 
 #[cfg(test)]
 mod tests {

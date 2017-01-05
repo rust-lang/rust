@@ -208,9 +208,9 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [ ] modti3.c
 - [x] muloti4.c
 - [x] multi3.c
-- [ ] udivmodti4.c
-- [ ] udivti3.c
-- [ ] umodti3.c
+- [x] udivmodti4.c
+- [x] udivti3.c
+- [x] umodti3.c
 
 ## Unimplemented functions
 
