@@ -138,9 +138,9 @@ where U: ?Sized,
     let aligned_len = 2 + (mem::size_of_val(src) + susize - 1) / susize;
 
     // Allocate enough space for `RcBox<U>`.
-    let mut v = Vec::<usize>::with_capacity(aligned_len);
-    let ptr: *mut usize = v.as_mut_ptr();
-    mem::forget(v);
+    let vec = RawVec::<usize>::with_capacity(aligned_len);
+    let ptr = vec.ptr();
+    forget(vec);
 
     let dst = |p: *mut usize| slice::from_raw_parts_mut(p as *mut T, src.len());
 
@@ -170,11 +170,11 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     /// #![feature(rc_from_slice)]
     /// use std::rc::Rc;
     ///
-    /// #[derive(Clone)]
+    /// #[derive(PartialEq, Clone, Debug)]
     /// struct Wrap(u8);
     ///
     /// let arr = [Wrap(1), Wrap(2), Wrap(3)];
-    /// let rc  = Rc::from(arr);
+    /// let rc: Rc<[Wrap]> = Rc::from(&arr);
     /// assert_eq!(rc.as_ref(), &arr);   // The elements match.
     /// assert_eq!(rc.len(), arr.len()); // The lengths match.
     /// ```
@@ -185,10 +185,9 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     /// #![feature(rc_from_slice)]
     /// use std::rc::Rc;
     ///
-    /// #[derive(Clone)]
+    /// #[derive(PartialEq, Clone, Debug)]
     /// struct Wrap(u8);
     ///
-    /// let arr = [Wrap(1), Wrap(2), Wrap(3)];
     /// let rc: Rc<[Wrap]> = arr.as_ref().into();
     /// assert_eq!(rc.as_ref(), &arr);   // The elements match.
     /// assert_eq!(rc.len(), arr.len()); // The lengths match.
@@ -321,7 +320,7 @@ impl<'a> From<&'a str> for Rc<str> {
     /// assert!(Rc::ptr_eq(&rc_second, &rc_third));
     ///
     /// [string interning]: https://en.wikipedia.org/wiki/String_interning
-    fn from(value: &'a str) -> Self {
+    fn from(slice: &'a str) -> Self {
         // This is safe since the input was valid utf8 to begin with, and thus
         // the invariants hold.
         unsafe {
