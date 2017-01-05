@@ -27,7 +27,7 @@ one is too specific or the ordering is incorrect.
 
 For example, the following `match` block has too many arms:
 
-```compile_fail,E0001
+```
 match Some(0) {
     Some(bar) => {/* ... */}
     x => {/* ... */} // This handles the `None` case
