@@ -13,8 +13,10 @@ struct Foo;
 impl Foo {
 
     fn as_i32(self) {}
+    fn as_u32(&self) {}
     fn into_i32(self) {}
     fn is_i32(self) {}
+    fn is_u32(&self) {}
     fn to_i32(self) {}
     fn from_i32(self) {} //~ERROR: methods called `from_*` usually take no self
 
@@ -34,9 +36,13 @@ struct Bar;
 impl Bar {
 
     fn as_i32(self) {} //~ERROR: methods called `as_*` usually take self by reference
+    fn as_u32(&self) {}
     fn into_i32(&self) {} //~ERROR: methods called `into_*` usually take self by value
+    fn into_u32(self) {}
     fn is_i32(self) {} //~ERROR: methods called `is_*` usually take self by reference
+    fn is_u32(&self) {}
     fn to_i32(self) {} //~ERROR: methods called `to_*` usually take self by reference
+    fn to_u32(&self) {}
     fn from_i32(self) {} //~ERROR: methods called `from_*` usually take no self
 
     pub fn as_i64(self) {} //~ERROR: methods called `as_*` usually take self by reference

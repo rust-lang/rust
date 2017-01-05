@@ -1,8 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.105 — 2016-12-15
-* Update to *rustc 1.15.0-nightly (8f02c429a 2016-12-15)*
+## 0.0.106 — 2017-01-04
+* Fix FP introduced by rustup in [`wrong_self_convention`]
+
+## 0.0.105 — 2017-01-04
+* Update to *rustc 1.16.0-nightly (468227129 2017-01-03)*
 * New lints: [`deref_addrof`], [`double_parens`], [`pub_enum_variant_names`]
 * Fix suggestion in [`new_without_default`]
 * FP fix in [`absurd_extreme_comparisons`]
