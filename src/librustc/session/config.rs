@@ -1175,7 +1175,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              assumed.", "[KIND=]NAME"),
         opt::multi_s("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                   "[bin|lib|rlib|dylib|cdylib|staticlib]"),
+                   "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]"),
         opt::opt_s("", "crate-name", "Specify the name of the crate being built",
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
