@@ -517,11 +517,21 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     // ========================================================================
     // Documentation targets
     rules.doc("doc-book", "src/doc/book")
-         .dep(move |s| s.name("tool-rustbook").target(&build.config.build).stage(0))
+         .dep(move |s| {
+             s.name("tool-rustbook")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.target, "book"));
     rules.doc("doc-nomicon", "src/doc/nomicon")
-         .dep(move |s| s.name("tool-rustbook").target(&build.config.build).stage(0))
+         .dep(move |s| {
+             s.name("tool-rustbook")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.target, "nomicon"));
     rules.doc("doc-standalone", "src/doc")
