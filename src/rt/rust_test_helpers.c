@@ -268,3 +268,22 @@ LARGE_INTEGER increment_all_parts(LARGE_INTEGER li) {
     li.QuadPart += 1;
     return li;
 }
+
+#define DO_INT128_TEST !(defined(WIN32) || defined(_WIN32) || defined(__WIN32)) && \
+    defined(__amd64__)
+
+#if DO_INT128_TEST
+
+unsigned __int128 identity(unsigned __int128 a) {
+    return a;
+}
+
+__int128 square(__int128 a) {
+    return a * a;
+}
+
+__int128 sub(__int128 a, __int128 b) {
+    return a - b;
+}
+
+#endif
