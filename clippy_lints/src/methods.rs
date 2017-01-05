@@ -1342,7 +1342,7 @@ const PATTERN_METHODS: [(&'static str, usize); 17] = [
 ];
 
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum SelfKind {
     Value,
     Ref,
@@ -1358,12 +1358,15 @@ impl SelfKind {
         // Thus, we only need to test equality against the impl self type or if it is an explicit
         // `Self`. Furthermore, the only possible types for `self: ` are `&Self`, `Self`, `&mut Self`,
         // and `Box<Self>`, including the equivalent types with `Foo`.
+
         let is_actually_self = |ty| is_self_ty(ty) || ty == self_ty;
         if is_self(arg) {
             match self {
                 SelfKind::Value => is_actually_self(ty),
-                SelfKind::Ref | SelfKind::RefMut if allow_value_for_ref => is_actually_self(ty),
                 SelfKind::Ref | SelfKind::RefMut => {
+                    if allow_value_for_ref && is_actually_self(ty) {
+                        return true;
+                    }
                     match ty.node {
                         hir::TyRptr(_, ref mt_ty) => {
                             let mutability_match = if self == SelfKind::Ref {
@@ -1372,7 +1375,6 @@ impl SelfKind {
                                 mt_ty.mutbl == hir::MutMutable
                             };
                             is_actually_self(&mt_ty.ty) && mutability_match
-
                         },
                         _ => false,
                     }
