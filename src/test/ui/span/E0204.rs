@@ -8,20 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar(Vec<u32>),
-    Baz,
+struct Foo {
+    foo: Vec<u32>,
 }
 
 impl Copy for Foo { }
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
 
 #[derive(Copy)]
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
-//~| NOTE in this expansion of #[derive(Copy)]
-enum Foo2<'a> {
+struct Foo2<'a> {
+    ty: &'a mut bool,
+}
+
+enum EFoo {
+    Bar { x: Vec<u32> },
+    Baz,
+}
+
+impl Copy for EFoo { }
+
+#[derive(Copy)]
+enum EFoo2<'a> {
     Bar(&'a mut bool),
     Baz,
 }

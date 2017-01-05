@@ -2300,6 +2300,7 @@ This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
+/*
 E0205: r##"
 An attempt to implement the `Copy` trait for an enum failed because one of the
 variants does not implement `Copy`. To fix this, you must implement `Copy` for
@@ -2329,6 +2330,7 @@ enum Foo<'a> {
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
+*/
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following

@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo {
-    foo: Vec<u32>,
+struct Foo<A: Repr>(<A as Repr>::Data);
+
+impl<A> Copy for Foo<A> where <A as Repr>::Data: Copy { }
+impl<A> Clone for Foo<A> where <A as Repr>::Data: Clone {
+    fn clone(&self) -> Self { Foo(self.0.clone()) }
 }
 
-impl Copy for Foo { }
-//~^ ERROR E0204
-//~| NOTE field `foo` does not implement `Copy`
+trait Repr {
+    type Data;
+}
 
-#[derive(Copy)]
-//~^ ERROR E0204
-//~| NOTE field `ty` does not implement `Copy`
-//~| NOTE in this expansion of #[derive(Copy)]
-struct Foo2<'a> {
-    ty: &'a mut bool,
+impl<A> Repr for A {
+    type Data = u32;
 }
 
 fn main() {

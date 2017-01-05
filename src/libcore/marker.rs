@@ -234,12 +234,10 @@ pub trait Unsize<T: ?Sized> {
 /// Generalizing the latter case, any type implementing [`Drop`] can't be `Copy`, because it's
 /// managing some resource besides its own [`size_of::<T>()`] bytes.
 ///
-/// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get a
-/// compile-time error. Specifically, with structs you'll get [E0204] and with enums you'll get
-/// [E0205].
+/// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
+/// the error [E0204].
 ///
 /// [E0204]: ../../error-index.html#E0204
-/// [E0205]: ../../error-index.html#E0205
 ///
 /// ## When *should* my type be `Copy`?
 ///
