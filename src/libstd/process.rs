@@ -377,6 +377,38 @@ impl Command {
         self
     }
 
+    /// Add or update multiple environment variable mappings.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    /// use std::env;
+    ///
+    /// let filtered_env : Vec<(String, String)> =
+    ///     env::vars().filter(|&(ref k, _)|
+    ///         k == "TERM" || k == "TZ" || k == "LANG" || k == "PATH"
+    ///     ).collect();
+    ///
+    /// Command::new("printenv")
+    ///         .stdin(Stdio::null())
+    ///         .stdout(Stdio::inherit())
+    ///         .env_clear()
+    ///         .envs(&filtered_env)
+    ///         .spawn()
+    ///         .expect("printenv failed to start");
+    /// ```
+    #[stable(feature = "process", since = "1.16.0")]
+    pub fn envs<K, V>(&mut self, vars: &[(K, V)]) -> &mut Command
+        where K: AsRef<OsStr>, V: AsRef<OsStr>
+    {
+        for &(ref key, ref val) in vars {
+            self.inner.env(key.as_ref(), val.as_ref());
+        }
+        self
+    }
+
     /// Removes an environment variable mapping.
     ///
     /// # Examples
