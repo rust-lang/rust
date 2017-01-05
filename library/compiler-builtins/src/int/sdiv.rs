@@ -2,9 +2,12 @@ use int::Int;
 
 macro_rules! div {
     ($intrinsic:ident: $ty:ty, $uty:ty) => {
+        div!($intrinsic: $ty, $uty, $ty, |i| {i});
+    };
+    ($intrinsic:ident: $ty:ty, $uty:ty, $tyret:ty, $conv:expr) => {
         /// Returns `a / b`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
             let s_a = a >> (<$ty>::bits() - 1);
             let s_b = b >> (<$ty>::bits() - 1);
             let a = (a ^ s_a) - s_a;
@@ -12,23 +15,26 @@ macro_rules! div {
             let s = s_a ^ s_b;
 
             let r = udiv!(a as $uty, b as $uty);
-            (r as $ty ^ s) - s
+            ($conv)((r as $ty ^ s) - s)
         }
     }
 }
 
 macro_rules! mod_ {
     ($intrinsic:ident: $ty:ty, $uty:ty) => {
+        mod_!($intrinsic: $ty, $uty, $ty, |i| {i});
+    };
+    ($intrinsic:ident: $ty:ty, $uty:ty, $tyret:ty, $conv:expr) => {
         /// Returns `a % b`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
             let s = b >> (<$ty>::bits() - 1);
             let b = (b ^ s) - s;
             let s = a >> (<$ty>::bits() - 1);
             let a = (a ^ s) - s;
 
             let r = urem!(a as $uty, b as $uty);
-            (r as $ty ^ s) - s
+            ($conv)((r as $ty ^ s) - s)
         }
     }
 }
@@ -61,11 +67,23 @@ div!(__divsi3: i32, u32);
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 div!(__divdi3: i64, u64);
 
+#[cfg(not(all(windows, target_pointer_width="64")))]
+div!(__divti3: i128, u128);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+div!(__divti3: i128, u128, ::U64x2, ::sconv);
+
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
 mod_!(__modsi3: i32, u32);
 
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 mod_!(__moddi3: i64, u64);
+
+#[cfg(not(all(windows, target_pointer_width="64")))]
+mod_!(__modti3: i128, u128);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+mod_!(__modti3: i128, u128, ::U64x2, ::sconv);
 
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
 divmod!(__divmodsi4, __divsi3: i32);

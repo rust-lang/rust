@@ -100,6 +100,13 @@ fn conv(i: u128) -> U64x2 {
     U64x2(i.low(), i.high())
 }
 
+#[cfg(all(windows, target_pointer_width="64"))]
+fn sconv(i: i128) -> U64x2 {
+    use int::LargeInt;
+    let j = i as u128;
+    U64x2(j.low(), j.high())
+}
+
 #[cfg(test)]
 #[cfg_attr(target_arch = "arm", macro_use)]
 extern crate quickcheck;
