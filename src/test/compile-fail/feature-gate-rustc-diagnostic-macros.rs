@@ -11,11 +11,11 @@
 // Test that diagnostic macros are gated by `rustc_diagnostic_macros` feature
 // gate
 
-__register_diagnostic!(E0002);
+__register_diagnostic!(E0001);
 //~^ ERROR macro undefined: '__register_diagnostic!'
 
 fn main() {
-    __diagnostic_used!(E0002);
+    __diagnostic_used!(E0001);
     //~^ ERROR macro undefined: '__diagnostic_used!'
 }
 
