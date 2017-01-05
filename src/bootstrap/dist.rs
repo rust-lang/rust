@@ -315,8 +315,8 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
         println!("\tskipping - not a build host");
         return
     }
-    if compiler.stage != 2 {
-        println!("\tskipping - not stage2");
+    if !compiler.is_final_stage(build) {
+        println!("\tskipping - not final stage");
         return
     }
 

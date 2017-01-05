@@ -537,6 +537,14 @@ impl Config {
     pub fn very_verbose(&self) -> bool {
         self.verbose > 1
     }
+
+    pub fn final_stage(&self) -> u32 {
+        if self.full_bootstrap {
+            2
+        } else {
+            1
+        }
+    }
 }
 
 #[cfg(not(windows))]

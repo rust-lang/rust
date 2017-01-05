@@ -516,7 +516,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.target, "nomicon"));
     rules.doc("doc-standalone", "src/doc")
-         .dep(move |s| s.name("rustc").host(&build.config.build).target(&build.config.build))
+         .dep(move |s| s.name("rustc").host(&build.config.build).target(&build.config.build).stage(build.final_stage()))
          .default(build.config.docs)
          .run(move |s| doc::standalone(build, s.stage, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
@@ -548,7 +548,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     // ========================================================================
     // Distribution targets
     rules.dist("dist-rustc", "src/librustc")
-         .dep(move |s| s.name("rustc").host(&build.config.build))
+         .dep(move |s| s.name("rustc").host(&build.config.build).stage(build.final_stage()))
          .host(true)
          .default(true)
          .run(move |s| dist::rustc(build, s.stage, s.target));
@@ -561,7 +561,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  s.name("librustc-link")
              } else {
                  s.name("libtest-link")
-             }
+             }.stage(build.final_stage())
          })
          .default(true)
          .run(move |s| dist::std(build, &s.compiler(), s.target));
@@ -578,14 +578,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| dist::rust_src(build, s.target));
     rules.dist("dist-docs", "src/doc")
          .default(true)
-         .dep(|s| s.name("default:doc"))
+         .dep(move |s| s.name("default:doc").stage(build.final_stage()))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("dist-analysis", "analysis")
-         .dep(|s| s.name("dist-std"))
+         .dep(move |s| s.name("dist-std").stage(build.final_stage()))
          .default(true)
          .run(move |s| dist::analysis(build, &s.compiler(), s.target));
     rules.dist("install", "src")
-         .dep(|s| s.name("default:dist"))
+         .dep(move |s| s.name("default:dist").stage(build.final_stage()))
          .run(move |s| install::install(build, s.stage, s.target));
 
     rules.verify();
@@ -750,7 +750,7 @@ impl<'a> Rules<'a> {
         Rules {
             build: build,
             sbuild: Step {
-                stage: build.flags.stage.unwrap_or(2),
+                stage: build.flags.stage.unwrap_or(build.config.final_stage()),
                 target: &build.config.build,
                 host: &build.config.build,
                 name: "",
