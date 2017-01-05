@@ -1428,8 +1428,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path_str = Path::new("foo.txt").to_str();
-    /// assert_eq!(path_str, Some("foo.txt"));
+    /// let path = Path::new("foo.txt");
+    /// assert_eq!(path.to_str(), Some("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
@@ -1444,12 +1444,17 @@ impl Path {
     ///
     /// # Examples
     ///
+    /// Calling `to_string_lossy` on a `Path` with valid unicode:
+    ///
     /// ```
     /// use std::path::Path;
     ///
-    /// let path_str = Path::new("foo.txt").to_string_lossy();
-    /// assert_eq!(path_str, "foo.txt");
+    /// let path = Path::new("foo.txt");
+    /// assert_eq!(path.to_string_lossy(), "foo.txt");
     /// ```
+    ///
+    /// Had `os_str` contained invalid unicode, the `to_string_lossy` call might
+    /// have returned `"fo�.txt"`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
