@@ -19,12 +19,17 @@ use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
 use libc::{c_uint, c_char};
+use rustc::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc::session::Session;
+use type_of;
 
 use std::borrow::Cow;
 use std::ffi::CString;
 use std::ptr;
 use syntax_pos::Span;
 
+// All Builders must have an llfn associated with them
+#[must_use]
 pub struct Builder<'a, 'tcx: 'a> {
     pub llbuilder: BuilderRef,
     pub ccx: &'a CrateContext<'a, 'tcx>,
@@ -46,6 +51,20 @@ fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    pub fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
+        let builder = Builder::with_ccx(ccx);
+        let llbb = unsafe {
+            let name = CString::new(name).unwrap();
+            llvm::LLVMAppendBasicBlockInContext(
+                ccx.llcx(),
+                llfn,
+                name.as_ptr()
+            )
+        };
+        builder.position_at_end(llbb);
+        builder
+    }
+
     pub fn with_ccx(ccx: &'a CrateContext<'a, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe {
@@ -54,6 +73,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Builder {
             llbuilder: llbuilder,
             ccx: ccx,
+        }
+    }
+
+    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'tcx> {
+        Builder::new_block(self.ccx, self.llfn(), name)
+    }
+
+    pub fn sess(&self) -> &Session {
+        self.ccx.sess()
+    }
+
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.ccx.tcx()
+    }
+
+    pub fn llfn(&self) -> ValueRef {
+        unsafe {
+            llvm::LLVMGetBasicBlockParent(self.llbb())
+        }
+    }
+
+    pub fn llbb(&self) -> BasicBlockRef {
+        unsafe {
+            llvm::LLVMGetInsertBlock(self.llbuilder)
         }
     }
 
@@ -433,6 +476,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             llvm::LLVMBuildNot(self.llbuilder, v, noname())
         }
+    }
+
+    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+        let builder = Builder::with_ccx(self.ccx);
+        builder.position_at_start(unsafe {
+            llvm::LLVMGetFirstBasicBlock(self.llfn())
+        });
+        builder.dynamic_alloca(ty, name)
+    }
+
+    pub fn alloca_ty(&self, ty: Ty<'tcx>, name: &str) -> ValueRef {
+        assert!(!ty.has_param_types());
+        self.alloca(type_of::type_of(self.ccx, ty), name)
     }
 
     pub fn dynamic_alloca(&self, ty: Type, name: &str) -> ValueRef {

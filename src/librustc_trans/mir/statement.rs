@@ -11,7 +11,8 @@
 use rustc::mir;
 
 use base;
-use common::{self, BlockAndBuilder};
+use common;
+use builder::Builder;
 
 use super::MirContext;
 use super::LocalRef;
@@ -20,9 +21,9 @@ use super::super::disr::Disr;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
-                           bcx: BlockAndBuilder<'a, 'tcx>,
+                           bcx: Builder<'a, 'tcx>,
                            statement: &mir::Statement<'tcx>)
-                           -> BlockAndBuilder<'a, 'tcx> {
+                           -> Builder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
         self.set_debug_loc(&bcx, statement.source_info);
@@ -77,10 +78,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn trans_storage_liveness(&self,
-                              bcx: BlockAndBuilder<'a, 'tcx>,
+                              bcx: Builder<'a, 'tcx>,
                               lvalue: &mir::Lvalue<'tcx>,
                               intrinsic: base::Lifetime)
-                              -> BlockAndBuilder<'a, 'tcx> {
+                              -> Builder<'a, 'tcx> {
         if let mir::Lvalue::Local(index) = *lvalue {
             if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
                 intrinsic.call(&bcx, tr_lval.llval);

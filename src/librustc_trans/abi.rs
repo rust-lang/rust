@@ -10,7 +10,8 @@
 
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
-use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
+use builder::Builder;
+use common::{type_is_fat_ptr, C_uint};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -236,7 +237,7 @@ impl ArgType {
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &BlockAndBuilder, mut val: ValueRef, dst: ValueRef) {
+    pub fn store(&self, bcx: &Builder, mut val: ValueRef, dst: ValueRef) {
         if self.is_ignore() {
             return;
         }
@@ -269,7 +270,7 @@ impl ArgType {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.fcx().alloca(ty, "abi_cast");
+                let llscratch = bcx.alloca(ty, "abi_cast");
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
@@ -293,14 +294,14 @@ impl ArgType {
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &BlockAndBuilder, idx: &mut usize, dst: ValueRef) {
+    pub fn store_fn_arg(&self, bcx: &Builder, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
         if self.is_ignore() {
             return;
         }
-        let val = llvm::get_param(bcx.fcx().llfn, *idx as c_uint);
+        let val = llvm::get_param(bcx.llfn(), *idx as c_uint);
         *idx += 1;
         self.store(bcx, val, dst);
     }

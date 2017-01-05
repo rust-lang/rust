@@ -45,7 +45,7 @@
 //!
 //! All private state used by the module is stored within either the
 //! CrateDebugContext struct (owned by the CrateContext) or the
-//! FunctionDebugContext (owned by the FunctionContext).
+//! FunctionDebugContext (owned by the MirContext).
 //!
 //! This file consists of three conceptual sections:
 //! 1. The public interface of the module

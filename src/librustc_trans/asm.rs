@@ -15,6 +15,7 @@ use base;
 use common::*;
 use type_of;
 use type_::Type;
+use builder::Builder;
 
 use rustc::hir;
 use rustc::ty::Ty;
@@ -25,7 +26,7 @@ use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
     outputs: Vec<(ValueRef, Ty<'tcx>)>,
     mut inputs: Vec<ValueRef>
