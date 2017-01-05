@@ -125,7 +125,7 @@ is that some Drop implementations will not access borrowed data even
 though their type gives them the capability for such access.
 
 For example, this variant of the above `Inspector` example will never
-accessed borrowed data:
+access borrowed data:
 
 ```rust,ignore
 struct Inspector<'a>(&'a u8, &'static str);
