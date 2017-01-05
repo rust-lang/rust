@@ -1,6 +1,7 @@
 # rust-clippy
 
 [![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
+[![Windows build status](https://ci.appveyor.com/api/projects/status/github/Manishearth/rust-clippy?svg=true)](https://ci.appveyor.com/project/Manishearth/rust-clippy)
 [![Clippy Linting Result](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/badge.svg)](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/log)
 [![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MPL-2.0](https://img.shields.io/crates/l/clippy.svg)](#License)
