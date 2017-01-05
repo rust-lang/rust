@@ -423,6 +423,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc::FLOAT_CMP,
         misc::MODULO_ONE,
         misc::REDUNDANT_PATTERN,
+        misc::SHORT_CIRCUIT_STATEMENT,
         misc::TOPLEVEL_REF_ARG,
         misc_early::BUILTIN_TYPE_SHADOW,
         misc_early::DOUBLE_NEG,
