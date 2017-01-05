@@ -1,3 +1,14 @@
+macro_rules! hty {
+    ($ty:ty) => {
+        <$ty as LargeInt>::HighHalf
+    }
+}
+
+macro_rules! os_ty {
+    ($ty:ty) => {
+        <$ty as Int>::OtherSign
+    }
+}
 
 pub mod mul;
 pub mod sdiv;
@@ -6,6 +17,8 @@ pub mod udiv;
 
 /// Trait for some basic operations on integers
 pub trait Int {
+    /// Type with the same width but other signedness
+    type OtherSign;
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
 }
@@ -13,11 +26,13 @@ pub trait Int {
 macro_rules! int_impl {
     ($ity:ty, $sty:ty, $bits:expr) => {
         impl Int for $ity {
+            type OtherSign = $sty;
             fn bits() -> u32 {
                 $bits
             }
         }
         impl Int for $sty {
+            type OtherSign = $ity;
             fn bits() -> u32 {
                 $bits
             }

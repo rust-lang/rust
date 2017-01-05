@@ -2,7 +2,7 @@ use int::LargeInt;
 use int::Int;
 
 macro_rules! mul {
-    ($intrinsic:ident: $ty:ty, $tyh:ty) => {
+    ($intrinsic:ident: $ty:ty) => {
         /// Returns `a * b`
         #[cfg_attr(not(test), no_mangle)]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
@@ -13,15 +13,15 @@ macro_rules! mul {
             low &= lower_mask;
             t += (a.low() >> half_bits).wrapping_mul(b.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            let mut high = (t >> half_bits) as $tyh;
+            let mut high = (t >> half_bits) as hty!($ty);
             t = low >> half_bits;
             low &= lower_mask;
             t += (b.low() >> half_bits).wrapping_mul(a.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            high += (t >> half_bits) as $tyh;
-            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits) as $tyh;
-            high = high.wrapping_add(a.high().wrapping_mul(b.low() as $tyh))
-                       .wrapping_add((a.low() as $tyh).wrapping_mul(b.high()));
+            high += (t >> half_bits) as hty!($ty);
+            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits) as hty!($ty);
+            high = high.wrapping_add(a.high().wrapping_mul(b.low() as hty!($ty)))
+                       .wrapping_add((a.low() as hty!($ty)).wrapping_mul(b.high()));
             <$ty>::from_parts(low, high)
         }
     }
@@ -73,9 +73,9 @@ macro_rules! mulo {
 }
 
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
-mul!(__muldi3: u64, u32);
+mul!(__muldi3: u64);
 
-mul!(__multi3: i128, i64);
+mul!(__multi3: i128);
 
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);
