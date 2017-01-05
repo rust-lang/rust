@@ -3091,7 +3091,7 @@ E0328: r##"
 The Unsize trait should not be implemented directly. All implementations of
 Unsize are provided automatically by the compiler.
 
-Here's an example of this error:
+Erroneous code example:
 
 ```compile_fail,E0328
 #![feature(unsize)]
@@ -3108,6 +3108,19 @@ conversion from a sized to an unsized type with the [DST coercion system]
 (https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md), use
 [`CoerceUnsized`](https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html)
 instead.
+
+```
+#![feature(coerce_unsized)]
+
+use std::ops::CoerceUnsized;
+
+pub struct MyType<T: ?Sized> {
+    field_with_unsized_type: T,
+}
+
+impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
+    where T: CoerceUnsized<U> {}
+```
 "##,
 
 E0329: r##"
