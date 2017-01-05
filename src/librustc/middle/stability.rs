@@ -18,7 +18,7 @@ use hir::map as hir_map;
 use lint;
 use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, DefIndex, LOCAL_CRATE};
-use ty::TyCtxt;
+use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
@@ -432,6 +432,36 @@ struct Checker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    // (See issue #38412)
+    fn skip_stability_check_due_to_privacy(self, def_id: DefId) -> bool {
+        let visibility = {
+            // Check if `def_id` is a trait method.
+            match self.sess.cstore.associated_item(def_id) {
+                Some(ty::AssociatedItem { container: ty::TraitContainer(trait_def_id), .. }) => {
+                    // Trait methods do not declare visibility (even
+                    // for visibility info in cstore). Use containing
+                    // trait instead, so methods of pub traits are
+                    // themselves considered pub.
+                    self.sess.cstore.visibility(trait_def_id)
+                }
+                _ => {
+                    // Otherwise, cstore info works directly.
+                    self.sess.cstore.visibility(def_id)
+                }
+            }
+        };
+
+        match visibility {
+            // must check stability for pub items.
+            ty::Visibility::Public => false,
+
+            // these are not visible outside crate; therefore
+            // stability markers are irrelevant, if even present.
+            ty::Visibility::Restricted(..) |
+            ty::Visibility::Invisible => true,
+        }
+    }
+
     pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
         if self.sess.codemap().span_allows_unstable(span) {
             debug!("stability: \
@@ -490,6 +520,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(&Stability { ref level, ref feature, .. }) = stability {
             self.stability.borrow_mut().used_features.insert(feature.clone(), level.clone());
+        }
+
+        // Issue 38412: private items lack stability markers.
+        if self.skip_stability_check_due_to_privacy(def_id) {
+            return
         }
 
         match stability {
