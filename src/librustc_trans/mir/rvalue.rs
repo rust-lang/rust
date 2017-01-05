@@ -12,13 +12,15 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
+use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
 
 use asm;
 use base;
+use builder::Builder;
 use callee::Callee;
-use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder};
+use common::{self, val_ty, C_bool, C_null, C_uint};
 use common::{C_integral};
 use adt;
 use machine;
@@ -35,10 +37,10 @@ use super::lvalue::{LvalueRef};
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
-                        bcx: BlockAndBuilder<'a, 'tcx>,
+                        bcx: Builder<'a, 'tcx>,
                         dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> BlockAndBuilder<'a, 'tcx>
+                        -> Builder<'a, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
                Value(dest.llval), rvalue);
@@ -79,7 +81,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
-                        let lltemp = base::alloc_ty(&bcx, operand.ty, "__unsize_temp");
+                        let lltemp = bcx.alloca_ty(operand.ty, "__unsize_temp");
                         base::store_ty(&bcx, llval, lltemp, operand.ty);
                         lltemp
                     }
@@ -101,7 +103,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                    mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
                         adt::trans_set_discr(&bcx, dest_ty, dest.llval, Disr::from(disr));
@@ -109,10 +111,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let val = adt::MaybeSizedValue::sized(dest.llval);
+                                let mut val = LvalueRef::new_sized(dest.llval, dest.ty);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr(&bcx, dest_ty, val, disr,
-                                    field_index);
+                                val.ty = LvalueTy::Downcast {
+                                    adt_def: adt_def,
+                                    substs: self.monomorphize(&substs),
+                                    variant_index: disr.0 as usize,
+                                };
+                                let lldest_i = val.trans_field_ptr(&bcx, field_index);
                                 self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }
@@ -170,9 +176,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_rvalue_operand(&mut self,
-                                bcx: BlockAndBuilder<'a, 'tcx>,
+                                bcx: Builder<'a, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (BlockAndBuilder<'a, 'tcx>, OperandRef<'tcx>)
+                                -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
@@ -477,7 +483,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_scalar_binop(&mut self,
-                              bcx: &BlockAndBuilder<'a, 'tcx>,
+                              bcx: &Builder<'a, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
                               rhs: ValueRef,
@@ -552,7 +558,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_fat_ptr_binop(&mut self,
-                               bcx: &BlockAndBuilder<'a, 'tcx>,
+                               bcx: &Builder<'a, 'tcx>,
                                op: mir::BinOp,
                                lhs_addr: ValueRef,
                                lhs_extra: ValueRef,
@@ -599,7 +605,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_scalar_checked_binop(&mut self,
-                                      bcx: &BlockAndBuilder<'a, 'tcx>,
+                                      bcx: &Builder<'a, 'tcx>,
                                       op: mir::BinOp,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
@@ -681,7 +687,7 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(oop: OverflowOp, bcx: &BlockAndBuilder, ty: Ty) -> ValueRef {
+fn get_overflow_intrinsic(oop: OverflowOp, bcx: &Builder, ty: Ty) -> ValueRef {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{TyInt, TyUint};

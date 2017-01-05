@@ -37,8 +37,9 @@ use llvm;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::StartFnLangItem;
 use rustc::ty::subst::Substs;
+use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
@@ -47,14 +48,15 @@ use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
 use abi::{self, Abi, FnType};
+use mir::lvalue::LvalueRef;
 use adt;
 use attributes;
 use builder::Builder;
 use callee::{Callee};
-use common::{BlockAndBuilder, C_bool, C_bytes_in_context, C_i32, C_uint};
+use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef};
-use common::{CrateContext, FunctionContext};
+use common::CrateContext;
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -161,7 +163,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
 }
 
 pub fn compare_simd_types<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef,
     t: Ty<'tcx>,
@@ -218,7 +220,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     src: ValueRef,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
@@ -242,7 +244,7 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                      src: ValueRef,
                                      src_ty: Ty<'tcx>,
                                      dst: ValueRef,
@@ -278,8 +280,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 monomorphize::field_ty(bcx.tcx(), substs_b, f)
             });
 
-            let src = adt::MaybeSizedValue::sized(src);
-            let dst = adt::MaybeSizedValue::sized(dst);
+            let src = LvalueRef::new_sized_ty(src, src_ty);
+            let dst = LvalueRef::new_sized_ty(dst, dst_ty);
 
             let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
@@ -287,8 +289,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
+                let src_f = src.trans_field_ptr(bcx, i);
+                let dst_f = dst.trans_field_ptr(bcx, i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
@@ -322,7 +324,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &BlockAndBuilder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
+    cx: &Builder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
@@ -421,7 +423,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.ccx, t) {
@@ -433,7 +435,7 @@ pub fn store_ty<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>, v: ValueRef, dst: Valu
     }
 }
 
-pub fn store_fat_ptr<'a, 'tcx>(cx: &BlockAndBuilder<'a, 'tcx>,
+pub fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
                                data: ValueRef,
                                extra: ValueRef,
                                dst: ValueRef,
@@ -459,7 +461,7 @@ pub fn load_fat_ptr<'a, 'tcx>(
     (ptr, meta)
 }
 
-pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
+pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
     if val_ty(val) == Type::i1(bcx.ccx) {
         bcx.zext(val, Type::i8(bcx.ccx))
     } else {
@@ -467,7 +469,7 @@ pub fn from_immediate(bcx: &BlockAndBuilder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bcx: &BlockAndBuilder, val: ValueRef, ty: Ty) -> ValueRef {
+pub fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
         bcx.trunc(val, Type::i1(bcx.ccx))
     } else {
@@ -523,11 +525,13 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
-                           dst: ValueRef,
-                           src: ValueRef,
-                           t: Ty<'tcx>,
-                           align: Option<u32>) {
+pub fn memcpy_ty<'a, 'tcx>(
+    bcx: &Builder<'a, 'tcx>,
+    dst: ValueRef,
+    src: ValueRef,
+    t: Ty<'tcx>,
+    align: Option<u32>,
+) {
     let ccx = bcx.ccx;
 
     if type_is_zero_size(ccx, t) {
@@ -551,11 +555,6 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
     let volatile = C_bool(b.ccx, volatile);
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
-}
-
-pub fn alloc_ty<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> ValueRef {
-    assert!(!ty.has_param_types());
-    bcx.fcx().alloca(type_of::type_of(bcx.ccx, ty), name)
 }
 
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
@@ -593,18 +592,17 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, lldecl);
     let mir = ccx.tcx().item_mir(instance.def);
-    mir::trans_mir(&fcx, fn_ty, &mir, instance, &sig, abi);
+    mir::trans_mir(ccx, lldecl, fn_ty, &mir, instance, &sig, abi);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                  def_id: DefId,
                                  substs: &'tcx Substs<'tcx>,
                                  disr: Disr,
-                                 llfndecl: ValueRef) {
-    attributes::inline(llfndecl, attributes::InlineAttr::Hint);
-    attributes::set_frame_pointer_elimination(ccx, llfndecl);
+                                 llfn: ValueRef) {
+    attributes::inline(llfn, attributes::InlineAttr::Hint);
+    attributes::set_frame_pointer_elimination(ccx, llfn);
 
     let ctor_ty = ccx.tcx().item_type(def_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
@@ -612,24 +610,29 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let fcx = FunctionContext::new(ccx, llfndecl);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
     if !fn_ty.ret.is_ignore() {
         // But if there are no nested returns, we skip the indirection
         // and have a single retslot
         let dest = if fn_ty.ret.is_indirect() {
-            get_param(fcx.llfn, 0)
+            get_param(llfn, 0)
         } else {
             // We create an alloca to hold a pointer of type `ret.original_ty`
             // which will hold the pointer to the right alloca which has the
             // final ret value
-            fcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
+            bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
         };
-        let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
+        // Can return unsized value
+        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output());
+        dest_val.ty = LvalueTy::Downcast {
+            adt_def: sig.output().ty_adt_def().unwrap(),
+            substs: substs,
+            variant_index: disr.0 as usize,
+        };
         let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(&bcx, sig.output(), dest_val, Disr::from(disr), i);
+            let lldestptr = dest_val.trans_field_ptr(&bcx, i);
             let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
@@ -756,12 +759,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         // `main` should respect same config for frame pointer elimination as rest of code
         attributes::set_frame_pointer_elimination(ccx, llfn);
 
-        let llbb = unsafe {
-            let name = CString::new("top").unwrap();
-            llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, name.as_ptr())
-        };
-        let bld = Builder::with_ccx(ccx);
-        bld.position_at_end(llbb);
+        let bld = Builder::new_block(ccx, llfn, "top");
 
         debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
 

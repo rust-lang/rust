@@ -27,7 +27,8 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::{CrateContext, BlockAndBuilder};
+use common::CrateContext;
+use builder::Builder;
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
@@ -423,7 +424,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                dbg_context: &FunctionDebugContext,
                                variable_name: ast::Name,
                                variable_type: Ty<'tcx>,

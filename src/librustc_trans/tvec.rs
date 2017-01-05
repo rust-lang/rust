@@ -9,28 +9,29 @@
 // except according to those terms.
 
 use llvm;
+use builder::Builder;
 use llvm::ValueRef;
 use common::*;
 use rustc::ty::Ty;
 
 pub fn slice_for_each<'a, 'tcx, F>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     data_ptr: ValueRef,
     unit_ty: Ty<'tcx>,
     len: ValueRef,
     f: F
-) -> BlockAndBuilder<'a, 'tcx> where F: FnOnce(&BlockAndBuilder<'a, 'tcx>, ValueRef) {
+) -> Builder<'a, 'tcx> where F: FnOnce(&Builder<'a, 'tcx>, ValueRef) {
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx, unit_ty);
-    let add = |bcx: &BlockAndBuilder, a, b| if zst {
+    let add = |bcx: &Builder, a, b| if zst {
         bcx.add(a, b)
     } else {
         bcx.inbounds_gep(a, &[b])
     };
 
-    let body_bcx = bcx.fcx().build_new_block("slice_loop_body");
-    let next_bcx = bcx.fcx().build_new_block("slice_loop_next");
-    let header_bcx = bcx.fcx().build_new_block("slice_loop_header");
+    let body_bcx = bcx.build_sibling_block("slice_loop_body");
+    let next_bcx = bcx.build_sibling_block("slice_loop_next");
+    let header_bcx = bcx.build_sibling_block("slice_loop_header");
 
     let start = if zst {
         C_uint(bcx.ccx, 0usize)

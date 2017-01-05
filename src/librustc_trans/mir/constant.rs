@@ -18,16 +18,17 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
-use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
+use builder::Builder;
+use common::{self, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
-use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
-use common::{const_to_opt_u128};
+use common::{C_null, C_struct, C_str_slice, C_undef, C_uint, C_vector, is_undef};
+use common::const_to_opt_u128;
 use consts;
 use monomorphize::{self, Instance};
 use type_of;
@@ -548,16 +549,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::AggregateKind::Adt(..) |
                     mir::AggregateKind::Closure(..) |
                     mir::AggregateKind::Tuple => {
-                        let disr = match *kind {
-                            mir::AggregateKind::Adt(adt_def, index, _, _) => {
-                                Disr::from(adt_def.variants[index].disr_val)
-                            }
-                            _ => Disr(0)
-                        };
-                        Const::new(
-                            adt::trans_const(self.ccx, dest_ty, disr, &fields),
-                            dest_ty
-                        )
+                        Const::new(trans_const(self.ccx, dest_ty, kind, &fields), dest_ty)
                     }
                 }
             }
@@ -900,7 +892,7 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_constant(&mut self,
-                          bcx: &BlockAndBuilder<'a, 'tcx>,
+                          bcx: &Builder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {
@@ -944,4 +936,160 @@ pub fn trans_static_initializer(ccx: &CrateContext, def_id: DefId)
                                 -> Result<ValueRef, ConstEvalErr> {
     let instance = Instance::mono(ccx.shared(), def_id);
     MirConstContext::trans_def(ccx, instance, IndexVec::new()).map(|c| c.llval)
+}
+
+/// Construct a constant value, suitable for initializing a
+/// GlobalVariable, given a case and constant values for its fields.
+/// Note that this may have a different LLVM type (and different
+/// alignment!) from the representation's `type_of`, so it needs a
+/// pointer cast before use.
+///
+/// The LLVM type system does not directly support unions, and only
+/// pointers can be bitcast, so a constant (and, by extension, the
+/// GlobalVariable initialized by it) will have a type that can vary
+/// depending on which case of an enum it is.
+///
+/// To understand the alignment situation, consider `enum E { V64(u64),
+/// V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
+/// accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
+/// i32, i32}`, which is 4-byte aligned.
+///
+/// Currently the returned value has the same size as the type, but
+/// this could be changed in the future to avoid allocating unnecessary
+/// space after values of shorter-than-maximum cases.
+fn trans_const<'a, 'tcx>(
+    ccx: &CrateContext<'a, 'tcx>,
+    t: Ty<'tcx>,
+    kind: &mir::AggregateKind,
+    vals: &[ValueRef]
+) -> ValueRef {
+    let l = ccx.layout_of(t);
+    let dl = &ccx.tcx().data_layout;
+    let variant_index = match *kind {
+        mir::AggregateKind::Adt(_, index, _, _) => index,
+        _ => 0,
+    };
+    match *l {
+        layout::CEnum { discr: d, min, max, .. } => {
+            let discr = match *kind {
+                mir::AggregateKind::Adt(adt_def, _, _, _) => {
+                    Disr::from(adt_def.variants[variant_index].disr_val)
+                },
+                _ => Disr(0),
+            };
+            assert_eq!(vals.len(), 0);
+            adt::assert_discr_in_range(Disr(min), Disr(max), discr);
+            C_integral(Type::from_integer(ccx, d), discr.0, true)
+        }
+        layout::General { discr: d, ref variants, .. } => {
+            let variant = &variants[variant_index];
+            let lldiscr = C_integral(Type::from_integer(ccx, d), variant_index as u64, true);
+            let mut vals_with_discr = vec![lldiscr];
+            vals_with_discr.extend_from_slice(vals);
+            let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
+            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
+            if needed_padding > 0 {
+                contents.push(padding(ccx, needed_padding));
+            }
+            C_struct(ccx, &contents[..], false)
+        }
+        layout::UntaggedUnion { ref variants, .. }=> {
+            assert_eq!(variant_index, 0);
+            let contents = build_const_union(ccx, variants, vals[0]);
+            C_struct(ccx, &contents, variants.packed)
+        }
+        layout::Univariant { ref variant, .. } => {
+            assert_eq!(variant_index, 0);
+            let contents = build_const_struct(ccx, &variant, vals);
+            C_struct(ccx, &contents[..], variant.packed)
+        }
+        layout::Vector { .. } => {
+            C_vector(vals)
+        }
+        layout::RawNullablePointer { nndiscr, .. } => {
+            let nnty = adt::compute_fields(ccx, t, nndiscr as usize, false)[0];
+            if variant_index as u64 == nndiscr {
+                assert_eq!(vals.len(), 1);
+                vals[0]
+            } else {
+                C_null(type_of::sizing_type_of(ccx, nnty))
+            }
+        }
+        layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
+            if variant_index as u64 == nndiscr {
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
+            } else {
+                let fields = adt::compute_fields(ccx, t, nndiscr as usize, false);
+                let vals = fields.iter().map(|&ty| {
+                    // Always use null even if it's not the `discrfield`th
+                    // field; see #8506.
+                    C_null(type_of::sizing_type_of(ccx, ty))
+                }).collect::<Vec<ValueRef>>();
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]), false)
+            }
+        }
+        _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)
+    }
+}
+
+/// Building structs is a little complicated, because we might need to
+/// insert padding if a field's value is less aligned than its type.
+///
+/// Continuing the example from `trans_const`, a value of type `(u32,
+/// E)` should have the `E` at offset 8, but if that field's
+/// initializer is 4-byte aligned then simply translating the tuple as
+/// a two-element struct will locate it at offset 4, and accesses to it
+/// will read the wrong memory.
+fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                st: &layout::Struct,
+                                vals: &[ValueRef])
+                                -> Vec<ValueRef> {
+    assert_eq!(vals.len(), st.offsets.len());
+
+    if vals.len() == 0 {
+        return Vec::new();
+    }
+
+    // offset of current value
+    let mut offset = 0;
+    let mut cfields = Vec::new();
+    cfields.reserve(st.offsets.len()*2);
+
+    let parts = st.field_index_by_increasing_offset().map(|i| {
+        (&vals[i], st.offsets[i].bytes())
+    });
+    for (&val, target_offset) in parts {
+        if offset < target_offset {
+            cfields.push(padding(ccx, target_offset - offset));
+            offset = target_offset;
+        }
+        assert!(!is_undef(val));
+        cfields.push(val);
+        offset += machine::llsize_of_alloc(ccx, val_ty(val));
+    }
+
+    if offset < st.stride().bytes() {
+        cfields.push(padding(ccx, st.stride().bytes() - offset));
+    }
+
+    cfields
+}
+
+fn build_const_union<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               un: &layout::Union,
+                               field_val: ValueRef)
+                               -> Vec<ValueRef> {
+    let mut cfields = vec![field_val];
+
+    let offset = machine::llsize_of_alloc(ccx, val_ty(field_val));
+    let size = un.stride().bytes();
+    if offset != size {
+        cfields.push(padding(ccx, size - offset));
+    }
+
+    cfields
+}
+
+fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
+    C_undef(Type::array(&Type::i8(ccx), size))
 }

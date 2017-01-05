@@ -19,7 +19,8 @@ use rustc::infer::TransNormalize;
 use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
-use common::{self, BlockAndBuilder, CrateContext, FunctionContext, C_null, Funclet};
+use builder::Builder;
+use common::{self, CrateContext, C_null, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
 use abi::FnType;
@@ -37,7 +38,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 pub use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
-use self::lvalue::{LvalueRef};
+use self::lvalue::LvalueRef;
 use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
@@ -48,7 +49,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     debug_context: debuginfo::FunctionDebugContext,
 
-    fcx: &'a common::FunctionContext<'a, 'tcx>,
+    llfn: ValueRef,
 
     ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -106,7 +107,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         monomorphize::apply_param_substs(self.ccx.shared(), self.param_substs, value)
     }
 
-    pub fn set_debug_loc(&mut self, bcx: &BlockAndBuilder, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bcx, scope, span);
     }
@@ -198,7 +199,8 @@ impl<'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'a, 'tcx: 'a>(
-    fcx: &'a FunctionContext<'a, 'tcx>,
+    ccx: &'a CrateContext<'a, 'tcx>,
+    llfn: ValueRef,
     fn_ty: FnType,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
@@ -207,8 +209,8 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 ) {
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(fcx.ccx, instance, sig, abi, fcx.llfn, mir);
-    let bcx = fcx.get_entry_block();
+        debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfn, mir);
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
@@ -216,20 +218,20 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK {
-                fcx.new_block("start")
+                bcx.build_sibling_block("start").llbb()
             } else {
-                fcx.new_block(&format!("{:?}", bb))
+                bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(fcx, mir, &debug_context);
+    let scopes = debuginfo::create_mir_scopes(ccx, mir, &debug_context);
 
     let mut mircx = MirContext {
         mir: mir,
-        fcx: fcx,
+        llfn: llfn,
         fn_ty: fn_ty,
-        ccx: fcx.ccx,
+        ccx: ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
         unreachable_block: None,
@@ -266,7 +268,9 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 }
 
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
-                let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
+                assert!(!ty.has_erasable_regions());
+                let lltemp = bcx.alloca_ty(ty, &name.as_str());
+                let lvalue = LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty));
                 if dbg {
                     let (scope, span) = mircx.debug_loc(source_info);
                     declare_local(&bcx, &mircx.debug_context, name, ty, scope,
@@ -278,11 +282,13 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 // Temporary or return pointer
                 if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
-                    let llretptr = llvm::get_param(fcx.llfn, 0);
+                    let llretptr = llvm::get_param(llfn, 0);
                     LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
                 } else if lvalue_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> lvalue", local);
-                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", local)))
+                    assert!(!ty.has_erasable_regions());
+                    let lltemp = bcx.alloca_ty(ty, &format!("{:?}", local));
+                    LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty)))
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
@@ -312,9 +318,9 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
-            let bcx = mircx.build_block(bb);
+            let bcx = mircx.get_builder(bb);
             bcx.set_personality_fn(mircx.ccx.eh_personality());
-            if base::wants_msvc_seh(fcx.ccx.sess()) {
+            if base::wants_msvc_seh(ccx.sess()) {
                 return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
             }
         }
@@ -347,13 +353,12 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 /// Produce, for each argument, a `ValueRef` pointing at the
 /// argument's value. As arguments are lvalues, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             mircx: &MirContext<'a, 'tcx>,
                             scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
                             lvalue_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
     let mir = mircx.mir;
-    let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
     let mut llarg_idx = mircx.fn_ty.ret.is_indirect() as usize;
@@ -381,7 +386,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
+            let lltemp = bcx.alloca_ty(arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                 let dst = bcx.struct_gep(lltemp, i);
                 let arg = &mircx.fn_ty.args[idx];
@@ -428,7 +433,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             if arg.pad.is_some() {
                 llarg_idx += 1;
             }
-            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             llarg
         } else if !lvalue_locals.contains(local.index()) &&
@@ -444,13 +449,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             if arg.pad.is_some() {
                 llarg_idx += 1;
             }
-            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
                 assert_eq!((meta.cast, meta.pad), (None, None));
-                let llmeta = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+                let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
                 OperandValue::Pair(llarg, llmeta)
             } else {
@@ -462,7 +467,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
-            let lltemp = base::alloc_ty(&bcx, arg_ty, &format!("arg{}", arg_index));
+            let lltemp = bcx.alloca_ty(arg_ty, &format!("arg{}", arg_index));
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
@@ -514,7 +519,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let alloc = bcx.fcx().alloca(common::val_ty(llval), "__debuginfo_env_ptr");
+                let alloc = bcx.alloca(common::val_ty(llval), "__debuginfo_env_ptr");
                 bcx.store(llval, alloc, None);
                 alloc
             } else {
@@ -573,7 +578,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-mod lvalue;
+pub mod lvalue;
 mod operand;
 mod rvalue;
 mod statement;
