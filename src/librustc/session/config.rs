@@ -898,6 +898,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "treat all errors that occur as bugs"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
           "attempt to recover from parse errors (experimental)"),
+    incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
+          "enable incremental compilation (deprecated; use `-Cincremental` instead)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
     incremental_dump_hash: bool = (false, parse_bool, [UNTRACKED],
@@ -1532,7 +1534,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let unstable_features = UnstableFeatures::from_environment();
 
-    let incremental = if unstable_features.is_nightly_build() {
+    let mut incremental = if unstable_features.is_nightly_build() {
         cg.incremental.as_ref().map(|m| PathBuf::from(m))
     } else if cg.incremental.as_ref().is_some() {
         early_warn(ErrorOutputType::default(), "incremental compilation is not yet available \
@@ -1541,6 +1543,14 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     } else {
         None
     };
+
+    if let Some(ref s) = debugging_opts.incremental {
+        early_warn(ErrorOutputType::default(), "the `-Zincremental` option is deprecated and \
+                                                will be removed; use `-Cincremental` instead");
+        if unstable_features.is_nightly_build() && incremental.is_none() {
+            incremental = Some(PathBuf::from(s));
+        }
+    }
 
     (Options {
         crate_types: crate_types,
