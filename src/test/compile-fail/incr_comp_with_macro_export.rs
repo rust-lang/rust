@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zincremental=tmp/cfail-tests/incr_comp_with_macro_export
+// compile-flags: -Cincremental=tmp/cfail-tests/incr_comp_with_macro_export
 // must-compile-successfully
 
 

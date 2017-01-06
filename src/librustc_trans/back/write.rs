@@ -667,7 +667,7 @@ pub fn run_passes(sess: &Session,
 
     // Sanity check
     assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
-            sess.opts.debugging_opts.incremental.is_some());
+            sess.opts.incremental.is_some());
 
     let tm = create_target_machine(sess);
 

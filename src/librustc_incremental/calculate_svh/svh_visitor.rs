@@ -1145,8 +1145,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                 //            in a stable way, in addition to the HIR.
                 //            Since this is hardly used anywhere, just emit a
                 //            warning for now.
-                if self.tcx.sess.opts.debugging_opts.incremental.is_some() {
-                    let msg = format!("Quasi-quoting might make incremental \
+                if self.tcx.sess.opts.incremental.is_some() {
+                    let msg = format!("quasi-quoting might make incremental \
                                        compilation very inefficient: {:?}",
                                       non_terminal);
                     self.tcx.sess.span_warn(error_reporting_span, &msg[..]);

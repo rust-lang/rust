@@ -869,7 +869,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
     let scx = ccxs.shared();
     let tcx = scx.tcx();
 
-    let incr_comp = sess.opts.debugging_opts.incremental.is_some();
+    let incr_comp = sess.opts.incremental.is_some();
 
     // 'unsafe' because we are holding on to CStr's from the LLVM module within
     // this block.
@@ -1572,7 +1572,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 
     let symbol_map = SymbolMap::build(scx, items.iter().cloned());
 
-    let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
+    let strategy = if scx.sess().opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
         PartitioningStrategy::FixedUnitCount(scx.sess().opts.cg.codegen_units)
@@ -1586,7 +1586,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
-            scx.tcx().sess.opts.debugging_opts.incremental.is_some());
+            scx.tcx().sess.opts.incremental.is_some());
 
     {
         let mut ccx_map = scx.translation_items().borrow_mut();

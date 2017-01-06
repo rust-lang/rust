@@ -10,9 +10,9 @@
 
 // ignore-tidy-linelength
 
-// We specify -Z incremental here because we want to test the partitioning for
+// We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp/partitioning-tests/vtable-through-const
+// compile-flags:-Zprint-trans-items=lazy -Cincremental=tmp/partitioning-tests/vtable-through-const
 
 // This test case makes sure, that references made through constants are
 // recorded properly in the InliningMap.

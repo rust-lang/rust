@@ -1356,8 +1356,7 @@ actual:\n\
 
         if let Some(ref incremental_dir) = self.props.incremental_dir {
             args.extend(vec![
-                format!("-Z"),
-                format!("incremental={}", incremental_dir.display()),
+                format!("-Cincremental={}", incremental_dir.display()),
             ]);
         }
 
@@ -2077,12 +2076,12 @@ actual:\n\
         //   - if `cfail`, expect compilation to fail
         //   - if `rfail`, expect execution to fail
         // - create a directory build/foo/bar.incremental
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C rpass1
+        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass1
         //   - because name of revision starts with "rpass", expect success
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C cfail2
+        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C cfail2
         //   - because name of revision starts with "cfail", expect an error
         //   - load expected errors as usual, but filter for those that end in `[rfail2]`
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C rpass3
+        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass3
         //   - because name of revision starts with "rpass", expect success
         // - execute build/foo/bar.exe and save output
         //

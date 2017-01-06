@@ -758,6 +758,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          CG_OPTIONS, cg_type_desc, cgsetters,
     ar: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "tool to assemble archives with"),
+    incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "enable incremental compilation (nightly only)"),
     linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "system linker to link outputs with"),
     link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
@@ -896,8 +898,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "treat all errors that occur as bugs"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
           "attempt to recover from parse errors (experimental)"),
-    incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "enable incremental compilation (experimental)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
     incremental_dump_hash: bool = (false, parse_bool, [UNTRACKED],
@@ -1530,7 +1530,17 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let crate_name = matches.opt_str("crate-name");
 
-    let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
+    let unstable_features = UnstableFeatures::from_environment();
+
+    let incremental = if unstable_features.is_nightly_build() {
+        cg.incremental.as_ref().map(|m| PathBuf::from(m))
+    } else if cg.incremental.as_ref().is_some() {
+        early_warn(ErrorOutputType::default(), "incremental compilation is not yet available \
+                                                on the stable channel; try using nightly");
+        None
+    } else {
+        None
+    };
 
     (Options {
         crate_types: crate_types,
@@ -1553,7 +1563,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
-        unstable_features: UnstableFeatures::from_environment(),
+        unstable_features: unstable_features,
         debug_assertions: debug_assertions,
         actually_rustdoc: false,
     },
@@ -2428,7 +2438,7 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.parse_only = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.incremental = Some(String::from("abc"));
+        opts.cg.incremental = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.dump_dep_graph = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
