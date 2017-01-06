@@ -72,7 +72,7 @@ pub mod cyclomatic_complexity;
 pub mod derive;
 pub mod doc;
 pub mod double_parens;
-pub mod drop_ref;
+pub mod drop_forget_ref;
 pub mod entry;
 pub mod enum_clike;
 pub mod enum_glob_use;
@@ -259,7 +259,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         max_single_char_names: conf.max_single_char_names,
     });
-    reg.register_late_lint_pass(box drop_ref::Pass);
+    reg.register_late_lint_pass(box drop_forget_ref::Pass);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box types::InvalidUpcastComparisons);
     reg.register_late_lint_pass(box regex::Pass::default());
@@ -360,7 +360,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         derive::EXPL_IMPL_CLONE_ON_COPY,
         doc::DOC_MARKDOWN,
         double_parens::DOUBLE_PARENS,
-        drop_ref::DROP_REF,
+        drop_forget_ref::DROP_REF,
+        drop_forget_ref::FORGET_REF,
         entry::MAP_ENTRY,
         enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
         enum_variants::ENUM_VARIANT_NAMES,
