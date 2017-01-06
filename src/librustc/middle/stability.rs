@@ -462,7 +462,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // these are not visible outside crate; therefore
             // stability markers are irrelevant, if even present.
             ty::Visibility::Restricted(..) |
-            ty::Visibility::Invisible => true,
+            ty::Visibility::PrivateExternal => true,
         }
     }
 
