@@ -28,6 +28,7 @@ install:
   - (cargo install rustfmt || true)
 
 script:
+ - PATH=$PATH:./node_modules/.bin
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
  - set -e
