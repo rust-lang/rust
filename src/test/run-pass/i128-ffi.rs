@@ -22,11 +22,20 @@
 
 #![feature(i128_type)]
 
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, Debug)]
+struct Foo {
+    a: i128,
+    b: i8,
+    c: u16,
+}
+
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     fn identity(f: u128) -> u128;
     fn square(f: i128) -> i128;
     fn sub(f: i128, f: i128) -> i128;
+    fn adt_id(f: Foo) -> Foo;
 }
 
 fn main() {
@@ -41,5 +50,8 @@ fn main() {
         let k_d = 0x2468_ACF1_3579_BDFF_DB97_530E_CA86_420;
         let k_out = sub(k_d, k);
         assert_eq!(k, k_out);
+        let a = Foo { a: 1, b: 2, c: 3 };
+        let b = adt_id(a);
+        assert_eq!(a, b);
     }
 }

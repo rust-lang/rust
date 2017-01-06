@@ -174,6 +174,17 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
       AttributeSet::get(Call->getContext(), Index, B)));
 }
 
+extern "C" void LLVMRustAddAlignCallSiteAttr(LLVMValueRef Instr,
+                                             unsigned Index,
+                                             uint64_t Bytes) {
+  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  AttrBuilder B;
+  B.addAlignmentAttr(Bytes);
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index,
+      AttributeSet::get(Call->getContext(), Index, B)));
+}
+
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   Function *A = unwrap<Function>(Fn);
@@ -187,6 +198,14 @@ extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
+  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
+}
+
+extern "C" void LLVMRustAddAlignAttr(LLVMValueRef Fn, unsigned Index,
+                                               uint64_t Bytes) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addAlignmentAttr(Bytes);
   A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
 }
 
