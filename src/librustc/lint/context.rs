@@ -43,6 +43,7 @@ use std::fmt;
 use std::ops::Deref;
 use syntax::attr;
 use syntax::ast;
+use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
@@ -300,8 +301,9 @@ impl LintStore {
             check_lint_name_cmdline(sess, self,
                                     &lint_name[..], level);
 
+            let lint_flag_val = Symbol::intern(&lint_name);
             match self.find_lint(&lint_name[..], sess, None) {
-                Ok(lint_id) => self.set_level(lint_id, (level, CommandLine)),
+                Ok(lint_id) => self.set_level(lint_id, (level, CommandLine(lint_flag_val))),
                 Err(FindLintError::Removed) => { }
                 Err(_) => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
@@ -311,7 +313,7 @@ impl LintStore {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
-                                     self.set_level(*lint_id, (level, CommandLine)))
+                                     self.set_level(*lint_id, (level, CommandLine(lint_flag_val))))
                              .collect::<Vec<()>>();
                         }
                         None => {
@@ -470,12 +472,20 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
         Default => {
             err.note(&format!("#[{}({})] on by default", level.as_str(), name));
         },
-        CommandLine => {
-            err.note(&format!("[-{} {}]",
-                              match level {
-                                  Warn => 'W', Deny => 'D', Forbid => 'F',
-                                  Allow => bug!()
-                              }, name.replace("_", "-")));
+        CommandLine(lint_flag_val) => {
+            let flag = match level {
+                Warn => "-W", Deny => "-D", Forbid => "-F",
+                Allow => bug!("earlier conditional return should handle Allow case")
+            };
+            let hyphen_case_lint_name = name.replace("_", "-");
+            if lint_flag_val.as_str().deref() == name {
+                err.note(&format!("requested on the command line with `{} {}`",
+                                  flag, hyphen_case_lint_name));
+            } else {
+                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
+                err.note(&format!("`{} {}` implies `{} {}`",
+                                  flag, hyphen_case_flag_val, flag, hyphen_case_lint_name));
+            }
         },
         Node(lint_attr_name, src) => {
             def = Some(src);
@@ -671,7 +681,7 @@ pub trait LintContext<'tcx>: Sized {
                             diag_builder.span_label(forbid_source_span,
                                                     &format!("`forbid` level set here"))
                         },
-                        LintSource::CommandLine => {
+                        LintSource::CommandLine(_) => {
                             diag_builder.note("`forbid` lint level was set on command line")
                         }
                     }.emit()
