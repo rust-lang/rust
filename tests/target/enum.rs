@@ -48,8 +48,7 @@ enum StructLikeVariants {
 enum X {
     CreateWebGLPaintTask(Size2D<i32>,
                          GLContextAttributes,
-                         IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>), /* This is
-                                                                                     * a post comment */
+                         IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>), /* This is a post comment */
 }
 
 pub enum EnumWithAttributes {
@@ -71,8 +70,7 @@ pub enum EnumWithAttributes {
 pub enum SingleTuple {
     // Pre Comment AAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    Match(usize, usize, String), /* Post-comment
-                                  * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
+    Match(usize, usize, String), /* Post-comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
 }
 
 pub enum SingleStruct {

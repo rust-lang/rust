@@ -15,6 +15,7 @@ use regex::Regex;
 
 use Indent;
 use config::Config;
+use utils::wrap_str;
 
 use MIN_STRING;
 
@@ -117,7 +118,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     }
 
     result.push_str(fmt.closer);
-    Some(result)
+    wrap_str(result, fmt.config.max_width, fmt.width, fmt.offset)
 }
 
 #[cfg(test)]

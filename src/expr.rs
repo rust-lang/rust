@@ -64,7 +64,7 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Lit(ref l) => {
             match l.node {
                 ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
-                    rewrite_string_lit(context, l.span, width, offset)
+                    Some(rewrite_string_lit(context, l.span, width, offset))
                 }
                 _ => {
                     wrap_str(context.snippet(expr.span),
@@ -1457,16 +1457,16 @@ fn rewrite_string_lit(context: &RewriteContext,
                       span: Span,
                       width: usize,
                       offset: Indent)
-                      -> Option<String> {
+                      -> String {
     let string_lit = context.snippet(span);
 
     if !context.config.format_strings && !context.config.force_format_strings {
-        return Some(string_lit);
+        return string_lit;
     }
 
     if !context.config.force_format_strings &&
        !string_requires_rewrite(context, span, &string_lit, width, offset) {
-        return Some(string_lit);
+        return string_lit;
     }
 
     let fmt = StringFormat {
@@ -1483,7 +1483,7 @@ fn rewrite_string_lit(context: &RewriteContext,
     // Remove the quote characters.
     let str_lit = &string_lit[1..string_lit.len() - 1];
 
-    rewrite_string(str_lit, &fmt)
+    rewrite_string(str_lit, &fmt).unwrap_or_else(|| string_lit.to_owned())
 }
 
 fn string_requires_rewrite(context: &RewriteContext,
