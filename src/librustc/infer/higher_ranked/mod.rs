@@ -622,50 +622,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// hold. See `README.md` for more details.
     pub fn leak_check(&self,
                       overly_polymorphic: bool,
-                      span: Span,
+                      _span: Span,
                       skol_map: &SkolemizationMap<'tcx>,
                       snapshot: &CombinedSnapshot)
                       -> RelateResult<'tcx, ()>
     {
         debug!("leak_check: skol_map={:?}",
                skol_map);
-
-        // ## Issue #32330 warnings
-        //
-        // When Issue #32330 is fixed, a certain number of late-bound
-        // regions (LBR) will become early-bound. We wish to issue
-        // warnings when the result of `leak_check` relies on such LBR, as
-        // that means that compilation will likely start to fail.
-        //
-        // Recall that when we do a "HR subtype" check, we replace all
-        // late-bound regions (LBR) in the subtype with fresh variables,
-        // and skolemize the late-bound regions in the supertype. If those
-        // skolemized regions from the supertype wind up being
-        // super-regions (directly or indirectly) of either
-        //
-        // - another skolemized region; or,
-        // - some region that pre-exists the HR subtype check
-        //   - e.g., a region variable that is not one of those created
-        //     to represent bound regions in the subtype
-        //
-        // then leak-check (and hence the subtype check) fails.
-        //
-        // What will change when we fix #32330 is that some of the LBR in the
-        // subtype may become early-bound. In that case, they would no longer be in
-        // the "permitted set" of variables that can be related to a skolemized
-        // type.
-        //
-        // So the foundation for this warning is to collect variables that we found
-        // to be related to a skolemized type. For each of them, we have a
-        // `BoundRegion` which carries a `Issue32330` flag. We check whether any of
-        // those flags indicate that this variable was created from a lifetime
-        // that will change from late- to early-bound. If so, we issue a warning
-        // indicating that the results of compilation may change.
-        //
-        // This is imperfect, since there are other kinds of code that will not
-        // compile once #32330 is fixed. However, it fixes the errors observed in
-        // practice on crater runs.
-        let mut warnings = vec![];
 
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
         for (&skol_br, &skol) in skol_map {
@@ -680,13 +643,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 match *tainted_region {
                     ty::ReVar(vid) => {
                         if new_vars.contains(&vid) {
-                            warnings.extend(
-                                match self.region_vars.var_origin(vid) {
-                                    LateBoundRegion(_,
-                                                    ty::BrNamed(.., wc),
-                                                    _) => Some(wc),
-                                    _ => None,
-                                });
                             continue;
                         }
                     }
@@ -711,8 +667,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
-
-        self.issue_32330_warnings(span, &warnings);
 
         Ok(())
     }

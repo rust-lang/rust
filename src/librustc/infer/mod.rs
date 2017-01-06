@@ -368,7 +368,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     // Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, ast::Name),
+    EarlyBoundRegion(Span, ast::Name, Option<ty::Issue32330>),
 
     // Region variables created for bound regions
     // in a function or method that is called
@@ -1184,7 +1184,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               span: Span,
                               def: &ty::RegionParameterDef)
                               -> &'tcx ty::Region {
-        self.next_region_var(EarlyBoundRegion(span, def.name))
+        self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
     }
 
     /// Create a type inference variable for the given
@@ -1761,7 +1761,7 @@ impl RegionVariableOrigin {
             AddrOfRegion(a) => a,
             Autoref(a) => a,
             Coercion(a) => a,
-            EarlyBoundRegion(a, _) => a,
+            EarlyBoundRegion(a, ..) => a,
             LateBoundRegion(a, ..) => a,
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a

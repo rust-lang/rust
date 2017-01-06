@@ -58,7 +58,7 @@ pub enum BoundRegion {
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, Name, Issue32330),
+    BrNamed(DefId, Name),
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
@@ -68,23 +68,18 @@ pub enum BoundRegion {
     BrEnv
 }
 
-/// True if this late-bound region is unconstrained, and hence will
-/// become early-bound once #32330 is fixed.
+/// When a region changed from late-bound to early-bound when #32330
+/// was fixed, its `RegionParameterDef` will have one of these
+/// structures that we can use to give nicer errors.
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash,
          RustcEncodable, RustcDecodable)]
-pub enum Issue32330 {
-    WontChange,
+pub struct Issue32330 {
+    /// fn where is region declared
+    pub fn_def_id: DefId,
 
-    /// this region will change from late-bound to early-bound once
-    /// #32330 is fixed.
-    WillChange {
-        /// fn where is region declared
-        fn_def_id: DefId,
-
-        /// name of region; duplicates the info in BrNamed but convenient
-        /// to have it here, and this code is only temporary
-        region_name: ast::Name,
-    }
+    /// name of region; duplicates the info in BrNamed but convenient
+    /// to have it here, and this code is only temporary
+    pub region_name: ast::Name,
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
