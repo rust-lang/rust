@@ -133,15 +133,24 @@ impl Rewrite for ast::ViewPath {
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                 rewrite_use_list(width, offset, path, path_list, self.span, context)
             }
-            ast::ViewPath_::ViewPathGlob(_) => {
-                // FIXME convert to list?
-                None
-            }
+            ast::ViewPath_::ViewPathGlob(_) => None,
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
                 let budget = try_opt!(width.checked_sub(ident_str.len() + 4));
-                let path_str = try_opt!(rewrite_path(context, false, None, path, budget, offset));
+
+                let path_str = if context.config.normalize_imports &&
+                                  path.segments.last().unwrap().identifier.to_string() == "self" &&
+                                  path.segments.len() > 1 {
+                    let path = &ast::Path {
+                        span: path.span.clone(),
+                        segments: path.segments[..path.segments.len() - 1].to_owned(),
+                        global: path.global,
+                    };
+                    try_opt!(rewrite_path(context, false, None, &path, budget, offset))
+                } else {
+                    try_opt!(rewrite_path(context, false, None, path, budget, offset))
+                };
 
                 Some(if path.segments.last().unwrap().identifier == ident {
                     path_str
@@ -239,9 +248,13 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_single_use_list(path_str: Option<String>, vpi: &ast::PathListItem) -> String {
+fn rewrite_single_use_list(path_str: Option<String>,
+                           vpi: &ast::PathListItem,
+                           context: &RewriteContext)
+                           -> String {
     let path_item_str = match path_str {
-        Some(ref path_str) if vpi.node.name.to_string() == "self" => path_str.to_owned(),
+        Some(ref path_str) if vpi.node.name.to_string() == "self" &&
+                              context.config.normalize_imports => path_str.to_owned(),
         Some(path_str) => format!("{}::{}", path_str, vpi.node.name),
         None => vpi.node.name.to_string(),
     };
@@ -281,7 +294,7 @@ pub fn rewrite_use_list(width: usize,
 
     match path_list.len() {
         0 => unreachable!(),
-        1 => return Some(rewrite_single_use_list(opt_path_str, &path_list[0])),
+        1 => return Some(rewrite_single_use_list(opt_path_str, &path_list[0], context)),
         _ => (),
     }
 

@@ -21,6 +21,10 @@ use {/* Pre-comment! */ Foo, Bar /* comment */};
 use Foo::{Bar, Baz};
 pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
 
+use self;
+use std::io;
+use std::io;
+
 mod Foo {
     pub use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 

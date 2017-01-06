@@ -20,6 +20,10 @@ use Foo::{Bar, Baz};
 pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
 use syntax::some::{};
 
+use self;
+use std::io::{self};
+use std::io::self;
+
 mod Foo {
     pub use syntax::ast::{
         ItemForeignMod,
