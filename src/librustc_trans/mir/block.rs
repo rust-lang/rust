@@ -223,7 +223,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
                     if let Ref(llval) = op.val {
-                        base::load_ty(&bcx, llval, op.ty)
+                        bcx.with_block(|bcx| base::load_ty(&bcx, llval, op.ty))
                     } else {
                         op.pack_if_pair(&bcx).immediate()
                     }
