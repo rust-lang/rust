@@ -4,7 +4,7 @@ error: variable `theTwo` should have a snake case name such as `the_two`
 19 |     let theTwo = 2;
    |         ^^^^^^
    |
-   = note: #[deny(warnings)] implies #[deny(non_snake_case)]
+   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |
@@ -17,7 +17,7 @@ error: variable `theOtherTwo` should have a snake case name such as `the_other_t
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
    |
-   = note: #[deny(warnings)] implies #[deny(non_snake_case)]
+   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
 
 error: unused variable: `theOtherTwo`
   --> $DIR/issue-24690.rs:20:9
@@ -25,7 +25,7 @@ error: unused variable: `theOtherTwo`
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
    |
-   = note: #[deny(warnings)] implies #[deny(unused_variables)]
+   = note: #[deny(unused_variables)] implied by #[deny(warnings)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |

@@ -4,5 +4,5 @@ warning: variable `_InappropriateCamelCasing` should have a snake case name such
 14 |     let _InappropriateCamelCasing = true;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-W bad-style` implies `-W non-snake-case`
+   = note: `-W non-snake-case` implied by `-W bad-style`
 
