@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate foo;
+#![feature(const_fn)]
 
-#[derive(A)]
-struct A;
+const fn foo() -> i64 {
+    3
+}
 
 fn main() {
-    let _b = B;
+    let val = &(foo() % 2);
+    assert_eq!(*val, 1);
 }

@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate foo;
+// compile-flags: -Z parse-only
 
-#[derive(A)]
-struct A;
+fn foo<T>() where <T>::Item: ToString, T: Iterator { }
+               //~^ syntax `where<T>` is reserved for future use
 
-fn main() {
-    let _b = B;
-}
+fn main() {}

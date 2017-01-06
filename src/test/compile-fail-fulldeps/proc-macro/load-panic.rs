@@ -10,8 +10,6 @@
 
 // aux-build:derive-panic.rs
 
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate derive_panic;
 

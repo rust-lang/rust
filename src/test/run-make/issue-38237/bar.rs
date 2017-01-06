@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "proc-macro"]
+#![crate_type = "lib"]
 
-#[proc_macro_derive(Foo)] //~ ERROR: is an experimental feature
-pub fn foo() {
-}
+#[derive(Debug)]
+pub struct S;

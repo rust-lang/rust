@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate foo;
+#[macro_export]
+macro_rules! foo { ($i:ident) => {} }
 
-#[derive(A)]
-struct A;
-
-fn main() {
-    let _b = B;
-}
+#[macro_export]
+macro_rules! foo { () => {} }

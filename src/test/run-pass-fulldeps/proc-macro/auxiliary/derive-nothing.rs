@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
-extern crate foo;
+// no-prefer-dynamic
 
-#[derive(A)]
-struct A;
+#![crate_type = "proc-macro"]
 
-fn main() {
-    let _b = B;
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Nothing)]
+pub fn nothing(input: TokenStream) -> TokenStream {
+    "".parse().unwrap()
 }

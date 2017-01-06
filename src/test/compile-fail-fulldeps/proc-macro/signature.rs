@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "proc-macro"]
-#![feature(proc_macro, proc_macro_lib)]
 #![allow(warnings)]
 
 extern crate proc_macro;

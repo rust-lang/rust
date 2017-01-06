@@ -11,7 +11,6 @@
 // aux-build:expand-with-a-macro.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
 #![deny(warnings)]
 
 #[macro_use]

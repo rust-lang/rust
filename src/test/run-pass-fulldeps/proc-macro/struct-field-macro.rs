@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:derive-nothing.rs
+// ignore-stage1
+
 #[macro_use]
-extern crate foo;
+extern crate derive_nothing;
 
-#[derive(A)]
-struct A;
-
-fn main() {
-    let _b = B;
+macro_rules! int {
+    () => { i32 }
 }
+
+#[derive(Nothing)]
+struct S {
+    x: int!(),
+}
+
+fn main() {}

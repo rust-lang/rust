@@ -298,8 +298,7 @@ pub trait CrateStore<'tcx> {
 
     // trait/impl-item info
     fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
-    fn associated_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> Option<ty::AssociatedItem>;
+    fn associated_item(&self, def: DefId) -> Option<ty::AssociatedItem>;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
@@ -462,7 +461,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // trait/impl-item info
     fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
-    fn associated_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+    fn associated_item<'a>(&self, def: DefId)
                            -> Option<ty::AssociatedItem> { bug!("associated_item") }
 
     // flags

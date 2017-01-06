@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-a.rs
+// aux-build:issue_38715.rs
+
+// Test that `#[macro_export] macro_rules!` shadow earlier `#[macro_export] macro_rules!`
 
 #[macro_use]
-extern crate derive_a;
+extern crate issue_38715;
 
-#[derive(A)] //~ ERROR custom derive macros are experimentally supported
-struct S;
+fn main() {
+    foo!();
+}

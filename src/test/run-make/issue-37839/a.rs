@@ -8,6 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(proc_macro)]
 #![allow(unused)]
 #![crate_type = "proc-macro"]

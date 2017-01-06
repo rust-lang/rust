@@ -8,5 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(proc_macro)] //~ ERROR: experimental and subject to change
-fn foo() {}
+fn main() {
+    let Box(a) = loop { };
+    //~^ ERROR field `0` of struct `std::boxed::Box` is private
+
+    // (The below is a trick to allow compiler to infer a type for
+    // variable `a` without attempting to ascribe a type to the
+    // pattern or otherwise attempting to name the Box type, which
+    // would run afoul of issue #22207)
+    let _b: *mut i32 = *a;
+}

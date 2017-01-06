@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: the `proc-macro` crate type is experimental
+extern crate foo;
+extern crate bar;
 
-#![crate_type = "proc-macro"]
+pub struct Bar;
+impl ::std::ops::Deref for Bar {
+    type Target = bar::S;
+    fn deref(&self) -> &Self::Target { unimplemented!() }
+}
