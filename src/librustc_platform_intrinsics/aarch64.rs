@@ -20,3397 +20,9502 @@ use IntrinsicDef::Named;
 // LLVM, which causes makes compilation very slow. See #28273.
 #[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {
-    if !name.starts_with("aarch64_v") { return None }
-    Some(match &name["aarch64_v".len()..] {
-        "hadd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.shadd.v8i8")
-        },
-        "hadd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uhadd.v8i8")
-        },
-        "hadd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.shadd.v4i16")
-        },
-        "hadd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uhadd.v4i16")
-        },
-        "hadd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.shadd.v2i32")
-        },
-        "hadd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uhadd.v2i32")
-        },
-        "haddq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.shadd.v16i8")
-        },
-        "haddq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uhadd.v16i8")
-        },
-        "haddq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.shadd.v8i16")
-        },
-        "haddq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uhadd.v8i16")
-        },
-        "haddq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.shadd.v4i32")
-        },
-        "haddq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uhadd.v4i32")
-        },
-        "rhadd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.srhadd.v8i8")
-        },
-        "rhadd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.urhadd.v8i8")
-        },
-        "rhadd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.srhadd.v4i16")
-        },
-        "rhadd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.urhadd.v4i16")
-        },
-        "rhadd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.srhadd.v2i32")
-        },
-        "rhadd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.urhadd.v2i32")
-        },
-        "rhaddq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.srhadd.v16i8")
-        },
-        "rhaddq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.urhadd.v16i8")
-        },
-        "rhaddq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.srhadd.v8i16")
-        },
-        "rhaddq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.urhadd.v8i16")
-        },
-        "rhaddq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.srhadd.v4i32")
-        },
-        "rhaddq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.urhadd.v4i32")
-        },
-        "qadd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqadd.v8i8")
-        },
-        "qadd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqadd.v8i8")
-        },
-        "qadd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqadd.v4i16")
-        },
-        "qadd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqadd.v4i16")
-        },
-        "qadd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqadd.v2i32")
-        },
-        "qadd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqadd.v2i32")
-        },
-        "qadd_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqadd.v1i64")
-        },
-        "qadd_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.uqadd.v1i64")
-        },
-        "qaddq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqadd.v16i8")
-        },
-        "qaddq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uqadd.v16i8")
-        },
-        "qaddq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqadd.v8i16")
-        },
-        "qaddq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uqadd.v8i16")
-        },
-        "qaddq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqadd.v4i32")
-        },
-        "qaddq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uqadd.v4i32")
-        },
-        "qaddq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqadd.v2i64")
-        },
-        "qaddq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uqadd.v2i64")
-        },
-        "uqadd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::U8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.suqadd.v16i8")
-        },
-        "uqadd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.suqadd.v8i16")
-        },
-        "uqadd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.suqadd.v4i32")
-        },
-        "uqadd_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.suqadd.v2i64")
-        },
-        "sqadd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.usqadd.v16i8")
-        },
-        "sqadd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::I16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.usqadd.v8i16")
-        },
-        "sqadd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::I32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.usqadd.v4i32")
-        },
-        "sqadd_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::I64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.usqadd.v2i64")
-        },
-        "raddhn_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.raddhn.v8i8")
-        },
-        "raddhn_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.raddhn.v8i8")
-        },
-        "raddhn_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.raddhn.v4i16")
-        },
-        "raddhn_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.raddhn.v4i16")
-        },
-        "raddhn_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.raddhn.v2i32")
-        },
-        "raddhn_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.raddhn.v2i32")
-        },
-        "fmulx_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmulx.v2f32")
-        },
-        "fmulx_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fmulx.v1f64")
-        },
-        "fmulxq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmulx.v4f32")
-        },
-        "fmulxq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmulx.v2f64")
-        },
-        "fma_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.fma.v2f32")
-        },
-        "fma_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.fma.v1f64")
-        },
-        "fmaq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.fma.v4f32")
-        },
-        "fmaq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.fma.v2f64")
-        },
-        "qdmulh_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqdmulh.v4i16")
-        },
-        "qdmulh_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqdmulh.v2i32")
-        },
-        "qdmulhq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqdmulh.v8i16")
-        },
-        "qdmulhq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqdmulh.v4i32")
-        },
-        "qrdmulh_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqrdmulh.v4i16")
-        },
-        "qrdmulh_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqrdmulh.v2i32")
-        },
-        "qrdmulhq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqrdmulh.v8i16")
-        },
-        "qrdmulhq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqrdmulh.v4i32")
-        },
-        "mull_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.smull.v8i16")
-        },
-        "mull_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.umull.v8i16")
-        },
-        "mull_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.smull.v4i32")
-        },
-        "mull_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.umull.v4i32")
-        },
-        "mull_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.smull.v2i64")
-        },
-        "mull_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.umull.v2i64")
-        },
-        "qdmullq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqdmull.v8i16")
-        },
-        "qdmullq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqdmull.v4i32")
-        },
-        "hsub_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.shsub.v8i8")
-        },
-        "hsub_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uhsub.v8i8")
-        },
-        "hsub_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.shsub.v4i16")
-        },
-        "hsub_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uhsub.v4i16")
-        },
-        "hsub_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.shsub.v2i32")
-        },
-        "hsub_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uhsub.v2i32")
-        },
-        "hsubq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.shsub.v16i8")
-        },
-        "hsubq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uhsub.v16i8")
-        },
-        "hsubq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.shsub.v8i16")
-        },
-        "hsubq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uhsub.v8i16")
-        },
-        "hsubq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.shsub.v4i32")
-        },
-        "hsubq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uhsub.v4i32")
-        },
-        "qsub_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqsub.v8i8")
-        },
-        "qsub_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqsub.v8i8")
-        },
-        "qsub_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqsub.v4i16")
-        },
-        "qsub_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqsub.v4i16")
-        },
-        "qsub_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqsub.v2i32")
-        },
-        "qsub_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqsub.v2i32")
-        },
-        "qsub_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqsub.v1i64")
-        },
-        "qsub_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.uqsub.v1i64")
-        },
-        "qsubq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqsub.v16i8")
-        },
-        "qsubq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uqsub.v16i8")
-        },
-        "qsubq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqsub.v8i16")
-        },
-        "qsubq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uqsub.v8i16")
-        },
-        "qsubq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqsub.v4i32")
-        },
-        "qsubq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uqsub.v4i32")
-        },
-        "qsubq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqsub.v2i64")
-        },
-        "qsubq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uqsub.v2i64")
-        },
-        "rsubhn_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.rsubhn.v8i8")
-        },
-        "rsubhn_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.rsubhn.v8i8")
-        },
-        "rsubhn_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.rsubhn.v4i16")
-        },
-        "rsubhn_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.rsubhn.v4i16")
-        },
-        "rsubhn_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.rsubhn.v2i32")
-        },
-        "rsubhn_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.rsubhn.v2i32")
-        },
-        "abd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sabd.v8i8")
-        },
-        "abd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uabd.v8i8")
-        },
-        "abd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sabd.v4i16")
-        },
-        "abd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uabd.v4i16")
-        },
-        "abd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sabd.v2i32")
-        },
-        "abd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uabd.v2i32")
-        },
-        "abd_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fabd.v2f32")
-        },
-        "abd_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fabd.v1f64")
-        },
-        "abdq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sabd.v16i8")
-        },
-        "abdq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uabd.v16i8")
-        },
-        "abdq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sabd.v8i16")
-        },
-        "abdq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uabd.v8i16")
-        },
-        "abdq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sabd.v4i32")
-        },
-        "abdq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uabd.v4i32")
-        },
-        "abdq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fabd.v4f32")
-        },
-        "abdq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fabd.v2f64")
-        },
-        "max_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.smax.v8i8")
-        },
-        "max_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.umax.v8i8")
-        },
-        "max_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.smax.v4i16")
-        },
-        "max_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.umax.v4i16")
-        },
-        "max_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.smax.v2i32")
-        },
-        "max_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.umax.v2i32")
-        },
-        "max_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmax.v2f32")
-        },
-        "max_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fmax.v1f64")
-        },
-        "maxq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.smax.v16i8")
-        },
-        "maxq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.umax.v16i8")
-        },
-        "maxq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.smax.v8i16")
-        },
-        "maxq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.umax.v8i16")
-        },
-        "maxq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.smax.v4i32")
-        },
-        "maxq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.umax.v4i32")
-        },
-        "maxq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmax.v4f32")
-        },
-        "maxq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmax.v2f64")
-        },
-        "min_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.smin.v8i8")
-        },
-        "min_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.umin.v8i8")
-        },
-        "min_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.smin.v4i16")
-        },
-        "min_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.umin.v4i16")
-        },
-        "min_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.smin.v2i32")
-        },
-        "min_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.umin.v2i32")
-        },
-        "min_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmin.v2f32")
-        },
-        "min_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fmin.v1f64")
-        },
-        "minq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.smin.v16i8")
-        },
-        "minq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.umin.v16i8")
-        },
-        "minq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.smin.v8i16")
-        },
-        "minq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.umin.v8i16")
-        },
-        "minq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.smin.v4i32")
-        },
-        "minq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.umin.v4i32")
-        },
-        "minq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmin.v4f32")
-        },
-        "minq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmin.v2f64")
-        },
-        "maxnm_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmaxnm.v2f32")
-        },
-        "maxnm_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fmaxnm.v1f64")
-        },
-        "maxnmq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmaxnm.v4f32")
-        },
-        "maxnmq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmaxnm.v2f64")
-        },
-        "minnm_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fminnm.v2f32")
-        },
-        "minnm_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.fminnm.v1f64")
-        },
-        "minnmq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fminnm.v4f32")
-        },
-        "minnmq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fminnm.v2f64")
-        },
-        "shl_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sshl.v8i8")
-        },
-        "shl_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::I8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.ushl.v8i8")
-        },
-        "shl_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sshl.v4i16")
-        },
-        "shl_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::I16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.ushl.v4i16")
-        },
-        "shl_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sshl.v2i32")
-        },
-        "shl_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::I32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.ushl.v2i32")
-        },
-        "shl_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sshl.v1i64")
-        },
-        "shl_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::I64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.ushl.v1i64")
-        },
-        "shlq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sshl.v16i8")
-        },
-        "shlq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.ushl.v16i8")
-        },
-        "shlq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sshl.v8i16")
-        },
-        "shlq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::I16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.ushl.v8i16")
-        },
-        "shlq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sshl.v4i32")
-        },
-        "shlq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::I32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.ushl.v4i32")
-        },
-        "shlq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sshl.v2i64")
-        },
-        "shlq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::I64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.ushl.v2i64")
-        },
-        "qshl_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqshl.v8i8")
-        },
-        "qshl_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::I8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqshl.v8i8")
-        },
-        "qshl_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqshl.v4i16")
-        },
-        "qshl_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::I16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqshl.v4i16")
-        },
-        "qshl_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqshl.v2i32")
-        },
-        "qshl_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::I32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqshl.v2i32")
-        },
-        "qshl_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqshl.v1i64")
-        },
-        "qshl_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::I64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.uqshl.v1i64")
-        },
-        "qshlq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqshl.v16i8")
-        },
-        "qshlq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uqshl.v16i8")
-        },
-        "qshlq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqshl.v8i16")
-        },
-        "qshlq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::I16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uqshl.v8i16")
-        },
-        "qshlq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqshl.v4i32")
-        },
-        "qshlq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::I32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uqshl.v4i32")
-        },
-        "qshlq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqshl.v2i64")
-        },
-        "qshlq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::I64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uqshl.v2i64")
-        },
-        "rshl_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.srshl.v8i8")
-        },
-        "rshl_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::I8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.urshl.v8i8")
-        },
-        "rshl_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.srshl.v4i16")
-        },
-        "rshl_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::I16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.urshl.v4i16")
-        },
-        "rshl_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.srshl.v2i32")
-        },
-        "rshl_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::I32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.urshl.v2i32")
-        },
-        "rshl_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.srshl.v1i64")
-        },
-        "rshl_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::I64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.urshl.v1i64")
-        },
-        "rshlq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.srshl.v16i8")
-        },
-        "rshlq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.urshl.v16i8")
-        },
-        "rshlq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.srshl.v8i16")
-        },
-        "rshlq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::I16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.urshl.v8i16")
-        },
-        "rshlq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.srshl.v4i32")
-        },
-        "rshlq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::I32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.urshl.v4i32")
-        },
-        "rshlq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.srshl.v2i64")
-        },
-        "rshlq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::I64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.urshl.v2i64")
-        },
-        "qrshl_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqrshl.v8i8")
-        },
-        "qrshl_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::I8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqrshl.v8i8")
-        },
-        "qrshl_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqrshl.v4i16")
-        },
-        "qrshl_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::I16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqrshl.v4i16")
-        },
-        "qrshl_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqrshl.v2i32")
-        },
-        "qrshl_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::I32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqrshl.v2i32")
-        },
-        "qrshl_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqrshl.v1i64")
-        },
-        "qrshl_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::I64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.uqrshl.v1i64")
-        },
-        "qrshlq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqrshl.v16i8")
-        },
-        "qrshlq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uqrshl.v16i8")
-        },
-        "qrshlq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqrshl.v8i16")
-        },
-        "qrshlq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::I16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uqrshl.v8i16")
-        },
-        "qrshlq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqrshl.v4i32")
-        },
-        "qrshlq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::I32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uqrshl.v4i32")
-        },
-        "qrshlq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqrshl.v2i64")
-        },
-        "qrshlq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::I64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uqrshl.v2i64")
-        },
-        "qshrun_n_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U32]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqshrun.v8i8")
-        },
-        "qshrun_n_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqshrun.v4i16")
-        },
-        "qshrun_n_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U32]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqshrun.v2i32")
-        },
-        "qrshrun_n_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U32]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqrshrun.v8i8")
-        },
-        "qrshrun_n_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqrshrun.v4i16")
-        },
-        "qrshrun_n_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U32]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqrshrun.v2i32")
-        },
-        "qshrn_n_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U32]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqshrn.v8i8")
-        },
-        "qshrn_n_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U32]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqshrn.v8i8")
-        },
-        "qshrn_n_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqshrn.v4i16")
-        },
-        "qshrn_n_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqshrn.v4i16")
-        },
-        "qshrn_n_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U32]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqshrn.v2i32")
-        },
-        "qshrn_n_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U32]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqshrn.v2i32")
-        },
-        "rshrn_n_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U32]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.rshrn.v8i8")
-        },
-        "rshrn_n_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U32]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.rshrn.v8i8")
-        },
-        "rshrn_n_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.rshrn.v4i16")
-        },
-        "rshrn_n_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.rshrn.v4i16")
-        },
-        "rshrn_n_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U32]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.rshrn.v2i32")
-        },
-        "rshrn_n_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U32]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.rshrn.v2i32")
-        },
-        "qrshrn_n_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::U32]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqrshrn.v8i8")
-        },
-        "qrshrn_n_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U32]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqrshrn.v8i8")
-        },
-        "qrshrn_n_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::U32]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqrshrn.v4i16")
-        },
-        "qrshrn_n_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqrshrn.v4i16")
-        },
-        "qrshrn_n_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::U32]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqrshrn.v2i32")
-        },
-        "qrshrn_n_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U32]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqrshrn.v2i32")
-        },
-        "sri_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.vsri.v8i8")
-        },
-        "sri_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.vsri.v8i8")
-        },
-        "sri_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.vsri.v4i16")
-        },
-        "sri_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.vsri.v4i16")
-        },
-        "sri_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.vsri.v2i32")
-        },
-        "sri_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.vsri.v2i32")
-        },
-        "sri_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.vsri.v1i64")
-        },
-        "sri_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.vsri.v1i64")
-        },
-        "sriq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.vsri.v16i8")
-        },
-        "sriq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.vsri.v16i8")
-        },
-        "sriq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.vsri.v8i16")
-        },
-        "sriq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.vsri.v8i16")
-        },
-        "sriq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.vsri.v4i32")
-        },
-        "sriq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.vsri.v4i32")
-        },
-        "sriq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.vsri.v2i64")
-        },
-        "sriq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.vsri.v2i64")
-        },
-        "sli_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.vsli.v8i8")
-        },
-        "sli_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.vsli.v8i8")
-        },
-        "sli_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.vsli.v4i16")
-        },
-        "sli_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.vsli.v4i16")
-        },
-        "sli_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.vsli.v2i32")
-        },
-        "sli_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.vsli.v2i32")
-        },
-        "sli_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.vsli.v1i64")
-        },
-        "sli_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.vsli.v1i64")
-        },
-        "sliq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.vsli.v16i8")
-        },
-        "sliq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.vsli.v16i8")
-        },
-        "sliq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.vsli.v8i16")
-        },
-        "sliq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.vsli.v8i16")
-        },
-        "sliq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.vsli.v4i32")
-        },
-        "sliq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.vsli.v4i32")
-        },
-        "sliq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.vsli.v2i64")
-        },
-        "sliq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.vsli.v2i64")
-        },
-        "vqmovn_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqxtn.v8i8")
-        },
-        "vqmovn_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uqxtn.v8i8")
-        },
-        "vqmovn_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqxtn.v4i16")
-        },
-        "vqmovn_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uqxtn.v4i16")
-        },
-        "vqmovn_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqxtn.v2i32")
-        },
-        "vqmovn_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U64x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uqxtn.v2i32")
-        },
-        "abs_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.abs.v8i8")
-        },
-        "abs_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.abs.v4i16")
-        },
-        "abs_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.abs.v2i32")
-        },
-        "abs_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.abs.v1i64")
-        },
-        "absq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.abs.v16i8")
-        },
-        "absq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.abs.v8i16")
-        },
-        "absq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.abs.v4i32")
-        },
-        "absq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.abs.v2i64")
-        },
-        "abs_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.fabs.v2f32")
-        },
-        "abs_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.fabs.v1f64")
-        },
-        "absq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.fabs.v4f32")
-        },
-        "absq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.fabs.v2f64")
-        },
-        "qabs_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqabs.v8i8")
-        },
-        "qabs_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqabs.v4i16")
-        },
-        "qabs_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqabs.v2i32")
-        },
-        "qabs_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqabs.v1i64")
-        },
-        "qabsq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqabs.v16i8")
-        },
-        "qabsq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqabs.v8i16")
-        },
-        "qabsq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqabs.v4i32")
-        },
-        "qabsq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqabs.v2i64")
-        },
-        "qneg_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sqneg.v8i8")
-        },
-        "qneg_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sqneg.v4i16")
-        },
-        "qneg_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sqneg.v2i32")
-        },
-        "qneg_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x1]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.sqneg.v1i64")
-        },
-        "qnegq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sqneg.v16i8")
-        },
-        "qnegq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sqneg.v8i16")
-        },
-        "qnegq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sqneg.v4i32")
-        },
-        "qnegq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sqneg.v2i64")
-        },
-        "clz_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.ctlz.v8i8")
-        },
-        "clz_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.ctlz.v8i8")
-        },
-        "clz_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.ctlz.v4i16")
-        },
-        "clz_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.ctlz.v4i16")
-        },
-        "clz_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.ctlz.v2i32")
-        },
-        "clz_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.ctlz.v2i32")
-        },
-        "clzq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.ctlz.v16i8")
-        },
-        "clzq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.ctlz.v16i8")
-        },
-        "clzq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.ctlz.v8i16")
-        },
-        "clzq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.ctlz.v8i16")
-        },
-        "clzq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.ctlz.v4i32")
-        },
-        "clzq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.ctlz.v4i32")
-        },
-        "cls_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.cls.v8i8")
-        },
-        "cls_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.cls.v8i8")
-        },
-        "cls_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.cls.v4i16")
-        },
-        "cls_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.cls.v4i16")
-        },
-        "cls_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.cls.v2i32")
-        },
-        "cls_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.cls.v2i32")
-        },
-        "clsq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.cls.v16i8")
-        },
-        "clsq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.cls.v16i8")
-        },
-        "clsq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.cls.v8i16")
-        },
-        "clsq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.cls.v8i16")
-        },
-        "clsq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.cls.v4i32")
-        },
-        "clsq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.cls.v4i32")
-        },
-        "cnt_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.ctpop.v8i8")
-        },
-        "cnt_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.ctpop.v8i8")
-        },
-        "cntq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.ctpop.v16i8")
-        },
-        "cntq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.ctpop.v16i8")
-        },
-        "recpe_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.urecpe.v2i32")
-        },
-        "recpe_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.frecpe.v2f32")
-        },
-        "recpe_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.frecpe.v1f64")
-        },
-        "recpeq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.urecpe.v4i32")
-        },
-        "recpeq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.frecpe.v4f32")
-        },
-        "recpeq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.frecpe.v2f64")
-        },
-        "recps_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.frecps.v2f32")
-        },
-        "recps_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.frecps.v1f64")
-        },
-        "recpsq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.frecps.v4f32")
-        },
-        "recpsq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.frecps.v2f64")
-        },
-        "sqrt_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.sqrt.v2f32")
-        },
-        "sqrt_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.sqrt.v1f64")
-        },
-        "sqrtq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.sqrt.v4f32")
-        },
-        "sqrtq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.sqrt.v2f64")
-        },
-        "rsqrte_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.ursqrte.v2i32")
-        },
-        "rsqrte_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.frsqrte.v2f32")
-        },
-        "rsqrte_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.frsqrte.v1f64")
-        },
-        "rsqrteq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.ursqrte.v4i32")
-        },
-        "rsqrteq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.frsqrte.v4f32")
-        },
-        "rsqrteq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.frsqrte.v2f64")
-        },
-        "rsqrts_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.frsqrts.v2f32")
-        },
-        "rsqrts_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &INPUTS },
-            output: &::F64x1,
-            definition: Named("llvm.aarch64.neon.frsqrts.v1f64")
-        },
-        "rsqrtsq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.frsqrts.v4f32")
-        },
-        "rsqrtsq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.frsqrts.v2f64")
-        },
-        "rbit_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.rbit.v8i8")
-        },
-        "rbit_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.rbit.v8i8")
-        },
-        "rbitq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.rbit.v16i8")
-        },
-        "rbitq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.rbit.v16i8")
-        },
-        "ld2_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0v8i8")
-        },
-        "ld2_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0v8i8")
-        },
-        "ld2_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0v4i16")
-        },
-        "ld2_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0v4i16")
-        },
-        "ld2_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0v2i32")
-        },
-        "ld2_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0v2i32")
-        },
-        "ld2_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0v1i64")
-        },
-        "ld2_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0v1i64")
-        },
-        "ld2_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2f32.p0v2f32")
-        },
-        "ld2_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1f64.p0v1f64")
-        },
-        "ld2q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0v16i8")
-        },
-        "ld2q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0v16i8")
-        },
-        "ld2q_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0v8i16")
-        },
-        "ld2q_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0v8i16")
-        },
-        "ld2q_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0v4i32")
-        },
-        "ld2q_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0v4i32")
-        },
-        "ld2q_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0v2i64")
-        },
-        "ld2q_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0v2i64")
-        },
-        "ld2q_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4f32.p0v4f32")
-        },
-        "ld2q_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2f64.p0v2f64")
-        },
-        "ld3_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I8x8, &::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0v8i8")
-        },
-        "ld3_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U8x8, &::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0v8i8")
-        },
-        "ld3_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I16x4, &::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0v4i16")
-        },
-        "ld3_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U16x4, &::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0v4i16")
-        },
-        "ld3_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I32x2, &::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0v2i32")
-        },
-        "ld3_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U32x2, &::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0v2i32")
-        },
-        "ld3_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I64x1, &::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0v1i64")
-        },
-        "ld3_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U64x1, &::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0v1i64")
-        },
-        "ld3_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F32x2, &::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2f32.p0v2f32")
-        },
-        "ld3_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F64x1, &::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1f64.p0v1f64")
-        },
-        "ld3q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0v16i8")
-        },
-        "ld3q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0v16i8")
-        },
-        "ld3q_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I16x8, &::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0v8i16")
-        },
-        "ld3q_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U16x8, &::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0v8i16")
-        },
-        "ld3q_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I32x4, &::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0v4i32")
-        },
-        "ld3q_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U32x4, &::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0v4i32")
-        },
-        "ld3q_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I64x2, &::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0v2i64")
-        },
-        "ld3q_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U64x2, &::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0v2i64")
-        },
-        "ld3q_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4f32.p0v4f32")
-        },
-        "ld3q_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2f64.p0v2f64")
-        },
-        "ld4_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I8x8, &::I8x8, &::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0v8i8")
-        },
-        "ld4_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U8x8, &::U8x8, &::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0v8i8")
-        },
-        "ld4_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I16x4, &::I16x4, &::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0v4i16")
-        },
-        "ld4_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U16x4, &::U16x4, &::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0v4i16")
-        },
-        "ld4_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I32x2, &::I32x2, &::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0v2i32")
-        },
-        "ld4_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U32x2, &::U32x2, &::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0v2i32")
-        },
-        "ld4_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I64x1, &::I64x1, &::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0v1i64")
-        },
-        "ld4_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U64x1, &::U64x1, &::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0v1i64")
-        },
-        "ld4_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F32x2, &::F32x2, &::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2f32.p0v2f32")
-        },
-        "ld4_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x1), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F64x1, &::F64x1, &::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1f64.p0v1f64")
-        },
-        "ld4q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0v16i8")
-        },
-        "ld4q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, Some(&::U8x16), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0v16i8")
-        },
-        "ld4q_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, Some(&::I16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I16x8, &::I16x8, &::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0v8i16")
-        },
-        "ld4q_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, Some(&::U16x8), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U16x8, &::U16x8, &::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0v8i16")
-        },
-        "ld4q_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I32x4, &::I32x4, &::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0v4i32")
-        },
-        "ld4q_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, Some(&::U32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U32x4, &::U32x4, &::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0v4i32")
-        },
-        "ld4q_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I64x2, &::I64x2, &::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0v2i64")
-        },
-        "ld4q_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, Some(&::U64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U64x2, &::U64x2, &::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0v2i64")
-        },
-        "ld4q_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::F32x4), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F32x4, &::F32x4, &::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4f32.p0v4f32")
-        },
-        "ld4q_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::F64x2), true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F64x2, &::F64x2, &::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2f64.p0v2f64")
-        },
-        "ld2_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0i8")
-        },
-        "ld2_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0i8")
-        },
-        "ld2_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0i16")
-        },
-        "ld2_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0i16")
-        },
-        "ld2_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0i32")
-        },
-        "ld2_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0i32")
-        },
-        "ld2_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0i64")
-        },
-        "ld2_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0i64")
-        },
-        "ld2_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2f32.p0f32")
-        },
-        "ld2_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v1f64.p0f64")
-        },
-        "ld2q_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0i8")
-        },
-        "ld2q_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0i8")
-        },
-        "ld2q_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0i16")
-        },
-        "ld2q_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0i16")
-        },
-        "ld2q_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0i32")
-        },
-        "ld2q_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0i32")
-        },
-        "ld2q_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0i64")
-        },
-        "ld2q_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0i64")
-        },
-        "ld2q_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v4f32.p0f32")
-        },
-        "ld2q_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld2.v2f64.p0f64")
-        },
-        "ld3_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I8x8, &::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0i8")
-        },
-        "ld3_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U8x8, &::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0i8")
-        },
-        "ld3_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I16x4, &::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0i16")
-        },
-        "ld3_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U16x4, &::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0i16")
-        },
-        "ld3_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I32x2, &::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0i32")
-        },
-        "ld3_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U32x2, &::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0i32")
-        },
-        "ld3_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I64x1, &::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0i64")
-        },
-        "ld3_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U64x1, &::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0i64")
-        },
-        "ld3_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F32x2, &::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2f32.p0f32")
-        },
-        "ld3_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F64x1, &::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v1f64.p0f64")
-        },
-        "ld3q_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0i8")
-        },
-        "ld3q_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0i8")
-        },
-        "ld3q_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I16x8, &::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0i16")
-        },
-        "ld3q_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U16x8, &::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0i16")
-        },
-        "ld3q_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I32x4, &::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0i32")
-        },
-        "ld3q_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U32x4, &::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0i32")
-        },
-        "ld3q_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::I64x2, &::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0i64")
-        },
-        "ld3q_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::U64x2, &::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0i64")
-        },
-        "ld3q_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v4f32.p0f32")
-        },
-        "ld3q_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld3.v2f64.p0f64")
-        },
-        "ld4_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I8x8, &::I8x8, &::I8x8, &::I8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0i8")
-        },
-        "ld4_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U8x8, &::U8x8, &::U8x8, &::U8x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0i8")
-        },
-        "ld4_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I16x4, &::I16x4, &::I16x4, &::I16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0i16")
-        },
-        "ld4_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U16x4, &::U16x4, &::U16x4, &::U16x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0i16")
-        },
-        "ld4_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I32x2, &::I32x2, &::I32x2, &::I32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0i32")
-        },
-        "ld4_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U32x2, &::U32x2, &::U32x2, &::U32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0i32")
-        },
-        "ld4_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I64x1, &::I64x1, &::I64x1, &::I64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0i64")
-        },
-        "ld4_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U64x1, &::U64x1, &::U64x1, &::U64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0i64")
-        },
-        "ld4_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F32x2, &::F32x2, &::F32x2, &::F32x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2f32.p0f32")
-        },
-        "ld4_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F64x1, &::F64x1, &::F64x1, &::F64x1]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v1f64.p0f64")
-        },
-        "ld4q_dup_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0i8")
-        },
-        "ld4q_dup_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0i8")
-        },
-        "ld4q_dup_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I16x8, &::I16x8, &::I16x8, &::I16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0i16")
-        },
-        "ld4q_dup_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U16, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U16x8, &::U16x8, &::U16x8, &::U16x8]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0i16")
-        },
-        "ld4q_dup_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I32x4, &::I32x4, &::I32x4, &::I32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0i32")
-        },
-        "ld4q_dup_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U32x4, &::U32x4, &::U32x4, &::U32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0i32")
-        },
-        "ld4q_dup_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::I64x2, &::I64x2, &::I64x2, &::I64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0i64")
-        },
-        "ld4q_dup_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::U64x2, &::U64x2, &::U64x2, &::U64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0i64")
-        },
-        "ld4q_dup_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F32, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F32x4, &::F32x4, &::F32x4, &::F32x4]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v4f32.p0f32")
-        },
-        "ld4q_dup_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::F64, None, true); &PTR }]; &INPUTS },
-            output: { static AGG: Type = Type::Aggregate(false, { static PARTS: [&'static Type; 4] = [&::F64x2, &::F64x2, &::F64x2, &::F64x2]; &PARTS }); &AGG },
-            definition: Named("llvm.aarch64.neon.ld4.v2f64.p0f64")
-        },
-        "padd_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.addp.v8i8")
-        },
-        "padd_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.addp.v8i8")
-        },
-        "padd_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.addp.v4i16")
-        },
-        "padd_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.addp.v4i16")
-        },
-        "padd_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.addp.v2i32")
-        },
-        "padd_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.addp.v2i32")
-        },
-        "padd_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.addp.v2f32")
-        },
-        "paddq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.addp.v16i8")
-        },
-        "paddq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.addp.v16i8")
-        },
-        "paddq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.addp.v8i16")
-        },
-        "paddq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.addp.v8i16")
-        },
-        "paddq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.addp.v4i32")
-        },
-        "paddq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.addp.v4i32")
-        },
-        "paddq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.addp.v4f32")
-        },
-        "paddq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.addp.v2i64")
-        },
-        "paddq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.addp.v2i64")
-        },
-        "paddq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.addp.v2f64")
-        },
-        "paddl_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.saddlp.v4i16.v8i8")
-        },
-        "paddl_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uaddlp.v4i16.v8i8")
-        },
-        "paddl_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.saddlp.v2i32.v4i16")
-        },
-        "paddl_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uaddlp.v2i32.v4i16")
-        },
-        "paddl_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I64x1,
-            definition: Named("llvm.aarch64.neon.saddlp.v1i64.v2i32")
-        },
-        "paddl_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U64x1,
-            definition: Named("llvm.aarch64.neon.uaddlp.v1i64.v2i32")
-        },
-        "paddlq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v16i8")
-        },
-        "paddlq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v16i8")
-        },
-        "paddlq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v8i16")
-        },
-        "paddlq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v8i16")
-        },
-        "paddlq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v4i32")
-        },
-        "paddlq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v4i32")
-        },
-        "pmax_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.smaxp.v8i8")
-        },
-        "pmax_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.umaxp.v8i8")
-        },
-        "pmax_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.smaxp.v4i16")
-        },
-        "pmax_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.umaxp.v4i16")
-        },
-        "pmax_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.smaxp.v2i32")
-        },
-        "pmax_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.umaxp.v2i32")
-        },
-        "pmax_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmaxp.v2f32")
-        },
-        "pmaxq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.smaxp.v16i8")
-        },
-        "pmaxq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.umaxp.v16i8")
-        },
-        "pmaxq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.smaxp.v8i16")
-        },
-        "pmaxq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.umaxp.v8i16")
-        },
-        "pmaxq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.smaxp.v4i32")
-        },
-        "pmaxq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.umaxp.v4i32")
-        },
-        "pmaxq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmaxp.v4f32")
-        },
-        "pmaxq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.smaxp.v2i64")
-        },
-        "pmaxq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.umaxp.v2i64")
-        },
-        "pmaxq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmaxp.v2f64")
-        },
-        "pmin_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.sminp.v8i8")
-        },
-        "pmin_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.uminp.v8i8")
-        },
-        "pmin_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.sminp.v4i16")
-        },
-        "pmin_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.uminp.v4i16")
-        },
-        "pmin_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.sminp.v2i32")
-        },
-        "pmin_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.uminp.v2i32")
-        },
-        "pmin_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fminp.v2f32")
-        },
-        "pminq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.sminp.v16i8")
-        },
-        "pminq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.uminp.v16i8")
-        },
-        "pminq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.sminp.v8i16")
-        },
-        "pminq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.uminp.v8i16")
-        },
-        "pminq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.sminp.v4i32")
-        },
-        "pminq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.uminp.v4i32")
-        },
-        "pminq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fminp.v4f32")
-        },
-        "pminq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.sminp.v2i64")
-        },
-        "pminq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.uminp.v2i64")
-        },
-        "pminq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fminp.v2f64")
-        },
-        "pmaxnm_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x8, &::I8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v8i8")
-        },
-        "pmaxnm_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x8, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v8i8")
-        },
-        "pmaxnm_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x4, &::I16x4]; &INPUTS },
-            output: &::I16x4,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v4i16")
-        },
-        "pmaxnm_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x4, &::U16x4]; &INPUTS },
-            output: &::U16x4,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v4i16")
-        },
-        "pmaxnm_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x2, &::I32x2]; &INPUTS },
-            output: &::I32x2,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v2i32")
-        },
-        "pmaxnm_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x2, &::U32x2]; &INPUTS },
-            output: &::U32x2,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v2i32")
-        },
-        "pmaxnm_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fmaxnmp.v2f32")
-        },
-        "pmaxnmq_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v16i8")
-        },
-        "pmaxnmq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v16i8")
-        },
-        "pmaxnmq_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v8i16")
-        },
-        "pmaxnmq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v8i16")
-        },
-        "pmaxnmq_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v4i32")
-        },
-        "pmaxnmq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v4i32")
-        },
-        "pmaxnmq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fmaxnmp.v4f32")
-        },
-        "pmaxnmq_s64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.aarch64.neon.smaxnmp.v2i64")
-        },
-        "pmaxnmq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.aarch64.neon.umaxnmp.v2i64")
-        },
-        "pmaxnmq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fmaxnmp.v2f64")
-        },
-        "pminnm_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x2, &::F32x2]; &INPUTS },
-            output: &::F32x2,
-            definition: Named("llvm.aarch64.neon.fminnmp.v2f32")
-        },
-        "pminnmq_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.aarch64.neon.fminnmp.v4f32")
-        },
-        "pminnmq_f64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.aarch64.neon.fminnmp.v2f64")
-        },
-        "addv_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8,
-            definition: Named("llvm.aarch64.neon.saddv.i8.v8i8")
-        },
-        "addv_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.uaddv.i8.v8i8")
-        },
-        "addv_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16,
-            definition: Named("llvm.aarch64.neon.saddv.i16.v4i16")
-        },
-        "addv_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uaddv.i16.v4i16")
-        },
-        "addv_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
+    if !name.starts_with("aarch64") { return None }
+    Some(match name {
+       "aarch64_ldxr_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.ldxr.p0i8")
+        },
+       "aarch64_ldaxr_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.ldaxr.p0i8")
+        },
+       "aarch64_stxr_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
             output: &::I32,
-            definition: Named("llvm.aarch64.neon.saddv.i32.v2i32")
+            definition: Named("llvm.aarch64.stxr.p0i8")
         },
-        "addv_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uaddv.i32.v2i32")
+       "aarch64_stlxr_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.stlxr.p0i8")
         },
-        "addv_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32,
-            definition: Named("llvm.aarch64.neon.faddv.f32.v2f32")
+       "aarch64_stxp" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.stxp")
         },
-        "addvq_s8" => Intrinsic {
+       "aarch64_stlxp" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.stlxp")
+        },
+       "aarch64_clrex" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.clrex")
+        },
+       "aarch64_sdiv_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.sdiv.v16i8")
+        },
+       "aarch64_sdiv_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.sdiv.i8")
+        },
+       "aarch64_sdiv_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.sdiv.v8i16")
+        },
+       "aarch64_sdiv_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.sdiv.i16")
+        },
+       "aarch64_sdiv_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.sdiv.v4i32")
+        },
+       "aarch64_sdiv_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.sdiv.i32")
+        },
+       "aarch64_sdiv_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.sdiv.v2i64")
+        },
+       "aarch64_sdiv_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.sdiv.i64")
+        },
+       "aarch64_udiv_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.udiv.v16i8")
+        },
+       "aarch64_udiv_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.udiv.i8")
+        },
+       "aarch64_udiv_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.udiv.v8i16")
+        },
+       "aarch64_udiv_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.udiv.i16")
+        },
+       "aarch64_udiv_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.udiv.v4i32")
+        },
+       "aarch64_udiv_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.udiv.i32")
+        },
+       "aarch64_udiv_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.udiv.v2i64")
+        },
+       "aarch64_udiv_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.udiv.i64")
+        },
+       "aarch64_hint" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.hint")
+        },
+       "aarch64_rbit_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.rbit.v16i8")
+        },
+       "aarch64_rbit_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.rbit.i8")
+        },
+       "aarch64_rbit_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.rbit.v8i16")
+        },
+       "aarch64_rbit_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.rbit.i16")
+        },
+       "aarch64_rbit_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.rbit.v4i32")
+        },
+       "aarch64_rbit_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.rbit.i32")
+        },
+       "aarch64_rbit_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.rbit.v2i64")
+        },
+       "aarch64_rbit_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.rbit.i64")
+        },
+       "aarch64_neon_saddv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v16i8")
+        },
+       "aarch64_neon_saddv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v8i16")
+        },
+       "aarch64_neon_saddv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v4i32")
+        },
+       "aarch64_neon_saddv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v2i64")
+        },
+       "aarch64_neon_saddv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v4f32")
+        },
+       "aarch64_neon_saddv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddv.v16i8.v2f64")
+        },
+       "aarch64_neon_saddv_i8_v16i8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I8,
             definition: Named("llvm.aarch64.neon.saddv.i8.v16i8")
         },
-        "addvq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.uaddv.i8.v16i8")
+       "aarch64_neon_saddv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddv.i8.v8i16")
         },
-        "addvq_s16" => Intrinsic {
+       "aarch64_neon_saddv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddv.i8.v4i32")
+        },
+       "aarch64_neon_saddv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddv.i8.v2i64")
+        },
+       "aarch64_neon_saddv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddv.i8.v4f32")
+        },
+       "aarch64_neon_saddv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddv.i8.v2f64")
+        },
+       "aarch64_neon_saddv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v16i8")
+        },
+       "aarch64_neon_saddv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v8i16")
+        },
+       "aarch64_neon_saddv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v4i32")
+        },
+       "aarch64_neon_saddv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v2i64")
+        },
+       "aarch64_neon_saddv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v4f32")
+        },
+       "aarch64_neon_saddv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddv.v8i16.v2f64")
+        },
+       "aarch64_neon_saddv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddv.i16.v16i8")
+        },
+       "aarch64_neon_saddv_i16_v8i16" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I16,
             definition: Named("llvm.aarch64.neon.saddv.i16.v8i16")
         },
-        "addvq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uaddv.i16.v8i16")
+       "aarch64_neon_saddv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddv.i16.v4i32")
         },
-        "addvq_s32" => Intrinsic {
+       "aarch64_neon_saddv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddv.i16.v2i64")
+        },
+       "aarch64_neon_saddv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddv.i16.v4f32")
+        },
+       "aarch64_neon_saddv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddv.i16.v2f64")
+        },
+       "aarch64_neon_saddv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v16i8")
+        },
+       "aarch64_neon_saddv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v8i16")
+        },
+       "aarch64_neon_saddv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v4i32")
+        },
+       "aarch64_neon_saddv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v2i64")
+        },
+       "aarch64_neon_saddv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v4f32")
+        },
+       "aarch64_neon_saddv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddv.v4i32.v2f64")
+        },
+       "aarch64_neon_saddv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddv.i32.v16i8")
+        },
+       "aarch64_neon_saddv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddv.i32.v8i16")
+        },
+       "aarch64_neon_saddv_i32_v4i32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
             output: &::I32,
             definition: Named("llvm.aarch64.neon.saddv.i32.v4i32")
         },
-        "addvq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uaddv.i32.v4i32")
+       "aarch64_neon_saddv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddv.i32.v2i64")
         },
-        "addvq_f32" => Intrinsic {
+       "aarch64_neon_saddv_i32_v4f32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32,
-            definition: Named("llvm.aarch64.neon.faddv.f32.v4f32")
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddv.i32.v4f32")
         },
-        "addvq_s64" => Intrinsic {
+       "aarch64_neon_saddv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddv.i32.v2f64")
+        },
+       "aarch64_neon_saddv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v16i8")
+        },
+       "aarch64_neon_saddv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v8i16")
+        },
+       "aarch64_neon_saddv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v4i32")
+        },
+       "aarch64_neon_saddv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v2i64")
+        },
+       "aarch64_neon_saddv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v4f32")
+        },
+       "aarch64_neon_saddv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddv.v2i64.v2f64")
+        },
+       "aarch64_neon_saddv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddv.i64.v16i8")
+        },
+       "aarch64_neon_saddv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddv.i64.v8i16")
+        },
+       "aarch64_neon_saddv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddv.i64.v4i32")
+        },
+       "aarch64_neon_saddv_i64_v2i64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
             output: &::I64,
             definition: Named("llvm.aarch64.neon.saddv.i64.v2i64")
         },
-        "addvq_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U64x2]; &INPUTS },
-            output: &::U64,
+       "aarch64_neon_saddv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddv.i64.v4f32")
+        },
+       "aarch64_neon_saddv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddv.i64.v2f64")
+        },
+       "aarch64_neon_uaddv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v16i8")
+        },
+       "aarch64_neon_uaddv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v8i16")
+        },
+       "aarch64_neon_uaddv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v4i32")
+        },
+       "aarch64_neon_uaddv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v2i64")
+        },
+       "aarch64_neon_uaddv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v4f32")
+        },
+       "aarch64_neon_uaddv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddv.v16i8.v2f64")
+        },
+       "aarch64_neon_uaddv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v16i8")
+        },
+       "aarch64_neon_uaddv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v8i16")
+        },
+       "aarch64_neon_uaddv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v4i32")
+        },
+       "aarch64_neon_uaddv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v2i64")
+        },
+       "aarch64_neon_uaddv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v4f32")
+        },
+       "aarch64_neon_uaddv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddv.i8.v2f64")
+        },
+       "aarch64_neon_uaddv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v16i8")
+        },
+       "aarch64_neon_uaddv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v8i16")
+        },
+       "aarch64_neon_uaddv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v4i32")
+        },
+       "aarch64_neon_uaddv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v2i64")
+        },
+       "aarch64_neon_uaddv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v4f32")
+        },
+       "aarch64_neon_uaddv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddv.v8i16.v2f64")
+        },
+       "aarch64_neon_uaddv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v16i8")
+        },
+       "aarch64_neon_uaddv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v8i16")
+        },
+       "aarch64_neon_uaddv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v4i32")
+        },
+       "aarch64_neon_uaddv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v2i64")
+        },
+       "aarch64_neon_uaddv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v4f32")
+        },
+       "aarch64_neon_uaddv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddv.i16.v2f64")
+        },
+       "aarch64_neon_uaddv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v16i8")
+        },
+       "aarch64_neon_uaddv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v8i16")
+        },
+       "aarch64_neon_uaddv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v4i32")
+        },
+       "aarch64_neon_uaddv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v2i64")
+        },
+       "aarch64_neon_uaddv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v4f32")
+        },
+       "aarch64_neon_uaddv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddv.v4i32.v2f64")
+        },
+       "aarch64_neon_uaddv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v16i8")
+        },
+       "aarch64_neon_uaddv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v8i16")
+        },
+       "aarch64_neon_uaddv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v4i32")
+        },
+       "aarch64_neon_uaddv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v2i64")
+        },
+       "aarch64_neon_uaddv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v4f32")
+        },
+       "aarch64_neon_uaddv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddv.i32.v2f64")
+        },
+       "aarch64_neon_uaddv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v16i8")
+        },
+       "aarch64_neon_uaddv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v8i16")
+        },
+       "aarch64_neon_uaddv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v4i32")
+        },
+       "aarch64_neon_uaddv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v2i64")
+        },
+       "aarch64_neon_uaddv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v4f32")
+        },
+       "aarch64_neon_uaddv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddv.v2i64.v2f64")
+        },
+       "aarch64_neon_uaddv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddv.i64.v16i8")
+        },
+       "aarch64_neon_uaddv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddv.i64.v8i16")
+        },
+       "aarch64_neon_uaddv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddv.i64.v4i32")
+        },
+       "aarch64_neon_uaddv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
             definition: Named("llvm.aarch64.neon.uaddv.i64.v2i64")
         },
-        "addvq_f64" => Intrinsic {
+       "aarch64_neon_uaddv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddv.i64.v4f32")
+        },
+       "aarch64_neon_uaddv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddv.i64.v2f64")
+        },
+       "aarch64_neon_faddv_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v16i8")
+        },
+       "aarch64_neon_faddv_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v8i16")
+        },
+       "aarch64_neon_faddv_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v4i32")
+        },
+       "aarch64_neon_faddv_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v2i64")
+        },
+       "aarch64_neon_faddv_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v4f32")
+        },
+       "aarch64_neon_faddv_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.faddv.v4f32.v2f64")
+        },
+       "aarch64_neon_faddv_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v16i8")
+        },
+       "aarch64_neon_faddv_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v8i16")
+        },
+       "aarch64_neon_faddv_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v4i32")
+        },
+       "aarch64_neon_faddv_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v2i64")
+        },
+       "aarch64_neon_faddv_f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v4f32")
+        },
+       "aarch64_neon_faddv_f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.faddv.f32.v2f64")
+        },
+       "aarch64_neon_faddv_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v16i8")
+        },
+       "aarch64_neon_faddv_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v8i16")
+        },
+       "aarch64_neon_faddv_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v4i32")
+        },
+       "aarch64_neon_faddv_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v2i64")
+        },
+       "aarch64_neon_faddv_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v4f32")
+        },
+       "aarch64_neon_faddv_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.faddv.v2f64.v2f64")
+        },
+       "aarch64_neon_faddv_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.faddv.f64.v16i8")
+        },
+       "aarch64_neon_faddv_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.faddv.f64.v8i16")
+        },
+       "aarch64_neon_faddv_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.faddv.f64.v4i32")
+        },
+       "aarch64_neon_faddv_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.faddv.f64.v2i64")
+        },
+       "aarch64_neon_faddv_f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.faddv.f64.v4f32")
+        },
+       "aarch64_neon_faddv_f64_v2f64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
             output: &::F64,
             definition: Named("llvm.aarch64.neon.faddv.f64.v2f64")
         },
-        "addlv_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I16,
-            definition: Named("llvm.aarch64.neon.saddlv.i16.v8i8")
+       "aarch64_neon_saddlv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v16i8")
         },
-        "addlv_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uaddlv.i16.v8i8")
+       "aarch64_neon_saddlv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v8i16")
         },
-        "addlv_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.aarch64.neon.saddlv.i32.v4i16")
+       "aarch64_neon_saddlv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v4i32")
         },
-        "addlv_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uaddlv.i32.v4i16")
+       "aarch64_neon_saddlv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v2i64")
         },
-        "addlv_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I64,
-            definition: Named("llvm.aarch64.neon.saddlv.i64.v2i32")
+       "aarch64_neon_saddlv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v4f32")
         },
-        "addlv_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.aarch64.neon.uaddlv.i64.v2i32")
+       "aarch64_neon_saddlv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlv.v16i8.v2f64")
         },
-        "addlvq_s8" => Intrinsic {
+       "aarch64_neon_saddlv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v16i8")
+        },
+       "aarch64_neon_saddlv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v8i16")
+        },
+       "aarch64_neon_saddlv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v4i32")
+        },
+       "aarch64_neon_saddlv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v2i64")
+        },
+       "aarch64_neon_saddlv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v4f32")
+        },
+       "aarch64_neon_saddlv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.saddlv.i8.v2f64")
+        },
+       "aarch64_neon_saddlv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v16i8")
+        },
+       "aarch64_neon_saddlv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v8i16")
+        },
+       "aarch64_neon_saddlv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v4i32")
+        },
+       "aarch64_neon_saddlv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v2i64")
+        },
+       "aarch64_neon_saddlv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v4f32")
+        },
+       "aarch64_neon_saddlv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlv.v8i16.v2f64")
+        },
+       "aarch64_neon_saddlv_i16_v16i8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I16,
             definition: Named("llvm.aarch64.neon.saddlv.i16.v16i8")
         },
-        "addlvq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uaddlv.i16.v16i8")
+       "aarch64_neon_saddlv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddlv.i16.v8i16")
         },
-        "addlvq_s16" => Intrinsic {
+       "aarch64_neon_saddlv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddlv.i16.v4i32")
+        },
+       "aarch64_neon_saddlv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddlv.i16.v2i64")
+        },
+       "aarch64_neon_saddlv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddlv.i16.v4f32")
+        },
+       "aarch64_neon_saddlv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.saddlv.i16.v2f64")
+        },
+       "aarch64_neon_saddlv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v16i8")
+        },
+       "aarch64_neon_saddlv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v8i16")
+        },
+       "aarch64_neon_saddlv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v4i32")
+        },
+       "aarch64_neon_saddlv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v2i64")
+        },
+       "aarch64_neon_saddlv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v4f32")
+        },
+       "aarch64_neon_saddlv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlv.v4i32.v2f64")
+        },
+       "aarch64_neon_saddlv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddlv.i32.v16i8")
+        },
+       "aarch64_neon_saddlv_i32_v8i16" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I32,
             definition: Named("llvm.aarch64.neon.saddlv.i32.v8i16")
         },
-        "addlvq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uaddlv.i32.v8i16")
+       "aarch64_neon_saddlv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddlv.i32.v4i32")
         },
-        "addlvq_s32" => Intrinsic {
+       "aarch64_neon_saddlv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddlv.i32.v2i64")
+        },
+       "aarch64_neon_saddlv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddlv.i32.v4f32")
+        },
+       "aarch64_neon_saddlv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.saddlv.i32.v2f64")
+        },
+       "aarch64_neon_saddlv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v16i8")
+        },
+       "aarch64_neon_saddlv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v8i16")
+        },
+       "aarch64_neon_saddlv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v4i32")
+        },
+       "aarch64_neon_saddlv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v2i64")
+        },
+       "aarch64_neon_saddlv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v4f32")
+        },
+       "aarch64_neon_saddlv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlv.v2i64.v2f64")
+        },
+       "aarch64_neon_saddlv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddlv.i64.v16i8")
+        },
+       "aarch64_neon_saddlv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddlv.i64.v8i16")
+        },
+       "aarch64_neon_saddlv_i64_v4i32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
             output: &::I64,
             definition: Named("llvm.aarch64.neon.saddlv.i64.v4i32")
         },
-        "addlvq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U64,
+       "aarch64_neon_saddlv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddlv.i64.v2i64")
+        },
+       "aarch64_neon_saddlv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddlv.i64.v4f32")
+        },
+       "aarch64_neon_saddlv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.saddlv.i64.v2f64")
+        },
+       "aarch64_neon_uaddlv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v16i8")
+        },
+       "aarch64_neon_uaddlv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v8i16")
+        },
+       "aarch64_neon_uaddlv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v4i32")
+        },
+       "aarch64_neon_uaddlv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v2i64")
+        },
+       "aarch64_neon_uaddlv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v4f32")
+        },
+       "aarch64_neon_uaddlv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlv.v16i8.v2f64")
+        },
+       "aarch64_neon_uaddlv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v16i8")
+        },
+       "aarch64_neon_uaddlv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v8i16")
+        },
+       "aarch64_neon_uaddlv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v4i32")
+        },
+       "aarch64_neon_uaddlv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v2i64")
+        },
+       "aarch64_neon_uaddlv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v4f32")
+        },
+       "aarch64_neon_uaddlv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uaddlv.i8.v2f64")
+        },
+       "aarch64_neon_uaddlv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v16i8")
+        },
+       "aarch64_neon_uaddlv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v8i16")
+        },
+       "aarch64_neon_uaddlv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v4i32")
+        },
+       "aarch64_neon_uaddlv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v2i64")
+        },
+       "aarch64_neon_uaddlv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v4f32")
+        },
+       "aarch64_neon_uaddlv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlv.v8i16.v2f64")
+        },
+       "aarch64_neon_uaddlv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v16i8")
+        },
+       "aarch64_neon_uaddlv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v8i16")
+        },
+       "aarch64_neon_uaddlv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v4i32")
+        },
+       "aarch64_neon_uaddlv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v2i64")
+        },
+       "aarch64_neon_uaddlv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v4f32")
+        },
+       "aarch64_neon_uaddlv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uaddlv.i16.v2f64")
+        },
+       "aarch64_neon_uaddlv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v16i8")
+        },
+       "aarch64_neon_uaddlv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v8i16")
+        },
+       "aarch64_neon_uaddlv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v4i32")
+        },
+       "aarch64_neon_uaddlv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v2i64")
+        },
+       "aarch64_neon_uaddlv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v4f32")
+        },
+       "aarch64_neon_uaddlv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlv.v4i32.v2f64")
+        },
+       "aarch64_neon_uaddlv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v16i8")
+        },
+       "aarch64_neon_uaddlv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v8i16")
+        },
+       "aarch64_neon_uaddlv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v4i32")
+        },
+       "aarch64_neon_uaddlv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v2i64")
+        },
+       "aarch64_neon_uaddlv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v4f32")
+        },
+       "aarch64_neon_uaddlv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uaddlv.i32.v2f64")
+        },
+       "aarch64_neon_uaddlv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v16i8")
+        },
+       "aarch64_neon_uaddlv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v8i16")
+        },
+       "aarch64_neon_uaddlv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v4i32")
+        },
+       "aarch64_neon_uaddlv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v2i64")
+        },
+       "aarch64_neon_uaddlv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v4f32")
+        },
+       "aarch64_neon_uaddlv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlv.v2i64.v2f64")
+        },
+       "aarch64_neon_uaddlv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddlv.i64.v16i8")
+        },
+       "aarch64_neon_uaddlv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddlv.i64.v8i16")
+        },
+       "aarch64_neon_uaddlv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
             definition: Named("llvm.aarch64.neon.uaddlv.i64.v4i32")
         },
-        "maxv_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
+       "aarch64_neon_uaddlv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddlv.i64.v2i64")
+        },
+       "aarch64_neon_uaddlv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddlv.i64.v4f32")
+        },
+       "aarch64_neon_uaddlv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uaddlv.i64.v2f64")
+        },
+       "aarch64_neon_shadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.shadd.v16i8")
+        },
+       "aarch64_neon_shadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.shadd.v8i16")
+        },
+       "aarch64_neon_shadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.shadd.v4i32")
+        },
+       "aarch64_neon_shadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.shadd.v2i64")
+        },
+       "aarch64_neon_shadd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.shadd.v4f32")
+        },
+       "aarch64_neon_shadd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.shadd.v2f64")
+        },
+       "aarch64_neon_uhadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uhadd.v16i8")
+        },
+       "aarch64_neon_uhadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uhadd.v8i16")
+        },
+       "aarch64_neon_uhadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uhadd.v4i32")
+        },
+       "aarch64_neon_uhadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uhadd.v2i64")
+        },
+       "aarch64_neon_uhadd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uhadd.v4f32")
+        },
+       "aarch64_neon_uhadd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uhadd.v2f64")
+        },
+       "aarch64_neon_srhadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.srhadd.v16i8")
+        },
+       "aarch64_neon_srhadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.srhadd.v8i16")
+        },
+       "aarch64_neon_srhadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.srhadd.v4i32")
+        },
+       "aarch64_neon_srhadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.srhadd.v2i64")
+        },
+       "aarch64_neon_srhadd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.srhadd.v4f32")
+        },
+       "aarch64_neon_srhadd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.srhadd.v2f64")
+        },
+       "aarch64_neon_urhadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.urhadd.v16i8")
+        },
+       "aarch64_neon_urhadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.urhadd.v8i16")
+        },
+       "aarch64_neon_urhadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.urhadd.v4i32")
+        },
+       "aarch64_neon_urhadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.urhadd.v2i64")
+        },
+       "aarch64_neon_urhadd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.urhadd.v4f32")
+        },
+       "aarch64_neon_urhadd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.urhadd.v2f64")
+        },
+       "aarch64_neon_sqadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqadd.v16i8")
+        },
+       "aarch64_neon_sqadd_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
             output: &::I8,
-            definition: Named("llvm.aarch64.neon.smaxv.i8.v8i8")
+            definition: Named("llvm.aarch64.neon.sqadd.i8")
         },
-        "maxv_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.umaxv.i8.v8i8")
+       "aarch64_neon_sqadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqadd.v8i16")
         },
-        "maxv_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
+       "aarch64_neon_sqadd_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
             output: &::I16,
-            definition: Named("llvm.aarch64.neon.smaxv.i16.v4i16")
+            definition: Named("llvm.aarch64.neon.sqadd.i16")
         },
-        "maxv_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.umaxv.i16.v4i16")
+       "aarch64_neon_sqadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqadd.v4i32")
         },
-        "maxv_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
+       "aarch64_neon_sqadd_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
             output: &::I32,
-            definition: Named("llvm.aarch64.neon.smaxv.i32.v2i32")
+            definition: Named("llvm.aarch64.neon.sqadd.i32")
         },
-        "maxv_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.umaxv.i32.v2i32")
+       "aarch64_neon_sqadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqadd.v2i64")
         },
-        "maxv_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
+       "aarch64_neon_sqadd_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqadd.i64")
+        },
+       "aarch64_neon_suqadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.suqadd.v16i8")
+        },
+       "aarch64_neon_suqadd_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.suqadd.i8")
+        },
+       "aarch64_neon_suqadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.suqadd.v8i16")
+        },
+       "aarch64_neon_suqadd_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.suqadd.i16")
+        },
+       "aarch64_neon_suqadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.suqadd.v4i32")
+        },
+       "aarch64_neon_suqadd_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.suqadd.i32")
+        },
+       "aarch64_neon_suqadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.suqadd.v2i64")
+        },
+       "aarch64_neon_suqadd_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.suqadd.i64")
+        },
+       "aarch64_neon_usqadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.usqadd.v16i8")
+        },
+       "aarch64_neon_usqadd_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.usqadd.i8")
+        },
+       "aarch64_neon_usqadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.usqadd.v8i16")
+        },
+       "aarch64_neon_usqadd_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.usqadd.i16")
+        },
+       "aarch64_neon_usqadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.usqadd.v4i32")
+        },
+       "aarch64_neon_usqadd_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.usqadd.i32")
+        },
+       "aarch64_neon_usqadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.usqadd.v2i64")
+        },
+       "aarch64_neon_usqadd_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.usqadd.i64")
+        },
+       "aarch64_neon_uqadd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uqadd.v16i8")
+        },
+       "aarch64_neon_uqadd_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uqadd.i8")
+        },
+       "aarch64_neon_uqadd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uqadd.v8i16")
+        },
+       "aarch64_neon_uqadd_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uqadd.i16")
+        },
+       "aarch64_neon_uqadd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uqadd.v4i32")
+        },
+       "aarch64_neon_uqadd_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uqadd.i32")
+        },
+       "aarch64_neon_uqadd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uqadd.v2i64")
+        },
+       "aarch64_neon_uqadd_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uqadd.i64")
+        },
+       "aarch64_neon_sqdmulh_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqdmulh.v16i8")
+        },
+       "aarch64_neon_sqdmulh_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqdmulh.i8")
+        },
+       "aarch64_neon_sqdmulh_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqdmulh.v8i16")
+        },
+       "aarch64_neon_sqdmulh_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqdmulh.i16")
+        },
+       "aarch64_neon_sqdmulh_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqdmulh.v4i32")
+        },
+       "aarch64_neon_sqdmulh_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqdmulh.i32")
+        },
+       "aarch64_neon_sqdmulh_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqdmulh.v2i64")
+        },
+       "aarch64_neon_sqdmulh_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqdmulh.i64")
+        },
+       "aarch64_neon_sqrdmulh_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.v16i8")
+        },
+       "aarch64_neon_sqrdmulh_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.i8")
+        },
+       "aarch64_neon_sqrdmulh_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.v8i16")
+        },
+       "aarch64_neon_sqrdmulh_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.i16")
+        },
+       "aarch64_neon_sqrdmulh_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.v4i32")
+        },
+       "aarch64_neon_sqrdmulh_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.i32")
+        },
+       "aarch64_neon_sqrdmulh_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.v2i64")
+        },
+       "aarch64_neon_sqrdmulh_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqrdmulh.i64")
+        },
+       "aarch64_neon_pmul_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.pmul.v16i8")
+        },
+       "aarch64_neon_pmul_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.pmul.v8i16")
+        },
+       "aarch64_neon_pmul_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.pmul.v4i32")
+        },
+       "aarch64_neon_pmul_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.pmul.v2i64")
+        },
+       "aarch64_neon_pmul_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.pmul.v4f32")
+        },
+       "aarch64_neon_pmul_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.pmul.v2f64")
+        },
+       "aarch64_neon_pmull64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.pmull64")
+        },
+       "aarch64_neon_fmulx_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmulx.v4f32")
+        },
+       "aarch64_neon_fmulx_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
             output: &::F32,
-            definition: Named("llvm.aarch64.neon.fmaxv.f32.v2f32")
+            definition: Named("llvm.aarch64.neon.fmulx.f32")
         },
-        "maxvq_s8" => Intrinsic {
+       "aarch64_neon_fmulx_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmulx.v2f64")
+        },
+       "aarch64_neon_fmulx_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmulx.f64")
+        },
+       "aarch64_neon_sqdmulls_scalar" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqdmulls.scalar")
+        },
+       "aarch64_neon_shsub_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.shsub.v16i8")
+        },
+       "aarch64_neon_shsub_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.shsub.v8i16")
+        },
+       "aarch64_neon_shsub_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.shsub.v4i32")
+        },
+       "aarch64_neon_shsub_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.shsub.v2i64")
+        },
+       "aarch64_neon_shsub_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.shsub.v4f32")
+        },
+       "aarch64_neon_shsub_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.shsub.v2f64")
+        },
+       "aarch64_neon_uhsub_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uhsub.v16i8")
+        },
+       "aarch64_neon_uhsub_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uhsub.v8i16")
+        },
+       "aarch64_neon_uhsub_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uhsub.v4i32")
+        },
+       "aarch64_neon_uhsub_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uhsub.v2i64")
+        },
+       "aarch64_neon_uhsub_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uhsub.v4f32")
+        },
+       "aarch64_neon_uhsub_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uhsub.v2f64")
+        },
+       "aarch64_neon_sqsub_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqsub.v16i8")
+        },
+       "aarch64_neon_sqsub_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqsub.i8")
+        },
+       "aarch64_neon_sqsub_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqsub.v8i16")
+        },
+       "aarch64_neon_sqsub_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqsub.i16")
+        },
+       "aarch64_neon_sqsub_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqsub.v4i32")
+        },
+       "aarch64_neon_sqsub_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqsub.i32")
+        },
+       "aarch64_neon_sqsub_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqsub.v2i64")
+        },
+       "aarch64_neon_sqsub_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqsub.i64")
+        },
+       "aarch64_neon_uqsub_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uqsub.v16i8")
+        },
+       "aarch64_neon_uqsub_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uqsub.i8")
+        },
+       "aarch64_neon_uqsub_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uqsub.v8i16")
+        },
+       "aarch64_neon_uqsub_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uqsub.i16")
+        },
+       "aarch64_neon_uqsub_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uqsub.v4i32")
+        },
+       "aarch64_neon_uqsub_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uqsub.i32")
+        },
+       "aarch64_neon_uqsub_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uqsub.v2i64")
+        },
+       "aarch64_neon_uqsub_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uqsub.i64")
+        },
+       "aarch64_neon_facge_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facge.v16i8.v4f32")
+        },
+       "aarch64_neon_facge_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facge.v16i8.f32")
+        },
+       "aarch64_neon_facge_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facge.v16i8.v2f64")
+        },
+       "aarch64_neon_facge_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facge.v16i8.f64")
+        },
+       "aarch64_neon_facge_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facge.i8.v4f32")
+        },
+       "aarch64_neon_facge_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facge.i8.f32")
+        },
+       "aarch64_neon_facge_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facge.i8.v2f64")
+        },
+       "aarch64_neon_facge_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facge.i8.f64")
+        },
+       "aarch64_neon_facge_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facge.v8i16.v4f32")
+        },
+       "aarch64_neon_facge_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facge.v8i16.f32")
+        },
+       "aarch64_neon_facge_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facge.v8i16.v2f64")
+        },
+       "aarch64_neon_facge_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facge.v8i16.f64")
+        },
+       "aarch64_neon_facge_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facge.i16.v4f32")
+        },
+       "aarch64_neon_facge_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facge.i16.f32")
+        },
+       "aarch64_neon_facge_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facge.i16.v2f64")
+        },
+       "aarch64_neon_facge_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facge.i16.f64")
+        },
+       "aarch64_neon_facge_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facge.v4i32.v4f32")
+        },
+       "aarch64_neon_facge_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facge.v4i32.f32")
+        },
+       "aarch64_neon_facge_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facge.v4i32.v2f64")
+        },
+       "aarch64_neon_facge_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facge.v4i32.f64")
+        },
+       "aarch64_neon_facge_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facge.i32.v4f32")
+        },
+       "aarch64_neon_facge_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facge.i32.f32")
+        },
+       "aarch64_neon_facge_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facge.i32.v2f64")
+        },
+       "aarch64_neon_facge_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facge.i32.f64")
+        },
+       "aarch64_neon_facge_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facge.v2i64.v4f32")
+        },
+       "aarch64_neon_facge_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facge.v2i64.f32")
+        },
+       "aarch64_neon_facge_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facge.v2i64.v2f64")
+        },
+       "aarch64_neon_facge_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facge.v2i64.f64")
+        },
+       "aarch64_neon_facge_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facge.i64.v4f32")
+        },
+       "aarch64_neon_facge_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facge.i64.f32")
+        },
+       "aarch64_neon_facge_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facge.i64.v2f64")
+        },
+       "aarch64_neon_facge_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facge.i64.f64")
+        },
+       "aarch64_neon_facgt_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facgt.v16i8.v4f32")
+        },
+       "aarch64_neon_facgt_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facgt.v16i8.f32")
+        },
+       "aarch64_neon_facgt_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facgt.v16i8.v2f64")
+        },
+       "aarch64_neon_facgt_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.facgt.v16i8.f64")
+        },
+       "aarch64_neon_facgt_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facgt.i8.v4f32")
+        },
+       "aarch64_neon_facgt_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facgt.i8.f32")
+        },
+       "aarch64_neon_facgt_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facgt.i8.v2f64")
+        },
+       "aarch64_neon_facgt_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.facgt.i8.f64")
+        },
+       "aarch64_neon_facgt_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facgt.v8i16.v4f32")
+        },
+       "aarch64_neon_facgt_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facgt.v8i16.f32")
+        },
+       "aarch64_neon_facgt_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facgt.v8i16.v2f64")
+        },
+       "aarch64_neon_facgt_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.facgt.v8i16.f64")
+        },
+       "aarch64_neon_facgt_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facgt.i16.v4f32")
+        },
+       "aarch64_neon_facgt_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facgt.i16.f32")
+        },
+       "aarch64_neon_facgt_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facgt.i16.v2f64")
+        },
+       "aarch64_neon_facgt_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.facgt.i16.f64")
+        },
+       "aarch64_neon_facgt_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facgt.v4i32.v4f32")
+        },
+       "aarch64_neon_facgt_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facgt.v4i32.f32")
+        },
+       "aarch64_neon_facgt_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facgt.v4i32.v2f64")
+        },
+       "aarch64_neon_facgt_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.facgt.v4i32.f64")
+        },
+       "aarch64_neon_facgt_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facgt.i32.v4f32")
+        },
+       "aarch64_neon_facgt_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facgt.i32.f32")
+        },
+       "aarch64_neon_facgt_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facgt.i32.v2f64")
+        },
+       "aarch64_neon_facgt_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.facgt.i32.f64")
+        },
+       "aarch64_neon_facgt_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facgt.v2i64.v4f32")
+        },
+       "aarch64_neon_facgt_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facgt.v2i64.f32")
+        },
+       "aarch64_neon_facgt_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facgt.v2i64.v2f64")
+        },
+       "aarch64_neon_facgt_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.facgt.v2i64.f64")
+        },
+       "aarch64_neon_facgt_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facgt.i64.v4f32")
+        },
+       "aarch64_neon_facgt_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facgt.i64.f32")
+        },
+       "aarch64_neon_facgt_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facgt.i64.v2f64")
+        },
+       "aarch64_neon_facgt_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.facgt.i64.f64")
+        },
+       "aarch64_neon_sabd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sabd.v16i8")
+        },
+       "aarch64_neon_sabd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sabd.v8i16")
+        },
+       "aarch64_neon_sabd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sabd.v4i32")
+        },
+       "aarch64_neon_sabd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sabd.v2i64")
+        },
+       "aarch64_neon_sabd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.sabd.v4f32")
+        },
+       "aarch64_neon_sabd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.sabd.v2f64")
+        },
+       "aarch64_neon_uabd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uabd.v16i8")
+        },
+       "aarch64_neon_uabd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uabd.v8i16")
+        },
+       "aarch64_neon_uabd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uabd.v4i32")
+        },
+       "aarch64_neon_uabd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uabd.v2i64")
+        },
+       "aarch64_neon_uabd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uabd.v4f32")
+        },
+       "aarch64_neon_uabd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uabd.v2f64")
+        },
+       "aarch64_neon_fabd_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fabd.v16i8")
+        },
+       "aarch64_neon_fabd_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fabd.v8i16")
+        },
+       "aarch64_neon_fabd_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fabd.v4i32")
+        },
+       "aarch64_neon_fabd_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fabd.v2i64")
+        },
+       "aarch64_neon_fabd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fabd.v4f32")
+        },
+       "aarch64_neon_fabd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fabd.v2f64")
+        },
+       "aarch64_sisd_fabd_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.sisd.fabd.v4f32")
+        },
+       "aarch64_sisd_fabd_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.sisd.fabd.f32")
+        },
+       "aarch64_sisd_fabd_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.sisd.fabd.v2f64")
+        },
+       "aarch64_sisd_fabd_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.sisd.fabd.f64")
+        },
+       "aarch64_neon_smax_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smax.v16i8")
+        },
+       "aarch64_neon_smax_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smax.v8i16")
+        },
+       "aarch64_neon_smax_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smax.v4i32")
+        },
+       "aarch64_neon_smax_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smax.v2i64")
+        },
+       "aarch64_neon_smax_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.smax.v4f32")
+        },
+       "aarch64_neon_smax_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.smax.v2f64")
+        },
+       "aarch64_neon_umax_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umax.v16i8")
+        },
+       "aarch64_neon_umax_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umax.v8i16")
+        },
+       "aarch64_neon_umax_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umax.v4i32")
+        },
+       "aarch64_neon_umax_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umax.v2i64")
+        },
+       "aarch64_neon_umax_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.umax.v4f32")
+        },
+       "aarch64_neon_umax_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.umax.v2f64")
+        },
+       "aarch64_neon_fmax_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fmax.v16i8")
+        },
+       "aarch64_neon_fmax_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fmax.v8i16")
+        },
+       "aarch64_neon_fmax_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fmax.v4i32")
+        },
+       "aarch64_neon_fmax_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fmax.v2i64")
+        },
+       "aarch64_neon_fmax_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmax.v4f32")
+        },
+       "aarch64_neon_fmax_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmax.v2f64")
+        },
+       "aarch64_neon_fmaxnmp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v16i8")
+        },
+       "aarch64_neon_fmaxnmp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v8i16")
+        },
+       "aarch64_neon_fmaxnmp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v4i32")
+        },
+       "aarch64_neon_fmaxnmp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v2i64")
+        },
+       "aarch64_neon_fmaxnmp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v4f32")
+        },
+       "aarch64_neon_fmaxnmp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmp.v2f64")
+        },
+       "aarch64_neon_smaxv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v16i8")
+        },
+       "aarch64_neon_smaxv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v8i16")
+        },
+       "aarch64_neon_smaxv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v4i32")
+        },
+       "aarch64_neon_smaxv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v2i64")
+        },
+       "aarch64_neon_smaxv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v4f32")
+        },
+       "aarch64_neon_smaxv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxv.v16i8.v2f64")
+        },
+       "aarch64_neon_smaxv_i8_v16i8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I8,
             definition: Named("llvm.aarch64.neon.smaxv.i8.v16i8")
         },
-        "maxvq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.umaxv.i8.v16i8")
+       "aarch64_neon_smaxv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.smaxv.i8.v8i16")
         },
-        "maxvq_s16" => Intrinsic {
+       "aarch64_neon_smaxv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.smaxv.i8.v4i32")
+        },
+       "aarch64_neon_smaxv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.smaxv.i8.v2i64")
+        },
+       "aarch64_neon_smaxv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.smaxv.i8.v4f32")
+        },
+       "aarch64_neon_smaxv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.smaxv.i8.v2f64")
+        },
+       "aarch64_neon_smaxv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v16i8")
+        },
+       "aarch64_neon_smaxv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v8i16")
+        },
+       "aarch64_neon_smaxv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v4i32")
+        },
+       "aarch64_neon_smaxv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v2i64")
+        },
+       "aarch64_neon_smaxv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v4f32")
+        },
+       "aarch64_neon_smaxv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxv.v8i16.v2f64")
+        },
+       "aarch64_neon_smaxv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.smaxv.i16.v16i8")
+        },
+       "aarch64_neon_smaxv_i16_v8i16" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I16,
             definition: Named("llvm.aarch64.neon.smaxv.i16.v8i16")
         },
-        "maxvq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.umaxv.i16.v8i16")
+       "aarch64_neon_smaxv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.smaxv.i16.v4i32")
         },
-        "maxvq_s32" => Intrinsic {
+       "aarch64_neon_smaxv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.smaxv.i16.v2i64")
+        },
+       "aarch64_neon_smaxv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.smaxv.i16.v4f32")
+        },
+       "aarch64_neon_smaxv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.smaxv.i16.v2f64")
+        },
+       "aarch64_neon_smaxv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v16i8")
+        },
+       "aarch64_neon_smaxv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v8i16")
+        },
+       "aarch64_neon_smaxv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v4i32")
+        },
+       "aarch64_neon_smaxv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v2i64")
+        },
+       "aarch64_neon_smaxv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v4f32")
+        },
+       "aarch64_neon_smaxv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxv.v4i32.v2f64")
+        },
+       "aarch64_neon_smaxv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.smaxv.i32.v16i8")
+        },
+       "aarch64_neon_smaxv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.smaxv.i32.v8i16")
+        },
+       "aarch64_neon_smaxv_i32_v4i32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
             output: &::I32,
             definition: Named("llvm.aarch64.neon.smaxv.i32.v4i32")
         },
-        "maxvq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32,
+       "aarch64_neon_smaxv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.smaxv.i32.v2i64")
+        },
+       "aarch64_neon_smaxv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.smaxv.i32.v4f32")
+        },
+       "aarch64_neon_smaxv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.smaxv.i32.v2f64")
+        },
+       "aarch64_neon_smaxv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v16i8")
+        },
+       "aarch64_neon_smaxv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v8i16")
+        },
+       "aarch64_neon_smaxv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v4i32")
+        },
+       "aarch64_neon_smaxv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v2i64")
+        },
+       "aarch64_neon_smaxv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v4f32")
+        },
+       "aarch64_neon_smaxv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxv.v2i64.v2f64")
+        },
+       "aarch64_neon_smaxv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v16i8")
+        },
+       "aarch64_neon_smaxv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v8i16")
+        },
+       "aarch64_neon_smaxv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v4i32")
+        },
+       "aarch64_neon_smaxv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v2i64")
+        },
+       "aarch64_neon_smaxv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v4f32")
+        },
+       "aarch64_neon_smaxv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.smaxv.i64.v2f64")
+        },
+       "aarch64_neon_umaxv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v16i8")
+        },
+       "aarch64_neon_umaxv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v8i16")
+        },
+       "aarch64_neon_umaxv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v4i32")
+        },
+       "aarch64_neon_umaxv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v2i64")
+        },
+       "aarch64_neon_umaxv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v4f32")
+        },
+       "aarch64_neon_umaxv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxv.v16i8.v2f64")
+        },
+       "aarch64_neon_umaxv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v16i8")
+        },
+       "aarch64_neon_umaxv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v8i16")
+        },
+       "aarch64_neon_umaxv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v4i32")
+        },
+       "aarch64_neon_umaxv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v2i64")
+        },
+       "aarch64_neon_umaxv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v4f32")
+        },
+       "aarch64_neon_umaxv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.umaxv.i8.v2f64")
+        },
+       "aarch64_neon_umaxv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v16i8")
+        },
+       "aarch64_neon_umaxv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v8i16")
+        },
+       "aarch64_neon_umaxv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v4i32")
+        },
+       "aarch64_neon_umaxv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v2i64")
+        },
+       "aarch64_neon_umaxv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v4f32")
+        },
+       "aarch64_neon_umaxv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxv.v8i16.v2f64")
+        },
+       "aarch64_neon_umaxv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v16i8")
+        },
+       "aarch64_neon_umaxv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v8i16")
+        },
+       "aarch64_neon_umaxv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v4i32")
+        },
+       "aarch64_neon_umaxv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v2i64")
+        },
+       "aarch64_neon_umaxv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v4f32")
+        },
+       "aarch64_neon_umaxv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.umaxv.i16.v2f64")
+        },
+       "aarch64_neon_umaxv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v16i8")
+        },
+       "aarch64_neon_umaxv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v8i16")
+        },
+       "aarch64_neon_umaxv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v4i32")
+        },
+       "aarch64_neon_umaxv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v2i64")
+        },
+       "aarch64_neon_umaxv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v4f32")
+        },
+       "aarch64_neon_umaxv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxv.v4i32.v2f64")
+        },
+       "aarch64_neon_umaxv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.umaxv.i32.v16i8")
+        },
+       "aarch64_neon_umaxv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.umaxv.i32.v8i16")
+        },
+       "aarch64_neon_umaxv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
             definition: Named("llvm.aarch64.neon.umaxv.i32.v4i32")
         },
-        "maxvq_f32" => Intrinsic {
+       "aarch64_neon_umaxv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.umaxv.i32.v2i64")
+        },
+       "aarch64_neon_umaxv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.umaxv.i32.v4f32")
+        },
+       "aarch64_neon_umaxv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.umaxv.i32.v2f64")
+        },
+       "aarch64_neon_umaxv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v16i8")
+        },
+       "aarch64_neon_umaxv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v8i16")
+        },
+       "aarch64_neon_umaxv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v4i32")
+        },
+       "aarch64_neon_umaxv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v2i64")
+        },
+       "aarch64_neon_umaxv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v4f32")
+        },
+       "aarch64_neon_umaxv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxv.v2i64.v2f64")
+        },
+       "aarch64_neon_umaxv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v16i8")
+        },
+       "aarch64_neon_umaxv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v8i16")
+        },
+       "aarch64_neon_umaxv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v4i32")
+        },
+       "aarch64_neon_umaxv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v2i64")
+        },
+       "aarch64_neon_umaxv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v4f32")
+        },
+       "aarch64_neon_umaxv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.umaxv.i64.v2f64")
+        },
+       "aarch64_neon_fmaxv_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v16i8")
+        },
+       "aarch64_neon_fmaxv_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v8i16")
+        },
+       "aarch64_neon_fmaxv_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v4i32")
+        },
+       "aarch64_neon_fmaxv_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v2i64")
+        },
+       "aarch64_neon_fmaxv_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v4f32")
+        },
+       "aarch64_neon_fmaxv_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxv.v4f32.v2f64")
+        },
+       "aarch64_neon_fmaxv_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxv.f32.v16i8")
+        },
+       "aarch64_neon_fmaxv_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxv.f32.v8i16")
+        },
+       "aarch64_neon_fmaxv_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxv.f32.v4i32")
+        },
+       "aarch64_neon_fmaxv_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxv.f32.v2i64")
+        },
+       "aarch64_neon_fmaxv_f32_v4f32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32,
             definition: Named("llvm.aarch64.neon.fmaxv.f32.v4f32")
         },
-        "maxvq_f64" => Intrinsic {
+       "aarch64_neon_fmaxv_f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxv.f32.v2f64")
+        },
+       "aarch64_neon_fmaxv_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v16i8")
+        },
+       "aarch64_neon_fmaxv_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v8i16")
+        },
+       "aarch64_neon_fmaxv_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v4i32")
+        },
+       "aarch64_neon_fmaxv_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v2i64")
+        },
+       "aarch64_neon_fmaxv_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v4f32")
+        },
+       "aarch64_neon_fmaxv_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxv.v2f64.v2f64")
+        },
+       "aarch64_neon_fmaxv_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxv.f64.v16i8")
+        },
+       "aarch64_neon_fmaxv_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxv.f64.v8i16")
+        },
+       "aarch64_neon_fmaxv_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxv.f64.v4i32")
+        },
+       "aarch64_neon_fmaxv_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxv.f64.v2i64")
+        },
+       "aarch64_neon_fmaxv_f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxv.f64.v4f32")
+        },
+       "aarch64_neon_fmaxv_f64_v2f64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
             output: &::F64,
             definition: Named("llvm.aarch64.neon.fmaxv.f64.v2f64")
         },
-        "minv_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x8]; &INPUTS },
-            output: &::I8,
-            definition: Named("llvm.aarch64.neon.sminv.i8.v8i8")
-        },
-        "minv_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x8]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.uminv.i8.v8i8")
-        },
-        "minv_s16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
-            output: &::I16,
-            definition: Named("llvm.aarch64.neon.sminv.i16.v4i16")
-        },
-        "minv_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x4]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uminv.i16.v4i16")
-        },
-        "minv_s32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.aarch64.neon.sminv.i32.v2i32")
-        },
-        "minv_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x2]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uminv.i32.v2i32")
-        },
-        "minv_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32,
-            definition: Named("llvm.aarch64.neon.fminv.f32.v2f32")
-        },
-        "minvq_s8" => Intrinsic {
+       "aarch64_neon_fmaxnmv_v4f32_v16i8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I8,
-            definition: Named("llvm.aarch64.neon.sminv.i8.v16i8")
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v16i8")
         },
-        "minvq_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U8x16]; &INPUTS },
-            output: &::U8,
-            definition: Named("llvm.aarch64.neon.uminv.i8.v16i8")
-        },
-        "minvq_s16" => Intrinsic {
+       "aarch64_neon_fmaxnmv_v4f32_v8i16" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
-            output: &::I16,
-            definition: Named("llvm.aarch64.neon.sminv.i16.v8i16")
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v8i16")
         },
-        "minvq_u16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16,
-            definition: Named("llvm.aarch64.neon.uminv.i16.v8i16")
-        },
-        "minvq_s32" => Intrinsic {
+       "aarch64_neon_fmaxnmv_v4f32_v4i32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.aarch64.neon.sminv.i32.v4i32")
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v4i32")
         },
-        "minvq_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U32x4]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.aarch64.neon.uminv.i32.v4i32")
+       "aarch64_neon_fmaxnmv_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v2i64")
         },
-        "minvq_f32" => Intrinsic {
+       "aarch64_neon_fmaxnmv_v4f32_v4f32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F32,
-            definition: Named("llvm.aarch64.neon.fminv.f32.v4f32")
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v4f32")
         },
-        "minvq_f64" => Intrinsic {
+       "aarch64_neon_fmaxnmv_v4f32_v2f64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64,
-            definition: Named("llvm.aarch64.neon.fminv.f64.v2f64")
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v4f32.v2f64")
         },
-        "maxnmv_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
+       "aarch64_neon_fmaxnmv_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::F32,
-            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v2f32")
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v16i8")
         },
-        "maxnmvq_f32" => Intrinsic {
+       "aarch64_neon_fmaxnmv_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v8i16")
+        },
+       "aarch64_neon_fmaxnmv_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v4i32")
+        },
+       "aarch64_neon_fmaxnmv_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v2i64")
+        },
+       "aarch64_neon_fmaxnmv_f32_v4f32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32,
             definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v4f32")
         },
-        "maxnmvq_f64" => Intrinsic {
+       "aarch64_neon_fmaxnmv_f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f32.v2f64")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v16i8")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v8i16")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v4i32")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v2i64")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v4f32")
+        },
+       "aarch64_neon_fmaxnmv_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.v2f64.v2f64")
+        },
+       "aarch64_neon_fmaxnmv_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v16i8")
+        },
+       "aarch64_neon_fmaxnmv_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v8i16")
+        },
+       "aarch64_neon_fmaxnmv_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v4i32")
+        },
+       "aarch64_neon_fmaxnmv_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v2i64")
+        },
+       "aarch64_neon_fmaxnmv_f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v4f32")
+        },
+       "aarch64_neon_fmaxnmv_f64_v2f64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
             output: &::F64,
             definition: Named("llvm.aarch64.neon.fmaxnmv.f64.v2f64")
         },
-        "minnmv_f32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x2]; &INPUTS },
-            output: &::F32,
-            definition: Named("llvm.aarch64.neon.fminnmv.f32.v2f32")
+       "aarch64_neon_smin_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smin.v16i8")
         },
-        "minnmvq_f32" => Intrinsic {
+       "aarch64_neon_smin_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smin.v8i16")
+        },
+       "aarch64_neon_smin_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smin.v4i32")
+        },
+       "aarch64_neon_smin_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smin.v2i64")
+        },
+       "aarch64_neon_smin_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.smin.v4f32")
+        },
+       "aarch64_neon_smin_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.smin.v2f64")
+        },
+       "aarch64_neon_umin_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umin.v16i8")
+        },
+       "aarch64_neon_umin_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umin.v8i16")
+        },
+       "aarch64_neon_umin_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umin.v4i32")
+        },
+       "aarch64_neon_umin_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umin.v2i64")
+        },
+       "aarch64_neon_umin_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.umin.v4f32")
+        },
+       "aarch64_neon_umin_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.umin.v2f64")
+        },
+       "aarch64_neon_fmin_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fmin.v16i8")
+        },
+       "aarch64_neon_fmin_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fmin.v8i16")
+        },
+       "aarch64_neon_fmin_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fmin.v4i32")
+        },
+       "aarch64_neon_fmin_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fmin.v2i64")
+        },
+       "aarch64_neon_fmin_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmin.v4f32")
+        },
+       "aarch64_neon_fmin_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmin.v2f64")
+        },
+       "aarch64_neon_fminnmp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fminnmp.v16i8")
+        },
+       "aarch64_neon_fminnmp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fminnmp.v8i16")
+        },
+       "aarch64_neon_fminnmp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fminnmp.v4i32")
+        },
+       "aarch64_neon_fminnmp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fminnmp.v2i64")
+        },
+       "aarch64_neon_fminnmp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmp.v4f32")
+        },
+       "aarch64_neon_fminnmp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmp.v2f64")
+        },
+       "aarch64_neon_fminnm_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnm.v4f32")
+        },
+       "aarch64_neon_fminnm_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnm.f32")
+        },
+       "aarch64_neon_fminnm_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnm.v2f64")
+        },
+       "aarch64_neon_fminnm_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnm.f64")
+        },
+       "aarch64_neon_fmaxnm_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxnm.v4f32")
+        },
+       "aarch64_neon_fmaxnm_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fmaxnm.f32")
+        },
+       "aarch64_neon_fmaxnm_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxnm.v2f64")
+        },
+       "aarch64_neon_fmaxnm_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fmaxnm.f64")
+        },
+       "aarch64_neon_sminv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v16i8")
+        },
+       "aarch64_neon_sminv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v8i16")
+        },
+       "aarch64_neon_sminv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v4i32")
+        },
+       "aarch64_neon_sminv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v2i64")
+        },
+       "aarch64_neon_sminv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v4f32")
+        },
+       "aarch64_neon_sminv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminv.v16i8.v2f64")
+        },
+       "aarch64_neon_sminv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v16i8")
+        },
+       "aarch64_neon_sminv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v8i16")
+        },
+       "aarch64_neon_sminv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v4i32")
+        },
+       "aarch64_neon_sminv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v2i64")
+        },
+       "aarch64_neon_sminv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v4f32")
+        },
+       "aarch64_neon_sminv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sminv.i8.v2f64")
+        },
+       "aarch64_neon_sminv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v16i8")
+        },
+       "aarch64_neon_sminv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v8i16")
+        },
+       "aarch64_neon_sminv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v4i32")
+        },
+       "aarch64_neon_sminv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v2i64")
+        },
+       "aarch64_neon_sminv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v4f32")
+        },
+       "aarch64_neon_sminv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminv.v8i16.v2f64")
+        },
+       "aarch64_neon_sminv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v16i8")
+        },
+       "aarch64_neon_sminv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v8i16")
+        },
+       "aarch64_neon_sminv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v4i32")
+        },
+       "aarch64_neon_sminv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v2i64")
+        },
+       "aarch64_neon_sminv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v4f32")
+        },
+       "aarch64_neon_sminv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sminv.i16.v2f64")
+        },
+       "aarch64_neon_sminv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v16i8")
+        },
+       "aarch64_neon_sminv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v8i16")
+        },
+       "aarch64_neon_sminv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v4i32")
+        },
+       "aarch64_neon_sminv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v2i64")
+        },
+       "aarch64_neon_sminv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v4f32")
+        },
+       "aarch64_neon_sminv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminv.v4i32.v2f64")
+        },
+       "aarch64_neon_sminv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v16i8")
+        },
+       "aarch64_neon_sminv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v8i16")
+        },
+       "aarch64_neon_sminv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v4i32")
+        },
+       "aarch64_neon_sminv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v2i64")
+        },
+       "aarch64_neon_sminv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v4f32")
+        },
+       "aarch64_neon_sminv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sminv.i32.v2f64")
+        },
+       "aarch64_neon_sminv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v16i8")
+        },
+       "aarch64_neon_sminv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v8i16")
+        },
+       "aarch64_neon_sminv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v4i32")
+        },
+       "aarch64_neon_sminv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v2i64")
+        },
+       "aarch64_neon_sminv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v4f32")
+        },
+       "aarch64_neon_sminv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminv.v2i64.v2f64")
+        },
+       "aarch64_neon_sminv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v16i8")
+        },
+       "aarch64_neon_sminv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v8i16")
+        },
+       "aarch64_neon_sminv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v4i32")
+        },
+       "aarch64_neon_sminv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v2i64")
+        },
+       "aarch64_neon_sminv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v4f32")
+        },
+       "aarch64_neon_sminv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sminv.i64.v2f64")
+        },
+       "aarch64_neon_uminv_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v16i8")
+        },
+       "aarch64_neon_uminv_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v8i16")
+        },
+       "aarch64_neon_uminv_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v4i32")
+        },
+       "aarch64_neon_uminv_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v2i64")
+        },
+       "aarch64_neon_uminv_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v4f32")
+        },
+       "aarch64_neon_uminv_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminv.v16i8.v2f64")
+        },
+       "aarch64_neon_uminv_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v16i8")
+        },
+       "aarch64_neon_uminv_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v8i16")
+        },
+       "aarch64_neon_uminv_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v4i32")
+        },
+       "aarch64_neon_uminv_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v2i64")
+        },
+       "aarch64_neon_uminv_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v4f32")
+        },
+       "aarch64_neon_uminv_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uminv.i8.v2f64")
+        },
+       "aarch64_neon_uminv_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v16i8")
+        },
+       "aarch64_neon_uminv_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v8i16")
+        },
+       "aarch64_neon_uminv_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v4i32")
+        },
+       "aarch64_neon_uminv_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v2i64")
+        },
+       "aarch64_neon_uminv_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v4f32")
+        },
+       "aarch64_neon_uminv_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminv.v8i16.v2f64")
+        },
+       "aarch64_neon_uminv_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v16i8")
+        },
+       "aarch64_neon_uminv_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v8i16")
+        },
+       "aarch64_neon_uminv_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v4i32")
+        },
+       "aarch64_neon_uminv_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v2i64")
+        },
+       "aarch64_neon_uminv_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v4f32")
+        },
+       "aarch64_neon_uminv_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uminv.i16.v2f64")
+        },
+       "aarch64_neon_uminv_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v16i8")
+        },
+       "aarch64_neon_uminv_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v8i16")
+        },
+       "aarch64_neon_uminv_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v4i32")
+        },
+       "aarch64_neon_uminv_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v2i64")
+        },
+       "aarch64_neon_uminv_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v4f32")
+        },
+       "aarch64_neon_uminv_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminv.v4i32.v2f64")
+        },
+       "aarch64_neon_uminv_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v16i8")
+        },
+       "aarch64_neon_uminv_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v8i16")
+        },
+       "aarch64_neon_uminv_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v4i32")
+        },
+       "aarch64_neon_uminv_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v2i64")
+        },
+       "aarch64_neon_uminv_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v4f32")
+        },
+       "aarch64_neon_uminv_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uminv.i32.v2f64")
+        },
+       "aarch64_neon_uminv_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v16i8")
+        },
+       "aarch64_neon_uminv_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v8i16")
+        },
+       "aarch64_neon_uminv_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v4i32")
+        },
+       "aarch64_neon_uminv_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v2i64")
+        },
+       "aarch64_neon_uminv_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v4f32")
+        },
+       "aarch64_neon_uminv_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminv.v2i64.v2f64")
+        },
+       "aarch64_neon_uminv_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v16i8")
+        },
+       "aarch64_neon_uminv_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v8i16")
+        },
+       "aarch64_neon_uminv_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v4i32")
+        },
+       "aarch64_neon_uminv_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v2i64")
+        },
+       "aarch64_neon_uminv_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v4f32")
+        },
+       "aarch64_neon_uminv_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uminv.i64.v2f64")
+        },
+       "aarch64_neon_fminv_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v16i8")
+        },
+       "aarch64_neon_fminv_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v8i16")
+        },
+       "aarch64_neon_fminv_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v4i32")
+        },
+       "aarch64_neon_fminv_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v2i64")
+        },
+       "aarch64_neon_fminv_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v4f32")
+        },
+       "aarch64_neon_fminv_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminv.v4f32.v2f64")
+        },
+       "aarch64_neon_fminv_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v16i8")
+        },
+       "aarch64_neon_fminv_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v8i16")
+        },
+       "aarch64_neon_fminv_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v4i32")
+        },
+       "aarch64_neon_fminv_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v2i64")
+        },
+       "aarch64_neon_fminv_f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v4f32")
+        },
+       "aarch64_neon_fminv_f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminv.f32.v2f64")
+        },
+       "aarch64_neon_fminv_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v16i8")
+        },
+       "aarch64_neon_fminv_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v8i16")
+        },
+       "aarch64_neon_fminv_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v4i32")
+        },
+       "aarch64_neon_fminv_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v2i64")
+        },
+       "aarch64_neon_fminv_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v4f32")
+        },
+       "aarch64_neon_fminv_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminv.v2f64.v2f64")
+        },
+       "aarch64_neon_fminv_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v16i8")
+        },
+       "aarch64_neon_fminv_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v8i16")
+        },
+       "aarch64_neon_fminv_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v4i32")
+        },
+       "aarch64_neon_fminv_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v2i64")
+        },
+       "aarch64_neon_fminv_f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v4f32")
+        },
+       "aarch64_neon_fminv_f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminv.f64.v2f64")
+        },
+       "aarch64_neon_fminnmv_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v16i8")
+        },
+       "aarch64_neon_fminnmv_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v8i16")
+        },
+       "aarch64_neon_fminnmv_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v4i32")
+        },
+       "aarch64_neon_fminnmv_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v2i64")
+        },
+       "aarch64_neon_fminnmv_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v4f32")
+        },
+       "aarch64_neon_fminnmv_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminnmv.v4f32.v2f64")
+        },
+       "aarch64_neon_fminnmv_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnmv.f32.v16i8")
+        },
+       "aarch64_neon_fminnmv_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnmv.f32.v8i16")
+        },
+       "aarch64_neon_fminnmv_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnmv.f32.v4i32")
+        },
+       "aarch64_neon_fminnmv_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnmv.f32.v2i64")
+        },
+       "aarch64_neon_fminnmv_f32_v4f32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32,
             definition: Named("llvm.aarch64.neon.fminnmv.f32.v4f32")
         },
-        "minnmvq_f64" => Intrinsic {
+       "aarch64_neon_fminnmv_f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.fminnmv.f32.v2f64")
+        },
+       "aarch64_neon_fminnmv_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v16i8")
+        },
+       "aarch64_neon_fminnmv_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v8i16")
+        },
+       "aarch64_neon_fminnmv_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v4i32")
+        },
+       "aarch64_neon_fminnmv_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v2i64")
+        },
+       "aarch64_neon_fminnmv_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v4f32")
+        },
+       "aarch64_neon_fminnmv_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminnmv.v2f64.v2f64")
+        },
+       "aarch64_neon_fminnmv_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnmv.f64.v16i8")
+        },
+       "aarch64_neon_fminnmv_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnmv.f64.v8i16")
+        },
+       "aarch64_neon_fminnmv_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnmv.f64.v4i32")
+        },
+       "aarch64_neon_fminnmv_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnmv.f64.v2i64")
+        },
+       "aarch64_neon_fminnmv_f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.fminnmv.f64.v4f32")
+        },
+       "aarch64_neon_fminnmv_f64_v2f64" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
             output: &::F64,
             definition: Named("llvm.aarch64.neon.fminnmv.f64.v2f64")
         },
-        "qtbl1_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbl1.v8i8")
+       "aarch64_neon_addp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.addp.v16i8")
         },
-        "qtbl1_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbl1.v8i8")
+       "aarch64_neon_addp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.addp.v8i16")
         },
-        "qtbl1q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::U8x16]; &INPUTS },
+       "aarch64_neon_addp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.addp.v4i32")
+        },
+       "aarch64_neon_addp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.addp.v2i64")
+        },
+       "aarch64_neon_addp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.addp.v4f32")
+        },
+       "aarch64_neon_addp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.addp.v2f64")
+        },
+       "aarch64_neon_saddlp_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v16i8")
+        },
+       "aarch64_neon_saddlp_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v8i16")
+        },
+       "aarch64_neon_saddlp_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v4i32")
+        },
+       "aarch64_neon_saddlp_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v2i64")
+        },
+       "aarch64_neon_saddlp_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v4f32")
+        },
+       "aarch64_neon_saddlp_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.saddlp.v16i8.v2f64")
+        },
+       "aarch64_neon_saddlp_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v16i8")
+        },
+       "aarch64_neon_saddlp_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v8i16")
+        },
+       "aarch64_neon_saddlp_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v4i32")
+        },
+       "aarch64_neon_saddlp_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v2i64")
+        },
+       "aarch64_neon_saddlp_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v4f32")
+        },
+       "aarch64_neon_saddlp_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.saddlp.v8i16.v2f64")
+        },
+       "aarch64_neon_saddlp_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v16i8")
+        },
+       "aarch64_neon_saddlp_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v8i16")
+        },
+       "aarch64_neon_saddlp_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v4i32")
+        },
+       "aarch64_neon_saddlp_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v2i64")
+        },
+       "aarch64_neon_saddlp_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v4f32")
+        },
+       "aarch64_neon_saddlp_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4i32.v2f64")
+        },
+       "aarch64_neon_saddlp_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v16i8")
+        },
+       "aarch64_neon_saddlp_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v8i16")
+        },
+       "aarch64_neon_saddlp_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v4i32")
+        },
+       "aarch64_neon_saddlp_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v2i64")
+        },
+       "aarch64_neon_saddlp_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v4f32")
+        },
+       "aarch64_neon_saddlp_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2i64.v2f64")
+        },
+       "aarch64_neon_saddlp_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v16i8")
+        },
+       "aarch64_neon_saddlp_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v8i16")
+        },
+       "aarch64_neon_saddlp_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v4i32")
+        },
+       "aarch64_neon_saddlp_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v2i64")
+        },
+       "aarch64_neon_saddlp_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v4f32")
+        },
+       "aarch64_neon_saddlp_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.saddlp.v4f32.v2f64")
+        },
+       "aarch64_neon_saddlp_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v16i8")
+        },
+       "aarch64_neon_saddlp_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v8i16")
+        },
+       "aarch64_neon_saddlp_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v4i32")
+        },
+       "aarch64_neon_saddlp_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v2i64")
+        },
+       "aarch64_neon_saddlp_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v4f32")
+        },
+       "aarch64_neon_saddlp_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.saddlp.v2f64.v2f64")
+        },
+       "aarch64_neon_uaddlp_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v16i8")
+        },
+       "aarch64_neon_uaddlp_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v8i16")
+        },
+       "aarch64_neon_uaddlp_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v4i32")
+        },
+       "aarch64_neon_uaddlp_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v2i64")
+        },
+       "aarch64_neon_uaddlp_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v4f32")
+        },
+       "aarch64_neon_uaddlp_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uaddlp.v16i8.v2f64")
+        },
+       "aarch64_neon_uaddlp_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v16i8")
+        },
+       "aarch64_neon_uaddlp_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v8i16")
+        },
+       "aarch64_neon_uaddlp_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v4i32")
+        },
+       "aarch64_neon_uaddlp_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v2i64")
+        },
+       "aarch64_neon_uaddlp_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v4f32")
+        },
+       "aarch64_neon_uaddlp_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uaddlp.v8i16.v2f64")
+        },
+       "aarch64_neon_uaddlp_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v16i8")
+        },
+       "aarch64_neon_uaddlp_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v8i16")
+        },
+       "aarch64_neon_uaddlp_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v4i32")
+        },
+       "aarch64_neon_uaddlp_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v2i64")
+        },
+       "aarch64_neon_uaddlp_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v4f32")
+        },
+       "aarch64_neon_uaddlp_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4i32.v2f64")
+        },
+       "aarch64_neon_uaddlp_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v16i8")
+        },
+       "aarch64_neon_uaddlp_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v8i16")
+        },
+       "aarch64_neon_uaddlp_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v4i32")
+        },
+       "aarch64_neon_uaddlp_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v2i64")
+        },
+       "aarch64_neon_uaddlp_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v4f32")
+        },
+       "aarch64_neon_uaddlp_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2i64.v2f64")
+        },
+       "aarch64_neon_uaddlp_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v16i8")
+        },
+       "aarch64_neon_uaddlp_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v8i16")
+        },
+       "aarch64_neon_uaddlp_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v4i32")
+        },
+       "aarch64_neon_uaddlp_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v2i64")
+        },
+       "aarch64_neon_uaddlp_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v4f32")
+        },
+       "aarch64_neon_uaddlp_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uaddlp.v4f32.v2f64")
+        },
+       "aarch64_neon_uaddlp_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v16i8")
+        },
+       "aarch64_neon_uaddlp_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v8i16")
+        },
+       "aarch64_neon_uaddlp_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v4i32")
+        },
+       "aarch64_neon_uaddlp_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v2i64")
+        },
+       "aarch64_neon_uaddlp_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v4f32")
+        },
+       "aarch64_neon_uaddlp_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uaddlp.v2f64.v2f64")
+        },
+       "aarch64_neon_smaxp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.smaxp.v16i8")
+        },
+       "aarch64_neon_smaxp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.smaxp.v8i16")
+        },
+       "aarch64_neon_smaxp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.smaxp.v4i32")
+        },
+       "aarch64_neon_smaxp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.smaxp.v2i64")
+        },
+       "aarch64_neon_smaxp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.smaxp.v4f32")
+        },
+       "aarch64_neon_smaxp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.smaxp.v2f64")
+        },
+       "aarch64_neon_umaxp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.umaxp.v16i8")
+        },
+       "aarch64_neon_umaxp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.umaxp.v8i16")
+        },
+       "aarch64_neon_umaxp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.umaxp.v4i32")
+        },
+       "aarch64_neon_umaxp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.umaxp.v2i64")
+        },
+       "aarch64_neon_umaxp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.umaxp.v4f32")
+        },
+       "aarch64_neon_umaxp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.umaxp.v2f64")
+        },
+       "aarch64_neon_fmaxp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fmaxp.v16i8")
+        },
+       "aarch64_neon_fmaxp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fmaxp.v8i16")
+        },
+       "aarch64_neon_fmaxp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fmaxp.v4i32")
+        },
+       "aarch64_neon_fmaxp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fmaxp.v2i64")
+        },
+       "aarch64_neon_fmaxp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fmaxp.v4f32")
+        },
+       "aarch64_neon_fmaxp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fmaxp.v2f64")
+        },
+       "aarch64_neon_sminp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sminp.v16i8")
+        },
+       "aarch64_neon_sminp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sminp.v8i16")
+        },
+       "aarch64_neon_sminp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sminp.v4i32")
+        },
+       "aarch64_neon_sminp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sminp.v2i64")
+        },
+       "aarch64_neon_sminp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.sminp.v4f32")
+        },
+       "aarch64_neon_sminp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.sminp.v2f64")
+        },
+       "aarch64_neon_uminp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uminp.v16i8")
+        },
+       "aarch64_neon_uminp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uminp.v8i16")
+        },
+       "aarch64_neon_uminp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uminp.v4i32")
+        },
+       "aarch64_neon_uminp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uminp.v2i64")
+        },
+       "aarch64_neon_uminp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.uminp.v4f32")
+        },
+       "aarch64_neon_uminp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.uminp.v2f64")
+        },
+       "aarch64_neon_fminp_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fminp.v16i8")
+        },
+       "aarch64_neon_fminp_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fminp.v8i16")
+        },
+       "aarch64_neon_fminp_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fminp.v4i32")
+        },
+       "aarch64_neon_fminp_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fminp.v2i64")
+        },
+       "aarch64_neon_fminp_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fminp.v4f32")
+        },
+       "aarch64_neon_fminp_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fminp.v2f64")
+        },
+       "aarch64_neon_frecps_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frecps.v4f32")
+        },
+       "aarch64_neon_frecps_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frecps.f32")
+        },
+       "aarch64_neon_frecps_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frecps.v2f64")
+        },
+       "aarch64_neon_frecps_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frecps.f64")
+        },
+       "aarch64_neon_frsqrts_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frsqrts.v4f32")
+        },
+       "aarch64_neon_frsqrts_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frsqrts.f32")
+        },
+       "aarch64_neon_frsqrts_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frsqrts.v2f64")
+        },
+       "aarch64_neon_frsqrts_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frsqrts.f64")
+        },
+       "aarch64_neon_frecpx_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frecpx.v4f32")
+        },
+       "aarch64_neon_frecpx_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frecpx.f32")
+        },
+       "aarch64_neon_frecpx_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frecpx.v2f64")
+        },
+       "aarch64_neon_frecpx_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frecpx.f64")
+        },
+       "aarch64_neon_sqshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqshl.v16i8")
+        },
+       "aarch64_neon_sqshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqshl.i8")
+        },
+       "aarch64_neon_sqshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqshl.v8i16")
+        },
+       "aarch64_neon_sqshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqshl.i16")
+        },
+       "aarch64_neon_sqshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqshl.v4i32")
+        },
+       "aarch64_neon_sqshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqshl.i32")
+        },
+       "aarch64_neon_sqshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqshl.v2i64")
+        },
+       "aarch64_neon_sqshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqshl.i64")
+        },
+       "aarch64_neon_uqshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uqshl.v16i8")
+        },
+       "aarch64_neon_uqshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uqshl.i8")
+        },
+       "aarch64_neon_uqshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uqshl.v8i16")
+        },
+       "aarch64_neon_uqshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uqshl.i16")
+        },
+       "aarch64_neon_uqshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uqshl.v4i32")
+        },
+       "aarch64_neon_uqshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uqshl.i32")
+        },
+       "aarch64_neon_uqshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uqshl.v2i64")
+        },
+       "aarch64_neon_uqshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uqshl.i64")
+        },
+       "aarch64_neon_srshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.srshl.v16i8")
+        },
+       "aarch64_neon_srshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.srshl.i8")
+        },
+       "aarch64_neon_srshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.srshl.v8i16")
+        },
+       "aarch64_neon_srshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.srshl.i16")
+        },
+       "aarch64_neon_srshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.srshl.v4i32")
+        },
+       "aarch64_neon_srshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.srshl.i32")
+        },
+       "aarch64_neon_srshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.srshl.v2i64")
+        },
+       "aarch64_neon_srshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.srshl.i64")
+        },
+       "aarch64_neon_urshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.urshl.v16i8")
+        },
+       "aarch64_neon_urshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.urshl.i8")
+        },
+       "aarch64_neon_urshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.urshl.v8i16")
+        },
+       "aarch64_neon_urshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.urshl.i16")
+        },
+       "aarch64_neon_urshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.urshl.v4i32")
+        },
+       "aarch64_neon_urshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.urshl.i32")
+        },
+       "aarch64_neon_urshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.urshl.v2i64")
+        },
+       "aarch64_neon_urshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.urshl.i64")
+        },
+       "aarch64_neon_sqrshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqrshl.v16i8")
+        },
+       "aarch64_neon_sqrshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqrshl.i8")
+        },
+       "aarch64_neon_sqrshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqrshl.v8i16")
+        },
+       "aarch64_neon_sqrshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqrshl.i16")
+        },
+       "aarch64_neon_sqrshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqrshl.v4i32")
+        },
+       "aarch64_neon_sqrshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqrshl.i32")
+        },
+       "aarch64_neon_sqrshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqrshl.v2i64")
+        },
+       "aarch64_neon_sqrshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqrshl.i64")
+        },
+       "aarch64_neon_uqrshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.uqrshl.v16i8")
+        },
+       "aarch64_neon_uqrshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.uqrshl.i8")
+        },
+       "aarch64_neon_uqrshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.uqrshl.v8i16")
+        },
+       "aarch64_neon_uqrshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.uqrshl.i16")
+        },
+       "aarch64_neon_uqrshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.uqrshl.v4i32")
+        },
+       "aarch64_neon_uqrshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.uqrshl.i32")
+        },
+       "aarch64_neon_uqrshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.uqrshl.v2i64")
+        },
+       "aarch64_neon_uqrshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.uqrshl.i64")
+        },
+       "aarch64_neon_sqshlu_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqshlu.v16i8")
+        },
+       "aarch64_neon_sqshlu_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqshlu.i8")
+        },
+       "aarch64_neon_sqshlu_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqshlu.v8i16")
+        },
+       "aarch64_neon_sqshlu_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqshlu.i16")
+        },
+       "aarch64_neon_sqshlu_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqshlu.v4i32")
+        },
+       "aarch64_neon_sqshlu_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqshlu.i32")
+        },
+       "aarch64_neon_sqshlu_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqshlu.v2i64")
+        },
+       "aarch64_neon_sqshlu_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqshlu.i64")
+        },
+       "aarch64_neon_sshl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sshl.v16i8")
+        },
+       "aarch64_neon_sshl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sshl.i8")
+        },
+       "aarch64_neon_sshl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sshl.v8i16")
+        },
+       "aarch64_neon_sshl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sshl.i16")
+        },
+       "aarch64_neon_sshl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sshl.v4i32")
+        },
+       "aarch64_neon_sshl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sshl.i32")
+        },
+       "aarch64_neon_sshl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sshl.v2i64")
+        },
+       "aarch64_neon_sshl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sshl.i64")
+        },
+       "aarch64_neon_ushl_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.ushl.v16i8")
+        },
+       "aarch64_neon_ushl_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.ushl.i8")
+        },
+       "aarch64_neon_ushl_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.ushl.v8i16")
+        },
+       "aarch64_neon_ushl_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.ushl.i16")
+        },
+       "aarch64_neon_ushl_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.ushl.v4i32")
+        },
+       "aarch64_neon_ushl_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.ushl.i32")
+        },
+       "aarch64_neon_ushl_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.ushl.v2i64")
+        },
+       "aarch64_neon_ushl_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.ushl.i64")
+        },
+       "aarch64_neon_vsri_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vsri.v16i8")
+        },
+       "aarch64_neon_vsri_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vsri.v8i16")
+        },
+       "aarch64_neon_vsri_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vsri.v4i32")
+        },
+       "aarch64_neon_vsri_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vsri.v2i64")
+        },
+       "aarch64_neon_vsri_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vsri.v4f32")
+        },
+       "aarch64_neon_vsri_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vsri.v2f64")
+        },
+       "aarch64_neon_vsli_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vsli.v16i8")
+        },
+       "aarch64_neon_vsli_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vsli.v8i16")
+        },
+       "aarch64_neon_vsli_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vsli.v4i32")
+        },
+       "aarch64_neon_vsli_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vsli.v2i64")
+        },
+       "aarch64_neon_vsli_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vsli.v4f32")
+        },
+       "aarch64_neon_vsli_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vsli.v2f64")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v16i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v16i8.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i8.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v8i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v8i16.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i16.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v4i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v4i32.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i32.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_v2i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.v2i64.i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.i8")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.i16")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.i32")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtn_i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtn.i64.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v16i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v16i8.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i8.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v8i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v8i16.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i16.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v4i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v4i32.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i32.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_v2i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.v2i64.i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.v16i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.i8")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.v8i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.i16")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.v4i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.i32")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.v2i64")
+        },
+       "aarch64_neon_scalar_uqxtn_i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.uqxtn.i64.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v16i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v16i8.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i8_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i8.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v8i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v8i16.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i16_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i16.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v4i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v4i32.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i32.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_v2i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.v2i64.i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.v16i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.i8")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.v8i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.i16")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.v4i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.i32")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.v2i64")
+        },
+       "aarch64_neon_scalar_sqxtun_i64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.scalar.sqxtun.i64.i64")
+        },
+       "aarch64_neon_abs_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.abs.v16i8")
+        },
+       "aarch64_neon_abs_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.abs.i8")
+        },
+       "aarch64_neon_abs_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.abs.v8i16")
+        },
+       "aarch64_neon_abs_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.abs.i16")
+        },
+       "aarch64_neon_abs_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.abs.v4i32")
+        },
+       "aarch64_neon_abs_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.abs.i32")
+        },
+       "aarch64_neon_abs_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.abs.v2i64")
+        },
+       "aarch64_neon_abs_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.abs.i64")
+        },
+       "aarch64_neon_sqabs_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqabs.v16i8")
+        },
+       "aarch64_neon_sqabs_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqabs.i8")
+        },
+       "aarch64_neon_sqabs_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqabs.v8i16")
+        },
+       "aarch64_neon_sqabs_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqabs.i16")
+        },
+       "aarch64_neon_sqabs_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqabs.v4i32")
+        },
+       "aarch64_neon_sqabs_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqabs.i32")
+        },
+       "aarch64_neon_sqabs_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqabs.v2i64")
+        },
+       "aarch64_neon_sqabs_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqabs.i64")
+        },
+       "aarch64_neon_sqneg_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.sqneg.v16i8")
+        },
+       "aarch64_neon_sqneg_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.sqneg.i8")
+        },
+       "aarch64_neon_sqneg_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.sqneg.v8i16")
+        },
+       "aarch64_neon_sqneg_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.sqneg.i16")
+        },
+       "aarch64_neon_sqneg_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.sqneg.v4i32")
+        },
+       "aarch64_neon_sqneg_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.sqneg.i32")
+        },
+       "aarch64_neon_sqneg_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.sqneg.v2i64")
+        },
+       "aarch64_neon_sqneg_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.sqneg.i64")
+        },
+       "aarch64_neon_cls_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.cls.v16i8")
+        },
+       "aarch64_neon_cls_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.cls.v8i16")
+        },
+       "aarch64_neon_cls_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.cls.v4i32")
+        },
+       "aarch64_neon_cls_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.cls.v2i64")
+        },
+       "aarch64_neon_cls_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.cls.v4f32")
+        },
+       "aarch64_neon_cls_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.cls.v2f64")
+        },
+       "aarch64_neon_urecpe_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.urecpe.v16i8")
+        },
+       "aarch64_neon_urecpe_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.urecpe.v8i16")
+        },
+       "aarch64_neon_urecpe_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.urecpe.v4i32")
+        },
+       "aarch64_neon_urecpe_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.urecpe.v2i64")
+        },
+       "aarch64_neon_urecpe_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.urecpe.v4f32")
+        },
+       "aarch64_neon_urecpe_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.urecpe.v2f64")
+        },
+       "aarch64_neon_frecpe_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frecpe.v4f32")
+        },
+       "aarch64_neon_frecpe_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frecpe.f32")
+        },
+       "aarch64_neon_frecpe_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frecpe.v2f64")
+        },
+       "aarch64_neon_frecpe_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frecpe.f64")
+        },
+       "aarch64_neon_ursqrte_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.ursqrte.v16i8")
+        },
+       "aarch64_neon_ursqrte_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.ursqrte.v8i16")
+        },
+       "aarch64_neon_ursqrte_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.ursqrte.v4i32")
+        },
+       "aarch64_neon_ursqrte_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.ursqrte.v2i64")
+        },
+       "aarch64_neon_ursqrte_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.ursqrte.v4f32")
+        },
+       "aarch64_neon_ursqrte_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.ursqrte.v2f64")
+        },
+       "aarch64_neon_frsqrte_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frsqrte.v4f32")
+        },
+       "aarch64_neon_frsqrte_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frsqrte.f32")
+        },
+       "aarch64_neon_frsqrte_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frsqrte.v2f64")
+        },
+       "aarch64_neon_frsqrte_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frsqrte.f64")
+        },
+       "aarch64_neon_rbit_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.rbit.v16i8")
+        },
+       "aarch64_neon_rbit_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.rbit.v8i16")
+        },
+       "aarch64_neon_rbit_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.rbit.v4i32")
+        },
+       "aarch64_neon_rbit_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.rbit.v2i64")
+        },
+       "aarch64_neon_rbit_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.rbit.v4f32")
+        },
+       "aarch64_neon_rbit_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.rbit.v2f64")
+        },
+       "aarch64_neon_vcvtfp2hf" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2hf")
+        },
+       "aarch64_neon_vcvthf2fp" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvthf2fp")
+        },
+       "aarch64_neon_vcvtfp2fxs_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v16i8.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v16i8.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v16i8.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v16i8.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i8.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i8.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i8.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i8.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v8i16.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v8i16.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v8i16.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v8i16.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i16.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i16.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i16.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i16.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v4i32.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v4i32.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v4i32.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v4i32.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i32.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i32.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i32.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i32.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v2i64.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v2i64.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v2i64.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.v2i64.f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i64.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i64.f32")
+        },
+       "aarch64_neon_vcvtfp2fxs_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i64.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxs_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxs.i64.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v16i8.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v16i8.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v16i8.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v16i8.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i8.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i8.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i8.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i8.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v8i16.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v8i16.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v8i16.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v8i16.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i16.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i16.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i16.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i16.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v4i32.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v4i32.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v4i32.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v4i32.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i32.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i32.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i32.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i32.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v2i64.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v2i64.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v2i64.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.v2i64.f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i64.v4f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i64.f32")
+        },
+       "aarch64_neon_vcvtfp2fxu_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i64.v2f64")
+        },
+       "aarch64_neon_vcvtfp2fxu_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64,&::I32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.vcvtfp2fxu.i64.f64")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.v16i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.v8i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.v4i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.v2i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_v4f32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v4f32.i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.v16i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.v8i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.v4i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.v2i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_f32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f32.i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.v16i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.v8i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.v4i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.v2i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_v2f64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.v2f64.i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.v16i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.i8")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.v8i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.i16")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.v4i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.i32")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.v2i64")
+        },
+       "aarch64_neon_vcvtfxs2fp_f64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxs2fp.f64.i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.v16i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.v8i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.v4i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.v2i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_v4f32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v4f32.i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.v16i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.v8i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.v4i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.v2i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_f32_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f32.i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.v16i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.v8i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.v4i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.v2i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_v2f64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.v2f64.i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.v16i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.i8")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.v8i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.i16")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.v4i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.i32")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.v2i64")
+        },
+       "aarch64_neon_vcvtfxu2fp_f64_i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64,&::I32]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.vcvtfxu2fp.f64.i64")
+        },
+       "aarch64_neon_fcvtas_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtas.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtas_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtas.v16i8.f32")
+        },
+       "aarch64_neon_fcvtas_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtas.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtas_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtas.v16i8.f64")
+        },
+       "aarch64_neon_fcvtas_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtas.i8.v4f32")
+        },
+       "aarch64_neon_fcvtas_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtas.i8.f32")
+        },
+       "aarch64_neon_fcvtas_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtas.i8.v2f64")
+        },
+       "aarch64_neon_fcvtas_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtas.i8.f64")
+        },
+       "aarch64_neon_fcvtas_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtas.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtas_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtas.v8i16.f32")
+        },
+       "aarch64_neon_fcvtas_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtas.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtas_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtas.v8i16.f64")
+        },
+       "aarch64_neon_fcvtas_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtas.i16.v4f32")
+        },
+       "aarch64_neon_fcvtas_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtas.i16.f32")
+        },
+       "aarch64_neon_fcvtas_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtas.i16.v2f64")
+        },
+       "aarch64_neon_fcvtas_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtas.i16.f64")
+        },
+       "aarch64_neon_fcvtas_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtas.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtas_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtas.v4i32.f32")
+        },
+       "aarch64_neon_fcvtas_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtas.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtas_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtas.v4i32.f64")
+        },
+       "aarch64_neon_fcvtas_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtas.i32.v4f32")
+        },
+       "aarch64_neon_fcvtas_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtas.i32.f32")
+        },
+       "aarch64_neon_fcvtas_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtas.i32.v2f64")
+        },
+       "aarch64_neon_fcvtas_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtas.i32.f64")
+        },
+       "aarch64_neon_fcvtas_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtas.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtas_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtas.v2i64.f32")
+        },
+       "aarch64_neon_fcvtas_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtas.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtas_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtas.v2i64.f64")
+        },
+       "aarch64_neon_fcvtas_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtas.i64.v4f32")
+        },
+       "aarch64_neon_fcvtas_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtas.i64.f32")
+        },
+       "aarch64_neon_fcvtas_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtas.i64.v2f64")
+        },
+       "aarch64_neon_fcvtas_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtas.i64.f64")
+        },
+       "aarch64_neon_fcvtau_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtau.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtau_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtau.v16i8.f32")
+        },
+       "aarch64_neon_fcvtau_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtau.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtau_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtau.v16i8.f64")
+        },
+       "aarch64_neon_fcvtau_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtau.i8.v4f32")
+        },
+       "aarch64_neon_fcvtau_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtau.i8.f32")
+        },
+       "aarch64_neon_fcvtau_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtau.i8.v2f64")
+        },
+       "aarch64_neon_fcvtau_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtau.i8.f64")
+        },
+       "aarch64_neon_fcvtau_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtau.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtau_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtau.v8i16.f32")
+        },
+       "aarch64_neon_fcvtau_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtau.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtau_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtau.v8i16.f64")
+        },
+       "aarch64_neon_fcvtau_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtau.i16.v4f32")
+        },
+       "aarch64_neon_fcvtau_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtau.i16.f32")
+        },
+       "aarch64_neon_fcvtau_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtau.i16.v2f64")
+        },
+       "aarch64_neon_fcvtau_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtau.i16.f64")
+        },
+       "aarch64_neon_fcvtau_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtau.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtau_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtau.v4i32.f32")
+        },
+       "aarch64_neon_fcvtau_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtau.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtau_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtau.v4i32.f64")
+        },
+       "aarch64_neon_fcvtau_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtau.i32.v4f32")
+        },
+       "aarch64_neon_fcvtau_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtau.i32.f32")
+        },
+       "aarch64_neon_fcvtau_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtau.i32.v2f64")
+        },
+       "aarch64_neon_fcvtau_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtau.i32.f64")
+        },
+       "aarch64_neon_fcvtau_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtau.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtau_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtau.v2i64.f32")
+        },
+       "aarch64_neon_fcvtau_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtau.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtau_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtau.v2i64.f64")
+        },
+       "aarch64_neon_fcvtau_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtau.i64.v4f32")
+        },
+       "aarch64_neon_fcvtau_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtau.i64.f32")
+        },
+       "aarch64_neon_fcvtau_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtau.i64.v2f64")
+        },
+       "aarch64_neon_fcvtau_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtau.i64.f64")
+        },
+       "aarch64_neon_fcvtms_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtms.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtms_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtms.v16i8.f32")
+        },
+       "aarch64_neon_fcvtms_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtms.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtms_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtms.v16i8.f64")
+        },
+       "aarch64_neon_fcvtms_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtms.i8.v4f32")
+        },
+       "aarch64_neon_fcvtms_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtms.i8.f32")
+        },
+       "aarch64_neon_fcvtms_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtms.i8.v2f64")
+        },
+       "aarch64_neon_fcvtms_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtms.i8.f64")
+        },
+       "aarch64_neon_fcvtms_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtms.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtms_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtms.v8i16.f32")
+        },
+       "aarch64_neon_fcvtms_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtms.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtms_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtms.v8i16.f64")
+        },
+       "aarch64_neon_fcvtms_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtms.i16.v4f32")
+        },
+       "aarch64_neon_fcvtms_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtms.i16.f32")
+        },
+       "aarch64_neon_fcvtms_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtms.i16.v2f64")
+        },
+       "aarch64_neon_fcvtms_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtms.i16.f64")
+        },
+       "aarch64_neon_fcvtms_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtms.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtms_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtms.v4i32.f32")
+        },
+       "aarch64_neon_fcvtms_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtms.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtms_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtms.v4i32.f64")
+        },
+       "aarch64_neon_fcvtms_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtms.i32.v4f32")
+        },
+       "aarch64_neon_fcvtms_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtms.i32.f32")
+        },
+       "aarch64_neon_fcvtms_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtms.i32.v2f64")
+        },
+       "aarch64_neon_fcvtms_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtms.i32.f64")
+        },
+       "aarch64_neon_fcvtms_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtms.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtms_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtms.v2i64.f32")
+        },
+       "aarch64_neon_fcvtms_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtms.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtms_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtms.v2i64.f64")
+        },
+       "aarch64_neon_fcvtms_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtms.i64.v4f32")
+        },
+       "aarch64_neon_fcvtms_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtms.i64.f32")
+        },
+       "aarch64_neon_fcvtms_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtms.i64.v2f64")
+        },
+       "aarch64_neon_fcvtms_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtms.i64.f64")
+        },
+       "aarch64_neon_fcvtmu_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtmu_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v16i8.f32")
+        },
+       "aarch64_neon_fcvtmu_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtmu_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v16i8.f64")
+        },
+       "aarch64_neon_fcvtmu_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i8.v4f32")
+        },
+       "aarch64_neon_fcvtmu_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i8.f32")
+        },
+       "aarch64_neon_fcvtmu_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i8.v2f64")
+        },
+       "aarch64_neon_fcvtmu_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i8.f64")
+        },
+       "aarch64_neon_fcvtmu_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtmu_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v8i16.f32")
+        },
+       "aarch64_neon_fcvtmu_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtmu_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v8i16.f64")
+        },
+       "aarch64_neon_fcvtmu_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i16.v4f32")
+        },
+       "aarch64_neon_fcvtmu_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i16.f32")
+        },
+       "aarch64_neon_fcvtmu_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i16.v2f64")
+        },
+       "aarch64_neon_fcvtmu_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i16.f64")
+        },
+       "aarch64_neon_fcvtmu_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtmu_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v4i32.f32")
+        },
+       "aarch64_neon_fcvtmu_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtmu_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v4i32.f64")
+        },
+       "aarch64_neon_fcvtmu_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i32.v4f32")
+        },
+       "aarch64_neon_fcvtmu_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i32.f32")
+        },
+       "aarch64_neon_fcvtmu_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i32.v2f64")
+        },
+       "aarch64_neon_fcvtmu_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i32.f64")
+        },
+       "aarch64_neon_fcvtmu_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtmu_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v2i64.f32")
+        },
+       "aarch64_neon_fcvtmu_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtmu_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtmu.v2i64.f64")
+        },
+       "aarch64_neon_fcvtmu_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i64.v4f32")
+        },
+       "aarch64_neon_fcvtmu_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i64.f32")
+        },
+       "aarch64_neon_fcvtmu_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i64.v2f64")
+        },
+       "aarch64_neon_fcvtmu_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtmu.i64.f64")
+        },
+       "aarch64_neon_fcvtns_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtns.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtns_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtns.v16i8.f32")
+        },
+       "aarch64_neon_fcvtns_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtns.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtns_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtns.v16i8.f64")
+        },
+       "aarch64_neon_fcvtns_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtns.i8.v4f32")
+        },
+       "aarch64_neon_fcvtns_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtns.i8.f32")
+        },
+       "aarch64_neon_fcvtns_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtns.i8.v2f64")
+        },
+       "aarch64_neon_fcvtns_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtns.i8.f64")
+        },
+       "aarch64_neon_fcvtns_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtns.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtns_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtns.v8i16.f32")
+        },
+       "aarch64_neon_fcvtns_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtns.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtns_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtns.v8i16.f64")
+        },
+       "aarch64_neon_fcvtns_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtns.i16.v4f32")
+        },
+       "aarch64_neon_fcvtns_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtns.i16.f32")
+        },
+       "aarch64_neon_fcvtns_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtns.i16.v2f64")
+        },
+       "aarch64_neon_fcvtns_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtns.i16.f64")
+        },
+       "aarch64_neon_fcvtns_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtns.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtns_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtns.v4i32.f32")
+        },
+       "aarch64_neon_fcvtns_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtns.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtns_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtns.v4i32.f64")
+        },
+       "aarch64_neon_fcvtns_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtns.i32.v4f32")
+        },
+       "aarch64_neon_fcvtns_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtns.i32.f32")
+        },
+       "aarch64_neon_fcvtns_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtns.i32.v2f64")
+        },
+       "aarch64_neon_fcvtns_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtns.i32.f64")
+        },
+       "aarch64_neon_fcvtns_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtns.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtns_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtns.v2i64.f32")
+        },
+       "aarch64_neon_fcvtns_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtns.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtns_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtns.v2i64.f64")
+        },
+       "aarch64_neon_fcvtns_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtns.i64.v4f32")
+        },
+       "aarch64_neon_fcvtns_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtns.i64.f32")
+        },
+       "aarch64_neon_fcvtns_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtns.i64.v2f64")
+        },
+       "aarch64_neon_fcvtns_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtns.i64.f64")
+        },
+       "aarch64_neon_fcvtnu_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtnu_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v16i8.f32")
+        },
+       "aarch64_neon_fcvtnu_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtnu_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v16i8.f64")
+        },
+       "aarch64_neon_fcvtnu_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i8.v4f32")
+        },
+       "aarch64_neon_fcvtnu_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i8.f32")
+        },
+       "aarch64_neon_fcvtnu_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i8.v2f64")
+        },
+       "aarch64_neon_fcvtnu_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i8.f64")
+        },
+       "aarch64_neon_fcvtnu_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtnu_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v8i16.f32")
+        },
+       "aarch64_neon_fcvtnu_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtnu_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v8i16.f64")
+        },
+       "aarch64_neon_fcvtnu_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i16.v4f32")
+        },
+       "aarch64_neon_fcvtnu_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i16.f32")
+        },
+       "aarch64_neon_fcvtnu_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i16.v2f64")
+        },
+       "aarch64_neon_fcvtnu_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i16.f64")
+        },
+       "aarch64_neon_fcvtnu_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtnu_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v4i32.f32")
+        },
+       "aarch64_neon_fcvtnu_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtnu_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v4i32.f64")
+        },
+       "aarch64_neon_fcvtnu_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i32.v4f32")
+        },
+       "aarch64_neon_fcvtnu_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i32.f32")
+        },
+       "aarch64_neon_fcvtnu_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i32.v2f64")
+        },
+       "aarch64_neon_fcvtnu_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i32.f64")
+        },
+       "aarch64_neon_fcvtnu_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtnu_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v2i64.f32")
+        },
+       "aarch64_neon_fcvtnu_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtnu_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtnu.v2i64.f64")
+        },
+       "aarch64_neon_fcvtnu_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i64.v4f32")
+        },
+       "aarch64_neon_fcvtnu_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i64.f32")
+        },
+       "aarch64_neon_fcvtnu_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i64.v2f64")
+        },
+       "aarch64_neon_fcvtnu_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtnu.i64.f64")
+        },
+       "aarch64_neon_fcvtps_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtps.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtps_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtps.v16i8.f32")
+        },
+       "aarch64_neon_fcvtps_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtps.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtps_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtps.v16i8.f64")
+        },
+       "aarch64_neon_fcvtps_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtps.i8.v4f32")
+        },
+       "aarch64_neon_fcvtps_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtps.i8.f32")
+        },
+       "aarch64_neon_fcvtps_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtps.i8.v2f64")
+        },
+       "aarch64_neon_fcvtps_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtps.i8.f64")
+        },
+       "aarch64_neon_fcvtps_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtps.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtps_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtps.v8i16.f32")
+        },
+       "aarch64_neon_fcvtps_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtps.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtps_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtps.v8i16.f64")
+        },
+       "aarch64_neon_fcvtps_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtps.i16.v4f32")
+        },
+       "aarch64_neon_fcvtps_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtps.i16.f32")
+        },
+       "aarch64_neon_fcvtps_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtps.i16.v2f64")
+        },
+       "aarch64_neon_fcvtps_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtps.i16.f64")
+        },
+       "aarch64_neon_fcvtps_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtps.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtps_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtps.v4i32.f32")
+        },
+       "aarch64_neon_fcvtps_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtps.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtps_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtps.v4i32.f64")
+        },
+       "aarch64_neon_fcvtps_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtps.i32.v4f32")
+        },
+       "aarch64_neon_fcvtps_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtps.i32.f32")
+        },
+       "aarch64_neon_fcvtps_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtps.i32.v2f64")
+        },
+       "aarch64_neon_fcvtps_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtps.i32.f64")
+        },
+       "aarch64_neon_fcvtps_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtps.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtps_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtps.v2i64.f32")
+        },
+       "aarch64_neon_fcvtps_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtps.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtps_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtps.v2i64.f64")
+        },
+       "aarch64_neon_fcvtps_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtps.i64.v4f32")
+        },
+       "aarch64_neon_fcvtps_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtps.i64.f32")
+        },
+       "aarch64_neon_fcvtps_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtps.i64.v2f64")
+        },
+       "aarch64_neon_fcvtps_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtps.i64.f64")
+        },
+       "aarch64_neon_fcvtpu_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtpu_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v16i8.f32")
+        },
+       "aarch64_neon_fcvtpu_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtpu_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v16i8.f64")
+        },
+       "aarch64_neon_fcvtpu_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i8.v4f32")
+        },
+       "aarch64_neon_fcvtpu_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i8.f32")
+        },
+       "aarch64_neon_fcvtpu_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i8.v2f64")
+        },
+       "aarch64_neon_fcvtpu_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i8.f64")
+        },
+       "aarch64_neon_fcvtpu_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtpu_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v8i16.f32")
+        },
+       "aarch64_neon_fcvtpu_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtpu_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v8i16.f64")
+        },
+       "aarch64_neon_fcvtpu_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i16.v4f32")
+        },
+       "aarch64_neon_fcvtpu_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i16.f32")
+        },
+       "aarch64_neon_fcvtpu_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i16.v2f64")
+        },
+       "aarch64_neon_fcvtpu_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i16.f64")
+        },
+       "aarch64_neon_fcvtpu_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtpu_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v4i32.f32")
+        },
+       "aarch64_neon_fcvtpu_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtpu_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v4i32.f64")
+        },
+       "aarch64_neon_fcvtpu_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i32.v4f32")
+        },
+       "aarch64_neon_fcvtpu_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i32.f32")
+        },
+       "aarch64_neon_fcvtpu_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i32.v2f64")
+        },
+       "aarch64_neon_fcvtpu_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i32.f64")
+        },
+       "aarch64_neon_fcvtpu_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtpu_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v2i64.f32")
+        },
+       "aarch64_neon_fcvtpu_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtpu_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtpu.v2i64.f64")
+        },
+       "aarch64_neon_fcvtpu_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i64.v4f32")
+        },
+       "aarch64_neon_fcvtpu_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i64.f32")
+        },
+       "aarch64_neon_fcvtpu_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i64.v2f64")
+        },
+       "aarch64_neon_fcvtpu_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtpu.i64.f64")
+        },
+       "aarch64_neon_fcvtzs_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtzs_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v16i8.f32")
+        },
+       "aarch64_neon_fcvtzs_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtzs_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v16i8.f64")
+        },
+       "aarch64_neon_fcvtzs_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i8.v4f32")
+        },
+       "aarch64_neon_fcvtzs_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i8.f32")
+        },
+       "aarch64_neon_fcvtzs_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i8.v2f64")
+        },
+       "aarch64_neon_fcvtzs_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i8.f64")
+        },
+       "aarch64_neon_fcvtzs_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtzs_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v8i16.f32")
+        },
+       "aarch64_neon_fcvtzs_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtzs_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v8i16.f64")
+        },
+       "aarch64_neon_fcvtzs_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i16.v4f32")
+        },
+       "aarch64_neon_fcvtzs_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i16.f32")
+        },
+       "aarch64_neon_fcvtzs_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i16.v2f64")
+        },
+       "aarch64_neon_fcvtzs_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i16.f64")
+        },
+       "aarch64_neon_fcvtzs_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtzs_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v4i32.f32")
+        },
+       "aarch64_neon_fcvtzs_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtzs_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v4i32.f64")
+        },
+       "aarch64_neon_fcvtzs_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i32.v4f32")
+        },
+       "aarch64_neon_fcvtzs_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i32.f32")
+        },
+       "aarch64_neon_fcvtzs_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i32.v2f64")
+        },
+       "aarch64_neon_fcvtzs_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i32.f64")
+        },
+       "aarch64_neon_fcvtzs_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtzs_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v2i64.f32")
+        },
+       "aarch64_neon_fcvtzs_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtzs_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzs.v2i64.f64")
+        },
+       "aarch64_neon_fcvtzs_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i64.v4f32")
+        },
+       "aarch64_neon_fcvtzs_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i64.f32")
+        },
+       "aarch64_neon_fcvtzs_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i64.v2f64")
+        },
+       "aarch64_neon_fcvtzs_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzs.i64.f64")
+        },
+       "aarch64_neon_fcvtzu_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtzu_v16i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v16i8.f32")
+        },
+       "aarch64_neon_fcvtzu_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtzu_v16i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v16i8.f64")
+        },
+       "aarch64_neon_fcvtzu_i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i8.v4f32")
+        },
+       "aarch64_neon_fcvtzu_i8_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i8.f32")
+        },
+       "aarch64_neon_fcvtzu_i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i8.v2f64")
+        },
+       "aarch64_neon_fcvtzu_i8_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i8.f64")
+        },
+       "aarch64_neon_fcvtzu_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtzu_v8i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v8i16.f32")
+        },
+       "aarch64_neon_fcvtzu_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtzu_v8i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v8i16.f64")
+        },
+       "aarch64_neon_fcvtzu_i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i16.v4f32")
+        },
+       "aarch64_neon_fcvtzu_i16_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i16.f32")
+        },
+       "aarch64_neon_fcvtzu_i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i16.v2f64")
+        },
+       "aarch64_neon_fcvtzu_i16_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i16.f64")
+        },
+       "aarch64_neon_fcvtzu_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtzu_v4i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v4i32.f32")
+        },
+       "aarch64_neon_fcvtzu_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtzu_v4i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v4i32.f64")
+        },
+       "aarch64_neon_fcvtzu_i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i32.v4f32")
+        },
+       "aarch64_neon_fcvtzu_i32_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i32.f32")
+        },
+       "aarch64_neon_fcvtzu_i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i32.v2f64")
+        },
+       "aarch64_neon_fcvtzu_i32_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i32.f64")
+        },
+       "aarch64_neon_fcvtzu_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtzu_v2i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v2i64.f32")
+        },
+       "aarch64_neon_fcvtzu_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtzu_v2i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtzu.v2i64.f64")
+        },
+       "aarch64_neon_fcvtzu_i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i64.v4f32")
+        },
+       "aarch64_neon_fcvtzu_i64_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i64.f32")
+        },
+       "aarch64_neon_fcvtzu_i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i64.v2f64")
+        },
+       "aarch64_neon_fcvtzu_i64_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.aarch64.neon.fcvtzu.i64.f64")
+        },
+       "aarch64_neon_frintn_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.frintn.v4f32")
+        },
+       "aarch64_neon_frintn_f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.neon.frintn.f32")
+        },
+       "aarch64_neon_frintn_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.frintn.v2f64")
+        },
+       "aarch64_neon_frintn_f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::F64,
+            definition: Named("llvm.aarch64.neon.frintn.f64")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v16i8.v2f64")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v8i16.v2f64")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4i32.v2f64")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2i64.v2f64")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v4f32.v2f64")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v16i8")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v8i16")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v4i32")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v2i64")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v4f32")
+        },
+       "aarch64_neon_fcvtxn_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.fcvtxn.v2f64.v2f64")
+        },
+       "aarch64_sisd_fcvtxn" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64]; &INPUTS },
+            output: &::F32,
+            definition: Named("llvm.aarch64.sisd.fcvtxn")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v16i8_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::I8x16,&::I64]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v16i8.v2f64")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v8i16_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::I16x8,&::I64]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v8i16.v2f64")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v4i32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::I32x4,&::I64]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4i32.v2f64")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v2i64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::I64x2,&::I64]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2i64.v2f64")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v4f32_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v4f32.v2f64")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v16i8")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v8i16")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v4i32")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v2i64")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v4f32")
+        },
+       "aarch64_neon_vcopy_lane_v2f64_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I64,&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.vcopy.lane.v2f64.v2f64")
+        },
+       "aarch64_neon_st1x2_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v16i8")
+        },
+       "aarch64_neon_st1x2_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v8i16")
+        },
+       "aarch64_neon_st1x2_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v4i32")
+        },
+       "aarch64_neon_st1x2_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v2i64")
+        },
+       "aarch64_neon_st1x2_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v4f32")
+        },
+       "aarch64_neon_st1x2_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x2.v2f64")
+        },
+       "aarch64_neon_st1x3_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v16i8")
+        },
+       "aarch64_neon_st1x3_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v8i16")
+        },
+       "aarch64_neon_st1x3_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v4i32")
+        },
+       "aarch64_neon_st1x3_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v2i64")
+        },
+       "aarch64_neon_st1x3_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v4f32")
+        },
+       "aarch64_neon_st1x3_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x3.v2f64")
+        },
+       "aarch64_neon_st1x4_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v16i8")
+        },
+       "aarch64_neon_st1x4_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16x8,&::I16x8,&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v8i16")
+        },
+       "aarch64_neon_st1x4_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4,&::I32x4,&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v4i32")
+        },
+       "aarch64_neon_st1x4_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2,&::I64x2,&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v2i64")
+        },
+       "aarch64_neon_st1x4_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4,&::F32x4,&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v4f32")
+        },
+       "aarch64_neon_st1x4_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2,&::F64x2,&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st1x4.v2f64")
+        },
+       "aarch64_neon_st2_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v16i8")
+        },
+       "aarch64_neon_st2_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v8i16")
+        },
+       "aarch64_neon_st2_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v4i32")
+        },
+       "aarch64_neon_st2_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v2i64")
+        },
+       "aarch64_neon_st2_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v4f32")
+        },
+       "aarch64_neon_st2_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2.v2f64")
+        },
+       "aarch64_neon_st3_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v16i8")
+        },
+       "aarch64_neon_st3_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v8i16")
+        },
+       "aarch64_neon_st3_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v4i32")
+        },
+       "aarch64_neon_st3_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v2i64")
+        },
+       "aarch64_neon_st3_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v4f32")
+        },
+       "aarch64_neon_st3_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3.v2f64")
+        },
+       "aarch64_neon_st4_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8x16, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v16i8")
+        },
+       "aarch64_neon_st4_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16x8,&::I16x8,&::I16x8,&::I16x8,{ static PTR: Type = Type::Pointer(&::I16x8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v8i16")
+        },
+       "aarch64_neon_st4_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4,&::I32x4,&::I32x4,&::I32x4,{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v4i32")
+        },
+       "aarch64_neon_st4_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2,&::I64x2,&::I64x2,&::I64x2,{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v2i64")
+        },
+       "aarch64_neon_st4_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4,&::F32x4,&::F32x4,&::F32x4,{ static PTR: Type = Type::Pointer(&::F32x4, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v4f32")
+        },
+       "aarch64_neon_st4_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2,&::F64x2,&::F64x2,&::F64x2,{ static PTR: Type = Type::Pointer(&::F64x2, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4.v2f64")
+        },
+       "aarch64_neon_st2lane_v16i8_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v16i8.p0i8")
+        },
+       "aarch64_neon_st2lane_v8i16_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I16x8,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v8i16.p0i8")
+        },
+       "aarch64_neon_st2lane_v4i32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v4i32.p0i8")
+        },
+       "aarch64_neon_st2lane_v2i64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v2i64.p0i8")
+        },
+       "aarch64_neon_st2lane_v4f32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::F32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v4f32.p0i8")
+        },
+       "aarch64_neon_st2lane_v2f64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::F64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st2lane.v2f64.p0i8")
+        },
+       "aarch64_neon_st3lane_v16i8_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v16i8.p0i8")
+        },
+       "aarch64_neon_st3lane_v8i16_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16x8,&::I16x8,&::I16x8,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v8i16.p0i8")
+        },
+       "aarch64_neon_st3lane_v4i32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4,&::I32x4,&::I32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v4i32.p0i8")
+        },
+       "aarch64_neon_st3lane_v2i64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2,&::I64x2,&::I64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v2i64.p0i8")
+        },
+       "aarch64_neon_st3lane_v4f32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4,&::F32x4,&::F32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v4f32.p0i8")
+        },
+       "aarch64_neon_st3lane_v2f64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2,&::F64x2,&::F64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st3lane.v2f64.p0i8")
+        },
+       "aarch64_neon_st4lane_v16i8_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v16i8.p0i8")
+        },
+       "aarch64_neon_st4lane_v8i16_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I16x8,&::I16x8,&::I16x8,&::I16x8,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v8i16.p0i8")
+        },
+       "aarch64_neon_st4lane_v4i32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I32x4,&::I32x4,&::I32x4,&::I32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v4i32.p0i8")
+        },
+       "aarch64_neon_st4lane_v2i64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I64x2,&::I64x2,&::I64x2,&::I64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v2i64.p0i8")
+        },
+       "aarch64_neon_st4lane_v4f32_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::F32x4,&::F32x4,&::F32x4,&::F32x4,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v4f32.p0i8")
+        },
+       "aarch64_neon_st4lane_v2f64_p0i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::F64x2,&::F64x2,&::F64x2,&::F64x2,&::I64,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.aarch64.neon.st4lane.v2f64.p0i8")
+        },
+       "aarch64_neon_tbl1_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.aarch64.neon.tbl1.v16i8")
         },
-        "qtbl1q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbl1.v16i8")
+       "aarch64_neon_tbl1_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbl1.v8i16")
         },
-        "qtbx1_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x8, &::I8x16, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbx1.v8i8")
+       "aarch64_neon_tbl1_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbl1.v4i32")
         },
-        "qtbx1_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x8, &::U8x16, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbx1.v8i8")
+       "aarch64_neon_tbl1_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbl1.v2i64")
         },
-        "qtbx1q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::U8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.tbx1.v16i8")
+       "aarch64_neon_tbl1_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbl1.v4f32")
         },
-        "qtbx1q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbx1.v16i8")
+       "aarch64_neon_tbl1_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbl1.v2f64")
         },
-        "qtbl2_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbl2.v8i8")
-        },
-        "qtbl2_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbl2.v8i8")
-        },
-        "qtbl2q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
+       "aarch64_neon_tbl2_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.aarch64.neon.tbl2.v16i8")
         },
-        "qtbl2q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbl2.v16i8")
+       "aarch64_neon_tbl2_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbl2.v8i16")
         },
-        "qtbx2_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbx2.v8i8")
+       "aarch64_neon_tbl2_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbl2.v4i32")
         },
-        "qtbx2_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbx2.v8i8")
+       "aarch64_neon_tbl2_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbl2.v2i64")
         },
-        "qtbx2q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.tbx2.v16i8")
+       "aarch64_neon_tbl2_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbl2.v4f32")
         },
-        "qtbx2q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbx2.v16i8")
+       "aarch64_neon_tbl2_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbl2.v2f64")
         },
-        "qtbl3_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbl3.v8i8")
-        },
-        "qtbl3_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbl3.v8i8")
-        },
-        "qtbl3q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
+       "aarch64_neon_tbl3_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.aarch64.neon.tbl3.v16i8")
         },
-        "qtbl3q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbl3.v16i8")
+       "aarch64_neon_tbl3_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbl3.v8i16")
         },
-        "qtbx3_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x8, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbx3.v8i8")
+       "aarch64_neon_tbl3_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbl3.v4i32")
         },
-        "qtbx3_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x8, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbx3.v8i8")
+       "aarch64_neon_tbl3_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbl3.v2i64")
         },
-        "qtbx3q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.aarch64.neon.tbx3.v16i8")
+       "aarch64_neon_tbl3_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbl3.v4f32")
         },
-        "qtbx3q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x16, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbx3.v16i8")
+       "aarch64_neon_tbl3_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbl3.v2f64")
         },
-        "qtbl4_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbl4.v8i8")
-        },
-        "qtbl4_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbl4.v8i8")
-        },
-        "qtbl4q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
+       "aarch64_neon_tbl4_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.aarch64.neon.tbl4.v16i8")
         },
-        "qtbl4q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbl4.v16i8")
+       "aarch64_neon_tbl4_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbl4.v8i16")
         },
-        "qtbx4_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x8, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::I8x8,
-            definition: Named("llvm.aarch64.neon.tbx4.v8i8")
+       "aarch64_neon_tbl4_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbl4.v4i32")
         },
-        "qtbx4_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x8, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x8]; &INPUTS },
-            output: &::U8x8,
-            definition: Named("llvm.aarch64.neon.tbx4.v8i8")
+       "aarch64_neon_tbl4_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbl4.v2i64")
         },
-        "qtbx4q_s8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::I8x16, &::I8x16, &::I8x16, &::I8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
+       "aarch64_neon_tbl4_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbl4.v4f32")
+        },
+       "aarch64_neon_tbl4_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbl4.v2f64")
+        },
+       "aarch64_neon_tbx1_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.tbx1.v16i8")
+        },
+       "aarch64_neon_tbx1_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbx1.v8i16")
+        },
+       "aarch64_neon_tbx1_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbx1.v4i32")
+        },
+       "aarch64_neon_tbx1_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbx1.v2i64")
+        },
+       "aarch64_neon_tbx1_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbx1.v4f32")
+        },
+       "aarch64_neon_tbx1_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbx1.v2f64")
+        },
+       "aarch64_neon_tbx2_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.tbx2.v16i8")
+        },
+       "aarch64_neon_tbx2_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x8,&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbx2.v8i16")
+        },
+       "aarch64_neon_tbx2_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x4,&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbx2.v4i32")
+        },
+       "aarch64_neon_tbx2_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x2,&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbx2.v2i64")
+        },
+       "aarch64_neon_tbx2_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbx2.v4f32")
+        },
+       "aarch64_neon_tbx2_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbx2.v2f64")
+        },
+       "aarch64_neon_tbx3_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.neon.tbx3.v16i8")
+        },
+       "aarch64_neon_tbx3_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16x8,&::I8x16,&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbx3.v8i16")
+        },
+       "aarch64_neon_tbx3_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4,&::I8x16,&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbx3.v4i32")
+        },
+       "aarch64_neon_tbx3_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2,&::I8x16,&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbx3.v2i64")
+        },
+       "aarch64_neon_tbx3_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4,&::I8x16,&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbx3.v4f32")
+        },
+       "aarch64_neon_tbx3_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2,&::I8x16,&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbx3.v2f64")
+        },
+       "aarch64_neon_tbx4_v16i8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.aarch64.neon.tbx4.v16i8")
         },
-        "qtbx4q_u8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x16, { static AGG: Type = Type::Aggregate(true, { static PARTS: [&'static Type; 4] = [&::U8x16, &::U8x16, &::U8x16, &::U8x16]; &PARTS }); &AGG }, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.aarch64.neon.tbx4.v16i8")
+       "aarch64_neon_tbx4_v8i16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I16x8,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.aarch64.neon.tbx4.v8i16")
+        },
+       "aarch64_neon_tbx4_v4i32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I32x4,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.neon.tbx4.v4i32")
+        },
+       "aarch64_neon_tbx4_v2i64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::I64x2,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.aarch64.neon.tbx4.v2i64")
+        },
+       "aarch64_neon_tbx4_v4f32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::F32x4,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.aarch64.neon.tbx4.v4f32")
+        },
+       "aarch64_neon_tbx4_v2f64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 6] = [&::F64x2,&::I8x16,&::I8x16,&::I8x16,&::I8x16,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.aarch64.neon.tbx4.v2f64")
+        },
+       "aarch64_crypto_aese" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.crypto.aese")
+        },
+       "aarch64_crypto_aesd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.crypto.aesd")
+        },
+       "aarch64_crypto_aesmc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.crypto.aesmc")
+        },
+       "aarch64_crypto_aesimc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.aarch64.crypto.aesimc")
+        },
+       "aarch64_crypto_sha1c" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha1c")
+        },
+       "aarch64_crypto_sha1p" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha1p")
+        },
+       "aarch64_crypto_sha1m" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha1m")
+        },
+       "aarch64_crypto_sha1h" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crypto.sha1h")
+        },
+       "aarch64_crypto_sha1su0" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha1su0")
+        },
+       "aarch64_crypto_sha1su1" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha1su1")
+        },
+       "aarch64_crypto_sha256h" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha256h")
+        },
+       "aarch64_crypto_sha256h2" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha256h2")
+        },
+       "aarch64_crypto_sha256su0" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha256su0")
+        },
+       "aarch64_crypto_sha256su1" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.aarch64.crypto.sha256su1")
+        },
+       "aarch64_crc32b" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32b")
+        },
+       "aarch64_crc32cb" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32cb")
+        },
+       "aarch64_crc32h" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32h")
+        },
+       "aarch64_crc32ch" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32ch")
+        },
+       "aarch64_crc32w" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32w")
+        },
+       "aarch64_crc32cw" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32cw")
+        },
+       "aarch64_crc32x" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32x")
+        },
+       "aarch64_crc32cx" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I64]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.aarch64.crc32cx")
         },
         _ => return None,
     })
