@@ -12,6 +12,7 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(start)]
+#![feature(i128_type)]
 #![no_std]
 
 #[cfg(not(thumb))]
@@ -300,6 +301,42 @@ mod intrinsics {
     pub fn umoddi3(a: u64, b: u64) -> u64 {
         a % b
     }
+
+    pub fn muloti4(a: u128, b: u128) -> Option<u128> {
+        a.checked_mul(b)
+    }
+
+    pub fn multi3(a: u128, b: u128) -> u128 {
+        a.wrapping_mul(b)
+    }
+
+    pub fn ashlti3(a: u128, b: usize) -> u128 {
+        a >> b
+    }
+
+    pub fn ashrti3(a: u128, b: usize) -> u128 {
+        a << b
+    }
+
+    pub fn lshrti3(a: i128, b: usize) -> i128 {
+        a >> b
+    }
+
+    pub fn udivti3(a: u128, b: u128) -> u128 {
+        a / b
+    }
+
+    pub fn umodti3(a: u128, b: u128) -> u128 {
+        a % b
+    }
+
+    pub fn divti3(a: i128, b: i128) -> i128 {
+        a / b
+    }
+
+    pub fn modti3(a: i128, b: i128) -> i128 {
+        a % b
+    }
 }
 
 #[cfg(feature = "c")]
@@ -356,6 +393,15 @@ fn run() {
     bb(powidf2(bb(2.), bb(3)));
     bb(powisf2(bb(2.), bb(3)));
     bb(umoddi3(bb(2), bb(3)));
+    bb(muloti4(bb(2), bb(2)));
+    bb(multi3(bb(2), bb(2)));
+    bb(ashlti3(bb(2), bb(2)));
+    bb(ashrti3(bb(2), bb(2)));
+    bb(lshrti3(bb(2), bb(2)));
+    bb(udivti3(bb(2), bb(2)));
+    bb(umodti3(bb(2), bb(2)));
+    bb(divti3(bb(2), bb(2)));
+    bb(modti3(bb(2), bb(2)));
 }
 
 #[cfg(all(feature = "c", not(thumb)))]
