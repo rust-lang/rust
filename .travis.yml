@@ -40,6 +40,7 @@ script:
  - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
  - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
+ - set +e
 
 after_success:
 - ./.github/deploy.sh
