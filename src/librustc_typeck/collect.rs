@@ -63,7 +63,7 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
+use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContainer};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
@@ -1039,8 +1039,9 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     adt
 }
 
-    fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
+    fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId)
                           -> Option<ty::Disr> {
+        let e = &ccx.tcx.map.body(body).value;
         debug!("disr expr, checking {}", ccx.tcx.map.node_to_pretty_string(e.id));
 
         let ty_hint = repr_ty.to_ty(ccx.tcx);
@@ -1052,9 +1053,9 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         };
 
         let hint = UncheckedExprHint(ty_hint);
-        match eval_const_expr_partial(ccx.tcx, e, hint, None) {
+        match ConstContext::new(ccx.tcx, body).eval(e, hint) {
             Ok(ConstVal::Integral(i)) => {
-                // FIXME: eval_const_expr_partial should return an error if the hint is wrong
+                // FIXME: eval should return an error if the hint is wrong
                 match (repr_ty, i) {
                     (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
                     (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
@@ -1103,7 +1104,6 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let variants = def.variants.iter().map(|v| {
         let wrapped_disr = prev_disr.map_or(initial, |d| d.wrap_incr());
         let disr = if let Some(e) = v.node.disr_expr {
-            let e = &tcx.map.body(e).value;
             evaluate_disr_expr(ccx, repr_type, e)
         } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
             Some(disr)

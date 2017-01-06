@@ -801,13 +801,19 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // If so, add "synthetic impls".
         let steps = self.steps.clone();
         for step in steps.iter() {
-            let closure_def_id = match step.self_ty.sty {
-                ty::TyClosure(a, _) => a,
+            let closure_id = match step.self_ty.sty {
+                ty::TyClosure(def_id, _) => {
+                    if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+                        id
+                    } else {
+                        continue;
+                    }
+                }
                 _ => continue,
             };
 
             let closure_kinds = &self.tables.borrow().closure_kinds;
-            let closure_kind = match closure_kinds.get(&closure_def_id) {
+            let closure_kind = match closure_kinds.get(&closure_id) {
                 Some(&k) => k,
                 None => {
                     return Err(MethodError::ClosureAmbiguity(trait_def_id));

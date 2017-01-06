@@ -39,6 +39,7 @@ use syntax_pos;
 
 use graphviz as dot;
 
+use std::cell::Cell;
 use std::fs::File;
 use std::io::{self, Write};
 use std::iter;
@@ -236,7 +237,11 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let annotation = TypedAnnotation { tcx: tcx };
+                    let empty_tables = ty::Tables::empty();
+                    let annotation = TypedAnnotation {
+                        tcx: tcx,
+                        tables: Cell::new(&empty_tables)
+                    };
                     let _ignore = tcx.dep_graph.in_ignore();
                     f(&annotation, payload, ast_map.forest.krate())
                 }),
@@ -488,6 +493,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: Cell<&'a ty::Tables<'tcx>>,
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
@@ -511,7 +517,13 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
 impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
               -> io::Result<()> {
-        pprust_hir::PpAnn::nested(&self.tcx.map, state, nested)
+        let old_tables = self.tables.get();
+        if let pprust_hir::Nested::Body(id) = nested {
+            self.tables.set(self.tcx.body_tables(id));
+        }
+        pprust_hir::PpAnn::nested(&self.tcx.map, state, nested)?;
+        self.tables.set(old_tables);
+        Ok(())
     }
     fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
@@ -525,7 +537,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
                 pp::space(&mut s.s)?;
                 pp::word(&mut s.s, "as")?;
                 pp::space(&mut s.s)?;
-                pp::word(&mut s.s, &self.tcx.tables().expr_ty(expr).to_string())?;
+                pp::word(&mut s.s, &self.tables.get().expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),
@@ -751,7 +763,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
         }
         blocks::Code::FnLike(fn_like) => {
             let (bccx, analysis_data) =
-                borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_like.to_fn_parts(), &cfg);
+                borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_like.body(), &cfg);
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,

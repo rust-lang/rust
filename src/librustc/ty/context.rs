@@ -211,13 +211,11 @@ pub struct Tables<'tcx> {
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_tys: DefIdMap<ty::ClosureTy<'tcx>>,
+    /// Records the type of each closure.
+    pub closure_tys: NodeMap<ty::ClosureTy<'tcx>>,
 
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_kinds: DefIdMap<ty::ClosureKind>,
+    /// Records the type of each closure.
+    pub closure_kinds: NodeMap<ty::ClosureKind>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -233,7 +231,7 @@ pub struct Tables<'tcx> {
     pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
-impl<'a, 'gcx, 'tcx> Tables<'tcx> {
+impl<'tcx> Tables<'tcx> {
     pub fn empty() -> Tables<'tcx> {
         Tables {
             type_relative_path_defs: NodeMap(),
@@ -242,8 +240,8 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
             adjustments: NodeMap(),
             method_map: FxHashMap(),
             upvar_capture_map: FxHashMap(),
-            closure_tys: DefIdMap(),
-            closure_kinds: DefIdMap(),
+            closure_tys: NodeMap(),
+            closure_kinds: NodeMap(),
             liberated_fn_sigs: NodeMap(),
             fru_field_types: NodeMap()
         }
@@ -524,6 +522,14 @@ pub struct GlobalCtxt<'tcx> {
     /// Caches CoerceUnsized kinds for impls on custom types.
     pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
 
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_tys: RefCell<DepTrackingMap<maps::ClosureTypes<'tcx>>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_kinds: RefCell<DepTrackingMap<maps::ClosureKinds<'tcx>>>,
+
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.
     pub cast_kinds: RefCell<NodeMap<ty::cast::CastKind>>,
@@ -777,6 +783,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             repr_hint_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
+            closure_tys: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            closure_kinds: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),

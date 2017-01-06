@@ -51,6 +51,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
 
         MatchVisitor {
             tcx: self.tcx,
+            tables: self.tcx.body_tables(b),
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
         }.visit_body(self.tcx.map.body(b));
     }
@@ -68,6 +69,7 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 
 struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     param_env: &'a ty::ParameterEnvironment<'tcx>
 }
 
@@ -156,7 +158,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.pats.iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx);
+                    let mut patcx = PatternContext::new(self.tcx, self.tables);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         self.report_inlining_errors(patcx, pat.span);
@@ -181,7 +183,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![pat.0])
                 .collect();
-            let scrut_ty = cx.tcx.tables().node_id_to_type(scrut.id);
+            let scrut_ty = self.tables.node_id_to_type(scrut.id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix, source);
         })
     }
@@ -195,7 +197,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
         let module = self.tcx.map.local_def_id(self.tcx.map.get_module_parent(pat.id));
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx);
+            let mut patcx = PatternContext::new(self.tcx, self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats : Matrix = vec![vec![
@@ -228,7 +230,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), _, name, None) = p.node {
-            let pat_ty = cx.tcx.tables().pat_ty(p);
+            let pat_ty = cx.tables.pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
                 if edef.is_enum() && edef.variants.iter().any(|variant| {
                     variant.name == name.node && variant.ctor_kind == CtorKind::Const
@@ -455,7 +457,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(hir::BindByValue(..), _, _, ref sub) = p.node {
-                let pat_ty = cx.tcx.tables().node_id_to_type(p.id);
+                let pat_ty = cx.tables.node_id_to_type(p.id);
                 if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
                     check_move(p, sub.as_ref().map(|p| &**p));
                 }
@@ -470,13 +472,11 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
-                      Reveal::NotSpecializable).enter(|infcx| {
+    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::NotSpecializable).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };
-        let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
-        visitor.walk_expr(guard);
+        ExprUseVisitor::new(&mut checker, &infcx).walk_expr(guard);
     });
 }
 

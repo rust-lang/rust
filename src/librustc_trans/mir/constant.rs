@@ -101,7 +101,6 @@ impl<'tcx> Const<'tcx> {
                 bug!("MIR must not use `{:?}` (which refers to a local ID)", cv)
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
-            ConstVal::Dummy => bug!(),
         };
 
         assert!(!ty.has_erasable_regions());

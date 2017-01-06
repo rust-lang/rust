@@ -1038,7 +1038,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
         // Statics must be Sync.
         if mode == Mode::Static {
             let ty = mir.return_ty;
-            tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
+            tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx, ty,

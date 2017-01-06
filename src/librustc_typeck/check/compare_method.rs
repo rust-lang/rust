@@ -227,7 +227,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                                trait_param_env,
                                                                normalize_cause.clone());
 
-    tcx.infer_ctxt(None, Some(trait_param_env), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(trait_param_env, Reveal::NotSpecializable).enter(|infcx| {
         let inh = Inherited::new(ccx, infcx);
         let infcx = &inh.infcx;
         let fulfillment_cx = &inh.fulfillment_cx;
@@ -747,7 +747,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     let tcx = ccx.tcx;
-    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // The below is for the most part highly similar to the procedure
