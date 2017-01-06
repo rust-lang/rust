@@ -21,6 +21,7 @@ use rustc::ty;
 use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
+use rustc::util::nodemap::FxHashSet;
 
 use syntax::ast::{Ident, NodeId};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
@@ -728,7 +729,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
         if module as *const _ == self.graph_root as *const _ {
-            reexports = mem::replace(&mut self.macro_exports, Vec::new());
+            let mut exported_macro_names = FxHashSet();
+            for export in mem::replace(&mut self.macro_exports, Vec::new()).into_iter().rev() {
+                if exported_macro_names.insert(export.name) {
+                    reexports.push(export);
+                }
+            }
         }
 
         for (&(ident, ns), resolution) in module.resolutions.borrow().iter() {
