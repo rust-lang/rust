@@ -109,6 +109,7 @@ impl OutputType {
             OutputType::Bitcode => "bc",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
+            OutputType::Object if cfg!(target_os = "windows") => "obj",
             OutputType::Object => "o",
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
