@@ -21,13 +21,12 @@ use test::TestPaths;
 use uidiff;
 use util::logv;
 
-use std::env;
 use std::collections::HashSet;
+use std::env;
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, BufReader};
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
@@ -506,8 +505,8 @@ actual:\n\
                                  exe_file.to_str().unwrap().to_owned(),
                                  self.config.adb_test_dir.clone()
                              ],
-                             vec![("".to_owned(), "".to_owned())],
-                             Some("".to_owned()))
+                             Vec::new(),
+                             None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
                 procsrv::run("",
@@ -518,8 +517,8 @@ actual:\n\
                                  "tcp:5039".to_owned(),
                                  "tcp:5039".to_owned()
                              ],
-                             vec![("".to_owned(), "".to_owned())],
-                             Some("".to_owned()))
+                             Vec::new(),
+                             None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
                 let adb_arg = format!("export LD_LIBRARY_PATH={}; \
@@ -539,17 +538,23 @@ actual:\n\
                                                               "shell".to_owned(),
                                                               adb_arg.clone()
                                                           ],
-                                                          vec![("".to_owned(),
-                                                                "".to_owned())],
-                                                          Some("".to_owned()))
+                                                          Vec::new(),
+                                                          None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
+
+                // Wait for the gdbserver to print out "Listening on port ..."
+                // at which point we know that it's started and then we can
+                // execute the debugger below.
+                let mut stdout = BufReader::new(process.stdout.take().unwrap());
+                let mut line = String::new();
                 loop {
-                    //waiting 1 second for gdbserver start
-                    ::std::thread::sleep(::std::time::Duration::new(1,0));
-                    if TcpStream::connect("127.0.0.1:5039").is_ok() {
+                    line.truncate(0);
+                    stdout.read_line(&mut line).unwrap();
+                    if line.starts_with("Listening on port 5039") {
                         break
                     }
                 }
+                drop(stdout);
 
                 let debugger_script = self.make_out_name("debugger.script");
                 // FIXME (#9639): This needs to handle non-utf8 paths
@@ -569,7 +574,7 @@ actual:\n\
                                  &gdb_path,
                                  None,
                                  &debugger_opts,
-                                 vec![("".to_owned(), "".to_owned())],
+                                 Vec::new(),
                                  None)
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
