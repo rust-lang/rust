@@ -392,6 +392,7 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     curitem: DefId,
     in_foreign: bool,
+    tables: &'a ty::Tables<'tcx>,
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
@@ -435,6 +436,14 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.map)
     }
 
+    fn visit_nested_body(&mut self, body: hir::BodyId) {
+        let old_tables = self.tables;
+        self.tables = self.tcx.body_tables(body);
+        let body = self.tcx.map.body(body);
+        self.visit_body(body);
+        self.tables = old_tables;
+    }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let orig_curitem = replace(&mut self.curitem, self.tcx.map.local_def_id(item.id));
         intravisit::walk_item(self, item);
@@ -445,12 +454,12 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
         match expr.node {
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let method = self.tcx.tables().method_map[&method_call];
+                let method = self.tables.method_map[&method_call];
                 self.check_method(expr.span, method.def_id);
             }
             hir::ExprStruct(ref qpath, ref expr_fields, _) => {
-                let def = self.tcx.tables().qpath_def(qpath, expr.id);
-                let adt = self.tcx.tables().expr_ty(expr).ty_adt_def().unwrap();
+                let def = self.tables.qpath_def(qpath, expr.id);
+                let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 // RFC 736: ensure all unmentioned fields are visible.
                 // Rather than computing the set of unmentioned fields
@@ -511,15 +520,15 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
 
         match pattern.node {
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tcx.tables().qpath_def(qpath, pattern.id);
-                let adt = self.tcx.tables().pat_ty(pattern).ty_adt_def().unwrap();
+                let def = self.tables.qpath_def(qpath, pattern.id);
+                let adt = self.tables.pat_ty(pattern).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     self.check_field(field.span, adt, variant.field_named(field.node.name));
                 }
             }
             PatKind::TupleStruct(_, ref fields, ddpos) => {
-                match self.tcx.tables().pat_ty(pattern).sty {
+                match self.tables.pat_ty(pattern).sty {
                     // enum fields have no privacy at this time
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let expected_len = def.struct_variant().fields.len();
@@ -1203,6 +1212,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         curitem: DefId::local(CRATE_DEF_INDEX),
         in_foreign: false,
         tcx: tcx,
+        tables: &ty::Tables::empty(),
     };
     intravisit::walk_crate(&mut visitor, krate);
 

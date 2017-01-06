@@ -851,7 +851,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
-        self.tcx().infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
+        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
             ty.layout(&infcx).unwrap_or_else(|e| {
                 match e {
                     ty::layout::LayoutError::SizeOverflow(_) =>

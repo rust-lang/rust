@@ -45,15 +45,6 @@ pub struct FnLikeNode<'a> { node: map::Node<'a> }
 /// corresponds to some FnLikeNode.
 pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
-/// Components shared by fn-like things (fn items, methods, closures).
-pub struct FnParts<'a> {
-    pub decl: &'a FnDecl,
-    pub body: ast::BodyId,
-    pub kind: FnKind<'a>,
-    pub span: Span,
-    pub id:   NodeId,
-}
-
 impl MaybeFnLike for ast::Item {
     fn is_fn_like(&self) -> bool {
         match self.node { ast::ItemFn(..) => true, _ => false, }
@@ -162,16 +153,6 @@ impl<'a> FnLikeNode<'a> {
             })
         } else {
             None
-        }
-    }
-
-    pub fn to_fn_parts(self) -> FnParts<'a> {
-        FnParts {
-            decl: self.decl(),
-            body: self.body(),
-            kind: self.kind(),
-            span: self.span(),
-            id:   self.id(),
         }
     }
 

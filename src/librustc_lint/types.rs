@@ -16,7 +16,7 @@ use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, Primitive};
 use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -89,14 +89,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprBinary(binop, ref l, ref r) => {
-                if is_comparison(binop) && !check_limits(cx.tcx, binop, &l, &r) {
+                if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.span_lint(UNUSED_COMPARISONS,
                                  e.span,
                                  "comparison is useless due to type limits");
                 }
 
                 if binop.node.is_shift() {
-                    let opt_ty_bits = match cx.tcx.tables().node_id_to_type(l.id).sty {
+                    let opt_ty_bits = match cx.tables.node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None,
@@ -110,7 +110,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 false
                             }
                         } else {
-                            match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
+                            let const_cx = ConstContext::with_tables(cx.tcx, cx.tables);
+                            match const_cx.eval(&r, ExprTypeChecked) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||
                                     i.to_u64()
@@ -129,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprLit(ref lit) => {
-                match cx.tcx.tables().node_id_to_type(e.id).sty {
+                match cx.tables.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -274,11 +275,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn check_limits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  binop: hir::BinOp,
-                                  l: &hir::Expr,
-                                  r: &hir::Expr)
-                                  -> bool {
+        fn check_limits(cx: &LateContext,
+                        binop: hir::BinOp,
+                        l: &hir::Expr,
+                        r: &hir::Expr)
+                        -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
                 (_, &hir::ExprLit(_)) => (r, l, false),
@@ -287,7 +288,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match tcx.tables().node_id_to_type(expr.id).sty {
+            match cx.tables.node_id_to_type(expr.id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
@@ -696,7 +697,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
                 let t = cx.tcx.item_type(cx.tcx.map.local_def_id(it.id));
-                let layout = cx.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                let layout = cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {
                         bug!("failed to get layout for `{}`: {}", t, e)

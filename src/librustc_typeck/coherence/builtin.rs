@@ -205,7 +205,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            source,
            target);
 
-    tcx.infer_ctxt(None, Some(param_env), Reveal::ExactMatch).enter(|infcx| {
+    tcx.infer_ctxt(param_env, Reveal::ExactMatch).enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_node_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,

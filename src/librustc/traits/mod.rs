@@ -474,7 +474,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    tcx.infer_ctxt(None, Some(elaborated_env), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(elaborated_env, Reveal::NotSpecializable).enter(|infcx| {
         let predicates = match fully_normalize(&infcx, cause,
                                                &infcx.parameter_environment.caller_bounds) {
             Ok(predicates) => predicates,
@@ -576,7 +576,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();

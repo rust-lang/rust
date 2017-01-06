@@ -228,11 +228,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
-        debug!("Type for pattern binding {} (id {}) resolved to {:?}",
-               self.tcx().map.node_to_pretty_string(p.id),
-               p.id,
-               self.tcx().tables().node_id_to_type(p.id));
-
         intravisit::walk_pat(self, p);
     }
 
@@ -280,13 +275,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
-            let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
-            self.tcx().tables.borrow_mut().closure_tys.insert(*def_id, closure_ty);
+        for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
+            let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
+            let def_id = self.tcx().map.local_def_id(id);
+            self.tcx().closure_tys.borrow_mut().insert(def_id, closure_ty);
         }
 
-        for (def_id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
-            self.tcx().tables.borrow_mut().closure_kinds.insert(*def_id, closure_kind);
+        for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
+            let def_id = self.tcx().map.local_def_id(id);
+            self.tcx().closure_kinds.borrow_mut().insert(def_id, closure_kind);
         }
     }
 
@@ -496,7 +493,7 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingClosure(DefId),
+    ResolvingClosure(ast::NodeId),
     ResolvingFnSig(ast::NodeId),
     ResolvingFieldTypes(ast::NodeId),
     ResolvingAnonTy(DefId),
@@ -513,12 +510,12 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
+            ResolvingClosure(id) |
             ResolvingFnSig(id) |
             ResolvingFieldTypes(id) |
             ResolvingTyNode(id) => {
                 tcx.map.span(id)
             }
-            ResolvingClosure(did) |
             ResolvingAnonTy(did) => {
                 tcx.def_span(did)
             }

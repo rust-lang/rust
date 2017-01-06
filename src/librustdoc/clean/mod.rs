@@ -1692,22 +1692,10 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TySlice(ref ty) => Vector(box ty.clean(cx)),
-            TyArray(ref ty, e) => {
-                use rustc_const_math::{ConstInt, ConstUsize};
-                use rustc_const_eval::eval_const_expr;
-                use rustc::middle::const_val::ConstVal;
-
-                let e = &cx.tcx.map.body(e).value;
-                let n = match eval_const_expr(cx.tcx, e) {
-                    ConstVal::Integral(ConstInt::Usize(u)) => match u {
-                        ConstUsize::Us16(u) => u.to_string(),
-                        ConstUsize::Us32(u) => u.to_string(),
-                        ConstUsize::Us64(u) => u.to_string(),
-                    },
-                    // after type checking this can't fail
-                    _ => unreachable!(),
-                };
-                FixedVector(box ty.clean(cx), n)
+            TyArray(ref ty, length) => {
+                use rustc_const_eval::eval_length;
+                let n = eval_length(cx.tcx, length, "array length").unwrap();
+                FixedVector(box ty.clean(cx), n.to_string())
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {

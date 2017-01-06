@@ -84,6 +84,7 @@ pub mod recorder {
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    tables: &'l ty::Tables<'tcx>,
     analysis: &'l ty::CrateAnalysis<'tcx>,
     span_utils: SpanUtils<'tcx>,
 }
@@ -93,24 +94,6 @@ macro_rules! option_try(
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>,
-               analysis: &'l ty::CrateAnalysis<'tcx>)
-               -> SaveContext<'l, 'tcx> {
-        let span_utils = SpanUtils::new(&tcx.sess);
-        SaveContext::from_span_utils(tcx, analysis, span_utils)
-    }
-
-    pub fn from_span_utils(tcx: TyCtxt<'l, 'tcx, 'tcx>,
-                           analysis: &'l ty::CrateAnalysis<'tcx>,
-                           span_utils: SpanUtils<'tcx>)
-                           -> SaveContext<'l, 'tcx> {
-        SaveContext {
-            tcx: tcx,
-            analysis: analysis,
-            span_utils: span_utils,
-        }
-    }
-
     // List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<CrateData> {
         let mut result = Vec::new();
@@ -460,7 +443,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         let hir_node = self.tcx.map.expect_expr(expr.id);
-        let ty = self.tcx.tables().expr_ty_adjusted_opt(&hir_node);
+        let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::TyError {
             return None;
         }
@@ -474,7 +457,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         return None;
                     }
                 };
-                match self.tcx.tables().expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -493,7 +476,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, ..) => {
-                match self.tcx.tables().expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
@@ -514,7 +497,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::MethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let method_id = self.tcx.tables().method_map[&method_call].def_id;
+                let method_id = self.tables.method_map[&method_call].def_id;
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
@@ -551,7 +534,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
-                self.tcx.tables().qpath_def(qpath, id)
+                self.tables.qpath_def(qpath, id)
             }
 
             Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
@@ -914,7 +897,12 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     root_path.pop();
     let output = &mut output_file;
 
-    let save_ctxt = SaveContext::new(tcx, analysis);
+    let save_ctxt = SaveContext {
+        tcx: tcx,
+        tables: &ty::Tables::empty(),
+        analysis: analysis,
+        span_utils: SpanUtils::new(&tcx.sess),
+    };
 
     macro_rules! dump {
         ($new_dumper: expr) => {{
