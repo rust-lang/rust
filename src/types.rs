@@ -642,12 +642,12 @@ impl Rewrite for ast::Ty {
                 rewrite_bare_fn(bare_fn, self.span, context, width, offset)
             }
             ast::TyKind::Never => Some(String::from("!")),
-            ast::TyKind::Mac(..) |
-            ast::TyKind::Typeof(..) => unreachable!(),
+            ast::TyKind::Mac(..) => None,
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(ref it) => {
                 it.rewrite(context, width, offset).map(|it_str| format!("impl {}", it_str))
             }
+            ast::TyKind::Typeof(..) => unreachable!(),
         }
     }
 }
