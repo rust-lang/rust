@@ -24,7 +24,6 @@ build: false
 test_script:
     - cargo build --features debugging
     - cargo test --features debugging
-    - mkdir -p rust/cargo/bin
     - copy target\debug\cargo-clippy C:\Users\appveyor\.cargo\bin\
     - cargo clippy -- -D clippy
     - cd clippy_lints && cargo clippy -- -D clippy && cd ..
