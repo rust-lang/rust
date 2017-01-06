@@ -37,6 +37,7 @@ use syntax_pos::Span;
 use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
+use syntax::symbol::Symbol;
 use hir;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
@@ -339,7 +340,7 @@ pub enum LintSource {
     Node(ast::Name, Span),
 
     /// Lint level was set by a command-line flag.
-    CommandLine,
+    CommandLine(Symbol),
 }
 
 pub type LevelSource = (Level, LintSource);

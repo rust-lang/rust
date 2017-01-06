@@ -13,7 +13,7 @@
 
 #![feature(foo)]
 //~^ ERROR unused or unknown feature
-//~| NOTE [-F unused-features]
+//~| NOTE requested on the command line with `-F unused-features`
 
 #![feature(test_feature)]
 
