@@ -4,6 +4,7 @@ error: unused variable: `theOtherTwo`
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
    |
+   = note: #[deny(warnings)] implies #[deny(unused_variables)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |
@@ -16,6 +17,7 @@ error: variable `theTwo` should have a snake case name such as `the_two`
 19 |     let theTwo = 2;
    |         ^^^^^^
    |
+   = note: #[deny(warnings)] implies #[deny(non_snake_case)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |
@@ -27,6 +29,8 @@ error: variable `theOtherTwo` should have a snake case name such as `the_other_t
    |
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
+   |
+   = note: #[deny(warnings)] implies #[deny(non_snake_case)]
 
 error: aborting due to 3 previous errors
 

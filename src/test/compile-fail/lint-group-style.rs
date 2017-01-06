@@ -12,7 +12,9 @@
 //~^ NOTE lint level defined here
 #![allow(dead_code)]
 
-fn CamelCase() {} //~ ERROR function `CamelCase` should have a snake case name
+fn CamelCase() {}
+//~^ ERROR function `CamelCase` should have a snake case name
+//~| NOTE #[deny(bad_style)] implies #[deny(non_snake_case)]
 
 #[allow(bad_style)]
 mod test {
@@ -22,9 +24,13 @@ mod test {
     //~^ NOTE lint level defined here
     //~^^ NOTE lint level defined here
     mod bad {
-        fn CamelCase() {} //~ ERROR function `CamelCase` should have a snake case name
+        fn CamelCase() {}
+        //~^ ERROR function `CamelCase` should have a snake case name
+        //~| NOTE #[forbid(bad_style)] implies #[forbid(non_snake_case)]
 
-        static bad: isize = 1; //~ ERROR static variable `bad` should have an upper case name
+        static bad: isize = 1;
+        //~^ ERROR static variable `bad` should have an upper case name
+        //~| NOTE #[forbid(bad_style)] implies #[forbid(non_upper_case_globals)]
     }
 
     mod warn {
@@ -32,9 +38,13 @@ mod test {
         //~^ NOTE lint level defined here
         //~| NOTE lint level defined here
 
-        fn CamelCase() {} //~ WARN function `CamelCase` should have a snake case name
+        fn CamelCase() {}
+        //~^ WARN function `CamelCase` should have a snake case name
+        //~| NOTE #[warn(bad_style)] implies #[warn(non_snake_case)]
 
-        struct snake_case; //~ WARN type `snake_case` should have a camel case name
+        struct snake_case;
+        //~^ WARN type `snake_case` should have a camel case name
+        //~| NOTE #[warn(bad_style)] implies #[warn(non_camel_case_types)]
     }
 }
 

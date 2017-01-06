@@ -23,6 +23,7 @@ mod bar {
         //~^ WARN `Foo` is ambiguous
         //~| WARN hard error in a future release
         //~| NOTE see issue #38260
+        //~| NOTE #[warn(legacy_imports)] on by default
     }
 }
 
