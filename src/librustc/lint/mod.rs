@@ -338,7 +338,7 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(Span),
+    Node(ast::Name, Span),
 
     /// Lint level was set by a command-line flag.
     CommandLine,
