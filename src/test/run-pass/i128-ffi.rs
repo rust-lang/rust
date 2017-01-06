@@ -36,6 +36,7 @@ extern "C" {
     fn square(f: i128) -> i128;
     fn sub(f: i128, f: i128) -> i128;
     fn adt_id(f: Foo) -> Foo;
+    fn adt_clone(f: *const Foo) -> Foo;
 }
 
 fn main() {
@@ -52,6 +53,8 @@ fn main() {
         assert_eq!(k, k_out);
         let a = Foo { a: 1, b: 2, c: 3 };
         let b = adt_id(a);
+        assert_eq!(a, b);
+        let b = adt_clone(&a);
         assert_eq!(a, b);
     }
 }

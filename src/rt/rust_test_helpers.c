@@ -281,6 +281,10 @@ struct Foo adt_id(struct Foo foo) {
     return foo;
 }
 
+struct Foo adt_clone(struct Foo *foo) {
+    return *foo;
+}
+
 unsigned __int128 identity(unsigned __int128 a) {
     return a;
 }
