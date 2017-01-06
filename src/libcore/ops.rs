@@ -1940,7 +1940,7 @@ shr_assign_impl_all! { u128 i128 }
 #[lang = "index"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Index<Idx: ?Sized> {
+pub trait Index<Idx> {
     /// The returned type after indexing
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output: ?Sized;
@@ -2028,7 +2028,7 @@ pub trait Index<Idx: ?Sized> {
 #[lang = "index_mut"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
+pub trait IndexMut<Idx>: Index<Idx> {
     /// The method for the mutable indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
