@@ -29,7 +29,6 @@ use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use rustc::lint;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -148,20 +147,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(&rl::Region::LateBound(debruijn, id)) => {
-                // If this region is declared on a function, it will have
-                // an entry in `late_bound`, but if it comes from
-                // `for<'a>` in some type or something, it won't
-                // necessarily have one. In that case though, we won't be
-                // changed from late to early bound, so we can just
-                // substitute false.
-                let issue_32330 = tcx.named_region_map
-                                     .late_bound
-                                     .get(&id)
-                                     .cloned()
-                                     .unwrap_or(ty::Issue32330::WontChange);
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
-                    ty::BrNamed(tcx.hir.local_def_id(id), name, issue_32330)))
+                    ty::BrNamed(tcx.hir.local_def_id(id), name)))
             }
 
             Some(&rl::Region::LateBoundAnon(debruijn, index)) => {
@@ -177,17 +165,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(&rl::Region::Free(scope, id)) => {
-                // As in Region::LateBound above, could be missing for some late-bound
-                // regions, but also for early-bound regions.
-                let issue_32330 = tcx.named_region_map
-                                     .late_bound
-                                     .get(&id)
-                                     .cloned()
-                                     .unwrap_or(ty::Issue32330::WontChange);
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope: scope.to_code_extent(&tcx.region_maps),
-                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name, issue_32330)
+                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name)
                 }))
 
                     // (*) -- not late-bound, won't change
@@ -566,7 +547,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
-        path_id: ast::NodeId,
+        _path_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
@@ -602,7 +583,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
         for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
             let br_name = match *br {
-                ty::BrNamed(_, name, _) => name,
+                ty::BrNamed(_, name) => name,
                 _ => {
                     span_bug!(
                         binding.span,
@@ -610,13 +591,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         br);
                 }
             };
-            tcx.sess.add_lint(
-                lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
-                path_id,
-                binding.span,
-                format!("binding for associated type `{}` references lifetime `{}`, \
-                         which does not appear in the trait input types",
-                        binding.item_name, br_name));
+            struct_span_err!(tcx.sess,
+                             binding.span,
+                             E0582,
+                             "binding for associated type `{}` references lifetime `{}`, \
+                              which does not appear in the trait input types",
+                             binding.item_name, br_name)
+                .emit();
         }
 
         // Simple case: X is defined in the current trait.
@@ -1197,7 +1178,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
                 for br in late_bound_in_ret.difference(&late_bound_in_args) {
                     let br_name = match *br {
-                        ty::BrNamed(_, name, _) => name,
+                        ty::BrNamed(_, name) => name,
                         _ => {
                             span_bug!(
                                 bf.decl.output.span(),
@@ -1205,13 +1186,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                 br);
                         }
                     };
-                    tcx.sess.add_lint(
-                        lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
-                        ast_ty.id,
-                        ast_ty.span,
-                        format!("return type references lifetime `{}`, \
-                                 which does not appear in the trait input types",
-                                br_name));
+                    struct_span_err!(tcx.sess,
+                                     ast_ty.span,
+                                     E0581,
+                                     "return type references lifetime `{}`, \
+                                      which does not appear in the fn input types",
+                                     br_name)
+                        .emit();
                 }
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
