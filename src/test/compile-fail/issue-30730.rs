@@ -11,5 +11,5 @@
 #![deny(warnings)] //~ NOTE: lint level defined here
 use std::thread;
 //~^ ERROR: unused import
-//~| NOTE: #[deny(warnings)] implies #[deny(unused_imports)]
+//~| NOTE: #[deny(unused_imports)] implied by #[deny(warnings)]
 fn main() {}

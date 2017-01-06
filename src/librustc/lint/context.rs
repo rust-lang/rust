@@ -483,16 +483,16 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                                   flag, hyphen_case_lint_name));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                err.note(&format!("`{} {}` implies `{} {}`",
-                                  flag, hyphen_case_flag_val, flag, hyphen_case_lint_name));
+                err.note(&format!("`{} {}` implied by `{} {}`",
+                                  flag, hyphen_case_lint_name, flag, hyphen_case_flag_val));
             }
         },
         Node(lint_attr_name, src) => {
             def = Some(src);
             if lint_attr_name.as_str().deref() != name {
                 let level_str = level.as_str();
-                err.note(&format!("#[{}({})] implies #[{}({})]",
-                                  level_str, lint_attr_name, level_str, name));
+                err.note(&format!("#[{}({})] implied by #[{}({})]",
+                                  level_str, name, level_str, lint_attr_name));
             }
         }
     }

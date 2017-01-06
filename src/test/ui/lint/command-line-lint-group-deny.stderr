@@ -4,7 +4,7 @@ error: variable `_InappropriateCamelCasing` should have a snake case name such a
 14 |     let _InappropriateCamelCasing = true;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D bad-style` implies `-D non-snake-case`
+   = note: `-D non-snake-case` implied by `-D bad-style`
 
 error: aborting due to previous error
 
