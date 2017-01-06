@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(unreachable_patterns)]
+
 fn main() {
     let foo = Some(1);
     match foo {
-        Some(bar) => {/* ... */}
+        Some(_) => {/* ... */}
         None => {/* ... */}
-        _ => {/* ... */} //~ ERROR E0001
+        _ => {/* ... */} //~ ERROR unreachable pattern
     }
 }

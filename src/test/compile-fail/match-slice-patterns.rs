@@ -12,7 +12,7 @@
 
 fn check(list: &[Option<()>]) {
     match list {
-    //~^ ERROR `&[None, Some(_), None, _]` and `&[Some(_), Some(_), None, _]` not covered
+    //~^ ERROR `&[_, Some(_), None, _]` not covered
         &[] => {},
         &[_] => {},
         &[_, _] => {},

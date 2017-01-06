@@ -26,6 +26,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
 use rustc::mir::*;
+use rustc_data_structures::fx::FxHashSet;
 
 use std::mem;
 
@@ -93,10 +94,29 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Range { .. } |
-            PatternKind::Variant { .. } |
             PatternKind::Slice { .. } => {
                 Err(match_pair)
             }
+
+            PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
+                let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
+                    i == variant_index || {
+                        let mut visited = FxHashSet::default();
+                        let node_set = v.uninhabited_from(&mut visited,
+                                                          self.hir.tcx(),
+                                                          substs,
+                                                          adt_def.adt_kind());
+                        !node_set.is_empty()
+                    }
+                });
+                if irrefutable {
+                    let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
+                    candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
+                    Ok(())
+                } else {
+                    Err(match_pair)
+                }
+            },
 
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(&mut candidate.match_pairs,

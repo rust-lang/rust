@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(unreachable_patterns)]
+#![allow(unused_variables)]
+#![allow(non_snake_case)]
+
 pub enum E {
     A,
     B,

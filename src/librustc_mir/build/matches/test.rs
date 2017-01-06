@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// It is a bug to call this with a simplifyable pattern.
     pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
-            PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
+            PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
@@ -451,7 +451,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (&TestKind::Switch { adt_def: tested_adt_def, .. },
-             &PatternKind::Variant { adt_def, variant_index, ref subpatterns }) => {
+             &PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. }) => {
                 assert_eq!(adt_def, tested_adt_def);
                 let new_candidate =
                     self.candidate_after_variant_switch(match_pair_index,

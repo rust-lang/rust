@@ -14,6 +14,8 @@
 //error-pattern: unreachable
 //error-pattern: unreachable
 
+#![deny(unreachable_patterns)]
+
 fn main() {
     match 5 {
       1 ... 10 => { }

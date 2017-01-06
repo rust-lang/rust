@@ -16,6 +16,5 @@ fn main() {
     match "world" { //~ ERROR non-exhaustive patterns: `&_`
         ref _x if false => {}
         "hello" => {}
-        "hello" => {} //~ ERROR unreachable pattern
     }
 }

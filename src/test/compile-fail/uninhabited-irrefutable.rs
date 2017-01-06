@@ -8,18 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_patterns)]
-#![feature(box_syntax)]
-#![allow(dead_code)]
-#![deny(unreachable_patterns)]
+#![feature(never_type)]
 
-enum Foo { A(Box<Foo>, isize), B(usize), }
+mod foo {
+    pub struct SecretlyEmpty {
+        _priv: !,
+    }
+
+    pub struct NotSoSecretlyEmpty {
+        pub _pub: !,
+    }
+}
+
+struct NotSoSecretlyEmpty {
+    _priv: !,
+}
+
+enum Foo {
+    A(foo::SecretlyEmpty),
+    B(foo::NotSoSecretlyEmpty),
+    C(NotSoSecretlyEmpty),
+    D(u32),
+}
 
 fn main() {
-    match Foo::B(1) {
-        Foo::B(_) | Foo::A(box _, 1) => { }
-        Foo::A(_, 1) => { } //~ ERROR unreachable pattern
-        _ => { }
-    }
+    let x: Foo = Foo::D(123);
+    let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
 }
 
