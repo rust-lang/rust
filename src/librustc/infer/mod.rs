@@ -27,7 +27,6 @@ use middle::region::CodeExtent;
 use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
-use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -37,10 +36,11 @@ use traits::{self, ObligationCause, PredicateObligations, Reveal};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
+use std::ops::Deref;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::{FxHashMap, FxHashSet, NodeMap};
+use util::nodemap::{FxHashMap, FxHashSet};
 use arena::DroplessArena;
 
 use self::combine::CombineFields;
@@ -76,28 +76,63 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
-/// A version of &ty::Tables which can be global or local.
-/// Only the local version supports borrow_mut.
+/// A version of &ty::Tables which can be `Missing` (not needed),
+/// `InProgress` (during typeck) or `Interned` (result of typeck).
+/// Only the `InProgress` version supports `borrow_mut`.
 #[derive(Copy, Clone)]
 pub enum InferTables<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    Global(&'a RefCell<ty::Tables<'gcx>>),
-    Local(&'a RefCell<ty::Tables<'tcx>>)
+    Interned(&'a ty::Tables<'gcx>),
+    InProgress(&'a RefCell<ty::Tables<'tcx>>),
+    Missing
+}
+
+pub enum InferTablesRef<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    Interned(&'a ty::Tables<'gcx>),
+    InProgress(Ref<'a, ty::Tables<'tcx>>)
+}
+
+impl<'a, 'gcx, 'tcx> Deref for InferTablesRef<'a, 'gcx, 'tcx> {
+    type Target = ty::Tables<'tcx>;
+    fn deref(&self) -> &Self::Target {
+        match *self {
+            InferTablesRef::Interned(tables) => tables,
+            InferTablesRef::InProgress(ref tables) => tables
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> InferTables<'a, 'gcx, 'tcx> {
-    pub fn borrow(self) -> Ref<'a, ty::Tables<'tcx>> {
+    pub fn borrow(self) -> InferTablesRef<'a, 'gcx, 'tcx> {
         match self {
-            InferTables::Global(tables) => tables.borrow(),
-            InferTables::Local(tables) => tables.borrow()
+            InferTables::Interned(tables) => InferTablesRef::Interned(tables),
+            InferTables::InProgress(tables) => InferTablesRef::InProgress(tables.borrow()),
+            InferTables::Missing => {
+                bug!("InferTables: infcx.tables.borrow() with no tables")
+            }
+        }
+    }
+
+    pub fn expect_interned(self) -> &'a ty::Tables<'gcx> {
+        match self {
+            InferTables::Interned(tables) => tables,
+            InferTables::InProgress(_) => {
+                bug!("InferTables: infcx.tables.expect_interned() during type-checking");
+            }
+            InferTables::Missing => {
+                bug!("InferTables: infcx.tables.expect_interned() with no tables")
+            }
         }
     }
 
     pub fn borrow_mut(self) -> RefMut<'a, ty::Tables<'tcx>> {
         match self {
-            InferTables::Global(_) => {
+            InferTables::Interned(_) => {
                 bug!("InferTables: infcx.tables.borrow_mut() outside of type-checking");
             }
-            InferTables::Local(tables) => tables.borrow_mut()
+            InferTables::InProgress(tables) => tables.borrow_mut(),
+            InferTables::Missing => {
+                bug!("InferTables: infcx.tables.borrow_mut() with no tables")
+            }
         }
     }
 }
@@ -370,27 +405,84 @@ impl fmt::Display for FixupError {
     }
 }
 
+pub trait InferEnv<'a, 'tcx> {
+    fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>);
+}
+
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
+    fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>) {
+        (None, None, None)
+    }
+}
+
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParameterEnvironment<'tcx> {
+    fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>) {
+        (None, None, Some(self))
+    }
+}
+
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::Tables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+    fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>) {
+        (Some(self.0), None, Some(self.1))
+    }
+}
+
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::Tables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+    fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>) {
+        (None, Some(self.0), Some(self.1))
+    }
+}
+
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
+    fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                -> (Option<&'a ty::Tables<'tcx>>,
+                    Option<ty::Tables<'tcx>>,
+                    Option<ty::ParameterEnvironment<'tcx>>) {
+        let item_id = tcx.map.body_owner(self);
+        (Some(tcx.item_tables(tcx.map.local_def_id(item_id))),
+         None,
+         Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
+    }
+}
+
 /// Helper type of a temporary returned by tcx.infer_ctxt(...).
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
 pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: DroplessArena,
-    tables: Option<RefCell<ty::Tables<'tcx>>>,
+    fresh_tables: Option<RefCell<ty::Tables<'tcx>>>,
+    tables: Option<&'a ty::Tables<'gcx>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
     projection_mode: Reveal,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
-    pub fn infer_ctxt(self,
-                      tables: Option<ty::Tables<'tcx>>,
-                      param_env: Option<ty::ParameterEnvironment<'gcx>>,
-                      projection_mode: Reveal)
-                      -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    pub fn infer_ctxt<E: InferEnv<'a, 'gcx>>(self,
+                                             env: E,
+                                             projection_mode: Reveal)
+                                             -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+        let (tables, fresh_tables, param_env) = env.to_parts(self);
         InferCtxtBuilder {
             global_tcx: self,
             arena: DroplessArena::new(),
-            tables: tables.map(RefCell::new),
+            fresh_tables: fresh_tables.map(RefCell::new),
+            tables: tables,
             param_env: param_env,
             projection_mode: projection_mode,
         }
@@ -399,16 +491,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     /// Fake InferCtxt with the global tcx. Used by pre-MIR borrowck
     /// for MemCategorizationContext/ExprUseVisitor.
     /// If any inference functionality is used, ICEs will occur.
-    pub fn borrowck_fake_infer_ctxt(self, param_env: ty::ParameterEnvironment<'gcx>)
+    pub fn borrowck_fake_infer_ctxt(self, body: hir::BodyId)
                                     -> InferCtxt<'a, 'gcx, 'gcx> {
+        let (tables, _, param_env) = body.to_parts(self);
         InferCtxt {
             tcx: self,
-            tables: InferTables::Global(&self.tables),
+            tables: InferTables::Interned(tables.unwrap()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            parameter_environment: param_env,
+            parameter_environment: param_env.unwrap(),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
@@ -428,15 +521,14 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let InferCtxtBuilder {
             global_tcx,
             ref arena,
-            ref tables,
+            ref fresh_tables,
+            tables,
             ref mut param_env,
             projection_mode,
         } = *self;
-        let tables = if let Some(ref tables) = *tables {
-            InferTables::Local(tables)
-        } else {
-            InferTables::Global(&global_tcx.tables)
-        };
+        let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
+            fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
+        });
         let param_env = param_env.take().unwrap_or_else(|| {
             global_tcx.empty_parameter_environment()
         });
@@ -555,7 +647,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        self.infer_ctxt((), Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
         })
     }
@@ -573,7 +665,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(None, Some(env.clone()), Reveal::All).enter(|infcx| {
+        self.infer_ctxt(env.clone(), Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -1490,8 +1582,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // Even if the type may have no inference variables, during
             // type-checking closure types are in local tables only.
             let local_closures = match self.tables {
-                InferTables::Local(_) => ty.has_closure_types(),
-                InferTables::Global(_) => false
+                InferTables::InProgress(_) => ty.has_closure_types(),
+                _ => false
             };
             if !local_closures {
                 return ty.moves_by_default(self.tcx.global_tcx(), self.param_env(), span);
@@ -1526,15 +1618,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .map(|method| method.def_id)
     }
 
-    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::Adjustment<'tcx>>> {
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<adjustment::Adjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tables.borrow(), project_adjustments)
-    }
-
     pub fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
     }
@@ -1555,15 +1638,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         def_id: DefId)
                         -> Option<ty::ClosureKind>
     {
-        if def_id.is_local() {
-            self.tables.borrow().closure_kinds.get(&def_id).cloned()
-        } else {
-            // During typeck, ALL closures are local. But afterwards,
-            // during trans, we see closure ids from other traits.
-            // That may require loading the closure data out of the
-            // cstore.
-            Some(self.tcx.closure_kind(def_id))
+        if let InferTables::InProgress(tables) = self.tables {
+            if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+                return tables.borrow().closure_kinds.get(&id).cloned();
+            }
         }
+
+        // During typeck, ALL closures are local. But afterwards,
+        // during trans, we see closure ids from other traits.
+        // That may require loading the closure data out of the
+        // cstore.
+        Some(self.tcx.closure_kind(def_id))
     }
 
     pub fn closure_type(&self,
@@ -1571,14 +1656,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         substs: ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        if let InferTables::Local(tables) = self.tables {
-            if let Some(ty) = tables.borrow().closure_tys.get(&def_id) {
-                return ty.subst(self.tcx, substs.substs);
+        if let InferTables::InProgress(tables) = self.tables {
+            if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+                if let Some(ty) = tables.borrow().closure_tys.get(&id) {
+                    return ty.subst(self.tcx, substs.substs);
+                }
             }
         }
 
-        let closure_ty = self.tcx.closure_type(def_id, substs);
-        closure_ty
+        self.tcx.closure_type(def_id, substs)
     }
 }
 

@@ -1921,6 +1921,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow()
     }
 
+    pub fn body_tables(self, body: hir::BodyId) -> &'a Tables<'gcx> {
+        self.item_tables(self.map.body_owner_def_id(body))
+    }
+
+    pub fn item_tables(self, _def_id: DefId) -> &'a Tables<'gcx> {
+        // HACK(eddyb) temporarily work around RefCell until proper per-body tables
+        unsafe {
+            mem::transmute::<&Tables, &Tables>(&self.tables())
+        }
+    }
+
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.map.find(id) {
             Some(ast_map::NodeExpr(e)) => {
@@ -2454,12 +2465,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(&kind) = self.tables.borrow().closure_kinds.get(&def_id) {
+        if let Some(&kind) = self.closure_kinds.borrow().get(&def_id) {
             return kind;
         }
 
         let kind = self.sess.cstore.closure_kind(def_id);
-        self.tables.borrow_mut().closure_kinds.insert(def_id, kind);
+        self.closure_kinds.borrow_mut().insert(def_id, kind);
         kind
     }
 
@@ -2471,12 +2482,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
+        if let Some(ty) = self.closure_tys.borrow().get(&def_id) {
             return ty.subst(self, substs.substs);
         }
 
         let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
-        self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        self.closure_tys.borrow_mut().insert(def_id, ty.clone());
         ty.subst(self, substs.substs)
     }
 

@@ -15,6 +15,8 @@ use hir::def_id::DefId;
 use rustc_const_math::*;
 use self::ConstVal::*;
 
+use std::collections::BTreeMap;
+
 #[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal {
     Float(ConstFloat),
@@ -22,16 +24,12 @@ pub enum ConstVal {
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
-    Struct(ast::NodeId),
-    Tuple(ast::NodeId),
     Function(DefId),
-    Array(ast::NodeId, u64),
-    Repeat(ast::NodeId, u64),
+    Struct(BTreeMap<ast::Name, ConstVal>),
+    Tuple(Vec<ConstVal>),
+    Array(Vec<ConstVal>),
+    Repeat(Box<ConstVal>, u64),
     Char(char),
-    /// A value that only occurs in case `eval_const_expr` reported an error. You should never
-    /// handle this case. Its sole purpose is to allow more errors to be reported instead of
-    /// causing a fatal error.
-    Dummy,
 }
 
 impl ConstVal {
@@ -48,7 +46,6 @@ impl ConstVal {
             Array(..) => "array",
             Repeat(..) => "repeat",
             Char(..) => "char",
-            Dummy => "dummy value",
         }
     }
 }

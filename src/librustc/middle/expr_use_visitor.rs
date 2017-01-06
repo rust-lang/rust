@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
         let infcx = self.mc.infcx;
         //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adj = infcx.adjustments().get(&expr.id).map(|x| x.clone());
+        let adj = infcx.tables.borrow().adjustments.get(&expr.id).map(|x| x.clone());
         if let Some(adjustment) = adj {
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
@@ -989,7 +989,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = tcx.tables().qpath_def(qpath, pat.id);
+            let def = infcx.tables.borrow().qpath_def(qpath, pat.id);
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {

@@ -17,7 +17,7 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
-use rustc_const_eval as const_eval;
+use rustc_const_eval::{ConstContext, EvalHint, fatal_const_eval_err};
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
@@ -33,7 +33,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
-        let adj = cx.tcx.tables().adjustments.get(&self.id).cloned();
+        let adj = cx.tables().adjustments.get(&self.id).cloned();
 
         debug!("make_mirror: unadjusted-expr={:?} applying adjustments={:?}",
                expr,
@@ -80,13 +80,13 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     let i = i as u32;
                     let adjusted_ty =
                         expr.ty.adjust_for_autoderef(cx.tcx, self.id, self.span, i, |mc| {
-                            cx.tcx.tables().method_map.get(&mc).map(|m| m.ty)
+                            cx.tables().method_map.get(&mc).map(|m| m.ty)
                         });
                     debug!("make_mirror: autoderef #{}, adjusted_ty={:?}",
                            i,
                            adjusted_ty);
                     let method_key = ty::MethodCall::autoderef(self.id, i);
-                    let meth_ty = cx.tcx.tables().method_map.get(&method_key).map(|m| m.ty);
+                    let meth_ty = cx.tables().method_map.get(&method_key).map(|m| m.ty);
                     let kind = if let Some(meth_ty) = meth_ty {
                         debug!("make_mirror: overloaded autoderef (meth_ty={:?})", meth_ty);
 
@@ -217,7 +217,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                           expr: &'tcx hir::Expr)
                                           -> Expr<'tcx> {
-    let expr_ty = cx.tcx.tables().expr_ty(expr);
+    let expr_ty = cx.tables().expr_ty(expr);
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
     let kind = match expr.node {
@@ -236,7 +236,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprCall(ref fun, ref args) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 // The callee is something implementing Fn, FnMut, or FnOnce.
                 // Find the actual method implementation being called and
                 // build the appropriate UFCS call expression with the
@@ -285,9 +285,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     None
                 };
                 if let Some((adt_def, index)) = adt_data {
-                    let substs = cx.tcx
-                        .tables()
-                        .node_id_item_substs(fun.id)
+                    let substs = cx.tables().node_id_item_substs(fun.id)
                         .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
                     let field_refs = args.iter()
                         .enumerate()
@@ -307,7 +305,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                 } else {
                     ExprKind::Call {
-                        ty: cx.tcx.tables().node_id_to_type(fun.id),
+                        ty: cx.tables().node_id_to_type(fun.id),
                         fun: fun.to_ref(),
                         args: args.to_ref(),
                     }
@@ -337,7 +335,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 let pass_args = if op.node.is_by_value() {
                     PassArgs::ByValue
                 } else {
@@ -361,7 +359,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprLit(..) => ExprKind::Literal { literal: cx.const_eval_literal(expr) },
 
         hir::ExprBinary(op, ref lhs, ref rhs) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 let pass_args = if op.node.is_by_value() {
                     PassArgs::ByValue
                 } else {
@@ -421,7 +419,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprIndex(ref lhs, ref index) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 overloaded_lvalue(cx,
                                   expr,
                                   ty::MethodCall::expr(expr.id),
@@ -437,7 +435,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 overloaded_lvalue(cx,
                                   expr,
                                   ty::MethodCall::expr(expr.id),
@@ -450,7 +448,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprUnary(hir::UnOp::UnNot, ref arg) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 overloaded_operator(cx,
                                     expr,
                                     ty::MethodCall::expr(expr.id),
@@ -466,7 +464,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
-            if cx.tcx.tables().is_method_call(expr.id) {
+            if cx.tables().is_method_call(expr.id) {
                 overloaded_operator(cx,
                                     expr,
                                     ty::MethodCall::expr(expr.id),
@@ -500,8 +498,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 base: base.as_ref().map(|base| {
                                     FruInfo {
                                         base: base.to_ref(),
-                                        field_types: cx.tcx.tables().fru_field_types[&expr.id]
-                                            .clone(),
+                                        field_types: cx.tables().fru_field_types[&expr.id].clone(),
                                     }
                                 }),
                             }
@@ -541,7 +538,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprClosure(..) => {
-            let closure_ty = cx.tcx.tables().expr_ty(expr);
+            let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs) = match closure_ty.sty {
                 ty::TyClosure(def_id, substs) => (def_id, substs),
                 _ => {
@@ -562,7 +559,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprPath(ref qpath) => {
-            let def = cx.tcx.tables().qpath_def(qpath, expr.id);
+            let def = cx.tables().qpath_def(qpath, expr.id);
             convert_path_expr(cx, expr, def)
         }
 
@@ -575,17 +572,21 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         // Now comes the rote stuff:
-        hir::ExprRepeat(ref v, c) => {
-            let c = &cx.tcx.map.body(c).value;
+        hir::ExprRepeat(ref v, count) => {
+            let tcx = cx.tcx.global_tcx();
+            let c = &cx.tcx.map.body(count).value;
+            let count = match ConstContext::new(tcx, count).eval(c, EvalHint::ExprTypeChecked) {
+                Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
+                Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
+                Err(s) => fatal_const_eval_err(tcx, &s, c.span, "expression")
+            };
+
             ExprKind::Repeat {
                 value: v.to_ref(),
                 count: TypedConstVal {
-                    ty: cx.tcx.tables().expr_ty(c),
+                    ty: cx.tcx.types.usize,
                     span: c.span,
-                    value: match const_eval::eval_const_expr(cx.tcx.global_tcx(), c) {
-                        ConstVal::Integral(ConstInt::Usize(u)) => u,
-                        other => bug!("constant evaluation of repeat count yielded {:?}", other),
-                    },
+                    value: count
                 }
             }
         }
@@ -627,7 +628,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
         hir::ExprField(ref source, name) => {
-            let index = match cx.tcx.tables().expr_ty_adjusted(source).sty {
+            let index = match cx.tables().expr_ty_adjusted(source).sty {
                 ty::TyAdt(adt_def, _) => adt_def.variants[0].index_of_field_named(name.node),
                 ref ty => span_bug!(expr.span, "field of non-ADT: {:?}", ty),
             };
@@ -679,7 +680,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  expr: &hir::Expr,
                                  method_call: ty::MethodCall)
                                  -> Expr<'tcx> {
-    let callee = cx.tcx.tables().method_map[&method_call];
+    let callee = cx.tables().method_map[&method_call];
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
     Expr {
         temp_lifetime: temp_lifetime,
@@ -703,7 +704,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| Pattern::from_hir(cx.tcx, p)).collect(),
+        patterns: arm.pats.iter().map(|p| Pattern::from_hir(cx.tcx, cx.tables(), p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
@@ -713,9 +714,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      def: Def)
                                      -> ExprKind<'tcx> {
-    let substs = cx.tcx
-        .tables()
-        .node_id_item_substs(expr.id)
+    let substs = cx.tables().node_id_item_substs(expr.id)
         .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
     let def_id = match def {
         // A regular function, constructor function or a constant.
@@ -728,7 +727,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Def::StructCtor(def_id, CtorKind::Const) |
         Def::VariantCtor(def_id, CtorKind::Const) => {
-            match cx.tcx.tables().node_id_to_type(expr.id).sty {
+            match cx.tables().node_id_to_type(expr.id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::TyAdt(adt_def, substs) => {
@@ -776,7 +775,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    id_var,
                    index,
                    closure_expr_id);
-            let var_ty = cx.tcx.tables().node_id_to_type(id_var);
+            let var_ty = cx.tables().node_id_to_type(id_var);
 
             let body_id = match cx.tcx.map.find(closure_expr_id) {
                 Some(map::NodeExpr(expr)) => {
@@ -793,7 +792,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
 
             // FIXME free regions in closures are not right
-            let closure_ty = cx.tcx.tables().node_id_to_type(closure_expr_id);
+            let closure_ty = cx.tables().node_id_to_type(closure_expr_id);
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
@@ -869,7 +868,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 var_id: id_var,
                 closure_expr_id: closure_expr_id,
             };
-            let upvar_capture = match cx.tcx.tables().upvar_capture(upvar_id) {
+            let upvar_capture = match cx.tables().upvar_capture(upvar_id) {
                 Some(c) => c,
                 None => {
                     span_bug!(expr.span, "no upvar_capture for {:?}", upvar_id);
@@ -948,7 +947,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
             argrefs.extend(args.iter()
                 .map(|arg| {
-                    let arg_ty = cx.tcx.tables().expr_ty_adjusted(arg);
+                    let arg_ty = cx.tables().expr_ty_adjusted(arg);
                     let adjusted_ty = cx.tcx.mk_ref(region,
                                                     ty::TypeAndMut {
                                                         ty: arg_ty,
@@ -990,7 +989,7 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // line up (this is because `*x` and `x[y]` represent lvalues):
 
     // to find the type &T of the content returned by the method;
-    let ref_ty = cx.tcx.tables().method_map[&method_call].ty.fn_ret();
+    let ref_ty = cx.tables().method_map[&method_call].ty.fn_ret();
     let ref_ty = cx.tcx.no_late_bound_regions(&ref_ty).unwrap();
     // callees always have all late-bound regions fully instantiated,
 
@@ -1019,9 +1018,9 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         var_id: id_var,
         closure_expr_id: closure_expr.id,
     };
-    let upvar_capture = cx.tcx.tables().upvar_capture(upvar_id).unwrap();
+    let upvar_capture = cx.tables().upvar_capture(upvar_id).unwrap();
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(closure_expr.id);
-    let var_ty = cx.tcx.tables().node_id_to_type(id_var);
+    let var_ty = cx.tables().node_id_to_type(id_var);
     let captured_var = Expr {
         temp_lifetime: temp_lifetime,
         ty: var_ty,

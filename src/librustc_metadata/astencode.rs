@@ -55,6 +55,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tables_pos = self.position();
         let tables_count = {
             let mut visitor = SideTableEncodingIdVisitor {
+                tables: self.tcx.body_tables(body.id()),
                 ecx: self,
                 count: 0,
             };
@@ -87,6 +88,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
     ecx: &'a mut EncodeContext<'b, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     count: usize,
 }
 
@@ -98,7 +100,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         debug!("Encoding side tables for id {}", id);
 
-        let tcx = self.ecx.tcx;
+        let tables = self.tables;
         let mut encode = |entry: Option<TableEntry>| {
             if let Some(entry) = entry {
                 (id, entry).encode(self.ecx).unwrap();
@@ -106,11 +108,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
             }
         };
 
-        encode(tcx.tables().type_relative_path_defs.get(&id).cloned()
-                  .map(TableEntry::TypeRelativeDef));
-        encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
-        encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
-        encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
+        encode(tables.type_relative_path_defs.get(&id).cloned()
+                     .map(TableEntry::TypeRelativeDef));
+        encode(tables.node_types.get(&id).cloned().map(TableEntry::NodeType));
+        encode(tables.item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
+        encode(tables.adjustments.get(&id).cloned().map(TableEntry::Adjustment));
     }
 }
 

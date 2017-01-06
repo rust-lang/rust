@@ -18,7 +18,7 @@ use hair::*;
 use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
-use rustc_const_eval as const_eval;
+use rustc_const_eval::{ConstContext, EvalHint, fatal_const_eval_err};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
@@ -128,7 +128,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        Literal::Value { value: const_eval::eval_const_expr(self.tcx.global_tcx(), e) }
+        let tcx = self.tcx.global_tcx();
+        match ConstContext::with_tables(tcx, self.tables()).eval(e, EvalHint::ExprTypeChecked) {
+            Ok(value) => Literal::Value { value: value },
+            Err(s) => fatal_const_eval_err(tcx, &s, e.span, "expression")
+        }
     }
 
     pub fn trait_method(&mut self,
@@ -175,6 +179,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
+    }
+
+    pub fn tables(&self) -> &'a ty::Tables<'gcx> {
+        self.infcx.tables.expect_interned()
     }
 
     pub fn check_overflow(&self) -> bool {
