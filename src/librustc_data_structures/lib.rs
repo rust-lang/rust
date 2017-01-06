@@ -25,6 +25,8 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(shared)]
+#![feature(collections_range)]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

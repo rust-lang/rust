@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns, slice_patterns)]
+#![deny(unreachable_patterns)]
 
 fn main() {
     let buf = &[0, 1, 2, 3];
@@ -37,10 +38,6 @@ fn main() {
         _ => {}
     }
 
-    match buf { //~ ERROR non-exhaustive
-        b"AAAA" => {}
-    }
-
     let buf: &[u8] = buf;
 
     match buf {
@@ -65,9 +62,5 @@ fn main() {
         &[0x41, .., 0x41] => {}
         b"AAAA" => {}, //~ ERROR unreachable pattern
         _ => {}
-    }
-
-    match buf { //~ ERROR non-exhaustive
-        b"AAAA" => {}
     }
 }

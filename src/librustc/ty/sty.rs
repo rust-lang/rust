@@ -22,7 +22,7 @@ use std::fmt;
 use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
 use util::nodemap::FxHashSet;
 
@@ -979,29 +979,52 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Checks whether a type is uninhabited.
-    /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
-    pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    /// Checks whether a type is visibly uninhabited from a particular module.
+    /// # Example
+    /// ```rust
+    /// enum Void {}
+    /// mod a {
+    ///     pub mod b {
+    ///         pub struct SecretlyUninhabited {
+    ///             _priv: !,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// mod c {
+    ///     pub struct AlsoSecretlyUninhabited {
+    ///         _priv: Void,
+    ///     }
+    ///     mod d {
+    ///     }
+    /// }
+    ///
+    /// struct Foo {
+    ///     x: a::b::SecretlyUninhabited,
+    ///     y: c::AlsoSecretlyUninhabited,
+    /// }
+    /// ```
+    /// In this code, the type `Foo` will only be visibly uninhabited inside the
+    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
+    /// contain `Foo`.
+    ///
+    /// # Example
+    /// ```rust
+    /// let foo_result: Result<T, Foo> = ... ;
+    /// let Ok(t) = foo_result;
+    /// ```
+    /// This code should only compile in modules where the uninhabitedness of Foo is
+    /// visible.
+    pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
-        self.is_uninhabited_recurse(&mut visited, block, cx)
-    }
+        let forest = self.uninhabited_from(&mut visited, tcx);
 
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        match self.sty {
-            TyAdt(def, substs) => {
-                def.is_uninhabited_recurse(visited, block, cx, substs)
-            },
-
-            TyNever => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, block, cx)),
-            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, block, cx),
-            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, block, cx),
-
-            _ => false,
-        }
+        // To check whether this type is uninhabited at all (not just from the
+        // given node) you could check whether the forest is empty.
+        // ```
+        // forest.is_empty()
+        // ```
+        forest.contains(tcx, module)
     }
 
     pub fn is_primitive(&self) -> bool {

@@ -399,7 +399,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&p, discrim_ty);
                 all_pats_diverge &= self.diverges.get();
             }
-            all_pats_diverge
+            // As discussed with @eddyb, this is for disabling unreachable_code
+            // warnings on patterns (they're now subsumed by unreachable_patterns
+            // warnings).
+            match all_pats_diverge {
+                Diverges::Maybe => Diverges::Maybe,
+                Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
+            }
         }).collect();
 
         // Now typecheck the blocks.

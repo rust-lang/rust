@@ -29,7 +29,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, NodeMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -78,6 +78,7 @@ pub mod cast;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;
+pub mod inhabitedness;
 pub mod item_path;
 pub mod layout;
 pub mod _match;
@@ -226,6 +227,20 @@ pub enum Visibility {
 
 pub trait DefIdTree: Copy {
     fn parent(self, id: DefId) -> Option<DefId>;
+
+    fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
+        if descendant.krate != ancestor.krate {
+            return false;
+        }
+
+        while descendant != ancestor {
+            match self.parent(descendant) {
+                Some(parent) => descendant = parent,
+                None => return false,
+            }
+        }
+        true
+    }
 }
 
 impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
@@ -252,7 +267,7 @@ impl Visibility {
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: DefIdTree>(self, mut module: DefId, tree: T) -> bool {
+    pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
@@ -263,14 +278,7 @@ impl Visibility {
             Visibility::Restricted(module) => module,
         };
 
-        while module != restriction {
-            match tree.parent(module) {
-                Some(parent) => module = parent,
-                None => return false,
-            }
-        }
-
-        true
+        tree.is_descendant_of(module, restriction)
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
@@ -1407,20 +1415,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        if !visited.insert((self.did, substs)) {
-            return false;
-        };
-        self.variants.iter().all(|v| {
-            v.is_uninhabited_recurse(visited, block, tcx, substs, self.is_union())
-        })
-    }
-
-    #[inline]
     pub fn is_struct(&self) -> bool {
         !self.is_union() && !self.is_enum()
     }
@@ -1754,35 +1748,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     pub fn field_named(&self, name: ast::Name) -> &FieldDef {
         self.find_field_named(name).unwrap()
     }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>,
-                                  is_union: bool) -> bool {
-        if is_union {
-            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
-        } else {
-            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         tcx.item_type(self.did).subst(tcx, subst)
-    }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        block.map_or(true, |b| tcx.vis_is_accessible_from(self.vis, b)) &&
-        self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
