@@ -371,7 +371,7 @@ impl<T> Vec<T> {
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal datastructures. For example it is **not** safe
-    /// to build a `Vec<u8>` from a C pointer to a char array and a `size_t`.
+    /// to build a `Vec<u8>` from a pointer to a C `char` array and a `size_t`.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `Vec<T>` which may then deallocate, reallocate or change the
