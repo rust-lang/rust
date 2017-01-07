@@ -58,9 +58,6 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
 }
 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
-
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
         ty.is_simd();
@@ -70,13 +67,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     if !ccx.shared().type_is_sized(ty) {
         return false;
     }
-    match ty.sty {
-        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
-            let llty = sizing_type_of(ccx, ty);
-            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
-        }
-        _ => type_is_zero_size(ccx, ty)
-    }
+    type_is_zero_size(ccx, ty)
 }
 
 /// Returns Some([a, b]) if the type has a pair of fields with types a and b.
