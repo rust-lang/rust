@@ -152,7 +152,16 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
          .arg("--features").arg(build.std_features())
-         .arg("-p").arg("std");
+         .arg("--no-deps");
+
+    for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
+        cargo.arg("-p").arg(krate);
+        // Create all crate output directories first to make sure rustdoc uses
+        // relative links.
+        // FIXME: Cargo should probably do this itself.
+        t!(fs::create_dir_all(out_dir.join(krate)));
+    }
+
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
 }
