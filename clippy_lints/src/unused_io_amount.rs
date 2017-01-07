@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
-use utils::{span_lint, match_path, match_trait_method, paths};
+use utils::{span_lint, match_path, match_trait_method, is_try, paths};
 
 /// **What it does:** Checks for unused written/read amount.
 ///
@@ -42,20 +42,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
             _ => return,
         };
 
-        if let hir::ExprRet(..) = expr.node {
-            return;
-        }
-
         match expr.node {
-            hir::ExprMatch(ref expr, ref arms, _) if is_try(arms) => {
-                if let hir::ExprCall(ref func, ref args) = expr.node {
+            hir::ExprMatch(ref res, _, _) if is_try(expr).is_some() => {
+                if let hir::ExprCall(ref func, ref args) = res.node {
                     if let hir::ExprPath(ref path) = func.node {
                         if match_path(path, &paths::CARRIER_TRANSLATE) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
                     }
                 } else {
-                    check_method_call(cx, expr, expr);
+                    check_method_call(cx, res, expr);
                 }
             },
 
@@ -88,51 +84,5 @@ fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
                       expr.span,
                       "handle written amount returned or use `Write::write_all` instead");
         }
-    }
-}
-
-fn is_try(arms: &[hir::Arm]) -> bool {
-    // `Ok(x) => x` or `Ok(_) => ...`
-    fn is_ok(arm: &hir::Arm) -> bool {
-        if let hir::PatKind::TupleStruct(ref path, ref pat, ref dotdot) = arm.pats[0].node {
-            // cut off `core`
-            if match_path(path, &paths::RESULT_OK[1..]) {
-                if *dotdot == Some(0) {
-                    return true;
-                }
-
-                match pat[0].node {
-                    hir::PatKind::Wild => {
-                        return true;
-                    },
-                    hir::PatKind::Binding(_, defid, _, None) => {
-                        if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = arm.body.node {
-                            if path.def.def_id() == defid {
-                                return true;
-                            }
-                        }
-                    },
-                    _ => (),
-                }
-            }
-        }
-
-        false
-    }
-
-    /// Detects `_ => ...` or `Err(x) => ...`
-    fn is_err_or_wild(arm: &hir::Arm) -> bool {
-        match arm.pats[0].node {
-            hir::PatKind::Wild => true,
-            hir::PatKind::TupleStruct(ref path, _, _) => match_path(path, &paths::RESULT_ERR[1..]),
-            _ => false,
-        }
-    }
-
-    if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() && arms[1].pats.len() == 1 &&
-       arms[1].guard.is_none() {
-        (is_ok(&arms[0]) && is_err_or_wild(&arms[1])) || (is_ok(&arms[1]) && is_err_or_wild(&arms[0]))
-    } else {
-        false
     }
 }
