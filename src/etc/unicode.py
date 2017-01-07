@@ -23,10 +23,7 @@
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the unicode.rs file into git.
 
-import fileinput, re, os, sys, operator
-
-bytes_old = 0
-bytes_new = 0
+import fileinput, re, os, sys, operator, math
 
 preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -362,7 +359,23 @@ fn trie_lookup_range_table(c: char, r: &'static BoolTrie) -> bool {
         let leaf = r.r5[((child as usize) << 6) + ((c >> 6) & 0x3f)];
         trie_range_leaf(c, r.r6[leaf as usize])
     }
-}\n
+}
+
+pub struct SmallBoolTrie {
+    r1: &'static [u8],  // first level
+    r2: &'static [u64],  // leaves
+}
+
+impl SmallBoolTrie {
+    fn lookup(&self, c: char) -> bool {
+        let c = c as usize;
+        match self.r1.get(c >> 6) {
+            Some(&child) => trie_range_leaf(c, self.r2[child as usize]),
+            None => false,
+        }
+    }
+}
+
 """)
 
 def compute_trie(rawdata, chunksize):
@@ -379,8 +392,6 @@ def compute_trie(rawdata, chunksize):
     return (root, child_data)
 
 def emit_bool_trie(f, name, t_data, is_pub=True):
-    global bytes_old, bytes_new
-    bytes_old += 8 * len(t_data)
     CHUNK = 64
     rawdata = [False] * 0x110000
     for (lo, hi) in t_data:
@@ -433,15 +444,50 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     f.write("\n        ],\n")
 
     f.write("    };\n\n")
-    bytes_new += 256 + 992 + 256 + 8 * len(r3) + len(r5) + 8 * len(r6)
+
+def emit_small_bool_trie(f, name, t_data, is_pub=True):
+    last_chunk = max(int(hi / 64) for (lo, hi) in t_data)
+    n_chunks = last_chunk + 1
+    chunks = [0] * n_chunks
+    for (lo, hi) in t_data:
+        for cp in range(lo, hi + 1):
+            if int(cp / 64) >= len(chunks):
+                print(cp, int(cp / 64), len(chunks), lo, hi)
+            chunks[int(cp / 64)] |= 1 << (cp & 63)
+
+    pub_string = ""
+    if is_pub:
+        pub_string = "pub "
+    f.write("    %sconst %s: &'static super::SmallBoolTrie = &super::SmallBoolTrie {\n"
+            % (pub_string, name))
+
+    (r1, r2) = compute_trie(chunks, 1)
+
+    f.write("        r1: &[\n")
+    data = ','.join(str(node) for node in r1)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+
+    f.write("        r2: &[\n")
+    data = ','.join('0x%016x' % node for node in r2)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+
+    f.write("    };\n\n")
 
 def emit_property_module(f, mod, tbl, emit):
     f.write("pub mod %s {\n" % mod)
     for cat in sorted(emit):
-        emit_bool_trie(f, "%s_table" % cat, tbl[cat])
-        f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-        f.write("        super::trie_lookup_range_table(c, %s_table)\n" % cat)
-        f.write("    }\n\n")
+        if cat in ["Cc", "White_Space", "Pattern_White_Space"]:
+            emit_small_bool_trie(f, "%s_table" % cat, tbl[cat])
+            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
+            f.write("        %s_table.lookup(c)\n" % cat)
+            f.write("    }\n\n")
+        else:
+            emit_bool_trie(f, "%s_table" % cat, tbl[cat])
+            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
+            f.write("        super::trie_lookup_range_table(c, %s_table)\n" % cat)
+            f.write("    }\n\n")
     f.write("}\n\n")
 
 def emit_conversions_module(f, to_upper, to_lower, to_title):
@@ -543,4 +589,3 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
         emit_conversions_module(rf, to_upper, to_lower, to_title)
-    #print 'bytes before = %d, bytes after = %d' % (bytes_old, bytes_new)
