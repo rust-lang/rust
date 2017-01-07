@@ -72,7 +72,7 @@ def download(path, url, probably_big, verbose):
             option = "-#"
         else:
             option = "-s"
-        run(["curl", option, "-Sf", "-o", path, url], verbose=verbose)
+        run(["curl", option, "--retry", "3", "-Sf", "-o", path, url], verbose=verbose)
 
 
 def verify(path, sha_path, verbose):
