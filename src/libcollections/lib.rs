@@ -45,6 +45,7 @@
 #![feature(nonzero)]
 #![feature(pattern)]
 #![feature(placement_in)]
+#![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(shared)]
 #![feature(slice_get_slice)]

@@ -77,7 +77,7 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{InPlace, Index, IndexMut, Place, Placer};
 use core::ops;
 use core::ptr;
 use core::ptr::Shared;
@@ -1246,6 +1246,29 @@ impl<T: Clone> Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
     }
+
+    /// Returns a place for insertion at the back of the `Vec`.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push`](#method.push),
+    /// but may be more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
+    ///
+    /// let mut vec = vec![1, 2];
+    /// vec.place_back() <- 3;
+    /// vec.place_back() <- 4;
+    /// assert_eq!(&vec, &[1, 2, 3, 4]);
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "placement protocol is subject to change",
+               issue = "30172")]
+    pub fn place_back(&mut self) -> PlaceBack<T> {
+        PlaceBack { vec: self }
+    }
 }
 
 // Set the length of the vec when the `SetLenOnDrop` value goes out of scope.
@@ -2119,3 +2142,52 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Drain<'a, T> {}
+
+/// A place for insertion at the back of a `Vec`.
+///
+/// See [`Vec::place_back`](struct.Vec.html#method.place_back) for details.
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+pub struct PlaceBack<'a, T: 'a> {
+    vec: &'a mut Vec<T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for PlaceBack<'a, T> {
+    type Place = PlaceBack<'a, T>;
+
+    fn make_place(self) -> Self {
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if self.vec.len == self.vec.buf.cap() {
+            self.vec.buf.double();
+        }
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for PlaceBack<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        unsafe { self.vec.as_mut_ptr().offset(self.vec.len as isize) }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
+    type Owner = &'a mut T;
+
+    unsafe fn finalize(mut self) -> &'a mut T {
+        let ptr = self.pointer();
+        self.vec.len += 1;
+        &mut *ptr
+    }
+}
