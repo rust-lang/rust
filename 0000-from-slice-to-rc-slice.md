@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-This is an RFC to add implementations of `From<&[T]> for Rc<[T]>` where [`T: Clone`][Clone] or [`T: Copy`][Copy] as well as `From<&str> for Rc<str>`.
+This is an RFC to add the APIs: `From<&[T]> for Rc<[T]>` where [`T: Clone`][Clone] or [`T: Copy`][Copy] as well as `From<&str> for Rc<str>`. Identical APIs will also be added for [`Arc`][Arc].
 
 # Motivation
 [motivation]: #motivation
@@ -74,6 +74,16 @@ Providing these implementations in the current state of Rust requires substantia
 
 Furthermore, since [`RcBox`][RcBox] is not exposed publically from [`std::rc`][std::rc], one can't make an implementation outside of the standard library for this without making assumptions about the internal layout of [`Rc`][Rc]. The alternative is to roll your own implementation of [`Rc`][Rc] in its entirity - but this in turn requires using a lot of feature gates, which makes using this on stable Rust in the near future unfeasible.
 
+## For [`Arc`][Arc]
+
+For [`Arc`][Arc] the synchronization overhead of doing `.clone()` is probably greater than the overhead of doing `Arc<Box<str>>`. But once the clones have been made, `Arc<str>` would probably be cheaper to dereference due to locality.
+
+Most of the motivations for [`Rc`][Rc] applies to [`Arc`][Arc] as well, but the use cases might be fewer. Therefore, the case for adding the same API for [`Arc`][Arc] is less clear. One could perhaps use it for multi threaded interning with a type such as: `Arc<Mutex<HashSet<Arc<str>>>>`. 
+
+Because of the similarities between the layout of [`Rc`][Rc] and [`Arc`][Arc], almost identical implementations could be added for `From<&[T]> for Arc<[T]>` and `From<&str> for Arc<str>`. It would also be consistent to do so.
+
+Taking all of this into account, adding the APIs for [`Arc`][Arc] is warranted.
+
 # Detailed design
 [design]: #detailed-design
 
@@ -125,8 +135,9 @@ For the implementation of `From<&[T]> for Rc<[T]>`, `T` must be [`Copy`][Copy] i
 
 The actual implementations could / will look something like:
 
-```rust
+### For [`Rc`][Rc]
 
+```rust
 #[inline(always)]
 unsafe fn slice_to_rc<'a, T, U, W, C>(src: &'a [T], cast: C, write_elems: W)
    -> Rc<U>
@@ -174,7 +185,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     /// struct Wrap(u8);
     ///
     /// let arr = [Wrap(1), Wrap(2), Wrap(3)];
-    /// let rc: Rc<[Wrap]> = Rc::from(&arr);
+    /// let rc: Rc<[Wrap]> = Rc::from(arr.as_ref());
     /// assert_eq!(rc.as_ref(), &arr);   // The elements match.
     /// assert_eq!(rc.len(), arr.len()); // The lengths match.
     /// ```
@@ -337,14 +348,18 @@ With more safe abstractions in the future, this can perhaps be rewritten with
 less unsafe code. But this should not change the API itself and thus will never
 cause a breaking change.
 
+### For [`Arc`][Arc]
+
+For the sake of brevity, just use the implementation above, and replace:
++ `slice_to_rc` with `slice_to_arc`,
++ `RcBox` with `ArcInner`,
++ `rcbox_ptr` with `arcinner_ptr`,
++ `Rc` with `Arc`.
+
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
 The documentation provided in the `impls` should be enough.
-
-One could also consider [`String::into_boxed_str`][into_boxed_str] and [`Vec::into_boxed_slice`][into_boxed_slice], since these are similar with the
-difference being that this version uses the [`From`][From] trait, and is
-converted into a shared smart pointer instead.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -354,26 +369,40 @@ The main drawback would be increasing the size of the standard library.
 # Alternatives
 [alternatives]: #alternatives
 
-+ Only implement this for [`T: Copy`][Copy] and skip [`T: Clone`][Clone].
-+ Let other libraries do this. This has the problems explained in the [motivation]
+1. Only implement this for [`T: Copy`][Copy] and skip [`T: Clone`][Clone].
+2. Let other libraries do this. This has the problems explained in the [motivation]
 section above regarding [`RcBox`][RcBox] not being publically exposed as well as
 the amount of feature gates needed to roll ones own [`Rc`][Rc] alternative - for
 little gain.
+3. Only implement this for [`Rc`][Rc] and skip it for [`Arc`][Arc].
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should the implementations use [`AsRef`][AsRef] or not? Might this be a case of making things a bit too ergonomic? This RFC currently leans towards not using it.
+1. Should the implementations use [`AsRef`][AsRef] or not? Might this be a case of making things a bit too ergonomic? This RFC currently leans towards not using it.
 
-Should these trait implementations of [`From`][From] be added as functions on [`&str`][str] like `.into_rc_str()` and on [`&[T]`][slice] like `.into_rc_slice()`?
-This RFC currently leans towards using [`From`][From] implementations for the sake of uniformity and ergonomics. It also has the added benefit of letting you remember one method name instead of many.
+2. Should these trait implementations of [`From`][From] be added as functions on [`&str`][str] like `.into_rc_str()` and on [`&[T]`][slice] like `.into_rc_slice()`?
+This RFC currently leans towards using [`From`][From] implementations for the sake of uniformity and ergonomics. It also has the added benefit of letting you remember one method name instead of many. One could also consider [`String::into_boxed_str`][into_boxed_str] and [`Vec::into_boxed_slice`][into_boxed_slice], since these are similar with the difference being that this version uses the [`From`][From] trait, and is converted into a shared smart pointer instead.
 
-One could also consider [`String::into_boxed_str`][into_boxed_str] and [`Vec::into_boxed_slice`][into_boxed_slice], since these are similar with the
-difference being that this version uses the [`From`][From] trait, and is
-converted into a shared smart pointer instead.
+3. Should these APIs **also** be added as [`associated functions`][associated functions] on [`Rc`][Rc] and [`Arc`][Arc] as follows?
 
-Because of the similarities between the layout of [`Rc`][Rc] and [`Arc`][Arc], almost identical implementations could be added for `From<&[T]> for Arc<[T]>` and `From<&str> for Arc<str>`. However, in this case the synchronization overhead while doing `.clone()` is probably greater than the overhead of doing `Arc<Box<str>>`. But once the clones have been made, `Arc<str>` would probably be cheaper to dereference due to locality. While the motivating use cases for `Arc<str>` are probably fewer, one could perhaps use it for multi threaded interning with a type such as: 
-`Arc<RwLock<HashSet<Arc<str>>>>`. Should it be added in any case for consistency? And are there any (more) motivating use cases that warrants its inclusion?
+```rust
+impl<T: Clone> Rc<[T]> {
+    fn from_slice(slice: &[T]) -> Self;
+}
+
+impl Rc<str> {
+  fn from_str(slice: &str) -> Self;
+}
+
+impl<T: Clone> Arc<[T]> {
+    fn from_slice(slice: &[T]) -> Self;
+}
+
+impl Arc<str> {
+  fn from_str(slice: &str) -> Self;
+}
+```
 
 <!-- references -->
 [Clone]: https://doc.rust-lang.org/std/clone/trait.Clone.html
@@ -397,4 +426,5 @@ Because of the similarities between the layout of [`Rc`][Rc] and [`Arc`][Arc], a
 [Abstract Syntax Tree]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [XML]: https://en.wikipedia.org/wiki/XML
 [namespace]: https://www.w3.org/TR/xml-names11/
+[associated functions]: https://doc.rust-lang.org/book/method-syntax.html#associated-functions
 <!-- references -->
