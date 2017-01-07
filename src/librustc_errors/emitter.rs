@@ -719,11 +719,19 @@ impl EmitterWriter {
                 buffer.prepend(0, " ", Style::NoStyle);
             }
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
-            buffer.append(0, &level.to_string(), Style::HeaderMsg);
-            buffer.append(0, ": ", Style::NoStyle);
+            match level {
+                &Level::TopLevel => (),
+                _ => {
+                    buffer.append(0, &level.to_string(), Style::HeaderMsg);
+                    buffer.append(0, ": ", Style::NoStyle);
+                }
+            }
             buffer.append(0, msg, Style::NoStyle);
         } else {
-            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
+            match level {
+                &Level::TopLevel => (),
+                _ => buffer.append(0, &level.to_string(), Style::Level(level.clone())),
+            }
             match code {
                 &Some(ref code) => {
                     buffer.append(0, "[", Style::Level(level.clone()));

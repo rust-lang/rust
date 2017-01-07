@@ -96,8 +96,13 @@ impl Diagnostic {
                                      -> &mut Self
     {
         // For now, just attach these as notes
-        self.note(&format!("expected {} `{}`{}", label, expected, expected_extra));
-        self.note(&format!("   found {} `{}`{}", label, found, found_extra));
+        self.top_level_note(&format!("expected {} `{}`{}", label, expected, expected_extra));
+        self.top_level_note(&format!("   found {} `{}`{}", label, found, found_extra));
+        self
+    }
+
+    pub fn top_level_note(&mut self, msg: &str) -> &mut Self {
+        self.sub(Level::TopLevel, msg, MultiSpan::new(), None);
         self
     }
 

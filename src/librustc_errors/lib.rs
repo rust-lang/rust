@@ -496,6 +496,8 @@ pub enum Level {
     Note,
     Help,
     Cancelled,
+    // A note without the `note: ` prefix in the presentation
+    TopLevel,
 }
 
 impl fmt::Display for Level {
@@ -515,7 +517,7 @@ impl Level {
                     term::color::YELLOW
                 }
             }
-            Note => term::color::BRIGHT_GREEN,
+            Note | TopLevel => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
             Cancelled => unreachable!(),
         }
@@ -527,6 +529,7 @@ impl Level {
             Fatal | PhaseFatal | Error => "error",
             Warning => "warning",
             Note => "note",
+            TopLevel => "note",
             Help => "help",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }
