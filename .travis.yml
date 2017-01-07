@@ -64,3 +64,4 @@ after_success:
     else
       echo "Ignored"
     fi
+    set +e
