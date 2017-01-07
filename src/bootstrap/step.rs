@@ -316,7 +316,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               "codegen-units");
         suite("check-incremental", "src/test/incremental", "incremental",
               "incremental");
-        suite("check-ui", "src/test/ui", "ui", "ui");
     }
 
     if build.config.build.contains("msvc") {
@@ -363,6 +362,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  });
         };
 
+        suite("check-ui", "src/test/ui", "ui", "ui");
         suite("check-rpass-full", "src/test/run-pass-fulldeps",
               "run-pass", "run-pass-fulldeps");
         suite("check-rfail-full", "src/test/run-fail-fulldeps",
