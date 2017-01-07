@@ -720,7 +720,15 @@ impl EmitterWriter {
             }
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
             match level {
-                &Level::TopLevel => (),
+                &Level::Expected => {
+                    buffer.append(0, &level.to_string(), Style::NoStyle);
+                    buffer.append(0, " ", Style::NoStyle);
+                }
+                &Level::Found => {
+                    buffer.append(0, "  ", Style::NoStyle);
+                    buffer.append(0, &level.to_string(), Style::NoStyle);
+                    buffer.append(0, " ", Style::NoStyle);
+                },
                 _ => {
                     buffer.append(0, &level.to_string(), Style::HeaderMsg);
                     buffer.append(0, ": ", Style::NoStyle);
@@ -728,10 +736,7 @@ impl EmitterWriter {
             }
             buffer.append(0, msg, Style::NoStyle);
         } else {
-            match level {
-                &Level::TopLevel => (),
-                _ => buffer.append(0, &level.to_string(), Style::Level(level.clone())),
-            }
+            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             match code {
                 &Some(ref code) => {
                     buffer.append(0, "[", Style::Level(level.clone()));

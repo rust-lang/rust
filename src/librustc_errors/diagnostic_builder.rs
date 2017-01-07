@@ -91,7 +91,8 @@ impl<'a> DiagnosticBuilder<'a> {
             Level::Warning |
             Level::Note |
             Level::Help |
-            Level::TopLevel |
+            Level::Expected |
+            Level::Found |
             Level::Cancelled => {
             }
         }
