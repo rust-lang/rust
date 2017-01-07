@@ -746,7 +746,17 @@ impl EmitterWriter {
                 _ => {}
             }
             buffer.append(0, ": ", Style::HeaderMsg);
-            buffer.append(0, msg, Style::HeaderMsg);
+            match level {
+                &Level::Expected | &Level::Found => {
+                    let msg_split = msg.split('`').collect::<Vec<&str>>();
+                    buffer.append(0, msg_split[0], Style::HeaderMsg);
+                    buffer.append(0, "`", Style::HeaderMsg);
+                    buffer.append(0, msg_split[1], Style::UnderlinePrimary);
+                    buffer.append(0, "`", Style::HeaderMsg);
+                    buffer.append(0, msg_split[2], Style::HeaderMsg);
+                }
+                _ => buffer.append(0, msg, Style::HeaderMsg),
+            }
         }
 
         // Preprocess all the annotations so that they are grouped by file and by line number
