@@ -404,10 +404,11 @@ macro_rules! write {
 /// use std::io::Write;
 ///
 /// let mut w = Vec::new();
+/// writeln!(&mut w).unwrap();
 /// writeln!(&mut w, "test").unwrap();
 /// writeln!(&mut w, "formatted {}", "arguments").unwrap();
 ///
-/// assert_eq!(&w[..], "test\nformatted arguments\n".as_bytes());
+/// assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
 /// ```
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
@@ -427,6 +428,9 @@ macro_rules! write {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! writeln {
+    ($dst:expr) => (
+        write!($dst, "\n")
+    );
     ($dst:expr, $fmt:expr) => (
         write!($dst, concat!($fmt, "\n"))
     );
