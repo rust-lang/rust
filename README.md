@@ -179,7 +179,7 @@ transparently:
 
 ## Lints
 
-There are 183 lints included in this crate:
+There are 184 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -349,6 +349,7 @@ name                                                                            
 [unsafe_removed_from_name](https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name)                   | warn    | `unsafe` removed from API names on import
 [unseparated_literal_suffix](https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix)               | allow   | literals whose suffix is not separated by an underscore
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                       | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
+[unused_io_amount](https://github.com/Manishearth/rust-clippy/wiki#unused_io_amount)                                   | deny    | unused written/read amount
 [unused_label](https://github.com/Manishearth/rust-clippy/wiki#unused_label)                                           | warn    | unused labels
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                   | warn    | unused lifetimes in function definitions
 [use_debug](https://github.com/Manishearth/rust-clippy/wiki#use_debug)                                                 | allow   | use of `Debug`-based formatting
