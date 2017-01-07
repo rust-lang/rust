@@ -1337,8 +1337,8 @@ pub fn build_output_filenames(input: &Input,
                                            .count();
             let ofile = if unnamed_output_types > 1 &&
                             sess.opts.output_types.contains_key(&OutputType::Exe) {
-                sess.warn("ignoring output name requested with -o for \"link\" output because \
-                           multiple outputs were requested");
+                sess.warn("ignoring specified output filename for 'link' output because multiple \
+                           outputs were requested");
                 None
             } else {
                 Some(out_file.clone())
