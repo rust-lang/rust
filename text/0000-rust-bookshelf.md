@@ -16,6 +16,10 @@ Create a "Rust Bookshelf" of learning resources for Rust.
 * Provide a path forward for more long-form documentation to be maintained by
   the project.
 
+This is largely about how doc.rust-lang.org is organized; today, it points to
+the book, the reference, the nomicon, the error index, and the standard library
+docs. This suggests unifying the first three into one thing.
+
 # Motivation
 [motivation]: #motivation
 
@@ -39,17 +43,20 @@ Several new repositories will be made, one for each of:
 * The Cargo Book
 * The Rust Reference Manual
 
+These would live under the `rust-lang` organization.
+
 They will all use mdBook to build. They will have their existing text re-worked
 into the format; at first a simple conversion, then more major improvements.
-Their currnet text will be removed from the main tree.
+Their current text will be removed from the main tree.
 
 The first edition of the book lives in-tree, but the second edition lives in
 `rust-lang/book`. We'll remove the existing text from the tree and move it
 into `rust-lang/book`.
 
-A new book will be created from the "Nightly Rust" section of the book. It
-will be called "The Nightly Book," and will contain unstable documentation.
-This came up when [trying to document RFC
+A new book will be created from the "Nightly Rust" section of the book. It will
+be called "The Nightly Book," and will contain unstable documentation for both
+rustc and Cargo, as well as material that will end up in the reference. This
+came up when [trying to document RFC
 1623](https://github.com/rust-lang/rust/pull/37928). We don't have a unified
 way of handling unstable documentation. This will give it a place to develop,
 and part of the stabilization process will be moving documentation from this
@@ -58,6 +65,12 @@ book into the other parts of the documentation.
 The nightly book will be organized around `#![feature]`s, so that you can look
 up the documentation for each feature, as well as seeing which features
 currently exist.
+
+The nightly book is in-tree so that it runs more often, as part of people's
+normal test suite. This doesn't mean that the book won't run on every commit;
+just that the out-of-tree books will run mostly in CI, whereas the nightly
+book will run when developers do `x.py check`. This is similar to how, today,
+Traivs runs a subset of the tests, but buildbot runs all of them.
 
 The landing page on doc.rust-lang.org will show off the full bookshelf, to let
 people find the documenation they need. It will also link to their respective
@@ -92,6 +105,9 @@ other reasons, so this does not add any extra burden.
 Do nothing.
 
 Do only one part of this, instead of the whole thing.
+
+Move all of the "bookshelf" into one repository, rather than individual ones.
+This would require a lot more label-wrangling, but might be easier.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
