@@ -11,6 +11,7 @@
 #![deny(warnings)]
 
 #![feature(binary_heap_extras)]
+#![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
 #![feature(collection_placement)]
