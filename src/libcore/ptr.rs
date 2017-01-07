@@ -75,7 +75,7 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// # Safety
 ///
 /// This function copies the memory through the raw pointers passed to it
-/// as arguments, which means they will be dereferenced.
+/// as arguments.
 ///
 /// Ensure that these pointers are valid before calling `swap`.
 #[inline]
