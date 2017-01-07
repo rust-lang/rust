@@ -4565,7 +4565,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided lifetime parameters.
         let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
-            let span = lifetimes[lifetime_defs.len()].span;
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
                               expected {}, found {}",
@@ -4573,6 +4572,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               count(lifetimes.len()))
                 .span_label(span, &format!("unexpected lifetime parameter{}",
                                            match lifetimes.len() { 1 => "", _ => "s" }))
+                .emit();
+        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
+            struct_span_err!(self.tcx.sess, span, E0090,
+                             "too few lifetime parameters provided: \
+                             expected {}, found {}",
+                             count(lifetime_defs.len()),
+                             count(lifetimes.len()))
+                .span_label(span, &format!("too few lifetime parameters"))
                 .emit();
         }
 
