@@ -67,8 +67,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         Layout::UntaggedUnion { .. } |
         Layout::RawNullablePointer { .. } |
         Layout::StructWrappedNullablePointer { .. } => {
-            let dl = &ccx.tcx().data_layout;
-            !layout.is_unsized() && layout.size(dl) <= dl.pointer_size
+            !layout.is_unsized() && layout.size(&ccx.tcx().data_layout).bytes() == 0
         }
     }
 }
