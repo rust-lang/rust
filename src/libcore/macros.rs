@@ -557,12 +557,23 @@ macro_rules! unimplemented {
 /// # Examples
 ///
 /// ```
+/// # macro_rules! do_while {
+/// #     (($while_b:expr) $($do_b:tt)+) => {
+/// #         loop {
+/// #             $($do_b)*
+/// #             if !( $while_b ) { break; }
+/// #         }
+/// #     }
+/// # }
+/// # 
+/// # fn main() {
 /// let mut i = 0;
 ///
 /// do_while!{ (i < 0)
 ///     println!("{}", i);
 ///     i += 1;
 /// }
+/// # }
 /// ```
 #[macro_export]
 #[unstable(feature = "do_while", issue="0")]
