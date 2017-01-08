@@ -47,11 +47,6 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
 
-    if let Some(target) = build.config.target_config.get(target) {
-        if let Some(ref jemalloc) = target.jemalloc {
-            cargo.env("JEMALLOC_OVERRIDE", jemalloc);
-        }
-    }
     if target.contains("musl") {
         if let Some(p) = build.musl_root(target) {
             cargo.env("MUSL_ROOT", p);
@@ -177,8 +172,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
     let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
-    cargo.arg("--features").arg(build.rustc_features())
-         .arg("--manifest-path")
+    cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"));
 
     // Set some configuration variables picked up by build scripts and

@@ -18,7 +18,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         target_family: Some("unix".to_string()),
         is_like_solaris: true,
-        exe_allocation_crate: super::maybe_jemalloc(),
+        exe_allocation_crate: "alloc_system".to_owned(),
 
         .. Default::default()
     }

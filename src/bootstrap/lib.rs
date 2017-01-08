@@ -386,12 +386,6 @@ impl Build {
                 continue
             }
 
-            if submodule.path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
-                !self.config.use_jemalloc
-            {
-                continue
-            }
-
             // `submodule.path` is the relative path to a submodule (from the repository root)
             // `submodule_path` is the path to a submodule from the cwd
 
@@ -609,23 +603,8 @@ impl Build {
     /// library.
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
-        if self.config.debug_jemalloc {
-            features.push_str(" debug-jemalloc");
-        }
-        if self.config.use_jemalloc {
-            features.push_str(" jemalloc");
-        }
         if self.config.backtrace {
             features.push_str(" backtrace");
-        }
-        return features
-    }
-
-    /// Get the space-separated set of activated features for the compiler.
-    fn rustc_features(&self) -> String {
-        let mut features = String::new();
-        if self.config.use_jemalloc {
-            features.push_str(" jemalloc");
         }
         return features
     }

@@ -647,7 +647,6 @@ opt_nosave debug-assertions 0 "build with debugging assertions"
 opt_nosave llvm-release-debuginfo 0 "build LLVM with debugger metadata"
 opt_nosave debuginfo 0 "build with debugger metadata"
 opt_nosave debuginfo-lines 0 "build with line number debugger metadata"
-opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
@@ -656,7 +655,6 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
-valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "" "Android NDK standalone path (deprecated)"
 valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
@@ -691,7 +689,6 @@ valopt default-ar     "ar" "the default ar"
 # (others are conditionally saved).
 opt_nosave manage-submodules 1 "let the build manage the git submodules"
 opt_nosave clang 0 "prefer clang to gcc for building the runtime"
-opt_nosave jemalloc 1 "build liballoc with jemalloc"
 opt elf-tls 1 "elf thread local storage on platforms where supported"
 opt full-bootstrap 0 "build three compilers instead of two"
 
@@ -771,7 +768,6 @@ if [ -n "$CFG_ENABLE_DEBUG" ]; then
 
     # Set following variables to 1 unless setting already provided
     enable_if_not_disabled debug-assertions
-    enable_if_not_disabled debug-jemalloc
     enable_if_not_disabled debuginfo
     enable_if_not_disabled llvm-assertions
 fi
@@ -785,7 +781,6 @@ if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTION
 if [ -n "$CFG_ENABLE_LLVM_RELEASE_DEBUGINFO" ]; then putvar CFG_ENABLE_LLVM_RELEASE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO_LINES" ]; then putvar CFG_ENABLE_DEBUGINFO_LINES; fi
-if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
 step_msg "looking for build programs"
 
@@ -1063,12 +1058,6 @@ then
     CFG_USING_LIBCPP="1"
 else
     CFG_USING_LIBCPP="0"
-fi
-
-# Same with jemalloc.  save the setting here.
-if [ -n "$CFG_DISABLE_JEMALLOC" ]
-then
-    putvar CFG_DISABLE_JEMALLOC
 fi
 
 if [ -n "$CFG_LLVM_ROOT" -a -z "$CFG_DISABLE_LLVM_VERSION_CHECK" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
@@ -1415,7 +1404,6 @@ if [ -n "$CFG_DISABLE_RUSTBUILD" ]; then
     for s in 0 1 2 3
     do
       make_dir $t/rt/stage$s
-      make_dir $t/rt/jemalloc
       make_dir $t/rt/compiler-rt
       for i in                                          \
         isaac sync test \
@@ -1502,10 +1490,6 @@ then
     if [ -n "${CFG_LLVM_ROOT}" ]; then
         msg "git: submodule deinit src/llvm"
         "${CFG_GIT}" submodule deinit src/llvm
-    fi
-    if [ -n "${CFG_JEMALLOC_ROOT}" ]; then
-        msg "git: submodule deinit src/jemalloc"
-        "${CFG_GIT}" submodule deinit src/jemalloc
     fi
 
     msg "git: submodule update"

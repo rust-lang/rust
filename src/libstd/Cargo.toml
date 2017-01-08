@@ -11,7 +11,6 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 alloc = { path = "../liballoc" }
-alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
@@ -29,6 +28,4 @@ gcc = "0.3.27"
 
 [features]
 backtrace = []
-debug-jemalloc = ["alloc_jemalloc/debug"]
-jemalloc = ["alloc_jemalloc"]
 panic-unwind = ["panic_unwind"]

@@ -77,8 +77,6 @@ pub struct Config {
     pub local_rebuild: bool,
 
     // libstd features
-    pub debug_jemalloc: bool,
-    pub use_jemalloc: bool,
     pub backtrace: bool, // support for RUST_BACKTRACE
 
     // misc
@@ -101,7 +99,6 @@ pub struct Config {
 #[derive(Default)]
 pub struct Target {
     pub llvm_config: Option<PathBuf>,
-    pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
@@ -179,8 +176,6 @@ struct Rust {
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
-    debug_jemalloc: Option<bool>,
-    use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
     default_ar: Option<String>,
@@ -196,7 +191,6 @@ struct Rust {
 #[derive(RustcDecodable, Default)]
 struct TomlTarget {
     llvm_config: Option<String>,
-    jemalloc: Option<String>,
     cc: Option<String>,
     cxx: Option<String>,
     android_ndk: Option<String>,
@@ -207,7 +201,6 @@ impl Config {
     pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
-        config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
@@ -303,8 +296,6 @@ impl Config {
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
-            set(&mut config.debug_jemalloc, rust.debug_jemalloc);
-            set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
             config.rustc_default_linker = rust.default_linker.clone();
@@ -324,9 +315,6 @@ impl Config {
 
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(env::current_dir().unwrap().join(s));
-                }
-                if let Some(ref s) = cfg.jemalloc {
-                    target.jemalloc = Some(env::current_dir().unwrap().join(s));
                 }
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(env::current_dir().unwrap().join(s));
@@ -390,8 +378,6 @@ impl Config {
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
                 ("DEBUGINFO_LINES", self.rust_debuginfo_lines),
-                ("JEMALLOC", self.use_jemalloc),
-                ("DEBUG_JEMALLOC", self.debug_jemalloc),
                 ("RPATH", self.rust_rpath),
                 ("OPTIMIZE_TESTS", self.rust_optimize_tests),
                 ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),
@@ -475,11 +461,6 @@ impl Config {
                                      .or_insert(Target::default());
                     let root = parse_configure_path(value);
                     target.llvm_config = Some(push_exe_path(root, &["bin", "llvm-config"]));
-                }
-                "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
-                    let target = self.target_config.entry(self.build.clone())
-                                     .or_insert(Target::default());
-                    target.jemalloc = Some(parse_configure_path(value));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();

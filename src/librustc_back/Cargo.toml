@@ -12,6 +12,3 @@ crate-type = ["dylib"]
 syntax = { path = "../libsyntax" }
 serialize = { path = "../libserialize" }
 log = { path = "../liblog" }
-
-[features]
-jemalloc = []
