@@ -81,7 +81,8 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
-/// [`BufReader`]: ../io/struct.BufReader.html
+/// [`Read`]: ../io/trait.Read.html
+/// [`BufReader<R>`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
