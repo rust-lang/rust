@@ -97,7 +97,6 @@ pub struct CStore {
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<FxHashSet<DefIndex>>,
     pub dllimport_foreign_items: RefCell<FxHashSet<DefIndex>>,
-    pub inlined_item_cache: RefCell<DefIdMap<Option<ast::NodeId>>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
@@ -112,7 +111,6 @@ impl CStore {
             statically_included_foreign_items: RefCell::new(FxHashSet()),
             dllimport_foreign_items: RefCell::new(FxHashSet()),
             visible_parent_map: RefCell::new(FxHashMap()),
-            inlined_item_cache: RefCell::new(FxHashMap()),
         }
     }
 

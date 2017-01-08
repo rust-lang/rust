@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.tables().closure_tys[&def_id]),
+            ty: self.lazy(&tcx.closure_tys.borrow()[&def_id]),
         };
 
         Entry {

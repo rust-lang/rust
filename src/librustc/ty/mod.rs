@@ -321,7 +321,7 @@ pub struct MethodCallee<'tcx> {
 /// needed to add to the side tables. Thus to disambiguate
 /// we also keep track of whether there's an adjustment in
 /// our key.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct MethodCall {
     pub expr_id: NodeId,
     pub autoderef: u32
@@ -501,7 +501,7 @@ impl<T> Slice<T> {
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
     pub var_id: NodeId,
     pub closure_expr_id: NodeId,
@@ -1917,8 +1917,30 @@ impl BorrowKind {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn tables(self) -> Ref<'a, Tables<'gcx>> {
-        self.tables.borrow()
+    pub fn body_tables(self, body: hir::BodyId) -> &'gcx Tables<'gcx> {
+        self.item_tables(self.map.body_owner_def_id(body))
+    }
+
+    pub fn item_tables(self, def_id: DefId) -> &'gcx Tables<'gcx> {
+        self.tables.memoize(def_id, || {
+            if def_id.is_local() {
+                // Closures' tables come from their outermost function,
+                // as they are part of the same "inference environment".
+                let outer_def_id = self.closure_base_def_id(def_id);
+                if outer_def_id != def_id {
+                    return self.item_tables(outer_def_id);
+                }
+
+                bug!("No def'n found for {:?} in tcx.tables", def_id);
+            }
+
+            // Cross-crate side-tables only exist alongside serialized HIR.
+            self.sess.cstore.maybe_get_item_body(self.global_tcx(), def_id).map(|_| {
+                self.tables.borrow()[&def_id]
+            }).unwrap_or_else(|| {
+                bug!("tcx.item_tables({:?}): missing from metadata", def_id)
+            })
+        })
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
@@ -2454,12 +2476,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(&kind) = self.tables.borrow().closure_kinds.get(&def_id) {
+        if let Some(&kind) = self.closure_kinds.borrow().get(&def_id) {
             return kind;
         }
 
         let kind = self.sess.cstore.closure_kind(def_id);
-        self.tables.borrow_mut().closure_kinds.insert(def_id, kind);
+        self.closure_kinds.borrow_mut().insert(def_id, kind);
         kind
     }
 
@@ -2471,12 +2493,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
+        if let Some(ty) = self.closure_tys.borrow().get(&def_id) {
             return ty.subst(self, substs.substs);
         }
 
         let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
-        self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        self.closure_tys.borrow_mut().insert(def_id, ty.clone());
         ty.subst(self, substs.substs)
     }
 

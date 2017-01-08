@@ -65,6 +65,7 @@ pub struct GlobalArenas<'tcx> {
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
+    tables: TypedArena<ty::Tables<'tcx>>,
 }
 
 impl<'tcx> GlobalArenas<'tcx> {
@@ -75,6 +76,7 @@ impl<'tcx> GlobalArenas<'tcx> {
             trait_def: TypedArena::new(),
             adt_def: TypedArena::new(),
             mir: TypedArena::new(),
+            tables: TypedArena::new(),
         }
     }
 }
@@ -189,6 +191,7 @@ pub struct CommonTypes<'tcx> {
     pub err: Ty<'tcx>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct Tables<'tcx> {
     /// Resolved definitions for `<T>::X` associated paths.
     pub type_relative_path_defs: NodeMap<Def>,
@@ -211,13 +214,11 @@ pub struct Tables<'tcx> {
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_tys: DefIdMap<ty::ClosureTy<'tcx>>,
+    /// Records the type of each closure.
+    pub closure_tys: NodeMap<ty::ClosureTy<'tcx>>,
 
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_kinds: DefIdMap<ty::ClosureKind>,
+    /// Records the type of each closure.
+    pub closure_kinds: NodeMap<ty::ClosureKind>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -233,7 +234,7 @@ pub struct Tables<'tcx> {
     pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
-impl<'a, 'gcx, 'tcx> Tables<'tcx> {
+impl<'tcx> Tables<'tcx> {
     pub fn empty() -> Tables<'tcx> {
         Tables {
             type_relative_path_defs: NodeMap(),
@@ -242,8 +243,8 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
             adjustments: NodeMap(),
             method_map: FxHashMap(),
             upvar_capture_map: FxHashMap(),
-            closure_tys: DefIdMap(),
-            closure_kinds: DefIdMap(),
+            closure_tys: NodeMap(),
+            closure_kinds: NodeMap(),
             liberated_fn_sigs: NodeMap(),
             fru_field_types: NodeMap()
         }
@@ -401,7 +402,7 @@ pub struct GlobalCtxt<'tcx> {
     free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
     // FIXME: jroesch make this a refcell
 
-    pub tables: RefCell<Tables<'tcx>>,
+    pub tables: RefCell<DepTrackingMap<maps::Tables<'tcx>>>,
 
     /// Maps from a trait item to the trait item "descriptor"
     pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
@@ -524,6 +525,14 @@ pub struct GlobalCtxt<'tcx> {
     /// Caches CoerceUnsized kinds for impls on custom types.
     pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
 
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_tys: RefCell<DepTrackingMap<maps::ClosureTypes<'tcx>>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_kinds: RefCell<DepTrackingMap<maps::ClosureKinds<'tcx>>>,
+
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.
     pub cast_kinds: RefCell<NodeMap<ty::cast::CastKind>>,
@@ -645,6 +654,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.mir.alloc(RefCell::new(mir))
     }
 
+    pub fn alloc_tables(self, tables: ty::Tables<'gcx>) -> &'gcx ty::Tables<'gcx> {
+        self.global_arenas.tables.alloc(tables)
+    }
+
     pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
         self.global_arenas.trait_def.alloc(def)
     }
@@ -743,7 +756,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             variance_computed: Cell::new(false),
             sess: s,
             trait_map: resolutions.trait_map,
-            tables: RefCell::new(Tables::empty()),
+            tables: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
@@ -777,6 +790,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             repr_hint_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
+            closure_tys: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            closure_kinds: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),

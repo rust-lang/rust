@@ -81,7 +81,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    tcx.infer_ctxt(None, Some(impl_param_env), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(impl_param_env, Reveal::NotSpecializable).enter(|infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 

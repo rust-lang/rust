@@ -79,6 +79,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -90,17 +91,25 @@ struct ReachableContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::None
+    }
+
+    fn visit_nested_body(&mut self, body: hir::BodyId) {
+        let old_tables = self.tables;
+        self.tables = self.tcx.body_tables(body);
+        let body = self.tcx.map.body(body);
+        self.visit_body(body);
+        self.tables = old_tables;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         let def = match expr.node {
             hir::ExprPath(ref qpath) => {
-                Some(self.tcx.tables().qpath_def(qpath, expr.id))
+                Some(self.tables.qpath_def(qpath, expr.id))
             }
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let def_id = self.tables.method_map[&method_call].def_id;
                 Some(Def::Method(def_id))
             }
             _ => None
@@ -135,20 +144,6 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
-    // Creates a new reachability computation context.
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
-        let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
-            *ty == config::CrateTypeProcMacro
-        });
-        ReachableContext {
-            tcx: tcx,
-            reachable_symbols: NodeSet(),
-            worklist: Vec::new(),
-            any_library: any_library,
-        }
-    }
-
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
@@ -369,7 +364,17 @@ pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 -> NodeSet {
     let _task = tcx.dep_graph.in_task(DepNode::Reachability);
 
-    let mut reachable_context = ReachableContext::new(tcx);
+    let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
+        *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
+        *ty == config::CrateTypeProcMacro
+    });
+    let mut reachable_context = ReachableContext {
+        tcx: tcx,
+        tables: &ty::Tables::empty(),
+        reachable_symbols: NodeSet(),
+        worklist: Vec::new(),
+        any_library: any_library,
+    };
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
     //         a result of the privacy pass along with all local lang items and impl items.

@@ -169,7 +169,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = tcx.map.as_local_node_id(fv.def.def_id()).unwrap();
-            let by_ref = tcx.tables().upvar_capture(ty::UpvarId {
+            let by_ref = hir.tables().upvar_capture(ty::UpvarId {
                 var_id: var_id,
                 closure_expr_id: fn_id
             }).map_or(false, |capture| match capture {
@@ -195,13 +195,12 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 }
 
 pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                       item_id: ast::NodeId,
                                        body_id: hir::BodyId)
                                        -> Mir<'tcx> {
     let tcx = hir.tcx();
     let ast_expr = &tcx.map.body(body_id).value;
-    let ty = tcx.tables().expr_ty_adjusted(ast_expr);
-    let span = tcx.map.span(item_id);
+    let ty = hir.tables().expr_ty_adjusted(ast_expr);
+    let span = tcx.map.span(tcx.map.body_owner(body_id));
     let mut builder = Builder::new(hir, span, 0, ty);
 
     let extent = tcx.region_maps.temporary_scope(ast_expr.id)
@@ -306,7 +305,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let lvalue = Lvalue::Local(Local::new(index + 1));
 
             if let Some(pattern) = pattern {
-                let pattern = Pattern::from_hir(self.hir.tcx(), pattern);
+                let pattern = Pattern::from_hir(self.hir.tcx(), self.hir.tables(), pattern);
                 scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }

@@ -23,10 +23,6 @@ pub struct NodeCollector<'ast> {
     pub(super) map: Vec<MapEntry<'ast>>,
     /// The parent of this node
     pub parent_node: NodeId,
-    /// If true, completely ignore nested items. We set this when loading
-    /// HIR from metadata, since in that case we only want the HIR for
-    /// one specific item (and not the ones nested inside of it).
-    pub ignore_nested_items: bool
 }
 
 impl<'ast> NodeCollector<'ast> {
@@ -35,26 +31,8 @@ impl<'ast> NodeCollector<'ast> {
             krate: krate,
             map: vec![],
             parent_node: CRATE_NODE_ID,
-            ignore_nested_items: false
         };
         collector.insert_entry(CRATE_NODE_ID, RootCrate);
-
-        collector
-    }
-
-    pub(super) fn extend(krate: &'ast Crate,
-                         parent: &'ast InlinedItem,
-                         parent_node: NodeId,
-                         map: Vec<MapEntry<'ast>>)
-                         -> NodeCollector<'ast> {
-        let mut collector = NodeCollector {
-            krate: krate,
-            map: map,
-            parent_node: parent_node,
-            ignore_nested_items: true
-        };
-
-        collector.insert_entry(parent_node, RootInlinedParent(parent));
 
         collector
     }
@@ -92,27 +70,19 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
-        if !self.ignore_nested_items {
-            self.visit_item(self.krate.item(item.id))
-        }
+        self.visit_item(self.krate.item(item.id));
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
-        if !self.ignore_nested_items {
-            self.visit_trait_item(self.krate.trait_item(item_id))
-        }
+        self.visit_trait_item(self.krate.trait_item(item_id));
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
-        if !self.ignore_nested_items {
-            self.visit_impl_item(self.krate.impl_item(item_id))
-        }
+        self.visit_impl_item(self.krate.impl_item(item_id));
     }
 
     fn visit_nested_body(&mut self, id: BodyId) {
-        if !self.ignore_nested_items {
-            self.visit_body(self.krate.body(id))
-        }
+        self.visit_body(self.krate.body(id));
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
