@@ -327,21 +327,25 @@ impl<'a> Resolver<'a> {
                 let def = Def::Struct(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
+                // Record field names for error reporting.
+                let mut ctor_vis = vis;
+                let field_names = struct_def.fields().iter().filter_map(|field| {
+                    let field_vis = self.resolve_visibility(&field.vis);
+                    if ctor_vis.is_at_least(field_vis, &*self) {
+                        ctor_vis = field_vis;
+                    }
+                    field.ident.map(|ident| ident.name)
+                }).collect();
+                let item_def_id = self.definitions.local_def_id(item.id);
+                self.insert_field_names(item_def_id, field_names);
+
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if !struct_def.is_struct() {
                     let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
                                                    CtorKind::from_ast(struct_def));
-                    self.define(parent, ident, ValueNS, (ctor_def, vis, sp, expansion));
+                    self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
                 }
-
-                // Record field names for error reporting.
-                let field_names = struct_def.fields().iter().filter_map(|field| {
-                    self.resolve_visibility(&field.vis);
-                    field.ident.map(|ident| ident.name)
-                }).collect();
-                let item_def_id = self.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
             }
 
             ItemKind::Union(ref vdata, _) => {
