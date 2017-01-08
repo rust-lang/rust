@@ -351,22 +351,6 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
-        check_local(self, l);
-    }
-    fn visit_expr(&mut self, ex: &'tcx Expr) {
-        check_expr(self, ex);
-    }
-    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
-        check_arm(self, a);
-    }
-}
-
 fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
                           fk: FnKind<'tcx>,
                           decl: &'tcx hir::FnDecl,
@@ -394,24 +378,13 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     // and so forth:
     intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
 
-    // Special nodes and variables:
-    // - exit_ln represents the end of the fn, either by return or panic
-    // - implicit_ret_var is a pseudo-variable that represents
-    //   an implicit return
-    let specials = Specials {
-        exit_ln: fn_maps.add_live_node(ExitNode),
-        fallthrough_ln: fn_maps.add_live_node(ExitNode),
-        no_ret_var: fn_maps.add_variable(ImplicitRet),
-        clean_exit_var: fn_maps.add_variable(CleanExit)
-    };
-
     // compute liveness
-    let mut lsets = Liveness::new(&mut fn_maps, specials);
+    let mut lsets = Liveness::new(&mut fn_maps, body_id);
     let entry_ln = lsets.compute(&body.value);
 
     // check for various error conditions
     lsets.visit_body(body);
-    lsets.check_ret(id, sp, fk, entry_ln, body);
+    lsets.check_ret(id, sp, entry_ln, body);
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
@@ -539,6 +512,7 @@ const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx: 'a> {
     ir: &'a mut IrMaps<'a, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     s: Specials,
     successors: Vec<LiveNode>,
     users: Vec<Users>,
@@ -553,11 +527,26 @@ struct Liveness<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn new(ir: &'a mut IrMaps<'a, 'tcx>, specials: Specials) -> Liveness<'a, 'tcx> {
+    fn new(ir: &'a mut IrMaps<'a, 'tcx>, body: hir::BodyId) -> Liveness<'a, 'tcx> {
+        // Special nodes and variables:
+        // - exit_ln represents the end of the fn, either by return or panic
+        // - implicit_ret_var is a pseudo-variable that represents
+        //   an implicit return
+        let specials = Specials {
+            exit_ln: ir.add_live_node(ExitNode),
+            fallthrough_ln: ir.add_live_node(ExitNode),
+            no_ret_var: ir.add_variable(ImplicitRet),
+            clean_exit_var: ir.add_variable(CleanExit)
+        };
+
+        let tables = ir.tcx.body_tables(body);
+
         let num_live_nodes = ir.num_live_nodes;
         let num_vars = ir.num_vars;
+
         Liveness {
             ir: ir,
+            tables: tables,
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             users: vec![invalid_users(); num_live_nodes * num_vars],
@@ -1065,7 +1054,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAssignOp(_, ref l, ref r) => {
             // an overloaded assign op is like a method call
-            if self.ir.tcx.tables().is_method_call(expr.id) {
+            if self.tables.is_method_call(expr.id) {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
@@ -1092,8 +1081,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprCall(ref f, ref args) => {
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let diverges = !self.ir.tcx.tables().is_method_call(expr.id) &&
-                self.ir.tcx.tables().expr_ty_adjusted(&f).fn_ret().0.is_never();
+            let diverges = !self.tables.is_method_call(expr.id) &&
+                self.tables.expr_ty_adjusted(&f).fn_ret().0.is_never();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1105,7 +1094,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprMethodCall(.., ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.ir.tcx.tables().method_map[&method_call].ty;
+            let method_ty = self.tables.method_map[&method_call].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
             let succ = if method_ty.fn_ret().0.is_never() {
                 self.s.exit_ln
@@ -1355,6 +1344,22 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // _______________________________________________________________________
 // Checking for error conditions
 
+impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_local(&mut self, l: &'tcx hir::Local) {
+        check_local(self, l);
+    }
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
+        check_expr(self, ex);
+    }
+    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
+        check_arm(self, a);
+    }
+}
+
 fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local) {
     match local.init {
         Some(_) => {
@@ -1389,7 +1394,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        if !this.ir.tcx.tables().is_method_call(expr.id) {
+        if !this.tables.is_method_call(expr.id) {
             this.check_lvalue(&l);
         }
 
@@ -1432,15 +1437,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_ret(&self,
                  id: NodeId,
                  sp: Span,
-                 fk: FnKind,
                  entry_ln: LiveNode,
                  body: &hir::Body)
     {
-        let fn_ty = if let FnKind::Closure(_) = fk {
-            self.ir.tcx.tables().node_id_to_type(id)
-        } else {
-            self.ir.tcx.item_type(self.ir.tcx.map.local_def_id(id))
-        };
+        let fn_ty = self.ir.tcx.item_type(self.ir.tcx.map.local_def_id(id));
         let fn_ret = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
@@ -1457,8 +1457,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
             let t_ret_subst = fn_ret.subst(self.ir.tcx, &param_env.free_substs);
-            let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
-                                                Reveal::All).enter(|infcx| {
+            let is_nil = self.ir.tcx.infer_ctxt(param_env, Reveal::All).enter(|infcx| {
                 let cause = traits::ObligationCause::dummy();
                 traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
             });

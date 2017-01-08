@@ -465,7 +465,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
 
             let obligation_cause = traits::ObligationCause::misc(span,

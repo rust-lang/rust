@@ -24,7 +24,7 @@ use self::InteriorKind::*;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
-use rustc::hir::map::blocks::{FnParts, FnLikeNode};
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -89,14 +89,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         if let hir::TraitItemKind::Const(_, Some(expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, ti.id, expr);
+            gather_loans::gather_loans_in_static_initializer(self, expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, ii.id, expr);
+            gather_loans::gather_loans_in_static_initializer(self, expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -143,7 +143,7 @@ fn borrowck_item<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, item: &'tcx hir::I
     match item.node {
         hir::ItemStatic(.., ex) |
         hir::ItemConst(_, ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, item.id, ex);
+            gather_loans::gather_loans_in_static_initializer(this, ex);
         }
         _ => { }
     }
@@ -179,7 +179,7 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
                        move_data: flowed_moves } =
-        build_borrowck_dataflow_data(this, &cfg, body, id);
+        build_borrowck_dataflow_data(this, &cfg, body_id);
 
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
                                                     this.tcx,
@@ -189,31 +189,26 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                                  &flowed_moves.move_data,
                                                  id);
 
-    check_loans::check_loans(this,
-                             &loan_dfcx,
-                             &flowed_moves,
-                             &all_loans[..],
-                             id,
-                             body);
+    check_loans::check_loans(this, &loan_dfcx, &flowed_moves, &all_loans[..], body);
 
     intravisit::walk_fn(this, fk, decl, body_id, sp, id);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           cfg: &cfg::CFG,
-                                          body: &'tcx hir::Body,
-                                          id: ast::NodeId)
+                                          body_id: hir::BodyId)
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
     let tcx = this.tcx;
+    let body = tcx.map.body(body_id);
     let id_range = {
         let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.map);
         visitor.visit_body(body);
         visitor.result()
     };
     let (all_loans, move_data) =
-        gather_loans::gather_loans_in_fn(this, id, body);
+        gather_loans::gather_loans_in_fn(this, body_id);
 
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
@@ -246,7 +241,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    fn_parts: FnParts<'tcx>,
+    body: hir::BodyId,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
@@ -262,13 +257,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
         }
     };
 
-    let body = tcx.map.body(fn_parts.body);
-
-    let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
-                                                     cfg,
-                                                     body,
-                                                     fn_parts.id);
-
+    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body);
     (bccx, dataflow_data)
 }
 

@@ -105,7 +105,7 @@ use lint;
 use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::mem::replace;
 use std::ops::{self, Deref};
@@ -483,12 +483,11 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> CrateCtxt<'a, 'gcx> {
     pub fn inherited(&'a self, id: ast::NodeId)
                      -> InheritedBuilder<'a, 'gcx, 'tcx> {
+        let tables = ty::Tables::empty();
         let param_env = ParameterEnvironment::for_item(self.tcx, id);
         InheritedBuilder {
             ccx: self,
-            infcx: self.tcx.infer_ctxt(Some(ty::Tables::empty()),
-                                       Some(param_env),
-                                       Reveal::NotSpecializable)
+            infcx: self.tcx.infer_ctxt((tables, param_env), Reveal::NotSpecializable)
         }
     }
 }
@@ -612,8 +611,7 @@ pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
             let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeckItemBody(def_id));
 
             let param_env = ParameterEnvironment::for_item(ccx.tcx, item_id);
-            ccx.tcx.infer_ctxt(None, Some(param_env),
-                               Reveal::NotSpecializable).enter(|infcx| {
+            ccx.tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 for obligation in obligations.iter().map(|o| o.to_obligation()) {
                     fulfillment_cx.register_predicate_obligation(&infcx, obligation);
@@ -681,7 +679,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
 
         fcx.regionck_fn(fn_id, body);
-        fcx.resolve_type_vars_in_body(body, fn_id);
+        fcx.resolve_type_vars_in_body(body);
     });
 }
 
@@ -1248,7 +1246,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         fcx.select_all_obligations_or_error();
 
         fcx.regionck_expr(body);
-        fcx.resolve_type_vars_in_body(body, id);
+        fcx.resolve_type_vars_in_body(body);
     });
 }
 
@@ -1869,17 +1867,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      self.tag());
             }
         }
-    }
-
-    pub fn item_substs(&self) -> Ref<NodeMap<ty::ItemSubsts<'tcx>>> {
-        // NOTE: @jroesch this is hack that appears to be fixed on nightly, will monitor if
-        // it changes when we upgrade the snapshot compiler
-        fn project_item_susbts<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<ty::ItemSubsts<'tcx>> {
-            &tables.item_substs
-        }
-
-        Ref::map(self.tables.borrow(), project_item_susbts)
     }
 
     pub fn opt_node_ty_substs<F>(&self,
@@ -3872,8 +3859,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             tcx.mk_array(unified, args.len())
           }
           hir::ExprRepeat(ref element, count) => {
-            let count_expr = &tcx.map.body(count).value;
-            let count = eval_length(self.tcx.global_tcx(), count_expr, "repeat count")
+            let count = eval_length(self.tcx.global_tcx(), count, "repeat count")
                   .unwrap_or(0);
 
             let uty = match expected {

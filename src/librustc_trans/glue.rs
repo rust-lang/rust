@@ -80,7 +80,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'t
     }
     match t.sty {
         ty::TyBox(typ) if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) => {
-            scx.tcx().infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
+            scx.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
                 let layout = t.layout(&infcx).unwrap();
                 if layout.size(&scx.tcx().data_layout).bytes() == 0 {
                     // `Box<ZeroSizeType>` does not allocate.

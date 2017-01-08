@@ -27,7 +27,7 @@ use self::TargetLint::*;
 
 use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
-use ty::TyCtxt;
+use ty::{self, TyCtxt};
 use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintPass, LintSource};
 use lint::{EarlyLintPassObject, LateLintPassObject};
@@ -335,6 +335,9 @@ impl LintStore {
 pub struct LateContext<'a, 'tcx: 'a> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+
+    /// Side-tables for the body we are in.
+    pub tables: &'a ty::Tables<'tcx>,
 
     /// The crate being checked.
     pub krate: &'a hir::Crate,
@@ -703,22 +706,6 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           krate: &'a hir::Crate,
-           access_levels: &'a AccessLevels) -> LateContext<'a, 'tcx> {
-        // We want to own the lint store, so move it out of the session.
-        let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
-                                      LintStore::new());
-
-        LateContext {
-            tcx: tcx,
-            krate: krate,
-            access_levels: access_levels,
-            lints: lint_store,
-            level_stack: vec![],
-        }
-    }
-
     fn visit_ids<'b, F: 'b>(&'b mut self, f: F)
         where F: FnOnce(&mut IdVisitor<'b, 'a, 'tcx>)
     {
@@ -795,6 +782,14 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::NestedVisitorMap::All(&self.tcx.map)
     }
 
+    fn visit_nested_body(&mut self, body: hir::BodyId) {
+        let old_tables = self.tables;
+        self.tables = self.tcx.body_tables(body);
+        let body = self.tcx.map.body(body);
+        self.visit_body(body);
+        self.tables = old_tables;
+    }
+
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, late_passes, it);
@@ -837,10 +832,15 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
                 body_id: hir::BodyId, span: Span, id: ast::NodeId) {
+        // Wrap in tables here, not just in visit_nested_body,
+        // in order for `check_fn` to be able to use them.
+        let old_tables = self.tables;
+        self.tables = self.tcx.body_tables(body_id);
         let body = self.tcx.map.body(body_id);
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
+        self.tables = old_tables;
     }
 
     fn visit_variant_data(&mut self,
@@ -1238,7 +1238,17 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
 
     let krate = tcx.map.krate();
-    let mut cx = LateContext::new(tcx, krate, access_levels);
+
+    // We want to own the lint store, so move it out of the session.
+    let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), LintStore::new());
+    let mut cx = LateContext {
+        tcx: tcx,
+        tables: &ty::Tables::empty(),
+        krate: krate,
+        access_levels: access_levels,
+        lints: lint_store,
+        level_stack: vec![],
+    };
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {

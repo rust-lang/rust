@@ -99,10 +99,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                fn_ty.sig,
                opt_kind);
 
-        self.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
+        self.tables.borrow_mut().closure_tys.insert(expr.id, fn_ty);
         match opt_kind {
             Some(kind) => {
-                self.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind);
+                self.tables.borrow_mut().closure_kinds.insert(expr.id, kind);
             }
             None => {}
         }

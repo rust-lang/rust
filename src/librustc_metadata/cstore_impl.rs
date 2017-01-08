@@ -434,27 +434,14 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                                def_id: DefId)
                                -> Option<&'tcx hir::Body>
     {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-
-        if let Some(&cached) = self.inlined_item_cache.borrow().get(&def_id) {
-            return cached.map(|root_id| {
-                // Already inline
-                debug!("maybe_get_item_body({}): already inline", tcx.item_path_str(def_id));
-                tcx.map.expect_inlined_body(root_id)
-            });
+        if let Some(cached) = tcx.map.get_inlined_body(def_id) {
+            return Some(cached);
         }
 
+        self.dep_graph.read(DepNode::MetaData(def_id));
         debug!("maybe_get_item_body({}): inlining item", tcx.item_path_str(def_id));
 
-        let inlined = self.get_crate_data(def_id.krate).maybe_get_item_body(tcx, def_id.index);
-
-        self.inlined_item_cache.borrow_mut().insert(def_id, inlined.map(|body| {
-            let root_id = tcx.map.get_parent_node(body.value.id);
-            assert_eq!(tcx.map.get_parent_node(root_id), root_id);
-            root_id
-        }));
-
-        inlined
+        self.get_crate_data(def_id.krate).maybe_get_item_body(tcx, def_id.index)
     }
 
     fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {

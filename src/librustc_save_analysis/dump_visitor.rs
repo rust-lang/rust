@@ -99,13 +99,23 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn nest<F>(&mut self, scope_id: NodeId, f: F)
+    fn nest_scope<F>(&mut self, scope_id: NodeId, f: F)
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
         f(self);
         self.cur_scope = parent_scope;
+    }
+
+    fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
+        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
+    {
+        let old_tables = self.save_ctxt.tables;
+        let item_def_id = self.tcx.map.local_def_id(item_id);
+        self.save_ctxt.tables = self.tcx.item_tables(item_def_id);
+        f(self);
+        self.save_ctxt.tables = old_tables;
     }
 
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
@@ -337,7 +347,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
             for &(id, ref p, ..) in &collector.collected_paths {
-                let typ = match self.tcx.tables().node_types.get(&id) {
+                let typ = match self.save_ctxt.tables.node_types.get(&id) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
@@ -378,7 +388,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
             let sig_str = ::make_signature(&sig.decl, &sig.generics);
             if body.is_some() {
-                self.process_formals(&sig.decl.inputs, &method_data.qualname);
+                self.nest_tables(id, |v| {
+                    v.process_formals(&sig.decl.inputs, &method_data.qualname)
+                });
             }
 
             // If the method is defined in an impl, then try and find the corresponding
@@ -448,7 +460,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
         // walk the fn body
         if let Some(body) = body {
-            self.nest(id, |v| v.visit_block(body));
+            self.nest_tables(id, |v| v.nest_scope(id, |v| v.visit_block(body)));
         }
     }
 
@@ -520,7 +532,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.dumper.function(fn_data.clone().lower(self.tcx));
             }
 
-            self.process_formals(&decl.inputs, &fn_data.qualname);
+            self.nest_tables(item.id, |v| v.process_formals(&decl.inputs, &fn_data.qualname));
             self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
         }
 
@@ -532,7 +544,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             self.visit_ty(&ret_ty);
         }
 
-        self.nest(item.id, |v| v.visit_block(&body));
+        self.nest_tables(item.id, |v| v.nest_scope(item.id, |v| v.visit_block(&body)));
     }
 
     fn process_static_or_const_item(&mut self,
@@ -991,7 +1003,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         match p.node {
             PatKind::Struct(ref path, ref fields, _) => {
                 visit::walk_path(self, path);
-                let adt = match self.tcx.tables().node_id_to_type_opt(p.id) {
+                let adt = match self.save_ctxt.tables.node_id_to_type_opt(p.id) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
                         visit::walk_pat(self, p);
@@ -1032,7 +1044,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 ast::Mutability::Immutable => value.to_string(),
                 _ => String::new(),
             };
-            let typ = match self.tcx.tables().node_types.get(&id) {
+            let typ = match self.save_ctxt.tables.node_types.get(&id) {
                 Some(typ) => {
                     let typ = typ.to_string();
                     if !value.is_empty() {
@@ -1286,7 +1298,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 self.process_trait(item, generics, trait_refs, methods),
             Mod(ref m) => {
                 self.process_mod(item);
-                self.nest(item.id, |v| visit::walk_mod(v, m));
+                self.nest_scope(item.id, |v| visit::walk_mod(v, m));
             }
             Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
@@ -1349,6 +1361,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
 
                 visit::walk_path(self, path);
             }
+            ast::TyKind::Array(ref element, ref length) => {
+                self.visit_ty(element);
+                self.nest_tables(length.id, |v| v.visit_expr(length));
+            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -1367,7 +1383,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.map.expect_expr(ex.id);
-                let adt = match self.tcx.tables().expr_ty_opt(&hir_expr) {
+                let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
                         visit::walk_expr(self, ex);
@@ -1399,7 +1415,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         return;
                     }
                 };
-                let ty = match self.tcx.tables().expr_ty_adjusted_opt(&hir_node) {
+                let ty = match self.save_ctxt.tables.expr_ty_adjusted_opt(&hir_node) {
                     Some(ty) => &ty.sty,
                     None => {
                         visit::walk_expr(self, ex);
@@ -1427,7 +1443,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             ast::ExprKind::Closure(_, ref decl, ref body, _fn_decl_span) => {
                 let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
-                self.process_formals(&decl.inputs, &id);
 
                 // walk arg and return types
                 for arg in &decl.inputs {
@@ -1439,7 +1454,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 }
 
                 // walk the body
-                self.nest(ex.id, |v| v.visit_expr(body));
+                self.nest_tables(ex.id, |v| {
+                    v.process_formals(&decl.inputs, &id);
+                    v.nest_scope(ex.id, |v| v.visit_expr(body))
+                });
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
@@ -1454,6 +1472,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
                 opt_else.as_ref().map(|el| visit::walk_expr(self, el));
+            }
+            ast::ExprKind::Repeat(ref element, ref count) => {
+                self.visit_expr(element);
+                self.nest_tables(count.id, |v| v.visit_expr(count));
             }
             _ => {
                 visit::walk_expr(self, ex)
@@ -1492,7 +1514,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                     } else {
                         "<mutable>".to_string()
                     };
-                    let typ = self.tcx.tables().node_types
+                    let typ = self.save_ctxt.tables.node_types
                                   .get(&id).map(|t| t.to_string()).unwrap_or(String::new());
                     value.push_str(": ");
                     value.push_str(&typ);

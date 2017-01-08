@@ -33,10 +33,12 @@ use rustc::hir;
 // Entry point
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self,
-                                     body: &'gcx hir::Body,
-                                     item_id: ast::NodeId) {
+    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) {
         assert_eq!(self.writeback_errors.get(), false);
+
+        let item_id = self.tcx.map.body_owner(body.id());
+        let item_def_id = self.tcx.map.local_def_id(item_id);
+
         let mut wbcx = WritebackCx::new(self);
         for arg in &body.arguments {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
@@ -49,6 +51,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_anon_types();
         wbcx.visit_deferred_obligations(item_id);
         wbcx.visit_type_nodes();
+
+        let tables = self.tcx.alloc_tables(wbcx.tables);
+        self.tcx.tables.borrow_mut().insert(item_def_id, tables);
     }
 }
 
@@ -63,6 +68,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
 
+    tables: ty::Tables<'gcx>,
+
     // Mapping from free regions of the function to the
     // early-bound versions of them, visible from the
     // outside of the function. This is needed by, and
@@ -74,6 +81,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>) -> WritebackCx<'cx, 'gcx, 'tcx> {
         let mut wbcx = WritebackCx {
             fcx: fcx,
+            tables: ty::Tables::empty(),
             free_to_bound_regions: DefIdMap()
         };
 
@@ -113,10 +121,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         self.fcx.tcx
     }
 
-    fn write_ty_to_tcx(&self, node_id: ast::NodeId, ty: Ty<'gcx>) {
-        debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
+    fn write_ty_to_tables(&mut self, node_id: ast::NodeId, ty: Ty<'gcx>) {
+        debug!("write_ty_to_tables({}, {:?})", node_id,  ty);
         assert!(!ty.needs_infer());
-        self.tcx().tables.borrow_mut().node_types.insert(node_id, ty);
+        self.tables.node_types.insert(node_id, ty);
     }
 
     // Hacky hack: During type-checking, we treat *all* operators
@@ -228,11 +236,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
-        debug!("Type for pattern binding {} (id {}) resolved to {:?}",
-               self.tcx().map.node_to_pretty_string(p.id),
-               p.id,
-               self.tcx().tables().node_id_to_type(p.id));
-
         intravisit::walk_pat(self, p);
     }
 
@@ -243,13 +246,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
-        self.write_ty_to_tcx(l.id, var_ty);
+        self.write_ty_to_tables(l.id, var_ty);
         intravisit::walk_local(self, l);
     }
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
-    fn visit_upvar_borrow_map(&self) {
+    fn visit_upvar_borrow_map(&mut self) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -267,11 +270,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             debug!("Upvar capture for {:?} resolved to {:?}",
                    upvar_id,
                    new_upvar_capture);
-            self.tcx()
-                .tables
-                .borrow_mut()
-                .upvar_capture_map
-                .insert(*upvar_id, new_upvar_capture);
+            self.tables.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
         }
     }
 
@@ -280,13 +279,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
-            let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
-            self.tcx().tables.borrow_mut().closure_tys.insert(*def_id, closure_ty);
+        for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
+            let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
+            let def_id = self.tcx().map.local_def_id(id);
+            self.tcx().closure_tys.borrow_mut().insert(def_id, closure_ty);
         }
 
-        for (def_id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
-            self.tcx().tables.borrow_mut().closure_kinds.insert(*def_id, closure_kind);
+        for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
+            let def_id = self.tcx().map.local_def_id(id);
+            self.tcx().closure_kinds.borrow_mut().insert(def_id, closure_kind);
         }
     }
 
@@ -339,10 +340,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+    fn visit_node_id(&mut self, reason: ResolveReason, id: ast::NodeId) {
         // Export associated path extensions.
         if let Some(def) = self.fcx.tables.borrow_mut().type_relative_path_defs.remove(&id) {
-            self.tcx().tables.borrow_mut().type_relative_path_defs.insert(id, def);
+            self.tables.type_relative_path_defs.insert(id, def);
         }
 
         // Resolve any borrowings for the node with id `id`
@@ -351,7 +352,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         // Resolve the type of the node with id `id`
         let n_ty = self.fcx.node_ty(id);
         let n_ty = self.resolve(&n_ty, reason);
-        self.write_ty_to_tcx(id, n_ty);
+        self.write_ty_to_tables(id, n_ty);
         debug!("Node {} has type {:?}", id, n_ty);
 
         // Resolve any substitutions
@@ -360,12 +361,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             if !item_substs.is_noop() {
                 debug!("write_substs_to_tcx({}, {:?})", id, item_substs);
                 assert!(!item_substs.substs.needs_infer());
-                self.tcx().tables.borrow_mut().item_substs.insert(id, item_substs);
+                self.tables.item_substs.insert(id, item_substs);
             }
         });
     }
 
-    fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
+    fn visit_adjustments(&mut self, reason: ResolveReason, id: ast::NodeId) {
         let adjustments = self.fcx.tables.borrow_mut().adjustments.remove(&id);
         match adjustments {
             None => {
@@ -408,13 +409,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     target: self.resolve(&adjustment.target, reason)
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
-                self.tcx().tables.borrow_mut().adjustments.insert(
-                    id, resolved_adjustment);
+                self.tables.adjustments.insert(id, resolved_adjustment);
             }
         }
     }
 
-    fn visit_method_map_entry(&self,
+    fn visit_method_map_entry(&mut self,
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
@@ -436,25 +436,25 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         //NB(jroesch): We need to match twice to avoid a double borrow which would cause an ICE
         if let Some(method) = new_method {
-            self.tcx().tables.borrow_mut().method_map.insert(method_call, method);
+            self.tables.method_map.insert(method_call, method);
         }
     }
 
-    fn visit_liberated_fn_sigs(&self) {
+    fn visit_liberated_fn_sigs(&mut self) {
         for (&node_id, fn_sig) in self.fcx.tables.borrow().liberated_fn_sigs.iter() {
             let fn_sig = self.resolve(fn_sig, ResolvingFnSig(node_id));
-            self.tcx().tables.borrow_mut().liberated_fn_sigs.insert(node_id, fn_sig.clone());
+            self.tables.liberated_fn_sigs.insert(node_id, fn_sig.clone());
         }
     }
 
-    fn visit_fru_field_types(&self) {
+    fn visit_fru_field_types(&mut self) {
         for (&node_id, ftys) in self.fcx.tables.borrow().fru_field_types.iter() {
             let ftys = self.resolve(ftys, ResolvingFieldTypes(node_id));
-            self.tcx().tables.borrow_mut().fru_field_types.insert(node_id, ftys);
+            self.tables.fru_field_types.insert(node_id, ftys);
         }
     }
 
-    fn visit_deferred_obligations(&self, item_id: ast::NodeId) {
+    fn visit_deferred_obligations(&mut self, item_id: ast::NodeId) {
         let deferred_obligations = self.fcx.deferred_obligations.borrow();
         let obligations: Vec<_> = deferred_obligations.iter().map(|obligation| {
             let reason = ResolvingDeferredObligation(obligation.cause.span);
@@ -496,7 +496,7 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingClosure(DefId),
+    ResolvingClosure(ast::NodeId),
     ResolvingFnSig(ast::NodeId),
     ResolvingFieldTypes(ast::NodeId),
     ResolvingAnonTy(DefId),
@@ -513,12 +513,12 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
+            ResolvingClosure(id) |
             ResolvingFnSig(id) |
             ResolvingFieldTypes(id) |
             ResolvingTyNode(id) => {
                 tcx.map.span(id)
             }
-            ResolvingClosure(did) |
             ResolvingAnonTy(did) => {
                 tcx.def_span(did)
             }
