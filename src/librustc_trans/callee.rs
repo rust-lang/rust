@@ -234,18 +234,37 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            trait_closure_kind={:?}, llfn={:?})",
            llfn_closure_kind, trait_closure_kind, Value(llfn));
 
-    match (llfn_closure_kind, trait_closure_kind) {
+    match needs_fn_once_adapter_shim(llfn_closure_kind, trait_closure_kind) {
+        Ok(true) => trans_fn_once_adapter_shim(ccx,
+                                               def_id,
+                                               substs,
+                                               method_instance,
+                                               llfn),
+        Ok(false) => llfn,
+        Err(()) => {
+            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
+                 llfn_closure_kind,
+                 trait_closure_kind);
+        }
+    }
+}
+
+pub fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
+                                  trait_closure_kind: ty::ClosureKind)
+                                  -> Result<bool, ()>
+{
+    match (actual_closure_kind, trait_closure_kind) {
         (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
         (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
             // No adapter needed.
-            llfn
+           Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
             // `fn(&mut self, ...)`. In fact, at trans time, these are
             // basically the same thing, so we can just return llfn.
-            llfn
+            Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
@@ -257,13 +276,9 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
             //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
             //
             // These are both the same at trans time.
-            trans_fn_once_adapter_shim(ccx, def_id, substs, method_instance, llfn)
+            Ok(true)
         }
-        _ => {
-            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
-                 llfn_closure_kind,
-                 trait_closure_kind);
-        }
+        _ => Err(()),
     }
 }
 

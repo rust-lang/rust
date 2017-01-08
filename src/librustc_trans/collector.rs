@@ -205,6 +205,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use syntax::abi::Abi;
 use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
+use callee::needs_fn_once_adapter_shim;
 use context::SharedCrateContext;
 use common::fulfill_obligation;
 use glue::{self, DropGlueKind};
@@ -568,7 +569,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                 callee_substs,
                                                 self.param_substs);
 
-            if let Some((callee_def_id, callee_substs)) = dispatched {
+            if let StaticDispatchResult::Dispatched {
+                    def_id: callee_def_id,
+                    substs: callee_substs,
+                    fn_once_adjustment,
+                } = dispatched {
                 // if we have a concrete impl (which we might not have
                 // in the case of something compiler generated like an
                 // object shim or a closure that is handled differently),
@@ -581,6 +586,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                           callee_substs,
                                                           self.param_substs);
                     self.output.push(trans_item);
+
+                    // This call will instantiate an FnOnce adapter, which drops
+                    // the closure environment. Therefore we need to make sure
+                    // that we collect the drop-glue for the environment type.
+                    if let Some(env_ty) = fn_once_adjustment {
+                        let env_ty = glue::get_drop_glue_type(self.scx, env_ty);
+                        if self.scx.type_needs_drop(env_ty) {
+                            let dg = DropGlueKind::Ty(env_ty);
+                            self.output.push(TransItem::DropGlue(dg));
+                        }
+                    }
                 }
             }
         }
@@ -793,15 +809,13 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             bug!("encountered unexpected type");
         }
     }
-
-
 }
 
 fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                 fn_def_id: DefId,
                                 fn_substs: &'tcx Substs<'tcx>,
                                 param_substs: &'tcx Substs<'tcx>)
-                                -> Option<(DefId, &'tcx Substs<'tcx>)> {
+                                -> StaticDispatchResult<'tcx> {
     debug!("do_static_dispatch(fn_def_id={}, fn_substs={:?}, param_substs={:?})",
            def_id_to_string(scx.tcx(), fn_def_id),
            fn_substs,
@@ -818,8 +832,28 @@ fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         debug!(" => regular function");
         // The function is not part of an impl or trait, no dispatching
         // to be done
-        Some((fn_def_id, fn_substs))
+        StaticDispatchResult::Dispatched {
+            def_id: fn_def_id,
+            substs: fn_substs,
+            fn_once_adjustment: None,
+        }
     }
+}
+
+enum StaticDispatchResult<'tcx> {
+    // The call could be resolved statically as going to the method with
+    // `def_id` and `substs`.
+    Dispatched {
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+
+        // If this is a call to a closure that needs an FnOnce adjustment,
+        // this contains the new self type of the call (= type of the closure
+        // environment)
+        fn_once_adjustment: Option<ty::Ty<'tcx>>,
+    },
+    // This goes to somewhere that we don't know at compile-time
+    Unknown
 }
 
 // Given a trait-method and substitution information, find out the actual
@@ -829,7 +863,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                              trait_id: DefId,
                                              callee_substs: &'tcx Substs<'tcx>,
                                              param_substs: &'tcx Substs<'tcx>)
-                                             -> Option<(DefId, &'tcx Substs<'tcx>)> {
+                                             -> StaticDispatchResult<'tcx> {
     let tcx = scx.tcx();
     debug!("do_static_trait_method_dispatch(trait_method={}, \
                                             trait_id={}, \
@@ -850,17 +884,56 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // the actual function:
     match vtbl {
         traits::VtableImpl(impl_data) => {
-            Some(traits::find_method(tcx, trait_method.name, rcvr_substs, &impl_data))
+            let (def_id, substs) = traits::find_method(tcx,
+                                                       trait_method.name,
+                                                       rcvr_substs,
+                                                       &impl_data);
+            StaticDispatchResult::Dispatched {
+                def_id: def_id,
+                substs: substs,
+                fn_once_adjustment: None,
+            }
         }
         traits::VtableClosure(closure_data) => {
-            Some((closure_data.closure_def_id, closure_data.substs.substs))
+            let closure_def_id = closure_data.closure_def_id;
+            let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+            let actual_closure_kind = tcx.closure_kind(closure_def_id);
+
+            let needs_fn_once_adapter_shim =
+                match needs_fn_once_adapter_shim(actual_closure_kind,
+                                                 trait_closure_kind) {
+                Ok(true) => true,
+                _ => false,
+            };
+
+            let fn_once_adjustment = if needs_fn_once_adapter_shim {
+                Some(tcx.mk_closure_from_closure_substs(closure_def_id,
+                                                        closure_data.substs))
+            } else {
+                None
+            };
+
+            StaticDispatchResult::Dispatched {
+                def_id: closure_def_id,
+                substs: closure_data.substs.substs,
+                fn_once_adjustment: fn_once_adjustment,
+            }
         }
-        // Trait object and function pointer shims are always
-        // instantiated in-place, and as they are just an ABI-adjusting
-        // indirect call they do not have any dependencies.
-        traits::VtableFnPointer(..) |
+        traits::VtableFnPointer(ref data) => {
+            // If we know the destination of this fn-pointer, we'll have to make
+            // sure that this destination actually gets instantiated.
+            if let ty::TyFnDef(def_id, substs, _) = data.fn_ty.sty {
+                // The destination of the pointer might be something that needs
+                // further dispatching, such as a trait method, so we do that.
+                do_static_dispatch(scx, def_id, substs, param_substs)
+            } else {
+                StaticDispatchResult::Unknown
+            }
+        }
+        // Trait object shims are always instantiated in-place, and as they are
+        // just an ABI-adjusting indirect call they do not have any dependencies.
         traits::VtableObject(..) => {
-            None
+            StaticDispatchResult::Unknown
         }
         _ => {
             bug!("static call to invalid vtable: {:?}", vtbl)
@@ -994,8 +1067,19 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
             // Walk all methods of the trait, including those of its supertraits
             let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
             let methods = methods.filter_map(|method| method)
-                .filter_map(|(def_id, substs)| do_static_dispatch(scx, def_id, substs,
-                                                                  param_substs))
+                .filter_map(|(def_id, substs)| {
+                    if let StaticDispatchResult::Dispatched {
+                        def_id,
+                        substs,
+                        // We already add the drop-glue for the closure env
+                        // unconditionally below.
+                        fn_once_adjustment: _ ,
+                    } = do_static_dispatch(scx, def_id, substs, param_substs) {
+                        Some((def_id, substs))
+                    } else {
+                        None
+                    }
+                })
                 .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
                 .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
             output.extend(methods);
