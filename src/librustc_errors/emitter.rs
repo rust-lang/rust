@@ -924,19 +924,48 @@ impl EmitterWriter {
                             }
                         },
                         None => {
+                            // Diagnostic with lists need to render the list items at the
+                            // appropriate depth and composed into the body of the message.
                             let msg = if child.list.len() == 0 {
+                                // Diagnostics without lists just need the original message
                                 child.message.to_owned()
                             } else {
-                                format!("{}\n{}",
-                                        &child.message,
-                                        &child.list.iter().map(|item| {
-                                            format!("{}         - {}",
-                                                    (0..max_line_num_len)
-                                                          .map(|_| " ")
-                                                          .collect::<String>(),
-                                                    item)
-                                        }).collect::<Vec<String>>()
-                                        .join("\n"))
+                                // Diagnostic with a list of items needs to be rendered with the
+                                // appropriate padding at the left to have a consistent margin with
+                                // the `note: ` text.
+
+                                // Add as many ` ` chars at the beggining to align the `- item`
+                                // text to the beggining of the `note: ` text. The extra 9 ` ` is
+                                // the padding that's always needed to align to the `note: `.
+                                let padding = (0..max_line_num_len + 9)
+                                    .map(|_| " ")
+                                    .collect::<String>();
+
+                                // Concatenate the message and all the list items, properly aligned
+                                child.list.iter().fold(child.message.to_owned(), |mut acc, x| {
+                                    acc.push_str("\n");
+                                    acc.push_str(&padding);
+                                    acc.push_str("- ");
+                                    acc.push_str(x);
+                                    acc
+                                })
+                                // msg will now be:
+                                //
+                                //     child.message's content
+                                //              - item 1
+                                //              - item 2
+                                //
+                                // and the diagnostic will look like
+                                //
+                                //     error: message
+                                //      --> file.rs:3:20
+                                //       |
+                                //     3 |     <Code>
+                                //       |      ^^^^ highlight
+                                //       |
+                                //       = help: child.message's content
+                                //               - item 1
+                                //               - item 2
                             };
                             match self.emit_message_default(&child.span,
                                                             &msg,
