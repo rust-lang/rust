@@ -28,7 +28,7 @@ use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc::middle::privacy::AccessLevels;
-use rustc::middle::resolve_lifetime::DefRegion::*;
+use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -765,9 +765,9 @@ impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext) -> Lifetime {
         let def = cx.tcx.named_region_map.defs.get(&self.id).cloned();
         match def {
-            Some(DefEarlyBoundRegion(_, node_id)) |
-            Some(DefLateBoundRegion(_, node_id)) |
-            Some(DefFreeRegion(_, node_id)) => {
+            Some(rl::Region::EarlyBound(_, node_id)) |
+            Some(rl::Region::LateBound(_, node_id)) |
+            Some(rl::Region::Free(_, node_id)) => {
                 if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
                     return lt;
                 }
