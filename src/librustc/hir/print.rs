@@ -1210,6 +1210,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
         self.maybe_print_comment(expr.span.lo)?;
+        self.print_outer_attributes(&expr.attrs)?;
         self.ibox(indent_unit)?;
         self.ann.pre(self, NodeExpr(expr))?;
         match expr.node {
