@@ -565,7 +565,7 @@ macro_rules! unimplemented {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "do_while")]
+#[unstable(feature = "do_while", issue="0")]
 macro_rules! do_while {
     (($while_b:expr) $($do_b:tt)+) => {
         loop {
