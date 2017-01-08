@@ -225,7 +225,7 @@
 
 // Turn warnings into errors, but only after stage0, where it can be useful for
 // code to emit warnings during language transitions
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 // std may use features in a platform-specific way
 #![allow(unused_features)]

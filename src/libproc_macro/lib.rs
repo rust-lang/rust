@@ -27,7 +27,7 @@
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![deny(missing_docs)]
 
 #![feature(rustc_private)]
