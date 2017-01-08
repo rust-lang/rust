@@ -151,16 +151,24 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
-         .arg("--features").arg(build.std_features())
-         .arg("--no-deps");
+         .arg("--features").arg(build.std_features());
 
-    for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
-        cargo.arg("-p").arg(krate);
-        // Create all crate output directories first to make sure rustdoc uses
-        // relative links.
-        // FIXME: Cargo should probably do this itself.
-        t!(fs::create_dir_all(out_dir.join(krate)));
+    // We don't want to build docs for internal std dependencies unless
+    // in compiler-docs mode. When not in that mode, we whitelist the crates
+    // for which docs must be built.
+    if build.config.compiler_docs {
+        cargo.arg("-p").arg("std");
+    } else {
+        cargo.arg("--no-deps");
+        for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
+            cargo.arg("-p").arg(krate);
+            // Create all crate output directories first to make sure rustdoc uses
+            // relative links.
+            // FIXME: Cargo should probably do this itself.
+            t!(fs::create_dir_all(out_dir.join(krate)));
+        }
     }
+
 
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
