@@ -16,8 +16,7 @@ extern crate derive_bad;
 #[derive(
     A
 )]
-//~^^ ERROR: custom derive attribute panicked
-//~| HELP: called `Result::unwrap()` on an `Err` value: LexError
+//~^^ ERROR: custom derive produced unparseable tokens
 struct A;
 
 fn main() {}
