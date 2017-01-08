@@ -1,16 +1,8 @@
-error[E0411]: cannot find type `Self` in this scope
+error: `Self` type is used before it's determined
   --> $DIR/issue-23305.rs:15:12
    |
 15 | impl ToNbt<Self> {}
-   |            ^^^^ `Self` is only available in traits and impls
-
-error[E0038]: the trait `ToNbt` cannot be made into an object
-  --> $DIR/issue-23305.rs:15:6
-   |
-15 | impl ToNbt<Self> {}
-   |      ^^^^^^^^^^^ the trait `ToNbt` cannot be made into an object
-   |
-   = note: method `new` has no receiver
+   |            ^^^^
 
 error: aborting due to previous error
 
