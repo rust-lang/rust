@@ -77,8 +77,9 @@ impl MultiItemModifier for CustomDerive {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
         });
-        let new_items = match res {
-            Ok(stream) => __internal::token_stream_items(stream),
+
+        let stream = match res {
+            Ok(stream) => stream,
             Err(e) => {
                 let msg = "custom derive attribute panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
@@ -93,6 +94,18 @@ impl MultiItemModifier for CustomDerive {
                 panic!(FatalError);
             }
         };
+
+        let new_items = __internal::set_parse_sess(&ecx.parse_sess, || {
+            match __internal::token_stream_parse_items(stream) {
+                Ok(new_items) => new_items,
+                Err(_) => {
+                    // FIXME: handle this better
+                    let msg = "custom derive produced unparseable tokens";
+                    ecx.struct_span_fatal(span, msg).emit();
+                    panic!(FatalError);
+                }
+            }
+        });
 
         let mut res = vec![Annotatable::Item(item)];
         // Reassign spans of all expanded items to the input `item`
