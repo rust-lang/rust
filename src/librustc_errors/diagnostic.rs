@@ -32,6 +32,7 @@ pub struct SubDiagnostic {
     pub message: String,
     pub span: MultiSpan,
     pub render_span: Option<RenderSpan>,
+    pub list: Vec<String>,
 }
 
 impl Diagnostic {
@@ -132,6 +133,11 @@ impl Diagnostic {
         self
     }
 
+    pub fn help_with_list(&mut self , msg: &str, list: Vec<String>) -> &mut Self {
+        self.sub_with_list(Level::Help, msg, MultiSpan::new(), None, list);
+        self
+    }
+
     pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                          sp: S,
                                          msg: &str)
@@ -191,11 +197,23 @@ impl Diagnostic {
            message: &str,
            span: MultiSpan,
            render_span: Option<RenderSpan>) {
+        self.sub_with_list(level, message, span, render_span, vec![]);
+    }
+
+    /// Convenience function for internal use, clients should use one of the
+    /// public methods above.
+    fn sub_with_list(&mut self,
+           level: Level,
+           message: &str,
+           span: MultiSpan,
+           render_span: Option<RenderSpan>,
+           list: Vec<String>) {
         let sub = SubDiagnostic {
             level: level,
             message: message.to_owned(),
             span: span,
             render_span: render_span,
+            list: list,
         };
         self.children.push(sub);
     }
