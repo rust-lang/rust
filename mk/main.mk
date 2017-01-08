@@ -175,7 +175,7 @@ endif
 # that the snapshot will be generated with a statically linked rustc so we only
 # have to worry about the distribution of one file (with its native dynamic
 # dependencies)
-RUSTFLAGS_STAGE0 += -C prefer-dynamic -C no-stack-check
+RUSTFLAGS_STAGE0 += -C prefer-dynamic
 RUSTFLAGS_STAGE1 += -C prefer-dynamic
 RUST_LIB_FLAGS_ST2 += -C prefer-dynamic
 RUST_LIB_FLAGS_ST3 += -C prefer-dynamic
