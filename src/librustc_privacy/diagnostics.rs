@@ -119,7 +119,7 @@ E0450: r##"
 A tuple constructor was invoked while some of its fields are private. Erroneous
 code example:
 
-```compile_fail,E0450
+```compile_fail
 mod Bar {
     pub struct Foo(isize);
 }
