@@ -39,14 +39,7 @@ impl fmt::Display for Status {
     }
 }
 
-
 struct Feature {
-    name: String,
-    level: Status,
-    since: String,
-}
-
-struct LibFeature {
     level: Status,
     since: String,
 }
@@ -54,7 +47,7 @@ struct LibFeature {
 pub fn check(path: &Path, bad: &mut bool) {
     let features = collect_lang_features(&path.join("libsyntax/feature_gate.rs"));
     assert!(!features.is_empty());
-    let mut lib_features = HashMap::<String, LibFeature>::new();
+    let mut lib_features = HashMap::<String, Feature>::new();
 
     let mut contents = String::new();
     super::walk(path,
@@ -97,7 +90,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 None => "None",
             };
 
-            if features.iter().any(|f| f.name == feature_name) {
+            if features.contains_key(feature_name) {
                 err("duplicating a lang feature");
             }
             if let Some(ref s) = lib_features.get(feature_name) {
@@ -110,7 +103,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 continue;
             }
             lib_features.insert(feature_name.to_owned(),
-                                LibFeature {
+                                Feature {
                                     level: level,
                                     since: since.to_owned(),
                                 });
@@ -122,9 +115,9 @@ pub fn check(path: &Path, bad: &mut bool) {
     }
 
     let mut lines = Vec::new();
-    for feature in features {
+    for (name, feature) in features {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           feature.name,
+                           name,
                            "lang",
                            feature.level,
                            feature.since));
@@ -150,7 +143,7 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
         .map(|(i, j)| &line[i..j])
 }
 
-fn collect_lang_features(path: &Path) -> Vec<Feature> {
+fn collect_lang_features(path: &Path) -> HashMap<String, Feature> {
     let mut contents = String::new();
     t!(t!(File::open(path)).read_to_string(&mut contents));
 
@@ -165,11 +158,11 @@ fn collect_lang_features(path: &Path) -> Vec<Feature> {
             };
             let name = parts.next().unwrap().trim();
             let since = parts.next().unwrap().trim().trim_matches('"');
-            Some(Feature {
-                name: name.to_owned(),
-                level: level,
-                since: since.to_owned(),
-            })
+            Some((name.to_owned(),
+                Feature {
+                    level: level,
+                    since: since.to_owned(),
+                }))
         })
         .collect()
 }
