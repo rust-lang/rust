@@ -27,7 +27,7 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 #![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
