@@ -70,15 +70,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                          ast::DUMMY_NODE_ID);
             let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
             if suggestions.len() > 0 {
-                err.help_with_list("here are some functions which might fulfill your needs:",
-                                   self.get_best_match(&suggestions));
+                err.help(&format!("here are some functions which \
+                                   might fulfill your needs:\n{}",
+                                  self.get_best_match(&suggestions).join("\n")));
             };
             err.emit();
         }
     }
 
     fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
-        format!(".{}({})",
+        format!("- .{}({})",
                 method.name,
                 if self.has_no_input_arg(method) {
                     ""

@@ -699,9 +699,23 @@ impl EmitterWriter {
                     .to_string(),
                 span: MultiSpan::new(),
                 render_span: None,
-                list: vec![],
             });
         }
+    }
+
+    fn msg_with_padding(&self, msg: &str, padding: usize) -> String {
+        let padding = (0..padding)
+            .map(|_| " ")
+            .collect::<String>();
+        msg.split('\n').enumerate().fold("".to_owned(), |mut acc, x| {
+            if x.0 != 0 {
+                acc.push_str("\n");
+                // Align every line with first one.
+                acc.push_str(&padding);
+            }
+            acc.push_str(&x.1);
+            acc
+        })
     }
 
     fn emit_message_default(&mut self,
@@ -722,7 +736,10 @@ impl EmitterWriter {
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
             buffer.append(0, &level.to_string(), Style::HeaderMsg);
             buffer.append(0, ": ", Style::NoStyle);
-            buffer.append(0, msg, Style::NoStyle);
+
+            // The extra 9 ` ` is the padding that's always needed to align to the `note: `.
+            let message = self.msg_with_padding(msg, max_line_num_len + 9);
+            buffer.append(0, &message, Style::NoStyle);
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             match code {
@@ -855,7 +872,10 @@ impl EmitterWriter {
 
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
-            buffer.append(0, msg, Style::HeaderMsg);
+
+            // The extra 15 ` ` is the padding that's always needed to align to the `suggestion: `.
+            let message = self.msg_with_padding(msg, max_line_num_len + 15);
+            buffer.append(0, &message, Style::HeaderMsg);
 
             let lines = cm.span_to_lines(primary_span).unwrap();
 
@@ -924,51 +944,8 @@ impl EmitterWriter {
                             }
                         },
                         None => {
-                            // Diagnostic with lists need to render the list items at the
-                            // appropriate depth and composed into the body of the message.
-                            let msg = if child.list.len() == 0 {
-                                // Diagnostics without lists just need the original message
-                                child.message.to_owned()
-                            } else {
-                                // Diagnostic with a list of items needs to be rendered with the
-                                // appropriate padding at the left to have a consistent margin with
-                                // the `note: ` text.
-
-                                // Add as many ` ` chars at the beggining to align the `- item`
-                                // text to the beggining of the `note: ` text. The extra 9 ` ` is
-                                // the padding that's always needed to align to the `note: `.
-                                let padding = (0..max_line_num_len + 9)
-                                    .map(|_| " ")
-                                    .collect::<String>();
-
-                                // Concatenate the message and all the list items, properly aligned
-                                child.list.iter().fold(child.message.to_owned(), |mut acc, x| {
-                                    acc.push_str("\n");
-                                    acc.push_str(&padding);
-                                    acc.push_str("- ");
-                                    acc.push_str(x);
-                                    acc
-                                })
-                                // msg will now be:
-                                //
-                                //     child.message's content
-                                //              - item 1
-                                //              - item 2
-                                //
-                                // and the diagnostic will look like
-                                //
-                                //     error: message
-                                //      --> file.rs:3:20
-                                //       |
-                                //     3 |     <Code>
-                                //       |      ^^^^ highlight
-                                //       |
-                                //       = help: child.message's content
-                                //               - item 1
-                                //               - item 2
-                            };
                             match self.emit_message_default(&child.span,
-                                                            &msg,
+                                                            &child.message,
                                                             &None,
                                                             &child.level,
                                                             max_line_num_len,
