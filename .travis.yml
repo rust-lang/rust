@@ -1,5 +1,11 @@
 language: rust
+
 rust: nightly
+
+os:
+  - linux
+  - osx
+
 sudo: false
 
 cache:
@@ -22,6 +28,7 @@ install:
   - (cargo install rustfmt || true)
 
 script:
+ - PATH=$PATH:./node_modules/.bin
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
  - set -e
@@ -33,6 +40,7 @@ script:
  - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
  - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
+ - set +e
 
 after_success:
 - ./.github/deploy.sh
@@ -56,3 +64,4 @@ after_success:
     else
       echo "Ignored"
     fi
+    set +e
