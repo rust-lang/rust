@@ -2410,13 +2410,15 @@ impl<'a> Resolver<'a> {
 
             match binding {
                 Ok(binding) => {
+                    let def = binding.def();
+                    let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(next_module);
-                    } else if binding.def() == Def::Err {
+                    } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
-                    } else if opt_ns.is_some() && !(opt_ns == Some(MacroNS) && !is_last) {
+                    } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         return PathResult::NonModule(PathResolution {
-                            base_def: binding.def(),
+                            base_def: def,
                             depth: path.len() - i - 1,
                         });
                     } else {
