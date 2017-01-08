@@ -725,7 +725,7 @@ impl EmitterWriter {
                     buffer.append(0, " ", Style::NoStyle);
                 }
                 &Level::Found => {
-                    buffer.append(0, "  ", Style::NoStyle);
+                    buffer.append(0, "   ", Style::NoStyle);
                     buffer.append(0, &level.to_string(), Style::NoStyle);
                     buffer.append(0, " ", Style::NoStyle);
                 },
