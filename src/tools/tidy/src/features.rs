@@ -166,7 +166,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                                 .count();
 
     // FIXME get this number down to zero.
-    let gate_untested_expected = 98;
+    let gate_untested_expected = 94;
 
     if gate_untested != gate_untested_expected {
         print!("Expected {} gate untested features, but found {}. ",

@@ -10,6 +10,8 @@
 
 // Test that ! errors when used in illegal positions with feature(never_type) disabled
 
+// gate-test-never_type
+
 trait Foo {
     type Wub;
 }
