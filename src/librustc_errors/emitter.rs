@@ -699,6 +699,7 @@ impl EmitterWriter {
                     .to_string(),
                 span: MultiSpan::new(),
                 render_span: None,
+                list: vec![],
             });
         }
     }
@@ -923,14 +924,28 @@ impl EmitterWriter {
                             }
                         },
                         None => {
+                            let msg = if child.list.len() == 0 {
+                                child.message.to_owned()
+                            } else {
+                                format!("{}\n{}",
+                                        &child.message,
+                                        &child.list.iter().map(|item| {
+                                            format!("{}         - {}",
+                                                    (0..max_line_num_len)
+                                                          .map(|_| " ")
+                                                          .collect::<String>(),
+                                                    item)
+                                        }).collect::<Vec<String>>()
+                                        .join("\n"))
+                            };
                             match self.emit_message_default(&child.span,
-                                                            &child.message,
+                                                            &msg,
                                                             &None,
                                                             &child.level,
                                                             max_line_num_len,
                                                             true) {
                                 Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
+                                _ => (),
                             }
                         }
                     }
