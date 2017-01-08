@@ -1407,7 +1407,6 @@ mod tests {
         assert!(plan.iter().all(|s| s.host == "A"));
         assert!(plan.iter().all(|s| s.target == "C"));
 
-        assert!(plan.iter().any(|s| s.name.contains("-ui")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(!plan.iter().any(|s| s.name.contains("cfail-full")));
