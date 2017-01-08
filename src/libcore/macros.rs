@@ -565,6 +565,7 @@ macro_rules! unimplemented {
 /// }
 /// ```
 #[macro_export]
+#[stable(feature = "core", since = "1.16.0")]
 macro_rules! do_while {
     (($while_b:expr) $($do_b:tt)+) => {
         loop {
