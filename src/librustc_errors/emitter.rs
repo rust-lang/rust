@@ -717,7 +717,7 @@ impl EmitterWriter {
             let msg_split = msg.split('`').collect::<Vec<&str>>();
             buffer.append(0, msg_split[0], Style::NoStyle);
             buffer.append(0, "`", Style::HeaderMsg);
-            buffer.append(0, msg_split[1], Style::UnderlinePrimary);
+            buffer.append(0, msg_split[1], Style::Highlight);
             buffer.append(0, "`", Style::HeaderMsg);
             buffer.append(0, msg_split[2], Style::NoStyle);
         }
@@ -1188,6 +1188,7 @@ impl Destination {
                 self.start_attr(term::Attr::Bold)?;
                 self.start_attr(term::Attr::ForegroundColor(l.color()))?;
             }
+            Style::Highlight => self.start_attr(term::Attr::Bold)?,
         }
         Ok(())
     }
