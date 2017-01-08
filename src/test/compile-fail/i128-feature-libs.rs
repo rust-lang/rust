@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 128-bit signed integer type.
-//!
-//! *[See also the `i128` primitive type](../../std/primitive.i128.html).*
+fn testl() {
+    ::std::u128::MAX; //~ ERROR use of unstable library feature 'i128'
+}
 
-#![unstable(feature = "i128", issue="35118")]
-
-int_module! { i128, #[unstable(feature = "i128", issue="35118")] }
+fn testl2() {
+    ::std::i128::MAX; //~ ERROR use of unstable library feature 'i128'
+}
