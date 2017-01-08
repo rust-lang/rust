@@ -247,11 +247,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let name = opt_lifetime.map(|l| l.name);
         let resolved = opt_lifetime.and_then(|l| tcx.named_region_map.defs.get(&l.id));
         let r = tcx.mk_region(match resolved {
-            Some(&rl::DefStaticRegion) => {
+            Some(&rl::Region::Static) => {
                 ty::ReStatic
             }
 
-            Some(&rl::DefLateBoundRegion(debruijn, id)) => {
+            Some(&rl::Region::LateBound(debruijn, id)) => {
                 // If this region is declared on a function, it will have
                 // an entry in `late_bound`, but if it comes from
                 // `for<'a>` in some type or something, it won't
@@ -268,15 +268,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                       issue_32330))
             }
 
-            Some(&rl::DefEarlyBoundRegion(index, _)) => {
+            Some(&rl::Region::EarlyBound(index, _)) => {
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
                     index: index,
                     name: name.unwrap()
                 })
             }
 
-            Some(&rl::DefFreeRegion(scope, id)) => {
-                // As in DefLateBoundRegion above, could be missing for some late-bound
+            Some(&rl::Region::Free(scope, id)) => {
+                // As in Region::LateBound above, could be missing for some late-bound
                 // regions, but also for early-bound regions.
                 let issue_32330 = tcx.named_region_map
                                      .late_bound
