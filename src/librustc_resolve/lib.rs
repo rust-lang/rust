@@ -2191,11 +2191,9 @@ impl<'a> Resolver<'a> {
             }
 
             // Try Levenshtein if nothing else worked.
-            if path.len() == 1 {
-                if let Some(candidate) = this.lookup_typo_candidate(name, ns, is_expected) {
-                    err.span_label(span, &format!("did you mean `{}`?", candidate));
-                    return err;
-                }
+            if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
+                err.span_label(span, &format!("did you mean `{}`?", candidate));
+                return err;
             }
 
             // Fallback label.
@@ -2649,21 +2647,72 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_typo_candidate<FilterFn>(&mut self,
-                                       name: Name,
+                                       path: &[Ident],
                                        ns: Namespace,
                                        filter_fn: FilterFn)
-                                       -> Option<Name>
+                                       -> Option<String>
         where FilterFn: Fn(Def) -> bool
     {
-        // FIXME: bindings in ribs provide quite modest set of candidates,
-        // extend it with other names in scope.
-        let names = self.ribs[ns].iter().rev().flat_map(|rib| {
-            rib.bindings.iter().filter_map(|(ident, def)| {
-                if filter_fn(*def) { Some(&ident.name) } else { None }
-            })
-        });
-        match find_best_match_for_name(names, &name.as_str(), None) {
-            Some(found) if found != name => Some(found),
+        let add_module_candidates = |module: Module, names: &mut Vec<Name>| {
+            for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
+                if let Some(binding) = resolution.borrow().binding {
+                    if filter_fn(binding.def()) {
+                        names.push(ident.name);
+                    }
+                }
+            }
+        };
+
+        let mut names = Vec::new();
+        let prefix_str = if path.len() == 1 {
+            // Search in lexical scope.
+            // Walk backwards up the ribs in scope and collect candidates.
+            for rib in self.ribs[ns].iter().rev() {
+                // Locals and type parameters
+                for (ident, def) in &rib.bindings {
+                    if filter_fn(*def) {
+                        names.push(ident.name);
+                    }
+                }
+                // Items in scope
+                if let ModuleRibKind(module) = rib.kind {
+                    // Items from this module
+                    add_module_candidates(module, &mut names);
+
+                    if let ModuleKind::Block(..) = module.kind {
+                        // We can see through blocks
+                    } else {
+                        // Items from the prelude
+                        if let Some(prelude) = self.prelude {
+                            if !module.no_implicit_prelude {
+                                add_module_candidates(prelude, &mut names);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            // Add primitive types to the mix
+            if filter_fn(Def::PrimTy(TyBool)) {
+                for (name, _) in &self.primitive_type_table.primitive_types {
+                    names.push(*name);
+                }
+            }
+            String::new()
+        } else {
+            // Search in module.
+            let mod_path = &path[..path.len() - 1];
+            if let PathResult::Module(module) = self.resolve_path(mod_path, Some(TypeNS), None) {
+                add_module_candidates(module, &mut names);
+            }
+            names_to_string(mod_path) + "::"
+        };
+
+        let name = path[path.len() - 1].name;
+        // Make sure error reporting is deterministic.
+        names.sort_by_key(|name| name.as_str());
+        match find_best_match_for_name(names.iter(), &name.as_str(), None) {
+            Some(found) if found != name => Some(format!("{}{}", prefix_str, found)),
             _ => None,
         }
     }
