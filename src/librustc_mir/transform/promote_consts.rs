@@ -97,11 +97,8 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
             // Ignore drops, if the temp gets promoted,
             // then it's constant and thus drop is noop.
             // Storage live ranges are also irrelevant.
-            match context {
-                LvalueContext::Drop |
-                LvalueContext::StorageLive |
-                LvalueContext::StorageDead => return,
-                _ => {}
+            if context.is_drop() || context.is_storage_marker() {
+                return;
             }
 
             let temp = &mut self.temps[index];
@@ -118,15 +115,17 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                     _ => { /* mark as unpromotable below */ }
                 }
             } else if let TempState::Defined { ref mut uses, .. } = *temp {
-                match context {
-                    LvalueContext::Borrow {..} |
-                    LvalueContext::Consume |
-                    LvalueContext::Inspect => {
-                        *uses += 1;
-                        return;
-                    }
-                    _ => { /* mark as unpromotable below */ }
+                // We always allow borrows, even mutable ones, as we need
+                // to promote mutable borrows of some ZSTs e.g. `&mut []`.
+                let allowed_use = match context {
+                    LvalueContext::Borrow {..} => true,
+                    _ => context.is_nonmutating_use()
+                };
+                if allowed_use {
+                    *uses += 1;
+                    return;
                 }
+                /* mark as unpromotable below */
             }
             *temp = TempState::Unpromotable;
         }

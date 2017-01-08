@@ -1287,6 +1287,7 @@ fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     visitor.visit_mir(&mir);
     for promoted in &mir.promoted {
+        visitor.mir = promoted;
         visitor.visit_mir(promoted);
     }
 }
