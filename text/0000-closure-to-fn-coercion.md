@@ -20,8 +20,8 @@ closure with a certain type signature.
 It is not possible to define a function while at the same time binding it to a
 function pointer.
 
-This is mainly used for convenience purposes, but in certain situations
-the lack of ability to do so creates a significant amount of boilerplate code.
+This is, admittedly, a convenience-motivated feature, but in certain situations
+the inability to bind code this way creates a significant amount of boilerplate.
 For example, when attempting to create an array of small, simple, but unique functions,
 it would be necessary to pre-define each and every function beforehand:
 
@@ -40,10 +40,10 @@ const foo: [fn(&mut u32); 4] = [
 ```
 
 This is a trivial example, and one that might not seem too consequential, but the
-code doubles with every new item added to the array. With very many elements,
+code doubles with every new item added to the array. With a large amount of elements,
 the duplication begins to seem unwarranted.
 
-Another option, of course, is to use an array of `Fn` instead of `fn`:
+A solution, of course, is to use an array of `Fn` instead of `fn`:
 
 ```rust
 const foo: [&'static Fn(&mut u32); 4] = [
@@ -54,19 +54,28 @@ const foo: [&'static Fn(&mut u32); 4] = [
 ];
 ```
 
-And this seems to fix the problem. Unfortunately, however, looking closely one
-can see that because we use the `Fn` trait, an extra layer of indirection
-is added when attempting to run `foo[n](&mut bar)`.
+And this seems to fix the problem. Unfortunately, however, because we use
+a reference to the `Fn` trait, an extra layer of indirection is added when
+attempting to run `foo[n](&mut bar)`.
 
-Rust must use dynamic dispatch because a closure is secretly a struct that
-contains references to captured variables, and the code within that closure
-must be able to access those references stored in the struct.
+Rust must use dynamic dispatch in this situation; a closure with captures is nothing
+but a struct containing references to captured variables. The code associated with a
+closure must be able to access those references stored in the struct.
 
-In the above example, though, no variables are captured by the closures,
-so in theory nothing would stop the compiler from treating them as anonymous
-functions. By doing so, unnecessary indirection would be avoided. In situations
-where this function pointer array is particularly hot code, the optimization
-would be appreciated.
+In situations where this function pointer array is particularly hot code,
+any optimizations would be appreciated. More generally, it is always preferable
+to avoid unnecessary indirection. And, of course, it is impossible to use this syntax
+when dealing with FFI.
+
+Aside from code-size nits, anonymous functions are legitimately useful for programmers.
+In the case of callback-heavy code, for example, it can be impractical to define functions
+out-of-line, with the requirement of producing confusing (and unnecessary) names for each.
+In the very first example given, `inc_X` names were used for the out-of-line functions, but
+more complicated behavior might not be so easily representable.
+
+Finally, this sort of automatic coercion is simply intuitive to the programmer.
+In the `&Fn` example, no variables are captured by the closures, so the theory is
+that nothing stops the compiler from treating them as anonymous functions.
 
 # Detailed design
 [design]: #detailed-design
@@ -107,17 +116,15 @@ const foo: [fn(&mut u32); 4] = [
 ];
 ```
 
-Note that once explicitly assigned to an `Fn` trait, the closure can no longer be
-coerced into `fn`, even if it has no captures. Just as we cannot do:
+Because there does not exist any item in the language that directly produces
+a `fn` type, even `fn` items must go through the process of reification. To
+perform the coercion, then, rustc must additionally allow the reification of
+unsized closures to `fn` types. The implementation of this is simplified by the
+fact that closures' capture information is recorded on the type-level.
 
-```rust
-let a: u32 = 0; // Coercion
-let b: i32 = a; // Can't re-coerce
-let x: *const u32 = &a; // Coercion
-let y: &u32 = x; // Can't re-coerce
-```
+*Note:* once explicitly assigned to an `Fn` trait, the closure can no longer be
+coerced into `fn`, even if it has no captures.
 
-We can't similarly re-coerce a `Fn` trait.
 ```rust
 let a: &Fn(u32) -> u32 = |foo: u32| { foo + 1 };
 let b: fn(u32) -> u32 = *a; // Can't re-coerce
@@ -127,7 +134,7 @@ let b: fn(u32) -> u32 = *a; // Can't re-coerce
 [drawbacks]: #drawbacks
 
 This proposal could potentially allow Rust users to accidentally constrain their APIs.
-In the case of a crate, a user accidentally returning `fn` instead of `Fn` may find
+In the case of a crate, a user returning `fn` instead of `Fn` may find
 that their code compiles at first, but breaks when the user later needs to capture variables:
 
 ```rust
@@ -158,13 +165,13 @@ fn func_general<'a>(&'a mut self) -> impl FnMut() -> u32 {
 }
 ```
 
-This drawback is probably outweighed by convenience, simplicity, and the potential for optimization
-that comes with the proposed changes, however.
+This aspect is probably outweighed by convenience, simplicity, and the potential for optimization
+that comes with the proposed changes.
 
 # Alternatives
 [alternatives]: #alternatives
 
-## Anonymous function syntax
+## Function literal syntax
 
 With this alternative, Rust users would be able to directly bind a function
 to a variable, without needing to give the function a name.
@@ -184,12 +191,24 @@ const foo: [fn(&mut u32); 4] = [
 ```
 
 This isn't ideal, however, because it would require giving new semantics
-to `fn` syntax.
+to `fn` syntax. Additionally, such syntax would either require explicit return types,
+or additional reasoning about the literal's return type.
+
+```rust
+fn(x: bool) { !x }
+```
+
+The above function literal, at first glance, appears to return `()`. This could be
+potentially misleading, especially in situations where the literal is bound to a
+variable with `let`.
+
+As with all new syntax, this alternative would carry with it a discovery barrier.
+Closure coercion may be preferred due to its intuitiveness.
 
 ## Aggressive optimization
 
 This is possibly unrealistic, but an alternative would be to continue encouraging
-the use of closures with the `Fn` trait, but conduct heavy optimization to determine
+the use of closures with the `Fn` trait, but use static analysis to determine
 when the used closure is "trivial" and does not need indirection.
 
 Of course, this would probably significantly complicate the optimization process, and
@@ -199,4 +218,5 @@ checking the disassembly of their program.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None
+Should we generalize this behavior in the future, so that any zero-sized type that
+implements `Fn` can be converted into a `fn` pointer?
