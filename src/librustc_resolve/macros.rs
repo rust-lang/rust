@@ -393,9 +393,16 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
             if suggestion != name {
                 err.help(&format!("did you mean `{}!`?", suggestion));
+            } else {
+                err.help(&format!("have you added the `#[macro_use]` on the module?"));
             }
         }
-        err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
+
+        let is_macro = |def| match def { Def::Macro(..) => true, _ => false };
+        let candidates = self.lookup_import_candidates(name, MacroNS, is_macro);
+        if candidates.len() > 0 {
+            err.help(&format!("have you added the `#[macro_use]` on the `extern crate`?"));
+        }
     }
 
     fn collect_def_ids(&mut self, invocation: &'a InvocationData<'a>, expansion: &Expansion) {
