@@ -547,6 +547,33 @@ macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
 
+/// Macro to mimick a do-while loop.
+///
+/// Equivalent to a `while` loop, except that the body of the loop is
+/// always executed at least once.
+///
+/// Note that the condition has to be in parentheses.
+///
+/// # Examples
+///
+/// ```
+/// let mut i = 0;
+///
+/// do_while!{ (i < 0)
+///     println!("{}", i);
+///     i += 1;
+/// }
+/// ```
+#[macro_export]
+macro_rules! do_while {
+    (($while_b:expr) $($do_b:tt)+) => {
+        loop {
+            $($do_b)*
+            if !( $while_b ) { break; }
+        }
+    }
+}
+
 /// Built-in macros to the compiler itself.
 ///
 /// These macros do not have any corresponding definition with a `macro_rules!`
