@@ -16,6 +16,7 @@
 //! * The set of library features is disjoint from the set of language features
 //! * Library features have at most one stability level
 //! * Library features have at most one `since` value
+//! * All stability attributes have tests to ensure they are actually stable/unstable
 
 use std::collections::HashMap;
 use std::fmt;
@@ -42,10 +43,11 @@ impl fmt::Display for Status {
 struct Feature {
     level: Status,
     since: String,
+    has_gate_test: bool,
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let features = collect_lang_features(&path.join("libsyntax/feature_gate.rs"));
+    let mut features = collect_lang_features(&path.join("libsyntax/feature_gate.rs"));
     assert!(!features.is_empty());
     let mut lib_features = HashMap::<String, Feature>::new();
 
@@ -106,9 +108,76 @@ pub fn check(path: &Path, bad: &mut bool) {
                                 Feature {
                                     level: level,
                                     since: since.to_owned(),
+                                    has_gate_test: false,
                                 });
         }
     });
+
+    super::walk(&path.join("test/compile-fail"),
+                &mut |path| super::filter_dirs(path),
+                &mut |file| {
+        let filename = file.file_name().unwrap().to_string_lossy();
+        if !filename.ends_with(".rs") || filename == "features.rs" ||
+           filename == "diagnostic_list.rs" {
+            return;
+        }
+
+        contents.truncate(0);
+        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
+
+        for (i, line) in contents.lines().enumerate() {
+            let mut err = |msg: &str| {
+                println!("{}:{}: {}", file.display(), i + 1, msg);
+                *bad = true;
+            };
+
+            let gate_test_str = "gate-test-";
+
+            if !line.contains(gate_test_str) {
+                continue;
+            }
+
+            let feature_name = match line.find(gate_test_str) {
+                Some(i) => {
+                    &line[i+gate_test_str.len()..line[i+1..].find(' ').unwrap_or(line.len())]
+                },
+                None => continue,
+            };
+            let found_feature = features.get_mut(feature_name)
+                                        .map(|v| { v.has_gate_test = true; () })
+                                        .is_some();
+
+            let found_lib_feature = features.get_mut(feature_name)
+                                            .map(|v| { v.has_gate_test = true; () })
+                                            .is_some();
+
+            if !(found_feature || found_lib_feature) {
+                err(&format!("gate-test test found referencing a nonexistent feature '{}'",
+                             feature_name));
+            }
+        }
+    });
+
+    // Only check the number of lang features.
+    // Obligatory testing for library features is dumb.
+    let gate_untested = features.iter()
+                                .filter(|&(_, f)| f.level == Status::Unstable)
+                                .filter(|&(_, f)| !f.has_gate_test)
+                                .count();
+
+    // FIXME get this number down to zero.
+    let gate_untested_expected = 98;
+
+    if gate_untested != gate_untested_expected {
+        print!("Expected {} gate untested features, but found {}. ",
+                gate_untested_expected, gate_untested);
+        if gate_untested < gate_untested_expected {
+            println!("Did you forget to reduce the expected number?");
+        } else {
+            println!("Did you forget to add a gate test for your new feature?");
+        }
+        *bad = true;
+    }
 
     if *bad {
         return;
@@ -162,6 +231,7 @@ fn collect_lang_features(path: &Path) -> HashMap<String, Feature> {
                 Feature {
                     level: level,
                     since: since.to_owned(),
+                    has_gate_test: false,
                 }))
         })
         .collect()
