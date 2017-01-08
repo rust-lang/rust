@@ -44,7 +44,7 @@ script:
 
 after_success:
 - |
-- if [ $(uname) == Linux ]; then
+  if [ $(uname) == Linux ]; then
     ./.github/deploy.sh
 # trigger rebuild of the clippy-service, to keep it up to date with clippy itself
     #!/bin/bash
