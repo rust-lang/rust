@@ -698,7 +698,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // crate
             false
         } else {
-            if !tcx.sess.cstore.can_have_local_instance(tcx, def_id) {
+            if !tcx.sess.cstore.is_item_mir_available(def_id) {
                 bug!("Cannot create local trans-item for {:?}", def_id)
             }
             true

@@ -470,15 +470,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).is_item_mir_available(def.index)
     }
 
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool {
-        if def.is_local() {
-            true
-        } else {
-            self.dep_graph.read(DepNode::MetaData(def));
-            self.get_crate_data(def.krate).can_have_local_instance(tcx, def.index)
-        }
-    }
-
     fn crates(&self) -> Vec<CrateNum>
     {
         let mut result = vec![];
