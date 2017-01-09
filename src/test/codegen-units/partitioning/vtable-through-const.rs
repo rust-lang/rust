@@ -74,19 +74,19 @@ fn main() {
     // Since Trait1::do_something() is instantiated via its default implementation,
     // it is considered a generic and is instantiated here only because it is
     // referenced in this module.
-    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something_else[0]<u32> @@ vtable_through_const[Internal]
+    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something_else[0]<u32> @@ vtable_through_const-mod1.volatile[External]
 
     // Although it is never used, Trait1::do_something_else() has to be
     // instantiated locally here too, otherwise the <&u32 as &Trait1> vtable
     // could not be fully constructed.
-    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something[0]<u32> @@ vtable_through_const[Internal]
+    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::Trait1[0]::do_something[0]<u32> @@ vtable_through_const-mod1.volatile[External]
     mod1::TRAIT1_REF.do_something();
 
     // Same as above
-    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something[0]<u8> @@ vtable_through_const[Internal]
-    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something_else[0]<u8> @@ vtable_through_const[Internal]
+    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something[0]<u8> @@ vtable_through_const-mod1.volatile[External]
+    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something_else[0]<u8> @@ vtable_through_const-mod1.volatile[External]
     mod1::TRAIT1_GEN_REF.do_something(0u8);
 
-    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const[Internal]
+    //~ TRANS_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const-mod1.volatile[External]
     mod1::ID_CHAR('x');
 }

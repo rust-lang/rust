@@ -57,8 +57,8 @@ mod mod3 {
 }
 
 // Make sure the two generic functions from the extern crate get instantiated
-// privately in every module they are use in.
-//~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ extern_generic[Internal] extern_generic-mod1[Internal] extern_generic-mod2[Internal] extern_generic-mod1-mod1[Internal]
-//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ extern_generic[Internal] extern_generic-mod1[Internal] extern_generic-mod2[Internal] extern_generic-mod1-mod1[Internal]
+// once for the current crate
+//~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function.volatile[External]
+//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[External]
 
 //~ TRANS_ITEM drop-glue i8

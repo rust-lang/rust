@@ -212,7 +212,7 @@ use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use trans_item::{TransItem, DefPathBasedNames};
+use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
 
 use std::iter;
 
@@ -337,6 +337,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
         }
         TransItem::Static(node_id) => {
             let def_id = scx.tcx().map.local_def_id(node_id);
+
+            // Sanity check whether this ended up being collected accidentally
+            debug_assert!(should_trans_locally(scx.tcx(), def_id));
+
             let ty = scx.tcx().item_type(def_id);
             let ty = glue::get_drop_glue_type(scx, ty);
             neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
@@ -346,6 +350,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             collect_neighbours(scx, Instance::mono(scx, def_id), &mut neighbors);
         }
         TransItem::Fn(instance) => {
+            // Sanity check whether this ended up being collected accidentally
+            debug_assert!(should_trans_locally(scx.tcx(), instance.def));
+
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset = Some(check_recursion_limit(scx.tcx(),
                                                                instance,
@@ -374,7 +381,7 @@ fn record_inlining_canditates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         callees: &[TransItem<'tcx>],
                                         inlining_map: &mut InliningMap<'tcx>) {
     let is_inlining_candidate = |trans_item: &TransItem<'tcx>| {
-        trans_item.needs_local_copy(tcx)
+        trans_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
     let inlining_candidates = callees.into_iter()
@@ -490,15 +497,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         .require(ExchangeMallocFnLangItem)
                         .unwrap_or_else(|e| self.scx.sess().fatal(&e));
 
-                assert!(can_have_local_instance(self.scx.tcx(), exchange_malloc_fn_def_id));
-                let empty_substs = self.scx.empty_substs_for_def_id(exchange_malloc_fn_def_id);
-                let exchange_malloc_fn_trans_item =
-                    create_fn_trans_item(self.scx,
-                                         exchange_malloc_fn_def_id,
-                                         empty_substs,
-                                         self.param_substs);
+                if should_trans_locally(self.scx.tcx(), exchange_malloc_fn_def_id) {
+                    let empty_substs = self.scx.empty_substs_for_def_id(exchange_malloc_fn_def_id);
+                    let exchange_malloc_fn_trans_item =
+                        create_fn_trans_item(self.scx,
+                                             exchange_malloc_fn_def_id,
+                                             empty_substs,
+                                             self.param_substs);
 
-                self.output.push(exchange_malloc_fn_trans_item);
+                    self.output.push(exchange_malloc_fn_trans_item);
+                }
             }
             _ => { /* not interesting */ }
         }
@@ -609,7 +617,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             match tcx.item_type(def_id).sty {
                 ty::TyFnDef(def_id, _, f) => {
                     // Some constructors also have type TyFnDef but they are
-                    // always instantiated inline and don't result in
+                    // always instantiated inline and don't result in a
                     // translation item. Same for FFI functions.
                     if let Some(hir_map::NodeForeignItem(_)) = tcx.map.get_if_local(def_id) {
                         return false;
@@ -625,7 +633,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 _ => return false
             }
 
-            can_have_local_instance(tcx, def_id)
+            should_trans_locally(tcx, def_id)
         }
     }
 
@@ -675,10 +683,27 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 }
 
-fn can_have_local_instance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     def_id: DefId)
-                                     -> bool {
-    tcx.sess.cstore.can_have_local_instance(tcx, def_id)
+// Returns true if we should translate an instance in the local crate.
+// Returns false if we can just link to the upstream crate and therefore don't
+// need a translation item.
+fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId)
+                                  -> bool {
+    if def_id.is_local() {
+        true
+    } else {
+        if tcx.sess.cstore.is_exported_symbol(def_id) ||
+           tcx.sess.cstore.is_foreign_item(def_id) {
+            // We can link to the item in question, no instance needed in this
+            // crate
+            false
+        } else {
+            if !tcx.sess.cstore.can_have_local_instance(tcx, def_id) {
+                bug!("Cannot create local trans-item for {:?}", def_id)
+            }
+            true
+        }
+    }
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
@@ -698,14 +723,15 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // Make sure the BoxFreeFn lang-item gets translated if there is a boxed value.
     if let ty::TyBox(content_type) = ty.sty {
         let def_id = scx.tcx().require_lang_item(BoxFreeFnLangItem);
-        assert!(can_have_local_instance(scx.tcx(), def_id));
-        let box_free_fn_trans_item =
-            create_fn_trans_item(scx,
-                                 def_id,
-                                 scx.tcx().mk_substs(iter::once(Kind::from(content_type))),
-                                 scx.tcx().intern_substs(&[]));
 
-        output.push(box_free_fn_trans_item);
+        if should_trans_locally(scx.tcx(), def_id) {
+            let box_free_fn_trans_item =
+                create_fn_trans_item(scx,
+                                     def_id,
+                                     scx.tcx().mk_substs(iter::once(Kind::from(content_type))),
+                                     scx.tcx().intern_substs(&[]));
+            output.push(box_free_fn_trans_item);
+        }
     }
 
     // If the type implements Drop, also add a translation item for the
@@ -735,7 +761,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             _ => bug!()
         };
 
-        if can_have_local_instance(scx.tcx(), destructor_did) {
+        if should_trans_locally(scx.tcx(), destructor_did) {
             let trans_item = create_fn_trans_item(scx,
                                                   destructor_did,
                                                   substs,
@@ -1080,7 +1106,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                         None
                     }
                 })
-                .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
+                .filter(|&(def_id, _)| should_trans_locally(scx.tcx(), def_id))
                 .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
             output.extend(methods);
         }
@@ -1255,7 +1281,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    if can_have_local_instance(tcx, method.def_id) {
+                    if should_trans_locally(tcx, method.def_id) {
                         let item = create_fn_trans_item(scx,
                                                         method.def_id,
                                                         callee_substs,
