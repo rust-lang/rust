@@ -213,7 +213,7 @@ pub struct Entry<'tcx> {
     pub ty: Option<Lazy<Ty<'tcx>>>,
     pub inherent_impls: LazySeq<DefIndex>,
     pub variances: LazySeq<ty::Variance>,
-    pub generics: Option<Lazy<ty::Generics<'tcx>>>,
+    pub generics: Option<Lazy<Generics<'tcx>>>,
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub ast: Option<Lazy<astencode::Ast<'tcx>>>,
@@ -245,6 +245,19 @@ pub enum EntryKind<'tcx> {
     Method(Lazy<MethodData>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer),
+}
+
+/// A copy of `ty::Generics` which allows lazy decoding of
+/// `regions` and `types` (e.g. knowing the number of type
+/// and lifetime parameters before `TyCtxt` is created).
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct Generics<'tcx> {
+    pub parent: Option<DefId>,
+    pub parent_regions: u32,
+    pub parent_types: u32,
+    pub regions: LazySeq<ty::RegionParameterDef<'tcx>>,
+    pub types: LazySeq<ty::TypeParameterDef<'tcx>>,
+    pub has_self: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

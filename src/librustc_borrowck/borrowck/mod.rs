@@ -939,12 +939,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     /// Given a type, if it is an immutable reference, return a suggestion to make it mutable
     fn suggest_mut_for_immutable(&self, pty: &hir::Ty) -> Option<String> {
         // Check wether the argument is an immutable reference
-        if let hir::TyRptr(opt_lifetime, hir::MutTy {
+        if let hir::TyRptr(lifetime, hir::MutTy {
             mutbl: hir::Mutability::MutImmutable,
             ref ty
         }) = pty.node {
             // Account for existing lifetimes when generating the message
-            if let Some(lifetime) = opt_lifetime {
+            if !lifetime.is_elided() {
                 if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(ty.span) {
                     if let Ok(lifetime_snippet) = self.tcx.sess.codemap()
                         .span_to_snippet(lifetime.span) {

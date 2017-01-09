@@ -547,8 +547,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPtr(ref mutable_type) => {
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyRptr(ref opt_lifetime, ref mutable_type) => {
-            walk_list!(visitor, visit_lifetime, opt_lifetime);
+        TyRptr(ref lifetime, ref mutable_type) => {
+            visitor.visit_lifetime(lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
         TyNever => {},

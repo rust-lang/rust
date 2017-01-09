@@ -110,6 +110,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).get_generics(def.index, tcx)
     }
 
+    fn item_generics_own_param_counts(&self, def: DefId) -> (usize, usize) {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).generics_own_param_counts(def.index)
+    }
+
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));

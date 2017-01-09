@@ -182,6 +182,7 @@ pub trait CrateStore<'tcx> {
                                  -> ty::GenericPredicates<'tcx>;
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                          -> ty::Generics<'tcx>;
+    fn item_generics_own_param_counts(&self, def: DefId) -> (usize, usize);
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef;
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> &'tcx ty::AdtDef;
@@ -331,6 +332,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                                  -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                          -> ty::Generics<'tcx> { bug!("item_generics") }
+    fn item_generics_own_param_counts(&self, def: DefId) -> (usize, usize)
+        { bug!("item_generics_own_param_counts") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef
         { bug!("trait_def") }

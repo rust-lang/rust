@@ -1688,9 +1688,15 @@ impl Clean<Type> for hir::Ty {
         match self.node {
             TyNever => Never,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
-            TyRptr(ref l, ref m) =>
-                BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
-                             type_: box m.ty.clean(cx)},
+            TyRptr(ref l, ref m) => {
+                let lifetime = if l.is_elided() {
+                    None
+                } else {
+                    Some(l.clean(cx))
+                };
+                BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
+                             type_: box m.ty.clean(cx)}
+            }
             TySlice(ref ty) => Vector(box ty.clean(cx)),
             TyArray(ref ty, length) => {
                 use rustc_const_eval::eval_length;
@@ -1729,7 +1735,9 @@ impl Clean<Type> for hir::Ty {
                     for (i, lt_param) in generics.lifetimes.iter().enumerate() {
                         if let Some(lt) = provided_params.lifetimes().get(i).cloned()
                                                                             .cloned() {
-                            lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                            if !lt.is_elided() {
+                                lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                            }
                         }
                     }
                     return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
@@ -2242,7 +2250,11 @@ impl Clean<PathParameters> for hir::PathParameters {
         match *self {
             hir::AngleBracketedParameters(ref data) => {
                 PathParameters::AngleBracketed {
-                    lifetimes: data.lifetimes.clean(cx),
+                    lifetimes: if data.lifetimes.iter().all(|lt| lt.is_elided()) {
+                        vec![]
+                    } else {
+                        data.lifetimes.clean(cx)
+                    },
                     types: data.types.clean(cx),
                     bindings: data.bindings.clean(cx)
                 }
