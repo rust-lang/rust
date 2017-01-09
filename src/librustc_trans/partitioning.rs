@@ -53,8 +53,6 @@
 //! - One for "stable", that is non-generic, code
 //! - One for more "volatile" code, i.e. monomorphized instances of functions
 //!   defined in that module
-//! - Code for monomorphized instances of functions from external crates gets
-//!   placed into every codegen unit that uses that instance.
 //!
 //! In order to see why this heuristic makes sense, let's take a look at when a
 //! codegen unit can get invalidated:
@@ -82,17 +80,6 @@
 //! side-effect of references a little by at least not touching the non-generic
 //! code of the module.
 //!
-//! As another optimization, monomorphized functions from external crates get
-//! some special handling. Since we assume that the definition of such a
-//! function changes rather infrequently compared to local items, we can just
-//! instantiate external functions in every codegen unit where it is referenced
-//! -- without having to fear that doing this will cause a lot of unnecessary
-//! re-compilations. If such a reference is added or removed, the codegen unit
-//! has to be re-translated anyway.
-//! (Note that this only makes sense if external crates actually don't change
-//! frequently. For certain multi-crate projects this might not be a valid
-//! assumption).
-//!
 //! A Note on Inlining
 //! ------------------
 //! As briefly mentioned above, in order for LLVM to be able to inline a
@@ -107,10 +94,9 @@
 //!   inlined, so it can distribute function instantiations accordingly. Since
 //!   there is no way of knowing for sure which functions LLVM will decide to
 //!   inline in the end, we apply a heuristic here: Only functions marked with
-//!   #[inline] and (as stated above) functions from external crates are
-//!   considered for inlining by the partitioner. The current implementation
-//!   will not try to determine if a function is likely to be inlined by looking
-//!   at the functions definition.
+//!   #[inline] are considered for inlining by the partitioner. The current
+//!   implementation will not try to determine if a function is likely to be
+//!   inlined by looking at the functions definition.
 //!
 //! Note though that as a side-effect of creating a codegen units per
 //! source-level module, functions from the same module will be available for
