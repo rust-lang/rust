@@ -920,3 +920,47 @@ pub fn is_self_ty(slf: &Ty) -> bool {
 pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<Item = &'tcx Arg> {
     (0..decl.inputs.len()).map(move |i| &body.arguments[i])
 }
+
+/// Check if a given expression is a match expression
+/// expanded from `?` operator or `try` macro.
+pub fn is_try(expr: &Expr) -> Option<&Expr> {
+    fn is_ok(arm: &Arm) -> bool {
+        if_let_chain! {[
+            let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node,
+            match_path(path, &paths::RESULT_OK[1..]),
+            let PatKind::Binding(_, defid, _, None) = pat[0].node,
+            let ExprPath(QPath::Resolved(None, ref path)) = arm.body.node,
+            path.def.def_id() == defid,
+        ], {
+            return true;
+        }}
+        false
+    }
+
+    fn is_err(arm: &Arm) -> bool {
+        if let PatKind::TupleStruct(ref path, _, _) = arm.pats[0].node {
+            match_path(path, &paths::RESULT_ERR[1..])
+        } else {
+            false
+        }
+    }
+
+    if let ExprMatch(_, ref arms, ref source) = expr.node {
+        // desugared from a `?` operator
+        if let MatchSource::TryDesugar = *source {
+            return Some(expr);
+        }
+
+        if_let_chain! {[
+            arms.len() == 2,
+            arms[0].pats.len() == 1 && arms[0].guard.is_none(),
+            arms[1].pats.len() == 1 && arms[1].guard.is_none(),
+            (is_ok(&arms[0]) && is_err(&arms[1])) ||
+                (is_ok(&arms[1]) && is_err(&arms[0])),
+        ], {
+            return Some(expr);
+        }}
+    }
+
+    None
+}

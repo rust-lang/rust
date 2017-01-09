@@ -131,6 +131,7 @@ pub mod transmute;
 pub mod types;
 pub mod unicode;
 pub mod unsafe_removed_from_name;
+pub mod unused_io_amount;
 pub mod unused_label;
 pub mod vec;
 pub mod zero_div_zero;
@@ -287,6 +288,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
     reg.register_early_lint_pass(box reference::Pass);
     reg.register_early_lint_pass(box double_parens::DoubleParens);
+    reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -480,6 +482,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
+        unused_io_amount::UNUSED_IO_AMOUNT,
         unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
