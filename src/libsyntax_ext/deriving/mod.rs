@@ -90,10 +90,10 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
 }
 
 pub fn expand_derive(cx: &mut ExtCtxt,
-                 span: Span,
-                 mitem: &MetaItem,
-                 annotatable: Annotatable)
-                 -> Vec<Annotatable> {
+                     span: Span,
+                     mitem: &MetaItem,
+                     annotatable: Annotatable)
+                     -> Vec<Annotatable> {
     debug!("expand_derive: span = {:?}", span);
     debug!("expand_derive: mitem = {:?}", mitem);
     debug!("expand_derive: annotatable input  = {:?}", annotatable);
@@ -235,8 +235,21 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         let titem = cx.meta_list_item_word(titem.span, titem.name().unwrap());
         let mitem = cx.meta_list(titem.span, derive, vec![titem]);
         let item = Annotatable::Item(item);
+
+        let span = Span {
+            expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
+                call_site: mitem.span,
+                callee: codemap::NameAndSpan {
+                    format: codemap::MacroAttribute(Symbol::intern(&format!("derive({})", tname))),
+                    span: None,
+                    allow_internal_unstable: false,
+                },
+            }),
+            ..mitem.span
+        };
+
         if let SyntaxExtension::CustomDerive(ref ext) = *ext {
-            return ext.expand(cx, mitem.span, &mitem, item);
+            return ext.expand(cx, span, &mitem, item);
         } else {
             unreachable!()
         }
@@ -285,8 +298,8 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
                 call_site: titem.span,
                 callee: codemap::NameAndSpan {
-                    format: codemap::MacroAttribute(Symbol::intern(&format!("derive({})", tname))),
-                    span: Some(titem.span),
+                    format: codemap::MacroAttribute(name),
+                    span: None,
                     allow_internal_unstable: true,
                 },
             }),
