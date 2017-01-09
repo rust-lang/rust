@@ -1228,9 +1228,8 @@ impl<T> VecDeque<T> {
         self.pop_front()
     }
 
-    /// Inserts an element at `index` within the `VecDeque`. Whichever
-    /// end is closer to the insertion point will be moved to make room,
-    /// and all the affected elements will be moved to new positions.
+    /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
+    /// greater than or equal to `index` towards the back.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -1239,14 +1238,19 @@ impl<T> VecDeque<T> {
     /// Panics if `index` is greater than `VecDeque`'s length
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf = VecDeque::new();
-    /// buf.push_back(10);
-    /// buf.push_back(12);
-    /// buf.insert(1, 11);
-    /// assert_eq!(Some(&11), buf.get(1));
+    /// let mut vec_deque = VecDeque::new();
+    /// vec_deque.push_back('a');
+    /// vec_deque.push_back('b');
+    /// vec_deque.push_back('c');
+    ///
+    /// vec_deque.insert(1, 'd');
+    ///
+    /// let vec = vec_deque.into_iter().collect::<Vec<_>>();
+    /// assert_eq!(vec, ['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
