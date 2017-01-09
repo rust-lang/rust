@@ -45,6 +45,18 @@ pub enum TransItem<'tcx> {
     Static(NodeId)
 }
 
+/// Describes how a translation item will be instantiated in object files.
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+pub enum InstantiationMode {
+    /// There will be exactly one instance of the given TransItem. It will have
+    /// external linkage so that it can be linked to from other codegen units.
+    GloballyShared,
+
+    /// Each codegen unit containing a reference to the given TransItem will
+    /// have its own private copy of the function (with internal linkage).
+    LocalCopy,
+}
+
 impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
@@ -231,22 +243,21 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    /// True if the translation item should only be translated to LLVM IR if
-    /// it is referenced somewhere (like inline functions, for example).
-    pub fn is_instantiated_only_on_demand(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        if self.explicit_linkage(tcx).is_some() {
-            return false;
-        }
-
+    pub fn instantiation_mode(&self,
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> InstantiationMode {
         match *self {
             TransItem::Fn(ref instance) => {
-                !instance.def.is_local() ||
-                instance.substs.types().next().is_some() ||
-                common::is_closure(tcx, instance.def) ||
-                attr::requests_inline(&tcx.get_attrs(instance.def)[..])
+                if self.explicit_linkage(tcx).is_none() &&
+                   (common::is_closure(tcx, instance.def) ||
+                    attr::requests_inline(&tcx.get_attrs(instance.def)[..])) {
+                    InstantiationMode::LocalCopy
+                } else {
+                    InstantiationMode::GloballyShared
+                }
             }
-            TransItem::DropGlue(..) => true,
-            TransItem::Static(..)   => false,
+            TransItem::DropGlue(..) => InstantiationMode::LocalCopy,
+            TransItem::Static(..) => InstantiationMode::GloballyShared,
         }
     }
 
@@ -258,18 +269,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::DropGlue(..) |
             TransItem::Static(..)   => false,
         }
-    }
-
-    /// Returns true if there has to be a local copy of this TransItem in every
-    /// codegen unit that references it (as with inlined functions, for example)
-    pub fn needs_local_copy(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        // Currently everything that is instantiated only on demand is done so
-        // with "internal" linkage, so we need a copy to be present in every
-        // codegen unit.
-        // This is coincidental: We could also instantiate something only if it
-        // is referenced (e.g. a regular, private function) but place it in its
-        // own codegen unit with "external" linkage.
-        self.is_instantiated_only_on_demand(tcx)
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
