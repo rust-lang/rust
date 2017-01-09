@@ -71,7 +71,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown};
+use html::markdown::{self, Markdown, MarkdownHtml};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -1866,7 +1866,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, Markdown(&deprecated_reason));
+            let text = format!("Deprecated{}{}", since, MarkdownHtml(&deprecated_reason));
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -1891,7 +1891,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Unstable{}{}", unstable_extra, Markdown(&unstable_reason));
+            let text = format!("Unstable{}{}", unstable_extra, MarkdownHtml(&unstable_reason));
             stability.push(format!("<div class='stab unstable'>{}</div>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
@@ -1906,7 +1906,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, Markdown(&note));
+        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
