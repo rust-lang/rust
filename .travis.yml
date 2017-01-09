@@ -43,10 +43,10 @@ script:
  - set +e
 
 after_success: |
+  #!/bin/bash
   if [ $(uname) == Linux ]; then
     ./.github/deploy.sh
   # trigger rebuild of the clippy-service, to keep it up to date with clippy itself
-    #!/bin/bash
     set -e
     if [ "$TRAVIS_PULL_REQUEST" == "false" ] &&
        [ "$TRAVIS_REPO_SLUG" == "Manishearth/rust-clippy" ] &&
