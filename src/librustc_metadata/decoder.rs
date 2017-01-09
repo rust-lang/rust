@@ -598,7 +598,20 @@ impl<'a, 'tcx> CrateMetadata {
                         item_id: DefIndex,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
                         -> ty::Generics<'tcx> {
-        self.entry(item_id).generics.unwrap().decode((self, tcx))
+        let g = self.entry(item_id).generics.unwrap().decode(self);
+        ty::Generics {
+            parent: g.parent,
+            parent_regions: g.parent_regions,
+            parent_types: g.parent_types,
+            regions: g.regions.decode((self, tcx)).collect(),
+            types: g.types.decode((self, tcx)).collect(),
+            has_self: g.has_self,
+        }
+    }
+
+    pub fn generics_own_param_counts(&self, item_id: DefIndex) -> (usize, usize) {
+        let g = self.entry(item_id).generics.unwrap().decode(self);
+        (g.regions.len, g.types.len)
     }
 
     pub fn get_type(&self, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {

@@ -279,6 +279,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
+        if lifetime_ref.is_elided() {
+            return;
+        }
         if lifetime_ref.name == keywords::StaticLifetime.name() {
             self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;

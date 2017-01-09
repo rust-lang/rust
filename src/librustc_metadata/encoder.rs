@@ -417,9 +417,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics<'tcx>> {
+    fn encode_generics(&mut self, def_id: DefId) -> Lazy<Generics<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(tcx.item_generics(def_id))
+        let g = tcx.item_generics(def_id);
+        let regions = self.lazy_seq_ref(&g.regions);
+        let types = self.lazy_seq_ref(&g.types);
+        self.lazy(&Generics {
+            parent: g.parent,
+            parent_regions: g.parent_regions,
+            parent_types: g.parent_types,
+            regions: regions,
+            types: types,
+            has_self: g.has_self,
+        })
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {

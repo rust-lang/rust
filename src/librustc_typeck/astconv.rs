@@ -404,19 +404,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
-        let has_exact_lifetimes = expected_num_region_params == supplied_num_region_params;
-        let mut can_report_lifetime_count_mismatch = !has_exact_lifetimes;
-        let mut maybe_report_lifetime_count_mismatch = || {
-            if can_report_lifetime_count_mismatch {
-                can_report_lifetime_count_mismatch = false;
+        let mut reported_lifetime_count_mismatch = false;
+        let mut report_lifetime_count_mismatch = || {
+            if !reported_lifetime_count_mismatch {
+                reported_lifetime_count_mismatch = true;
+                let all_infer = lifetimes.iter().all(|lt| lt.is_elided());
+                let supplied = if all_infer { 0 } else { supplied_num_region_params };
                 report_lifetime_number_error(tcx, span,
-                                             supplied_num_region_params,
+                                             supplied,
                                              expected_num_region_params);
             }
         };
 
-        if supplied_num_region_params != 0 {
-            maybe_report_lifetime_count_mismatch();
+        if expected_num_region_params != supplied_num_region_params {
+            report_lifetime_count_mismatch();
         }
 
         // If a self-type was declared, one should be provided.
@@ -444,13 +445,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
             let i = def.index as usize - self_ty.is_some() as usize;
-            let l = if has_exact_lifetimes {
-                Some(&lifetimes[i])
-            } else {
-                None
-            };
+            let l = lifetimes.get(i);
             self.try_opt_ast_region_to_region(rscope, span, l, Some(def)).unwrap_or_else(|_| {
-                maybe_report_lifetime_count_mismatch();
+                report_lifetime_count_mismatch();
                 tcx.mk_region(ty::ReStatic)
             })
         }, |def, substs| {
@@ -1472,7 +1469,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 })
             }
             hir::TyRptr(ref region, ref mt) => {
-                let r = self.opt_ast_region_to_region(rscope, ast_ty.span, region.as_ref(), None);
+                let r = self.opt_ast_region_to_region(rscope, ast_ty.span, Some(region), None);
                 debug!("TyRef r={:?}", r);
                 let rscope1 =
                     &ObjectLifetimeDefaultRscope::new(
