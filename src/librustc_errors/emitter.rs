@@ -737,8 +737,8 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::HeaderMsg);
             buffer.append(0, ": ", Style::NoStyle);
 
-            // The extra 9 ` ` is the padding that's always needed to align to the `note: `.
-            let message = self.msg_with_padding(msg, max_line_num_len + 9);
+            // The extra 3 ` ` is the padding that's always needed to align to the `note: `.
+            let message = self.msg_with_padding(msg, max_line_num_len + "note: ".len() + 3);
             buffer.append(0, &message, Style::NoStyle);
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
@@ -873,8 +873,8 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
 
-            // The extra 15 ` ` is the padding that's always needed to align to the `suggestion: `.
-            let message = self.msg_with_padding(msg, max_line_num_len + 15);
+            // The extra 3 ` ` is the padding that's always needed to align to the `suggestion: `.
+            let message = self.msg_with_padding(msg, max_line_num_len + "suggestion: ".len() + 3);
             buffer.append(0, &message, Style::HeaderMsg);
 
             let lines = cm.span_to_lines(primary_span).unwrap();
