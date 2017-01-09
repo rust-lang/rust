@@ -1031,7 +1031,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_exported_symbols(&self) -> Vec<DefId> {
-        self.root.exported_symbols.decode(self).map(|index| self.local_def_id(index)).collect()
+        self.exported_symbols.iter().map(|&index| self.local_def_id(index)).collect()
     }
 
     pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {

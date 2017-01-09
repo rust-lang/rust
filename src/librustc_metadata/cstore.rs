@@ -80,6 +80,8 @@ pub struct CrateMetadata {
     /// compilation support.
     pub def_path_table: DefPathTable,
 
+    pub exported_symbols: FxHashSet<DefIndex>,
+
     pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,
 
