@@ -703,10 +703,29 @@ impl EmitterWriter {
         }
     }
 
-    fn msg_with_padding(&self, msg: &str, padding: usize) -> String {
-        let padding = (0..padding)
+    /// Add a left margin to every line but the first, given a padding length and the label being
+    /// displayed.
+    fn msg_with_padding(&self, msg: &str, padding: usize, label: &str) -> String {
+        // The extra 5 ` ` is padding that's always needed to align to the `note: `:
+        //
+        //   error: message
+        //     --> file.rs:13:20
+        //      |
+        //   13 |     <CODE>
+        //      |      ^^^^
+        //      |
+        //      = note: multiline
+        //              message
+        //   ++^^^----xx
+        //    |  |   | |
+        //    |  |   | magic `2`
+        //    |  |   length of label
+        //    |  magic `3`
+        //    `max_line_num_len`
+        let padding = (0..padding + label.len() + 5)
             .map(|_| " ")
             .collect::<String>();
+
         msg.split('\n').enumerate().fold("".to_owned(), |mut acc, x| {
             if x.0 != 0 {
                 acc.push_str("\n");
@@ -737,8 +756,7 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::HeaderMsg);
             buffer.append(0, ": ", Style::NoStyle);
 
-            // The extra 3 ` ` is the padding that's always needed to align to the `note: `.
-            let message = self.msg_with_padding(msg, max_line_num_len + "note: ".len() + 3);
+            let message = self.msg_with_padding(msg, max_line_num_len, "note");
             buffer.append(0, &message, Style::NoStyle);
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
@@ -873,8 +891,7 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
 
-            // The extra 3 ` ` is the padding that's always needed to align to the `suggestion: `.
-            let message = self.msg_with_padding(msg, max_line_num_len + "suggestion: ".len() + 3);
+            let message = self.msg_with_padding(msg, max_line_num_len, "suggestion");
             buffer.append(0, &message, Style::HeaderMsg);
 
             let lines = cm.span_to_lines(primary_span).unwrap();
