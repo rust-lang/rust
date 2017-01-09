@@ -73,24 +73,53 @@ impl EarlyProps {
                 return false;
             }
 
-            if parse_name_directive(line, "ignore-gdb") {
+            if !line.contains("ignore-gdb-version") &&
+               parse_name_directive(line, "ignore-gdb") {
                 return true;
             }
 
             if let Some(actual_version) = config.gdb_version {
                 if line.contains("min-gdb-version") {
-                    let min_version = line.trim()
-                        .split(' ')
-                        .last()
-                        .expect("Malformed GDB version directive");
+                    let min_version = extract_gdb_version_range(line);
+
+                    if min_version.0 != min_version.1 {
+                        panic!("Expected single GDB version")
+                    }
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < extract_gdb_version(min_version).unwrap()
+                    actual_version < min_version.0
+                } else if line.contains("ignore-gdb-version") {
+                    let version_range = extract_gdb_version_range(line);
+                    actual_version >= version_range.0 && actual_version <= version_range.1
                 } else {
                     false
                 }
             } else {
                 false
+            }
+        }
+
+        fn extract_gdb_version_range(line: &str) -> (u32, u32) {
+            const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
+
+            let range_components = line.split(' ')
+                                       .flat_map(|word| word.split('-'))
+                                       .filter(|word| word.len() > 0)
+                                       .skip_while(|word| extract_gdb_version(word).is_none())
+                                       .collect::<Vec<&str>>();
+
+            match range_components.len() {
+                0 => panic!(ERROR_MESSAGE),
+                1 => {
+                    let v = extract_gdb_version(range_components[0]).unwrap();
+                    (v, v)
+                }
+                2 => {
+                    let v_min = extract_gdb_version(range_components[0]).unwrap();
+                    let v_max = extract_gdb_version(range_components[1]).expect(ERROR_MESSAGE);
+                    (v_min, v_max)
+                }
+                _ => panic!(ERROR_MESSAGE),
             }
         }
 
