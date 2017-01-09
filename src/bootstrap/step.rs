@@ -1374,7 +1374,6 @@ mod tests {
 
         assert!(plan.iter().any(|s| s.name.contains("-ui")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
-        assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));
         assert!(plan.iter().any(|s| s.name.contains("debuginfo")));
@@ -1407,7 +1406,7 @@ mod tests {
         assert!(plan.iter().all(|s| s.host == "A"));
         assert!(plan.iter().all(|s| s.target == "C"));
 
-        assert!(plan.iter().any(|s| s.name.contains("cfail")));
+        assert!(!plan.iter().any(|s| s.name.contains("-ui")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(!plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));
