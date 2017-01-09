@@ -47,6 +47,8 @@ pub mod proc_macro_registrar;
 // for custom_derive
 pub mod deriving;
 
+pub mod proc_macro_impl;
+
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, MultiModifier, NamedSyntaxExtension};

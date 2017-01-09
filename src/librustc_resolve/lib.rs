@@ -61,7 +61,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
@@ -1123,6 +1123,12 @@ pub struct Resolver<'a> {
 
     // Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
+
+    // If `#![feature(proc_macro)]` is set
+    proc_macro_enabled: bool,
+
+    // A set of procedural macros imported by `#[macro_use]` that have already been warned about
+    warned_proc_macros: FxHashSet<Name>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1227,6 +1233,8 @@ impl<'a> Resolver<'a> {
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
+        let features = session.features.borrow();
+
         Resolver {
             session: session,
 
@@ -1284,7 +1292,9 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
-            use_extern_macros: session.features.borrow().use_extern_macros,
+
+            // `#![feature(proc_macro)]` implies `#[feature(extern_macros)]`
+            use_extern_macros: features.use_extern_macros || features.proc_macro,
 
             exported_macros: Vec::new(),
             crate_loader: crate_loader,
@@ -1296,6 +1306,8 @@ impl<'a> Resolver<'a> {
             invocations: invocations,
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
+            proc_macro_enabled: features.proc_macro,
+            warned_proc_macros: FxHashSet(),
         }
     }
 
@@ -1525,6 +1537,8 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving item) resolving {}", name);
 
+        self.check_proc_macro_attrs(&item.attrs);
+
         match item.node {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
@@ -1554,6 +1568,8 @@ impl<'a> Resolver<'a> {
                         walk_list!(this, visit_ty_param_bound, bounds);
 
                         for trait_item in trait_items {
+                            this.check_proc_macro_attrs(&trait_item.attrs);
+
                             match trait_item.node {
                                 TraitItemKind::Const(_, ref default) => {
                                     // Only impose the restrictions of
@@ -1738,6 +1754,7 @@ impl<'a> Resolver<'a> {
                 this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
+                            this.check_proc_macro_attrs(&impl_item.attrs);
                             this.resolve_visibility(&impl_item.vis);
                             match impl_item.node {
                                 ImplItemKind::Const(..) => {
@@ -3183,6 +3200,31 @@ impl<'a> Resolver<'a> {
         let (id, span) = (directive.id, directive.span);
         let msg = "`self` no longer imports values".to_string();
         self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
+    }
+
+    fn check_proc_macro_attrs(&mut self, attrs: &[ast::Attribute]) {
+        if self.proc_macro_enabled { return; }
+
+        for attr in attrs {
+            let maybe_binding = self.builtin_macros.get(&attr.name()).cloned().or_else(|| {
+                let ident = Ident::with_empty_ctxt(attr.name());
+                self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
+            });
+
+            if let Some(binding) = maybe_binding {
+                if let SyntaxExtension::AttrProcMacro(..) = *binding.get_macro(self) {
+                    attr::mark_known(attr);
+
+                    let msg = "attribute procedural macros are experimental";
+                    let feature = "proc_macro";
+
+                    feature_err(&self.session.parse_sess, feature,
+                                attr.span, GateIssue::Language, msg)
+                        .span_note(binding.span, "procedural macro imported here")
+                        .emit();
+                }
+            }
+        }
     }
 }
 
