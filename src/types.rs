@@ -325,6 +325,15 @@ fn format_function_type<'a, I>(inputs: I,
     })
 }
 
+fn type_bound_colon(context: &RewriteContext) -> &'static str {
+    match (context.config.space_before_bound, context.config.space_after_bound_colon) {
+        (true, true) => " : ",
+        (true, false) => " :",
+        (false, true) => ": ",
+        (false, false) => ":",
+    }
+}
+
 impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         // TODO: dead spans?
@@ -334,6 +343,8 @@ impl Rewrite for ast::WherePredicate {
                                                                            ref bounds,
                                                                            .. }) => {
                 let type_str = try_opt!(bounded_ty.rewrite(context, width, offset));
+
+                let colon = type_bound_colon(context);
 
                 if !bound_lifetimes.is_empty() {
                     let lifetime_str: String = try_opt!(bound_lifetimes.iter()
@@ -345,8 +356,8 @@ impl Rewrite for ast::WherePredicate {
                                                                .intersperse(Some(", ".to_string()))
                                                                .collect());
 
-                    // 8 = "for<> : ".len()
-                    let used_width = lifetime_str.len() + type_str.len() + 8;
+                    // 6 = "for<> ".len()
+                    let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let budget = try_opt!(width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds.iter()
                                                     .map(|ty_bound| {
@@ -358,13 +369,12 @@ impl Rewrite for ast::WherePredicate {
                                                     .collect());
 
                     if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
-                        format!("for< {} > {}: {}", lifetime_str, type_str, bounds_str)
+                        format!("for< {} > {}{}{}", lifetime_str, type_str, colon, bounds_str)
                     } else {
-                        format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
+                        format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)
                     }
                 } else {
-                    // 2 = ": ".len()
-                    let used_width = type_str.len() + 2;
+                    let used_width = type_str.len() + colon.len();
                     let budget = try_opt!(width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds.iter()
                                                     .map(|ty_bound| {
@@ -375,7 +385,7 @@ impl Rewrite for ast::WherePredicate {
                                                     .intersperse(Some(" + ".to_string()))
                                                     .collect());
 
-                    format!("{}: {}", type_str, bounds_str)
+                    format!("{}{}{}", type_str, colon, bounds_str)
                 }
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate { ref lifetime,
@@ -420,21 +430,8 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
         let appendix: Vec<_> = try_opt!(bounds.into_iter()
             .map(|b| b.rewrite(context, width, offset))
             .collect());
-        let bound_spacing_before = if context.config.space_before_bound {
-            " "
-        } else {
-            ""
-        };
-        let bound_spacing_after = if context.config.space_after_bound_colon {
-            " "
-        } else {
-            ""
-        };
-        let result = format!("{}{}:{}{}",
-                             result,
-                             bound_spacing_before,
-                             bound_spacing_after,
-                             appendix.join(" + "));
+        let colon = type_bound_colon(context);
+        let result = format!("{}{}{}", result, colon, appendix.join(" + "));
         wrap_str(result, context.config.max_width, width, offset)
     }
 }
