@@ -839,7 +839,18 @@ fn format_struct_struct(context: &RewriteContext,
 
     // FIXME(#919): properly format empty structs and their comments.
     if fields.is_empty() {
-        result.push_str(&context.snippet(mk_sp(body_lo, span.hi)));
+        let snippet = context.snippet(mk_sp(body_lo, span.hi - BytePos(1)));
+        if snippet.trim().is_empty() {
+            // `struct S {}`
+        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
+            // fix indent
+            result.push_str(&snippet.trim_right());
+            result.push('\n');
+            result.push_str(&offset.to_string(context.config));
+        } else {
+            result.push_str(&snippet);
+        }
+        result.push('}');
         return Some(result);
     }
 
