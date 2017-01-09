@@ -202,8 +202,8 @@ impl Sub<usize> for Indent {
 }
 
 pub enum ErrorKind {
-    // Line has exceeded character limit
-    LineOverflow,
+    // Line has exceeded character limit (found, maximum)
+    LineOverflow(usize, usize),
     // Line ends in whitespace
     TrailingWhitespace,
     // TO-DO or FIX-ME item without an issue number
@@ -213,7 +213,12 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ErrorKind::LineOverflow => write!(fmt, "line exceeded maximum length"),
+            ErrorKind::LineOverflow(found, maximum) => {
+                write!(fmt,
+                       "line exceeded maximum length (maximum: {}, found: {})",
+                       maximum,
+                       found)
+            }
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
         }
@@ -229,7 +234,7 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow |
+            ErrorKind::LineOverflow(..) |
             ErrorKind::TrailingWhitespace => "Rustfmt failed at",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
@@ -237,7 +242,7 @@ impl FormattingError {
 
     fn msg_suffix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow |
+            ErrorKind::LineOverflow(..) |
             ErrorKind::TrailingWhitespace => "(sorry)",
             ErrorKind::BadIssue(_) => "",
         }
@@ -353,7 +358,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             if line_len > config.max_width {
                 errors.push(FormattingError {
                     line: cur_line,
-                    kind: ErrorKind::LineOverflow,
+                    kind: ErrorKind::LineOverflow(line_len, config.max_width),
                 });
             }
             line_len = 0;
