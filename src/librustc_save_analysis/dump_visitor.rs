@@ -1343,18 +1343,19 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         self.process_macro_use(t.span, t.id);
         match t.node {
             ast::TyKind::Path(_, ref path) => {
-                if self.span.filter_generated(None, t.span) {
+                if generated_code(t.span) {
                     return;
                 }
 
                 if let Some(id) = self.lookup_def_id(t.id) {
-                    let sub_span = self.span.sub_span_for_type_name(t.span);
-                    self.dumper.type_ref(TypeRefData {
-                        span: sub_span.expect("No span found for type ref"),
-                        ref_id: Some(id),
-                        scope: self.cur_scope,
-                        qualname: String::new()
-                    }.lower(self.tcx));
+                    if let Some(sub_span) = self.span.sub_span_for_type_name(t.span) {
+                        self.dumper.type_ref(TypeRefData {
+                            span: sub_span,
+                            ref_id: Some(id),
+                            scope: self.cur_scope,
+                            qualname: String::new()
+                        }.lower(self.tcx));
+                    }
                 }
 
                 self.write_sub_paths_truncated(path);
