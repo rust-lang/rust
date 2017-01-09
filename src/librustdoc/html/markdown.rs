@@ -49,6 +49,8 @@ pub struct Markdown<'a>(pub &'a str);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
 pub struct MarkdownWithToc<'a>(pub &'a str);
+/// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
+pub struct MarkdownHtml<'a>(pub &'a str);
 
 const DEF_OUNIT: libc::size_t = 64;
 const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
@@ -58,6 +60,7 @@ const HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
 const HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 const HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
 const HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
+const HOEDOWN_HTML_ESCAPE: libc::c_uint = 1 << 1;
 
 const HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
@@ -220,7 +223,11 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
     RefCell::new(None)
 });
 
-pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
+
+pub fn render(w: &mut fmt::Formatter,
+              s: &str,
+              print_toc: bool,
+              html_flags: libc::c_uint) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
                     lang: *const hoedown_buffer, data: *const hoedown_renderer_data) {
         unsafe {
@@ -383,7 +390,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
-        let renderer = hoedown_html_renderer_new(0, 0);
+        let renderer = hoedown_html_renderer_new(html_flags, 0);
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
@@ -553,14 +560,23 @@ impl<'a> fmt::Display for Markdown<'a> {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        render(fmt, md, false)
+        render(fmt, md, false, 0)
     }
 }
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
-        render(fmt, md, true)
+        render(fmt, md, true, 0)
+    }
+}
+
+impl<'a> fmt::Display for MarkdownHtml<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let MarkdownHtml(md) = *self;
+        // This is actually common enough to special-case
+        if md.is_empty() { return Ok(()) }
+        render(fmt, md, false, HOEDOWN_HTML_ESCAPE)
     }
 }
 
@@ -613,7 +629,7 @@ pub fn plain_summary_line(md: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{LangString, Markdown};
+    use super::{LangString, Markdown, MarkdownHtml};
     use super::plain_summary_line;
     use html::render::reset_ids;
 
@@ -718,5 +734,16 @@ mod tests {
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
         t("## header", "header");
+    }
+
+    #[test]
+    fn test_markdown_html_escape() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", MarkdownHtml(input));
+            assert_eq!(output, expect);
+        }
+
+        t("`Struct<'a, T>`", "<p><code>Struct&lt;&#39;a, T&gt;</code></p>\n");
+        t("Struct<'a, T>", "<p>Struct&lt;&#39;a, T&gt;</p>\n");
     }
 }
