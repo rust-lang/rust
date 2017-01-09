@@ -172,7 +172,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         "use_extern_macros", "staged_api", "const_indexing",
         "unboxed_closures", "stmt_expr_attributes",
         "cfg_target_thread_local", "unwind_attributes",
-        "inclusive_range_syntax"
+        "inclusive_range_syntax", "proc_macro"
     ];
 
     // Only check the number of lang features.
