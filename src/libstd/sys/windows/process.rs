@@ -340,6 +340,21 @@ impl Process {
         }
     }
 
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        unsafe {
+            match c::WaitForSingleObject(self.handle.raw(), 0) {
+                c::WAIT_OBJECT_0 => {}
+                c::WAIT_TIMEOUT => {
+                    return Err(io::Error::from_raw_os_error(c::WSAEWOULDBLOCK))
+                }
+                _ => return Err(io::Error::last_os_error()),
+            }
+            let mut status = 0;
+            cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
+            Ok(ExitStatus(status))
+        }
+    }
+
     pub fn handle(&self) -> &Handle { &self.handle }
 
     pub fn into_handle(self) -> Handle { self.handle }
