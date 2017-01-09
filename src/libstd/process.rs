@@ -800,6 +800,48 @@ impl Child {
         self.handle.wait().map(ExitStatus)
     }
 
+    /// Attempts to collect the exit status of the child if it has already
+    /// exited.
+    ///
+    /// This function will not block the calling thread and will only advisorily
+    /// check to see if the child process has exited or not. If the child has
+    /// exited then on Unix the process id is reaped. This function is
+    /// guaranteed to repeatedly return a successful exit status so long as the
+    /// child has already exited.
+    ///
+    /// If the child has exited, then `Ok(status)` is returned. If the exit
+    /// status is not available at this time then an error is returned with the
+    /// error kind `WouldBlock`. If an error occurs, then that error is returned.
+    ///
+    /// Note that unlike `wait`, this function will not attempt to drop stdin.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// #![feature(process_try_wait)]
+    ///
+    /// use std::io;
+    /// use std::process::Command;
+    ///
+    /// let mut child = Command::new("ls").spawn().unwrap();
+    ///
+    /// match child.try_wait() {
+    ///     Ok(status) => println!("exited with: {}", status),
+    ///     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///         println!("status not ready yet, let's really wait");
+    ///         let res = child.wait();
+    ///         println!("result: {:?}", res);
+    ///     }
+    ///     Err(e) => println!("error attempting to wait: {}", e),
+    /// }
+    /// ```
+    #[unstable(feature = "process_try_wait", issue = "38903")]
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        self.handle.try_wait().map(ExitStatus)
+    }
+
     /// Simultaneously waits for the child to exit and collect all remaining
     /// output on the stdout/stderr handles, returning an `Output`
     /// instance.

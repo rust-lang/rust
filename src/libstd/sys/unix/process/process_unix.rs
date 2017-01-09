@@ -237,6 +237,7 @@ impl Process {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
         }
     }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use sys::cvt_r;
         if let Some(status) = self.status {
@@ -246,5 +247,21 @@ impl Process {
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus::new(status));
         Ok(ExitStatus::new(status))
+    }
+
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        if let Some(status) = self.status {
+            return Ok(status)
+        }
+        let mut status = 0 as c_int;
+        let pid = cvt(unsafe {
+            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
+        })?;
+        if pid == 0 {
+            Err(io::Error::from_raw_os_error(libc::EWOULDBLOCK))
+        } else {
+            self.status = Some(ExitStatus::new(status));
+            Ok(ExitStatus::new(status))
+        }
     }
 }
