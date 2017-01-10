@@ -38,6 +38,7 @@ use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast::{BinOpKind, UnOp};
+use ast::RangeEnd;
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, spanned, respan};
 use syntax_pos::{self, Span, Pos, BytePos, mk_sp};
@@ -3445,8 +3446,7 @@ impl<'a> Parser<'a> {
             }
 
             if before_slice {
-                if self.check(&token::DotDot) {
-                    self.bump();
+                if self.eat(&token::DotDot) {
 
                     if self.check(&token::Comma) ||
                             self.check(&token::CloseDelim(token::Bracket)) {
@@ -3462,8 +3462,7 @@ impl<'a> Parser<'a> {
             }
 
             let subpat = self.parse_pat()?;
-            if before_slice && self.check(&token::DotDot) {
-                self.bump();
+            if before_slice && self.eat(&token::DotDot) {
                 slice = Some(subpat);
                 before_slice = false;
             } else if before_slice {
@@ -3578,6 +3577,22 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // helper function to decide whether to parse as ident binding or to try to do
+    // something more complex like range patterns
+    fn parse_as_ident(&mut self) -> bool {
+        self.look_ahead(1, |t| match *t {
+            token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
+            token::DotDotDot | token::ModSep | token::Not => Some(false),
+            // ensure slice patterns [a, b.., c] and [a, b, c..] don't go into the
+            // range pattern branch
+            token::DotDot => None,
+            _ => Some(true),
+        }).unwrap_or_else(|| self.look_ahead(2, |t| match *t {
+            token::Comma | token::CloseDelim(token::Bracket) => true,
+            _ => false,
+        }))
+    }
+
     /// Parse a pattern.
     pub fn parse_pat(&mut self) -> PResult<'a, P<Pat>> {
         maybe_whole!(self, NtPat, |x| x);
@@ -3627,11 +3642,7 @@ impl<'a> Parser<'a> {
                 let subpat = self.parse_pat()?;
                 pat = PatKind::Box(subpat);
             } else if self.token.is_ident() && !self.token.is_any_keyword() &&
-                      self.look_ahead(1, |t| match *t {
-                          token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
-                          token::DotDotDot | token::ModSep | token::Not => false,
-                          _ => true,
-                      }) {
+                      self.parse_as_ident() {
                 // Parse ident @ pat
                 // This can give false positives and parse nullary enums,
                 // they are dealt with later in resolve
@@ -3658,14 +3669,19 @@ impl<'a> Parser<'a> {
                         let mac = spanned(lo, self.prev_span.hi, Mac_ { path: path, tts: tts });
                         pat = PatKind::Mac(mac);
                     }
-                    token::DotDotDot => {
+                    token::DotDotDot | token::DotDot => {
+                        let end_kind = match self.token {
+                            token::DotDot => RangeEnd::Excluded,
+                            token::DotDotDot => RangeEnd::Included,
+                            _ => panic!("can only parse `..` or `...` for ranges (checked above)"),
+                        };
                         // Parse range
                         let hi = self.prev_span.hi;
                         let begin =
                               self.mk_expr(lo, hi, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
                         let end = self.parse_pat_range_end()?;
-                        pat = PatKind::Range(begin, end);
+                        pat = PatKind::Range(begin, end, end_kind);
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -3699,7 +3715,10 @@ impl<'a> Parser<'a> {
                     Ok(begin) => {
                         if self.eat(&token::DotDotDot) {
                             let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end);
+                            pat = PatKind::Range(begin, end, RangeEnd::Included);
+                        } else if self.eat(&token::DotDot) {
+                            let end = self.parse_pat_range_end()?;
+                            pat = PatKind::Range(begin, end, RangeEnd::Excluded);
                         } else {
                             pat = PatKind::Lit(begin);
                         }

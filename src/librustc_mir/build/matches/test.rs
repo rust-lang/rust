@@ -23,6 +23,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
+use rustc::hir::RangeEnd;
 use syntax_pos::Span;
 use std::cmp::Ordering;
 
@@ -69,13 +70,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Range { ref lo, ref hi } => {
+            PatternKind::Range { ref lo, ref hi, ref end } => {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
                         lo: Literal::Value { value: lo.clone() },
                         hi: Literal::Value { value: hi.clone() },
                         ty: match_pair.pattern.ty.clone(),
+                        end: end.clone(),
                     },
                 }
             }
@@ -324,7 +326,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            TestKind::Range { ref lo, ref hi, ty } => {
+            TestKind::Range { ref lo, ref hi, ty, ref end } => {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
@@ -332,7 +334,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let fail = self.cfg.start_new_block();
                 let block = self.compare(block, fail, test.span, BinOp::Le, lo, val.clone());
-                let block = self.compare(block, fail, test.span, BinOp::Le, val, hi);
+                let block = match *end {
+                    RangeEnd::Included => self.compare(block, fail, test.span, BinOp::Le, val, hi),
+                    RangeEnd::Excluded => self.compare(block, fail, test.span, BinOp::Lt, val, hi),
+                };
 
                 vec![block, fail]
             }
