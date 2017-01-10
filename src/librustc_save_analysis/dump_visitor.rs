@@ -470,9 +470,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             if !self.span.filter_generated(Some(trait_ref_data.span), trait_ref.path.span) {
                 self.dumper.type_ref(trait_ref_data.lower(self.tcx));
             }
-
-            visit::walk_path(self, &trait_ref.path);
         }
+        self.process_path(trait_ref.ref_id, &trait_ref.path, Some(recorder::TypeRef));
     }
 
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
@@ -756,8 +755,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 if !self.span.filter_generated(Some(trait_ref_data.span), item.span) {
                     self.dumper.type_ref(trait_ref_data.clone().lower(self.tcx));
                 }
-
-                visit::walk_path(self, &trait_ref.as_ref().unwrap().path);
             }
 
             if !self.span.filter_generated(Some(impl_data.span), item.span) {
@@ -772,6 +769,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
         if !has_self_ref {
             self.visit_ty(&typ);
+        }
+        if let &Some(ref trait_ref) = trait_ref {
+            self.process_path(trait_ref.ref_id, &trait_ref.path, Some(recorder::TypeRef));
         }
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
@@ -1001,8 +1001,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     fn process_pat(&mut self, p: &'l ast::Pat) {
         match p.node {
-            PatKind::Struct(ref path, ref fields, _) => {
-                visit::walk_path(self, path);
+            PatKind::Struct(ref _path, ref fields, _) => {
+                // FIXME do something with _path?
                 let adt = match self.save_ctxt.tables.node_id_to_type_opt(p.id) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
@@ -1359,8 +1359,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 }
 
                 self.write_sub_paths_truncated(path);
-
-                visit::walk_path(self, path);
             }
             ast::TyKind::Array(ref element, ref length) => {
                 self.visit_ty(element);
