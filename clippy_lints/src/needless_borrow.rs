@@ -58,14 +58,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         if in_macro(cx, pat.span) {
             return;
         }
-        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node {
-            if let ty::TyRef(_, ref tam) = cx.tcx.tables().pat_ty(pat).sty {
-                if tam.mutbl == MutImmutable {
-                    if let ty::TyRef(..) = tam.ty.sty {
-                        span_lint(cx, NEEDLESS_BORROW, pat.span, "this pattern creates a reference to a reference")
-                    }
-                }
-            }
-        }
+        if_let_chain! {[
+            let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node,
+            let ty::TyRef(_, ref tam) = cx.tcx.tables().pat_ty(pat).sty,
+            tam.mutbl == MutImmutable,
+            let ty::TyRef(_, ref tam) = tam.ty.sty,
+            // only lint immutable refs, because borrowed `&mut T` cannot be moved out
+            tam.mutbl == MutImmutable,
+        ], {
+            span_lint(cx, NEEDLESS_BORROW, pat.span, "this pattern creates a reference to a reference")
+        }}
     }
 }

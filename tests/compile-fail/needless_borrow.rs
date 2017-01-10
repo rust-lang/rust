@@ -33,3 +33,12 @@ trait Trait {}
 impl<'a> Trait for &'a str {}
 
 fn h(_: &Trait) {}
+
+#[allow(dead_code)]
+fn issue_1432() {
+    let mut v = Vec::<String>::new();
+    let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+    let _ = v.iter().filter(|&ref a| a.is_empty());
+    //~^WARNING this pattern creates a reference to a reference
+    let _ = v.iter().filter(|&a| a.is_empty());
+}
