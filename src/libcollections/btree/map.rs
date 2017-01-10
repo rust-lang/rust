@@ -137,8 +137,7 @@ pub struct BTreeMap<K, V> {
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
-impl<K, V> Drop for BTreeMap<K, V> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
         unsafe {
             for _ in ptr::read(self).into_iter() {

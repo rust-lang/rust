@@ -539,8 +539,7 @@ impl<T> RawVec<T> {
     }
 }
 
-impl<T> Drop for RawVec<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for RawVec<T> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
