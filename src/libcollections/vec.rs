@@ -370,7 +370,8 @@ impl<T> Vec<T> {
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal datastructures.
+    /// internal datastructures. For example it is **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array and a `size_t`.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `Vec<T>` which may then deallocate, reallocate or change the
