@@ -1064,8 +1064,11 @@ impl<T> [T] {
 
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
-    /// This sort is stable and `O(n log n)` worst-case, but allocates
-    /// temporary storage half the size of `self`.
+    /// This sort is stable and `O(n log n)` worst-case. 
+    ///
+    /// # Current Implementation
+    /// 
+    /// The current implementation allocates temporary storage half the size of `self`.
     ///
     /// # Examples
     ///
