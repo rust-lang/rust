@@ -370,7 +370,8 @@ impl<T> Vec<T> {
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal datastructures.
+    /// internal datastructures. For example it is **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array and a `size_t`.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `Vec<T>` which may then deallocate, reallocate or change the
@@ -1786,8 +1787,7 @@ impl<T: Ord> Ord for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Vec<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for Vec<T> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
@@ -2056,8 +2056,7 @@ impl<T: Clone> Clone for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for IntoIter<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         for _x in self.by_ref() {}

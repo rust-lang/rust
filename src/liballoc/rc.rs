@@ -644,7 +644,7 @@ impl<T: ?Sized> Deref for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Drop for Rc<T> {
+unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -672,7 +672,6 @@ impl<T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
-    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             let ptr = *self.ptr;
