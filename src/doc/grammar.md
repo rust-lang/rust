@@ -510,8 +510,9 @@ unit_expr : "()" ;
 ### Structure expressions
 
 ```antlr
-struct_expr : expr_path '{' ident ':' expr
-                      [ ',' ident ':' expr ] *
+struct_expr_field_init : ident | ident ':' expr ;
+struct_expr : expr_path '{' struct_expr_field_init
+                      [ ',' struct_expr_field_init ] *
                       [ ".." expr ] '}' |
               expr_path '(' expr
                       [ ',' expr ] * ')' |
