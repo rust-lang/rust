@@ -29,7 +29,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::char::CharExt as C;
-use core::iter::FusedIterator;
+use core::iter::{FusedIterator, TrustedLen};
 use core::fmt::{self, Write};
 use tables::{conversions, derived_property, general_category, property};
 
@@ -63,10 +63,39 @@ impl Iterator for ToLowercase {
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+    fn count(self) -> usize {
+        self.0.count()
+    }
+    fn last(self) -> Option<char> {
+        self.0.last()
+    }
+}
+
+#[stable(feature = "to_case_extra", since = "1.17.0")]
+impl DoubleEndedIterator for ToLowercase {
+    fn next_back(&mut self) -> Option<char> {
+        self.0.next_back()
+    }
+}
+
+#[stable(feature = "to_case_extra", since = "1.17.0")]
+impl ExactSizeIterator for ToLowercase {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for ToLowercase {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
@@ -84,10 +113,39 @@ impl Iterator for ToUppercase {
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+    fn count(self) -> usize {
+        self.0.count()
+    }
+    fn last(self) -> Option<char> {
+        self.0.last()
+    }
+}
+
+#[stable(feature = "to_case_extra", since = "1.17.0")]
+impl DoubleEndedIterator for ToUppercase {
+    fn next_back(&mut self) -> Option<char> {
+        self.0.next_back()
+    }
+}
+
+#[stable(feature = "to_case_extra", since = "1.17.0")]
+impl ExactSizeIterator for ToUppercase {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for ToUppercase {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for ToUppercase {}
 
 enum CaseMappingIter {
     Three(char, char, char),
@@ -127,6 +185,53 @@ impl Iterator for CaseMappingIter {
                 Some(c)
             }
             CaseMappingIter::Zero => None,
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len(), Some(self.len()))
+    }
+    fn count(self) -> usize {
+        self.len()
+    }
+    fn last(mut self) -> Option<char> {
+        self.next_back()
+    }
+}
+
+impl DoubleEndedIterator for CaseMappingIter {
+    fn next_back(&mut self) -> Option<char> {
+        match *self {
+            CaseMappingIter::Three(a, b, c) => {
+                *self = CaseMappingIter::Two(a, b);
+                Some(c)
+            }
+            CaseMappingIter::Two(a, b) => {
+                *self = CaseMappingIter::One(a);
+                Some(b)
+            }
+            CaseMappingIter::One(a) => {
+                *self = CaseMappingIter::Zero;
+                Some(a)
+            }
+            CaseMappingIter::Zero => None,
+        }
+    }
+}
+
+impl ExactSizeIterator for CaseMappingIter {
+    fn len(&self) -> usize {
+        match *self {
+            CaseMappingIter::Three(..) => 3,
+            CaseMappingIter::Two(..) => 2,
+            CaseMappingIter::One(..) => 1,
+            CaseMappingIter::Zero => 0,
+        }
+    }
+    fn is_empty(&self) -> bool {
+        if let CaseMappingIter::Zero = *self {
+            true
+        } else {
+            false
         }
     }
 }
