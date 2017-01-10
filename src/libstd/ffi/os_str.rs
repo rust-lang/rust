@@ -259,6 +259,15 @@ impl OsStr {
     /// Yields a `&str` slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// assert_eq!(os_str.to_str(), Some("foo"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
@@ -267,6 +276,20 @@ impl OsStr {
     /// Converts an `OsStr` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// # Examples
+    ///
+    /// Calling `to_string_lossy` on an `OsStr` with valid unicode:
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// assert_eq!(os_str.to_string_lossy(), "foo");
+    /// ```
+    ///
+    /// Had `os_str` contained invalid unicode, the `to_string_lossy` call might
+    /// have returned `"fo�"`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()

@@ -726,8 +726,7 @@ impl<T> LinkedList<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for LinkedList<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         while let Some(_) = self.pop_front_node() {}
     }

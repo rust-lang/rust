@@ -316,7 +316,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               "codegen-units");
         suite("check-incremental", "src/test/incremental", "incremental",
               "incremental");
-        suite("check-ui", "src/test/ui", "ui", "ui");
     }
 
     if build.config.build.contains("msvc") {
@@ -363,6 +362,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  });
         };
 
+        suite("check-ui", "src/test/ui", "ui", "ui");
         suite("check-rpass-full", "src/test/run-pass-fulldeps",
               "run-pass", "run-pass-fulldeps");
         suite("check-rfail-full", "src/test/run-fail-fulldeps",
@@ -1374,7 +1374,6 @@ mod tests {
 
         assert!(plan.iter().any(|s| s.name.contains("-ui")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
-        assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));
         assert!(plan.iter().any(|s| s.name.contains("debuginfo")));
@@ -1407,8 +1406,7 @@ mod tests {
         assert!(plan.iter().all(|s| s.host == "A"));
         assert!(plan.iter().all(|s| s.target == "C"));
 
-        assert!(plan.iter().any(|s| s.name.contains("-ui")));
-        assert!(plan.iter().any(|s| s.name.contains("cfail")));
+        assert!(!plan.iter().any(|s| s.name.contains("-ui")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(!plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));
