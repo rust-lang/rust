@@ -16,7 +16,7 @@ use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
             is_refutable, span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
-            walk_ptrs_ty, last_path_segment};
+            last_path_segment};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -712,19 +712,24 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
 
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
-            let (new_pat_span, kind) = match (&pat[0].node, &pat[1].node) {
-                (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value"),
-                (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key"),
+            let arg_span = arg.span;
+            let (new_pat_span, kind, ty, mutbl) = match cx.tcx.tables().expr_ty(arg).sty {
+                ty::TyRef(_, ref tam) => match (&pat[0].node, &pat[1].node) {
+                    (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
+                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
+                    _ => return,
+                },
                 _ => return,
             };
-
-            let (arg_span, arg) = match arg.node {
-                ExprAddrOf(MutImmutable, ref expr) => (arg.span, &**expr),
-                ExprAddrOf(MutMutable, _) => return, // for _ in &mut _, there is no {values,keys}_mut method
-                _ => (arg.span, arg),
+            let mutbl = match mutbl {
+                MutImmutable => "",
+                MutMutable => "_mut",
+            };
+            let arg = match arg.node {
+                ExprAddrOf(_, ref expr) => &**expr,
+                _ => arg,
             };
 
-            let ty = walk_ptrs_ty(cx.tcx.tables().expr_ty(arg));
             if match_type(cx, ty, &paths::HASHMAP) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
@@ -735,7 +740,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                     multispan_sugg(db,
                                    "use the corresponding method".into(),
                                    &[(pat_span, &snippet(cx, new_pat_span, kind)),
-                                     (arg_span, &format!("{}.{}s()", map.maybe_par(), kind))]);
+                                     (arg_span, &format!("{}.{}s{}()", map.maybe_par(), kind, mutbl))]);
                 });
             }
         }
