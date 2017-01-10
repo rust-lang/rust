@@ -80,7 +80,15 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, width, offset),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
-            rewrite_binary_op(context, op, lhs, rhs, width, offset)
+            // FIXME: format comments between operands and operator
+            rewrite_pair(&**lhs,
+                         &**rhs,
+                         "",
+                         &format!(" {} ", context.snippet(op.span)),
+                         "",
+                         context,
+                         width,
+                         offset)
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => {
             rewrite_unary_op(context, op, subexpr, width, offset)
@@ -216,15 +224,14 @@ fn format_expr(expr: &ast::Expr,
             rewrite_pair(&**expr, &**ty, "", ": ", "", context, width, offset)
         }
         ast::ExprKind::Index(ref expr, ref index) => {
-            let use_spaces = context.config.spaces_within_square_brackets;
-            let lbr = if use_spaces { "[ " } else { "[" };
-            let rbr = if use_spaces { " ]" } else { "]" };
-            rewrite_pair(&**expr, &**index, "", lbr, rbr, context, width, offset)
+            rewrite_index(&**expr, &**index, context, width, offset)
         }
         ast::ExprKind::Repeat(ref expr, ref repeats) => {
-            let use_spaces = context.config.spaces_within_square_brackets;
-            let lbr = if use_spaces { "[ " } else { "[" };
-            let rbr = if use_spaces { " ]" } else { "]" };
+            let (lbr, rbr) = if context.config.spaces_within_square_brackets {
+                ("[ ", " ]")
+            } else {
+                ("[", "]")
+            };
             rewrite_pair(&**expr, &**repeats, lbr, "; ", rbr, context, width, offset)
         }
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
@@ -286,29 +293,63 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     where LHS: Rewrite,
           RHS: Rewrite
 {
-    let max_width = try_opt!(width.checked_sub(prefix.len() + infix.len() + suffix.len()));
+    let lhs_budget = try_opt!(width.checked_sub(prefix.len() + infix.len()));
+    let rhs_budget = try_opt!(width.checked_sub(suffix.len()));
 
-    binary_search(1, max_width, |lhs_budget| {
-        let lhs_offset = offset + prefix.len();
-        let lhs_str = match lhs.rewrite(context, lhs_budget, lhs_offset) {
-            Some(result) => result,
-            None => return Err(Ordering::Greater),
-        };
+    // Get "full width" rhs and see if it fits on the current line. This
+    // usually works fairly well since it tends to place operands of
+    // operations with high precendence close together.
+    // Note that this is non-conservative, but its just to see if it's even
+    // worth trying to put everything on one line.
+    let rhs_result = rhs.rewrite(context, rhs_budget, offset);
 
-        let last_line_width = last_line_width(&lhs_str);
-        let rhs_budget = match max_width.checked_sub(last_line_width) {
-            Some(b) => b,
-            None => return Err(Ordering::Less),
-        };
-        let rhs_indent = offset + last_line_width + prefix.len() + infix.len();
+    if let Some(rhs_result) = rhs_result {
+        // This is needed in case of line break not caused by a
+        // shortage of space, but by end-of-line comments, for example.
+        if !rhs_result.contains('\n') {
+            let lhs_result = lhs.rewrite(context, lhs_budget, offset);
+            if let Some(lhs_result) = lhs_result {
+                let mut result = format!("{}{}{}", prefix, lhs_result, infix);
 
-        let rhs_str = match rhs.rewrite(context, rhs_budget, rhs_indent) {
-            Some(result) => result,
-            None => return Err(Ordering::Less),
-        };
+                let remaining_width = width.checked_sub(last_line_width(&result)).unwrap_or(0);
 
-        Ok(format!("{}{}{}{}{}", prefix, lhs_str, infix, rhs_str, suffix))
-    })
+                if rhs_result.len() <= remaining_width {
+                    result.push_str(&rhs_result);
+                    result.push_str(suffix);
+                    return Some(result);
+                }
+
+                // Try rewriting the rhs into the remaining space.
+                let rhs_budget = try_opt!(remaining_width.checked_sub(suffix.len()));
+                if let Some(rhs_result) = rhs.rewrite(context, rhs_budget, offset + result.len()) {
+                    if rhs_result.len() <= remaining_width {
+                        result.push_str(&rhs_result);
+                        result.push_str(suffix);
+                        return Some(result);
+                    }
+                }
+            }
+        }
+    }
+
+    // We have to use multiple lines.
+
+    // Re-evaluate the rhs because we have more space now:
+    let infix = infix.trim_right();
+    let lhs_budget =
+        try_opt!(context.config.max_width.checked_sub(offset.width() + prefix.len() + infix.len()));
+    let rhs_budget = try_opt!(rhs_budget.checked_sub(prefix.len()));
+    let rhs_offset = offset + prefix.len();
+
+    let rhs_result = try_opt!(rhs.rewrite(context, rhs_budget, rhs_offset));
+    let lhs_result = try_opt!(lhs.rewrite(context, lhs_budget, offset));
+    Some(format!("{}{}{}\n{}{}{}",
+                 prefix,
+                 lhs_result,
+                 infix,
+                 rhs_offset.to_string(context.config),
+                 rhs_result,
+                 suffix))
 }
 
 pub fn rewrite_array<'a, I>(expr_iter: I,
@@ -535,82 +576,6 @@ fn rewrite_closure(capture: ast::CaptureBy,
         let rewrite = try_opt!(block.rewrite(&context, budget, Indent::empty()));
         Some(format!("{} {}", prefix, rewrite))
     }
-
-    // // This is where we figure out whether to use braces or not.
-    // let mut had_braces = true;
-    // let mut inner_block = body;
-
-    // let mut trailing_expr = stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1]);
-
-    // // If there is an inner block and we can ignore it, do so.
-    // if body.stmts.len() == 1 && trailing_expr.is_some() {
-    //     if let Some(ref inner) = stmt_block(&inner_block.stmts[0]) {
-    //         inner_block = inner;
-    //         trailing_expr = if inner_block.stmts.is_empty() {
-    //             None
-    //         } else {
-    //             stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1])
-    //         };
-    //     } else if !force_block {
-    //         had_braces = false;
-    //     }
-    // }
-
-    // let try_single_line = is_simple_block(inner_block, context.codemap) &&
-    //                       inner_block.rules == ast::BlockCheckMode::Default;
-
-
-    // if try_single_line && !force_block {
-    //     let must_preserve_braces =
-    //         trailing_expr.is_none() ||
-    //         !classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(trailing_expr.unwrap()));
-    //     if !(must_preserve_braces && had_braces) &&
-    //        (must_preserve_braces || !prefix.contains('\n')) {
-    //         // If we got here, then we can try to format without braces.
-
-    //         let inner_expr = &inner_block.stmts[0];
-    //         let mut rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
-
-    //         if must_preserve_braces {
-    //             // If we are here, then failure to rewrite is unacceptable.
-    //             if rewrite.is_none() {
-    //                 return None;
-    //             }
-    //         } else {
-    //             // Checks if rewrite succeeded and fits on a single line.
-    //             rewrite = and_one_line(rewrite);
-    //         }
-
-    //         if let Some(rewrite) = rewrite {
-    //             return Some(format!("{} {}", prefix, rewrite));
-    //         }
-    //     }
-    // }
-
-    // // If we fell through the above block, then we need braces, but we might
-    // // still prefer a one-liner (we might also have fallen through because of
-    // // lack of space).
-    // if try_single_line && !prefix.contains('\n') {
-    //     let inner_expr = &inner_block.stmts[0];
-    //     // 4 = braces and spaces.
-    //     let mut rewrite = inner_expr.rewrite(context,
-    //                                          try_opt!(budget.checked_sub(4)),
-    //                                          offset + extra_offset);
-
-    //     // Checks if rewrite succeeded and fits on a single line.
-    //     rewrite = and_one_line(rewrite);
-
-    //     if let Some(rewrite) = rewrite {
-    //         return Some(format!("{} {{ {} }}", prefix, rewrite));
-    //     }
-    // }
-
-    // // We couldn't format the closure body as a single line expression; fall
-    // // back to block formatting.
-    // let mut context = context.clone();
-    // context.block_indent.alignment = 0;
-    // let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
-    // Some(format!("{} {}", prefix, body_rewrite))
 }
 
 fn and_one_line(x: Option<String>) -> Option<String> {
@@ -1665,6 +1630,36 @@ fn rewrite_paren(context: &RewriteContext,
     })
 }
 
+fn rewrite_index(expr: &ast::Expr,
+                 index: &ast::Expr,
+                 context: &RewriteContext,
+                 width: usize,
+                 offset: Indent)
+                 -> Option<String> {
+    let expr_str = try_opt!(expr.rewrite(context, width, offset));
+
+    let (lbr, rbr) = if context.config.spaces_within_square_brackets {
+        ("[ ", " ]")
+    } else {
+        ("[", "]")
+    };
+
+    let budget = width.checked_sub(expr_str.len() + lbr.len() + rbr.len()).unwrap_or(0);
+    let index_str = index.rewrite(context, budget, offset);
+    if let Some(index_str) = index_str {
+        return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
+    }
+
+    let indent = offset.block_indent(&context.config);
+    let indent = indent.to_string(&context.config);
+    // FIXME this is not right, since we don't take into account that width
+    // might be reduced from max_width by something on the right.
+    let budget =
+        try_opt!(context.config.max_width.checked_sub(indent.len() + lbr.len() + rbr.len()));
+    let index_str = try_opt!(index.rewrite(context, budget, offset));
+    Some(format!("{}\n{}{}{}{}", expr_str, indent, lbr, index_str, rbr))
+}
+
 fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           path: &ast::Path,
                           fields: &'a [ast::Field],
@@ -1884,62 +1879,6 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
     } else {
         Some(format!("({})", list_str))
     }
-}
-
-fn rewrite_binary_op(context: &RewriteContext,
-                     op: &ast::BinOp,
-                     lhs: &ast::Expr,
-                     rhs: &ast::Expr,
-                     width: usize,
-                     offset: Indent)
-                     -> Option<String> {
-    // FIXME: format comments between operands and operator
-
-    let operator_str = context.snippet(op.span);
-
-    // Get "full width" rhs and see if it fits on the current line. This
-    // usually works fairly well since it tends to place operands of
-    // operations with high precendence close together.
-    let rhs_result = try_opt!(rhs.rewrite(context, width, offset));
-
-    // Second condition is needed in case of line break not caused by a
-    // shortage of space, but by end-of-line comments, for example.
-    // Note that this is non-conservative, but its just to see if it's even
-    // worth trying to put everything on one line.
-    if rhs_result.len() + 2 + operator_str.len() < width && !rhs_result.contains('\n') {
-        // 1 = space between lhs expr and operator
-        if let Some(mut result) = lhs.rewrite(context, width - 1 - operator_str.len(), offset) {
-            result.push(' ');
-            result.push_str(&operator_str);
-            result.push(' ');
-
-            let remaining_width = width.checked_sub(last_line_width(&result)).unwrap_or(0);
-
-            if rhs_result.len() <= remaining_width {
-                result.push_str(&rhs_result);
-                return Some(result);
-            }
-
-            if let Some(rhs_result) = rhs.rewrite(context, remaining_width, offset + result.len()) {
-                if rhs_result.len() <= remaining_width {
-                    result.push_str(&rhs_result);
-                    return Some(result);
-                }
-            }
-        }
-    }
-
-    // We have to use multiple lines.
-
-    // Re-evaluate the lhs because we have more space now:
-    let budget = try_opt!(context.config
-        .max_width
-        .checked_sub(offset.width() + 1 + operator_str.len()));
-    Some(format!("{} {}\n{}{}",
-                 try_opt!(lhs.rewrite(context, budget, offset)),
-                 operator_str,
-                 offset.to_string(context.config),
-                 rhs_result))
 }
 
 pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,

@@ -76,8 +76,8 @@ fn foo() -> bool {
 }
 
 fn bar() {
-    let range = (111111111 + 333333333333333333 + 1111 + 400000000000000000)..(2222 +
-                                                                               2333333333333333);
+    let range = (111111111 + 333333333333333333 + 1111 + 400000000000000000)..
+                (2222 + 2333333333333333);
 
     let another_range = 5..some_func(a, b /* comment */);
 
@@ -226,19 +226,17 @@ fn casts() {
 }
 
 fn indices() {
-    let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)[x +
-                                                                                                y +
-                                                                                                z];
-    let y = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb +
-             cccccccccccccccc)[xxxxx + yyyyy + zzzzz];
+    let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)
+                [x + y + z];
+    let y = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)
+                [xxxxx + yyyyy + zzzzz];
 }
 
 fn repeats() {
-    let x = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc; x +
-                                                                                                y +
-                                                                                                z];
-    let y = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb +
-             cccccccccccccccc; xxxxx + yyyyy + zzzzz];
+    let x = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc;
+             x + y + z];
+    let y = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc;
+             xxxxx + yyyyy + zzzzz];
 }
 
 fn blocks() {
@@ -260,8 +258,8 @@ fn issue767() {
 
 fn ranges() {
     let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
-    let y =
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...
+            bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let z = ...x;
 
     a...b
