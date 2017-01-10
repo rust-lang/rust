@@ -1871,8 +1871,10 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         };
 
         if stab.level == stability::Unstable {
-            let unstable_extra = if show_reason {
-                match (!stab.feature.is_empty(), &cx.shared.issue_tracker_base_url, stab.issue) {
+            if show_reason {
+                let unstable_extra = match (!stab.feature.is_empty(),
+                                            &cx.shared.issue_tracker_base_url,
+                                            stab.issue) {
                     (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<code>{}</code> <a href=\"{}{}\">#{}</a>)",
                                 Escape(&stab.feature), tracker_url, issue_no, issue_no),
@@ -1882,17 +1884,22 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                     (true, ..) =>
                         format!(" (<code>{}</code>)", Escape(&stab.feature)),
                     _ => String::new(),
+                };
+                if stab.unstable_reason.is_empty() {
+                    stability.push(format!("<div class='stab unstable'>\
+                                            <span class=microscope>🔬</span> \
+                                            This is a nightly-only experimental API. {}</div>",
+                                   unstable_extra));
+                } else {
+                    let text = format!("<summary><span class=microscope>🔬</span> \
+                                        This is a nightly-only experimental API. {}</summary>{}",
+                                       unstable_extra, MarkdownHtml(&stab.unstable_reason));
+                    stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
+                                   text));
                 }
             } else {
-                String::new()
-            };
-            let unstable_reason = if show_reason && !stab.unstable_reason.is_empty() {
-                format!(": {}", stab.unstable_reason)
-            } else {
-                String::new()
-            };
-            let text = format!("Unstable{}{}", unstable_extra, MarkdownHtml(&unstable_reason));
-            stability.push(format!("<div class='stab unstable'>{}</div>", text))
+                stability.push(format!("<div class='stab unstable'>Experimental</div>"))
+            }
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
         let note = if show_reason && !depr.note.is_empty() {

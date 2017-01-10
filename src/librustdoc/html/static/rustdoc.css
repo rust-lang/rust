@@ -535,6 +535,14 @@ body.blur > :not(#help) {
 	display: inline;
 }
 
+.stab summary {
+	display: list-item;
+}
+
+.stab .microscope {
+	font-size: 1.5em;
+}
+
 .module-item .stab {
 	display: inline;
 	border-width: 0;
