@@ -87,7 +87,7 @@ impl Unrelated {
     }
 }
 
-#[deny(needless_range_loop, explicit_iter_loop, explicit_into_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
+#[deny(needless_range_loop, explicit_iter_loop, explicit_into_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop, for_kv_map)]
 #[deny(unused_collect)]
 #[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity, similar_names)]
 #[allow(many_single_char_names)]
@@ -417,11 +417,23 @@ fn main() {
 
     let mut m : HashMap<u64, u64> = HashMap::new();
     for (_, v) in &mut m {
-        // Ok, there is no values_mut method or equivalent
+        //~^ you seem to want to iterate on a map's values
+        //~| HELP use the corresponding method
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in m.values_mut()
         let _v = v;
     }
 
+    let m: &mut HashMap<u64, u64> = &mut HashMap::new();
+    for (_, v) in &mut *m {
+        //~^ you seem to want to iterate on a map's values
+        //~| HELP use the corresponding method
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in (*m).values_mut()
+        let _v = v;
+    }
 
+    let m : HashMap<u64, u64> = HashMap::new();
     let rm = &m;
     for (k, _value) in rm {
         //~^ you seem to want to iterate on a map's keys
