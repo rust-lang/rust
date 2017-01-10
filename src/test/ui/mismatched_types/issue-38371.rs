@@ -28,6 +28,9 @@ fn zar(&foo: &Foo) {
 fn agh(&&bar: &u32) {
 }
 
+fn bgh(&&bar: u32) {
+}
+
 fn ugh(&[bar]: &u32) {
 }
 

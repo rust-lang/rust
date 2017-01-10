@@ -17,11 +17,20 @@ error[E0308]: mismatched types
    = note: expected type `u32`
    = note:    found type `&_`
 
-error[E0529]: expected an array or slice, found `u32`
-  --> $DIR/issue-38371.rs:31:9
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:31:8
    |
-31 | fn ugh(&[bar]: &u32) {
+31 | fn bgh(&&bar: u32) {
+   |        ^^^^^ expected u32, found reference
+   |
+   = note: expected type `u32`
+   = note:    found type `&_`
+
+error[E0529]: expected an array or slice, found `u32`
+  --> $DIR/issue-38371.rs:34:9
+   |
+34 | fn ugh(&[bar]: &u32) {
    |         ^^^^^ pattern cannot match with input type `u32`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
