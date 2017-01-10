@@ -76,7 +76,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_suptype(pat.span, expected, pat_ty);
                 pat_ty
             }
-            PatKind::Range(ref begin, ref end) => {
+            PatKind::Range(ref begin, ref end, _) => {
                 let lhs_ty = self.check_expr(begin);
                 let rhs_ty = self.check_expr(end);
 

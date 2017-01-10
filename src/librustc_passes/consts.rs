@@ -45,7 +45,7 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeSet;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, PatKind, RangeEnd};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -157,7 +157,21 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             PatKind::Lit(ref lit) => {
                 self.check_const_eval(lit);
             }
-            PatKind::Range(ref start, ref end) => {
+            PatKind::Range(ref start, ref end, RangeEnd::Excluded) => {
+                let const_cx = ConstContext::with_tables(self.tcx, self.tables);
+                match const_cx.compare_lit_exprs(p.span, start, end) {
+                    Ok(Ordering::Less) => {}
+                    Ok(Ordering::Equal) |
+                    Ok(Ordering::Greater) => {
+                        span_err!(self.tcx.sess,
+                                  start.span,
+                                  E0579,
+                                  "lower range bound must be less than upper");
+                    }
+                    Err(ErrorReported) => {}
+                }
+            }
+            PatKind::Range(ref start, ref end, RangeEnd::Included) => {
                 let const_cx = ConstContext::with_tables(self.tcx, self.tables);
                 match const_cx.compare_lit_exprs(p.span, start, end) {
                     Ok(Ordering::Less) |
