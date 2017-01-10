@@ -399,7 +399,7 @@ impl Command {
     ///         .spawn()
     ///         .expect("printenv failed to start");
     /// ```
-    #[stable(feature = "process", since = "1.16.0")]
+    #[stable(feature = "command_envs", since = "1.16.0")]
     pub fn envs<K, V>(&mut self, vars: &[(K, V)]) -> &mut Command
         where K: AsRef<OsStr>, V: AsRef<OsStr>
     {
