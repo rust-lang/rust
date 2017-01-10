@@ -297,6 +297,7 @@ impl<'a> Resolver<'a> {
                 binding: binding,
                 directive: directive,
                 used: Cell::new(false),
+                legacy_self_import: false,
             },
             span: directive.span,
             vis: vis,
@@ -594,6 +595,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         let mut all_ns_err = true;
+        let mut legacy_self_import = None;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
@@ -602,9 +604,25 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         Some(this.dummy_binding);
                 }
             }
+        } else if let Ok(binding) = this.resolve_ident_in_module(module, ident, ns, false, None) {
+            legacy_self_import = Some(directive);
+            let binding = this.arenas.alloc_name_binding(NameBinding {
+                kind: NameBindingKind::Import {
+                    binding: binding,
+                    directive: directive,
+                    used: Cell::new(false),
+                    legacy_self_import: true,
+                },
+                ..*binding
+            });
+            let _ = this.try_define(directive.parent, ident, ns, binding);
         });
 
         if all_ns_err {
+            if let Some(directive) = legacy_self_import {
+                self.warn_legacy_self_import(directive);
+                return None;
+            }
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                 match this.resolve_ident_in_module(module, ident, ns, false, Some(span)) {
