@@ -5,9 +5,10 @@ before_script:
 - |
   pip install 'travis-cargo<0.2' --user &&
   export PATH=$HOME/.local/bin:$PATH
-- rustup target add i686-unknown-linux-gnu
-- rustup target add i686-pc-windows-gnu
-- rustup target add i686-pc-windows-msvc
+- ls -lh ~/rust
+- ~/rust/rustup target add i686-unknown-linux-gnu
+- ~/rust/rustup target add i686-pc-windows-gnu
+- ~/rust/rustup target add i686-pc-windows-msvc
 script:
 - |
   env RUST_SYSROOT=$HOME/rust travis-cargo build &&
