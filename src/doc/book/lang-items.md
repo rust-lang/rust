@@ -16,14 +16,11 @@ and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```rust,ignore
-#![feature(lang_items, box_syntax, start, libc)]
+#![feature(lang_items, box_syntax, start, libc, core_intrinsics)]
 #![no_std]
+use core::intrinsics;
 
 extern crate libc;
-
-extern {
-    fn abort() -> !;
-}
 
 #[lang = "owned_box"]
 pub struct Box<T>(*mut T);
@@ -34,7 +31,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
     // Check if `malloc` failed:
     if p as usize == 0 {
-        abort();
+        intrinsics::abort();
     }
 
     p
@@ -58,7 +55,7 @@ fn main(argc: isize, argv: *const *const u8) -> isize {
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
-#[lang = "panic_fmt"] extern fn rust_begin_panic() -> ! { loop {} }
+#[lang = "panic_fmt"] extern fn rust_begin_panic() -> ! { unsafe { intrinsics::abort() } }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
 # #[no_mangle] pub extern fn rust_eh_register_frames () {}
 # #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
