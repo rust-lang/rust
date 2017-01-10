@@ -714,10 +714,12 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match cx.tcx.tables().expr_ty(arg).sty {
-                ty::TyRef(_, ref tam) => match (&pat[0].node, &pat[1].node) {
-                    (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
-                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
-                    _ => return,
+                ty::TyRef(_, ref tam) => {
+                    match (&pat[0].node, &pat[1].node) {
+                        (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
+                        (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
+                        _ => return,
+                    }
                 },
                 _ => return,
             };
