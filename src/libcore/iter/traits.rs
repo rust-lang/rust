@@ -670,6 +670,42 @@ macro_rules! float_sum_product {
 integer_sum_product! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 float_sum_product! { f32 f64 }
 
+// $ret = $item + $item + ...
+// $ret = $item * $item * ...
+macro_rules! num_sum_product_ex {
+    ($(($ret:ty, $item:ty))*) => ($(
+        #[unstable(feature = "sum_product_ex", issue = "0")]
+        impl Sum<$item> for $ret {
+            fn sum<I: Iterator<Item=$item>>(iter: I) -> $ret {
+                iter.fold(0 as $ret, |a, b| Add::add(a, b as $ret))
+            }
+        }
+
+        #[unstable(feature = "sum_product_ex", issue = "0")]
+        impl Product<$item> for $ret {
+            fn product<I: Iterator<Item=$item>>(iter: I) -> $ret {
+                iter.fold(1 as $ret, |a, b| Mul::mul(a, b as $ret))
+            }
+        }
+
+        #[unstable(feature = "sum_product_ex", issue = "0")]
+        impl<'a> Sum<&'a $item> for $ret {
+            fn sum<I: Iterator<Item=&'a $item>>(iter: I) -> $ret {
+                iter.fold(0 as $ret, |a, b| Add::add(a, *b as $ret))
+            }
+        }
+
+        #[unstable(feature = "sum_product_ex", issue = "0")]
+        impl<'a> Product<&'a $item> for $ret {
+            fn product<I: Iterator<Item=&'a $item>>(iter: I) -> $ret {
+                iter.fold(1 as $ret, |a, b| Mul::mul(a, *b as $ret))
+            }
+        }
+    )*);
+}
+
+num_sum_product_ex!((f64,f32) (i64,i32) (i64,i16) (i64,i8) (u64,u32) (u64,u16) (u64,u8));
+
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
