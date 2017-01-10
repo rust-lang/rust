@@ -10,22 +10,24 @@
 
 // Test that `fn foo::bar::{self}` only imports `bar` in the type namespace.
 
+#![allow(unused)]
+#![deny(legacy_imports)]
+
 mod foo {
     pub fn f() { }
 }
 use foo::f::{self};
-//~^ ERROR unresolved import
-//~| NOTE no `f` in `foo`
+//~^ ERROR `self` no longer imports values
+//~| WARN hard error
 
 mod bar {
     pub fn baz() {}
     pub mod baz {}
 }
 use bar::baz::{self};
+//~^ ERROR `self` no longer imports values
+//~| WARN hard error
 
 fn main() {
     baz();
-    //~^ ERROR unresolved name `baz`
-    //~| NOTE unresolved name
-    //~| HELP module `baz` cannot be used as an expression
 }
