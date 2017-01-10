@@ -1,4 +1,4 @@
-- Feature Name: rc_from_slice
+- Feature Name: shared_from_slice
 - Start Date: 2017-01-05
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -21,7 +21,7 @@ An example of string interning:
 
 ```rust
 #![feature(ptr_eq)]
-#![feature(rc_from_slice)]
+#![feature(shared_from_slice)]
 use std::rc::Rc;
 use std::collections::HashSet;
 use std::mem::drop;
@@ -167,7 +167,7 @@ where U: ?Sized,
     Rc { ptr: Shared::new(rcbox_ptr) }
 }
 
-#[unstable(feature = "rc_from_slice",
+#[unstable(feature = "shared_from_slice",
            reason = "TODO",
            issue = "TODO")]
 impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
@@ -178,7 +178,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// #[derive(PartialEq, Clone, Debug)]
@@ -193,7 +193,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     /// Using the [`Into`][Into] trait:
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// #[derive(PartialEq, Clone, Debug)]
@@ -214,7 +214,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     }
 }
 
-#[unstable(feature = "rc_from_slice",
+#[unstable(feature = "shared_from_slice",
            reason = "TODO",
            issue = "TODO")]
 impl<'a, T: Copy> From<&'a [T]> for Rc<[T]> {
@@ -225,7 +225,7 @@ impl<'a, T: Copy> From<&'a [T]> for Rc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// let arr = [1, 2, 3];
@@ -237,7 +237,7 @@ impl<'a, T: Copy> From<&'a [T]> for Rc<[T]> {
     /// Using the [`Into`][Into] trait:
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// let arr          = [1, 2, 3];
@@ -256,7 +256,7 @@ impl<'a, T: Copy> From<&'a [T]> for Rc<[T]> {
     }
 }
 
-#[unstable(feature = "rc_from_slice",
+#[unstable(feature = "shared_from_slice",
            reason = "TODO",
            issue = "TODO")]
 impl<'a> From<&'a str> for Rc<str> {
@@ -266,7 +266,7 @@ impl<'a> From<&'a str> for Rc<str> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// let slice = "hello world!";
@@ -278,7 +278,7 @@ impl<'a> From<&'a str> for Rc<str> {
     /// Using the [`Into`][Into] trait:
     ///
     /// ```
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     ///
     /// let slice = "hello world!";
@@ -287,13 +287,13 @@ impl<'a> From<&'a str> for Rc<str> {
     /// assert_eq!(rc.len(), slice.len()); // The length is the same.
     /// ```
     ///
-    /// This can be useful in doing [string interning], and cache:ing your strings.
+    /// This can be useful in doing [string interning], and caching your strings.
     ///
     /// ```
     /// // For Rc::ptr_eq
     /// #![feature(ptr_eq)]
     ///
-    /// #![feature(rc_from_slice)]
+    /// #![feature(shared_from_slice)]
     /// use std::rc::Rc;
     /// use std::collections::HashSet;
     /// use std::mem::drop;
