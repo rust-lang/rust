@@ -55,9 +55,9 @@ fn main() {
     <u8 as E::N>::NN; //~ ERROR unresolved method or associated constant `E::N::NN`
     <u8 as A::N>::NN; //~ ERROR unresolved method or associated constant `A::N::NN`
     let _: <u8 as Tr::Y>::NN; //~ ERROR unresolved associated type `Tr::Y::NN`
-    let _: <u8 as E::Y>::NN; //~ ERROR unresolved associated type `E::Y::NN`
+    let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve. Not a module `Y`
     <u8 as Tr::Y>::NN; //~ ERROR unresolved method or associated constant `Tr::Y::NN`
-    <u8 as E::Y>::NN; //~ ERROR unresolved method or associated constant `E::Y::NN`
+    <u8 as E::Y>::NN; //~ ERROR failed to resolve. Not a module `Y`
 
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
