@@ -894,6 +894,7 @@ enum NameBindingKind<'a> {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
+        legacy_self_import: bool,
     },
     Ambiguity {
         b1: &'a NameBinding<'a>,
@@ -1346,8 +1347,13 @@ impl<'a> Resolver<'a> {
         }
 
         match binding.kind {
-            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
+            NameBindingKind::Import { directive, binding, ref used, legacy_self_import }
+                    if !used.get() => {
                 used.set(true);
+                if legacy_self_import {
+                    self.warn_legacy_self_import(directive);
+                    return false;
+                }
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
                 self.record_use(ident, ns, binding, span)
@@ -3111,6 +3117,12 @@ impl<'a> Resolver<'a> {
         }
         err.emit();
         self.name_already_seen.insert(name, span);
+    }
+
+    fn warn_legacy_self_import(&self, directive: &'a ImportDirective<'a>) {
+        let (id, span) = (directive.id, directive.span);
+        let msg = "`self` no longer imports values".to_string();
+        self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
     }
 }
 
