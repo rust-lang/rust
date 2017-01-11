@@ -237,7 +237,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.visit_rvalue(&mut rvalue, loc);
             self.assign(new_temp, rvalue, source_info.span);
         } else {
-            let mut terminator = if self.keep_original {
+            let terminator = if self.keep_original {
                 self.source[loc.block].terminator().clone()
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
@@ -255,28 +255,30 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
             };
 
-            let last = self.promoted.basic_blocks().last().unwrap();
-            let new_target = self.new_block();
-
-            terminator.kind = match terminator.kind {
+            match terminator.kind {
                 TerminatorKind::Call { mut func, mut args, .. } => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
                     }
-                    TerminatorKind::Call {
-                        func: func,
-                        args: args,
-                        cleanup: None,
-                        destination: Some((Lvalue::Local(new_temp), new_target))
-                    }
+
+                    let last = self.promoted.basic_blocks().last().unwrap();
+                    let new_target = self.new_block();
+
+                    *self.promoted[last].terminator_mut() = Terminator {
+                        kind: TerminatorKind::Call {
+                            func: func,
+                            args: args,
+                            cleanup: None,
+                            destination: Some((Lvalue::Local(new_temp), new_target))
+                        },
+                        ..terminator
+                    };
                 }
                 ref kind => {
                     span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                 }
             };
-
-            *self.promoted[last].terminator_mut() = terminator;
         };
 
         self.keep_original = old_keep_original;
