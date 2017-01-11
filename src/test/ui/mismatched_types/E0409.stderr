@@ -1,0 +1,19 @@
+error[E0409]: variable `y` is bound with different mode in pattern #2 than in pattern #1
+  --> $DIR/E0409.rs:15:23
+   |
+15 |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
+   |                 -     ^ bound in different ways
+   |                 |
+   |                 first binding
+
+error[E0308]: mismatched types
+  --> $DIR/E0409.rs:15:23
+   |
+15 |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
+   |                       ^ expected &{integer}, found integral variable
+   |
+   = note: expected type `&{integer}`
+              found type `{integer}`
+
+error: aborting due to previous error
+
