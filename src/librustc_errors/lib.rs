@@ -496,6 +496,9 @@ pub enum Level {
     Note,
     Help,
     Cancelled,
+    // Expected/Found type/struct/variant
+    Expected,
+    Found,
 }
 
 impl fmt::Display for Level {
@@ -515,7 +518,7 @@ impl Level {
                     term::color::YELLOW
                 }
             }
-            Note => term::color::BRIGHT_GREEN,
+            Note | Expected | Found => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
             Cancelled => unreachable!(),
         }
@@ -527,6 +530,8 @@ impl Level {
             Fatal | PhaseFatal | Error => "error",
             Warning => "warning",
             Note => "note",
+            Expected => "expected",
+            Found => "found",
             Help => "help",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }

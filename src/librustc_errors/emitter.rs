@@ -713,15 +713,39 @@ impl EmitterWriter {
                             -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
+        fn colorize_type_mismatch(buffer: &mut StyledBuffer, msg: &str) {
+            let msg_split = msg.split('`').collect::<Vec<&str>>();
+            buffer.append(0, msg_split[0], Style::NoStyle);
+            buffer.append(0, "`", Style::HeaderMsg);
+            buffer.append(0, msg_split[1], Style::Highlight);
+            buffer.append(0, "`", Style::HeaderMsg);
+            buffer.append(0, msg_split[2], Style::NoStyle);
+        }
+
         if msp.primary_spans().is_empty() && msp.span_labels().is_empty() && is_secondary {
             // This is a secondary message with no span info
             for _ in 0..max_line_num_len {
                 buffer.prepend(0, " ", Style::NoStyle);
             }
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
-            buffer.append(0, &level.to_string(), Style::HeaderMsg);
-            buffer.append(0, ": ", Style::NoStyle);
-            buffer.append(0, msg, Style::NoStyle);
+            match level {
+                &Level::Expected => {
+                    buffer.append(0, &level.to_string(), Style::NoStyle);
+                    buffer.append(0, " ", Style::NoStyle);
+                    colorize_type_mismatch(&mut buffer, msg);
+                }
+                &Level::Found => {
+                    buffer.append(0, "   ", Style::NoStyle);
+                    buffer.append(0, &level.to_string(), Style::NoStyle);
+                    buffer.append(0, " ", Style::NoStyle);
+                    colorize_type_mismatch(&mut buffer, msg);
+                },
+                _ => {
+                    buffer.append(0, &level.to_string(), Style::HeaderMsg);
+                    buffer.append(0, ": ", Style::NoStyle);
+                    buffer.append(0, msg, Style::NoStyle);
+                }
+            }
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             match code {
@@ -733,7 +757,12 @@ impl EmitterWriter {
                 _ => {}
             }
             buffer.append(0, ": ", Style::HeaderMsg);
-            buffer.append(0, msg, Style::HeaderMsg);
+            match level {
+                &Level::Expected | &Level::Found => {
+                    colorize_type_mismatch(&mut buffer, msg);
+                }
+                _ => buffer.append(0, msg, Style::HeaderMsg),
+            }
         }
 
         // Preprocess all the annotations so that they are grouped by file and by line number
@@ -1159,6 +1188,7 @@ impl Destination {
                 self.start_attr(term::Attr::Bold)?;
                 self.start_attr(term::Attr::ForegroundColor(l.color()))?;
             }
+            Style::Highlight => self.start_attr(term::Attr::Bold)?,
         }
         Ok(())
     }
