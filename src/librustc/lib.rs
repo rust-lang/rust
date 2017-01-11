@@ -30,6 +30,7 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
+#![feature(loop_break_value)]
 #![feature(nonzero)]
 #![feature(pub_restricted)]
 #![feature(quote)]
