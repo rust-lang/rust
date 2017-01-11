@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-const_fn
+
 // Test use of const fn without feature gate.
 
 const fn foo() -> usize { 0 } //~ ERROR const fn is unstable

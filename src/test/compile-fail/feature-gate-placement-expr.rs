@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-placement_in_syntax
+
 // Check that `in PLACE { EXPR }` is feature-gated.
 //
 // See also feature-gate-box-expr.rs
