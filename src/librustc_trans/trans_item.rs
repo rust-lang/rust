@@ -409,7 +409,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);
             },
-            ty::TyTuple(component_types) => {
+            ty::TyTuple(component_types, _) => {
                 output.push('(');
                 for &component_type in component_types {
                     self.push_type_name(component_type, output);

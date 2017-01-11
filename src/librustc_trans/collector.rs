@@ -823,7 +823,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
             }
         }
-        ty::TyTuple(args) => {
+        ty::TyTuple(args, _) => {
             for arg in args {
                 let arg = glue::get_drop_glue_type(scx, arg);
                 if scx.type_needs_drop(arg) {

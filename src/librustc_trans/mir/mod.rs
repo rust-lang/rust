@@ -384,7 +384,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // individual LLVM function arguments.
 
             let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys) => tys,
+                ty::TyTuple(ref tys, _) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
