@@ -24,7 +24,7 @@ use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
 use visitor::FmtVisitor;
-use config::{Config, StructLitStyle, MultilineStyle, ElseIfBraceStyle, ControlBraceStyle};
+use config::{Config, StructLitStyle, MultilineStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -110,41 +110,39 @@ fn format_expr(expr: &ast::Expr,
                           offset)
         }
         ast::ExprKind::While(ref cond, ref block, label) => {
-            Loop::new_while(None, cond, block, label).rewrite(context, width, offset)
+            ControlFlow::new_while(None, cond, block, label, expr.span)
+                .rewrite(context, width, offset)
         }
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-            Loop::new_while(Some(pat), cond, block, label).rewrite(context, width, offset)
+            ControlFlow::new_while(Some(pat), cond, block, label, expr.span)
+                .rewrite(context, width, offset)
         }
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            Loop::new_for(pat, cond, block, label).rewrite(context, width, offset)
+            ControlFlow::new_for(pat, cond, block, label, expr.span).rewrite(context, width, offset)
         }
         ast::ExprKind::Loop(ref block, label) => {
-            Loop::new_loop(block, label).rewrite(context, width, offset)
+            ControlFlow::new_loop(block, label, expr.span).rewrite(context, width, offset)
         }
         ast::ExprKind::Block(ref block) => block.rewrite(context, width, offset),
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
-            rewrite_if_else(context,
-                            cond,
-                            expr_type,
-                            if_block,
-                            else_block.as_ref().map(|e| &**e),
-                            expr.span,
-                            None,
-                            width,
-                            offset,
-                            true)
+            ControlFlow::new_if(cond,
+                                None,
+                                if_block,
+                                else_block.as_ref().map(|e| &**e),
+                                expr_type == ExprType::SubExpression,
+                                false,
+                                expr.span)
+                .rewrite(context, width, offset)
         }
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
-            rewrite_if_else(context,
-                            cond,
-                            expr_type,
-                            if_block,
-                            else_block.as_ref().map(|e| &**e),
-                            expr.span,
-                            Some(pat),
-                            width,
-                            offset,
-                            true)
+            ControlFlow::new_if(cond,
+                                Some(pat),
+                                if_block,
+                                else_block.as_ref().map(|e| &**e),
+                                expr_type == ExprType::SubExpression,
+                                false,
+                                expr.span)
+                .rewrite(context, width, offset)
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, width, offset, expr.span)
@@ -679,72 +677,175 @@ impl Rewrite for ast::Stmt {
     }
 }
 
-// Abstraction over for, while and loop expressions
-struct Loop<'a> {
+// Abstraction over control flow expressions
+struct ControlFlow<'a> {
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
+    else_block: Option<&'a ast::Expr>,
     label: Option<ast::SpannedIdent>,
     pat: Option<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
     connector: &'a str,
+    allow_single_line: bool,
+    // True if this is an `if` expression in an `else if` :-( hacky
+    nested_if: bool,
+    span: Span,
 }
 
-impl<'a> Loop<'a> {
-    fn new_loop(block: &'a ast::Block, label: Option<ast::SpannedIdent>) -> Loop<'a> {
-        Loop {
+impl<'a> ControlFlow<'a> {
+    fn new_if(cond: &'a ast::Expr,
+              pat: Option<&'a ast::Pat>,
+              block: &'a ast::Block,
+              else_block: Option<&'a ast::Expr>,
+              allow_single_line: bool,
+              nested_if: bool,
+              span: Span)
+              -> ControlFlow<'a> {
+        ControlFlow {
+            cond: Some(cond),
+            block: block,
+            else_block: else_block,
+            label: None,
+            pat: pat,
+            keyword: "if",
+            matcher: match pat {
+                Some(..) => "let",
+                None => "",
+            },
+            connector: " =",
+            allow_single_line: allow_single_line,
+            nested_if: nested_if,
+            span: span,
+        }
+    }
+
+    fn new_loop(block: &'a ast::Block,
+                label: Option<ast::SpannedIdent>,
+                span: Span)
+                -> ControlFlow<'a> {
+        ControlFlow {
             cond: None,
             block: block,
+            else_block: None,
             label: label,
             pat: None,
             keyword: "loop",
             matcher: "",
             connector: "",
+            allow_single_line: false,
+            nested_if: false,
+            span: span,
         }
     }
 
     fn new_while(pat: Option<&'a ast::Pat>,
                  cond: &'a ast::Expr,
                  block: &'a ast::Block,
-                 label: Option<ast::SpannedIdent>)
-                 -> Loop<'a> {
-        Loop {
+                 label: Option<ast::SpannedIdent>,
+                 span: Span)
+                 -> ControlFlow<'a> {
+        ControlFlow {
             cond: Some(cond),
             block: block,
+            else_block: None,
             label: label,
             pat: pat,
-            keyword: "while ",
+            keyword: "while",
             matcher: match pat {
-                Some(..) => "let ",
+                Some(..) => "let",
                 None => "",
             },
             connector: " =",
+            allow_single_line: false,
+            nested_if: false,
+            span: span,
         }
     }
 
     fn new_for(pat: &'a ast::Pat,
                cond: &'a ast::Expr,
                block: &'a ast::Block,
-               label: Option<ast::SpannedIdent>)
-               -> Loop<'a> {
-        Loop {
+               label: Option<ast::SpannedIdent>,
+               span: Span)
+               -> ControlFlow<'a> {
+        ControlFlow {
             cond: Some(cond),
             block: block,
+            else_block: None,
             label: label,
             pat: Some(pat),
-            keyword: "for ",
+            keyword: "for",
             matcher: "",
             connector: " in",
+            allow_single_line: false,
+            nested_if: false,
+            span: span,
         }
+    }
+
+    fn rewrite_single_line(&self,
+                           pat_expr_str: &str,
+                           context: &RewriteContext,
+                           width: usize)
+                           -> Option<String> {
+        assert!(self.allow_single_line);
+        let else_block = try_opt!(self.else_block);
+        let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
+
+        if let ast::ExprKind::Block(ref else_node) = else_block.node {
+            if !is_simple_block(self.block, context.codemap) ||
+               !is_simple_block(else_node, context.codemap) ||
+               pat_expr_str.contains('\n') {
+                return None;
+            }
+
+            let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
+            let expr = &self.block.stmts[0];
+            let if_str = try_opt!(expr.rewrite(context, new_width, Indent::empty()));
+
+            let new_width = try_opt!(new_width.checked_sub(if_str.len()));
+            let else_expr = &else_node.stmts[0];
+            let else_str = try_opt!(else_expr.rewrite(context, new_width, Indent::empty()));
+
+            if if_str.contains('\n') || else_str.contains('\n') {
+                return None;
+            }
+
+            let result = format!("{} {} {{ {} }} else {{ {} }}",
+                                 self.keyword,
+                                 pat_expr_str,
+                                 if_str,
+                                 else_str);
+
+            if result.len() <= width {
+                return Some(result);
+            }
+        }
+
+        None
     }
 }
 
-impl<'a> Rewrite for Loop<'a> {
+impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        let (budget, indent) = if self.nested_if {
+            // We are part of an if-elseif-else chain. Our constraints are tightened.
+            // 7 = "} else " .len()
+            (try_opt!(width.checked_sub(7)), offset + 7)
+        } else {
+            (width, offset)
+        };
+
         let label_string = rewrite_label(self.label);
-        // 2 = " {".len()
-        let inner_width = try_opt!(width.checked_sub(self.keyword.len() + 2 + label_string.len()));
-        let inner_offset = offset + self.keyword.len() + label_string.len();
+        // 1 = space after keyword.
+        let inner_offset = indent + self.keyword.len() + label_string.len() + 1;
+        let mut inner_width =
+            try_opt!(budget.checked_sub(self.keyword.len() + label_string.len() + 1));
+        if context.config.control_brace_style != ControlBraceStyle::AlwaysNextLine {
+            // 2 = " {".len()
+            inner_width = try_opt!(inner_width.checked_sub(2));
+        }
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
@@ -759,28 +860,131 @@ impl<'a> Rewrite for Loop<'a> {
             None => String::new(),
         };
 
-        let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
-        let block_sep = match context.config.control_brace_style {
-            ControlBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
-            ControlBraceStyle::AlwaysSameLine => " ",
-        };
+        // Try to format if-else on single line.
+        if self.allow_single_line && context.config.single_line_if_else_max_width > 0 {
+            let trial = self.rewrite_single_line(&pat_expr_string, context, width);
 
-        // This is used only for the empty block case: `{}`
+            if trial.is_some() &&
+               trial.as_ref().unwrap().len() <= context.config.single_line_if_else_max_width {
+                return trial;
+            }
+        }
+
+        // This is used only for the empty block case: `{}`.
+        // 2 = spaces after keyword and condition.
         let block_width = try_opt!(width.checked_sub(label_string.len() + self.keyword.len() +
                                                      extra_offset(&pat_expr_string, inner_offset) +
-                                                     1));
+                                                     2));
 
-        // FIXME: this drops any comment between "loop" and the block.
-        self.block
-            .rewrite(context, block_width, offset)
-            .map(|result| {
-                format!("{}{}{}{}{}",
-                        label_string,
-                        self.keyword,
-                        pat_expr_string,
-                        block_sep,
-                        result)
-            })
+        let block_str = try_opt!(self.block.rewrite(context, block_width, offset));
+
+        let cond_span = if let Some(cond) = self.cond {
+            cond.span
+        } else {
+            mk_sp(self.block.span.lo, self.block.span.lo)
+        };
+
+        // for event in event
+        let between_kwd_cond =
+            mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
+                  self.pat.map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+                      p.span.lo
+                  } else {
+                      context.codemap.span_before(self.span, self.matcher.trim())
+                  }));
+
+        let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, offset, width);
+
+        let after_cond_comment = extract_comment(mk_sp(cond_span.hi, self.block.span.lo),
+                                                 context,
+                                                 offset,
+                                                 width);
+
+        let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
+        let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
+            ""
+        } else if context.config.control_brace_style ==
+                                  ControlBraceStyle::AlwaysNextLine {
+            alt_block_sep.as_str()
+        } else {
+            " "
+        };
+
+        let mut result = format!("{}{}{}{}{}{}",
+                                 label_string,
+                                 self.keyword,
+                                 between_kwd_cond_comment.as_ref()
+                                     .map_or(if pat_expr_string.is_empty() { "" } else { " " },
+                                             |s| &**s),
+                                 pat_expr_string,
+                                 after_cond_comment.as_ref().map_or(block_sep, |s| &**s),
+                                 block_str);
+
+        if let Some(else_block) = self.else_block {
+            let mut last_in_chain = false;
+            let rewrite = match else_block.node {
+                // If the else expression is another if-else expression, prevent it
+                // from being formatted on a single line.
+                // Note how we're passing the original width and offset, as the
+                // cost of "else" should not cascade.
+                ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
+                    ControlFlow::new_if(cond,
+                                        Some(pat),
+                                        if_block,
+                                        next_else_block.as_ref().map(|e| &**e),
+                                        false,
+                                        true,
+                                        mk_sp(else_block.span.lo, self.span.hi))
+                        .rewrite(context, width, offset)
+                }
+                ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
+                    ControlFlow::new_if(cond,
+                                        None,
+                                        if_block,
+                                        next_else_block.as_ref().map(|e| &**e),
+                                        false,
+                                        true,
+                                        mk_sp(else_block.span.lo, self.span.hi))
+                        .rewrite(context, width, offset)
+                }
+                _ => {
+                    last_in_chain = true;
+                    else_block.rewrite(context, width, offset)
+                }
+            };
+
+            let between_kwd_else_block =
+                mk_sp(self.block.span.hi,
+                      context.codemap
+                          .span_before(mk_sp(self.block.span.hi, else_block.span.lo), "else"));
+            let between_kwd_else_block_comment =
+                extract_comment(between_kwd_else_block, context, offset, width);
+
+            let after_else = mk_sp(context.codemap
+                                       .span_after(mk_sp(self.block.span.hi, else_block.span.lo),
+                                                   "else"),
+                                   else_block.span.lo);
+            let after_else_comment = extract_comment(after_else, context, offset, width);
+
+            let between_sep = match context.config.control_brace_style {
+                ControlBraceStyle::AlwaysNextLine |
+                ControlBraceStyle::ClosingNextLine => &*alt_block_sep,
+                ControlBraceStyle::AlwaysSameLine => " ",
+            };
+            let after_sep = match context.config.control_brace_style {
+                ControlBraceStyle::AlwaysNextLine if last_in_chain => &*alt_block_sep,
+                _ => " ",
+            };
+            try_opt!(write!(&mut result,
+                            "{}else{}",
+                            between_kwd_else_block_comment.as_ref()
+                                .map_or(between_sep, |s| &**s),
+                            after_else_comment.as_ref().map_or(after_sep, |s| &**s))
+                .ok());
+            result.push_str(&try_opt!(rewrite));
+        }
+
+        Some(result)
     }
 }
 
@@ -806,183 +1010,6 @@ fn extract_comment(span: Span,
     } else {
         None
     }
-}
-
-// Rewrites if-else blocks. If let Some(_) = pat, the expression is
-// treated as an if-let-else expression.
-fn rewrite_if_else(context: &RewriteContext,
-                   cond: &ast::Expr,
-                   expr_type: ExprType,
-                   if_block: &ast::Block,
-                   else_block_opt: Option<&ast::Expr>,
-                   span: Span,
-                   pat: Option<&ast::Pat>,
-                   width: usize,
-                   offset: Indent,
-                   allow_single_line: bool)
-                   -> Option<String> {
-    let (budget, indent) = if !allow_single_line {
-        // We are part of an if-elseif-else chain. Our constraints are tightened.
-        // 7 = "} else" .len()
-        (try_opt!(width.checked_sub(7)), offset + 7)
-    } else {
-        (width, offset)
-    };
-
-    // 3 = "if ", 2 = " {"
-    let pat_penalty = match context.config.else_if_brace_style {
-        ElseIfBraceStyle::AlwaysNextLine => 3,
-        _ => 3 + 2,
-    };
-    let pat_expr_string = try_opt!(rewrite_pat_expr(context,
-                                                    pat,
-                                                    cond,
-                                                    "let ",
-                                                    " =",
-                                                    try_opt!(budget.checked_sub(pat_penalty)),
-                                                    indent + 3));
-
-    // Try to format if-else on single line.
-    if expr_type == ExprType::SubExpression && allow_single_line &&
-       context.config.single_line_if_else_max_width > 0 {
-        let trial = single_line_if_else(context, &pat_expr_string, if_block, else_block_opt, width);
-
-        if trial.is_some() &&
-           trial.as_ref().unwrap().len() <= context.config.single_line_if_else_max_width {
-            return trial;
-        }
-    }
-
-    let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
-
-    let between_if_cond = mk_sp(context.codemap.span_after(span, "if"),
-                                pat.map_or(cond.span.lo,
-                                           |_| context.codemap.span_before(span, "let")));
-
-    let between_if_cond_comment = extract_comment(between_if_cond, context, offset, width);
-
-    let after_cond_comment = extract_comment(mk_sp(cond.span.hi, if_block.span.lo),
-                                             context,
-                                             offset,
-                                             width);
-
-    let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
-    let after_sep = match context.config.else_if_brace_style {
-        ElseIfBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
-        _ => " ",
-    };
-    let mut result = format!("if{}{}{}{}",
-                             between_if_cond_comment.as_ref().map_or(" ", |str| &**str),
-                             pat_expr_string,
-                             after_cond_comment.as_ref().map_or(after_sep, |str| &**str),
-                             if_block_string);
-
-    if let Some(else_block) = else_block_opt {
-        let mut last_in_chain = false;
-        let rewrite = match else_block.node {
-            // If the else expression is another if-else expression, prevent it
-            // from being formatted on a single line.
-            // Note how we're passing the original width and offset, as the
-            // cost of "else" should not cascade.
-            ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
-                rewrite_if_else(context,
-                                cond,
-                                expr_type,
-                                if_block,
-                                next_else_block.as_ref().map(|e| &**e),
-                                mk_sp(else_block.span.lo, span.hi),
-                                Some(pat),
-                                width,
-                                offset,
-                                false)
-            }
-            ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
-                rewrite_if_else(context,
-                                cond,
-                                expr_type,
-                                if_block,
-                                next_else_block.as_ref().map(|e| &**e),
-                                mk_sp(else_block.span.lo, span.hi),
-                                None,
-                                width,
-                                offset,
-                                false)
-            }
-            _ => {
-                last_in_chain = true;
-                else_block.rewrite(context, width, offset)
-            }
-        };
-
-        let between_if_else_block =
-            mk_sp(if_block.span.hi,
-                  context.codemap.span_before(mk_sp(if_block.span.hi, else_block.span.lo), "else"));
-        let between_if_else_block_comment =
-            extract_comment(between_if_else_block, context, offset, width);
-
-        let after_else = mk_sp(context.codemap
-                                   .span_after(mk_sp(if_block.span.hi, else_block.span.lo),
-                                               "else"),
-                               else_block.span.lo);
-        let after_else_comment = extract_comment(after_else, context, offset, width);
-
-        let between_sep = match context.config.else_if_brace_style {
-            ElseIfBraceStyle::AlwaysNextLine |
-            ElseIfBraceStyle::ClosingNextLine => alt_block_sep.as_str(),
-            ElseIfBraceStyle::AlwaysSameLine => " ",
-        };
-        let after_sep = match context.config.else_if_brace_style {
-            ElseIfBraceStyle::AlwaysNextLine if last_in_chain => alt_block_sep.as_str(),
-            _ => " ",
-        };
-        try_opt!(write!(&mut result,
-                        "{}else{}",
-                        between_if_else_block_comment.as_ref()
-                            .map_or(between_sep, |str| &**str),
-                        after_else_comment.as_ref().map_or(after_sep, |str| &**str))
-            .ok());
-        result.push_str(&try_opt!(rewrite));
-    }
-
-    Some(result)
-}
-
-fn single_line_if_else(context: &RewriteContext,
-                       pat_expr_str: &str,
-                       if_node: &ast::Block,
-                       else_block_opt: Option<&ast::Expr>,
-                       width: usize)
-                       -> Option<String> {
-    let else_block = try_opt!(else_block_opt);
-    let fixed_cost = "if  {  } else {  }".len();
-
-    if let ast::ExprKind::Block(ref else_node) = else_block.node {
-        if !is_simple_block(if_node, context.codemap) ||
-           !is_simple_block(else_node, context.codemap) || pat_expr_str.contains('\n') {
-            return None;
-        }
-
-        let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
-        let if_expr = &if_node.stmts[0];
-        let if_str = try_opt!(if_expr.rewrite(context, new_width, Indent::empty()));
-
-        let new_width = try_opt!(new_width.checked_sub(if_str.len()));
-        let else_expr = &else_node.stmts[0];
-        let else_str = try_opt!(else_expr.rewrite(context, new_width, Indent::empty()));
-
-        // FIXME: this check shouldn't be necessary. Rewrites should either fail
-        // or wrap to a newline when the object does not fit the width.
-        let fits_line = fixed_cost + pat_expr_str.len() + if_str.len() + else_str.len() <= width;
-
-        if fits_line && !if_str.contains('\n') && !else_str.contains('\n') {
-            return Some(format!("if {} {{ {} }} else {{ {} }}",
-                                pat_expr_str,
-                                if_str,
-                                else_str));
-        }
-    }
-
-    None
 }
 
 fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
@@ -1079,7 +1106,7 @@ fn rewrite_match(context: &RewriteContext,
     let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
     let block_sep = match context.config.control_brace_style {
         ControlBraceStyle::AlwaysSameLine => " ",
-        ControlBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
+        _ => alt_block_sep.as_str(),
     };
     let mut result = format!("match {}{}{{", cond_str, block_sep);
 
@@ -1299,7 +1326,7 @@ impl Rewrite for ast::Arm {
 
         let block_sep = match context.config.control_brace_style {
             ControlBraceStyle::AlwaysNextLine => alt_block_sep + body_prefix + "\n",
-            ControlBraceStyle::AlwaysSameLine => String::from(" ") + body_prefix + "\n",
+            _ => String::from(" ") + body_prefix + "\n",
         };
         Some(format!("{}{} =>{}{}{}\n{}{}",
                      attr_str.trim_left(),
@@ -1369,10 +1396,15 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     width: usize,
                     offset: Indent)
                     -> Option<String> {
-    let pat_offset = offset + matcher.len();
     let mut result = match pat {
         Some(pat) => {
+            let matcher = if matcher.is_empty() {
+                matcher.to_owned()
+            } else {
+                format!("{} ", matcher)
+            };
             let pat_budget = try_opt!(width.checked_sub(connector.len() + matcher.len()));
+            let pat_offset = offset + matcher.len();
             let pat_string = try_opt!(pat.rewrite(context, pat_budget, pat_offset));
             format!("{}{}{}", matcher, pat_string, connector)
         }

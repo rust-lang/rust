@@ -1,5 +1,5 @@
 // rustfmt-single_line_if_else_max_width: 0
-// rustfmt-else_if_brace_style: ClosingNextLine
+// rustfmt-control_brace_style: ClosingNextLine
 
 fn main() {
     if false

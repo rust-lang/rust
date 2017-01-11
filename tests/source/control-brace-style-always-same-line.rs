@@ -7,7 +7,7 @@ fn main() {
         }
 
 
-    'loop_label: loop // loop comment  
+    'label: loop // loop comment  
     {
         ();
     }
