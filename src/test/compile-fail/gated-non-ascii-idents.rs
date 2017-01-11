@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-non_ascii_idents
+
 extern crate core as bäz; //~ ERROR non-ascii idents
 
 use föö::bar; //~ ERROR non-ascii idents

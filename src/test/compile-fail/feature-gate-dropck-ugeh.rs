@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-dropck_parametricity
+
 // Ensure that attempts to use the unsafe attribute are feature-gated.
 
 // Example adapted from RFC 1238 text (just left out the feature gate).
