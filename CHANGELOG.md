@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.107 — 2017-01-11
+* Update regex dependency
+* Fix FP when matching `&&mut` by `&ref`
+* Reintroduce `for (_, x) in &mut hash_map` -> `for x in hash_map.values_mut()`
+* New lints: [`unused_io_amount`], [`forget_ref`], [`short_circuit_statement`]
+
 ## 0.0.106 — 2017-01-04
 * Fix FP introduced by rustup in [`wrong_self_convention`]
 
