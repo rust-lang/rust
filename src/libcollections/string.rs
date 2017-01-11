@@ -1979,6 +1979,13 @@ pub struct Drain<'a> {
     iter: Chars<'a>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a> fmt::Debug for Drain<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("String::Drain { .. }")
+    }
+}
+
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a> Sync for Drain<'a> {}
 #[stable(feature = "drain", since = "1.6.0")]

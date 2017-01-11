@@ -228,6 +228,20 @@ pub struct PeekMut<'a, T: 'a + Ord> {
     sift: bool,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: Ord> fmt::Debug for PeekMut<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("PeekMut { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("PeekMut({:?})", self.heap.data[0]))
+    }
+}
+
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> Drop for PeekMut<'a, T> {
     fn drop(&mut self) {
@@ -968,6 +982,22 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Iter<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BinaryHeap::Iter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BinaryHeap::Iter")
+         .field(&self.iter.as_slice())
+         .finish()
+    }
+}
+
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
@@ -1016,6 +1046,22 @@ pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<T> fmt::Debug for IntoIter<T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BinaryHeap::IntoIter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BinaryHeap::IntoIter")
+         .field(&self.iter.as_slice())
+         .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
@@ -1053,6 +1099,20 @@ impl<T> FusedIterator for IntoIter<T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Drain<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BinaryHeap::Drain { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("BinaryHeap::Drain({:?})", self.iter))
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]

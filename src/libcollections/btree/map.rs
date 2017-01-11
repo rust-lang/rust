@@ -270,11 +270,39 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     length: usize,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for Iter<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::Iter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
 /// A mutable iterator over a BTreeMap's entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     range: RangeMut<'a, K, V>,
     length: usize,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for IterMut<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::IterMut { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for IterMut<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("BTreeMap::IterMut({:?})", self.range))
+    }
 }
 
 /// An owning iterator over a BTreeMap's entries.
@@ -285,10 +313,42 @@ pub struct IntoIter<K, V> {
     length: usize,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<K, V> fmt::Debug for IntoIter<K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::IntoIter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let range = Range {
+            front: self.front.reborrow(),
+            back: self.back.reborrow(),
+        };
+        f.debug_list().entries(range).finish()
+    }
+}
+
 /// An iterator over a BTreeMap's keys.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for Keys<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::Keys { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.inner.clone()).finish()
+    }
 }
 
 /// An iterator over a BTreeMap's values.
@@ -297,16 +357,58 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for Values<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::Values { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.inner.clone()).finish()
+    }
+}
+
 /// A mutable iterator over a BTreeMap's values.
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for ValuesMut<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::ValuesMut { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for ValuesMut<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("BTreeMap::ValuesMut({:?})", self.inner))
+    }
+}
+
 /// An iterator over a sub-range of BTreeMap's entries.
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for Range<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::Range { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
 }
 
 /// A mutable iterator over a sub-range of BTreeMap's entries.
@@ -316,6 +418,24 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 
     // Be invariant in `K` and `V`
     _marker: PhantomData<&'a mut (K, V)>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a, V: 'a> fmt::Debug for RangeMut<'a, K, V> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeMap::RangeMut { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let range = Range {
+            front: self.front.reborrow(),
+            back: self.back.reborrow(),
+        };
+        f.debug_list().entries(range).finish()
+    }
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.

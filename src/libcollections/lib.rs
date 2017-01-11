@@ -28,6 +28,7 @@
 
 #![cfg_attr(test, allow(deprecated))] // rand
 #![deny(warnings)]
+#![deny(missing_debug_implementations)]
 
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
