@@ -244,6 +244,7 @@ pub const IP_ADD_MEMBERSHIP: c_int = 12;
 pub const IP_DROP_MEMBERSHIP: c_int = 13;
 pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
 pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
+pub const MSG_PEEK: c_int = 0x2;
 
 #[repr(C)]
 pub struct ip_mreq {
