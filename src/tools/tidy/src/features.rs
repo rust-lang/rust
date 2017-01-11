@@ -163,24 +163,38 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     });
 
+    // FIXME get this whitelist empty.
+    let whitelist = vec![
+        "abi_ptx", "simd", "safe_suggestion", "macro_reexport",
+        "more_struct_aliases", "static_recursion", "reflect",
+        "quote", "cfg_target_has_atomic", "custom_attribute",
+        "default_type_parameter_fallback", "pushpop_unsafe",
+        "use_extern_macros", "staged_api", "const_indexing",
+        "unboxed_closures", "stmt_expr_attributes",
+        "cfg_target_thread_local", "unwind_attributes",
+        "inclusive_range_syntax"
+    ];
+
     // Only check the number of lang features.
     // Obligatory testing for library features is dumb.
     let gate_untested = features.iter()
                                 .filter(|&(_, f)| f.level == Status::Unstable)
                                 .filter(|&(_, f)| !f.has_gate_test)
-                                .count();
+                                .filter(|&(n, _)| !whitelist.contains(&n.as_str()))
+                                .collect::<Vec<_>>();
 
-    // FIXME get this number down to zero.
-    let gate_untested_expected = 94;
+    for &(name, _) in gate_untested.iter() {
+        println!("Expected a gate test for the feature '{}'.", name);
+        println!("Hint: create a file named 'feature-gate-{}.rs' in the compile-fail\
+                \n      test suite, with its failures due to missing usage of\
+                \n      #![feature({})].", name, name);
+        println!("Hint: If you already have such a test and don't want to rename it,\
+                \n      you can also add a // gate-test-{} line to the test file.",
+                 name);
+    }
 
-    if gate_untested != gate_untested_expected {
-        print!("Expected {} gate untested features, but found {}. ",
-                gate_untested_expected, gate_untested);
-        if gate_untested < gate_untested_expected {
-            println!("Did you forget to reduce the expected number?");
-        } else {
-            println!("Did you forget to add a gate test for your new feature?");
-        }
+    if gate_untested.len() > 0 {
+        println!("Found {} features without a gate test.", gate_untested.len());
         *bad = true;
     }
 
@@ -189,7 +203,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     }
 
     let mut lines = Vec::new();
-    for (name, feature) in features {
+    for (name, feature) in features.iter() {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
                            name,
                            "lang",
