@@ -124,6 +124,9 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
 
+        let filen_underscore = filename.replace("-","_").replace(".rs","");
+        test_filen_gate(&filen_underscore, &mut features);
+
         contents.truncate(0);
         t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
@@ -212,6 +215,19 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
         .and_then(|i| line[i..].find('"').map(|j| i + j + 1))
         .and_then(|i| line[i..].find('"').map(|j| (i, i + j)))
         .map(|(i, j)| &line[i..j])
+}
+
+fn test_filen_gate(filen_underscore: &str,
+                   features: &mut HashMap<String, Feature>) -> bool {
+    if filen_underscore.starts_with("feature_gate") {
+        for (n, f) in features.iter_mut() {
+            if filen_underscore == format!("feature_gate_{}", n) {
+                f.has_gate_test = true;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 fn collect_lang_features(path: &Path) -> HashMap<String, Feature> {
