@@ -37,9 +37,9 @@ error[E0308]: mismatched types
    = note: expected type `()`
    = note:    found type `std::result::Result<bool, std::io::Error>`
    = help: here are some functions which might fulfill your needs:
- - .unwrap()
- - .unwrap_err()
- - .unwrap_or_default()
+           - .unwrap()
+           - .unwrap_err()
+           - .unwrap_or_default()
 
 error: aborting due to previous error
 

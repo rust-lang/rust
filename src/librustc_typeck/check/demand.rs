@@ -71,15 +71,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
             if suggestions.len() > 0 {
                 err.help(&format!("here are some functions which \
-                                   might fulfill your needs:\n - {}",
-                                  self.get_best_match(&suggestions)));
+                                   might fulfill your needs:\n{}",
+                                  self.get_best_match(&suggestions).join("\n")));
             };
             err.emit();
         }
     }
 
     fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
-        format!(".{}({})",
+        format!("- .{}({})",
                 method.name,
                 if self.has_no_input_arg(method) {
                     ""
@@ -88,15 +88,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 })
     }
 
-    fn display_suggested_methods(&self, methods: &[AssociatedItem]) -> String {
+    fn display_suggested_methods(&self, methods: &[AssociatedItem]) -> Vec<String> {
         methods.iter()
                .take(5)
                .map(|method| self.format_method_suggestion(&*method))
                .collect::<Vec<String>>()
-               .join("\n - ")
     }
 
-    fn get_best_match(&self, methods: &[AssociatedItem]) -> String {
+    fn get_best_match(&self, methods: &[AssociatedItem]) -> Vec<String> {
         let no_argument_methods: Vec<_> =
             methods.iter()
                    .filter(|ref x| self.has_no_input_arg(&*x))
