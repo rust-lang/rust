@@ -151,6 +151,19 @@ pub fn test_expect_err() {
     err.expect("Got expected error");
 }
 
+
+#[test]
+pub fn test_expect_err_err() {
+    let ok: Result<&'static str, isize> = Err(100);
+    assert_eq!(ok.expect_err("Unexpected ok"), 100);
+}
+#[test]
+#[should_panic(expected="Got expected ok: \"All good\"")]
+pub fn test_expect_err_ok() {
+    let err: Result<&'static str, isize> = Ok("All good");
+    err.expect_err("Got expected ok");
+}
+
 #[test]
 pub fn test_iter() {
     let ok: Result<isize, &'static str> = Ok(100);
