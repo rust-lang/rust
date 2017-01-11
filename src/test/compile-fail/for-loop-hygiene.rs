@@ -13,6 +13,6 @@
 
 fn main() {
     for _ in 0..10 {
-        iter.next();  //~ ERROR unresolved value `iter`
+        iter.next();  //~ ERROR cannot find value `iter` in this scope
     }
 }

@@ -14,5 +14,5 @@
 extern crate macro_crate_test;
 
 fn main() {
-    macro_crate_test::foo(); //~ ERROR unresolved function `macro_crate_test::foo`
+    macro_crate_test::foo(); //~ ERROR cannot find function `foo` in module `macro_crate_test`
 }

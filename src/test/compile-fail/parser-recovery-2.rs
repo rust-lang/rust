@@ -14,11 +14,11 @@
 
 trait Foo {
     fn bar() {
-        let x = foo(); //~ ERROR unresolved function `foo`
+        let x = foo(); //~ ERROR cannot find function `foo` in this scope
     ) //~ ERROR incorrect close delimiter: `)`
 }
 
 fn main() {
     let x = y.;  //~ ERROR unexpected token
-                 //~^ ERROR unresolved value `y`
+                 //~^ ERROR cannot find value `y` in this scope
 }

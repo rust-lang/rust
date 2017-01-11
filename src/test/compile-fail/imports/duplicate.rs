@@ -32,13 +32,13 @@ mod e {
 }
 
 mod f {
-    pub use a::*; //~ NOTE `foo` could resolve to the name imported here
-    pub use b::*; //~ NOTE `foo` could also resolve to the name imported here
+    pub use a::*; //~ NOTE `foo` could refer to the name imported here
+    pub use b::*; //~ NOTE `foo` could also refer to the name imported here
 }
 
 mod g {
-    pub use a::*; //~ NOTE `foo` could resolve to the name imported here
-    pub use f::*; //~ NOTE `foo` could also resolve to the name imported here
+    pub use a::*; //~ NOTE `foo` could refer to the name imported here
+    pub use f::*; //~ NOTE `foo` could also refer to the name imported here
 }
 
 fn main() {

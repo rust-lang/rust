@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved
-
 mod circ1 {
     pub use circ2::f2;
     pub fn f1() { println!("f1"); }
@@ -25,5 +23,5 @@ mod circ2 {
 mod test {
     use circ1::*;
 
-    fn test() { f1066(); }
+    fn test() { f1066(); } //~ ERROR cannot find function `f1066` in this scope
 }

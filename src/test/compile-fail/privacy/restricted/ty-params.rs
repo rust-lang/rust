@@ -20,7 +20,7 @@ m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
 
 mod foo {
     struct S(pub(foo<T>) ()); //~ ERROR type or lifetime parameters in visibility path
-    //~^ ERROR unresolved type `T`
+    //~^ ERROR cannot find type `T` in this scope
 }
 
 fn main() {}
