@@ -647,6 +647,7 @@ opt_nosave debug-assertions 0 "build with debugging assertions"
 opt_nosave llvm-release-debuginfo 0 "build LLVM with debugger metadata"
 opt_nosave debuginfo 0 "build with debugger metadata"
 opt_nosave debuginfo-lines 0 "build with line number debugger metadata"
+opt_nosave debuginfo-only-std 0 "build only libstd with debugging information"
 opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
 
 valopt localstatedir "/var/lib" "local state directory"
@@ -733,15 +734,17 @@ case "$CFG_RELEASE_CHANNEL" in
     nightly )
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
 	CFG_ENABLE_LLVM_ASSERTIONS=1
-
-        # FIXME(#37364) shouldn't have to disable this on windows-gnu
+        # FIXME(stage0) re-enable this on the next stage0 now that #35566 is
+        # fixed
         case "$CFG_BUILD" in
           *-pc-windows-gnu)
             ;;
           *)
-	    CFG_ENABLE_DEBUGINFO_LINES=1
+            CFG_ENABLE_DEBUGINFO_LINES=1
+            CFG_ENABLE_DEBUGINFO_ONLY_STD=1
             ;;
         esac
+
 	;;
     beta | stable)
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
@@ -749,7 +752,8 @@ case "$CFG_RELEASE_CHANNEL" in
           *-pc-windows-gnu)
             ;;
           *)
-	    CFG_ENABLE_DEBUGINFO_LINES=1
+            CFG_ENABLE_DEBUGINFO_LINES=1
+            CFG_ENABLE_DEBUGINFO_ONLY_STD=1
             ;;
         esac
 	;;
@@ -785,6 +789,7 @@ if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTION
 if [ -n "$CFG_ENABLE_LLVM_RELEASE_DEBUGINFO" ]; then putvar CFG_ENABLE_LLVM_RELEASE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO_LINES" ]; then putvar CFG_ENABLE_DEBUGINFO_LINES; fi
+if [ -n "$CFG_ENABLE_DEBUGINFO_ONLY_STD" ]; then putvar CFG_ENABLE_DEBUGINFO_ONLY_STD; fi
 if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
 step_msg "looking for build programs"
