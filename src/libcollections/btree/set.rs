@@ -85,6 +85,22 @@ pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Iter<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::Iter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BTreeSet::Iter")
+         .field(&self.iter.clone())
+         .finish()
+    }
+}
+
 /// An owning iterator over a `BTreeSet`'s items.
 ///
 /// This structure is created by the `into_iter` method on [`BTreeSet`]
@@ -94,6 +110,20 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<T> fmt::Debug for IntoIter<T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::IntoIter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("BTreeSet::IntoIter({:?})", self.iter))
+    }
 }
 
 /// An iterator over a sub-range of `BTreeSet`'s items.
@@ -106,6 +136,20 @@ pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Range<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::Range { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Range<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad(&format!("BTreeSet::Range({:?})", self.iter))
+    }
+}
+
 /// A lazy iterator producing elements in the set difference (in-order).
 ///
 /// This structure is created by the [`difference`] method on [`BTreeSet`].
@@ -116,6 +160,22 @@ pub struct Range<'a, T: 'a> {
 pub struct Difference<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
     b: Peekable<Iter<'a, T>>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Difference<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::Difference { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BTreeSet::Difference")
+         .field(&self.clone())
+         .finish()
+    }
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
@@ -131,6 +191,22 @@ pub struct SymmetricDifference<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for SymmetricDifference<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::SymmetricDifference { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BTreeSet::SymmetricDifference")
+         .field(&self.clone())
+         .finish()
+    }
+}
+
 /// A lazy iterator producing elements in the set intersection (in-order).
 ///
 /// This structure is created by the [`intersection`] method on [`BTreeSet`].
@@ -143,6 +219,22 @@ pub struct Intersection<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Intersection<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::Intersection { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BTreeSet::Intersection")
+         .field(&self.clone())
+         .finish()
+    }
+}
+
 /// A lazy iterator producing elements in the set union (in-order).
 ///
 /// This structure is created by the [`union`] method on [`BTreeSet`].
@@ -153,6 +245,22 @@ pub struct Intersection<'a, T: 'a> {
 pub struct Union<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
     b: Peekable<Iter<'a, T>>,
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a> fmt::Debug for Union<'a, T> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BTreeSet::Union { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Union<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BTreeSet::Union")
+         .field(&self.clone())
+         .finish()
+    }
 }
 
 impl<T: Ord> BTreeSet<T> {

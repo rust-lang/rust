@@ -220,6 +220,22 @@ pub struct Iter<E> {
     marker: marker::PhantomData<E>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<E> fmt::Debug for Iter<E> {
+    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("EnumSet::Iter { .. }")
+    }
+}
+
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<E: fmt::Debug> fmt::Debug for Iter<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("EnumSet::Iter")
+         .field(&self.clone())
+         .finish()
+    }
+}
+
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<E> Clone for Iter<E> {
     fn clone(&self) -> Iter<E> {
