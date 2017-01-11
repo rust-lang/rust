@@ -883,11 +883,23 @@ mod tests {
 
     #[test]
     fn set_nonblocking() {
-        let addr = next_test_ip4();
+        each_ip(&mut |addr, _| {
+            let socket = t!(UdpSocket::bind(&addr));
 
-        let stream = t!(UdpSocket::bind(&addr));
+            t!(socket.set_nonblocking(true));
+            t!(socket.set_nonblocking(false));
 
-        t!(stream.set_nonblocking(true));
-        t!(stream.set_nonblocking(false));
+            t!(socket.connect(addr));
+
+            t!(socket.set_nonblocking(false));
+            t!(socket.set_nonblocking(true));
+
+            let mut buf = [0];
+            match socket.recv(&mut buf) {
+                Ok(_) => panic!("expected error"),
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
+                Err(e) => panic!("unexpected error {}", e),
+            }
+        })
     }
 }
