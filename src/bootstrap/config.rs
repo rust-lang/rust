@@ -63,6 +63,7 @@ pub struct Config {
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
+    pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
     pub rustc_default_ar: Option<String>,
@@ -179,6 +180,7 @@ struct Rust {
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
+    debuginfo_only_std: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
@@ -298,6 +300,7 @@ impl Config {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
             set(&mut config.rust_debuginfo_lines, rust.debuginfo_lines);
+            set(&mut config.rust_debuginfo_only_std, rust.debuginfo_only_std);
             set(&mut config.rust_optimize, rust.optimize);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
@@ -390,6 +393,7 @@ impl Config {
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
                 ("DEBUGINFO_LINES", self.rust_debuginfo_lines),
+                ("DEBUGINFO_ONLY_STD", self.rust_debuginfo_only_std),
                 ("JEMALLOC", self.use_jemalloc),
                 ("DEBUG_JEMALLOC", self.debug_jemalloc),
                 ("RPATH", self.rust_rpath),

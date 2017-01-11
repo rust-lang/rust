@@ -189,6 +189,13 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
          .env("CFG_LIBDIR_RELATIVE", "lib");
 
+    // If we're not building a compiler with debugging information then remove
+    // these two env vars which would be set otherwise.
+    if build.config.rust_debuginfo_only_std {
+        cargo.env_remove("RUSTC_DEBUGINFO");
+        cargo.env_remove("RUSTC_DEBUGINFO_LINES");
+    }
+
     if let Some(ref ver_date) = build.ver_date {
         cargo.env("CFG_VER_DATE", ver_date);
     }
