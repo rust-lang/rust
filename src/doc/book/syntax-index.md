@@ -45,7 +45,7 @@
 * `%` (`expr % expr`): arithmetic remainder.  Overloadable (`Rem`).
 * `%=` (`var %= expr`): arithmetic remainder & assignment. Overloadable (`RemAssign`).
 * `&` (`expr & expr`): bitwise and.  Overloadable (`BitAnd`).
-* `&` (`&expr`): borrow.  See [References and Borrowing].
+* `&` (`&expr`, `&mut expr`): borrow.  See [References and Borrowing].
 * `&` (`&type`, `&mut type`, `&'a type`, `&'a mut type`): borrowed pointer type.  See [References and Borrowing].
 * `&=` (`var &= expr`): bitwise and & assignment. Overloadable (`BitAndAssign`).
 * `&&` (`expr && expr`): logical and.
