@@ -464,33 +464,36 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         if let hir::ExprLit(ref lit) = inner.node {
             use syntax::ast::*;
             use syntax::ast::LitIntType::*;
-            const I8_OVERFLOW: u128 = i8::max_value() as u128 + 1;
-            const I16_OVERFLOW: u128 = i16::max_value() as u128 + 1;
-            const I32_OVERFLOW: u128 = i32::max_value() as u128 + 1;
-            const I64_OVERFLOW: u128 = i64::max_value() as u128 + 1;
-            const I128_OVERFLOW: u128 = i128::max_value() as u128 + 1;
+            const I8_OVERFLOW: u128 = i8::min_value() as u8 as u128;
+            const I16_OVERFLOW: u128 = i16::min_value() as u16 as u128;
+            const I32_OVERFLOW: u128 = i32::min_value() as u32 as u128;
+            const I64_OVERFLOW: u128 = i64::min_value() as u64 as u128;
+            const I128_OVERFLOW: u128 = i128::min_value() as u128;
             match (&lit.node, ety.map(|t| &t.sty)) {
-                (&LitKind::Int(I8_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I8))) |
+                (&LitKind::Int(I8_OVERFLOW, _), Some(&ty::TyInt(IntTy::I8))) |
                 (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
                     return Ok(Integral(I8(i8::min_value())))
                 },
-                (&LitKind::Int(I16_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I16))) |
+                (&LitKind::Int(I16_OVERFLOW, _), Some(&ty::TyInt(IntTy::I16))) |
                 (&LitKind::Int(I16_OVERFLOW, Signed(IntTy::I16)), _) => {
                     return Ok(Integral(I16(i16::min_value())))
                 },
-                (&LitKind::Int(I32_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I32))) |
+                (&LitKind::Int(I32_OVERFLOW, _), Some(&ty::TyInt(IntTy::I32))) |
                 (&LitKind::Int(I32_OVERFLOW, Signed(IntTy::I32)), _) => {
                     return Ok(Integral(I32(i32::min_value())))
                 },
-                (&LitKind::Int(I64_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I64))) |
+                (&LitKind::Int(I64_OVERFLOW, _), Some(&ty::TyInt(IntTy::I64))) |
                 (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
                     return Ok(Integral(I64(i64::min_value())))
                 },
-                (&LitKind::Int(I128_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I128))) |
-                (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
-                    return Ok(Integral(I128(i128::min_value())))
+                (&LitKind::Int(n, _), Some(&ty::TyInt(IntTy::I128))) |
+                (&LitKind::Int(n, Signed(IntTy::I128)), _) => {
+                    // SNAP: replace n in pattern with I128_OVERFLOW and remove this if.
+                    if n == I128_OVERFLOW {
+                        return Ok(Integral(I128(i128::min_value())))
+                    }
                 },
-                (&LitKind::Int(n, Unsuffixed), Some(&ty::TyInt(IntTy::Is))) |
+                (&LitKind::Int(n, _), Some(&ty::TyInt(IntTy::Is))) |
                 (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
                     match tcx.sess.target.int_type {
                         IntTy::I16 => if n == I16_OVERFLOW {
