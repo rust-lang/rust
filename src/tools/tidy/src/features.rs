@@ -16,7 +16,7 @@
 //! * The set of library features is disjoint from the set of language features
 //! * Library features have at most one stability level
 //! * Library features have at most one `since` value
-//! * All stability attributes have tests to ensure they are actually stable/unstable
+//! * All unstable lang features have tests to ensure they are actually unstable
 
 use std::collections::HashMap;
 use std::fmt;
@@ -27,6 +27,7 @@ use std::path::Path;
 #[derive(PartialEq)]
 enum Status {
     Stable,
+    Removed,
     Unstable,
 }
 
@@ -35,6 +36,7 @@ impl fmt::Display for Status {
         let as_str = match *self {
             Status::Stable => "stable",
             Status::Unstable => "unstable",
+            Status::Removed => "removed",
         };
         fmt::Display::fmt(as_str, f)
     }
@@ -221,7 +223,7 @@ fn collect_lang_features(path: &Path) -> HashMap<String, Feature> {
             let mut parts = line.trim().split(",");
             let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
                 Some("active") => Status::Unstable,
-                Some("removed") => Status::Unstable,
+                Some("removed") => Status::Removed,
                 Some("accepted") => Status::Stable,
                 _ => return None,
             };
