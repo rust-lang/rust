@@ -149,6 +149,11 @@
 # Whether or not line number debug information is emitted
 #debuginfo-lines = false
 
+# Whether or not to only build debuginfo for the standard library if enabled.
+# If enabled, this will not compile the compiler with debuginfo, just the
+# standard library.
+#debuginfo-only-std = false
+
 # Whether or not jemalloc is built and enabled
 #use-jemalloc = true
 
