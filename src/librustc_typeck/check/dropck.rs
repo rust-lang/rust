@@ -489,7 +489,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
             Ok(())
         }
 
-        ty::TyTuple(tys) => {
+        ty::TyTuple(tys, _) => {
             for ty in tys {
                 iterate_over_potentially_unsafe_regions_in_type(cx, context, ty, depth+1)?
             }

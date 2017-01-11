@@ -95,7 +95,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                 }
             }))
         }
-        ty::TyTuple(tys) => {
+        ty::TyTuple(tys, _) => {
             if tys.len() != 2 {
                 return None;
             }

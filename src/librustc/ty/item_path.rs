@@ -319,9 +319,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyRawPtr(mt) |
         ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),
 
-        ty::TyTuple(ref tys) => tys.iter()
-                                   .filter_map(|ty| characteristic_def_id_of_type(ty))
-                                   .next(),
+        ty::TyTuple(ref tys, _) => tys.iter()
+                                      .filter_map(|ty| characteristic_def_id_of_type(ty))
+                                      .next(),
 
         ty::TyFnDef(def_id, ..) |
         ty::TyClosure(def_id, _) => Some(def_id),

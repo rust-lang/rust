@@ -72,7 +72,7 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
                 monomorphize::field_ty(cx.tcx(), substs, f)
             }).collect::<Vec<_>>()
         },
-        ty::TyTuple(fields) => fields.to_vec(),
+        ty::TyTuple(fields, _) => fields.to_vec(),
         ty::TyClosure(def_id, substs) => {
             if variant_index > 0 { bug!("{} is a closure, which only has one variant", t);}
             substs.upvar_tys(def_id, cx.tcx()).collect()

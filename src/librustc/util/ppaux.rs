@@ -156,7 +156,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
-        if let TyTuple(ref args) = substs.type_at(1).sty {
+        if let TyTuple(ref args, _) = substs.type_at(1).sty {
             return fn_sig(f, args, false, projection_ty);
         }
     }
@@ -724,7 +724,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, "{}", tm)
             }
             TyNever => write!(f, "!"),
-            TyTuple(ref tys) => {
+            TyTuple(ref tys, _) => {
                 write!(f, "(")?;
                 let mut tys = tys.iter();
                 if let Some(&ty) = tys.next() {

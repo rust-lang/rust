@@ -695,7 +695,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let tuple = self.trans_operand(bcx, operand);
 
         let arg_types = match tuple.ty.sty {
-            ty::TyTuple(ref tys) => tys,
+            ty::TyTuple(ref tys, _) => tys,
             _ => span_bug!(self.mir.span,
                            "bad final argument to \"rust-call\" fn {:?}", tuple.ty)
         };

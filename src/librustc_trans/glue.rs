@@ -442,7 +442,7 @@ fn drop_structural_ty<'a, 'tcx>(
             cx = tvec::slice_for_each(&cx, ptr.llval, unit_ty, ptr.llextra,
                 |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty)));
         }
-        ty::TyTuple(ref args) => {
+        ty::TyTuple(ref args, _) => {
             for (i, arg) in args.iter().enumerate() {
                 let llfld_a = ptr.trans_field_ptr(&cx, i);
                 drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg));
