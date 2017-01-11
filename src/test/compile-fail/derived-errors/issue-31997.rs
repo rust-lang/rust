@@ -20,7 +20,7 @@ fn closure<F, T>(x: F) -> Result<T, ()>
 }
 
 fn foo() -> Result<(), ()> {
-    try!(closure(|| bar(0 as *mut _))); //~ ERROR unresolved function `bar`
+    try!(closure(|| bar(0 as *mut _))); //~ ERROR cannot find function `bar` in this scope
     Ok(())
 }
 

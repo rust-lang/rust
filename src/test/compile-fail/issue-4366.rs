@@ -25,7 +25,7 @@ mod a {
     }
     pub mod sub {
         use a::b::*;
-        fn sub() -> isize { foo(); 1 } //~ ERROR unresolved function `foo`
+        fn sub() -> isize { foo(); 1 } //~ ERROR cannot find function `foo` in this scope
     }
 }
 
