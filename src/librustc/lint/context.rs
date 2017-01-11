@@ -562,7 +562,7 @@ pub trait LintContext<'tcx>: Sized {
         let span = early_lint.diagnostic.span.primary_span().expect("early lint w/o primary span");
         let mut err = self.struct_span_lint(early_lint.id.lint,
                                             span,
-                                            &early_lint.diagnostic.message);
+                                            &early_lint.diagnostic.message());
         err.copy_details_not_message(&early_lint.diagnostic);
         err.emit();
     }

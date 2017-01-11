@@ -16,7 +16,6 @@ impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
     //~^ ERROR method not compatible with trait
     //~| lifetime mismatch
     //~| NOTE expected type `fn(&mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
-    //~| NOTE    found type `fn(&'a mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
     {
     //~^ NOTE the anonymous lifetime #1 defined on the body
     //~| NOTE ...does not necessarily outlive the lifetime 'a as defined on the body

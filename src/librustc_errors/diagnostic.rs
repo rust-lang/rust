@@ -14,12 +14,13 @@ use RenderSpan;
 use RenderSpan::Suggestion;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
+use snippet::Style;
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diagnostic {
     pub level: Level,
-    pub message: String,
+    pub message: Vec<(String, Style)>,
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
@@ -29,7 +30,7 @@ pub struct Diagnostic {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SubDiagnostic {
     pub level: Level,
-    pub message: String,
+    pub message: Vec<(String, Style)>,
     pub span: MultiSpan,
     pub render_span: Option<RenderSpan>,
 }
@@ -42,7 +43,7 @@ impl Diagnostic {
     pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
             level: level,
-            message: message.to_owned(),
+            message: vec![(message.to_owned(), Style::NoStyle)],
             code: code,
             span: MultiSpan::new(),
             children: vec![],
@@ -96,13 +97,24 @@ impl Diagnostic {
                                      -> &mut Self
     {
         // For now, just attach these as notes
-        self.note(&format!("expected {} `{}`{}", label, expected, expected_extra));
-        self.note(&format!("   found {} `{}`{}", label, found, found_extra));
+        self.highlighted_note(vec![
+            (format!("expected {} `", label), Style::NoStyle),
+            (format!("{}", expected), Style::Highlight),
+            (format!("`{}\n", expected_extra), Style::NoStyle),
+            (format!("   found {} `", label), Style::NoStyle),
+            (format!("{}", found), Style::Highlight),
+            (format!("`{}", found_extra), Style::NoStyle),
+        ]);
         self
     }
 
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
+        self
+    }
+
+    pub fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
+        self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
         self
     }
 
@@ -168,7 +180,11 @@ impl Diagnostic {
         self
     }
 
-    pub fn message(&self) -> &str {
+    pub fn message(&self) -> String {
+        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
+    }
+
+    pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
     }
 
@@ -193,10 +209,36 @@ impl Diagnostic {
            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
             level: level,
-            message: message.to_owned(),
+            message: vec![(message.to_owned(), Style::NoStyle)],
             span: span,
             render_span: render_span,
         };
         self.children.push(sub);
+    }
+
+    /// Convenience function for internal use, clients should use one of the
+    /// public methods above.
+    fn sub_with_highlights(&mut self,
+                           level: Level,
+                           message: Vec<(String, Style)>,
+                           span: MultiSpan,
+                           render_span: Option<RenderSpan>) {
+        let sub = SubDiagnostic {
+            level: level,
+            message: message,
+            span: span,
+            render_span: render_span,
+        };
+        self.children.push(sub);
+    }
+}
+
+impl SubDiagnostic {
+    pub fn message(&self) -> String {
+        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
+    }
+
+    pub fn styled_message(&self) -> &Vec<(String, Style)> {
+        &self.message
     }
 }

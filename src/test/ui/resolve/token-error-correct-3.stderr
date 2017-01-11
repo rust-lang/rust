@@ -35,7 +35,7 @@ error[E0308]: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found enum `std::result::Result`
    |
    = note: expected type `()`
-   = note:    found type `std::result::Result<bool, std::io::Error>`
+              found type `std::result::Result<bool, std::io::Error>`
    = help: here are some functions which might fulfill your needs:
            - .unwrap()
            - .unwrap_err()

@@ -74,15 +74,15 @@ impl Emitter for JsonEmitter {
 // The following data types are provided just for serialisation.
 
 #[derive(RustcEncodable)]
-struct Diagnostic<'a> {
+struct Diagnostic {
     /// The primary error message.
-    message: &'a str,
+    message: String,
     code: Option<DiagnosticCode>,
     /// "error: internal compiler error", "error", "warning", "note", "help".
     level: &'static str,
     spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
-    children: Vec<Diagnostic<'a>>,
+    children: Vec<Diagnostic>,
     /// The message as rustc would render it. Currently this is only
     /// `Some` for "suggestions", but eventually it will include all
     /// snippets.
@@ -148,12 +148,12 @@ struct DiagnosticCode {
     explanation: Option<&'static str>,
 }
 
-impl<'a> Diagnostic<'a> {
-    fn from_diagnostic_builder<'c>(db: &'c DiagnosticBuilder,
-                                   je: &JsonEmitter)
-                                   -> Diagnostic<'c> {
+impl Diagnostic {
+    fn from_diagnostic_builder(db: &DiagnosticBuilder,
+                               je: &JsonEmitter)
+                               -> Diagnostic {
         Diagnostic {
-            message: &db.message,
+            message: db.message(),
             code: DiagnosticCode::map_opt_string(db.code.clone(), je),
             level: db.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&db.span, je),
@@ -164,9 +164,9 @@ impl<'a> Diagnostic<'a> {
         }
     }
 
-    fn from_sub_diagnostic<'c>(db: &'c SubDiagnostic, je: &JsonEmitter) -> Diagnostic<'c> {
+    fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
-            message: &db.message,
+            message: db.message(),
             code: None,
             level: db.level.to_str(),
             spans: db.render_span.as_ref()
