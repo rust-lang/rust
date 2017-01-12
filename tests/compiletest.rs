@@ -32,6 +32,7 @@ fn miri_pass(path: &str, target: &str, host: &str) {
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
+    config.host = host.to_owned();
     config.rustc_path = PathBuf::from("target/debug/miri");
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.
