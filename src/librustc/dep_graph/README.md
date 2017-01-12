@@ -326,15 +326,15 @@ The idea is that you can annotate a test like:
 #[rustc_if_this_changed]
 fn foo() { }
 
-#[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR OK
+#[rustc_then_this_would_need(Tables)] //~ ERROR OK
 fn bar() { foo(); }
 
-#[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
+#[rustc_then_this_would_need(Tables)] //~ ERROR no path
 fn baz() { }
 ```
 
 This will check whether there is a path in the dependency graph from
-`Hir(foo)` to `TypeckItemBody(bar)`. An error is reported for each
+`Hir(foo)` to `Tables(bar)`. An error is reported for each
 `#[rustc_then_this_would_need]` annotation that indicates whether a
 path exists. `//~ ERROR` annotations can then be used to test if a
 path is found (as demonstrated above).
@@ -371,27 +371,27 @@ A node is considered to match a filter if all of those strings appear in its
 label. So, for example:
 
 ```
-RUST_DEP_GRAPH_FILTER='-> TypeckItemBody'
+RUST_DEP_GRAPH_FILTER='-> Tables'
 ```
 
-would select the predecessors of all `TypeckItemBody` nodes. Usually though you
-want the `TypeckItemBody` node for some particular fn, so you might write:
+would select the predecessors of all `Tables` nodes. Usually though you
+want the `Tables` node for some particular fn, so you might write:
 
 ```
-RUST_DEP_GRAPH_FILTER='-> TypeckItemBody & bar'
+RUST_DEP_GRAPH_FILTER='-> Tables & bar'
 ```
 
-This will select only the `TypeckItemBody` nodes for fns with `bar` in their name.
+This will select only the `Tables` nodes for fns with `bar` in their name.
 
 Perhaps you are finding that when you change `foo` you need to re-type-check `bar`,
 but you don't think you should have to. In that case, you might do:
 
 ```
-RUST_DEP_GRAPH_FILTER='Hir&foo -> TypeckItemBody & bar'
+RUST_DEP_GRAPH_FILTER='Hir&foo -> Tables & bar'
 ```
 
 This will dump out all the nodes that lead from `Hir(foo)` to
-`TypeckItemBody(bar)`, from which you can (hopefully) see the source
+`Tables(bar)`, from which you can (hopefully) see the source
 of the erroneous edge.
 
 #### Tracking down incorrect edges
@@ -417,8 +417,8 @@ dep-graph as described in the previous section and open `dep-graph.txt`
 to see something like:
 
     Hir(foo) -> Collect(bar)
-    Collect(bar) -> TypeckItemBody(bar)
-
+    Collect(bar) -> Tables(bar)
+    
 That first edge looks suspicious to you. So you set
 `RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and
 then observe the backtrace. Voila, bug fixed!
@@ -440,4 +440,6 @@ To achieve this, the HIR map will detect if the def-id originates in
 an inlined node and add a dependency to a suitable `MetaData` node
 instead. If you are reading a HIR node and are not sure if it may be
 inlined or not, you can use `tcx.map.read(node_id)` and it will detect
-whether the node is inlined or not and do the right thing.
+whether the node is inlined or not and do the right thing.  You can
+also use `tcx.map.is_inlined_def_id()` and
+`tcx.map.is_inlined_node_id()` to test.

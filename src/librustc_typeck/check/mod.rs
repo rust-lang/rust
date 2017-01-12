@@ -628,14 +628,14 @@ pub fn check_item_types(ccx: &CrateCtxt) -> CompileResult {
 pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemBody, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::Tables, &mut visit);
 
         // Process deferred obligations, now that all functions
         // bodies have been fully inferred.
         for (&item_id, obligations) in ccx.deferred_obligations.borrow().iter() {
             // Use the same DepNode as for the body of the original function/item.
             let def_id = ccx.tcx.map.local_def_id(item_id);
-            let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeckItemBody(def_id));
+            let _task = ccx.tcx.dep_graph.in_task(DepNode::Tables(def_id));
 
             let param_env = ParameterEnvironment::for_item(ccx.tcx, item_id);
             ccx.tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
