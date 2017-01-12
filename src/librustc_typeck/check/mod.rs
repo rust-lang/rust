@@ -796,7 +796,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.register_old_wf_obligation(arg_ty, arg.pat.span, traits::MiscObligation);
 
         // Check the pattern.
-        fcx.check_pat(&arg.pat, arg_ty);
+        fcx.check_pat_arg(&arg.pat, arg_ty, true);
         fcx.write_ty(arg.id, arg_ty);
     }
 
