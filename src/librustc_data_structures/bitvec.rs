@@ -17,23 +17,27 @@ pub struct BitVector {
 }
 
 impl BitVector {
+    #[inline]
     pub fn new(num_bits: usize) -> BitVector {
         let num_words = u64s(num_bits);
         BitVector { data: vec![0; num_words] }
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         for p in &mut self.data {
             *p = 0;
         }
     }
 
+    #[inline]
     pub fn contains(&self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
         (self.data[word] & mask) != 0
     }
 
     /// Returns true if the bit has changed.
+    #[inline]
     pub fn insert(&mut self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
         let data = &mut self.data[word];
@@ -43,6 +47,7 @@ impl BitVector {
         new_value != value
     }
 
+    #[inline]
     pub fn insert_all(&mut self, all: &BitVector) -> bool {
         assert!(self.data.len() == all.data.len());
         let mut changed = false;
@@ -56,6 +61,7 @@ impl BitVector {
         changed
     }
 
+    #[inline]
     pub fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
         if self.data.len() < num_words {
@@ -64,6 +70,7 @@ impl BitVector {
     }
 
     /// Iterates over indexes of set bits in a sorted order
+    #[inline]
     pub fn iter<'a>(&'a self) -> BitVectorIter<'a> {
         BitVectorIter {
             iter: self.data.iter(),
@@ -226,10 +233,12 @@ impl BitMatrix {
     }
 }
 
+#[inline]
 fn u64s(elements: usize) -> usize {
     (elements + 63) / 64
 }
 
+#[inline]
 fn word_mask(index: usize) -> (usize, u64) {
     let word = index / 64;
     let mask = 1 << (index % 64);
