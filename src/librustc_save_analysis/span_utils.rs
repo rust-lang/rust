@@ -17,9 +17,9 @@ use std::env;
 use std::path::Path;
 
 use syntax::ast;
-use syntax::parse::lexer::{self, Reader, StringReader};
+use syntax::parse::filemap_to_tts;
+use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
-use syntax::parse::parser::Parser;
 use syntax::symbol::keywords;
 use syntax::tokenstream::TokenTree;
 use syntax_pos::*;
@@ -89,9 +89,9 @@ impl<'a> SpanUtils<'a> {
     }
 
     fn span_to_tts(&self, span: Span) -> Vec<TokenTree> {
-        let srdr = self.retokenise_span(span);
-        let mut p = Parser::new(&self.sess.parse_sess, Box::new(srdr), None, false);
-        p.parse_all_token_trees().expect("Couldn't re-parse span")
+        let filename = String::from("<anon-dxr>");
+        let filemap = self.sess.codemap().new_filemap(filename, None, self.snippet(span));
+        filemap_to_tts(&self.sess.parse_sess, filemap)
     }
 
     // Re-parses a path and returns the span for the last identifier in the path

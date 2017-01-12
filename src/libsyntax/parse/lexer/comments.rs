@@ -13,10 +13,8 @@ pub use self::CommentStyle::*;
 use ast;
 use codemap::CodeMap;
 use syntax_pos::{BytePos, CharPos, Pos};
-use parse::lexer::is_block_doc_comment;
-use parse::lexer::{StringReader, TokenAndSpan};
-use parse::lexer::{is_pattern_whitespace, Reader};
-use parse::{lexer, ParseSess};
+use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
+use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
 use print::pprust;
 use str::char_at;
 
