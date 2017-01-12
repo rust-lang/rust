@@ -204,7 +204,7 @@ impl AssociatedItem {
         match self.kind {
             AssociatedKind::Const => true,
             AssociatedKind::Type => true,
-            // TODO(canndrew): Be more thorough here, check if any argument is uninhabited.
+            // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
             AssociatedKind::Method => !self.method_has_self_argument,
         }
     }
