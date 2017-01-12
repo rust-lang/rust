@@ -5,6 +5,9 @@ before_script:
 - |
   pip install 'travis-cargo<0.2' --user &&
   export PATH=$HOME/.local/bin:$PATH
+- sh ~/rust-installer/rustup.sh --add-target=i686-unknown-linux-gnu --prefix=/home/travis/rust -y --disable-sudo
+- sh ~/rust-installer/rustup.sh --add-target=i686-pc-windows-gnu --prefix=/home/travis/rust -y --disable-sudo
+- sh ~/rust-installer/rustup.sh --add-target=i686-pc-windows-msvc --prefix=/home/travis/rust -y --disable-sudo
 script:
 - |
   env RUST_SYSROOT=$HOME/rust travis-cargo build &&

@@ -21,7 +21,10 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = CompileController::basic();
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        control.after_analysis.stop = Compilation::Stop;
+        if std::env::var("MIRI_HOST_TARGET") != Ok("yes".to_owned()) {
+            // only fully compile targets on the host
+            control.after_analysis.stop = Compilation::Stop;
+        }
         control
     }
 }
@@ -136,6 +139,12 @@ fn main() {
         args.push(sysroot_flag);
         args.push(find_sysroot());
     }
+    // we run the optimization passes inside miri
+    // if we ran them twice we'd get funny failures due to borrowck ElaborateDrops only working on
+    // unoptimized MIR
+    // FIXME: add an after-mir-passes hook to rustc driver
+    args.push("-Zmir-opt-level=0".to_owned());
+    // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
 
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls, None, None);
