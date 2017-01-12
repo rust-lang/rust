@@ -52,6 +52,7 @@ pub enum EvalError<'tcx> {
     ReallocatedFrozenMemory,
     DeallocatedFrozenMemory,
     Layout(layout::LayoutError<'tcx>),
+    Unreachable,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -122,6 +123,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "rustc layout computation failed",
             EvalError::UnterminatedCString(_) =>
                 "attempted to get length of a null terminated string, but no null found before end of allocation",
+            EvalError::Unreachable =>
+                "entered unreachable code",
         }
     }
 

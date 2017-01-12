@@ -155,7 +155,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
-            Unreachable => unimplemented!(),
+            Unreachable => return Err(EvalError::Unreachable),
         }
 
         Ok(())
