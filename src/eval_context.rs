@@ -517,10 +517,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let operand = &operands[0];
                         let value = self.eval_operand(operand)?;
                         let value_ty = self.operand_ty(operand);
-
-                        // FIXME(solson)
-                        let dest = self.force_allocation(dest)?;
-
                         self.write_value(value, dest, value_ty)?;
                     }
 
@@ -692,7 +688,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok((offset, ty))
     }
 
-    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
+    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match ty.sty {
             ty::TyAdt(adt_def, substs) => {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
@@ -1015,7 +1011,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub(super) fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimValKind> {
+    pub fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimValKind> {
         use syntax::ast::FloatTy;
 
         let kind = match ty.sty {
