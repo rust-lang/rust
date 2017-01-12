@@ -538,6 +538,7 @@ pub struct FieldPat {
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
+    pub attrs: ThinVec<Attribute>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -815,6 +816,7 @@ pub struct Field {
     pub expr: P<Expr>,
     pub span: Span,
     pub is_shorthand: bool,
+    pub attrs: ThinVec<Attribute>,
 }
 
 pub type SpannedIdent = Spanned<Ident>;

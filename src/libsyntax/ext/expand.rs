@@ -679,6 +679,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
+        let pat = self.cfg.configure_pat(pat);
         match pat.node {
             PatKind::Mac(_) => {}
             _ => return noop_fold_pat(pat, self),

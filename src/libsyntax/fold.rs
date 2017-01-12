@@ -830,6 +830,7 @@ pub fn noop_fold_field<T: Folder>(f: Field, folder: &mut T) -> Field {
         expr: folder.fold_expr(f.expr),
         span: folder.new_span(f.span),
         is_shorthand: f.is_shorthand,
+        attrs: fold_thin_attrs(f.attrs, folder),
     }
 }
 
@@ -1089,6 +1090,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                                   ident: folder.fold_ident(f.node.ident),
                                   pat: folder.fold_pat(f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
+                                  attrs: fold_attrs(f.node.attrs.into(), folder).into()
                               }}
                 });
                 PatKind::Struct(pth, fs, etc)
