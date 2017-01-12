@@ -221,11 +221,21 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_expr_kind(&mut self, expr_kind: ast::ExprKind) -> ast::ExprKind {
-        if let ast::ExprKind::Match(m, arms) = expr_kind {
-            let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
-            ast::ExprKind::Match(m, arms)
-        } else {
-            expr_kind
+        match expr_kind {
+            ast::ExprKind::Match(m, arms) => {
+                let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
+                ast::ExprKind::Match(m, arms)
+            }
+            ast::ExprKind::Struct(path, fields, base) => {
+                let fields = fields.into_iter()
+                    .filter_map(|field| {
+                        self.visit_struct_field_attrs(field.attrs());
+                        self.configure(field)
+                    })
+                    .collect();
+                ast::ExprKind::Struct(path, fields, base)
+            }
+            _ => expr_kind,
         }
     }
 
@@ -249,6 +259,51 @@ impl<'a> StripUnconfigured<'a> {
 
     pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
         self.configure(stmt)
+    }
+
+    pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
+        if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
+            if !field.attrs.is_empty() {
+                let mut err = feature_err(&self.sess,
+                                          "struct_field_attributes",
+                                          field.span,
+                                          GateIssue::Language,
+                                          "attributes on struct literal fields are unstable");
+                err.emit();
+            }
+        }
+
+        self.configure(field)
+    }
+
+    pub fn configure_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
+        pattern.map(|mut pattern| {
+            if let ast::PatKind::Struct(path, fields, etc) = pattern.node {
+                let fields = fields.into_iter()
+                    .filter_map(|field| {
+                        self.visit_struct_field_attrs(field.attrs());
+                        self.configure(field)
+                    })
+                    .collect();
+                pattern.node = ast::PatKind::Struct(path, fields, etc);
+            }
+            pattern
+        })
+    }
+
+    fn visit_struct_field_attrs(&mut self, attrs: &[ast::Attribute]) {
+        // flag the offending attributes
+        for attr in attrs.iter() {
+            if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
+                let mut err = feature_err(
+                    &self.sess,
+                    "struct_field_attributes",
+                    attr.span,
+                    GateIssue::Language,
+                    "attributes on struct pattern or literal fields are unstable");
+                err.emit();
+            }
+        }
     }
 }
 
@@ -298,6 +353,10 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         // Don't configure interpolated AST (c.f. #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
         mac
+    }
+
+    fn fold_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
+        fold::noop_fold_pat(self.configure_pat(pattern), self)
     }
 }
 
