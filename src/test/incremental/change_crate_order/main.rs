@@ -28,7 +28,7 @@ extern crate a;
 use a::A;
 use b::B;
 
-//? #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
+//? #[rustc_clean(label="Tables", cfg="rpass2")]
 pub fn main() {
     A + B;
 }
