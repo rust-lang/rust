@@ -10,6 +10,7 @@ use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
@@ -1467,4 +1468,8 @@ impl IntegerExt for layout::Integer {
 pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::FieldDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     let substituted = &f.ty(tcx, substs);
     tcx.normalize_associated_type(&substituted)
+}
+
+pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.uninhabited_from(&mut FxHashSet::default(), tcx).is_empty()
 }

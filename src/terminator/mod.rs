@@ -9,7 +9,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::{ast, attr};
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty};
+use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty, is_inhabited};
 use lvalue::{Lvalue, LvalueExtra};
 use memory::Pointer;
 use value::PrimVal;
@@ -201,8 +201,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
-                    Some(dest) => dest,
-                    None => return Err(EvalError::Unreachable),
+                    Some(dest) if is_inhabited(self.tcx, ty) => dest,
+                    _ => return Err(EvalError::Unreachable),
                 };
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
