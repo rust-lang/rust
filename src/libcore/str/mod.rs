@@ -1232,10 +1232,15 @@ fn contains_nonascii(x: usize) -> bool {
 /// invalid sequence.
 #[inline(always)]
 fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    let mut offset = 0;
+    let mut index = 0;
     let len = v.len();
-    while offset < len {
-        let old_offset = offset;
+
+    let usize_bytes = mem::size_of::<usize>();
+    let ascii_block_size = 2 * usize_bytes;
+    let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
+
+    while index < len {
+        let old_offset = index;
         macro_rules! err { () => {{
             return Err(Utf8Error {
                 valid_up_to: old_offset
@@ -1243,15 +1248,15 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
         }}}
 
         macro_rules! next { () => {{
-            offset += 1;
+            index += 1;
             // we needed data, but there was none: error!
-            if offset >= len {
+            if index >= len {
                 err!()
             }
-            v[offset]
+            v[index]
         }}}
 
-        let first = v[offset];
+        let first = v[index];
         if first >= 128 {
             let w = UTF8_CHAR_WIDTH[first as usize];
             let second = next!();
@@ -1294,38 +1299,32 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 }
                 _ => err!()
             }
-            offset += 1;
+            index += 1;
         } else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            let usize_bytes = mem::size_of::<usize>();
-            let bytes_per_iteration = 2 * usize_bytes;
             let ptr = v.as_ptr();
-            let align = (ptr as usize + offset) & (usize_bytes - 1);
+            let align = (ptr as usize + index) & (usize_bytes - 1);
             if align == 0 {
-                if len >= bytes_per_iteration {
-                    while offset <= len - bytes_per_iteration {
-                        unsafe {
-                            let u = *(ptr.offset(offset as isize) as *const usize);
-                            let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
-
-                            // break if there is a nonascii byte
-                            let zu = contains_nonascii(u);
-                            let zv = contains_nonascii(v);
-                            if zu || zv {
-                                break;
-                            }
+                while index < blocks_end {
+                    unsafe {
+                        let block = ptr.offset(index as isize) as *const usize;
+                        // break if there is a nonascii byte
+                        let zu = contains_nonascii(*block);
+                        let zv = contains_nonascii(*block.offset(1));
+                        if zu | zv {
+                            break;
                         }
-                        offset += bytes_per_iteration;
                     }
+                    index += ascii_block_size;
                 }
                 // step from the point where the wordwise loop stopped
-                while offset < len && v[offset] < 128 {
-                    offset += 1;
+                while index < len && v[index] < 128 {
+                    index += 1;
                 }
             } else {
-                offset += 1;
+                index += 1;
             }
         }
     }
