@@ -235,7 +235,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // FIXME(eddyb) Detect ADT constructors more efficiently.
                 if let Some(adt_def) = fn_ty.sig.skip_binder().output().ty_adt_def() {
                     if let Some(v) = adt_def.variants.iter().find(|v| resolved_def_id == v.did) {
-                        // technically they can diverge, but only if one of their arguments diverges, so it doesn't matter
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
                         let dest_layout = self.type_layout(dest_ty)?;
