@@ -88,7 +88,7 @@ pub fn run(input: &str,
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
 
     let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
-    let driver::ExpansionResult { hir_forest, .. } = {
+    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
@@ -174,8 +174,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-           maybe_sysroot: Option<PathBuf>,
-           original: &str, line_number: u32, filename: &str) {
+           maybe_sysroot: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
@@ -490,10 +489,7 @@ impl Collector {
                                 compile_fail,
                                 error_codes,
                                 &opts,
-                                maybe_sysroot,
-                                &original,
-                                line_number,
-                                &filename)
+                                maybe_sysroot)
                     })
                 } {
                     Ok(()) => (),

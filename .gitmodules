@@ -7,7 +7,7 @@
 	url = https://github.com/rust-lang/compiler-rt.git
 [submodule "src/rt/hoedown"]
 	path = src/rt/hoedown
-	url = https://github.com/rust-lang/hoedown.git
+	url = https://github.com/GuillaumeGomez/hoedown.git
 [submodule "src/jemalloc"]
 	path = src/jemalloc
 	url = https://github.com/rust-lang/jemalloc.git
