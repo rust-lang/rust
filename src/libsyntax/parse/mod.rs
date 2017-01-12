@@ -219,13 +219,10 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
-    -> Vec<tokenstream::TokenTree> {
-    // it appears to me that the cfg doesn't matter here... indeed,
-    // parsing tt's probably shouldn't require a parser at all.
-    let srdr = lexer::StringReader::new(sess, filemap);
-    let mut p1 = Parser::new(sess, Box::new(srdr), None, false);
-    panictry!(p1.parse_all_token_trees())
+pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>) -> Vec<tokenstream::TokenTree> {
+    let mut srdr = lexer::StringReader::new(sess, filemap);
+    srdr.real_token();
+    panictry!(srdr.parse_all_token_trees())
 }
 
 /// Given tts and the ParseSess, produce a parser

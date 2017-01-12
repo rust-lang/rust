@@ -26,6 +26,7 @@ use std::rc::Rc;
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub mod comments;
+mod tokentrees;
 mod unicode_chars;
 
 pub trait Reader {
@@ -105,9 +106,44 @@ pub struct StringReader<'a> {
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
     source_text: Rc<String>,
+    /// Stack of open delimiters and their spans. Used for error message.
+    token: token::Token,
+    span: Span,
+    open_braces: Vec<(token::DelimToken, Span)>,
 }
 
-impl<'a> Reader for StringReader<'a> {
+impl<'a> StringReader<'a> {
+    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+        let res = self.try_next_token();
+        self.unwrap_or_abort(res)
+    }
+    fn unwrap_or_abort(&mut self, res: Result<TokenAndSpan, ()>) -> TokenAndSpan {
+        match res {
+            Ok(tok) => tok,
+            Err(_) => {
+                self.emit_fatal_errors();
+                panic!(FatalError);
+            }
+        }
+    }
+    fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
+        let mut t = self.try_next_token()?;
+        loop {
+            match t.tok {
+                token::Whitespace | token::Comment | token::Shebang(_) => {
+                    t = self.try_next_token()?;
+                }
+                _ => break,
+            }
+        }
+        self.token = t.tok.clone();
+        self.span = t.sp;
+        Ok(t)
+    }
+    pub fn real_token(&mut self) -> TokenAndSpan {
+        let res = self.try_real_token();
+        self.unwrap_or_abort(res)
+    }
     fn is_eof(&self) -> bool {
         if self.ch.is_none() {
             return true;
@@ -130,9 +166,6 @@ impl<'a> Reader for StringReader<'a> {
     }
     fn fatal(&self, m: &str) -> FatalError {
         self.fatal_span(self.peek_span, m)
-    }
-    fn err(&self, m: &str) {
-        self.err_span(self.peek_span, m)
     }
     fn emit_fatal_errors(&mut self) {
         for err in &mut self.fatal_errs {
@@ -209,6 +242,9 @@ impl<'a> StringReader<'a> {
             peek_span: syntax_pos::DUMMY_SP,
             source_text: source_text,
             fatal_errs: Vec::new(),
+            token: token::Eof,
+            span: syntax_pos::DUMMY_SP,
+            open_braces: Vec::new(),
         }
     }
 
