@@ -229,6 +229,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         (def_id, substs, Vec::new())
                     };
 
+                // FIXME(eddyb) Detect ADT constructors more efficiently.
+                if let Some(adt_def) = fn_ty.sig.skip_binder().output().ty_adt_def() {
+                    if let Some(v) = adt_def.variants.iter().find(|v| resolved_def_id == v.did) {
+                        // technically they can diverge, but only if one of their arguments diverges, so it doesn't matter
+                        let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
+                        let dest_ty = self.tcx.item_type(adt_def.did);
+                        let dest_layout = self.type_layout(dest_ty)?;
+                        match *dest_layout {
+                            Layout::Univariant { ref variant, .. } => {
+                                assert_eq!(v.disr_val.to_u128_unchecked(), 0);
+                                let offsets = variant.offsets.iter().map(|s| s.bytes());
+
+                                // FIXME: don't allocate for single or dual field structs
+                                let dest = self.force_allocation(lvalue)?.to_ptr();
+
+                                for (offset, (value, value_ty)) in offsets.into_iter().zip(args) {
+                                    let field_dest = dest.offset(offset);
+                                    self.write_value_to_ptr(value, field_dest, value_ty)?;
+                                }
+                            },
+                            // FIXME: enum variant constructors
+                            _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
+                        }
+                        self.goto_block(target);
+                        return Ok(());
+                    }
+                }
+
                 let mir = self.load_mir(resolved_def_id)?;
                 let (return_lvalue, return_to_block) = match destination {
                     Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
