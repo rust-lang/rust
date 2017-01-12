@@ -200,7 +200,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Abi::RustIntrinsic => {
                 let ty = fn_ty.sig.0.output();
                 let layout = self.type_layout(ty)?;
-                let (ret, target) = destination.unwrap();
+                let (ret, target) = match destination {
+                    Some(dest) => dest,
+                    None => return Err(EvalError::Unreachable),
+                };
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
             }
