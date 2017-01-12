@@ -407,8 +407,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "memrchr" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
-                let val = self.value_to_primval(args[1], usize)?.to_u64() as u8;
-                let num = self.value_to_primval(args[2], usize)?.to_u64();
+                let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
+                let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
                     let new_ptr = ptr.offset(num - idx as u64 - 1);
                     self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
