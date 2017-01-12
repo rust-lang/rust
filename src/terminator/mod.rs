@@ -9,7 +9,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::{ast, attr};
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty};
+use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty, is_inhabited};
 use lvalue::{Lvalue, LvalueExtra};
 use memory::Pointer;
 use value::PrimVal;
@@ -155,7 +155,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
-            Unreachable => unimplemented!(),
+            Unreachable => return Err(EvalError::Unreachable),
         }
 
         Ok(())
@@ -200,7 +200,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Abi::RustIntrinsic => {
                 let ty = fn_ty.sig.0.output();
                 let layout = self.type_layout(ty)?;
-                let (ret, target) = destination.unwrap();
+                let (ret, target) = match destination {
+                    Some(dest) if is_inhabited(self.tcx, ty) => dest,
+                    _ => return Err(EvalError::Unreachable),
+                };
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
             }
@@ -228,6 +231,33 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     } else {
                         (def_id, substs, Vec::new())
                     };
+
+                // FIXME(eddyb) Detect ADT constructors more efficiently.
+                if let Some(adt_def) = fn_ty.sig.skip_binder().output().ty_adt_def() {
+                    if let Some(v) = adt_def.variants.iter().find(|v| resolved_def_id == v.did) {
+                        let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
+                        let dest_ty = self.tcx.item_type(adt_def.did);
+                        let dest_layout = self.type_layout(dest_ty)?;
+                        match *dest_layout {
+                            Layout::Univariant { ref variant, .. } => {
+                                assert_eq!(v.disr_val.to_u128_unchecked(), 0);
+                                let offsets = variant.offsets.iter().map(|s| s.bytes());
+
+                                // FIXME: don't allocate for single or dual field structs
+                                let dest = self.force_allocation(lvalue)?.to_ptr();
+
+                                for (offset, (value, value_ty)) in offsets.into_iter().zip(args) {
+                                    let field_dest = dest.offset(offset);
+                                    self.write_value_to_ptr(value, field_dest, value_ty)?;
+                                }
+                            },
+                            // FIXME: enum variant constructors
+                            _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
+                        }
+                        self.goto_block(target);
+                        return Ok(());
+                    }
+                }
 
                 let mir = self.load_mir(resolved_def_id)?;
                 let (return_lvalue, return_to_block) = match destination {
