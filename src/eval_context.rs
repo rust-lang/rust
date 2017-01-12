@@ -169,7 +169,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u64(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -177,7 +177,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::ConstFloat;
 
         let primval = match *const_val {
-            Integral(const_int) => PrimVal::Bytes(const_int.to_u64_unchecked()),
+            Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
 
             Float(ConstFloat::F32(f)) => PrimVal::from_f32(f),
             Float(ConstFloat::F64(f)) => PrimVal::from_f64(f),
@@ -429,7 +429,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
+                            let discr_val = adt_def.variants[variant].disr_val.to_u128_unchecked();
                             let discr_size = discr.size().bytes();
                             let discr_offset = variants[variant].offsets[0].bytes();
 
@@ -497,7 +497,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let n = adt_def.variants[variant].disr_val.to_u64_unchecked();
+                            let n = adt_def.variants[variant].disr_val.to_u128_unchecked();
                             self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
@@ -556,7 +556,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
-                self.write_primval(dest, PrimVal::from_u64(len), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u128(len as u128), dest_ty)?;
             }
 
             Ref(_, _, ref lvalue) => {
@@ -566,7 +566,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
-                    LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_u64(len)),
+                    LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_u128(len as u128)),
                     LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
@@ -1028,6 +1028,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     I16 => 2,
                     I32 => 4,
                     I64 => 8,
+                    I128 => 16,
                     Is => self.memory.pointer_size(),
                 };
                 PrimValKind::from_int_size(size)
@@ -1040,6 +1041,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     U16 => 2,
                     U32 => 4,
                     U64 => 8,
+                    U128 => 16,
                     Us => self.memory.pointer_size(),
                 };
                 PrimValKind::from_uint_size(size)
@@ -1092,7 +1094,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyBool if val.to_bytes()? > 1 => Err(EvalError::InvalidBool),
 
             ty::TyChar if ::std::char::from_u32(val.to_bytes()? as u32).is_none()
-                => Err(EvalError::InvalidChar(val.to_bytes()? as u32 as u64)),
+                => Err(EvalError::InvalidChar(val.to_bytes()? as u32 as u128)),
 
             _ => Ok(()),
         }
@@ -1115,7 +1117,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let c = self.memory.read_uint(ptr, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
-                    None => return Err(EvalError::InvalidChar(c as u64)),
+                    None => return Err(EvalError::InvalidChar(c as u128)),
                 }
             }
 
@@ -1126,9 +1128,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     I16 => 2,
                     I32 => 4,
                     I64 => 8,
+                    I128 => 16,
                     Is => self.memory.pointer_size(),
                 };
-                PrimVal::from_i64(self.memory.read_int(ptr, size)?)
+                PrimVal::from_i128(self.memory.read_int(ptr, size)?)
             }
 
             ty::TyUint(uint_ty) => {
@@ -1138,9 +1141,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     U16 => 2,
                     U32 => 4,
                     U64 => 8,
+                    U128 => 16,
                     Us => self.memory.pointer_size(),
                 };
-                PrimVal::from_u64(self.memory.read_uint(ptr, size)?)
+                PrimVal::from_u128(self.memory.read_uint(ptr, size)?)
             }
 
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
@@ -1159,7 +1163,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
-                        ty::TyStr => PrimVal::from_u64(self.memory.read_usize(extra)?),
+                        ty::TyStr => PrimVal::from_u128(self.memory.read_usize(extra)? as u128),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
                     return Ok(Some(Value::ByValPair(PrimVal::Ptr(p), extra)));
@@ -1171,9 +1175,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
                     if signed {
-                        PrimVal::from_i64(self.memory.read_int(ptr, size)?)
+                        PrimVal::from_i128(self.memory.read_int(ptr, size)?)
                     } else {
-                        PrimVal::from_u64(self.memory.read_uint(ptr, size)?)
+                        PrimVal::from_u128(self.memory.read_uint(ptr, size)?)
                     }
                 } else {
                     return Ok(None);
@@ -1220,7 +1224,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
-                        let len = PrimVal::from_u64(length as u64);
+                        let len = PrimVal::from_u128(length as u128);
                         let ptr = PrimVal::Ptr(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
@@ -1454,6 +1458,7 @@ impl IntegerExt for layout::Integer {
             I16 => Size::from_bits(16),
             I32 => Size::from_bits(32),
             I64 => Size::from_bits(64),
+            I128 => Size::from_bits(128),
         }
     }
 }

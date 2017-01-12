@@ -15,7 +15,8 @@ test = false
 test = false
 
 [dependencies]
-byteorder = "0.4.2"
+#byteorder = "0.4.2"
+byteorder = { git = "https://github.com/quininer/byteorder.git", branch = "i128", features = ["i128"]}
 env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"

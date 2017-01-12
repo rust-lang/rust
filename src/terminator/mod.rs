@@ -71,7 +71,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let adt_ty = self.lvalue_ty(discr);
                 let discr_val = self.read_discriminant_value(adt_ptr, adt_ty)?;
                 let matching = adt_def.variants.iter()
-                    .position(|v| discr_val == v.disr_val.to_u64_unchecked());
+                    .position(|v| discr_val == v.disr_val.to_u128_unchecked());
 
                 match matching {
                     Some(i) => self.goto_block(targets[i]),
@@ -262,7 +262,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
+    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         trace!("read_discriminant_value {:?}", adt_layout);
@@ -275,13 +275,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             CEnum { discr, signed: true, .. } => {
                 let discr_size = discr.size().bytes();
-                self.memory.read_int(adt_ptr, discr_size)? as u64
+                self.memory.read_int(adt_ptr, discr_size)? as u128
             }
 
             RawNullablePointer { nndiscr, value } => {
                 let discr_size = value.size(&self.tcx.data_layout).bytes();
                 trace!("rawnullablepointer with size {}", discr_size);
-                self.read_nonnull_discriminant_value(adt_ptr, nndiscr, discr_size)?
+                self.read_nonnull_discriminant_value(adt_ptr, nndiscr as u128, discr_size)?
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
                 let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
+                self.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size)?
             }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
@@ -301,7 +301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64, discr_size: u64) -> EvalResult<'tcx, u64> {
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
@@ -366,13 +366,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
-                        Less => -1,
+                        Less => -1i8,
                         Equal => 0,
                         Greater => 1,
                     }
                 };
 
-                self.write_primval(dest, PrimVal::Bytes(result as u64), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(result as u128), dest_ty)?;
             }
 
             "memchr" => {
@@ -641,8 +641,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         adt_def.struct_variant().fields.iter().zip(&variant.offsets)
                     },
                     Layout::General { ref variants, .. } => {
-                        let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u64_unchecked()) {
+                        let discr_val = self.read_discriminant_value(adt_ptr, ty)? as u128;
+                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u128_unchecked()) {
                             // start at offset 1, to skip over the discriminant
                             Some(i) => adt_def.variants[i].fields.iter().zip(&variants[i].offsets[1..]),
                             None => return Err(EvalError::InvalidDiscriminant),
@@ -650,8 +650,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
                     Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
-                        if discr == nndiscr {
-                            assert_eq!(discr as usize as u64, discr);
+                        if discr == nndiscr as u128 {
+                            assert_eq!(discr as usize as u128, discr);
                             adt_def.variants[discr as usize].fields.iter().zip(&nonnull.offsets)
                         } else {
                             // FIXME: the zst variant might contain zst types that impl Drop
@@ -660,8 +660,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
                     Layout::RawNullablePointer { nndiscr, .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
-                        if discr == nndiscr {
-                            assert_eq!(discr as usize as u64, discr);
+                        if discr == nndiscr as u128 {
+                            assert_eq!(discr as usize as u128, discr);
                             assert_eq!(adt_def.variants[discr as usize].fields.len(), 1);
                             let field_ty = &adt_def.variants[discr as usize].fields[0];
                             let field_ty = monomorphize_field_ty(self.tcx, field_ty, substs);

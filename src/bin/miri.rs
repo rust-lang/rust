@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, i128_type)]
 
 extern crate getopts;
 extern crate miri;
@@ -51,7 +51,7 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
     let mut limits = miri::ResourceLimits::default();
     let krate = state.hir_crate.as_ref().unwrap();
     let err_msg = "miri attributes need to be in the form `miri(key = value)`";
-    let extract_int = |lit: &syntax::ast::Lit| -> u64 {
+    let extract_int = |lit: &syntax::ast::Lit| -> u128 {
         match lit.node {
             syntax::ast::LitKind::Int(i, _) => i,
             _ => state.session.span_fatal(lit.span, "expected an integer literal"),
@@ -64,8 +64,8 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
                 if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
                     if let MetaItemKind::NameValue(ref value) = inner.node {
                         match &inner.name().as_str()[..] {
-                            "memory_size" => limits.memory_size = extract_int(value),
-                            "step_limit" => limits.step_limit = extract_int(value),
+                            "memory_size" => limits.memory_size = extract_int(value) as u64,
+                            "step_limit" => limits.step_limit = extract_int(value) as u64,
                             "stack_limit" => limits.stack_limit = extract_int(value) as usize,
                             _ => state.session.span_err(item.span, "unknown miri attribute"),
                         }

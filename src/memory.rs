@@ -1,7 +1,7 @@
-use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian, self};
+use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr, mem};
+use std::{fmt, iter, ptr, mem, io};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, BareFnTy, ClosureTy, ClosureSubsts, TyCtxt};
@@ -567,6 +567,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let endianess = self.endianess();
         let bytes = self.get_bytes_unchecked(ptr, size)?;
         let offset = read_target_uint(endianess, bytes).unwrap();
+        assert_eq!(offset as u64 as u128, offset);
+        let offset = offset as u64;
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer::new(alloc_id, offset)),
@@ -596,10 +598,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 // We need to mask here, or the byteorder crate can die when given a u64 larger
                 // than fits in an integer of the requested size.
                 let mask = match size {
-                    1 => 0xff,
-                    2 => 0xffff,
-                    4 => 0xffffffff,
-                    8 => 0xffffffffffffffff,
+                    1 => !0u8 as u128,
+                    2 => !0u16 as u128,
+                    4 => !0u32 as u128,
+                    8 => !0u64 as u128,
+                    16 => !0,
                     _ => bug!("unexpected PrimVal::Bytes size"),
                 };
                 self.write_uint(dest, bytes & mask, size)
@@ -630,16 +633,17 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             2 => Ok(self.layout.i16_align.abi()),
             4 => Ok(self.layout.i32_align.abi()),
             8 => Ok(self.layout.i64_align.abi()),
+            16 => Ok(self.layout.i128_align.abi()),
             _ => bug!("bad integer size: {}", size),
         }
     }
 
-    pub fn read_int(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, i64> {
+    pub fn read_int(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, i128> {
         let align = self.int_align(size)?;
         self.get_bytes(ptr, size, align).map(|b| read_target_int(self.endianess(), b).unwrap())
     }
 
-    pub fn write_int(&mut self, ptr: Pointer, n: i64, size: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_int(&mut self, ptr: Pointer, n: i128, size: u64) -> EvalResult<'tcx, ()> {
         let align = self.int_align(size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size, align)?;
@@ -647,12 +651,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn read_uint(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, u64> {
+    pub fn read_uint(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, u128> {
         let align = self.int_align(size)?;
         self.get_bytes(ptr, size, align).map(|b| read_target_uint(self.endianess(), b).unwrap())
     }
 
-    pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_uint(&mut self, ptr: Pointer, n: u128, size: u64) -> EvalResult<'tcx, ()> {
         let align = self.int_align(size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size, align)?;
@@ -661,21 +665,21 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_isize(&self, ptr: Pointer) -> EvalResult<'tcx, i64> {
-        self.read_int(ptr, self.pointer_size())
+        self.read_int(ptr, self.pointer_size()).map(|i| i as i64)
     }
 
     pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<'tcx, ()> {
         let size = self.pointer_size();
-        self.write_int(ptr, n, size)
+        self.write_int(ptr, n as i128, size)
     }
 
     pub fn read_usize(&self, ptr: Pointer) -> EvalResult<'tcx, u64> {
-        self.read_uint(ptr, self.pointer_size())
+        self.read_uint(ptr, self.pointer_size()).map(|i| i as u64)
     }
 
     pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
         let size = self.pointer_size();
-        self.write_uint(ptr, n, size)
+        self.write_uint(ptr, n as u128, size)
     }
 
     pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx, ()> {
@@ -801,31 +805,31 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 // Methods to access integers in the target endianess
 ////////////////////////////////////////////////////////////////////////////////
 
-fn write_target_uint(endianess: layout::Endian, mut target: &mut [u8], data: u64) -> Result<(), byteorder::Error> {
+fn write_target_uint(endianess: layout::Endian, mut target: &mut [u8], data: u128) -> Result<(), io::Error> {
     let len = target.len();
     match endianess {
-        layout::Endian::Little => target.write_uint::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_uint::<BigEndian>(data, len),
+        layout::Endian::Little => target.write_uint128::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_uint128::<BigEndian>(data, len),
     }
 }
-fn write_target_int(endianess: layout::Endian, mut target: &mut [u8], data: i64) -> Result<(), byteorder::Error> {
+fn write_target_int(endianess: layout::Endian, mut target: &mut [u8], data: i128) -> Result<(), io::Error> {
     let len = target.len();
     match endianess {
-        layout::Endian::Little => target.write_int::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_int::<BigEndian>(data, len),
+        layout::Endian::Little => target.write_int128::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_int128::<BigEndian>(data, len),
     }
 }
 
-fn read_target_uint(endianess: layout::Endian, mut source: &[u8]) -> Result<u64, byteorder::Error> {
+fn read_target_uint(endianess: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     match endianess {
-        layout::Endian::Little => source.read_uint::<LittleEndian>(source.len()),
-        layout::Endian::Big => source.read_uint::<BigEndian>(source.len()),
+        layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
+        layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
-fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i64, byteorder::Error> {
+fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i128, io::Error> {
     match endianess {
-        layout::Endian::Little => source.read_int::<LittleEndian>(source.len()),
-        layout::Endian::Big => source.read_int::<BigEndian>(source.len()),
+        layout::Endian::Little => source.read_int128::<LittleEndian>(source.len()),
+        layout::Endian::Big => source.read_int128::<BigEndian>(source.len()),
     }
 }
 
@@ -833,26 +837,26 @@ fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i64, 
 // Methods to access floats in the target endianess
 ////////////////////////////////////////////////////////////////////////////////
 
-fn write_target_f32(endianess: layout::Endian, mut target: &mut [u8], data: f32) -> Result<(), byteorder::Error> {
+fn write_target_f32(endianess: layout::Endian, mut target: &mut [u8], data: f32) -> Result<(), io::Error> {
     match endianess {
         layout::Endian::Little => target.write_f32::<LittleEndian>(data),
         layout::Endian::Big => target.write_f32::<BigEndian>(data),
     }
 }
-fn write_target_f64(endianess: layout::Endian, mut target: &mut [u8], data: f64) -> Result<(), byteorder::Error> {
+fn write_target_f64(endianess: layout::Endian, mut target: &mut [u8], data: f64) -> Result<(), io::Error> {
     match endianess {
         layout::Endian::Little => target.write_f64::<LittleEndian>(data),
         layout::Endian::Big => target.write_f64::<BigEndian>(data),
     }
 }
 
-fn read_target_f32(endianess: layout::Endian, mut source: &[u8]) -> Result<f32, byteorder::Error> {
+fn read_target_f32(endianess: layout::Endian, mut source: &[u8]) -> Result<f32, io::Error> {
     match endianess {
         layout::Endian::Little => source.read_f32::<LittleEndian>(),
         layout::Endian::Big => source.read_f32::<BigEndian>(),
     }
 }
-fn read_target_f64(endianess: layout::Endian, mut source: &[u8]) -> Result<f64, byteorder::Error> {
+fn read_target_f64(endianess: layout::Endian, mut source: &[u8]) -> Result<f64, io::Error> {
     match endianess {
         layout::Endian::Little => source.read_f64::<LittleEndian>(),
         layout::Endian::Big => source.read_f64::<BigEndian>(),
