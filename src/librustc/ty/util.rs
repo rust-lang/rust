@@ -466,8 +466,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                     self.def_id(d);
                 }
             }
-            TyTuple(tys, _) => {
+            TyTuple(tys, defaulted) => {
                 self.hash(tys.len());
+                self.hash(defaulted);
             }
             TyParam(p) => {
                 self.hash(p.idx);
