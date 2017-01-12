@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that the `Tables` nodes for impl items are independent from
+// one another.
+
+// compile-flags: -Z query-dep-graph
+
 #![feature(rustc_attrs)]
 
 struct Foo {
