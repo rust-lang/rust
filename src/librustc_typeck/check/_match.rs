@@ -27,9 +27,17 @@ use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
+        self.check_pat_arg(pat, expected, false);
+    }
+
+    /// The `is_arg` argument indicates whether this pattern is the
+    /// *outermost* pattern in an argument (e.g., in `fn foo(&x:
+    /// &u32)`, it is true for the `&x` pattern but not `x`). This is
+    /// used to tailor error reporting.
+    pub fn check_pat_arg(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>, is_arg: bool) {
         let tcx = self.tcx;
 
-        debug!("check_pat(pat={:?},expected={:?})", pat, expected);
+        debug!("check_pat(pat={:?},expected={:?},is_arg={})", pat, expected, is_arg);
 
         let ty = match pat.node {
             PatKind::Wild => {
@@ -202,6 +210,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // can, to avoid creating needless variables.  This
                     // also helps with the bad interactions of the given
                     // hack detailed in (*) below.
+                    debug!("check_pat_arg: expected={:?}", expected);
                     let (rptr_ty, inner_ty) = match expected.sty {
                         ty::TyRef(_, mt) if mt.mutbl == mutbl => {
                             (expected, mt.ty)
@@ -212,7 +221,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
                             let rptr_ty = tcx.mk_ref(region, mt);
-                            self.demand_eqtype(pat.span, expected, rptr_ty);
+                            debug!("check_pat_arg: demanding {:?} = {:?}", expected, rptr_ty);
+                            let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
+
+                            // Look for a case like `fn foo(&foo: u32)` and suggest
+                            // `fn foo(foo: &u32)`
+                            if let Some(mut err) = err {
+                                if is_arg {
+                                    if let PatKind::Binding(..) = inner.node {
+                                        if let Ok(snippet) = self.sess().codemap()
+                                                                        .span_to_snippet(pat.span)
+                                        {
+                                            err.help(&format!("did you mean `{}: &{}`?",
+                                                              &snippet[1..],
+                                                              expected));
+                                        }
+                                    }
+                                }
+                                err.emit();
+                            }
                             (rptr_ty, inner_ty)
                         }
                     };
