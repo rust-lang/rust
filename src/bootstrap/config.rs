@@ -87,10 +87,10 @@ pub struct Config {
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
-    pub prefix: Option<String>,
-    pub docdir: Option<String>,
-    pub libdir: Option<String>,
-    pub mandir: Option<String>,
+    pub prefix: Option<PathBuf>,
+    pub docdir: Option<PathBuf>,
+    pub libdir: Option<PathBuf>,
+    pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
@@ -145,6 +145,9 @@ struct Build {
 #[derive(RustcDecodable, Default, Clone)]
 struct Install {
     prefix: Option<String>,
+    mandir: Option<String>,
+    docdir: Option<String>,
+    libdir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -274,7 +277,10 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
 
         if let Some(ref install) = toml.install {
-            config.prefix = install.prefix.clone();
+            config.prefix = install.prefix.clone().map(PathBuf::from);
+            config.mandir = install.mandir.clone().map(PathBuf::from);
+            config.docdir = install.docdir.clone().map(PathBuf::from);
+            config.libdir = install.libdir.clone().map(PathBuf::from);
         }
 
         if let Some(ref llvm) = toml.llvm {
@@ -463,16 +469,16 @@ impl Config {
                     self.channel = value.to_string();
                 }
                 "CFG_PREFIX" => {
-                    self.prefix = Some(value.to_string());
+                    self.prefix = Some(PathBuf::from(value));
                 }
                 "CFG_DOCDIR" => {
-                    self.docdir = Some(value.to_string());
+                    self.docdir = Some(PathBuf::from(value));
                 }
                 "CFG_LIBDIR" => {
-                    self.libdir = Some(value.to_string());
+                    self.libdir = Some(PathBuf::from(value));
                 }
                 "CFG_MANDIR" => {
-                    self.mandir = Some(value.to_string());
+                    self.mandir = Some(PathBuf::from(value));
                 }
                 "CFG_LLVM_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())

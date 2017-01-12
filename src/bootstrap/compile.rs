@@ -186,7 +186,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     cargo.env("CFG_RELEASE", &build.release)
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", &build.version)
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()))
          .env("CFG_LIBDIR_RELATIVE", "lib");
 
     // If we're not building a compiler with debugging information then remove
