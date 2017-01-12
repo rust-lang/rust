@@ -1153,6 +1153,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // test doesn't work on Windows, see #31657
     fn close_read_wakes_up() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
