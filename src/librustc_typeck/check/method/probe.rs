@@ -1261,10 +1261,17 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
     fn has_applicable_self(&self, item: &ty::AssociatedItem) -> bool {
-        // "fast track" -- check for usage of sugar
+        // "Fast track" -- check for usage of sugar when in method call
+        // mode.
+        //
+        // In Path mode (i.e., resolving a value like `T::next`), consider any
+        // associated value (i.e., methods, constants) but not types.
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
-            Mode::Path => true
+            Mode::Path => match item.kind {
+                ty::AssociatedKind::Type => false,
+                ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
+            },
         }
         // FIXME -- check for types that deref to `Self`,
         // like `Rc<Self>` and so on.
