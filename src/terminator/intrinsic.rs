@@ -45,8 +45,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "arith_offset" => {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64()?;
-                let new_ptr = ptr.signed_offset(offset);
+                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()?;
+                let new_ptr = ptr.signed_offset(offset as i64);
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 
@@ -260,7 +260,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.type_align(elem_ty)?;
-                let align_val = PrimVal::from_u64(elem_align as u64);
+                let align_val = PrimVal::from_u128(elem_align as u128);
                 self.write_primval(dest, align_val, dest_ty)?;
             }
 
@@ -268,7 +268,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let layout = self.type_layout(ty)?;
                 let align = layout.align(&self.tcx.data_layout).pref();
-                let align_val = PrimVal::from_u64(align);
+                let align_val = PrimVal::from_u128(align as u128);
                 self.write_primval(dest, align_val, dest_ty)?;
             }
 
@@ -289,7 +289,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let pointee_ty = substs.type_at(0);
                 // FIXME: assuming here that type size is < i64::max_value()
                 let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64()?;
+                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
 
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.signed_offset(offset * pointee_size);
@@ -310,13 +310,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "powif32" => {
                 let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
-                let i = self.value_to_primval(arg_vals[1], i32)?.to_i64()?;
+                let i = self.value_to_primval(arg_vals[1], i32)?.to_i128()?;
                 self.write_primval(dest, PrimVal::from_f32(f.powi(i as i32)), dest_ty)?;
             }
 
             "powif64" => {
                 let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
-                let i = self.value_to_primval(arg_vals[1], i32)?.to_i64()?;
+                let i = self.value_to_primval(arg_vals[1], i32)?.to_i128()?;
                 self.write_primval(dest, PrimVal::from_f64(f.powi(i as i32)), dest_ty)?;
             }
 
@@ -336,21 +336,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // `size_of_val` intrinsic, then change this back to
                 // .expect("size_of intrinsic called on unsized value")
                 // see https://github.com/rust-lang/rust/pull/37708
-                let size = self.type_size(ty)?.unwrap_or(!0) as u64;
-                self.write_primval(dest, PrimVal::from_u64(size), dest_ty)?;
+                let size = self.type_size(ty)?.unwrap_or(!0) as u128;
+                self.write_primval(dest, PrimVal::from_u128(size), dest_ty)?;
             }
 
             "size_of_val" => {
                 let ty = substs.type_at(0);
                 let (size, _) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                self.write_primval(dest, PrimVal::from_u64(size), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
 
             "min_align_of_val" |
             "align_of_val" => {
                 let ty = substs.type_at(0);
                 let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                self.write_primval(dest, PrimVal::from_u64(align), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u128(align as u128), dest_ty)?;
             }
 
             "type_name" => {
@@ -362,7 +362,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
             }
 
             "transmute" => {
@@ -514,14 +514,16 @@ fn numeric_intrinsic<'tcx>(
 
             use value::PrimValKind::*;
             let result_bytes = match $kind {
-                I8 => (bytes as i8).$method() as u64,
-                U8 => (bytes as u8).$method() as u64,
-                I16 => (bytes as i16).$method() as u64,
-                U16 => (bytes as u16).$method() as u64,
-                I32 => (bytes as i32).$method() as u64,
-                U32 => (bytes as u32).$method() as u64,
-                I64 => (bytes as i64).$method() as u64,
-                U64 => bytes.$method() as u64,
+                I8 => (bytes as i8).$method() as u128,
+                U8 => (bytes as u8).$method() as u128,
+                I16 => (bytes as i16).$method() as u128,
+                U16 => (bytes as u16).$method() as u128,
+                I32 => (bytes as i32).$method() as u128,
+                U32 => (bytes as u32).$method() as u128,
+                I64 => (bytes as i64).$method() as u128,
+                U64 => (bytes as u64).$method() as u128,
+                I128 => (bytes as i128).$method() as u128,
+                U128 => bytes.$method() as u128,
                 _ => bug!("invalid `{}` argument: {:?}", $name, val),
             };
 

@@ -4,6 +4,7 @@
     collections_bound,
     pub_restricted,
     rustc_private,
+    i128_type,
 )]
 
 // From rustc.

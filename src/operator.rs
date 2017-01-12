@@ -66,7 +66,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 macro_rules! overflow {
     ($op:ident, $l:expr, $r:expr) => ({
         let (val, overflowed) = $l.$op($r);
-        let primval = PrimVal::Bytes(val as u64);
+        let primval = PrimVal::Bytes(val as u128);
         Ok((primval, overflowed))
     })
 }
@@ -144,7 +144,7 @@ pub fn binary_op<'tcx>(
     fn normalize(val: PrimVal) -> PrimVal {
         if let PrimVal::Ptr(ptr) = val {
             if let Ok(bytes) = ptr.to_int() {
-                return PrimVal::Bytes(bytes);
+                return PrimVal::Bytes(bytes as u128);
             }
         }
         val
@@ -158,7 +158,7 @@ pub fn binary_op<'tcx>(
             if left_ptr.alloc_id == right_ptr.alloc_id {
                 // If the pointers are into the same allocation, fall through to the more general
                 // match later, which will do comparisons on the pointer offsets.
-                (left_ptr.offset, right_ptr.offset)
+                (left_ptr.offset as u128, right_ptr.offset as u128)
             } else {
                 return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
             }
@@ -166,7 +166,7 @@ pub fn binary_op<'tcx>(
 
         (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) |
         (PrimVal::Bytes(bytes), PrimVal::Ptr(ptr)) => {
-            return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes))?, false));
+            return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes as u64))?, false));
         }
 
         (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
@@ -182,6 +182,7 @@ pub fn binary_op<'tcx>(
             I16 | U16 => 16,
             I32 | U32 => 32,
             I64 | U64 => 64,
+            I128 | U128 => 128,
             _ => bug!("bad MIR: bitshift lhs is not integral"),
         };
 
@@ -278,22 +279,25 @@ pub fn unary_op<'tcx>(
     let bytes = val.to_bytes()?;
 
     let result_bytes = match (un_op, val_kind) {
-        (Not, Bool) => !bytes_to_bool(bytes) as u64,
+        (Not, Bool) => !bytes_to_bool(bytes) as u128,
 
-        (Not, U8)  => !(bytes as u8) as u64,
-        (Not, U16) => !(bytes as u16) as u64,
-        (Not, U32) => !(bytes as u32) as u64,
-        (Not, U64) => !bytes,
+        (Not, U8)  => !(bytes as u8) as u128,
+        (Not, U16) => !(bytes as u16) as u128,
+        (Not, U32) => !(bytes as u32) as u128,
+        (Not, U64) => !(bytes as u64) as u128,
+        (Not, U128) => !bytes,
 
-        (Not, I8)  => !(bytes as i8) as u64,
-        (Not, I16) => !(bytes as i16) as u64,
-        (Not, I32) => !(bytes as i32) as u64,
-        (Not, I64) => !(bytes as i64) as u64,
+        (Not, I8)  => !(bytes as i8) as u128,
+        (Not, I16) => !(bytes as i16) as u128,
+        (Not, I32) => !(bytes as i32) as u128,
+        (Not, I64) => !(bytes as i64) as u128,
+        (Not, I128) => !(bytes as i128) as u128,
 
-        (Neg, I8)  => -(bytes as i8) as u64,
-        (Neg, I16) => -(bytes as i16) as u64,
-        (Neg, I32) => -(bytes as i32) as u64,
-        (Neg, I64) => -(bytes as i64) as u64,
+        (Neg, I8)  => -(bytes as i8) as u128,
+        (Neg, I16) => -(bytes as i16) as u128,
+        (Neg, I32) => -(bytes as i32) as u128,
+        (Neg, I64) => -(bytes as i64) as u128,
+        (Neg, I128) => -(bytes as i128) as u128,
 
         (Neg, F32) => f32_to_bytes(-bytes_to_f32(bytes)),
         (Neg, F64) => f64_to_bytes(-bytes_to_f64(bytes)),

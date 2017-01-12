@@ -101,7 +101,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let dest = self.force_allocation(dest)?;
                         let discr_dest = (dest.to_ptr()).offset(discr_offset);
 
-                        self.memory.write_uint(discr_dest, variant_index as u64, discr_size)?;
+                        self.memory.write_uint(discr_dest, variant_index as u128, discr_size)?;
                     }
 
                     Layout::RawNullablePointer { nndiscr, .. } => {

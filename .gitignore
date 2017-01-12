@@ -3,3 +3,4 @@
 tex/*/out
 *.dot
 *.mir
+*.rs.bk

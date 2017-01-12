@@ -2,7 +2,7 @@
 name = "miri"
 version = "0.1.0"
 dependencies = [
- "byteorder 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.0.0 (git+https://github.com/quininer/byteorder.git?branch=i128)",
  "compiletest_rs 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -19,8 +19,8 @@ dependencies = [
 
 [[package]]
 name = "byteorder"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "1.0.0"
+source = "git+https://github.com/quininer/byteorder.git?branch=i128#ef51df297aa833d0b6639aae328a95597fc07d75"
 
 [[package]]
 name = "compiletest_rs"
@@ -136,7 +136,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum aho-corasick 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ca972c2ea5f742bfce5687b9aef75506a764f61d37f8f649047846a9686ddb66"
-"checksum byteorder 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "96c8b41881888cc08af32d47ac4edd52bc7fa27fef774be47a92443756451304"
+"checksum byteorder 1.0.0 (git+https://github.com/quininer/byteorder.git?branch=i128)" = "<none>"
 "checksum compiletest_rs 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f3f344389765ad7bec166f64c1b39ed6dd2b54d81c4c5dd8af789169351d380c"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"

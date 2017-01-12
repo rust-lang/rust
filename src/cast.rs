@@ -20,34 +20,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             F32 => self.cast_float(val.to_f32()? as f64, dest_ty),
             F64 => self.cast_float(val.to_f64()?, dest_ty),
 
-            I8 | I16 | I32 | I64 => self.cast_signed_int(val.to_i64()?, dest_ty),
+            I8 | I16 | I32 | I64 | I128 => self.cast_signed_int(val.to_i128()?, dest_ty),
 
-            Bool | Char | U8 | U16 | U32 | U64 => self.cast_int(val.to_u64()?, dest_ty, false),
+            Bool | Char | U8 | U16 | U32 | U64 | U128 => self.cast_int(val.to_u128()?, dest_ty, false),
 
             FnPtr | Ptr => self.cast_ptr(val.to_ptr()?, dest_ty),
         }
     }
 
-    fn cast_signed_int(&self, val: i64, ty: ty::Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        self.cast_int(val as u64, ty, val < 0)
+    fn cast_signed_int(&self, val: i128, ty: ty::Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        self.cast_int(val as u128, ty, val < 0)
     }
 
-    fn cast_int(&self, v: u64, ty: ty::Ty<'tcx>, negative: bool) -> EvalResult<'tcx, PrimVal> {
+    fn cast_int(&self, v: u128, ty: ty::Ty<'tcx>, negative: bool) -> EvalResult<'tcx, PrimVal> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             TyBool if v == 0 => Ok(PrimVal::from_bool(false)),
             TyBool if v == 1 => Ok(PrimVal::from_bool(true)),
             TyBool => Err(EvalError::InvalidBool),
 
-            TyInt(IntTy::I8)  => Ok(PrimVal::Bytes(v as i64 as i8  as u64)),
-            TyInt(IntTy::I16) => Ok(PrimVal::Bytes(v as i64 as i16 as u64)),
-            TyInt(IntTy::I32) => Ok(PrimVal::Bytes(v as i64 as i32 as u64)),
-            TyInt(IntTy::I64) => Ok(PrimVal::Bytes(v as i64 as i64 as u64)),
+            TyInt(IntTy::I8)  => Ok(PrimVal::Bytes(v as i128 as i8  as u128)),
+            TyInt(IntTy::I16) => Ok(PrimVal::Bytes(v as i128 as i16 as u128)),
+            TyInt(IntTy::I32) => Ok(PrimVal::Bytes(v as i128 as i32 as u128)),
+            TyInt(IntTy::I64) => Ok(PrimVal::Bytes(v as i128 as i64 as u128)),
+            TyInt(IntTy::I128) => Ok(PrimVal::Bytes(v as u128)),
 
-            TyUint(UintTy::U8)  => Ok(PrimVal::Bytes(v as u8  as u64)),
-            TyUint(UintTy::U16) => Ok(PrimVal::Bytes(v as u16 as u64)),
-            TyUint(UintTy::U32) => Ok(PrimVal::Bytes(v as u32 as u64)),
-            TyUint(UintTy::U64) => Ok(PrimVal::Bytes(v)),
+            TyUint(UintTy::U8)  => Ok(PrimVal::Bytes(v as u8  as u128)),
+            TyUint(UintTy::U16) => Ok(PrimVal::Bytes(v as u16 as u128)),
+            TyUint(UintTy::U32) => Ok(PrimVal::Bytes(v as u32 as u128)),
+            TyUint(UintTy::U64) => Ok(PrimVal::Bytes(v as u64 as u128)),
+            TyUint(UintTy::U128) => Ok(PrimVal::Bytes(v)),
 
             TyInt(IntTy::Is) => {
                 let int_ty = self.tcx.sess.target.int_type;
@@ -61,15 +63,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.cast_int(v, ty, negative)
             }
 
-            TyFloat(FloatTy::F64) if negative => Ok(PrimVal::from_f64(v as i64 as f64)),
+            TyFloat(FloatTy::F64) if negative => Ok(PrimVal::from_f64(v as i128 as f64)),
             TyFloat(FloatTy::F64)             => Ok(PrimVal::from_f64(v as f64)),
-            TyFloat(FloatTy::F32) if negative => Ok(PrimVal::from_f32(v as i64 as f32)),
+            TyFloat(FloatTy::F32) if negative => Ok(PrimVal::from_f32(v as i128 as f32)),
             TyFloat(FloatTy::F32)             => Ok(PrimVal::from_f32(v as f32)),
 
-            TyChar if v as u8 as u64 == v => Ok(PrimVal::Bytes(v)),
+            TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
-            TyRawPtr(_) => Ok(PrimVal::Ptr(Pointer::from_int(v))),
+            TyRawPtr(_) => Ok(PrimVal::Ptr(Pointer::from_int(v as u64))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
@@ -80,9 +82,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match ty.sty {
             // Casting negative floats to unsigned integers yields zero.
             TyUint(_) if val < 0.0 => self.cast_int(0, ty, false),
-            TyInt(_)  if val < 0.0 => self.cast_int(val as i64 as u64, ty, true),
+            TyInt(_)  if val < 0.0 => self.cast_int(val as i128 as u128, ty, true),
 
-            TyInt(_) | ty::TyUint(_) => self.cast_int(val as u64, ty, false),
+            TyInt(_) | ty::TyUint(_) => self.cast_int(val as u128, ty, false),
 
             TyFloat(FloatTy::F64) => Ok(PrimVal::from_f64(val)),
             TyFloat(FloatTy::F32) => Ok(PrimVal::from_f32(val as f32)),
