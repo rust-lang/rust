@@ -44,6 +44,12 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut builder = DefIdDirectoryBuilder::new(tcx);
     let query = tcx.dep_graph.query();
+
+    if tcx.sess.opts.debugging_opts.incremental_info {
+        println!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
+        println!("incremental: {} edges in dep-graph", query.graph.len_edges());
+    }
+
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
@@ -178,6 +184,11 @@ pub fn encode_dep_graph(preds: &Predecessors,
             })
             .collect(),
     };
+
+    if tcx.sess.opts.debugging_opts.incremental_info {
+        println!("incremental: {} edges in serialized dep-graph", graph.edges.len());
+        println!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
+    }
 
     debug!("graph = {:#?}", graph);
 
