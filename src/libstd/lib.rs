@@ -221,7 +221,7 @@
 
 // Always use alloc_system during stage0 since jemalloc might be unavailable or
 // disabled (Issue #30592)
-#![cfg_attr(stage0, feature(alloc_system))]
+#![cfg_attr(any(stage0, not(feature = "jemalloc")), feature(alloc_system))]
 
 // Turn warnings into errors, but only after stage0, where it can be useful for
 // code to emit warnings during language transitions
@@ -333,7 +333,7 @@ extern crate libc;
 // We always need an unwinder currently for backtraces
 extern crate unwind;
 
-#[cfg(stage0)]
+#[cfg(any(stage0, not(feature = "jemalloc")))]
 extern crate alloc_system;
 
 // compiler-rt intrinsics
