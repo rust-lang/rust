@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // ignore-lldb
+// ignore-gdb-version: 7.11.90 - 7.12
 
 // compile-flags:-g
 
