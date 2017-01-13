@@ -69,8 +69,12 @@ print("\n")
 
 for parser in args.parser:
     filename = os.path.basename(parser) + '.bad'
-    print("writing {} files that did not yield the correct result with {} to {}".format(len(bad[parser]), parser, filename))
+    bad_tests = len(bad[parser])
+    print("writing {} files that did not yield the correct result with {} to {}\n".format(bad_tests, parser, filename))
     with open(filename, "w") as f:
         for p in bad[parser]:
+            print("bad test: {}".format(p))
             f.write(p)
             f.write("\n")
+    if bad_tests > 0:
+      exit(1)

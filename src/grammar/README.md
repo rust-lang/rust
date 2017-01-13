@@ -2,9 +2,22 @@
 
 Uses [antlr4](http://www.antlr.org/) and a custom Rust tool to compare
 ASTs/token streams generated. You can use the `make check-lexer` target to
-run all of the available tests.
+run all of the available tests or `make check-grammar` and focus on the grammar checks.
 
 The build of the rust part is included with `make tidy` and can be run with `make check-build-lexer-verifier`.
+
+## Running one grammar test
+
+First you need to setup your environment:
+```
+./configure
+make check-grammar
+```
+
+Then run the check you would like:
+```
+grammar/parser-lalr < src/test/compile-fail/E0063.rs
+```
 
 # Manual build
 
