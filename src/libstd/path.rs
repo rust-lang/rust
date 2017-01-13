@@ -108,6 +108,7 @@
 
 use ascii::*;
 use borrow::{Borrow, Cow};
+use char;
 use cmp;
 use error::Error;
 use fmt;
@@ -2018,7 +2019,15 @@ impl<'a> fmt::Debug for Display<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.path.to_string_lossy(), f)
+        let replacement = '\u{fffd}';
+        let bytes = self.path.as_u8_slice().iter().cloned();
+
+        for r in char::decode_utf8(bytes) {
+            let c = r.unwrap_or(replacement);
+            fmt::Write::write_char(f, c)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -3594,5 +3603,22 @@ mod tests {
         let expected = "Iter([])";
         let actual = format!("{:?}", iter);
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_unicode_conversion() {
+        let replacement = '\u{fffd}';
+
+        let b = [0xff];
+        let path = unsafe { Path::from_u8_slice(&b) };
+        assert_eq!(format!("{}", replacement), format!("{}", path.display()));
+
+        let b = [0xff, b'A'];
+        let path = unsafe { Path::from_u8_slice(&b) };
+        assert_eq!(format!("{}{}", replacement, 'A'), format!("{}", path.display()));
+
+        let b = [b'A', 0xff];
+        let path = unsafe { Path::from_u8_slice(&b) };
+        assert_eq!(format!("{}{}", 'A', replacement), format!("{}", path.display()));
     }
 }
