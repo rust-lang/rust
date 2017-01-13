@@ -97,7 +97,7 @@ use rustc::ty::adjustment;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
-use rscope::{ElisionFailureInfo, RegionScope};
+use rscope::RegionScope;
 use session::{Session, CompileResult};
 use CrateCtxt;
 use TypeAndSubsts;
@@ -1410,6 +1410,15 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         Ok(r)
     }
 
+    fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
+                -> &'tcx ty::Region {
+        let v = match def {
+            Some(def) => infer::EarlyBoundRegion(span, def.name),
+            None => infer::MiscVariable(span)
+        };
+        self.next_region_var(v)
+    }
+
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.next_ty_var(TypeVariableOrigin::TypeInference(span))
     }
@@ -1464,15 +1473,6 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
         // be something the user can write explicitly, since it might
         // be some expression).
         *self.next_region_var(infer::MiscVariable(span))
-    }
-
-    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        let v = match def {
-            Some(def) => infer::EarlyBoundRegion(span, def.name),
-            None => infer::MiscVariable(span)
-        };
-        Ok(*self.next_region_var(v))
     }
 }
 
@@ -4408,7 +4408,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => &[]
             };
 
-            AstConv::opt_ast_region_to_region(self, self, span, lifetimes.get(i), Some(def))
+            if let Some(lifetime) = lifetimes.get(i) {
+                AstConv::ast_region_to_region(self, lifetime, Some(def))
+            } else {
+                self.re_infer(span, Some(def))
+            }
         }, |def, substs| {
             let mut i = def.index as usize;
 

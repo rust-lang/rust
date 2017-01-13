@@ -18,9 +18,6 @@ enum Bar {
 }
 
 struct Baz<'a, 'b, 'c> {
-    foo: Foo,
-    //~^ ERROR E0107
-    //~| expected 1 lifetime parameter
     buzz: Buzz<'a>,
     //~^ ERROR E0107
     //~| expected 2 lifetime parameters

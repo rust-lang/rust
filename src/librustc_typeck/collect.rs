@@ -437,6 +437,11 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         None
     }
 
+    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
+                -> &'tcx ty::Region {
+        span_bug!(span, "unelided lifetime in signature");
+    }
+
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         struct_span_err!(
             self.tcx().sess,
@@ -639,8 +644,6 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             container: AssociatedItemContainer,
                             id: ast::NodeId,
                             sig: &hir::MethodSig,
-                            untransformed_rcvr_ty: Ty<'tcx>,
-                            body: Option<hir::BodyId>,
                             rcvr_ty_predicates: &ty::GenericPredicates<'tcx>,) {
     let def_id = ccx.tcx.hir.local_def_id(id);
     let ty_generics = generics_of_def_id(ccx, def_id);
@@ -652,14 +655,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ImplContainer(_) => Some(AnonTypeScope::new(def_id)),
         TraitContainer(_) => None
     };
-    let assoc_item = ccx.tcx.associated_item(def_id);
-    let self_value_ty = if assoc_item.method_has_self_argument {
-        Some(untransformed_rcvr_ty)
-    } else {
-        None
-    };
-    let fty = AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                                    sig, self_value_ty, body, anon_scope);
+    let fty = AstConv::ty_of_fn(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
+                                sig.unsafety, sig.abi, &sig.decl, anon_scope);
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.hir.span(id), def_id);
@@ -876,14 +873,9 @@ fn convert_trait_item(ccx: &CrateCtxt, trait_item: &hir::TraitItem) {
             convert_associated_type(ccx, TraitContainer(trait_def_id), trait_item.id, typ);
         }
 
-        hir::TraitItemKind::Method(ref sig, ref method) => {
-            let body = match *method {
-                hir::TraitMethod::Required(_) => None,
-                hir::TraitMethod::Provided(body) => Some(body)
-            };
+        hir::TraitItemKind::Method(ref sig, _) => {
             convert_method(ccx, TraitContainer(trait_def_id),
-                           trait_item.id, sig, tcx.mk_self_type(),
-                           body, &trait_predicates);
+                           trait_item.id, sig, &trait_predicates);
         }
     }
 }
@@ -896,7 +888,6 @@ fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
     let impl_def_id = tcx.hir.get_parent_did(impl_item.id);
     let impl_predicates = tcx.item_predicates(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
-    let impl_self_ty = tcx.item_type(impl_def_id);
 
     match impl_item.node {
         hir::ImplItemKind::Const(ref ty, _) => {
@@ -923,10 +914,8 @@ fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
             convert_associated_type(ccx, ImplContainer(impl_def_id), impl_item.id, Some(typ));
         }
 
-        hir::ImplItemKind::Method(ref sig, body) => {
-            convert_method(ccx, ImplContainer(impl_def_id),
-                           impl_item.id, sig, impl_self_ty,
-                           Some(body), &impl_predicates);
+        hir::ImplItemKind::Method(ref sig, _) => {
+            convert_method(ccx, ImplContainer(impl_def_id), impl_item.id, sig, &impl_predicates);
         }
     }
 }
@@ -1472,7 +1461,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 index: own_start + i as u32,
                 def_id: tcx.hir.local_def_id(l.lifetime.id),
                 bounds: l.bounds.iter().map(|l| {
-                    AstConv::ast_region_to_region(&ccx.icx(&()), l)
+                    AstConv::ast_region_to_region(&ccx.icx(&()), l, None)
                 }).collect(),
                 pure_wrt_drop: l.pure_wrt_drop,
             }
@@ -1545,11 +1534,11 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             NodeItem(item) => {
                 match item.node {
                     ItemStatic(ref t, ..) | ItemConst(ref t, _) => {
-                        ccx.icx(&()).to_ty(&StaticRscope::new(&ccx.tcx), &t)
+                        ccx.icx(&()).to_ty(&ExplicitRscope, &t)
                     }
-                    ItemFn(ref decl, unsafety, _, abi, ref generics, body) => {
-                        let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
-                                                          body, Some(AnonTypeScope::new(def_id)));
+                    ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
+                        let tofd = AstConv::ty_of_fn(&ccx.icx(generics), unsafety, abi, &decl,
+                                                     Some(AnonTypeScope::new(def_id)));
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
                         ccx.tcx.mk_fn_def(def_id, substs, tofd)
                     }
@@ -1765,7 +1754,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             name: param.lifetime.name
         }));
         for bound in &param.bounds {
-            let bound_region = AstConv::ast_region_to_region(&ccx.icx(&()), bound);
+            let bound_region = AstConv::ast_region_to_region(&ccx.icx(&()), bound, None);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
             predicates.push(outlives.to_predicate());
         }
@@ -1816,7 +1805,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         }
 
                         &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
-                            let region = AstConv::ast_region_to_region(&ccx.icx(&()), lifetime);
+                            let region = AstConv::ast_region_to_region(&ccx.icx(&()),
+                                                                       lifetime,
+                                                                       None);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
                             predicates.push(ty::Predicate::TypeOutlives(pred))
                         }
@@ -1825,9 +1816,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
 
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
-                let r1 = AstConv::ast_region_to_region(&ccx.icx(&()), &region_pred.lifetime);
+                let r1 = AstConv::ast_region_to_region(&ccx.icx(&()), &region_pred.lifetime, None);
                 for bound in &region_pred.bounds {
-                    let r2 = AstConv::ast_region_to_region(&ccx.icx(&()), bound);
+                    let r2 = AstConv::ast_region_to_region(&ccx.icx(&()), bound, None);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
                     predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
@@ -1935,7 +1926,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                       hir::TraitTyParamBound(..) =>
                           None,
                       hir::RegionTyParamBound(ref lifetime) =>
-                          Some(AstConv::ast_region_to_region(&ccx.icx(&()), lifetime)),
+                          Some(AstConv::ast_region_to_region(&ccx.icx(&()), lifetime, None)),
                   }
               })
               .collect()
@@ -1997,7 +1988,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }).collect();
 
     let region_bounds = region_bounds.into_iter().map(|r| {
-        astconv.ast_region_to_region(r)
+        astconv.ast_region_to_region(r, None)
     }).collect();
 
     trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
@@ -2039,7 +2030,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .collect()
         }
         hir::RegionTyParamBound(ref lifetime) => {
-            let region = astconv.ast_region_to_region(lifetime);
+            let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
@@ -2057,18 +2048,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi)
     -> Ty<'tcx>
 {
-    let rb = BindingRscope::new();
-    let input_tys = decl.inputs
-                        .iter()
-                        .map(|a| AstConv::ty_of_arg(&ccx.icx(ast_generics), &rb, a, None))
-                        .collect::<Vec<_>>();
-
-    let output = match decl.output {
-        hir::Return(ref ty) =>
-            AstConv::ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty),
-        hir::DefaultReturn(..) =>
-            ccx.tcx.mk_nil(),
-    };
+    let fty = AstConv::ty_of_fn(&ccx.icx(ast_generics), hir::Unsafety::Unsafe, abi, decl, None);
 
     // feature gate SIMD types in FFI, since I (huonw) am not sure the
     // ABIs are handled at all correctly.
@@ -2084,21 +2064,17 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
                     .emit();
             }
         };
-        for (input, ty) in decl.inputs.iter().zip(&input_tys) {
+        for (input, ty) in decl.inputs.iter().zip(*fty.sig.inputs().skip_binder()) {
             check(&input, ty)
         }
         if let hir::Return(ref ty) = decl.output {
-            check(&ty, output)
+            check(&ty, *fty.sig.output().skip_binder())
         }
     }
 
     let id = ccx.tcx.hir.as_local_node_id(def_id).unwrap();
     let substs = mk_item_substs(&ccx.icx(ast_generics), ccx.tcx.hir.span(id), def_id);
-    ccx.tcx.mk_fn_def(def_id, substs, ccx.tcx.mk_bare_fn(ty::BareFnTy {
-        abi: abi,
-        unsafety: hir::Unsafety::Unsafe,
-        sig: ty::Binder(ccx.tcx.mk_fn_sig(input_tys.into_iter(), output, decl.variadic)),
-    }))
+    ccx.tcx.mk_fn_def(def_id, substs, fty)
 }
 
 pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
