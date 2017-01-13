@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
@@ -163,7 +163,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             // allow match arms with just expressions
             return;
         };
-        let ty = cx.tcx.tables().expr_ty(ex);
+        let ty = cx.tables.expr_ty(ex);
         if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
@@ -254,7 +254,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
-    if cx.tcx.tables().expr_ty(ex).sty == ty::TyBool {
+    if cx.tables.expr_ty(ex).sty == ty::TyBool {
         span_lint_and_then(cx,
                            MATCH_BOOL,
                            expr.span,
@@ -305,7 +305,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 }
 
 fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
-    if arms.len() >= 2 && cx.tcx.tables().expr_ty(ex).is_integral() {
+    if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms);
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
@@ -351,6 +351,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 
 /// Get all arms that are unbounded `PatRange`s.
 fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
+    let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
     arms.iter()
         .flat_map(|arm| {
             if let Arm { ref pats, guard: None, .. } = *arm {
@@ -361,15 +362,15 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 .filter_map(|pat| {
                     if_let_chain! {[
                     let PatKind::Range(ref lhs, ref rhs) = pat.node,
-                    let Ok(lhs) = eval_const_expr_partial(cx.tcx, lhs, ExprTypeChecked, None),
-                    let Ok(rhs) = eval_const_expr_partial(cx.tcx, rhs, ExprTypeChecked, None)
+                    let Ok(lhs) = constcx.eval(lhs, ExprTypeChecked),
+                    let Ok(rhs) = constcx.eval(rhs, ExprTypeChecked)
                 ], {
                     return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
                 }}
 
                     if_let_chain! {[
                     let PatKind::Lit(ref value) = pat.node,
-                    let Ok(value) = eval_const_expr_partial(cx.tcx, value, ExprTypeChecked, None)
+                    let Ok(value) = constcx.eval(value, ExprTypeChecked)
                 ], {
                     return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
                 }}

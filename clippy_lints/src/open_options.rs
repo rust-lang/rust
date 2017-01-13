@@ -35,7 +35,7 @@ impl LintPass for NonSensical {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprMethodCall(ref name, _, ref arguments) = e.node {
-            let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&arguments[0]));
+            let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
             if &*name.node.as_str() == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
@@ -63,7 +63,7 @@ enum OpenOption {
 
 fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
     if let ExprMethodCall(ref name, _, ref arguments) = argument.node {
-        let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&arguments[0]));
+        let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {

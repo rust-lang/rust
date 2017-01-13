@@ -138,7 +138,7 @@ fn has_attr(attrs: &[Attribute]) -> bool {
 fn print_decl(cx: &LateContext, decl: &hir::Decl) {
     match decl.node {
         hir::DeclLocal(ref local) => {
-            println!("local variable of type {}", cx.tcx.tables().node_id_to_type(local.id));
+            println!("local variable of type {}", cx.tables.node_id_to_type(local.id));
             println!("pattern:");
             print_pat(cx, &local.pat, 0);
             if let Some(ref e) = local.init {
@@ -152,7 +152,7 @@ fn print_decl(cx: &LateContext, decl: &hir::Decl) {
 
 fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
     let ind = "  ".repeat(indent);
-    let ty = cx.tcx.tables().node_id_to_type(expr.id);
+    let ty = cx.tables.node_id_to_type(expr.id);
     println!("{}+", ind);
     match expr.node {
         hir::ExprBox(ref e) => {

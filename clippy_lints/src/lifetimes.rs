@@ -246,7 +246,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
         let last_path_segment = &last_path_segment(qpath).parameters;
         if let AngleBracketedParameters(ref params) = *last_path_segment {
             if params.lifetimes.is_empty() {
-                match self.cx.tcx.tables().qpath_def(qpath, ty.id) {
+                match self.cx.tables.qpath_def(qpath, ty.id) {
                     Def::TyAlias(def_id) |
                     Def::Struct(def_id) => {
                         let generics = self.cx.tcx.item_generics(def_id);

@@ -141,11 +141,11 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
 ///
 /// # Examples
 /// ```rust,ignore
-/// match_def_path(cx, id, &["core", "option", "Option"])
+/// match_def_path(cx.tcx, id, &["core", "option", "Option"])
 /// ```
 ///
 /// See also the `paths` module.
-pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
+pub fn match_def_path(tcx: ty::TyCtxt, def_id: DefId, path: &[&str]) -> bool {
     use syntax::symbol;
 
     struct AbsolutePathBuffer {
@@ -165,7 +165,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
-    cx.tcx.push_item_path(&mut apb, def_id);
+    tcx.push_item_path(&mut apb, def_id);
 
     apb.names.len() == path.len() && apb.names.iter().zip(path.iter()).all(|(a, &b)| &**a == b)
 }
@@ -173,7 +173,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 /// Check if type is struct, enum or union type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyAdt(adt, _) => match_def_path(cx, adt.did, path),
+        ty::TyAdt(adt, _) => match_def_path(cx.tcx, adt.did, path),
         _ => false,
     }
 }
@@ -182,14 +182,12 @@ pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
 pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
 
-    let trt_id = cx.tcx
-        .tables
-        .borrow()
+    let trt_id = cx.tables
         .method_map
         .get(&method_call)
         .and_then(|callee| cx.tcx.impl_of_method(callee.def_id));
     if let Some(trt_id) = trt_id {
-        match_def_path(cx, trt_id, path)
+        match_def_path(cx.tcx, trt_id, path)
     } else {
         false
     }
@@ -199,14 +197,12 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
 
-    let trt_id = cx.tcx
-        .tables
-        .borrow()
+    let trt_id = cx.tables
         .method_map
         .get(&method_call)
         .and_then(|callee| cx.tcx.trait_of_item(callee.def_id));
     if let Some(trt_id) = trt_id {
-        match_def_path(cx, trt_id, path)
+        match_def_path(cx.tcx, trt_id, path)
     } else {
         false
     }
@@ -327,7 +323,7 @@ pub fn implements_trait<'a, 'tcx>(
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
-    cx.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+    cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
         let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(), trait_id, 0, ty, &ty_params);
 
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
@@ -336,7 +332,7 @@ pub fn implements_trait<'a, 'tcx>(
 
 /// Resolve the definition of a node from its `NodeId`.
 pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: NodeId) -> def::Def {
-    cx.tcx.tables().qpath_def(qpath, id)
+    cx.tables.qpath_def(qpath, id)
 }
 
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
@@ -622,7 +618,7 @@ pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
 }
 
 pub fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
-    cx.tcx.tables.borrow().adjustments.get(&e.id).is_some()
+    cx.tables.adjustments.get(&e.id).is_some()
 }
 
 pub struct LimitStack {
@@ -787,7 +783,7 @@ pub fn same_tys<'a, 'tcx>(
     parameter_item: NodeId
 ) -> bool {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
-    cx.tcx.infer_ctxt(None, Some(parameter_env), Reveal::All).enter(|infcx| {
+    cx.tcx.infer_ctxt(parameter_env, Reveal::All).enter(|infcx| {
         let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);
         let new_b = b.subst(infcx.tcx, infcx.parameter_environment.free_substs);
         infcx.can_equate(&new_a, &new_b).is_ok()
@@ -811,7 +807,7 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: Node
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext, qpath: &QPath, did: NodeId) -> bool {
-        matches!(cx.tcx.tables().qpath_def(qpath, did),
+        matches!(cx.tables.qpath_def(qpath, did),
                  def::Def::Variant(..) | def::Def::VariantCtor(..))
     }
 

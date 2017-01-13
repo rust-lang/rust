@@ -50,7 +50,7 @@ fn check_mul(cx: &LateContext, span: Span, lit: &Expr, exp: &Expr) {
         let Constant::Int(ref ci) = consts::lit_to_constant(&l.node),
         let Some(val) = ci.to_u64(),
         val == 1,
-        cx.tcx.tables().expr_ty(exp).is_integral()
+        cx.tables.expr_ty(exp).is_integral()
     ], {
         span_lint(cx,
                   NEG_MULTIPLY,

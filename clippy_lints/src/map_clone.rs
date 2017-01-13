@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             // look for derefs, for .map(|x| *x)
                             if only_derefs(cx, &*closure_expr, arg_ident) &&
                                 // .cloned() only removes one level of indirection, don't lint on more
-                                walk_ptrs_ty_depth(cx.tcx.tables().pat_ty(&first_arg.pat)).1 == 1
+                                walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
                             {
                                 span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                     "you seem to be using .map() to clone the contents of an {}, consider \
@@ -101,7 +101,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
 fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         Some("iterator")
-    } else if match_type(cx, walk_ptrs_ty(cx.tcx.tables().expr_ty(arg)), &paths::OPTION) {
+    } else if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(arg)), &paths::OPTION) {
         Some("Option")
     } else {
         None

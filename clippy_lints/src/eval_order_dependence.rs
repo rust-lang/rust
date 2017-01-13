@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                 if let ExprPath(ref qpath) = lhs.node {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
-                            let var = cx.tcx.tables().qpath_def(qpath, lhs.id).def_id();
+                            let var = cx.tables.qpath_def(qpath, lhs.id).def_id();
                             let mut visitor = ReadVisitor {
                                 cx: cx,
                                 var: var,
@@ -126,7 +126,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
         match e.node {
             ExprAgain(_) | ExprBreak(_, _) | ExprRet(_) => self.report_diverging_sub_expr(e),
             ExprCall(ref func, _) => {
-                match self.cx.tcx.tables().expr_ty(func).sty {
+                match self.cx.tables.expr_ty(func).sty {
                     ty::TyFnDef(_, _, fn_ty) |
                     ty::TyFnPtr(fn_ty) => {
                         if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&fn_ty.sig).output().sty {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             },
             ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(e.id);
-                let borrowed_table = self.cx.tcx.tables.borrow();
+                let borrowed_table = self.cx.tables;
                 let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
                 let result_ty = method_type.ty.fn_ret();
                 if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&result_ty).sty {
@@ -302,7 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         match expr.node {
             ExprPath(ref qpath) => {
                 if let QPath::Resolved(None, ref path) = *qpath {
-                    if path.segments.len() == 1 && self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id() == self.var {
+                    if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
                         if is_in_assignment_position(self.cx, expr) {
                             // This is a write, not a read.
                         } else {

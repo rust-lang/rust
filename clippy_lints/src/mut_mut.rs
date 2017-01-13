@@ -68,7 +68,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                           MUT_MUT,
                           expr.span,
                           "generally you want to avoid `&mut &mut _` if possible");
-            } else if let TyRef(_, TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tcx.tables().expr_ty(e).sty {
+            } else if let TyRef(_, TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tables.expr_ty(e).sty {
                 span_lint(self.cx,
                           MUT_MUT,
                           expr.span,

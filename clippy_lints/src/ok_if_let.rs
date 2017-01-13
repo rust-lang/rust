@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             method_chain_args(op, &["ok"]).is_some() //test to see if using ok() methoduse std::marker::Sized;
 
         ], {
-            let is_result_type = match_type(cx, cx.tcx.tables().expr_ty(&result_types[0]), &paths::RESULT);
+            let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
             let some_expr_string = snippet(cx, y[0].span, "");
             if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type {
                 span_help_and_lint(cx, IF_LET_SOME_RESULT, expr.span,

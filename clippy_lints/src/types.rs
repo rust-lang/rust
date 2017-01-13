@@ -111,7 +111,7 @@ fn check_ty(cx: &LateContext, ast_ty: &Ty) {
     }
     match ast_ty.node {
         TyPath(ref qpath) => {
-            let def = cx.tcx.tables().qpath_def(qpath, ast_ty.id);
+            let def = cx.tables.qpath_def(qpath, ast_ty.id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items.owned_box() {
                     let last = last_path_segment(qpath);
@@ -119,9 +119,9 @@ fn check_ty(cx: &LateContext, ast_ty: &Ty) {
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
                         let Some(ref vec) = ag.types.get(0),
                         let TyPath(ref qpath) = vec.node,
-                        let def::Def::Struct(..) = cx.tcx.tables().qpath_def(qpath, vec.id),
-                        let Some(did) = opt_def_id(cx.tcx.tables().qpath_def(qpath, vec.id)),
-                        match_def_path(cx, did, &paths::VEC),
+                        let def::Def::Struct(..) = cx.tables.qpath_def(qpath, vec.id),
+                        let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, vec.id)),
+                        match_def_path(cx.tcx, did, &paths::VEC),
                     ], {
                         span_help_and_lint(cx,
                                            BOX_VEC,
@@ -130,7 +130,7 @@ fn check_ty(cx: &LateContext, ast_ty: &Ty) {
                                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                         return; // don't recurse into the type
                     }}
-                } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
+                } else if match_def_path(cx.tcx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
                                        LINKEDLIST,
                                        ast_ty.span,
@@ -195,7 +195,7 @@ declare_lint! {
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
-        let bindtype = &cx.tcx.tables().pat_ty(&local.pat).sty;
+        let bindtype = &cx.tables.pat_ty(&local.pat).sty;
         match *bindtype {
             ty::TyTuple(slice) if slice.is_empty() => {
                 if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
@@ -266,7 +266,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             if op.is_comparison() {
-                let sty = &cx.tcx.tables().expr_ty(left).sty;
+                let sty = &cx.tables.expr_ty(left).sty;
                 match *sty {
                     ty::TyTuple(slice) if slice.is_empty() => {
                         let result = match op {
@@ -510,7 +510,7 @@ impl LintPass for CastPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCast(ref ex, _) = expr.node {
-            let (cast_from, cast_to) = (cx.tcx.tables().expr_ty(ex), cx.tcx.tables().expr_ty(expr));
+            let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
@@ -754,7 +754,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
         if let ExprCast(ref e, _) = expr.node {
             if let ExprLit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
-                    if ty::TyUint(UintTy::U8) == cx.tcx.tables().expr_ty(expr).sty && !in_macro(cx, expr.span) {
+                    if ty::TyUint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(cx, expr.span) {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -827,7 +827,7 @@ fn detect_absurd_comparison<'a>(
 
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
-    if cx.tcx.tables().expr_ty(lhs) != cx.tcx.tables().expr_ty(rhs) {
+    if cx.tables.expr_ty(lhs) != cx.tables.expr_ty(rhs) {
         return None;
     }
 
@@ -869,14 +869,14 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     use rustc_const_eval::*;
     use types::ExtremeType::*;
 
-    let ty = &cx.tcx.tables().expr_ty(expr).sty;
+    let ty = &cx.tables.expr_ty(expr).sty;
 
     match *ty {
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) => (),
         _ => return None,
     };
 
-    let cv = match eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+    let cv = match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked) {
         Ok(val) => val,
         Err(_) => return None,
     };
@@ -1035,7 +1035,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     use std::*;
 
     if let ExprCast(ref cast_exp, _) = expr.node {
-        match cx.tcx.tables().expr_ty(cast_exp).sty {
+        match cx.tables.expr_ty(cast_exp).sty {
             TyInt(int_ty) => {
                 Some(match int_ty {
                     IntTy::I8 => (FullInt::S(i8::min_value() as i128), FullInt::S(i8::max_value() as i128)),
@@ -1066,10 +1066,10 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_eval::EvalHint::ExprTypeChecked;
-    use rustc_const_eval::eval_const_expr_partial;
+    use rustc_const_eval::ConstContext;
     use rustc_const_math::ConstInt;
 
-    match eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+    match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked) {
         Ok(val) => {
             if let Integral(const_int) = val {
                 Some(match const_int.erase_type() {

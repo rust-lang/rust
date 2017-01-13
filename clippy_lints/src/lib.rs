@@ -4,6 +4,7 @@
 #![feature(collections)]
 #![feature(custom_attribute)]
 #![feature(i128_type)]
+#![feature(i128)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
@@ -17,6 +18,7 @@
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_data_structures;
 
 extern crate toml;
 

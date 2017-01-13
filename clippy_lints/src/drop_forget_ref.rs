@@ -61,14 +61,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprPath(ref qpath) = path.node,
             args.len() == 1,
         ], {
-            let def_id = cx.tcx.tables().qpath_def(qpath, path.id).def_id();
+            let def_id = cx.tables.qpath_def(qpath, path.id).def_id();
             let lint;
             let msg;
-            if match_def_path(cx, def_id, &paths::DROP) {
+            if match_def_path(cx.tcx, def_id, &paths::DROP) {
                 lint = DROP_REF;
                 msg = "call to `std::mem::drop` with a reference argument. \
                        Dropping a reference does nothing";
-            } else if match_def_path(cx, def_id, &paths::MEM_FORGET) {
+            } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
                 lint = FORGET_REF;
                 msg = "call to `std::mem::forget` with a reference argument. \
                        Forgetting a reference does nothing";
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 return;
             }
             let arg = &args[0];
-            let arg_ty = cx.tcx.tables().expr_ty(arg);
+            let arg_ty = cx.tables.expr_ty(arg);
             if let ty::TyRef(..) = arg_ty.sty {
                 span_note_and_lint(cx,
                                    lint,

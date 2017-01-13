@@ -159,11 +159,11 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
         is_expn_of(cx, fun.span, "vec").is_some(),
     ], {
         let fun_def = resolve_node(cx, path, fun.id);
-        return if match_def_path(cx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {
+        return if match_def_path(cx.tcx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))
         }
-        else if match_def_path(cx, fun_def.def_id(), &paths::SLICE_INTO_VEC) && args.len() == 1 {
+        else if match_def_path(cx.tcx, fun_def.def_id(), &paths::SLICE_INTO_VEC) && args.len() == 1 {
             // `vec![a, b, c]` case
             if_let_chain!{[
                 let hir::ExprBox(ref boxed) = args[0].node,

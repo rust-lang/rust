@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use rustc::hir;
 use syntax::ast::RangeLimits;
@@ -59,12 +59,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         if let hir::ExprIndex(ref array, ref index) = e.node {
             // Array with known size can be checked statically
-            let ty = cx.tcx.tables().expr_ty(array);
+            let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
                 let size = ConstInt::Infer(size as u128);
+                let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
 
                 // Index is a constant uint
-                let const_index = eval_const_expr_partial(cx.tcx, index, ExprTypeChecked, None);
+                let const_index = constcx.eval(index, ExprTypeChecked);
                 if let Ok(ConstVal::Integral(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
@@ -76,10 +77,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 // Index is a constant range
                 if let Some(range) = higher::range(index) {
                     let start = range.start
-                        .map(|start| eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None))
+                        .map(|start| constcx.eval(start, ExprTypeChecked))
                         .map(|v| v.ok());
                     let end = range.end
-                        .map(|end| eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None))
+                        .map(|end| constcx.eval(end, ExprTypeChecked))
                         .map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
