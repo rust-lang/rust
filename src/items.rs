@@ -76,38 +76,84 @@ impl Rewrite for ast::Local {
     }
 }
 
-impl<'a> FmtVisitor<'a> {
-    pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
-        let abi_str = ::utils::format_abi(fm.abi, self.config.force_explicit_abi);
-        self.buffer.push_str(&abi_str);
+// TODO convert to using rewrite style rather than visitor
+// TODO format modules in this style
+struct Item<'a> {
+    keyword: &'static str,
+    abi: String,
+    vis: Option<&'a ast::Visibility>,
+    body: Vec<BodyElement<'a>>,
+    span: Span,
+}
 
-        let snippet = self.snippet(span);
+impl<'a> Item<'a> {
+    fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
+        let abi = if fm.abi == abi::Abi::C && !config.force_explicit_abi {
+            "extern".into()
+        } else {
+            format!("extern {}", fm.abi)
+        };
+        Item {
+            keyword: "",
+            abi: abi,
+            vis: None,
+            body: fm.items.iter().map(|i| BodyElement::ForeignItem(i)).collect(),
+            span: span,
+        }
+    }
+}
+
+enum BodyElement<'a> {
+    // Stmt(&'a ast::Stmt),
+    // Field(&'a ast::Field),
+    // Variant(&'a ast::Variant),
+    // Item(&'a ast::Item),
+    ForeignItem(&'a ast::ForeignItem),
+}
+
+impl<'a> FmtVisitor<'a> {
+    fn format_item(&mut self, item: Item) {
+        self.buffer.push_str(&item.abi);
+        self.buffer.push_str(" ");
+
+        let snippet = self.snippet(item.span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
 
         self.buffer.push_str("{");
-        if !fm.items.is_empty() || contains_comment(&snippet[brace_pos..]) {
+        if !item.body.is_empty() || contains_comment(&snippet[brace_pos..]) {
             // FIXME: this skips comments between the extern keyword and the opening
             // brace.
-            self.last_pos = span.lo + BytePos(brace_pos as u32 + 1);
+            self.last_pos = item.span.lo + BytePos(brace_pos as u32 + 1);
             self.block_indent = self.block_indent.block_indent(self.config);
 
-            if fm.items.is_empty() {
-                self.format_missing_no_indent(span.hi - BytePos(1));
+            if item.body.is_empty() {
+                self.format_missing_no_indent(item.span.hi - BytePos(1));
                 self.block_indent = self.block_indent.block_unindent(self.config);
 
                 self.buffer.push_str(&self.block_indent.to_string(self.config));
             } else {
-                for item in &fm.items {
-                    self.format_foreign_item(&*item);
+                for item in &item.body {
+                    self.format_body_element(item);
                 }
 
                 self.block_indent = self.block_indent.block_unindent(self.config);
-                self.format_missing_with_indent(span.hi - BytePos(1));
+                self.format_missing_with_indent(item.span.hi - BytePos(1));
             }
         }
 
         self.buffer.push_str("}");
-        self.last_pos = span.hi;
+        self.last_pos = item.span.hi;
+    }
+
+    fn format_body_element(&mut self, element: &BodyElement) {
+        match *element {
+            BodyElement::ForeignItem(ref item) => self.format_foreign_item(item),
+        }
+    }
+
+    pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
+        let item = Item::from_foreign_mod(fm, span, self.config);
+        self.format_item(item);
     }
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
