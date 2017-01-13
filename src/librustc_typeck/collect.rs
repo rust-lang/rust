@@ -641,7 +641,6 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                            container: AssociatedItemContainer,
                             id: ast::NodeId,
                             sig: &hir::MethodSig,
                             rcvr_ty_predicates: &ty::GenericPredicates<'tcx>,) {
@@ -651,12 +650,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generic_predicates =
         ty_generic_predicates(ccx, &sig.generics, ty_generics.parent, vec![], false);
 
-    let anon_scope = match container {
-        ImplContainer(_) => Some(AnonTypeScope::new(def_id)),
-        TraitContainer(_) => None
-    };
     let fty = AstConv::ty_of_fn(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                                sig.unsafety, sig.abi, &sig.decl, anon_scope);
+                                sig.unsafety, sig.abi, &sig.decl);
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.hir.span(id), def_id);
@@ -874,8 +869,7 @@ fn convert_trait_item(ccx: &CrateCtxt, trait_item: &hir::TraitItem) {
         }
 
         hir::TraitItemKind::Method(ref sig, _) => {
-            convert_method(ccx, TraitContainer(trait_def_id),
-                           trait_item.id, sig, &trait_predicates);
+            convert_method(ccx, trait_item.id, sig, &trait_predicates);
         }
     }
 }
@@ -915,7 +909,7 @@ fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
         }
 
         hir::ImplItemKind::Method(ref sig, _) => {
-            convert_method(ccx, ImplContainer(impl_def_id), impl_item.id, sig, &impl_predicates);
+            convert_method(ccx, impl_item.id, sig, &impl_predicates);
         }
     }
 }
@@ -1186,7 +1180,6 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
                                           self_param_ty,
                                           bounds,
                                           SizedByDefault::No,
-                                          None,
                                           item.span);
 
         let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
@@ -1323,7 +1316,6 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                         assoc_ty,
                                         bounds,
                                         SizedByDefault::Yes,
-                                        None,
                                         trait_item.span);
 
             bounds.predicates(ccx.tcx, assoc_ty).into_iter()
@@ -1537,8 +1529,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         ccx.icx(&()).to_ty(&ExplicitRscope, &t)
                     }
                     ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
-                        let tofd = AstConv::ty_of_fn(&ccx.icx(generics), unsafety, abi, &decl,
-                                                     Some(AnonTypeScope::new(def_id)));
+                        let tofd = AstConv::ty_of_fn(&ccx.icx(generics), unsafety, abi, &decl);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
                         ccx.tcx.mk_fn_def(def_id, substs, tofd)
                     }
@@ -1770,7 +1761,6 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     param_ty,
                                     &param.bounds,
                                     SizedByDefault::Yes,
-                                    None,
                                     param.span);
         predicates.extend(bounds.predicates(ccx.tcx, param_ty));
     }
@@ -1968,7 +1958,6 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: ty::Ty<'tcx>,
                                         ast_bounds: &[hir::TyParamBound],
                                         sized_by_default: SizedByDefault,
-                                        anon_scope: Option<AnonTypeScope>,
                                         span: Span)
                                         -> Bounds<'tcx>
 {
@@ -1979,9 +1968,8 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
     let mut projection_bounds = vec![];
 
-    let rscope = MaybeWithAnonTypes::new(ExplicitRscope, anon_scope);
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
-        astconv.instantiate_poly_trait_ref(&rscope,
+        astconv.instantiate_poly_trait_ref(&ExplicitRscope,
                                            bound,
                                            param_ty,
                                            &mut projection_bounds)
@@ -2048,7 +2036,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi)
     -> Ty<'tcx>
 {
-    let fty = AstConv::ty_of_fn(&ccx.icx(ast_generics), hir::Unsafety::Unsafe, abi, decl, None);
+    let fty = AstConv::ty_of_fn(&ccx.icx(ast_generics), hir::Unsafety::Unsafe, abi, decl);
 
     // feature gate SIMD types in FFI, since I (huonw) am not sure the
     // ABIs are handled at all correctly.
@@ -2077,10 +2065,10 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
     ccx.tcx.mk_fn_def(def_id, substs, fty)
 }
 
-pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        span: Span,
-                                        def_id: DefId)
-                                        -> &'tcx Substs<'tcx> {
+fn mk_item_substs<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
+                        span: Span,
+                        def_id: DefId)
+                        -> &'tcx Substs<'tcx> {
     let tcx = astconv.tcx();
     // FIXME(eddyb) Do this request from Substs::for_item in librustc.
     if let Err(ErrorReported) = astconv.get_generics(span, def_id) {

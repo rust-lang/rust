@@ -62,7 +62,7 @@ use rustc::ty::wf::object_region_bounds;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
 use rscope::{RegionScope, ObjectLifetimeDefaultRscope, ShiftedRscope};
-use rscope::{AnonTypeScope, MaybeWithAnonTypes, ExplicitRscope};
+use rscope::ExplicitRscope;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FxHashSet};
 
@@ -361,8 +361,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     }
                     hir::ParenthesizedParameters(ref data) => {
                         assert_eq!(i, 0);
-                        let (ty, assoc) =
-                            self.convert_parenthesized_parameters(rscope, substs, data);
+                        let (ty, assoc) = self.convert_parenthesized_parameters(substs, data);
                         output_assoc_binding = Some(assoc);
                         ty
                     }
@@ -416,7 +415,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 vec![output_assoc_binding.unwrap_or_else(|| {
                     // This is an error condition, but we should
                     // get the associated type binding anyway.
-                    self.convert_parenthesized_parameters(rscope, substs, data).1
+                    self.convert_parenthesized_parameters(substs, data).1
                 })]
             }
         };
@@ -428,20 +427,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn convert_parenthesized_parameters(&self,
-                                        rscope: &RegionScope,
                                         region_substs: &[Kind<'tcx>],
                                         data: &hir::ParenthesizedParameterData)
                                         -> (Ty<'tcx>, ConvertedBinding<'tcx>)
     {
-        let anon_scope = rscope.anon_type_scope();
-        let rscope = MaybeWithAnonTypes::new(ExplicitRscope, anon_scope);
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
-            self.ast_ty_arg_to_ty(&rscope, None, region_substs, a_t)
+            self.ast_ty_arg_to_ty(&ExplicitRscope, None, region_substs, a_t)
         }));
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
-                (self.ast_ty_to_ty(&rscope, output_ty), output_ty.span)
+                (self.ast_ty_to_ty(&ExplicitRscope, output_ty), output_ty.span)
             }
             None => {
                 (self.tcx().mk_nil(), data.span)
@@ -1309,12 +1305,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                let anon_scope = rscope.anon_type_scope();
-                let bare_fn_ty = self.ty_of_method_or_bare_fn(bf.unsafety,
-                                                              bf.abi,
-                                                              &bf.decl,
-                                                              anon_scope,
-                                                              anon_scope);
+                let bare_fn_ty = self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl);
 
                 // Find any late-bound regions declared in return type that do
                 // not appear in the arguments. These are not wellformed.
@@ -1361,16 +1352,54 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyImplTrait(ref bounds) => {
                 use collect::{compute_bounds, SizedByDefault};
 
+                // Figure out if we can allow an `impl Trait` here, by walking up
+                // to a `fn` or inherent `impl` method, going only through `Ty`
+                // or `TraitRef` nodes (as nothing else should be in types) and
+                // ensuring that we reach the `fn`/method signature's return type.
+                let mut node_id = ast_ty.id;
+                let fn_decl = loop {
+                    let parent = tcx.hir.get_parent_node(node_id);
+                    match tcx.hir.get(parent) {
+                        hir::map::NodeItem(&hir::Item {
+                            node: hir::ItemFn(ref fn_decl, ..), ..
+                        }) => break Some(fn_decl),
+
+                        hir::map::NodeImplItem(&hir::ImplItem {
+                            node: hir::ImplItemKind::Method(ref sig, _), ..
+                        }) => {
+                            match tcx.hir.expect_item(tcx.hir.get_parent(parent)).node {
+                                hir::ItemImpl(.., None, _, _) => {
+                                    break Some(&sig.decl)
+                                }
+                                _ => break None
+                            }
+                        }
+
+                        hir::map::NodeTy(_) | hir::map::NodeTraitRef(_) => {}
+
+                        _ => break None
+                    }
+                    node_id = parent;
+                };
+                let allow = fn_decl.map_or(false, |fd| {
+                    match fd.output {
+                        hir::DefaultReturn(_) => false,
+                        hir::Return(ref ty) => ty.id == node_id
+                    }
+                });
+
                 // Create the anonymized type.
-                let def_id = tcx.hir.local_def_id(ast_ty.id);
-                if let Some(anon_scope) = rscope.anon_type_scope() {
-                    let substs = anon_scope.fresh_substs(self, ast_ty.span);
+                if allow {
+                    let def_id = tcx.hir.local_def_id(ast_ty.id);
+                    if let Err(ErrorReported) = self.get_generics(ast_ty.span, def_id) {
+                        return tcx.types.err;
+                    }
+                    let substs = Substs::identity_for_item(tcx, def_id);
                     let ty = tcx.mk_anon(tcx.hir.local_def_id(ast_ty.id), substs);
 
                     // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
                     let bounds = compute_bounds(self, ty, bounds,
                                                 SizedByDefault::Yes,
-                                                Some(anon_scope),
                                                 ast_ty.span);
                     let predicates = bounds.predicates(tcx, ty);
                     let predicates = tcx.lift_to_global(&predicates).unwrap();
@@ -1450,36 +1479,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn ty_of_fn(&self,
                     unsafety: hir::Unsafety,
                     abi: abi::Abi,
-                    decl: &hir::FnDecl,
-                    anon_scope: Option<AnonTypeScope>)
+                    decl: &hir::FnDecl)
                     -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, decl, None, anon_scope)
-    }
-
-    fn ty_of_method_or_bare_fn(&self,
-                               unsafety: hir::Unsafety,
-                               abi: abi::Abi,
-                               decl: &hir::FnDecl,
-                               arg_anon_scope: Option<AnonTypeScope>,
-                               ret_anon_scope: Option<AnonTypeScope>)
-                               -> &'tcx ty::BareFnTy<'tcx>
-    {
-        debug!("ty_of_method_or_bare_fn");
-
-        // New region names that appear inside of the arguments of the function
-        // declaration are bound to that function type.
-        let rb = MaybeWithAnonTypes::new(ExplicitRscope, arg_anon_scope);
+        debug!("ty_of_fn");
 
         let input_tys: Vec<Ty> =
-            decl.inputs.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
+            decl.inputs.iter().map(|a| self.ty_of_arg(&ExplicitRscope, a, None)).collect();
 
         let output_ty = match decl.output {
-            hir::Return(ref output) =>
-                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(ExplicitRscope, ret_anon_scope), output),
+            hir::Return(ref output) => self.ast_ty_to_ty(&ExplicitRscope, output),
             hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
-        debug!("ty_of_method_or_bare_fn: output_ty={:?}", output_ty);
+        debug!("ty_of_fn: output_ty={:?}", output_ty);
 
         self.tcx().mk_bare_fn(ty::BareFnTy {
             unsafety: unsafety,
