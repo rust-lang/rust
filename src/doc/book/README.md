@@ -39,3 +39,8 @@ The source files from which this book is generated can be found on
 [GitHub][book].
 
 [book]: https://github.com/rust-lang/rust/tree/master/src/doc/book
+
+However, note that we are currently working on [the second edition of the book][book2].
+As such, we're not really editing this edition.
+
+[book2]: https://github.com/rust-lang/book
