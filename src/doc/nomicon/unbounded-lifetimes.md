@@ -11,7 +11,7 @@ lifetime can be regarded as `'static`.
 
 Almost no reference is `'static`, so this is probably wrong. `transmute` and
 `transmute_copy` are the two other primary offenders. One should endeavor to
-bound an unbounded lifetime as quick as possible, especially across function
+bound an unbounded lifetime as quickly as possible, especially across function
 boundaries.
 
 Given a function, any output lifetimes that don't derive from inputs are
