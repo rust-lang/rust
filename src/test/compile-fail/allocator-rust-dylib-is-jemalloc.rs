@@ -29,9 +29,11 @@ extern crate allocator_dylib2;
 // ensure we get the same error.
 //
 // So long as we CI linux/OSX we should be good.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")),
+          target_os = "macos"))]
 extern crate alloc_system;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")),
+              target_os = "macos")))]
 extern crate allocator1;
 
 fn main() {
