@@ -12,7 +12,6 @@ use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span};
 use codemap::CodeMap;
 use errors::{FatalError, DiagnosticBuilder};
-use ext::tt::transcribe::tt_next_token;
 use parse::{token, ParseSess};
 use str::char_at;
 use symbol::{Symbol, keywords};
@@ -23,52 +22,9 @@ use std::char;
 use std::mem::replace;
 use std::rc::Rc;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader};
-
 pub mod comments;
 mod tokentrees;
 mod unicode_chars;
-
-pub trait Reader {
-    fn is_eof(&self) -> bool;
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()>;
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
-        let res = self.try_next_token();
-        self.unwrap_or_abort(res)
-    }
-    /// Report a fatal error with the current span.
-    fn fatal(&self, &str) -> FatalError;
-    /// Report a non-fatal error with the current span.
-    fn err(&self, &str);
-    fn emit_fatal_errors(&mut self);
-    fn unwrap_or_abort(&mut self, res: Result<TokenAndSpan, ()>) -> TokenAndSpan {
-        match res {
-            Ok(tok) => tok,
-            Err(_) => {
-                self.emit_fatal_errors();
-                panic!(FatalError);
-            }
-        }
-    }
-    fn peek(&self) -> TokenAndSpan;
-    /// Get a token the parser cares about.
-    fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
-        let mut t = self.try_next_token()?;
-        loop {
-            match t.tok {
-                token::Whitespace | token::Comment | token::Shebang(_) => {
-                    t = self.try_next_token()?;
-                }
-                _ => break,
-            }
-        }
-        Ok(t)
-    }
-    fn real_token(&mut self) -> TokenAndSpan {
-        let res = self.try_real_token();
-        self.unwrap_or_abort(res)
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TokenAndSpan {
@@ -178,36 +134,6 @@ impl<'a> StringReader<'a> {
         TokenAndSpan {
             tok: self.peek_tok.clone(),
             sp: self.peek_span,
-        }
-    }
-}
-
-impl<'a> Reader for TtReader<'a> {
-    fn is_eof(&self) -> bool {
-        self.peek().tok == token::Eof
-    }
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
-        assert!(self.fatal_errs.is_empty());
-        let r = tt_next_token(self);
-        debug!("TtReader: r={:?}", r);
-        Ok(r)
-    }
-    fn fatal(&self, m: &str) -> FatalError {
-        self.sp_diag.span_fatal(self.cur_span, m)
-    }
-    fn err(&self, m: &str) {
-        self.sp_diag.span_err(self.cur_span, m);
-    }
-    fn emit_fatal_errors(&mut self) {
-        for err in &mut self.fatal_errs {
-            err.emit();
-        }
-        self.fatal_errs.clear();
-    }
-    fn peek(&self) -> TokenAndSpan {
-        TokenAndSpan {
-            tok: self.cur_tok.clone(),
-            sp: self.cur_span,
         }
     }
 }

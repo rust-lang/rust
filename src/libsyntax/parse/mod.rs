@@ -45,7 +45,7 @@ pub mod obsolete;
 
 /// Info about a parsing session.
 pub struct ParseSess {
-    pub span_diagnostic: Handler, // better be the same as the one in the reader!
+    pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     /// Used to determine and report recursive mod inclusions
@@ -227,8 +227,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>) -> Vec<tokenstream
 
 /// Given tts and the ParseSess, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
-    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
-    let mut p = Parser::new(sess, Box::new(trdr), None, false);
+    let mut p = Parser::new(sess, tts, None, false);
     p.check_unknown_macro_variable();
     p
 }
