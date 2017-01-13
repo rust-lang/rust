@@ -48,7 +48,5 @@ exec docker \
   --env CARGO_HOME=/cargo \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
-  --interactive \
-  --tty \
   rust-ci \
   /checkout/src/ci/run.sh
