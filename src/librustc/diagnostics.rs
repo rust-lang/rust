@@ -327,6 +327,69 @@ struct ListNode {
 This works because `Box` is a pointer, so its size is well-known.
 "##,
 
+E0106: r##"
+This error indicates that a lifetime is missing from a type. If it is an error
+inside a function signature, the problem may be with failing to adhere to the
+lifetime elision rules (see below).
+
+Here are some simple examples of where you'll run into this error:
+
+```compile_fail,E0106
+struct Foo { x: &bool }        // error
+struct Foo<'a> { x: &'a bool } // correct
+
+enum Bar { A(u8), B(&bool), }        // error
+enum Bar<'a> { A(u8), B(&'a bool), } // correct
+
+type MyStr = &str;        // error
+type MyStr<'a> = &'a str; // correct
+```
+
+Lifetime elision is a special, limited kind of inference for lifetimes in
+function signatures which allows you to leave out lifetimes in certain cases.
+For more background on lifetime elision see [the book][book-le].
+
+The lifetime elision rules require that any function signature with an elided
+output lifetime must either have
+
+ - exactly one input lifetime
+ - or, multiple input lifetimes, but the function must also be a method with a
+   `&self` or `&mut self` receiver
+
+In the first case, the output lifetime is inferred to be the same as the unique
+input lifetime. In the second case, the lifetime is instead inferred to be the
+same as the lifetime on `&self` or `&mut self`.
+
+Here are some examples of elision errors:
+
+```compile_fail,E0106
+// error, no input lifetimes
+fn foo() -> &str { }
+
+// error, `x` and `y` have distinct lifetimes inferred
+fn bar(x: &str, y: &str) -> &str { }
+
+// error, `y`'s lifetime is inferred to be distinct from `x`'s
+fn baz<'a>(x: &'a str, y: &str) -> &str { }
+```
+
+Here's an example that is currently an error, but may work in a future version
+of Rust:
+
+```compile_fail,E0106
+struct Foo<'a>(&'a str);
+
+trait Quux { }
+impl Quux for Foo { }
+```
+
+Lifetime elision in implementation headers was part of the lifetime elision
+RFC. It is, however, [currently unimplemented][iss15872].
+
+[book-le]: https://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
+[iss15872]: https://github.com/rust-lang/rust/issues/15872
+"##,
+
 E0109: r##"
 You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:

@@ -22,11 +22,16 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::region;
 use ty;
+
+use std::cell::Cell;
 use std::mem::replace;
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use errors::DiagnosticBuilder;
 use util::nodemap::{NodeMap, FxHashSet, FxHashMap};
+use rustc_back::slice;
 
 use hir;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -36,6 +41,7 @@ pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ ast::NodeId),
     LateBound(ty::DebruijnIndex, /* lifetime decl */ ast::NodeId),
+    LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
     Free(region::CallSiteScopeData, /* lifetime decl */ ast::NodeId),
 }
 
@@ -51,9 +57,18 @@ impl Region {
         (def.lifetime.name, Region::LateBound(depth, def.lifetime.id))
     }
 
+    fn late_anon(index: &Cell<u32>) -> Region {
+        let i = index.get();
+        index.set(i + 1);
+        let depth = ty::DebruijnIndex::new(1);
+        Region::LateBoundAnon(depth, i)
+    }
+
     fn id(&self) -> Option<ast::NodeId> {
         match *self {
-            Region::Static => None,
+            Region::Static |
+            Region::LateBoundAnon(..) => None,
+
             Region::EarlyBound(_, id) |
             Region::LateBound(_, id) |
             Region::Free(_, id) => Some(id)
@@ -64,6 +79,25 @@ impl Region {
         match self {
             Region::LateBound(depth, id) => {
                 Region::LateBound(depth.shifted(amount), id)
+            }
+            Region::LateBoundAnon(depth, index) => {
+                Region::LateBoundAnon(depth.shifted(amount), index)
+            }
+            _ => self
+        }
+    }
+
+    fn from_depth(self, depth: u32) -> Region {
+        match self {
+            Region::LateBound(debruijn, id) => {
+                Region::LateBound(ty::DebruijnIndex {
+                    depth: debruijn.depth - (depth - 1)
+                }, id)
+            }
+            Region::LateBoundAnon(debruijn, index) => {
+                Region::LateBoundAnon(ty::DebruijnIndex {
+                    depth: debruijn.depth - (depth - 1)
+                }, index)
             }
             _ => self
         }
@@ -122,12 +156,44 @@ enum Scope<'a> {
 
     /// Lifetimes introduced by a fn are scoped to the call-site for that fn,
     /// if this is a fn body, otherwise the original definitions are used.
+    /// Unspecified lifetimes are inferred, unless an elision scope is nested,
+    /// e.g. `(&T, fn(&T) -> &T);` becomes `(&'_ T, for<'a> fn(&'a T) -> &'a T)`.
     Body {
         id: hir::BodyId,
         s: ScopeRef<'a>
     },
 
+    /// A scope which either determines unspecified lifetimes or errors
+    /// on them (e.g. due to ambiguity). For more details, see `Elide`.
+    Elision {
+        elide: Elide,
+        s: ScopeRef<'a>
+    },
+
     Root
+}
+
+#[derive(Clone, Debug)]
+enum Elide {
+    /// Use a fresh anonymous late-bound lifetime each time, by
+    /// incrementing the counter to generate sequential indices.
+    FreshLateAnon(Cell<u32>),
+    /// Always use this one lifetime.
+    Exact(Region),
+    /// Like `Exact(Static)` but requires `#![feature(static_in_const)]`.
+    Static,
+    /// Less or more than one lifetime were found, error on unspecified.
+    Error(Vec<ElisionFailureInfo>)
+}
+
+#[derive(Clone, Debug)]
+struct ElisionFailureInfo {
+    /// Where we can find the argument pattern.
+    parent: Option<hir::BodyId>,
+    /// The index of the argument in the original definition.
+    index: usize,
+    lifetime_count: usize,
+    have_bound_regions: bool
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -189,11 +255,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemUse(..) |
             hir::ItemMod(..) |
             hir::ItemDefaultImpl(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemStatic(..) |
-            hir::ItemConst(..) => {
+            hir::ItemForeignMod(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
+            }
+            hir::ItemStatic(..) |
+            hir::ItemConst(..) => {
+                // No lifetime parameters, but implied 'static.
+                let scope = Scope::Elision {
+                    elide: Elide::Static,
+                    s: ROOT_SCOPE
+                };
+                self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
             hir::ItemTy(_, ref generics) |
             hir::ItemEnum(_, ref generics) |
@@ -299,6 +372,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.is_elided() {
+            self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
             return;
         }
         if lifetime_ref.name == keywords::StaticLifetime.name() {
@@ -306,6 +380,31 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             return;
         }
         self.resolve_lifetime_ref(lifetime_ref);
+    }
+
+    fn visit_path_parameters(&mut self, _: Span, params: &'tcx hir::PathParameters) {
+        match *params {
+            hir::AngleBracketedParameters(ref data) => {
+                if data.lifetimes.iter().all(|l| l.is_elided()) {
+                    self.resolve_elided_lifetimes(&data.lifetimes);
+                } else {
+                    for l in &data.lifetimes { self.visit_lifetime(l); }
+                }
+                for ty in &data.types { self.visit_ty(ty); }
+                for b in &data.bindings { self.visit_assoc_type_binding(b); }
+            }
+            hir::ParenthesizedParameters(ref data) => {
+                self.visit_fn_like_elision(&data.inputs, data.output.as_ref());
+            }
+        }
+    }
+
+    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl) {
+        let output = match fd.output {
+            hir::DefaultReturn(_) => None,
+            hir::Return(ref ty) => Some(ty)
+        };
+        self.visit_fn_like_elision(&fd.inputs, output);
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
@@ -478,10 +577,6 @@ fn extract_labels(ctxt: &mut LifetimeContext, body: &hir::Body) {
             }
             intravisit::walk_expr(self, ex)
         }
-
-        fn visit_item(&mut self, _: &hir::Item) {
-            // do not recurse into items defined in the block
-        }
     }
 
     fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
@@ -499,7 +594,9 @@ fn extract_labels(ctxt: &mut LifetimeContext, body: &hir::Body) {
                                            label_span: Span) {
         loop {
             match *scope {
-                Scope::Body { s, .. } => { scope = s; }
+                Scope::Body { s, .. } |
+                Scope::Elision { s, .. } => { scope = s; }
+
                 Scope::Root => { return; }
 
                 Scope::Binder { ref lifetimes, s } => {
@@ -639,6 +736,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         scope = s;
                     }
                 }
+
+                Scope::Elision { s, .. } => {
+                    scope = s;
+                }
             }
         };
 
@@ -669,6 +770,386 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "use of undeclared lifetime name `{}`", lifetime_ref.name)
                 .span_label(lifetime_ref.span, &format!("undeclared lifetime"))
                 .emit();
+        }
+    }
+
+    fn visit_fn_like_elision(&mut self, inputs: &'tcx [P<hir::Ty>],
+                             output: Option<&'tcx P<hir::Ty>>) {
+        let mut arg_elide = Elide::FreshLateAnon(Cell::new(0));
+        let arg_scope = Scope::Elision {
+            elide: arg_elide.clone(),
+            s: self.scope
+        };
+        self.with(arg_scope, |_, this| {
+            for input in inputs {
+                this.visit_ty(input);
+            }
+            match *this.scope {
+                Scope::Elision { ref elide, .. } => {
+                    arg_elide = elide.clone();
+                }
+                _ => bug!()
+            }
+        });
+
+        let output = match output {
+            Some(ty) => ty,
+            None => return
+        };
+
+        // Figure out if there's a body we can get argument names from,
+        // and whether there's a `self` argument (treated specially).
+        let mut assoc_item_kind = None;
+        let mut impl_self = None;
+        let parent = self.hir_map.get_parent_node(output.id);
+        let body = match self.hir_map.get(parent) {
+            // `fn` definitions and methods.
+            hir::map::NodeItem(&hir::Item {
+                node: hir::ItemFn(.., body), ..
+            })  => Some(body),
+
+            hir::map::NodeTraitItem(&hir::TraitItem {
+                node: hir::TraitItemKind::Method(_, ref m), ..
+            }) => {
+                match self.hir_map.expect_item(self.hir_map.get_parent(parent)).node {
+                    hir::ItemTrait(.., ref trait_items) => {
+                        assoc_item_kind = trait_items.iter().find(|ti| ti.id.node_id == parent)
+                                                            .map(|ti| ti.kind);
+                    }
+                    _ => {}
+                }
+                match *m {
+                    hir::TraitMethod::Required(_) => None,
+                    hir::TraitMethod::Provided(body) => Some(body),
+                }
+            }
+
+            hir::map::NodeImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(_, body), ..
+            }) => {
+                match self.hir_map.expect_item(self.hir_map.get_parent(parent)).node {
+                    hir::ItemImpl(.., ref self_ty, ref impl_items) => {
+                        impl_self = Some(self_ty);
+                        assoc_item_kind = impl_items.iter().find(|ii| ii.id.node_id == parent)
+                                                           .map(|ii| ii.kind);
+                    }
+                    _ => {}
+                }
+                Some(body)
+            }
+
+            // `fn(...) -> R` and `Trait(...) -> R` (both types and bounds).
+            hir::map::NodeTy(_) | hir::map::NodeTraitRef(_) => None,
+
+            // Foreign `fn` decls are terrible because we messed up,
+            // and their return types get argument type elision.
+            // And now too much code out there is abusing this rule.
+            hir::map::NodeForeignItem(_) => {
+                let arg_scope = Scope::Elision {
+                    elide: arg_elide,
+                    s: self.scope
+                };
+                self.with(arg_scope, |_, this| this.visit_ty(output));
+                return;
+            }
+
+            // Everything else (only closures?) doesn't
+            // actually enjoy elision in return types.
+            _ => {
+                self.visit_ty(output);
+                return;
+            }
+        };
+
+        let has_self = match assoc_item_kind {
+            Some(hir::AssociatedItemKind::Method { has_self }) => has_self,
+            _ => false
+        };
+
+        // In accordance with the rules for lifetime elision, we can determine
+        // what region to use for elision in the output type in two ways.
+        // First (determined here), if `self` is by-reference, then the
+        // implied output region is the region of the self parameter.
+        if has_self {
+            // Look for `self: &'a Self` - also desugared from `&'a self`,
+            // and if that matches, use it for elision and return early.
+            let is_self_ty = |def: Def| {
+                if let Def::SelfTy(..) = def {
+                    return true;
+                }
+
+                // Can't always rely on literal (or implied) `Self` due
+                // to the way elision rules were originally specified.
+                let impl_self = impl_self.map(|ty| &ty.node);
+                if let Some(&hir::TyPath(hir::QPath::Resolved(None, ref path))) = impl_self {
+                    match path.def {
+                        // Whitelist the types that unambiguously always
+                        // result in the same type constructor being used
+                        // (it can't differ between `Self` and `self`).
+                        Def::Struct(_) |
+                        Def::Union(_) |
+                        Def::Enum(_) |
+                        Def::Trait(_) |
+                        Def::PrimTy(_) => return def == path.def,
+                        _ => {}
+                    }
+                }
+
+                false
+            };
+
+            if let hir::TyRptr(lifetime_ref, ref mt) = inputs[0].node {
+                if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
+                    if is_self_ty(path.def) {
+                        if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
+                            let scope = Scope::Elision {
+                                elide: Elide::Exact(lifetime),
+                                s: self.scope
+                            };
+                            self.with(scope, |_, this| this.visit_ty(output));
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Second, if there was exactly one lifetime (either a substitution or a
+        // reference) in the arguments, then any anonymous regions in the output
+        // have that lifetime.
+        let mut possible_implied_output_region = None;
+        let mut lifetime_count = 0;
+        let arg_lifetimes = inputs.iter().enumerate().skip(has_self as usize).map(|(i, input)| {
+            let mut gather = GatherLifetimes {
+                map: self.map,
+                binder_depth: 1,
+                have_bound_regions: false,
+                lifetimes: FxHashSet()
+            };
+            gather.visit_ty(input);
+
+            lifetime_count += gather.lifetimes.len();
+
+            if lifetime_count == 1 && gather.lifetimes.len() == 1 {
+                // there's a chance that the unique lifetime of this
+                // iteration will be the appropriate lifetime for output
+                // parameters, so lets store it.
+                possible_implied_output_region = gather.lifetimes.iter().cloned().next();
+            }
+
+            ElisionFailureInfo {
+                parent: body,
+                index: i,
+                lifetime_count: gather.lifetimes.len(),
+                have_bound_regions: gather.have_bound_regions
+            }
+        }).collect();
+
+        let elide = if lifetime_count == 1 {
+            Elide::Exact(possible_implied_output_region.unwrap())
+        } else {
+            Elide::Error(arg_lifetimes)
+        };
+
+        let scope = Scope::Elision {
+            elide: elide,
+            s: self.scope
+        };
+        self.with(scope, |_, this| this.visit_ty(output));
+
+        struct GatherLifetimes<'a> {
+            map: &'a NamedRegionMap,
+            binder_depth: u32,
+            have_bound_regions: bool,
+            lifetimes: FxHashSet<Region>,
+        }
+
+        impl<'v, 'a> Visitor<'v> for GatherLifetimes<'a> {
+            fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+                NestedVisitorMap::None
+            }
+
+            fn visit_ty(&mut self, ty: &hir::Ty) {
+                let delta = match ty.node {
+                    hir::TyBareFn(_) => 1,
+                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                        // if this path references a trait, then this will resolve to
+                        // a trait ref, which introduces a binding scope.
+                        match path.def {
+                            Def::Trait(..) => 1,
+                            _ => 0
+                        }
+                    }
+                    _ => 0
+                };
+                self.binder_depth += delta;
+                intravisit::walk_ty(self, ty);
+                self.binder_depth -= delta;
+            }
+
+            fn visit_poly_trait_ref(&mut self,
+                                    trait_ref: &hir::PolyTraitRef,
+                                    modifier: &hir::TraitBoundModifier) {
+                self.binder_depth += 1;
+                intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
+                self.binder_depth -= 1;
+            }
+
+            fn visit_lifetime_def(&mut self, lifetime_def: &hir::LifetimeDef) {
+                for l in &lifetime_def.bounds { self.visit_lifetime(l); }
+            }
+
+            fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
+                if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
+                    match lifetime {
+                        Region::LateBound(debruijn, _) |
+                        Region::LateBoundAnon(debruijn, _)
+                                if debruijn.depth < self.binder_depth => {
+                            self.have_bound_regions = true;
+                        }
+                        _ => {
+                            self.lifetimes.insert(lifetime.from_depth(self.binder_depth));
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    fn resolve_elided_lifetimes(&mut self, lifetime_refs: &[hir::Lifetime]) {
+        if lifetime_refs.is_empty() {
+            return;
+        }
+
+        let span = lifetime_refs[0].span;
+        let mut late_depth = 0;
+        let mut scope = self.scope;
+        let error = loop {
+            match *scope {
+                // Do not assign any resolution, it will be inferred.
+                Scope::Body { .. } => return,
+
+                Scope::Root => break None,
+
+                Scope::Binder { s, .. } => {
+                    late_depth += 1;
+                    scope = s;
+                }
+
+                Scope::Elision { ref elide, .. } => {
+                    let lifetime = match *elide {
+                        Elide::FreshLateAnon(ref counter) => {
+                            for lifetime_ref in lifetime_refs {
+                                let lifetime = Region::late_anon(counter).shifted(late_depth);
+                                self.insert_lifetime(lifetime_ref, lifetime);
+                            }
+                            return;
+                        }
+                        Elide::Exact(l) => l.shifted(late_depth),
+                        Elide::Static => {
+                            if !self.sess.features.borrow().static_in_const {
+                                self.sess
+                                    .struct_span_err(span,
+                                                     "this needs a `'static` lifetime or the \
+                                                      `static_in_const` feature, see #35897")
+                                    .emit();
+                            }
+                            Region::Static
+                        }
+                        Elide::Error(ref e) => break Some(e)
+                    };
+                    for lifetime_ref in lifetime_refs {
+                        self.insert_lifetime(lifetime_ref, lifetime);
+                    }
+                    return;
+                }
+            }
+        };
+
+        let mut err = struct_span_err!(self.sess, span, E0106,
+            "missing lifetime specifier{}",
+            if lifetime_refs.len() > 1 { "s" } else { "" });
+        let msg = if lifetime_refs.len() > 1 {
+            format!("expected {} lifetime parameters", lifetime_refs.len())
+        } else {
+            format!("expected lifetime parameter")
+        };
+        err.span_label(span, &msg);
+
+        if let Some(params) = error {
+            if lifetime_refs.len() == 1 {
+                self.report_elision_failure(&mut err, params);
+            }
+        }
+        err.emit();
+    }
+
+    fn report_elision_failure(&mut self,
+                              db: &mut DiagnosticBuilder,
+                              params: &[ElisionFailureInfo]) {
+        let mut m = String::new();
+        let len = params.len();
+
+        let elided_params: Vec<_> = params.iter().cloned()
+                                          .filter(|info| info.lifetime_count > 0)
+                                          .collect();
+
+        let elided_len = elided_params.len();
+
+        for (i, info) in elided_params.into_iter().enumerate() {
+            let ElisionFailureInfo {
+                parent, index, lifetime_count: n, have_bound_regions
+            } = info;
+
+            let help_name = if let Some(body) = parent {
+                let arg = &self.hir_map.body(body).arguments[index];
+                format!("`{}`", self.hir_map.node_to_pretty_string(arg.pat.id))
+            } else {
+                format!("argument {}", index + 1)
+            };
+
+            m.push_str(&(if n == 1 {
+                help_name
+            } else {
+                format!("one of {}'s {} elided {}lifetimes", help_name, n,
+                        if have_bound_regions { "free " } else { "" } )
+            })[..]);
+
+            if elided_len == 2 && i == 0 {
+                m.push_str(" or ");
+            } else if i + 2 == elided_len {
+                m.push_str(", or ");
+            } else if i != elided_len - 1 {
+                m.push_str(", ");
+            }
+
+        }
+
+        if len == 0 {
+            help!(db,
+                  "this function's return type contains a borrowed value, but \
+                   there is no value for it to be borrowed from");
+            help!(db,
+                  "consider giving it a 'static lifetime");
+        } else if elided_len == 0 {
+            help!(db,
+                  "this function's return type contains a borrowed value with \
+                   an elided lifetime, but the lifetime cannot be derived from \
+                   the arguments");
+            help!(db,
+                  "consider giving it an explicit bounded or 'static \
+                   lifetime");
+        } else if elided_len == 1 {
+            help!(db,
+                  "this function's return type contains a borrowed value, but \
+                   the signature does not say which {} it is borrowed from",
+                  m);
+        } else {
+            help!(db,
+                  "this function's return type contains a borrowed value, but \
+                   the signature does not say whether it is borrowed from {}",
+                  m);
         }
     }
 
@@ -729,7 +1210,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         loop {
             match *old_scope {
-                Scope::Body { s, .. } => {
+                Scope::Body { s, .. } |
+                Scope::Elision { s, .. } => {
                     old_scope = s;
                 }
 

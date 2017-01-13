@@ -8,27 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 
 use astconv::AstConv;
 
-use std::cell::Cell;
 use syntax_pos::Span;
-
-#[derive(Clone)]
-pub struct ElisionFailureInfo {
-    /// Where we can find the argument pattern.
-    pub parent: Option<hir::BodyId>,
-    /// The index of the argument in the original definition.
-    pub index: usize,
-    pub lifetime_count: usize,
-    pub have_bound_regions: bool
-}
-
-pub type ElidedLifetime = Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
 
 /// Defines strategies for handling regions that are omitted.  For
 /// example, if one writes the type `&Foo`, then the lifetime of
@@ -41,9 +27,6 @@ pub type ElidedLifetime = Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
 /// can return `Err(())` to indicate that this is not a scope in which
 /// regions can legally be omitted.
 pub trait RegionScope {
-    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                    -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
-
     /// If an object omits any explicit lifetime bound, and none can
     /// be derived from the object traits, what should we use? If
     /// `None` is returned, an explicit annotation is required.
@@ -115,11 +98,6 @@ impl<R: RegionScope> RegionScope for MaybeWithAnonTypes<R> {
         self.base_scope.object_lifetime_default(span)
     }
 
-    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        self.base_scope.anon_region(span, def)
-    }
-
     fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
         self.base_scope.base_object_lifetime_default(span)
     }
@@ -135,146 +113,12 @@ impl<R: RegionScope> RegionScope for MaybeWithAnonTypes<R> {
 pub struct ExplicitRscope;
 
 impl RegionScope for ExplicitRscope {
-    fn anon_region(&self, _span: Span, _: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        Err(None)
-    }
-
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
         Some(self.base_object_lifetime_default(span))
     }
 
     fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
         ty::ReStatic
-    }
-}
-
-// Same as `ExplicitRscope`, but provides some extra information for diagnostics
-pub struct UnelidableRscope(Option<Vec<ElisionFailureInfo>>);
-
-impl UnelidableRscope {
-    pub fn new(v: Option<Vec<ElisionFailureInfo>>) -> UnelidableRscope {
-        UnelidableRscope(v)
-    }
-}
-
-impl RegionScope for UnelidableRscope {
-    fn anon_region(&self, _span: Span, _: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        Err(self.0.clone())
-    }
-
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
-        ty::ReStatic
-    }
-}
-
-// A scope in which omitted anonymous region defaults to
-// `default`. This is used after the `->` in function signatures. The
-// latter use may go away. Note that object-lifetime defaults work a
-// bit differently, as specified in RFC #599.
-pub struct ElidableRscope {
-    default: ty::Region,
-}
-
-impl ElidableRscope {
-    pub fn new(r: ty::Region) -> ElidableRscope {
-        ElidableRscope { default: r }
-    }
-}
-
-impl RegionScope for ElidableRscope {
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        // Per RFC #599, object-lifetimes default to 'static unless
-        // overridden by context, and this takes precedence over
-        // lifetime elision.
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
-        ty::ReStatic
-    }
-
-    fn anon_region(&self, _span: Span, _: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
-    {
-        Ok(self.default)
-    }
-}
-
-/// A scope that behaves as an ElidabeRscope with a `'static` default region
-/// that should also warn if the `static_in_const` feature is unset.
-#[derive(Copy, Clone)]
-pub struct StaticRscope<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: &'a ty::TyCtxt<'a, 'gcx, 'tcx>,
-}
-
-impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> StaticRscope<'a, 'gcx, 'tcx> {
-    /// create a new StaticRscope from a reference to the `TyCtxt`
-    pub fn new(tcx: &'a ty::TyCtxt<'a, 'gcx, 'tcx>) -> Self {
-        StaticRscope { tcx: tcx }
-    }
-}
-
-impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx> {
-    fn anon_region(&self, span: Span, _: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>> {
-        if !self.tcx.sess.features.borrow().static_in_const {
-            self.tcx
-                .sess
-                .struct_span_err(span,
-                                 "this needs a `'static` lifetime or the \
-                                 `static_in_const` feature, see #35897")
-                .emit();
-        }
-        Ok(ty::ReStatic)
-    }
-
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
-        ty::ReStatic
-    }
-}
-
-/// A scope in which we generate anonymous, late-bound regions for
-/// omitted regions. This occurs in function signatures.
-pub struct BindingRscope {
-    anon_bindings: Cell<u32>,
-}
-
-impl BindingRscope {
-    pub fn new() -> BindingRscope {
-        BindingRscope {
-            anon_bindings: Cell::new(0),
-        }
-    }
-}
-
-impl RegionScope for BindingRscope {
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        // Per RFC #599, object-lifetimes default to 'static unless
-        // overridden by context, and this takes precedence over the
-        // binding defaults in a fn signature.
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
-        ty::ReStatic
-    }
-
-    fn anon_region(&self, _: Span, _: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
-    {
-        let idx = self.anon_bindings.get();
-        self.anon_bindings.set(idx + 1);
-        Ok(ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(idx)))
     }
 }
 
@@ -315,12 +159,6 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
         self.base_scope.base_object_lifetime_default(span)
     }
 
-    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
-    {
-        self.base_scope.anon_region(span, def)
-    }
-
     fn anon_type_scope(&self) -> Option<AnonTypeScope> {
         self.base_scope.anon_type_scope()
     }
@@ -346,12 +184,6 @@ impl<'r> RegionScope for ShiftedRscope<'r> {
 
     fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
         ty::fold::shift_region(self.base_scope.base_object_lifetime_default(span), 1)
-    }
-
-    fn anon_region(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                   -> Result<ty::Region, Option<Vec<ElisionFailureInfo>>>
-    {
-        self.base_scope.anon_region(span, def).map(|r| ty::fold::shift_region(r, 1))
     }
 
     fn anon_type_scope(&self) -> Option<AnonTypeScope> {

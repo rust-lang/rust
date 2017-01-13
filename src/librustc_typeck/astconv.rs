@@ -61,9 +61,7 @@ use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
-use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
-             ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
-             ElisionFailureInfo, ElidedLifetime};
+use rscope::{RegionScope, ObjectLifetimeDefaultRscope, ShiftedRscope};
 use rscope::{AnonTypeScope, MaybeWithAnonTypes, ExplicitRscope};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FxHashSet};
@@ -74,7 +72,6 @@ use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -110,6 +107,10 @@ pub trait AstConv<'gcx, 'tcx> {
     /// within a fn body.
     /// See ParameterEnvironment::free_substs for more information.
     fn get_free_substs(&self) -> Option<&Substs<'tcx>>;
+
+    /// What lifetime should we use when a lifetime is omitted (and not elided)?
+    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
+                -> &'tcx ty::Region;
 
     /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
@@ -161,94 +162,16 @@ struct ConvertedBinding<'tcx> {
 /// This type must not appear anywhere in other converted types.
 const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
 
-fn report_elision_failure(
-    tcx: TyCtxt,
-    db: &mut DiagnosticBuilder,
-    params: Vec<ElisionFailureInfo>)
-{
-    let mut m = String::new();
-    let len = params.len();
-
-    let elided_params: Vec<_> = params.into_iter()
-                                       .filter(|info| info.lifetime_count > 0)
-                                       .collect();
-
-    let elided_len = elided_params.len();
-
-    for (i, info) in elided_params.into_iter().enumerate() {
-        let ElisionFailureInfo {
-            parent, index, lifetime_count: n, have_bound_regions
-        } = info;
-
-        let help_name = if let Some(body) = parent {
-            let arg = &tcx.hir.body(body).arguments[index];
-            format!("`{}`", tcx.hir.node_to_pretty_string(arg.pat.id))
-        } else {
-            format!("argument {}", index + 1)
-        };
-
-        m.push_str(&(if n == 1 {
-            help_name
-        } else {
-            format!("one of {}'s {} elided {}lifetimes", help_name, n,
-                    if have_bound_regions { "free " } else { "" } )
-        })[..]);
-
-        if elided_len == 2 && i == 0 {
-            m.push_str(" or ");
-        } else if i + 2 == elided_len {
-            m.push_str(", or ");
-        } else if i != elided_len - 1 {
-            m.push_str(", ");
-        }
-
-    }
-
-    if len == 0 {
-        help!(db,
-                   "this function's return type contains a borrowed value, but \
-                    there is no value for it to be borrowed from");
-        help!(db,
-                   "consider giving it a 'static lifetime");
-    } else if elided_len == 0 {
-        help!(db,
-                   "this function's return type contains a borrowed value with \
-                    an elided lifetime, but the lifetime cannot be derived from \
-                    the arguments");
-        help!(db,
-                   "consider giving it an explicit bounded or 'static \
-                    lifetime");
-    } else if elided_len == 1 {
-        help!(db,
-                   "this function's return type contains a borrowed value, but \
-                    the signature does not say which {} it is borrowed from",
-                   m);
-    } else {
-        help!(db,
-                   "this function's return type contains a borrowed value, but \
-                    the signature does not say whether it is borrowed from {}",
-                   m);
-    }
-}
-
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
-    pub fn ast_region_to_region(&self, lifetime: &hir::Lifetime) -> &'tcx ty::Region {
-        self.opt_ast_region_to_region(&ExplicitRscope, lifetime.span, Some(lifetime), None)
-    }
-
-    fn try_opt_ast_region_to_region(&self,
-        rscope: &RegionScope,
-        default_span: Span,
-        opt_lifetime: Option<&hir::Lifetime>,
+    pub fn ast_region_to_region(&self,
+        lifetime: &hir::Lifetime,
         def: Option<&ty::RegionParameterDef>)
-        -> Result<&'tcx ty::Region, Option<Vec<ElisionFailureInfo>>>
+        -> &'tcx ty::Region
     {
         let tcx = self.tcx();
-        let name = opt_lifetime.map(|l| l.name);
-        let resolved = opt_lifetime.and_then(|l| tcx.named_region_map.defs.get(&l.id));
-        let r = tcx.mk_region(match resolved {
+        let r = match tcx.named_region_map.defs.get(&lifetime.id) {
             Some(&rl::Region::Static) => {
-                ty::ReStatic
+                tcx.mk_region(ty::ReStatic)
             }
 
             Some(&rl::Region::LateBound(debruijn, id)) => {
@@ -263,16 +186,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                      .get(&id)
                                      .cloned()
                                      .unwrap_or(ty::Issue32330::WontChange);
-                ty::ReLateBound(debruijn, ty::BrNamed(tcx.hir.local_def_id(id),
-                                                      name.unwrap(),
-                                                      issue_32330))
+                let name = tcx.hir.name(id);
+                tcx.mk_region(ty::ReLateBound(debruijn,
+                    ty::BrNamed(tcx.hir.local_def_id(id), name, issue_32330)))
             }
 
-            Some(&rl::Region::EarlyBound(index, _)) => {
-                ty::ReEarlyBound(ty::EarlyBoundRegion {
+            Some(&rl::Region::LateBoundAnon(debruijn, index)) => {
+                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
+            }
+
+            Some(&rl::Region::EarlyBound(index, id)) => {
+                let name = tcx.hir.name(id);
+                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     index: index,
-                    name: name.unwrap()
-                })
+                    name: name
+                }))
             }
 
             Some(&rl::Region::Free(scope, id)) => {
@@ -283,47 +211,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                      .get(&id)
                                      .cloned()
                                      .unwrap_or(ty::Issue32330::WontChange);
-                ty::ReFree(ty::FreeRegion {
-                        scope: scope.to_code_extent(&tcx.region_maps),
-                        bound_region: ty::BrNamed(tcx.hir.local_def_id(id),
-                                                  name.unwrap(),
-                                                  issue_32330)
-                })
+                let name = tcx.hir.name(id);
+                tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                    scope: scope.to_code_extent(&tcx.region_maps),
+                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name, issue_32330)
+                }))
 
                     // (*) -- not late-bound, won't change
             }
 
-            None => rscope.anon_region(default_span, def)?
-        });
+            None => self.re_infer(lifetime.span, def)
+        };
 
-        debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {:?}",
-                opt_lifetime,
+        debug!("ast_region_to_region(lifetime={:?}) yields {:?}",
+                lifetime,
                 r);
 
-        Ok(r)
-    }
-
-    pub fn opt_ast_region_to_region(&self,
-        rscope: &RegionScope,
-        default_span: Span,
-        opt_lifetime: Option<&hir::Lifetime>,
-        def: Option<&ty::RegionParameterDef>) -> &'tcx ty::Region
-    {
-        let tcx = self.tcx();
-        self.try_opt_ast_region_to_region(rscope, default_span, opt_lifetime, def)
-            .unwrap_or_else(|params| {
-                let ampersand_span = Span { hi: default_span.lo, ..default_span};
-
-                let mut err = struct_span_err!(tcx.sess, ampersand_span, E0106,
-                                               "missing lifetime specifier");
-                err.span_label(ampersand_span, &format!("expected lifetime parameter"));
-
-                if let Some(params) = params {
-                    report_elision_failure(tcx, &mut err, params);
-                }
-                err.emit();
-                tcx.mk_region(ty::ReStatic)
-            })
+        r
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
@@ -404,20 +308,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
-        let mut reported_lifetime_count_mismatch = false;
-        let mut report_lifetime_count_mismatch = || {
-            if !reported_lifetime_count_mismatch {
-                reported_lifetime_count_mismatch = true;
-                let all_infer = lifetimes.iter().all(|lt| lt.is_elided());
-                let supplied = if all_infer { 0 } else { supplied_num_region_params };
-                report_lifetime_number_error(tcx, span,
-                                             supplied,
-                                             expected_num_region_params);
-            }
-        };
-
         if expected_num_region_params != supplied_num_region_params {
-            report_lifetime_count_mismatch();
+            report_lifetime_number_error(tcx, span,
+                                         supplied_num_region_params,
+                                         expected_num_region_params);
         }
 
         // If a self-type was declared, one should be provided.
@@ -445,11 +339,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
             let i = def.index as usize - self_ty.is_some() as usize;
-            let l = lifetimes.get(i);
-            self.try_opt_ast_region_to_region(rscope, span, l, Some(def)).unwrap_or_else(|_| {
-                report_lifetime_count_mismatch();
+            if let Some(lifetime) = lifetimes.get(i) {
+                self.ast_region_to_region(lifetime, Some(def))
+            } else {
                 tcx.mk_region(ty::ReStatic)
-            })
+            }
         }, |def, substs| {
             let i = def.index as usize;
 
@@ -533,72 +427,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         (substs, assoc_bindings)
     }
 
-    /// Returns the appropriate lifetime to use for any output lifetimes
-    /// (if one exists) and a vector of the (pattern, number of lifetimes)
-    /// corresponding to each input type/pattern.
-    fn find_implied_output_region<I>(&self,
-                                     input_tys: &[Ty<'tcx>],
-                                     parent: Option<hir::BodyId>,
-                                     input_indices: I) -> ElidedLifetime
-        where I: Iterator<Item=usize>
-    {
-        let tcx = self.tcx();
-        let mut lifetimes_for_params = Vec::with_capacity(input_tys.len());
-        let mut possible_implied_output_region = None;
-        let mut lifetimes = 0;
-
-        for (input_type, index) in input_tys.iter().zip(input_indices) {
-            let mut regions = FxHashSet();
-            let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
-
-            debug!("find_implied_output_regions: collected {:?} from {:?} \
-                    have_bound_regions={:?}", &regions, input_type, have_bound_regions);
-
-            lifetimes += regions.len();
-
-            if lifetimes == 1 && regions.len() == 1 {
-                // there's a chance that the unique lifetime of this
-                // iteration will be the appropriate lifetime for output
-                // parameters, so lets store it.
-                possible_implied_output_region = regions.iter().cloned().next();
-            }
-
-            lifetimes_for_params.push(ElisionFailureInfo {
-                parent: parent,
-                index: index,
-                lifetime_count: regions.len(),
-                have_bound_regions: have_bound_regions
-            });
-        }
-
-        if lifetimes == 1 {
-            Ok(*possible_implied_output_region.unwrap())
-        } else {
-            Err(Some(lifetimes_for_params))
-        }
-    }
-
-    fn convert_ty_with_lifetime_elision(&self,
-                                        elided_lifetime: ElidedLifetime,
-                                        ty: &hir::Ty,
-                                        anon_scope: Option<AnonTypeScope>)
-                                        -> Ty<'tcx>
-    {
-        match elided_lifetime {
-            Ok(implied_output_region) => {
-                let rb = ElidableRscope::new(implied_output_region);
-                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(rb, anon_scope), ty)
-            }
-            Err(param_lifetimes) => {
-                // All regions must be explicitly specified in the output
-                // if the lifetime elision rules do not apply. This saves
-                // the user from potentially-confusing errors.
-                let rb = UnelidableRscope::new(param_lifetimes);
-                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(rb, anon_scope), ty)
-            }
-        }
-    }
-
     fn convert_parenthesized_parameters(&self,
                                         rscope: &RegionScope,
                                         region_substs: &[Kind<'tcx>],
@@ -606,19 +434,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         -> (Ty<'tcx>, ConvertedBinding<'tcx>)
     {
         let anon_scope = rscope.anon_type_scope();
-        let binding_rscope = MaybeWithAnonTypes::new(BindingRscope::new(), anon_scope);
+        let rscope = MaybeWithAnonTypes::new(ExplicitRscope, anon_scope);
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
-            self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
+            self.ast_ty_arg_to_ty(&rscope, None, region_substs, a_t)
         }));
-        let input_params = 0..inputs.len();
-        let implied_output_region = self.find_implied_output_region(&inputs, None, input_params);
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
-                (self.convert_ty_with_lifetime_elision(implied_output_region,
-                                                       &output_ty,
-                                                       anon_scope),
-                 output_ty.span)
+                (self.ast_ty_to_ty(&rscope, output_ty), output_ty.span)
             }
             None => {
                 (self.tcx().mk_nil(), data.span)
@@ -1469,7 +1292,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 })
             }
             hir::TyRptr(ref region, ref mt) => {
-                let r = self.opt_ast_region_to_region(rscope, ast_ty.span, Some(region), None);
+                let r = self.ast_region_to_region(region, None);
                 debug!("TyRef r={:?}", r);
                 let rscope1 =
                     &ObjectLifetimeDefaultRscope::new(
@@ -1489,9 +1312,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let anon_scope = rscope.anon_type_scope();
                 let bare_fn_ty = self.ty_of_method_or_bare_fn(bf.unsafety,
                                                               bf.abi,
-                                                              None,
                                                               &bf.decl,
-                                                              None,
                                                               anon_scope,
                                                               anon_scope);
 
@@ -1626,37 +1447,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn ty_of_method(&self,
-                        sig: &hir::MethodSig,
-                        opt_self_value_ty: Option<Ty<'tcx>>,
-                        body: Option<hir::BodyId>,
-                        anon_scope: Option<AnonTypeScope>)
-                        -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(sig.unsafety,
-                                     sig.abi,
-                                     opt_self_value_ty,
-                                     &sig.decl,
-                                     body,
-                                     None,
-                                     anon_scope)
-    }
-
-    pub fn ty_of_bare_fn(&self,
-                         unsafety: hir::Unsafety,
-                         abi: abi::Abi,
-                         decl: &hir::FnDecl,
-                         body: hir::BodyId,
-                         anon_scope: Option<AnonTypeScope>)
-                         -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, Some(body), None, anon_scope)
+    pub fn ty_of_fn(&self,
+                    unsafety: hir::Unsafety,
+                    abi: abi::Abi,
+                    decl: &hir::FnDecl,
+                    anon_scope: Option<AnonTypeScope>)
+                    -> &'tcx ty::BareFnTy<'tcx> {
+        self.ty_of_method_or_bare_fn(unsafety, abi, decl, None, anon_scope)
     }
 
     fn ty_of_method_or_bare_fn(&self,
                                unsafety: hir::Unsafety,
                                abi: abi::Abi,
-                               opt_self_value_ty: Option<Ty<'tcx>>,
                                decl: &hir::FnDecl,
-                               body: Option<hir::BodyId>,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
                                -> &'tcx ty::BareFnTy<'tcx>
@@ -1665,40 +1468,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // New region names that appear inside of the arguments of the function
         // declaration are bound to that function type.
-        let rb = MaybeWithAnonTypes::new(BindingRscope::new(), arg_anon_scope);
+        let rb = MaybeWithAnonTypes::new(ExplicitRscope, arg_anon_scope);
 
         let input_tys: Vec<Ty> =
             decl.inputs.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
 
-        let has_self = opt_self_value_ty.is_some();
-        let explicit_self = opt_self_value_ty.map(|self_value_ty| {
-            ExplicitSelf::determine(self_value_ty, input_tys[0])
-        });
-
-        let implied_output_region = match explicit_self {
-            // `implied_output_region` is the region that will be assumed for any
-            // region parameters in the return type. In accordance with the rules for
-            // lifetime elision, we can determine it in two ways. First (determined
-            // here), if self is by-reference, then the implied output region is the
-            // region of the self parameter.
-            Some(ExplicitSelf::ByReference(region, _)) => Ok(*region),
-
-            // Second, if there was exactly one lifetime (either a substitution or a
-            // reference) in the arguments, then any anonymous regions in the output
-            // have that lifetime.
-            _ => {
-                let arg_tys = &input_tys[has_self as usize..];
-                let arg_params = has_self as usize..input_tys.len();
-                self.find_implied_output_region(arg_tys, body, arg_params)
-
-            }
-        };
-
         let output_ty = match decl.output {
             hir::Return(ref output) =>
-                self.convert_ty_with_lifetime_elision(implied_output_region,
-                                                      &output,
-                                                      ret_anon_scope),
+                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(ExplicitRscope, ret_anon_scope), output),
             hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
@@ -1725,10 +1502,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("ty_of_closure(expected_sig={:?})",
                expected_sig);
 
-        // new region names that appear inside of the fn decl are bound to
-        // that function type
-        let rb = rscope::BindingRscope::new();
-
         let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
             let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
                 // no guarantee that the correct number of expected args
@@ -1739,7 +1512,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     None
                 }
             });
-            self.ty_of_arg(&rb, a, expected_arg_ty)
+            self.ty_of_arg(&ExplicitRscope, a, expected_arg_ty)
         });
 
         let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
@@ -1755,7 +1528,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 expected_ret_ty.unwrap(),
             _ if is_infer => self.ty_infer(decl.output.span()),
             hir::Return(ref output) =>
-                self.ast_ty_to_ty(&rb, &output),
+                self.ast_ty_to_ty(&ExplicitRscope, &output),
             hir::DefaultReturn(..) => bug!(),
         };
 
@@ -1820,7 +1593,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if let Some(&r) = explicit_region_bounds.get(0) {
             // Explicitly specified region bound. Use that.
-            return Some(self.ast_region_to_region(r));
+            return Some(self.ast_region_to_region(r, None));
         }
 
         if let Some(principal) = existential_predicates.principal() {
