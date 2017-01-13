@@ -1612,7 +1612,7 @@ pub trait Iterator {
 
     /// Returns the maximum element of an iterator.
     ///
-    /// If the two elements are equally maximum, the latest element is
+    /// If several elements are equally maximum, the last element is
     /// returned.
     ///
     /// # Examples
@@ -1638,7 +1638,7 @@ pub trait Iterator {
 
     /// Returns the minimum element of an iterator.
     ///
-    /// If the two elements are equally minimum, the first element is
+    /// If several elements are equally minimum, the first element is
     /// returned.
     ///
     /// # Examples
@@ -1665,8 +1665,8 @@ pub trait Iterator {
     /// Returns the element that gives the maximum value from the
     /// specified function.
     ///
-    /// Returns the rightmost element if the comparison determines two elements
-    /// to be equally maximum.
+    /// If several elements are equally maximum, the last element is
+    /// returned.
     ///
     /// # Examples
     ///
@@ -1690,8 +1690,8 @@ pub trait Iterator {
     /// Returns the element that gives the maximum value with respect to the
     /// specified comparison function.
     ///
-    /// Returns the rightmost element if the comparison determines two elements
-    /// to be equally maximum.
+    /// If several elements are equally maximum, the last element is
+    /// returned.
     ///
     /// # Examples
     ///
@@ -1715,8 +1715,8 @@ pub trait Iterator {
     /// Returns the element that gives the minimum value from the
     /// specified function.
     ///
-    /// Returns the latest element if the comparison determines two elements
-    /// to be equally minimum.
+    /// If several elements are equally minimum, the first element is
+    /// returned.
     ///
     /// # Examples
     ///
@@ -1739,8 +1739,8 @@ pub trait Iterator {
     /// Returns the element that gives the minimum value with respect to the
     /// specified comparison function.
     ///
-    /// Returns the latest element if the comparison determines two elements
-    /// to be equally minimum.
+    /// If several elements are equally minimum, the first element is
+    /// returned.
     ///
     /// # Examples
     ///
