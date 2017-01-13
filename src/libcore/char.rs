@@ -17,7 +17,7 @@
 
 use char_private::is_printable;
 use convert::TryFrom;
-use fmt;
+use fmt::{self, Write};
 use slice;
 use iter::FusedIterator;
 use mem::transmute;
@@ -588,6 +588,16 @@ impl ExactSizeIterator for EscapeUnicode {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeUnicode {}
 
+#[stable(feature = "char_struct_display", since = "1.17.0")]
+impl fmt::Display for EscapeUnicode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for c in self.clone() {
+            f.write_char(c)?;
+        }
+        Ok(())
+    }
+}
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
@@ -691,6 +701,16 @@ impl ExactSizeIterator for EscapeDefault {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDefault {}
 
+#[stable(feature = "char_struct_display", since = "1.17.0")]
+impl fmt::Display for EscapeDefault {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for c in self.clone() {
+            f.write_char(c)?;
+        }
+        Ok(())
+    }
+}
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_debug()`] method on [`char`]. See its
@@ -714,6 +734,13 @@ impl ExactSizeIterator for EscapeDebug { }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDebug {}
+
+#[stable(feature = "char_struct_display", since = "1.17.0")]
+impl fmt::Display for EscapeDebug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
 
 
 
