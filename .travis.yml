@@ -15,8 +15,14 @@ matrix:
     # Linux builders, all docker images
     - env: IMAGE=arm-android DEPLOY=1
     - env: IMAGE=cross DEPLOY=1
-    - env: IMAGE=dist-arm-unknown-linux-gnueabi DEPLOY=1
-    - env: IMAGE=dist-x86_64-unknown-freebsd DEPLOY=1
+    - env: IMAGE=dist-arm-linux DEPLOY=1
+    - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
+    - env: IMAGE=dist-freebsd DEPLOY=1
+    - env: IMAGE=dist-mips-linux DEPLOY=1
+    - env: IMAGE=dist-mips64-linux DEPLOY=1
+    - env: IMAGE=dist-powerpc-linux DEPLOY=1
+    - env: IMAGE=dist-powerpc64-linux DEPLOY=1
+    - env: IMAGE=dist-s390x-linux-netbsd DEPLOY=1
     - env: IMAGE=i686-gnu DEPLOY=1
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=x86_64-gnu DEPLOY=1
