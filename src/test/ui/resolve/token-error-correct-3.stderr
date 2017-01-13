@@ -22,11 +22,11 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
 29 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^
 
-error[E0425]: unresolved function `is_directory`
+error[E0425]: cannot find function `is_directory` in this scope
   --> $DIR/token-error-correct-3.rs:21:13
    |
 21 |         if !is_directory(path.as_ref()) { //~ ERROR: unresolved function `is_directory`
-   |             ^^^^^^^^^^^^ no resolution found
+   |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
   --> $DIR/token-error-correct-3.rs:25:13

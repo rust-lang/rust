@@ -1,4 +1,4 @@
-error[E0425]: unresolved value `cx`
+error[E0425]: cannot find value `cx` in this scope
   --> $DIR/unresolved_static_type_field.rs:19:11
    |
 19 |         f(cx);

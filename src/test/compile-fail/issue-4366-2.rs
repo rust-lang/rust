@@ -23,7 +23,7 @@ mod a {
     pub mod sub {
         use a::b::*;
         fn sub() -> bar { 1 }
-        //~^ ERROR unresolved type `bar`
+        //~^ ERROR cannot find type `bar` in this scope
     }
 }
 

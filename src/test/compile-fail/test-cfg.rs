@@ -14,5 +14,5 @@
 fn foo() {}
 
 fn main() {
-    foo(); //~ ERROR unresolved function `foo`
+    foo(); //~ ERROR cannot find function `foo` in this scope
 }

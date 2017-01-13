@@ -11,7 +11,7 @@
 trait A {
     type Output;
     fn a(&self) -> <Self as A>::X;
-    //~^ ERROR unresolved associated type `A::X`
+    //~^ ERROR cannot find associated type `X` in trait `A`
 }
 
 impl A for u32 {

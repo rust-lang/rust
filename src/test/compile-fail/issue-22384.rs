@@ -14,5 +14,5 @@ trait Trait {
 
 fn main() {
     <<i32 as Copy>::foobar as Trait>::foo();
-    //~^ ERROR unresolved associated type `Copy::foobar`
+    //~^ ERROR cannot find associated type `foobar` in trait `Copy`
 }
