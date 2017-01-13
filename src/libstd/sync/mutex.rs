@@ -155,6 +155,14 @@ impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Mutex;
+    ///
+    /// let mutex = Mutex::new(0);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
         let mut m = Mutex {
@@ -190,6 +198,21 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// This function might panic when called if the lock is already held by
     /// the current thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    /// use std::thread;
+    ///
+    /// let mutex = Arc::new(Mutex::new(0));
+    /// let c_mutex = mutex.clone();
+    ///
+    /// thread::spawn(move || {
+    ///     *c_mutex.lock().unwrap() = 10;
+    /// }).join().expect("thread::spawn failed");
+    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe {
@@ -211,6 +234,26 @@ impl<T: ?Sized> Mutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    /// use std::thread;
+    ///
+    /// let mutex = Arc::new(Mutex::new(0));
+    /// let c_mutex = mutex.clone();
+    ///
+    /// thread::spawn(move || {
+    ///     let mut lock = c_mutex.try_lock();
+    ///     if let Ok(ref mut mutex) = lock {
+    ///         **mutex = 10;
+    ///     } else {
+    ///         println!("try_lock failed");
+    ///     }
+    /// }).join().expect("thread::spawn failed");
+    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
         unsafe {
@@ -225,8 +268,24 @@ impl<T: ?Sized> Mutex<T> {
     /// Determines whether the lock is poisoned.
     ///
     /// If another thread is active, the lock can still become poisoned at any
-    /// time.  You should not trust a `false` value for program correctness
+    /// time. You should not trust a `false` value for program correctness
     /// without additional synchronization.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, Mutex};
+    /// use std::thread;
+    ///
+    /// let mutex = Arc::new(Mutex::new(0));
+    /// let c_mutex = mutex.clone();
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_mutex.lock().unwrap();
+    ///     panic!(); // the mutex gets poisoned
+    /// }).join();
+    /// assert_eq!(mutex.is_poisoned(), true);
+    /// ```
     #[inline]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
@@ -239,6 +298,15 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Mutex;
+    ///
+    /// let mutex = Mutex::new(0);
+    /// assert_eq!(mutex.into_inner().unwrap(), 0);
+    /// ```
     #[stable(feature = "mutex_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
         // We know statically that there are no outstanding references to
@@ -270,6 +338,16 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(0);
+    /// *mutex.get_mut().unwrap() = 10;
+    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// ```
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
