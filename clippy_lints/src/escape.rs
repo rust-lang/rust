@@ -49,6 +49,7 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
 struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     target: TargetDataLayout,
     too_large_for_stack: u64,
 }
@@ -67,19 +68,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        id: NodeId
+        _id: NodeId
     ) {
         // we store the infcx because it is expensive to recreate
         // the context each time.
         let mut v = EscapeDelegate {
             set: NodeSet(),
             tcx: cx.tcx,
+            tables: cx.tables,
             target: TargetDataLayout::parse(cx.sess()),
             too_large_for_stack: self.too_large_for_stack,
         };
-        let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 
-        let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
+        let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
         {
             let mut vis = ExprUseVisitor::new(&mut v, &infcx);
             vis.consume_body(body);
@@ -161,9 +162,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
                 if let Some(&Adjust::DerefRef { autoderefs, .. }) =
-                    self.tcx
-                        .tables
-                        .borrow()
+                    self.tables
                         .adjustments
                         .get(&borrow_id)
                         .map(|a| &a.kind) {
@@ -178,9 +177,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
                     if let Some(&Adjust::DerefRef { autoderefs, .. }) =
-                        self.tcx
-                            .tables
-                            .borrow()
+                        self.tables
                             .adjustments
                             .get(&self.tcx
                                 .map
@@ -209,7 +206,7 @@ impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
         // overflows.
         match ty.sty {
             ty::TyBox(inner) => {
-                self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                     if let Ok(layout) = inner.layout(&infcx) {
                         let size = layout.size(&self.target);
                         size.bytes() > self.too_large_for_stack

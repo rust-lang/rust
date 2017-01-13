@@ -61,7 +61,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 // Are the expression or the arguments type-adjusted? Then we need the closure
                 return;
             }
-            let fn_ty = cx.tcx.tables().expr_ty(caller);
+            let fn_ty = cx.tables.expr_ty(caller);
             match fn_ty.sty {
                 // Is it an unsafe function? They don't implement the closure traits
                 ty::TyFnDef(_, _, fn_ty) |

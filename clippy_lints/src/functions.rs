@@ -175,7 +175,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprCall(ref f, ref args) => {
-                let ty = self.cx.tcx.tables().expr_ty(f);
+                let ty = self.cx.tables.expr_ty(f);
 
                 if type_is_unsafe_function(ty) {
                     for arg in args {
@@ -185,7 +185,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
             },
             hir::ExprMethodCall(_, _, ref args) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let base_type = self.cx.tcx.tables.borrow().method_map[&method_call].ty;
+                let base_type = self.cx.tables.method_map[&method_call].ty;
 
                 if type_is_unsafe_function(base_type) {
                     for arg in args {
@@ -207,7 +207,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprPath(ref qpath) = ptr.node {
-            let def = self.cx.tcx.tables().qpath_def(qpath, ptr.id);
+            let def = self.cx.tables.qpath_def(qpath, ptr.id);
             if self.ptrs.contains(&def.def_id()) {
                 span_lint(self.cx,
                           NOT_UNSAFE_PTR_ARG_DEREF,

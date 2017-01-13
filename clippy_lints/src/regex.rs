@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use std::collections::HashSet;
 use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
-            match_type(cx, cx.tcx.tables().expr_ty(expr), &paths::REGEX),
+            match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX),
             let Some(span) = is_expn_of(cx, expr.span, "regex"),
         ], {
             if !self.spans.contains(&span) {
@@ -118,16 +118,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
         ], {
-            let def_id = cx.tcx.tables().qpath_def(qpath, fun.id).def_id();
-            if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
-               match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
+            let def_id = cx.tables.qpath_def(qpath, fun.id).def_id();
+            if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
+               match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);
-            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) ||
-               match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_NEW) ||
+               match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
                 check_regex(cx, &args[0], false);
-            } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
+            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_SET_NEW) {
                 check_set(cx, &args[0], true);
-            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_SET_NEW) {
+            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_SET_NEW) {
                 check_set(cx, &args[0], false);
             }
         }}
@@ -151,7 +151,7 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
 }
 
 fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
-    match eval_const_expr_partial(cx.tcx, e, ExprTypeChecked, None) {
+    match ConstContext::with_tables(cx.tcx, cx.tables).eval(e, ExprTypeChecked) {
         Ok(ConstVal::Str(r)) => Some(r),
         _ => None,
     }

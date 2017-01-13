@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.108 — 2017-01-12
+* Update to *rustc 1.16.0-nightly (2782e8f8f 2017-01-12)*
+
 ## 0.0.107 — 2017-01-11
 * Update regex dependency
 * Fix FP when matching `&&mut` by `&ref`

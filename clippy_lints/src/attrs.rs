@@ -3,10 +3,11 @@
 use reexport::*;
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::ty;
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_def_path, resolve_node, paths, span_lint, span_lint_and_then, snippet_opt};
+use utils::{in_macro, match_def_path, paths, span_lint, span_lint_and_then, snippet_opt};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -102,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if is_relevant_item(cx, item) {
+        if is_relevant_item(cx.tcx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
         match item.node {
@@ -143,64 +144,66 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if is_relevant_impl(cx, item) {
+        if is_relevant_impl(cx.tcx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if is_relevant_trait(cx, item) {
+        if is_relevant_trait(cx.tcx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 }
 
-fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
+fn is_relevant_item(tcx: ty::TyCtxt, item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, eid) = item.node {
-        is_relevant_expr(cx, &cx.tcx.map.body(eid).value)
+        is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.map.body(eid).value)
     } else {
         false
     }
 }
 
-fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
+fn is_relevant_impl(tcx: ty::TyCtxt, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, &cx.tcx.map.body(eid).value),
+        ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.map.body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
+fn is_relevant_trait(tcx: ty::TyCtxt, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
-        TraitItemKind::Method(_, TraitMethod::Provided(eid)) => is_relevant_expr(cx, &cx.tcx.map.body(eid).value),
+        TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
+            is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.map.body(eid).value)
+        },
         _ => false,
     }
 }
 
-fn is_relevant_block(cx: &LateContext, block: &Block) -> bool {
+fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::Tables, block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
             StmtExpr(ref expr, _) |
             StmtSemi(ref expr, _) => {
-                return is_relevant_expr(cx, expr);
+                return is_relevant_expr(tcx, tables, expr);
             },
         }
     }
-    block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, e))
+    block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
 }
 
-fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
+fn is_relevant_expr(tcx: ty::TyCtxt, tables: &ty::Tables, expr: &Expr) -> bool {
     match expr.node {
-        ExprBlock(ref block) => is_relevant_block(cx, block),
-        ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
+        ExprBlock(ref block) => is_relevant_block(tcx, tables, block),
+        ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),
         ExprRet(None) |
         ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(ref qpath) = path_expr.node {
-                let fun_id = resolve_node(cx, qpath, path_expr.id).def_id();
-                !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
+                let fun_id = tables.qpath_def(qpath, path_expr.id).def_id();
+                !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
             } else {
                 true
             }

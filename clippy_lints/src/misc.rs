@@ -5,7 +5,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
@@ -312,7 +312,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &*binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
-                    non_macro_local(cx, &cx.tcx.tables().qpath_def(qpath, expr.id)) {
+                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.id)) {
                     Some(binding)
                 } else {
                     None
@@ -362,7 +362,7 @@ fn check_nan(cx: &LateContext, path: &Path, span: Span) {
 }
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
-    let res = eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None);
+    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked);
     if let Ok(ConstVal::Float(val)) = res {
         use std::cmp::Ordering;
 
@@ -389,7 +389,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
-    matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(expr)).sty, ty::TyFloat(_))
+    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::TyFloat(_))
 }
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
@@ -397,7 +397,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) if args.len() == 1 => {
             let name = &*name.as_str();
             if name == "to_string" || name == "to_owned" && is_str_arg(cx, args) {
-                (cx.tcx.tables().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                (cx.tables.expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
@@ -405,7 +405,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
-                    (cx.tcx.tables().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
+                    (cx.tables.expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;
                 }
@@ -416,7 +416,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         _ => return,
     };
 
-    let other_ty = cx.tcx.tables().expr_ty(other);
+    let other_ty = cx.tables.expr_ty(other);
     let partial_eq_trait_id = match cx.tcx.lang_items.eq_trait() {
         Some(id) => id,
         None => return,
@@ -449,7 +449,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 }
 
 fn is_str_arg(cx: &LateContext, args: &[Expr]) -> bool {
-    args.len() == 1 && matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(&args[0])).sty, ty::TyStr)
+    args.len() == 1 && matches!(walk_ptrs_ty(cx.tables.expr_ty(&args[0])).sty, ty::TyStr)
 }
 
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea

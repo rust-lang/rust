@@ -246,9 +246,9 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
             }
         },
         ExprPath(ref qpath) => {
-            let def = cx.tcx.tables().qpath_def(qpath, lit.id);
+            let def = cx.tables.qpath_def(qpath, lit.id);
             if let Def::Const(def_id) = def {
-                lookup_const_by_id(cx.tcx, def_id, None).and_then(|(l, _ty)| fetch_int_literal(cx, l))
+                lookup_const_by_id(cx.tcx, def_id, None).and_then(|(l, _tab, _ty)| fetch_int_literal(cx, l))
             } else {
                 None
             }

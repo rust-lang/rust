@@ -9,7 +9,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use std::collections::HashMap;
 use syntax::ast;
 use utils::sugg;
@@ -529,8 +529,9 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
     if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
-        if let Ok(start_idx) = eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None) {
-            if let Ok(end_idx) = eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None) {
+        let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
+        if let Ok(start_idx) = constcx.eval(start, ExprTypeChecked) {
+            if let Ok(end_idx) = constcx.eval(end, ExprTypeChecked) {
                 // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the
@@ -627,7 +628,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
 
 /// Check for `for` loops over `Option`s and `Results`
 fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
-    let ty = cx.tcx.tables().expr_ty(arg);
+    let ty = cx.tables.expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
         span_help_and_lint(cx,
                            FOR_LOOP_OVER_OPTION,
@@ -713,7 +714,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
             let arg_span = arg.span;
-            let (new_pat_span, kind, ty, mutbl) = match cx.tcx.tables().expr_ty(arg).sty {
+            let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
                 ty::TyRef(_, ref tam) => {
                     match (&pat[0].node, &pat[1].node) {
                         (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
@@ -800,7 +801,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let ExprPath(ref qpath) = expr.node {
             if let QPath::Resolved(None, ref path) = *qpath {
-                if path.segments.len() == 1 && self.cx.tcx.tables().qpath_def(qpath, expr.id).def_id() == self.var {
+                if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
                     // we are referencing our variable! now check if it's as an index
                     if_let_chain! {[
                         let Some(parexpr) = get_parent_expr(self.cx, expr),
@@ -809,7 +810,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                         let QPath::Resolved(None, ref seqvar) = *seqpath,
                         seqvar.segments.len() == 1
                     ], {
-                        let def = self.cx.tcx.tables().qpath_def(seqpath, seqexpr.id);
+                        let def = self.cx.tables.qpath_def(seqpath, seqexpr.id);
                         match def {
                             Def::Local(..) | Def::Upvar(..) => {
                                 let def_id = def.def_id();
@@ -888,7 +889,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
 fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
-    let ty = cx.tcx.tables().expr_ty(e);
+    let ty = cx.tables.expr_ty(e);
     is_iterable_array(ty) ||
     match_type(cx, ty, &paths::VEC) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
@@ -1113,7 +1114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let ExprPath(ref qpath) = expr.node {
-        let path_res = cx.tcx.tables().qpath_def(qpath, expr.id);
+        let path_res = cx.tables.qpath_def(qpath, expr.id);
         if let Def::Local(def_id) = path_res {
             let node_id = cx.tcx.map.as_local_node_id(def_id).expect("That DefId should be valid");
             return Some(node_id);

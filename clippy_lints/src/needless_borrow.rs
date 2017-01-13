@@ -40,9 +40,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             return;
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
-            if let ty::TyRef(..) = cx.tcx.tables().expr_ty(inner).sty {
+            if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
                 if let Some(&ty::adjustment::Adjust::DerefRef { autoderefs, autoref, .. }) =
-                    cx.tcx.tables.borrow().adjustments.get(&e.id).map(|a| &a.kind) {
+                    cx.tables.adjustments.get(&e.id).map(|a| &a.kind) {
                     if autoderefs > 1 && autoref.is_some() {
                         span_lint(cx,
                                   NEEDLESS_BORROW,
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
         if_let_chain! {[
             let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node,
-            let ty::TyRef(_, ref tam) = cx.tcx.tables().pat_ty(pat).sty,
+            let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             tam.mutbl == MutImmutable,
             let ty::TyRef(_, ref tam) = tam.ty.sty,
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out

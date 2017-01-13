@@ -1,8 +1,8 @@
 use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
-use syntax::ast::{LitKind, DUMMY_NODE_ID};
-use syntax::codemap::{DUMMY_SP, dummy_spanned};
+use syntax::ast::{LitKind, DUMMY_NODE_ID, NodeId};
+use syntax::codemap::{DUMMY_SP, dummy_spanned, Span};
 use syntax::util::ThinVec;
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
@@ -54,8 +54,16 @@ impl LintPass for NonminimalBool {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        NonminimalBoolVisitor { cx: cx }.visit_item(item)
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: intravisit::FnKind<'tcx>,
+        _: &'tcx FnDecl,
+        body: &'tcx Body,
+        _: Span,
+        _: NodeId
+    ) {
+        NonminimalBoolVisitor { cx: cx }.visit_body(body)
     }
 }
 
@@ -394,7 +402,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => {
-                if self.cx.tcx.tables.borrow().node_types[&inner.id].is_bool() {
+                if self.cx.tables.node_types[&inner.id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);
@@ -404,6 +412,6 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::None
     }
 }

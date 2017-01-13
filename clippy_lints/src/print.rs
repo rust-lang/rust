@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
             // Search for `std::io::_print(..)` which is unique in a
             // `print!` expansion.
-            if match_def_path(cx, fun_id, &paths::IO_PRINT) {
+            if match_def_path(cx.tcx, fun_id, &paths::IO_PRINT) {
                 if let Some(span) = is_expn_of(cx, expr.span, "print") {
                     // `println!` uses `print!`.
                     let (span, name) = match is_expn_of(cx, span, "println") {
@@ -94,7 +94,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         args.len() == 1,
                         let ExprCall(ref args_fun, ref args_args) = args[0].node,
                         let ExprPath(ref qpath) = args_fun.node,
-                        match_def_path(cx, resolve_node(cx, qpath, args_fun.id).def_id(), &paths::FMT_ARGUMENTS_NEWV1),
+                        match_def_path(cx.tcx,
+                                       resolve_node(cx, qpath, args_fun.id).def_id(),
+                                       &paths::FMT_ARGUMENTS_NEWV1),
                         args_args.len() == 2,
                         let ExprAddrOf(_, ref match_expr) = args_args[1].node,
                         let ExprMatch(ref args, _, _) = match_expr.node,
@@ -119,10 +121,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
             // Search for something like
             // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
-            else if args.len() == 2 && match_def_path(cx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
+            else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
                 if let ExprPath(ref qpath) = args[1].node {
-                    let def_id = cx.tcx.tables().qpath_def(qpath, args[1].id).def_id();
-                    if match_def_path(cx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
+                    let def_id = cx.tables.qpath_def(qpath, args[1].id).def_id();
+                    if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
                        is_expn_of(cx, expr.span, "panic").is_none() {
                         span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                     }

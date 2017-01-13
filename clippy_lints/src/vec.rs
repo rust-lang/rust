@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::ConstContext;
 use syntax::codemap::Span;
 use utils::{higher, is_copy, snippet, span_lint_and_then};
 
@@ -36,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
-            let ty::TypeVariants::TyRef(_, ref ty) = cx.tcx.tables().expr_ty_adjusted(expr).sty,
+            let ty::TypeVariants::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty,
             let ty::TypeVariants::TySlice(..) = ty.ty.sty,
             let ExprAddrOf(_, ref addressee) = expr.node,
             let Some(vec_args) = higher::vec_macro(cx, addressee),
@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_let_chain!{[
             let Some((_, arg, _)) = higher::for_loop(expr),
             let Some(vec_args) = higher::vec_macro(cx, arg),
-            is_copy(cx, vec_type(cx.tcx.tables().expr_ty_adjusted(arg)), cx.tcx.map.get_parent(expr.id)),
+            is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)), cx.tcx.map.get_parent(expr.id)),
         ], {
             // report the error around the `vec!` not inside `<std macros>:`
             let span = cx.sess().codemap().source_callsite(arg.span);
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
-            if eval_const_expr_partial(cx.tcx, len, ExprTypeChecked, None).is_ok() {
+            if ConstContext::with_tables(cx.tcx, cx.tables).eval(len, ExprTypeChecked).is_ok() {
                 format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
             } else {
                 return;

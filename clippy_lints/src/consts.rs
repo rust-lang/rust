@@ -295,15 +295,14 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// lookup a possibly constant expression from a ExprPath
     fn fetch_path(&mut self, qpath: &QPath, id: NodeId) -> Option<Constant> {
         if let Some(lcx) = self.lcx {
-            let def = lcx.tcx.tables().qpath_def(qpath, id);
+            let def = lcx.tables.qpath_def(qpath, id);
             match def {
                 Def::Const(def_id) |
                 Def::AssociatedConst(def_id) => {
-                    let substs = Some(lcx.tcx
-                        .tables()
+                    let substs = Some(lcx.tables
                         .node_id_item_substs(id)
                         .unwrap_or_else(|| lcx.tcx.intern_substs(&[])));
-                    if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
+                    if let Some((const_expr, _tab, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
                         let ret = self.expr(const_expr);
                         if ret.is_some() {
                             self.needed_resolution = true;

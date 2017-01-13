@@ -34,7 +34,7 @@ impl LintPass for UnnecessaryMutPassed {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        let borrowed_table = cx.tcx.tables.borrow();
+        let borrowed_table = cx.tables;
         match e.node {
             ExprCall(ref fn_expr, ref arguments) => {
                 let function_type = borrowed_table.node_types

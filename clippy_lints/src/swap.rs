@@ -89,7 +89,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 if let ExprIndex(ref lhs1, ref idx1) = lhs1.node {
                     if let ExprIndex(ref lhs2, ref idx2) = lhs2.node {
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
-                            let ty = walk_ptrs_ty(cx.tcx.tables().expr_ty(lhs1));
+                            let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
                             if matches!(ty.sty, ty::TySlice(_)) ||
                                 matches!(ty.sty, ty::TyArray(_, _)) ||

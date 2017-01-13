@@ -146,7 +146,7 @@ fn lots_of_short_circuits2() -> bool { //~ ERROR: the function has a cyclomatic 
 
 #[cyclomatic_complexity = "0"]
 fn baa() { //~ ERROR: the function has a cyclomatic complexity of 2
-    let x = || match 99 {
+    let x = || match 99 { //~ ERROR: the function has a cyclomatic complexity of 2
         0 => 0,
         1 => 1,
         2 => 2,

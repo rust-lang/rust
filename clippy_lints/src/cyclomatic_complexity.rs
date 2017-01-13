@@ -2,11 +2,10 @@
 
 use rustc::cfg::CFG;
 use rustc::lint::*;
-use rustc::ty;
 use rustc::hir::*;
+use rustc::ty;
 use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
-use syntax::ast::Attribute;
-use syntax::attr;
+use syntax::ast::{Attribute, NodeId};
 use syntax::codemap::Span;
 
 use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
@@ -64,7 +63,7 @@ impl CyclomaticComplexity {
         };
         helper.visit_expr(expr);
         let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
-        let ret_ty = cx.tcx.tables().node_id_to_type(expr.id);
+        let ret_ty = cx.tables.node_id_to_type(expr.id);
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
         } else {
@@ -91,23 +90,18 @@ impl CyclomaticComplexity {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(_, _, _, _, _, eid) = item.node {
-            if !attr::contains_name(&item.attrs, "test") {
-                self.check(cx, &cx.tcx.map.body(eid).value, item.span);
-            }
-        }
-    }
-
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if let ImplItemKind::Method(_, eid) = item.node {
-            self.check(cx, &cx.tcx.map.body(eid).value, item.span);
-        }
-    }
-
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(_, TraitMethod::Provided(eid)) = item.node {
-            self.check(cx, &cx.tcx.map.body(eid).value, item.span);
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: intravisit::FnKind<'tcx>,
+        _: &'tcx FnDecl,
+        body: &'tcx Body,
+        span: Span,
+        node_id: NodeId
+    ) {
+        let def_id = cx.tcx.map.local_def_id(node_id);
+        if !cx.tcx.has_attr(def_id, "test") {
+            self.check(cx, &body.value, span);
         }
     }
 
@@ -139,7 +133,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
             },
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
-                let ty = self.cx.tcx.tables().node_id_to_type(callee.id);
+                let ty = self.cx.tables.node_id_to_type(callee.id);
                 match ty.sty {
                     ty::TyFnDef(_, _, ty) |
                     ty::TyFnPtr(ty) if ty.sig.skip_binder().output().sty == ty::TyNever => {
