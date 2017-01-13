@@ -236,10 +236,6 @@ fn main() {
                          "atomic_thread_fence.c"]);
     }
 
-    if !target.contains("redox") && !target.contains("windows") {
-        sources.extend(&["emutls.c"]);
-    }
-
     if target.contains("msvc") {
         if target.contains("x86_64") {
             sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
