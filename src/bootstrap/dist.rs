@@ -357,14 +357,12 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
 pub fn rust_src(build: &Build) {
     println!("Dist src");
 
-    let plain_name = format!("rustc-{}-src", package_vers(build));
     let name = format!("rust-src-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-image", name));
     let _ = fs::remove_dir_all(&image);
 
     let dst = image.join("lib/rustlib/src");
     let dst_src = dst.join("rust");
-    let plain_dst_src = dst.join(&plain_name);
     t!(fs::create_dir_all(&dst_src));
 
     // This is the set of root paths which will become part of the source package
@@ -444,7 +442,11 @@ pub fn rust_src(build: &Build) {
     build.run(&mut cmd);
 
     // Rename directory, so that root folder of tarball has the correct name
-    t!(fs::rename(&dst_src, &plain_dst_src));
+    let plain_name = format!("rustc-{}-src", package_vers(build));
+    let plain_dst_src = tmpdir(build).join(&plain_name);
+    let _ = fs::remove_dir_all(&plain_dst_src);
+    t!(fs::create_dir_all(&plain_dst_src));
+    cp_r(&dst_src, &plain_dst_src);
 
     // Create the version file
     write_file(&plain_dst_src.join("version"), build.version.as_bytes());
@@ -453,10 +455,11 @@ pub fn rust_src(build: &Build) {
     let mut cmd = Command::new("tar");
     cmd.arg("-czf").arg(sanitize_sh(&rust_src_location(build)))
        .arg(&plain_name)
-       .current_dir(&dst);
+       .current_dir(tmpdir(build));
     build.run(&mut cmd);
 
     t!(fs::remove_dir_all(&image));
+    t!(fs::remove_dir_all(&plain_dst_src));
 }
 
 fn install(src: &Path, dstdir: &Path, perms: u32) {

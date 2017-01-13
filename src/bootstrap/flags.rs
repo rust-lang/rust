@@ -67,6 +67,7 @@ pub enum Subcommand {
     },
     Clean,
     Dist {
+        paths: Vec<PathBuf>,
         install: bool,
     },
 }
@@ -249,6 +250,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
                 opts.optflag("", "install", "run installer as well");
                 m = parse(&opts);
                 Subcommand::Dist {
+                    paths: remaining_as_path(&m),
                     install: m.opt_present("install"),
                 }
             }
