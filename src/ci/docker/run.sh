@@ -48,6 +48,7 @@ exec docker \
   --env SRC=/checkout \
   $args \
   --env CARGO_HOME=/cargo \
+  --env DEPLOY=$DEPLOY \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
   rust-ci \
