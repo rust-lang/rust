@@ -1779,11 +1779,11 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, String> = HashMap::new();
-    /// let s = "hoho".to_owned();
+    /// let s = "hoho".to_string();
     ///
     /// map.entry("poneyland").or_insert_with(|| s);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_owned());
+    /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
