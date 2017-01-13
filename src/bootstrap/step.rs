@@ -545,7 +545,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| doc::standalone(build, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
          .dep(move |s| s.name("tool-error-index").target(&build.config.build).stage(0))
-         .dep(move |s| s.name("librustc-link").stage(0))
+         .dep(move |s| s.name("librustc-link"))
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::error_index(build, s.target));
@@ -1306,6 +1306,18 @@ mod tests {
         println!("all rules: {:#?}", all);
         assert!(!all.contains(&step.name("rustc")));
         assert!(!all.contains(&step.name("build-crate-std_shim").stage(1)));
+
+        // all stage0 compiles should be for the build target, A
+        for step in all.iter().filter(|s| s.stage == 0) {
+            if !step.name.contains("build-crate") {
+                continue
+            }
+            println!("step: {:?}", step);
+            assert!(step.host != "B");
+            assert!(step.target != "B");
+            assert!(step.host != "C");
+            assert!(step.target != "C");
+        }
     }
 
     #[test]
