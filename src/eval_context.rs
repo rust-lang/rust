@@ -200,9 +200,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Struct(_)    => unimplemented!(),
             Tuple(_)     => unimplemented!(),
             Function(_)  => unimplemented!(),
-            Array(_, _)  => unimplemented!(),
+            Array(_)  => unimplemented!(),
             Repeat(_, _) => unimplemented!(),
-            Dummy        => unimplemented!(),
         };
 
         Ok(Value::ByVal(primval))
@@ -261,7 +260,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
             ty.layout(&infcx).map_err(EvalError::Layout)
         })
     }
