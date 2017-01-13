@@ -46,7 +46,7 @@ use ext::tt::macro_parser;
 use parse;
 use parse::classify;
 use parse::common::SeqSep;
-use parse::lexer::{Reader, TokenAndSpan};
+use parse::lexer::TokenAndSpan;
 use parse::obsolete::ObsoleteSyntax;
 use parse::token::{self, MatchNt, SubstNt};
 use parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
@@ -188,14 +188,11 @@ pub struct Parser<'a> {
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
     parsing_token_tree: bool,
-    pub reader: Box<Reader+'a>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     pub directory: Directory,
-    /// Stack of open delimiters and their spans. Used for error message.
-    pub open_braces: Vec<(token::DelimToken, Span)>,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -203,7 +200,6 @@ pub struct Parser<'a> {
     pub expected_tokens: Vec<TokenType>,
     pub tts: Vec<(TokenTree, usize)>,
     pub desugar_doc_comments: bool,
-    pub allow_interpolated_tts: bool,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -269,12 +265,17 @@ impl From<P<Expr>> for LhsExpr {
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
-               rdr: Box<Reader+'a>,
+               tokens: Vec<TokenTree>,
                directory: Option<Directory>,
                desugar_doc_comments: bool)
                -> Self {
+        let tt = TokenTree::Delimited(syntax_pos::DUMMY_SP, Rc::new(Delimited {
+            delim: token::NoDelim,
+            open_span: syntax_pos::DUMMY_SP,
+            tts: tokens,
+            close_span: syntax_pos::DUMMY_SP,
+        }));
         let mut parser = Parser {
-            reader: rdr,
             sess: sess,
             token: token::Underscore,
             span: syntax_pos::DUMMY_SP,
@@ -286,12 +287,10 @@ impl<'a> Parser<'a> {
             parsing_token_tree: false,
             obsolete_set: HashSet::new(),
             directory: Directory { path: PathBuf::new(), ownership: DirectoryOwnership::Owned },
-            open_braces: Vec::new(),
             root_module_name: None,
             expected_tokens: Vec::new(),
-            tts: Vec::new(),
+            tts: if tt.len() > 0 { vec![(tt, 0)] } else { Vec::new() },
             desugar_doc_comments: desugar_doc_comments,
-            allow_interpolated_tts: true,
         };
 
         let tok = parser.next_tok();
@@ -320,7 +319,7 @@ impl<'a> Parser<'a> {
                     continue
                 }
             } else {
-                self.reader.real_token()
+                TokenAndSpan { tok: token::Eof, sp: self.span }
             };
 
             loop {
@@ -2688,94 +2687,28 @@ impl<'a> Parser<'a> {
         // whether something will be a nonterminal or a seq
         // yet.
         match self.token {
-            token::Eof => {
-                let mut err: DiagnosticBuilder<'a> =
-                    self.diagnostic().struct_span_err(self.span,
-                                                      "this file contains an un-closed delimiter");
-                for &(_, sp) in &self.open_braces {
-                    err.span_help(sp, "did you mean to close this delimiter?");
-                }
-
-                Err(err)
-            },
             token::OpenDelim(delim) => {
-                if self.tts.last().map(|&(_, i)| i == 1).unwrap_or(false) {
+                if self.quote_depth == 0 && self.tts.last().map(|&(_, i)| i == 1).unwrap_or(false) {
                     let tt = self.tts.pop().unwrap().0;
                     self.bump();
-                    return Ok(if self.allow_interpolated_tts {
-                        // avoid needlessly reparsing token trees in recursive macro expansions
-                        TokenTree::Token(tt.span(), token::Interpolated(Rc::new(token::NtTT(tt))))
-                    } else {
-                        tt
-                    });
+                    return Ok(tt);
                 }
 
                 let parsing_token_tree = ::std::mem::replace(&mut self.parsing_token_tree, true);
-                // The span for beginning of the delimited section
-                let pre_span = self.span;
-
-                // Parse the open delimiter.
-                self.open_braces.push((delim, self.span));
                 let open_span = self.span;
                 self.bump();
-
-                // Parse the token trees within the delimiters.
-                // We stop at any delimiter so we can try to recover if the user
-                // uses an incorrect delimiter.
                 let tts = self.parse_seq_to_before_tokens(&[&token::CloseDelim(token::Brace),
                                                             &token::CloseDelim(token::Paren),
                                                             &token::CloseDelim(token::Bracket)],
                                                           SeqSep::none(),
                                                           |p| p.parse_token_tree(),
                                                           |mut e| e.emit());
+                self.parsing_token_tree = parsing_token_tree;
 
                 let close_span = self.span;
-                // Expand to cover the entire delimited token tree
-                let span = Span { hi: close_span.hi, ..pre_span };
+                self.bump();
 
-                match self.token {
-                    // Correct delimiter.
-                    token::CloseDelim(d) if d == delim => {
-                        self.open_braces.pop().unwrap();
-
-                        // Parse the close delimiter.
-                        self.bump();
-                    }
-                    // Incorrect delimiter.
-                    token::CloseDelim(other) => {
-                        let token_str = self.this_token_to_string();
-                        let mut err = self.diagnostic().struct_span_err(self.span,
-                            &format!("incorrect close delimiter: `{}`", token_str));
-                        // This is a conservative error: only report the last unclosed delimiter.
-                        // The previous unclosed delimiters could actually be closed! The parser
-                        // just hasn't gotten to them yet.
-                        if let Some(&(_, sp)) = self.open_braces.last() {
-                            err.span_note(sp, "unclosed delimiter");
-                        };
-                        err.emit();
-
-                        self.open_braces.pop().unwrap();
-
-                        // If the incorrect delimiter matches an earlier opening
-                        // delimiter, then don't consume it (it can be used to
-                        // close the earlier one). Otherwise, consume it.
-                        // E.g., we try to recover from:
-                        // fn foo() {
-                        //     bar(baz(
-                        // }  // Incorrect delimiter but matches the earlier `{`
-                        if !self.open_braces.iter().any(|&(b, _)| b == other) {
-                            self.bump();
-                        }
-                    }
-                    token::Eof => {
-                        // Silently recover, the EOF token will be seen again
-                        // and an error emitted then. Thus we don't pop from
-                        // self.open_braces here.
-                    },
-                    _ => {}
-                }
-
-                self.parsing_token_tree = parsing_token_tree;
+                let span = Span { lo: open_span.lo, ..close_span };
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
                     delim: delim,
                     open_span: open_span,
@@ -2783,21 +2716,9 @@ impl<'a> Parser<'a> {
                     close_span: close_span,
                 })))
             },
-            token::CloseDelim(_) => {
-                // An unexpected closing delimiter (i.e., there is no
-                // matching opening delimiter).
-                let token_str = self.this_token_to_string();
-                let err = self.diagnostic().struct_span_err(self.span,
-                    &format!("unexpected close delimiter: `{}`", token_str));
-                Err(err)
-            },
-            /* we ought to allow different depths of unquotation */
-            token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => {
-                self.parse_unquoted()
-            }
-            _ => {
-                Ok(TokenTree::Token(self.span, self.bump_and_get()))
-            }
+            token::CloseDelim(_) | token::Eof => unreachable!(),
+            token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => self.parse_unquoted(),
+            _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),
         }
     }
 
