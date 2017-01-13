@@ -2090,10 +2090,25 @@ impl<'a> Resolver<'a> {
             let expected = source.descr_expected();
             let path_str = names_to_string(path);
             let code = source.error_code(def.is_some());
-            let base_msg = if let Some(def) = def {
-                format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str)
+            let (base_msg, fallback_label) = if let Some(def) = def {
+                (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
+                 format!("not a {}", expected))
             } else {
-                format!("unresolved {} `{}`", expected, path_str)
+                let item_str = path[path.len() - 1];
+                let (mod_prefix, mod_str) = if path.len() == 1 {
+                    (format!(""), format!("this scope"))
+                } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
+                    (format!(""), format!("the crate root"))
+                } else {
+                    let mod_path = &path[..path.len() - 1];
+                    let mod_prefix = match this.resolve_path(mod_path, Some(TypeNS), None) {
+                        PathResult::Module(module) => module.def(),
+                        _ => None,
+                    }.map_or(format!(""), |def| format!("{} ", def.kind_name()));
+                    (mod_prefix, format!("`{}`", names_to_string(mod_path)))
+                };
+                (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
+                 format!("not found in {}", mod_str))
             };
             let mut err = this.session.struct_span_err_with_code(span, &base_msg, code);
 
@@ -2183,12 +2198,8 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            // Fallback labels.
-            if def.is_some() {
-                err.span_label(span, &format!("not a {}", expected));
-            } else {
-                err.span_label(span, &format!("no resolution found"));
-            }
+            // Fallback label.
+            err.span_label(span, &fallback_label);
             err
         };
         let report_errors = |this: &mut Self, def: Option<Def>| {
@@ -2989,8 +3000,8 @@ impl<'a> Resolver<'a> {
             let participle = |binding: &NameBinding| {
                 if binding.is_import() { "imported" } else { "defined" }
             };
-            let msg1 = format!("`{}` could resolve to the name {} here", name, participle(b1));
-            let msg2 = format!("`{}` could also resolve to the name {} here", name, participle(b2));
+            let msg1 = format!("`{}` could refer to the name {} here", name, participle(b1));
+            let msg2 = format!("`{}` could also refer to the name {} here", name, participle(b2));
             let note = if !lexical && b1.is_glob_import() {
                 format!("consider adding an explicit import of `{}` to disambiguate", name)
             } else if let Def::Macro(..) = b1.def() {

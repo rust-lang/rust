@@ -18,7 +18,7 @@ pub fn main() {
     // this now fails (correctly, I claim) because hygiene prevents
     // the assembled identifier from being a reference to the binding.
     assert!(concat_idents!(asd, f_f, dsa) == "<.<".to_string());
-    //~^ ERROR unresolved value `asdf_fdsa`
+    //~^ ERROR cannot find value `asdf_fdsa` in this scope
 
     assert_eq!(stringify!(use_mention_distinction), "use_mention_distinction");
 }

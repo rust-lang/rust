@@ -1,19 +1,19 @@
-error[E0405]: unresolved trait `Mul`
+error[E0405]: cannot find trait `Mul` in this scope
   --> $DIR/issue-21221-1.rs:53:6
    |
 53 | impl Mul for Foo {
-   |      ^^^ no resolution found
+   |      ^^^ not found in this scope
    |
    = help: possible candidates are found in other modules, you can import them into scope:
    = help:   `use mul1::Mul;`
    = help:   `use mul2::Mul;`
    = help:   `use std::ops::Mul;`
 
-error[E0412]: unresolved type `Mul`
+error[E0412]: cannot find type `Mul` in this scope
   --> $DIR/issue-21221-1.rs:72:16
    |
 72 | fn getMul() -> Mul {
-   |                ^^^ no resolution found
+   |                ^^^ not found in this scope
    |
    = help: possible candidates are found in other modules, you can import them into scope:
    = help:   `use mul1::Mul;`
@@ -22,17 +22,17 @@ error[E0412]: unresolved type `Mul`
    = help:   `use mul4::Mul;`
    = help:   and 2 other candidates
 
-error[E0405]: unresolved trait `ThisTraitReallyDoesntExistInAnyModuleReally`
+error[E0405]: cannot find trait `ThisTraitReallyDoesntExistInAnyModuleReally` in this scope
   --> $DIR/issue-21221-1.rs:83:6
    |
 83 | impl ThisTraitReallyDoesntExistInAnyModuleReally for Foo {
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no resolution found
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0405]: unresolved trait `Div`
+error[E0405]: cannot find trait `Div` in this scope
   --> $DIR/issue-21221-1.rs:88:6
    |
 88 | impl Div for Foo {
-   |      ^^^ no resolution found
+   |      ^^^ not found in this scope
    |
    = help: possible candidate is found in another module, you can import it into scope:
    = help:   `use std::ops::Div;`
