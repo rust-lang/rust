@@ -1990,11 +1990,11 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
-    /// let s = "hoho".to_owned();
+    /// let s = "hoho".to_string();
     ///
     /// map.entry("poneyland").or_insert_with(|| s);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_owned());
+    /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {

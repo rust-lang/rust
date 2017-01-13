@@ -388,12 +388,12 @@ impl Error {
     /// impl MyError {
     ///     fn new() -> MyError {
     ///         MyError {
-    ///             v: "oh no!".to_owned()
+    ///             v: "oh no!".to_string()
     ///         }
     ///     }
     ///
     ///     fn change_message(&mut self, new_message: &str) {
-    ///         self.v = new_message.to_owned();
+    ///         self.v = new_message.to_string();
     ///     }
     /// }
     ///
