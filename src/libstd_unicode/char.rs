@@ -285,7 +285,7 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// for i in '\n'.escape_default() {
+    /// for i in '\n'.escape_debug() {
     ///     println!("{}", i);
     /// }
     /// ```
@@ -300,7 +300,7 @@ impl char {
     /// Collecting into a `String`:
     ///
     /// ```
-    /// let quote: String = '\n'.escape_default().collect();
+    /// let quote: String = '\n'.escape_debug().collect();
     ///
     /// assert_eq!(quote, "\\n");
     /// ```
