@@ -373,10 +373,16 @@ pub fn krate(build: &Build,
             let mut visited = HashSet::new();
             let mut next = vec![root];
             while let Some(name) = next.pop() {
-                // Right now jemalloc is our only target-specific crate in the sense
-                // that it's not present on all platforms. Custom skip it here for now,
-                // but if we add more this probably wants to get more generalized.
-                if !name.contains("jemalloc") {
+                // Right now jemalloc is our only target-specific crate in the
+                // sense that it's not present on all platforms. Custom skip it
+                // here for now, but if we add more this probably wants to get
+                // more generalized.
+                //
+                // Also skip `build_helper` as it's not compiled normally for
+                // target during the bootstrap and it's just meant to be a
+                // helper crate, not tested. If it leaks through then it ends up
+                // messing with various mtime calculations and such.
+                if !name.contains("jemalloc") && name != "build_helper" {
                     cargo.arg("-p").arg(name);
                 }
                 for dep in build.crates[name].deps.iter() {
