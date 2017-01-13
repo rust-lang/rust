@@ -615,7 +615,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(true)
          .only_host_build(true)
          .run(move |s| dist::analysis(build, &s.compiler(), s.target));
-    rules.dist("install", "src")
+    rules.dist("install", "path/to/nowhere")
          .dep(|s| s.name("default:dist"))
          .run(move |s| install::install(build, s.stage, s.target));
 
@@ -932,11 +932,11 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, test_args: _ } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, test_args: _ } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist { install } => {
+            Subcommand::Dist { ref paths, install } => {
                 if install {
                     return vec![self.sbuild.name("install")]
                 } else {
-                    (Kind::Dist, &[][..])
+                    (Kind::Dist, &paths[..])
                 }
             }
             Subcommand::Clean => panic!(),

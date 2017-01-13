@@ -457,6 +457,8 @@ fn krate_android(build: &Build,
 
         let output = output(Command::new("adb").arg("shell").arg(&program));
         println!("{}", output);
+
+        t!(fs::create_dir_all(build.out.join("tmp")));
         build.run(Command::new("adb")
                           .arg("pull")
                           .arg(&log)
@@ -516,6 +518,7 @@ pub fn android_copy_libs(build: &Build,
     }
 
     println!("Android copy libs to emulator ({})", target);
+    build.run(Command::new("adb").arg("wait-for-device"));
     build.run(Command::new("adb").arg("remount"));
     build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
     build.run(Command::new("adb").args(&["shell", "mkdir", ADB_TEST_DIR]));
