@@ -1,0 +1,15 @@
+diff --git a/include/libunwind.h b/include/libunwind.h
+index c5b9633..1360eb2 100644
+--- a/include/libunwind.h
++++ b/include/libunwind.h
+@@ -151,8 +151,8 @@ enum {
+   UNW_X86_ECX = 1,
+   UNW_X86_EDX = 2,
+   UNW_X86_EBX = 3,
+-  UNW_X86_EBP = 4,
+-  UNW_X86_ESP = 5,
++  UNW_X86_ESP = 4,
++  UNW_X86_EBP = 5,
+   UNW_X86_ESI = 6,
+   UNW_X86_EDI = 7
+ };
