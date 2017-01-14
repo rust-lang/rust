@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-concat_idents
+
 fn main() {
     concat_idents!(a, b); //~ ERROR `concat_idents` is not stable enough
 }

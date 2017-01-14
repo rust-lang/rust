@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-advanced_slice_patterns
+
 #![feature(slice_patterns)]
 
 fn main() {
