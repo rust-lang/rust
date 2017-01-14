@@ -1064,11 +1064,17 @@ impl<T> [T] {
 
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
-    /// This sort is stable and `O(n log n)` worst-case. 
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
-    /// # Current Implementation
+    /// # Current implementation
     /// 
-    /// The current implementation allocates temporary storage half the size of `self`.
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
     ///
     /// # Examples
     ///
@@ -1086,11 +1092,19 @@ impl<T> [T] {
         self.sort_by(|a, b| a.cmp(b))
     }
 
-    /// Sorts the slice, in place, using `f` to extract a key by which to
-    /// order the sort by.
+    /// Sorts the slice using `f` to extract a key to compare elements by.
     ///
-    /// This sort is stable and `O(n log n)` worst-case, but allocates
-    /// temporary storage half the size of `self`.
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
     ///
     /// # Examples
     ///
@@ -1108,11 +1122,19 @@ impl<T> [T] {
         self.sort_by(|a, b| f(a).cmp(&f(b)))
     }
 
-    /// Sorts the slice, in place, using `compare` to compare
-    /// elements.
+    /// Sorts the slice using `compare` to compare elements.
     ///
-    /// This sort is stable and `O(n log n)` worst-case, but allocates
-    /// temporary storage half the size of `self`.
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
     ///
     /// # Examples
     ///
