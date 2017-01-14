@@ -23,7 +23,6 @@ use hir;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
-use middle::region::CodeExtent;
 use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
@@ -1620,10 +1619,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
-    }
-
-    pub fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.tcx.region_maps.temporary_scope(rvalue_id)
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
