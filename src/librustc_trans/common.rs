@@ -45,37 +45,30 @@ use rustc_i128::u128;
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyBox(ty) => {
-            !ccx.shared().type_is_sized(ty)
-        }
-        _ => {
-            false
-        }
+    if let Layout::FatPointer { .. } = *ccx.layout_of(ty) {
+        true
+    } else {
+        false
     }
 }
 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
+    let layout = ccx.layout_of(ty);
+    match *layout {
+        Layout::CEnum { .. } |
+        Layout::Scalar { .. } |
+        Layout::Vector { .. } => true,
 
-    let simple = ty.is_scalar() ||
-        ty.is_unique() || ty.is_region_ptr() ||
-        ty.is_simd();
-    if simple && !type_is_fat_ptr(ccx, ty) {
-        return true;
-    }
-    if !ccx.shared().type_is_sized(ty) {
-        return false;
-    }
-    match ty.sty {
-        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
-            let llty = sizing_type_of(ccx, ty);
-            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
+        Layout::FatPointer { .. } => false,
+
+        Layout::Array { .. } |
+        Layout::Univariant { .. } |
+        Layout::General { .. } |
+        Layout::UntaggedUnion { .. } |
+        Layout::RawNullablePointer { .. } |
+        Layout::StructWrappedNullablePointer { .. } => {
+            !layout.is_unsized() && layout.size(&ccx.tcx().data_layout).bytes() == 0
         }
-        _ => type_is_zero_size(ccx, ty)
     }
 }
 
