@@ -152,6 +152,15 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             assert!(!substs.has_erasable_regions());
             assert!(!substs.needs_subst());
             substs.visit_with(&mut hasher);
+
+            // If this is an instance of a generic function, we also hash in
+            // the ID of the instantiating crate. This avoids symbol conflicts
+            // in case the same instances is emitted in two crates of the same
+            // project.
+            if substs.types().next().is_some() {
+                hasher.hash(scx.tcx().crate_name.as_str());
+                hasher.hash(scx.sess().local_crate_disambiguator().as_str());
+            }
         }
     });
 

@@ -74,7 +74,10 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// # Safety
 ///
-/// This is only unsafe because it accepts a raw pointer.
+/// This function copies the memory through the raw pointers passed to it
+/// as arguments.
+///
+/// Ensure that these pointers are valid before calling `swap`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {

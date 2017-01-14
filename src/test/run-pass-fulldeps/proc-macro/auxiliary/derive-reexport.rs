@@ -10,7 +10,7 @@
 
 // ignore-test
 
-#![feature(macro_reexport, proc_macro)]
+#![feature(macro_reexport)]
 
 #[macro_reexport(A)]
 extern crate derive_a;

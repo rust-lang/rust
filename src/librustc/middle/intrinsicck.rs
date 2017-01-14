@@ -19,7 +19,7 @@ use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -31,18 +31,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 struct ItemVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
-}
-
-impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
-    fn visit_const(&mut self, item_id: ast::NodeId, body: hir::BodyId) {
-        let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
-        self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
-            let mut visitor = ExprVisitor {
-                infcx: &infcx
-            };
-            visitor.visit_nested_body(body);
-        });
-    }
 }
 
 struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -118,64 +106,36 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::None
     }
 
-    // const, static and N in [T; N].
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
-        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let body = self.tcx.map.body(body_id);
+        self.tcx.infer_ctxt(body_id, Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
             visitor.visit_body(body);
         });
-    }
-
-    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        if let hir::TraitItemKind::Const(_, Some(body)) = item.node {
-            self.visit_const(item.id, body);
-        } else {
-            intravisit::walk_trait_item(self, item);
-        }
-    }
-
-    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(_, body) = item.node {
-            self.visit_const(item.id, body);
-        } else {
-            intravisit::walk_impl_item(self, item);
-        }
-    }
-
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: ast::NodeId) {
-        if let FnKind::Closure(..) = fk {
-            span_bug!(s, "intrinsicck: closure outside of function")
-        }
-        let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-        self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
-            let mut visitor = ExprVisitor {
-                infcx: &infcx
-            };
-            visitor.visit_fn(fk, fd, b, s, id);
-        });
+        self.visit_body(body);
     }
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.infcx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         let def = if let hir::ExprPath(ref qpath) = expr.node {
-            self.infcx.tcx.tables().qpath_def(qpath, expr.id)
+            self.infcx.tables.borrow().qpath_def(qpath, expr.id)
         } else {
             Def::Err
         };
         match def {
             Def::Fn(did) if self.def_id_is_transmute(did) => {
-                let typ = self.infcx.tcx.tables().node_id_to_type(expr.id);
+                let typ = self.infcx.tables.borrow().node_id_to_type(expr.id);
+                let typ = self.infcx.tcx.lift_to_global(&typ).unwrap();
                 match typ.sty {
                     ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
                         let from = bare_fn_ty.sig.skip_binder().inputs()[0];

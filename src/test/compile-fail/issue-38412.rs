@@ -8,21 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo {
-    foo: Vec<u32>,
-}
-
-impl Copy for Foo { }
-//~^ ERROR E0204
-//~| NOTE field `foo` does not implement `Copy`
-
-#[derive(Copy)]
-//~^ ERROR E0204
-//~| NOTE field `ty` does not implement `Copy`
-//~| NOTE in this expansion of #[derive(Copy)]
-struct Foo2<'a> {
-    ty: &'a mut bool,
-}
-
 fn main() {
+    let Box(a) = loop { };
+    //~^ ERROR field `0` of struct `std::boxed::Box` is private
+
+    // (The below is a trick to allow compiler to infer a type for
+    // variable `a` without attempting to ascribe a type to the
+    // pattern or otherwise attempting to name the Box type, which
+    // would run afoul of issue #22207)
+    let _b: *mut i32 = *a;
 }

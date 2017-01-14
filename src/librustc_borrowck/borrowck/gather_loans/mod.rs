@@ -18,6 +18,7 @@
 
 use borrowck::*;
 use borrowck::move_data::MoveData;
+use rustc::infer::InferCtxt;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -25,7 +26,6 @@ use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
 use syntax::ast;
-use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Expr;
@@ -40,20 +40,20 @@ mod gather_moves;
 mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    fn_id: NodeId,
-                                    body: &hir::Body)
+                                    body: hir::BodyId)
                                     -> (Vec<Loan<'tcx>>,
                                         move_data::MoveData<'tcx>) {
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body);
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
+        infcx: &infcx,
         all_loans: Vec::new(),
-        item_ub: bccx.tcx.region_maps.node_extent(body.value.id),
+        item_ub: bccx.tcx.region_maps.node_extent(body.node_id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+    let body = glcx.bccx.tcx.map.body(body);
     euv::ExprUseVisitor::new(&mut glcx, &infcx).consume_body(body);
 
     glcx.report_potential_errors();
@@ -63,6 +63,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 struct GatherLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
     move_data: move_data::MoveData<'tcx>,
     move_error_collector: move_error::MoveErrorCollector<'tcx>,
     all_loans: Vec<Loan<'tcx>>,
@@ -158,8 +159,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                                         mode);
     }
 
-    fn decl_without_init(&mut self, id: ast::NodeId, span: Span) {
-        gather_moves::gather_decl(self.bccx, &self.move_data, id, span, id);
+    fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
+        let ty = self.infcx.tables.borrow().node_id_to_type(id);
+        gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
 
@@ -516,19 +518,17 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 /// sure the loans being taken are sound.
 struct StaticInitializerCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
-    item_id: ast::NodeId
+    body_id: hir::BodyId,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.map)
+        NestedVisitorMap::None
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
-            let param_env = ty::ParameterEnvironment::for_item(self.bccx.tcx,
-                                                               self.item_id);
-            let infcx = self.bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+            let infcx = self.bccx.tcx.borrowck_fake_infer_ctxt(self.body_id);
             let mc = mc::MemCategorizationContext::new(&infcx);
             let base_cmt = mc.cat_expr(&base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
@@ -545,16 +545,14 @@ impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
     }
 }
 
-pub fn gather_loans_in_static_initializer<'a, 'tcx>(bccx: &mut BorrowckCtxt<'a, 'tcx>,
-                                                    item_id: ast::NodeId,
-                                                    body: hir::BodyId) {
-
+pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, body: hir::BodyId) {
     debug!("gather_loans_in_static_initializer(expr={:?})", body);
 
     let mut sicx = StaticInitializerCtxt {
         bccx: bccx,
-        item_id: item_id
+        body_id: body
     };
 
-    sicx.visit_nested_body(body);
+    let body = sicx.bccx.tcx.map.body(body);
+    sicx.visit_body(body);
 }

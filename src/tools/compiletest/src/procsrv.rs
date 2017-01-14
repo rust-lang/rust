@@ -11,6 +11,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
+use std::io;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 
@@ -52,7 +53,7 @@ pub fn run(lib_path: &str,
            args: &[String],
            env: Vec<(String, String)>,
            input: Option<String>)
-           -> Option<Result> {
+           -> io::Result<Result> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
@@ -64,21 +65,17 @@ pub fn run(lib_path: &str,
         cmd.env(&key, &val);
     }
 
-    match cmd.spawn() {
-        Ok(mut process) => {
-            if let Some(input) = input {
-                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
-            }
-            let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
-
-            Some(Result {
-                status: status,
-                out: String::from_utf8(stdout).unwrap(),
-                err: String::from_utf8(stderr).unwrap(),
-            })
-        }
-        Err(..) => None,
+    let mut process = cmd.spawn()?;
+    if let Some(input) = input {
+        process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
     }
+    let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
+
+    Ok(Result {
+        status: status,
+        out: String::from_utf8(stdout).unwrap(),
+        err: String::from_utf8(stderr).unwrap(),
+    })
 }
 
 pub fn run_background(lib_path: &str,
@@ -87,26 +84,21 @@ pub fn run_background(lib_path: &str,
                       args: &[String],
                       env: Vec<(String, String)>,
                       input: Option<String>)
-                      -> Option<Child> {
+                      -> io::Result<Child> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+       .stdin(Stdio::piped())
+       .stdout(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
     }
 
-    match cmd.spawn() {
-        Ok(mut process) => {
-            if let Some(input) = input {
-                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
-            }
-
-            Some(process)
-        }
-        Err(..) => None,
+    let mut process = cmd.spawn()?;
+    if let Some(input) = input {
+        process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
     }
+
+    Ok(process)
 }

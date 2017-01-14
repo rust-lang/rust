@@ -13,6 +13,7 @@ use llvm::{ValueRef, get_params};
 use rustc::traits;
 use callee::{Callee, CalleeData};
 use common::*;
+use builder::Builder;
 use consts;
 use declare;
 use glue;
@@ -27,7 +28,7 @@ use rustc::ty;
 const VTABLE_OFFSET: usize = 3;
 
 /// Extracts a method from a trait object's vtable, at the specified index.
-pub fn get_virtual_method<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+pub fn get_virtual_method<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                     llvtable: ValueRef,
                                     vtable_index: usize)
                                     -> ValueRef {
@@ -75,10 +76,9 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let fcx = FunctionContext::new(ccx, llfn);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(llfn);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(ccx, &[]);
 

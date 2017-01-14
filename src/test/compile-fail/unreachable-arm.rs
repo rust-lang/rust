@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:unreachable pattern
-
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![allow(dead_code)]
+#![deny(unreachable_patterns)]
 
-enum foo { a(Box<foo>, isize), b(usize), }
+enum Foo { A(Box<Foo>, isize), B(usize), }
 
-fn main() { match foo::b(1) { foo::b(_) | foo::a(box _, 1) => { } foo::a(_, 1) => { } } }
+fn main() {
+    match Foo::B(1) {
+        Foo::B(_) | Foo::A(box _, 1) => { }
+        Foo::A(_, 1) => { } //~ ERROR unreachable pattern
+        _ => { }
+    }
+}
+

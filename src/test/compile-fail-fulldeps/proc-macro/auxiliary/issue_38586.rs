@@ -8,5 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(proc_macro)] //~ ERROR: experimental and subject to change
-fn foo() {}
+// force-host
+// no-prefer-dynamic
+
+#![feature(proc_macro, proc_macro_lib)]
+#![crate_type = "proc-macro"]
+
+extern crate proc_macro;
+
+#[proc_macro_derive(A)]
+pub fn derive_a(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    "fn f() { println!(\"{}\", foo); }".parse().unwrap()
+}

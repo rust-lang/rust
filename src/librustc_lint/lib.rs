@@ -26,7 +26,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
@@ -165,6 +165,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     DEAD_CODE,
                     UNUSED_MUT,
                     UNREACHABLE_CODE,
+                    UNREACHABLE_PATTERNS,
                     UNUSED_MUST_USE,
                     UNUSED_UNSAFE,
                     PATH_STATEMENTS,

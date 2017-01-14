@@ -23,4 +23,4 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
-ENV XPY_RUN test distcheck
+ENV SCRIPT python2.7 ../x.py test distcheck

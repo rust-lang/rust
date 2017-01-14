@@ -113,17 +113,20 @@ fn blake2b_compress(ctx: &mut Blake2bCtx, last: bool) {
     }
 
     {
-        // Re-interpret the input buffer in the state as u64s
+        // Re-interpret the input buffer in the state as an array
+        // of little-endian u64s, converting them to machine
+        // endianness. It's OK to modify the buffer in place
+        // since this is the last time  this data will be accessed
+        // before it's overwritten.
+
         let m: &mut [u64; 16] = unsafe {
             let b: &mut [u8; 128] = &mut ctx.b;
             ::std::mem::transmute(b)
         };
 
-        // It's OK to modify the buffer in place since this is the last time
-        // this data will be accessed before it's overwritten
         if cfg!(target_endian = "big") {
             for word in &mut m[..] {
-                *word = word.to_be();
+                *word = u64::from_le(*word);
             }
         }
 
@@ -209,9 +212,10 @@ fn blake2b_final(ctx: &mut Blake2bCtx)
 
     blake2b_compress(ctx, true);
 
+    // Modify our buffer to little-endian format as it will be read
+    // as a byte array. It's OK to modify the buffer in place since
+    // this is the last time this data will be accessed.
     if cfg!(target_endian = "big") {
-        // Make sure that the data is in memory in little endian format, as is
-        // demanded by BLAKE2
         for word in &mut ctx.h {
             *word = word.to_le();
         }

@@ -10,13 +10,11 @@
 
 // Decoding metadata from a single crate's metadata
 
-use astencode::decode_body;
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
 use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
-use rustc::hir::intravisit::IdRange;
 
 use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
@@ -40,7 +38,7 @@ use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::codemap;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
 use rustc_i128::{u128, i128};
@@ -50,8 +48,6 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     cdata: Option<&'a CrateMetadata>,
     sess: Option<&'a Session>,
     tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    from_id_range: IdRange,
-    to_id_range: IdRange,
 
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: usize,
@@ -67,18 +63,12 @@ pub trait Metadata<'a, 'tcx>: Copy {
     fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> { None }
 
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
-        let id_range = IdRange {
-            min: NodeId::from_u32(u32::MIN),
-            max: NodeId::from_u32(u32::MAX),
-        };
         let tcx = self.tcx();
         DecodeContext {
             opaque: opaque::Decoder::new(self.raw_bytes(), pos),
             cdata: self.cdata(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx: tcx,
-            from_id_range: id_range,
-            to_id_range: id_range,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
         }
@@ -125,26 +115,6 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'a, 'tcx, 'tcx>
     }
     fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
         Some(self.1)
-    }
-}
-
-// HACK(eddyb) Only used by astencode to customize the from/to IdRange's.
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'a, 'tcx, 'tcx>, [IdRange; 2]) {
-    fn raw_bytes(self) -> &'a [u8] {
-        self.0.raw_bytes()
-    }
-    fn cdata(self) -> Option<&'a CrateMetadata> {
-        Some(self.0)
-    }
-    fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
-        Some(self.1)
-    }
-
-    fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
-        let mut dcx = (self.0, self.1).decoder(pos);
-        dcx.from_id_range = self.2[0];
-        dcx.to_id_range = self.2[1];
-        dcx
     }
 }
 
@@ -253,28 +223,6 @@ impl<'a, 'tcx, T> SpecializedDecoder<LazySeq<T>> for DecodeContext<'a, 'tcx> {
             self.read_lazy_distance(LazySeq::<T>::min_size(len))?
         };
         Ok(LazySeq::with_position_and_length(position, len))
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<NodeId> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
-        let id = u32::decode(self)?;
-
-        // from_id_range should be non-empty
-        assert!(!self.from_id_range.empty());
-        // Make sure that translating the NodeId will actually yield a
-        // meaningful result
-        if !self.from_id_range.contains(NodeId::from_u32(id)) {
-            bug!("NodeId::decode: {} out of DecodeContext range ({:?} -> {:?})",
-                 id,
-                 self.from_id_range,
-                 self.to_id_range);
-        }
-
-        // Use wrapping arithmetic because otherwise it introduces control flow.
-        // Maybe we should just have the control flow? -- aatch
-        Ok(NodeId::from_u32(id.wrapping_sub(self.from_id_range.min.as_u32())
-            .wrapping_add(self.to_id_range.min.as_u32())))
     }
 }
 
@@ -496,14 +444,6 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Field |
             EntryKind::Closure(_) => return None,
         })
-    }
-    fn is_const_fn(&self, meta: &CrateMetadata) -> bool {
-        let constness = match *self {
-            EntryKind::Method(data) => data.decode(meta).fn_data.constness,
-            EntryKind::Fn(data) => data.decode(meta).constness,
-            _ => hir::Constness::NotConst,
-        };
-        constness == hir::Constness::Const
     }
 }
 
@@ -829,7 +769,14 @@ impl<'a, 'tcx> CrateMetadata {
                                -> Option<&'tcx hir::Body> {
         if self.is_proc_macro(id) { return None; }
         self.entry(id).ast.map(|ast| {
-            decode_body(self, tcx, self.local_def_id(id), ast.decode(self))
+            let def_id = self.local_def_id(id);
+            let ast = ast.decode(self);
+
+            let tables = ast.tables.decode((self, tcx));
+            tcx.tables.borrow_mut().insert(def_id, tcx.alloc_tables(tables));
+
+            let body = ast.body.decode((self, tcx));
+            tcx.map.intern_inlined_body(def_id, body)
         })
     }
 
@@ -847,29 +794,6 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
         !self.is_proc_macro(id) &&
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
-    }
-
-    pub fn can_have_local_instance(&self,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   id: DefIndex) -> bool {
-        self.maybe_entry(id).map_or(false, |item| {
-            let item = item.decode(self);
-            // if we don't have a MIR, then this item was never meant to be locally instantiated
-            // or we have a bug in the metadata serialization
-            item.mir.is_some() && (
-                // items with generics always can have local instances if monomorphized
-                item.generics.map_or(false, |generics| {
-                    let generics = generics.decode((self, tcx));
-                    generics.parent_types != 0 || !generics.types.is_empty()
-                }) ||
-                match item.kind {
-                    EntryKind::Closure(_) => true,
-                    _ => false,
-                } ||
-                item.kind.is_const_fn(self) ||
-                attr::requests_inline(&self.get_attributes(&item))
-            )
-        })
     }
 
     pub fn maybe_get_item_mir(&self,
@@ -1076,7 +1000,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_exported_symbols(&self) -> Vec<DefId> {
-        self.root.exported_symbols.decode(self).map(|index| self.local_def_id(index)).collect()
+        self.exported_symbols.iter().map(|&index| self.local_def_id(index)).collect()
     }
 
     pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
@@ -1088,7 +1012,12 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn is_const_fn(&self, id: DefIndex) -> bool {
-        self.entry(id).kind.is_const_fn(self)
+        let constness = match self.entry(id).kind {
+            EntryKind::Method(data) => data.decode(self).fn_data.constness,
+            EntryKind::Fn(data) => data.decode(self).constness,
+            _ => hir::Constness::NotConst,
+        };
+        constness == hir::Constness::Const
     }
 
     pub fn is_foreign_item(&self, id: DefIndex) -> bool {

@@ -100,13 +100,26 @@ pub trait Sized {
 ///
 /// All implementations of `Unsize` are provided automatically by the compiler.
 ///
+/// `Unsize` is implemented for:
+///
+/// - `[T; N]` is `Unsize<[T]>`
+/// - `T` is `Unsize<Trait>` when `T: Trait`
+/// - `Foo<..., T, ...>` is `Unsize<Foo<..., U, ...>>` if:
+///   - `T: Unsize<U>`
+///   - Foo is a struct
+///   - Only the last field of `Foo` has a type involving `T`
+///   - `T` is not part of the type of any other fields
+///   - `Bar<T>: Unsize<Bar<U>>`, if the last field of `Foo` has type `Bar<T>`
+///
 /// `Unsize` is used along with [`ops::CoerceUnsized`][coerceunsized] to allow
 /// "user-defined" containers such as [`rc::Rc`][rc] to contain dynamically-sized
-/// types. See the [DST coercion RFC][RFC982] for more details.
+/// types. See the [DST coercion RFC][RFC982] and [the nomicon entry on coercion][nomicon-coerce]
+/// for more details.
 ///
 /// [coerceunsized]: ../ops/trait.CoerceUnsized.html
 /// [rc]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+
 #[unstable(feature = "unsize", issue = "27732")]
 #[lang="unsize"]
 pub trait Unsize<T: ?Sized> {
@@ -234,12 +247,10 @@ pub trait Unsize<T: ?Sized> {
 /// Generalizing the latter case, any type implementing [`Drop`] can't be `Copy`, because it's
 /// managing some resource besides its own [`size_of::<T>()`] bytes.
 ///
-/// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get a
-/// compile-time error. Specifically, with structs you'll get [E0204] and with enums you'll get
-/// [E0205].
+/// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
+/// the error [E0204].
 ///
 /// [E0204]: ../../error-index.html#E0204
-/// [E0205]: ../../error-index.html#E0205
 ///
 /// ## When *should* my type be `Copy`?
 ///

@@ -138,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        let ty = cx.tcx.tables().node_id_to_type(e.id);
+        let ty = cx.tables.node_id_to_type(e.id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -738,8 +738,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             // is this a recursive call?
             let self_recursive = if node_id != ast::DUMMY_NODE_ID {
                 match method {
-                    Some(ref method) => expr_refers_to_this_method(cx.tcx, method, node_id),
-                    None => expr_refers_to_this_fn(cx.tcx, id, node_id),
+                    Some(ref method) => expr_refers_to_this_method(cx, method, node_id),
+                    None => expr_refers_to_this_fn(cx, id, node_id),
                 }
             } else {
                 false
@@ -787,43 +787,42 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // Functions for identifying if the given Expr NodeId `id`
         // represents a call to the function `fn_id`/method `method`.
 
-        fn expr_refers_to_this_fn(tcx: TyCtxt, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
-            match tcx.map.get(id) {
+        fn expr_refers_to_this_fn(cx: &LateContext, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
+            match cx.tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        tcx.tables().qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.id)
                     } else {
                         return false;
                     };
-                    def.def_id() == tcx.map.local_def_id(fn_id)
+                    def.def_id() == cx.tcx.map.local_def_id(fn_id)
                 }
                 _ => false,
             }
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                method: &ty::AssociatedItem,
-                                                id: ast::NodeId)
-                                                -> bool {
+        fn expr_refers_to_this_method(cx: &LateContext,
+                                      method: &ty::AssociatedItem,
+                                      id: ast::NodeId)
+                                      -> bool {
             use rustc::ty::adjustment::*;
 
             // Check for method calls and overloaded operators.
-            let opt_m = tcx.tables().method_map.get(&ty::MethodCall::expr(id)).cloned();
+            let opt_m = cx.tables.method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
-                if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
+                if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
                     return true;
                 }
             }
 
             // Check for overloaded autoderef method calls.
-            let opt_adj = tcx.tables().adjustments.get(&id).cloned();
+            let opt_adj = cx.tables.adjustments.get(&id).cloned();
             if let Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) = opt_adj {
                 for i in 0..autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, i as u32);
-                    if let Some(m) = tcx.tables().method_map.get(&method_call)
-                                                            .cloned() {
-                        if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
+                    if let Some(m) = cx.tables.method_map.get(&method_call).cloned() {
+                        if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
                             return true;
                         }
                     }
@@ -831,19 +830,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             }
 
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
-            match tcx.map.get(id) {
+            match cx.tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        tcx.tables().qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.id)
                     } else {
                         return false;
                     };
                     match def {
                         Def::Method(def_id) => {
-                            let substs = tcx.tables().node_id_item_substs(callee.id)
-                                .unwrap_or_else(|| tcx.intern_substs(&[]));
+                            let substs = cx.tables.node_id_item_substs(callee.id)
+                                .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
                             method_call_refers_to_method(
-                                tcx, method, def_id, substs, id)
+                                cx.tcx, method, def_id, substs, id)
                         }
                         _ => false,
                     }
@@ -882,8 +881,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     // checking, so it's always local
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
-                    let param_env = Some(ty::ParameterEnvironment::for_item(tcx, node_id));
-                    tcx.infer_ctxt(None, param_env, Reveal::NotSpecializable).enter(|infcx| {
+                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
+                    tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
                             // The method comes from a `T: Trait` bound.
@@ -1073,7 +1072,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             let def = if let hir::ExprPath(ref qpath) = expr.node {
-                cx.tcx.tables().qpath_def(qpath, expr.id)
+                cx.tables.qpath_def(qpath, expr.id)
             } else {
                 return None;
             };
@@ -1081,7 +1080,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let typ = cx.tcx.tables().node_id_to_type(expr.id);
+                let typ = cx.tables.node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         let from = bare_fn.sig.skip_binder().inputs()[0];

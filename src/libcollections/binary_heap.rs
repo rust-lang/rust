@@ -153,8 +153,7 @@
 
 use core::ops::{Deref, DerefMut};
 use core::iter::{FromIterator, FusedIterator};
-use core::mem::swap;
-use core::mem::size_of;
+use core::mem::{swap, size_of};
 use core::ptr;
 use core::fmt;
 
@@ -226,12 +225,15 @@ pub struct BinaryHeap<T> {
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
+    sift: bool,
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> Drop for PeekMut<'a, T> {
     fn drop(&mut self) {
-        self.heap.sift_down(0);
+        if self.sift {
+            self.heap.sift_down(0);
+        }
     }
 }
 
@@ -247,6 +249,16 @@ impl<'a, T: Ord> Deref for PeekMut<'a, T> {
 impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.heap.data[0]
+    }
+}
+
+impl<'a, T: Ord> PeekMut<'a, T> {
+    /// Removes the peeked value from the heap and returns it.
+    #[unstable(feature = "binary_heap_peek_mut_pop", issue = "38863")]
+    pub fn pop(mut this: PeekMut<'a, T>) -> T {
+        let value = this.heap.pop().unwrap();
+        this.sift = false;
+        value
     }
 }
 
@@ -385,7 +397,10 @@ impl<T: Ord> BinaryHeap<T> {
         if self.is_empty() {
             None
         } else {
-            Some(PeekMut { heap: self })
+            Some(PeekMut {
+                heap: self,
+                sift: true,
+            })
         }
     }
 

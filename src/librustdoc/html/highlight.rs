@@ -218,9 +218,11 @@ impl<'a> Classifier<'a> {
             token::Comment => Class::Comment,
             token::DocComment(..) => Class::DocComment,
 
-            // If this '&' token is directly adjacent to another token, assume
-            // that it's the address-of operator instead of the and-operator.
-            token::BinOp(token::And) if self.lexer.peek().sp.lo == tas.sp.hi => Class::RefKeyWord,
+            // If this '&' or '*' token is followed by a non-whitespace token, assume that it's the
+            // reference or dereference operator or a reference or pointer type, instead of the
+            // bit-and or multiplication operator.
+            token::BinOp(token::And) | token::BinOp(token::Star)
+                if self.lexer.peek().tok != token::Whitespace => Class::RefKeyWord,
 
             // Consider this as part of a macro invocation if there was a
             // leading identifier.

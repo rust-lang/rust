@@ -1660,8 +1660,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyArray(ref ty, length) => {
-                let e = &tcx.map.body(length).value;
-                if let Ok(length) = eval_length(tcx.global_tcx(), e, "array length") {
+                if let Ok(length) = eval_length(tcx.global_tcx(), length, "array length") {
                     tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
                 } else {
                     self.tcx().types.err

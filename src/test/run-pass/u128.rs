@@ -10,7 +10,10 @@
 
 // ignore-stage0
 // ignore-stage1
-#![feature(i128_type)]
+#![feature(i128_type, test)]
+
+extern crate test;
+use test::black_box as b;
 
 fn main() {
     let x: u128 = 0xFFFF_FFFF_FFFF_FFFF__FFFF_FFFF_FFFF_FFFF;
@@ -63,5 +66,15 @@ fn main() {
         format!("{}", u128::max_value()));
     assert_eq!("147573952589676412928", format!("{:?}", j));
     // common traits
-    x.clone();
+    assert_eq!(x, b(x.clone()));
+    // overflow checks
+    assert_eq!((z).checked_mul(z), Some(0x734C_C2F2_A521));
+    assert_eq!((k).checked_mul(k), None);
+    let l: u128 = b(u128::max_value() - 10);
+    let o: u128 = b(17);
+    assert_eq!(l.checked_add(b(11)), None);
+    assert_eq!(l.checked_sub(l), Some(0));
+    assert_eq!(o.checked_sub(b(18)), None);
+    assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
+    assert_eq!(o.checked_shl(b(128)), None);
 }

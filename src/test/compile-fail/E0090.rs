@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "proc-macro"]
-
-#[proc_macro_derive(Foo)] //~ ERROR: is an experimental feature
-pub fn foo() {
+fn foo<'a: 'b, 'b: 'a>() {}
+fn main() {
+    foo::<'static>();//~ ERROR E0090
+                     //~^ too few lifetime parameters
 }

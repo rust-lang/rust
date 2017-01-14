@@ -75,47 +75,53 @@ fn test_to_digit() {
 
 #[test]
 fn test_to_lowercase() {
-    fn lower(c: char) -> Vec<char> {
-        c.to_lowercase().collect()
+    fn lower(c: char) -> String {
+        let iter: String = c.to_lowercase().collect();
+        let disp: String = c.to_lowercase().to_string();
+        assert_eq!(iter, disp);
+        iter
     }
-    assert_eq!(lower('A'), ['a']);
-    assert_eq!(lower('Ö'), ['ö']);
-    assert_eq!(lower('ß'), ['ß']);
-    assert_eq!(lower('Ü'), ['ü']);
-    assert_eq!(lower('💩'), ['💩']);
-    assert_eq!(lower('Σ'), ['σ']);
-    assert_eq!(lower('Τ'), ['τ']);
-    assert_eq!(lower('Ι'), ['ι']);
-    assert_eq!(lower('Γ'), ['γ']);
-    assert_eq!(lower('Μ'), ['μ']);
-    assert_eq!(lower('Α'), ['α']);
-    assert_eq!(lower('Σ'), ['σ']);
-    assert_eq!(lower('ǅ'), ['ǆ']);
-    assert_eq!(lower('ﬁ'), ['ﬁ']);
-    assert_eq!(lower('İ'), ['i', '\u{307}']);
+    assert_eq!(lower('A'), "a");
+    assert_eq!(lower('Ö'), "ö");
+    assert_eq!(lower('ß'), "ß");
+    assert_eq!(lower('Ü'), "ü");
+    assert_eq!(lower('💩'), "💩");
+    assert_eq!(lower('Σ'), "σ");
+    assert_eq!(lower('Τ'), "τ");
+    assert_eq!(lower('Ι'), "ι");
+    assert_eq!(lower('Γ'), "γ");
+    assert_eq!(lower('Μ'), "μ");
+    assert_eq!(lower('Α'), "α");
+    assert_eq!(lower('Σ'), "σ");
+    assert_eq!(lower('ǅ'), "ǆ");
+    assert_eq!(lower('ﬁ'), "ﬁ");
+    assert_eq!(lower('İ'), "i\u{307}");
 }
 
 #[test]
 fn test_to_uppercase() {
-    fn upper(c: char) -> Vec<char> {
-        c.to_uppercase().collect()
+    fn upper(c: char) -> String {
+        let iter: String = c.to_uppercase().collect();
+        let disp: String = c.to_uppercase().to_string();
+        assert_eq!(iter, disp);
+        iter
     }
-    assert_eq!(upper('a'), ['A']);
-    assert_eq!(upper('ö'), ['Ö']);
-    assert_eq!(upper('ß'), ['S', 'S']); // not ẞ: Latin capital letter sharp s
-    assert_eq!(upper('ü'), ['Ü']);
-    assert_eq!(upper('💩'), ['💩']);
+    assert_eq!(upper('a'), "A");
+    assert_eq!(upper('ö'), "Ö");
+    assert_eq!(upper('ß'), "SS"); // not ẞ: Latin capital letter sharp s
+    assert_eq!(upper('ü'), "Ü");
+    assert_eq!(upper('💩'), "💩");
 
-    assert_eq!(upper('σ'), ['Σ']);
-    assert_eq!(upper('τ'), ['Τ']);
-    assert_eq!(upper('ι'), ['Ι']);
-    assert_eq!(upper('γ'), ['Γ']);
-    assert_eq!(upper('μ'), ['Μ']);
-    assert_eq!(upper('α'), ['Α']);
-    assert_eq!(upper('ς'), ['Σ']);
-    assert_eq!(upper('ǅ'), ['Ǆ']);
-    assert_eq!(upper('ﬁ'), ['F', 'I']);
-    assert_eq!(upper('ᾀ'), ['Ἀ', 'Ι']);
+    assert_eq!(upper('σ'), "Σ");
+    assert_eq!(upper('τ'), "Τ");
+    assert_eq!(upper('ι'), "Ι");
+    assert_eq!(upper('γ'), "Γ");
+    assert_eq!(upper('μ'), "Μ");
+    assert_eq!(upper('α'), "Α");
+    assert_eq!(upper('ς'), "Σ");
+    assert_eq!(upper('ǅ'), "Ǆ");
+    assert_eq!(upper('ﬁ'), "FI");
+    assert_eq!(upper('ᾀ'), "ἈΙ");
 }
 
 #[test]
@@ -144,107 +150,75 @@ fn test_is_digit() {
 #[test]
 fn test_escape_debug() {
     fn string(c: char) -> String {
-        c.escape_debug().collect()
+        let iter: String = c.escape_debug().collect();
+        let disp: String = c.escape_debug().to_string();
+        assert_eq!(iter, disp);
+        iter
     }
-    let s = string('\n');
-    assert_eq!(s, "\\n");
-    let s = string('\r');
-    assert_eq!(s, "\\r");
-    let s = string('\'');
-    assert_eq!(s, "\\'");
-    let s = string('"');
-    assert_eq!(s, "\\\"");
-    let s = string(' ');
-    assert_eq!(s, " ");
-    let s = string('a');
-    assert_eq!(s, "a");
-    let s = string('~');
-    assert_eq!(s, "~");
-    let s = string('é');
-    assert_eq!(s, "é");
-    let s = string('文');
-    assert_eq!(s, "文");
-    let s = string('\x00');
-    assert_eq!(s, "\\u{0}");
-    let s = string('\x1f');
-    assert_eq!(s, "\\u{1f}");
-    let s = string('\x7f');
-    assert_eq!(s, "\\u{7f}");
-    let s = string('\u{80}');
-    assert_eq!(s, "\\u{80}");
-    let s = string('\u{ff}');
-    assert_eq!(s, "\u{ff}");
-    let s = string('\u{11b}');
-    assert_eq!(s, "\u{11b}");
-    let s = string('\u{1d4b6}');
-    assert_eq!(s, "\u{1d4b6}");
-    let s = string('\u{200b}'); // zero width space
-    assert_eq!(s, "\\u{200b}");
-    let s = string('\u{e000}'); // private use 1
-    assert_eq!(s, "\\u{e000}");
-    let s = string('\u{100000}'); // private use 2
-    assert_eq!(s, "\\u{100000}");
+    assert_eq!(string('\n'), "\\n");
+    assert_eq!(string('\r'), "\\r");
+    assert_eq!(string('\''), "\\'");
+    assert_eq!(string('"'), "\\\"");
+    assert_eq!(string(' '), " ");
+    assert_eq!(string('a'), "a");
+    assert_eq!(string('~'), "~");
+    assert_eq!(string('é'), "é");
+    assert_eq!(string('文'), "文");
+    assert_eq!(string('\x00'), "\\u{0}");
+    assert_eq!(string('\x1f'), "\\u{1f}");
+    assert_eq!(string('\x7f'), "\\u{7f}");
+    assert_eq!(string('\u{80}'), "\\u{80}");
+    assert_eq!(string('\u{ff}'), "\u{ff}");
+    assert_eq!(string('\u{11b}'), "\u{11b}");
+    assert_eq!(string('\u{1d4b6}'), "\u{1d4b6}");
+    assert_eq!(string('\u{200b}'),"\\u{200b}");      // zero width space
+    assert_eq!(string('\u{e000}'), "\\u{e000}");     // private use 1
+    assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
 }
 
 #[test]
 fn test_escape_default() {
     fn string(c: char) -> String {
-        c.escape_default().collect()
+        let iter: String = c.escape_default().collect();
+        let disp: String = c.escape_default().to_string();
+        assert_eq!(iter, disp);
+        iter
     }
-    let s = string('\n');
-    assert_eq!(s, "\\n");
-    let s = string('\r');
-    assert_eq!(s, "\\r");
-    let s = string('\'');
-    assert_eq!(s, "\\'");
-    let s = string('"');
-    assert_eq!(s, "\\\"");
-    let s = string(' ');
-    assert_eq!(s, " ");
-    let s = string('a');
-    assert_eq!(s, "a");
-    let s = string('~');
-    assert_eq!(s, "~");
-    let s = string('é');
-    assert_eq!(s, "\\u{e9}");
-    let s = string('\x00');
-    assert_eq!(s, "\\u{0}");
-    let s = string('\x1f');
-    assert_eq!(s, "\\u{1f}");
-    let s = string('\x7f');
-    assert_eq!(s, "\\u{7f}");
-    let s = string('\u{80}');
-    assert_eq!(s, "\\u{80}");
-    let s = string('\u{ff}');
-    assert_eq!(s, "\\u{ff}");
-    let s = string('\u{11b}');
-    assert_eq!(s, "\\u{11b}");
-    let s = string('\u{1d4b6}');
-    assert_eq!(s, "\\u{1d4b6}");
-    let s = string('\u{200b}'); // zero width space
-    assert_eq!(s, "\\u{200b}");
-    let s = string('\u{e000}'); // private use 1
-    assert_eq!(s, "\\u{e000}");
-    let s = string('\u{100000}'); // private use 2
-    assert_eq!(s, "\\u{100000}");
+    assert_eq!(string('\n'), "\\n");
+    assert_eq!(string('\r'), "\\r");
+    assert_eq!(string('\''), "\\'");
+    assert_eq!(string('"'), "\\\"");
+    assert_eq!(string(' '), " ");
+    assert_eq!(string('a'), "a");
+    assert_eq!(string('~'), "~");
+    assert_eq!(string('é'), "\\u{e9}");
+    assert_eq!(string('\x00'), "\\u{0}");
+    assert_eq!(string('\x1f'), "\\u{1f}");
+    assert_eq!(string('\x7f'), "\\u{7f}");
+    assert_eq!(string('\u{80}'), "\\u{80}");
+    assert_eq!(string('\u{ff}'), "\\u{ff}");
+    assert_eq!(string('\u{11b}'), "\\u{11b}");
+    assert_eq!(string('\u{1d4b6}'), "\\u{1d4b6}");
+    assert_eq!(string('\u{200b}'), "\\u{200b}"); // zero width space
+    assert_eq!(string('\u{e000}'), "\\u{e000}"); // private use 1
+    assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
 }
 
 #[test]
 fn test_escape_unicode() {
-    fn string(c: char) -> String { c.escape_unicode().collect() }
+    fn string(c: char) -> String {
+        let iter: String = c.escape_unicode().collect();
+        let disp: String = c.escape_unicode().to_string();
+        assert_eq!(iter, disp);
+        iter
+    }
 
-    let s = string('\x00');
-    assert_eq!(s, "\\u{0}");
-    let s = string('\n');
-    assert_eq!(s, "\\u{a}");
-    let s = string(' ');
-    assert_eq!(s, "\\u{20}");
-    let s = string('a');
-    assert_eq!(s, "\\u{61}");
-    let s = string('\u{11b}');
-    assert_eq!(s, "\\u{11b}");
-    let s = string('\u{1d4b6}');
-    assert_eq!(s, "\\u{1d4b6}");
+    assert_eq!(string('\x00'), "\\u{0}");
+    assert_eq!(string('\n'), "\\u{a}");
+    assert_eq!(string(' '), "\\u{20}");
+    assert_eq!(string('a'), "\\u{61}");
+    assert_eq!(string('\u{11b}'), "\\u{11b}");
+    assert_eq!(string('\u{1d4b6}'), "\\u{1d4b6}");
 }
 
 #[test]

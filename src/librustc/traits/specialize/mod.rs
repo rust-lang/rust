@@ -123,7 +123,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ancestors = trait_def.ancestors(impl_data.impl_def_id);
     match ancestors.defs(tcx, name, ty::AssociatedKind::Method).next() {
         Some(node_item) => {
-            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, impl_data.impl_def_id,
                                               substs, node_item.node);
@@ -189,7 +189,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .subst(tcx, &penv.free_substs);
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
-    let result = tcx.infer_ctxt(None, Some(penv), Reveal::ExactMatch).enter(|infcx| {
+    let result = tcx.infer_ctxt(penv, Reveal::ExactMatch).enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
         let impl1_trait_ref =

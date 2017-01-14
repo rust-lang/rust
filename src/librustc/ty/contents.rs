@@ -235,6 +235,11 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                             })
                         });
 
+                    if def.is_union() {
+                        // unions don't have destructors regardless of the child types
+                        res = res - TC::NeedsDrop;
+                    }
+
                     if def.has_dtor() {
                         res = res | TC::OwnsDtor;
                     }

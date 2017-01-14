@@ -45,6 +45,10 @@ whole, instead of just a few lines inside the test.
 * `should-fail` indicates that the test should fail; used for "meta testing",
   where we test the compiletest program itself to check that it will generate
   errors in appropriate scenarios. This header is ignored for pretty-printer tests.
+* `gate-test-X` where `X` is a feature marks the test as "gate test" for feature X.
+  Such tests are supposed to ensure that the compiler errors when usage of a gated
+  feature is attempted without the proper `#![feature(X)]` tag.
+  Each unstable lang feature is required to have a gate test.
 
 ## Revisions
 

@@ -225,7 +225,7 @@
 
 // Turn warnings into errors, but only after stage0, where it can be useful for
 // code to emit warnings during language transitions
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 // std may use features in a platform-specific way
 #![allow(unused_features)]
@@ -250,13 +250,14 @@
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(fused)]
+#![feature(generic_param_attrs)]
 #![feature(hashmap_hasher)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]

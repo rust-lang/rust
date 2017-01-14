@@ -15,22 +15,19 @@
 //! Currently the primary use of this crate is to provide the ability to define
 //! new custom derive modes through `#[proc_macro_derive]`.
 //!
-//! Added recently as part of [RFC 1681] this crate is currently *unstable* and
-//! requires the `#![feature(proc_macro_lib)]` directive to use.
-//!
-//! [RFC 1681]: https://github.com/rust-lang/rfcs/blob/master/text/1681-macros-1.1.md
-//!
 //! Note that this crate is intentionally very bare-bones currently. The main
 //! type, `TokenStream`, only supports `fmt::Display` and `FromStr`
 //! implementations, indicating that it can only go to and come from a string.
 //! This functionality is intended to be expanded over time as more surface
 //! area for macro authors is stabilized.
+//!
+//! See [the book](../../book/procedural-macros.html) for more.
 
 #![crate_name = "proc_macro"]
-#![unstable(feature = "proc_macro_lib", issue = "27812")]
+#![stable(feature = "proc_macro_lib", since = "1.15.0")]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![deny(missing_docs)]
 
 #![feature(rustc_private)]
@@ -55,12 +52,14 @@ use syntax::ptr::P;
 ///
 /// The API of this type is intentionally bare-bones, but it'll be expanded over
 /// time!
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 pub struct TokenStream {
     inner: Vec<P<ast::Item>>,
 }
 
 /// Error returned from `TokenStream::from_str`.
 #[derive(Debug)]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 pub struct LexError {
     _inner: (),
 }
@@ -131,6 +130,7 @@ pub mod __internal {
     }
 }
 
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl FromStr for TokenStream {
     type Err = LexError;
 
@@ -154,6 +154,7 @@ impl FromStr for TokenStream {
     }
 }
 
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for item in self.inner.iter() {

@@ -15,6 +15,7 @@ use base;
 use common::*;
 use type_of;
 use type_::Type;
+use builder::Builder;
 
 use rustc::hir;
 use rustc::ty::Ty;
@@ -25,7 +26,7 @@ use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
     outputs: Vec<(ValueRef, Ty<'tcx>)>,
     mut inputs: Vec<ValueRef>
@@ -105,7 +106,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
     for (i, (_, &(val, _))) in outputs.enumerate() {
         let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i) };
-        bcx.store(v, val);
+        bcx.store(v, val, None);
     }
 
     // Store expn_id in a metadata node so we can map LLVM errors

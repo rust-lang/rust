@@ -260,11 +260,18 @@ impl fmt::Debug for ChildStderr {
 /// ```
 /// use std::process::Command;
 ///
-/// let output = Command::new("sh")
-///                      .arg("-c")
-///                      .arg("echo hello")
-///                      .output()
-///                      .expect("failed to execute process");
+/// let output = if cfg!(target_os = "windows") {
+///     Command::new("cmd")
+///             .args(&["/C", "echo hello"])
+///             .output()
+///             .expect("failed to execute process")
+/// } else {
+///     Command::new("sh")
+///             .arg("-c")
+///             .arg("echo hello")
+///             .output()
+///             .expect("failed to execute process")
+/// };
 ///
 /// let hello = output.stdout;
 /// ```
@@ -793,6 +800,48 @@ impl Child {
         self.handle.wait().map(ExitStatus)
     }
 
+    /// Attempts to collect the exit status of the child if it has already
+    /// exited.
+    ///
+    /// This function will not block the calling thread and will only advisorily
+    /// check to see if the child process has exited or not. If the child has
+    /// exited then on Unix the process id is reaped. This function is
+    /// guaranteed to repeatedly return a successful exit status so long as the
+    /// child has already exited.
+    ///
+    /// If the child has exited, then `Ok(status)` is returned. If the exit
+    /// status is not available at this time then an error is returned with the
+    /// error kind `WouldBlock`. If an error occurs, then that error is returned.
+    ///
+    /// Note that unlike `wait`, this function will not attempt to drop stdin.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// #![feature(process_try_wait)]
+    ///
+    /// use std::io;
+    /// use std::process::Command;
+    ///
+    /// let mut child = Command::new("ls").spawn().unwrap();
+    ///
+    /// match child.try_wait() {
+    ///     Ok(status) => println!("exited with: {}", status),
+    ///     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///         println!("status not ready yet, let's really wait");
+    ///         let res = child.wait();
+    ///         println!("result: {:?}", res);
+    ///     }
+    ///     Err(e) => println!("error attempting to wait: {}", e),
+    /// }
+    /// ```
+    #[unstable(feature = "process_try_wait", issue = "38903")]
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        self.handle.try_wait().map(ExitStatus)
+    }
+
     /// Simultaneously waits for the child to exit and collect all remaining
     /// output on the stdout/stderr handles, returning an `Output`
     /// instance.
@@ -925,7 +974,11 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn smoke() {
-        let p = Command::new("true").spawn();
+        let p = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 0"]).spawn()
+        } else {
+            Command::new("true").spawn()
+        };
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().success());
@@ -943,7 +996,11 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn exit_reported_right() {
-        let p = Command::new("false").spawn();
+        let p = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 1"]).spawn()
+        } else {
+            Command::new("false").spawn()
+        };
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().code() == Some(1));
@@ -982,9 +1039,15 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn stdout_works() {
-        let mut cmd = Command::new("echo");
-        cmd.arg("foobar").stdout(Stdio::piped());
-        assert_eq!(run_output(cmd), "foobar\n");
+        if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(&["/C", "echo foobar"]).stdout(Stdio::piped());
+            assert_eq!(run_output(cmd), "foobar\r\n");
+        } else {
+            let mut cmd = Command::new("echo");
+            cmd.arg("foobar").stdout(Stdio::piped());
+            assert_eq!(run_output(cmd), "foobar\n");
+        }
     }
 
     #[test]
@@ -1044,10 +1107,18 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_status() {
-        let mut status = Command::new("false").status().unwrap();
+        let mut status = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
+        } else {
+            Command::new("false").status().unwrap()
+        };
         assert!(status.code() == Some(1));
 
-        status = Command::new("true").status().unwrap();
+        status = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
+        } else {
+            Command::new("true").status().unwrap()
+        };
         assert!(status.success());
     }
 
@@ -1063,7 +1134,11 @@ mod tests {
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
-             = Command::new("echo").arg("hello").output().unwrap();
+             = if cfg!(target_os = "windows") {
+                 Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
+             } else {
+                 Command::new("echo").arg("hello").output().unwrap()
+             };
         let output_str = str::from_utf8(&stdout).unwrap();
 
         assert!(status.success());
@@ -1075,7 +1150,11 @@ mod tests {
     #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_error() {
         let Output {status, stdout, stderr}
-             = Command::new("mkdir").arg(".").output().unwrap();
+             = if cfg!(target_os = "windows") {
+                 Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
+             } else {
+                 Command::new("mkdir").arg(".").output().unwrap()
+             };
 
         assert!(status.code() == Some(1));
         assert_eq!(stdout, Vec::new());
@@ -1085,14 +1164,22 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_once() {
-        let mut prog = Command::new("false").spawn().unwrap();
+        let mut prog = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
+        } else {
+            Command::new("false").spawn().unwrap()
+        };
         assert!(prog.wait().unwrap().code() == Some(1));
     }
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_twice() {
-        let mut prog = Command::new("false").spawn().unwrap();
+        let mut prog = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
+        } else {
+            Command::new("false").spawn().unwrap()
+        };
         assert!(prog.wait().unwrap().code() == Some(1));
         assert!(prog.wait().unwrap().code() == Some(1));
     }
@@ -1100,8 +1187,12 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     fn test_wait_with_output_once() {
-        let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
-            .spawn().unwrap();
+        let prog = if cfg!(target_os = "windows") {
+            Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
+        } else {
+            Command::new("echo").arg("hello").stdout(Stdio::piped()).spawn().unwrap()
+        };
+
         let Output {status, stdout, stderr} = prog.wait_with_output().unwrap();
         let output_str = str::from_utf8(&stdout).unwrap();
 

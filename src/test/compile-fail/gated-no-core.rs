@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-no_core
+
 #![no_core] //~ ERROR no_core is experimental
 
 fn main() {}

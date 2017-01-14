@@ -14,11 +14,11 @@
 use rustc::dep_graph::DepNode;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
-use rustc::ty::{self, TyCtxt, ParameterEnvironment};
+use rustc::ty::{self, TyCtxt};
 use rustc::traits::Reveal;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -33,28 +33,19 @@ struct RvalueContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::None
     }
 
-    fn visit_fn(&mut self,
-                fk: intravisit::FnKind<'tcx>,
-                fd: &'tcx hir::FnDecl,
-                b: hir::BodyId,
-                s: Span,
-                fn_id: ast::NodeId) {
-        // FIXME (@jroesch) change this to be an inference context
-        let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
-        self.tcx.infer_ctxt(None, Some(param_env.clone()),
-                            Reveal::NotSpecializable).enter(|infcx| {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let body = self.tcx.map.body(body_id);
+        self.tcx.infer_ctxt(body_id, Reveal::NotSpecializable).enter(|infcx| {
             let mut delegate = RvalueContextDelegate {
                 tcx: infcx.tcx,
-                param_env: &param_env
+                param_env: &infcx.parameter_environment
             };
-            let body = infcx.tcx.map.body(b);
-            let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
-            euv.consume_body(body);
+            euv::ExprUseVisitor::new(&mut delegate, &infcx).consume_body(body);
         });
-        intravisit::walk_fn(self, fk, fd, b, s, fn_id)
+        self.visit_body(body);
     }
 }
 

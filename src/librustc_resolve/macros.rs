@@ -380,8 +380,8 @@ impl<'a> Resolver<'a> {
                 MacroBinding::Modern(binding) => (binding.span, "imported"),
                 MacroBinding::Legacy(binding) => (binding.span, "defined"),
             };
-            let msg1 = format!("`{}` could resolve to the macro {} here", ident, participle);
-            let msg2 = format!("`{}` could also resolve to the macro imported here", ident);
+            let msg1 = format!("`{}` could refer to the macro {} here", ident, participle);
+            let msg2 = format!("`{}` could also refer to the macro imported here", ident);
             self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
                 .span_note(legacy_span, &msg1)
                 .span_note(resolution.span, &msg2)

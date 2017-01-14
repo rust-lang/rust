@@ -26,14 +26,14 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(alloc)]
 #![feature(core_intrinsics)]
+#![feature(dropck_eyepatch)]
 #![feature(heap_api)]
-#![feature(heap_api)]
+#![feature(generic_param_attrs)]
 #![feature(staged_api)]
-#![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
@@ -258,8 +258,7 @@ impl<T> TypedArena<T> {
     }
 }
 
-impl<T> Drop for TypedArena<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.
