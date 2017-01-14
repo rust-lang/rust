@@ -480,23 +480,8 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
-            let mut tt = panictry!(p.parse_token_tree());
+            let tt = panictry!(p.parse_token_tree());
             p.quote_depth -= 1;
-            while let TokenTree::Token(sp, token::Interpolated(nt)) = tt {
-                if let token::NtTT(..) = *nt {
-                    match Rc::try_unwrap(nt) {
-                        Ok(token::NtTT(sub_tt)) => tt = sub_tt,
-                        Ok(_) => unreachable!(),
-                        Err(nt_rc) => match *nt_rc {
-                            token::NtTT(ref sub_tt) => tt = sub_tt.clone(),
-                            _ => unreachable!(),
-                        },
-                    }
-                } else {
-                    tt = TokenTree::Token(sp, token::Interpolated(nt.clone()));
-                    break
-                }
-            }
             return token::NtTT(tt);
         }
         _ => {}
