@@ -967,7 +967,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err_mutbl => self.note_and_explain_mutbl_error(db, &err, &error_span),
             err_out_of_scope(super_scope, sub_scope, cause) => {
                 let (value_kind, value_msg) = match err.cmt.cat {
-                    mc::Categorization::Rvalue(_) =>
+                    mc::Categorization::Rvalue(..) =>
                         ("temporary value", "temporary value created here"),
                     _ =>
                         ("borrowed value", "borrow occurs here")
@@ -1060,6 +1060,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 if let Some(_) = statement_scope_span(self.tcx, super_scope) {
                     db.note("consider using a `let` binding to increase its lifetime");
+                }
+
+
+
+                match err.cmt.cat {
+                    mc::Categorization::Rvalue(r, or) if r != or => {
+                        db.note("\
+before rustc 1.16, this temporary lived longer - see issue #39283 \
+(https://github.com/rust-lang/rust/issues/39283)");
+                    }
+                    _ => {}
                 }
             }
 

@@ -27,7 +27,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
-        let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);
+        let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(self.id);
         let expr_extent = cx.tcx.region_maps.node_extent(self.id);
 
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
@@ -45,6 +45,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some((ty::adjustment::Adjust::ReifyFnPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::ReifyFnPointer { source: expr.to_ref() },
@@ -53,6 +54,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some((ty::adjustment::Adjust::UnsafeFnPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
@@ -61,6 +63,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some((ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::NeverToAny { source: expr.to_ref() },
@@ -69,6 +72,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some((ty::adjustment::Adjust::MutToConstPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::Cast { source: expr.to_ref() },
@@ -98,6 +102,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
                         expr = Expr {
                             temp_lifetime: temp_lifetime,
+                            temp_lifetime_was_shrunk: was_shrunk,
                             ty: cx.tcx.mk_ref(region,
                                               ty::TypeAndMut {
                                                   ty: expr.ty,
@@ -123,6 +128,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     };
                     expr = Expr {
                         temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
                         ty: adjusted_ty,
                         span: self.span,
                         kind: kind,
@@ -135,6 +141,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         ty::adjustment::AutoBorrow::Ref(r, m) => {
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
+                                temp_lifetime_was_shrunk: was_shrunk,
                                 ty: adjusted_ty,
                                 span: self.span,
                                 kind: ExprKind::Borrow {
@@ -152,6 +159,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             let region = cx.tcx.mk_region(region);
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
+                                temp_lifetime_was_shrunk: was_shrunk,
                                 ty: cx.tcx.mk_ref(region,
                                                   ty::TypeAndMut {
                                                       ty: expr.ty,
@@ -166,6 +174,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             };
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
+                                temp_lifetime_was_shrunk: was_shrunk,
                                 ty: adjusted_ty,
                                 span: self.span,
                                 kind: ExprKind::Cast { source: expr.to_ref() },
@@ -177,6 +186,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 if unsize {
                     expr = Expr {
                         temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
                         ty: adjusted_ty,
                         span: self.span,
                         kind: ExprKind::Unsize { source: expr.to_ref() },
@@ -188,6 +198,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         // Next, wrap this up in the expr's scope.
         expr = Expr {
             temp_lifetime: temp_lifetime,
+            temp_lifetime_was_shrunk: was_shrunk,
             ty: expr.ty,
             span: self.span,
             kind: ExprKind::Scope {
@@ -200,6 +211,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         if let Some(extent) = cx.tcx.region_maps.opt_destruction_extent(self.id) {
             expr = Expr {
                 temp_lifetime: temp_lifetime,
+                temp_lifetime_was_shrunk: was_shrunk,
                 ty: expr.ty,
                 span: self.span,
                 kind: ExprKind::Scope {
@@ -218,7 +230,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                           expr: &'tcx hir::Expr)
                                           -> Expr<'tcx> {
     let expr_ty = cx.tables().expr_ty(expr);
-    let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
+    let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(expr.id);
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
@@ -260,6 +272,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 let tupled_args = Expr {
                     ty: sig.inputs()[1],
                     temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
                     span: expr.span,
                     kind: ExprKind::Tuple { fields: args.iter().map(ToRef::to_ref).collect() },
                 };
@@ -670,6 +683,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     Expr {
         temp_lifetime: temp_lifetime,
+        temp_lifetime_was_shrunk: was_shrunk,
         ty: expr_ty,
         span: expr.span,
         kind: kind,
@@ -681,9 +695,10 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  method_call: ty::MethodCall)
                                  -> Expr<'tcx> {
     let callee = cx.tables().method_map[&method_call];
-    let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
+    let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(expr.id);
     Expr {
         temp_lifetime: temp_lifetime,
+        temp_lifetime_was_shrunk: was_shrunk,
         ty: callee.ty,
         span: expr.span,
         kind: ExprKind::Literal {
@@ -761,7 +776,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                expr: &'tcx hir::Expr,
                                def: Def)
                                -> ExprKind<'tcx> {
-    let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
+    let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(expr.id);
 
     match def {
         Def::Local(def_id) => {
@@ -813,15 +828,17 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
                         span: expr.span,
                         kind: ExprKind::Deref {
                             arg: Expr {
-                                    ty: ref_closure_ty,
-                                    temp_lifetime: temp_lifetime,
-                                    span: expr.span,
-                                    kind: ExprKind::SelfRef,
-                                }
-                                .to_ref(),
+                                ty: ref_closure_ty,
+                                temp_lifetime: temp_lifetime,
+                                temp_lifetime_was_shrunk: was_shrunk,
+                                span: expr.span,
+                                kind: ExprKind::SelfRef,
+                            }
+                            .to_ref(),
                         },
                     }
                 }
@@ -834,15 +851,16 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
                         span: expr.span,
                         kind: ExprKind::Deref {
                             arg: Expr {
-                                    ty: ref_closure_ty,
-                                    temp_lifetime: temp_lifetime,
-                                    span: expr.span,
-                                    kind: ExprKind::SelfRef,
-                                }
-                                .to_ref(),
+                                ty: ref_closure_ty,
+                                temp_lifetime: temp_lifetime,
+                                temp_lifetime_was_shrunk: was_shrunk,
+                                span: expr.span,
+                                kind: ExprKind::SelfRef,
+                            }.to_ref(),
                         },
                     }
                 }
@@ -850,6 +868,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
                         span: expr.span,
                         kind: ExprKind::SelfRef,
                     }
@@ -879,16 +898,16 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::UpvarCapture::ByRef(borrow) => {
                     ExprKind::Deref {
                         arg: Expr {
-                                temp_lifetime: temp_lifetime,
-                                ty: cx.tcx.mk_ref(borrow.region,
-                                                  ty::TypeAndMut {
-                                                      ty: var_ty,
-                                                      mutbl: borrow.kind.to_mutbl_lossy(),
-                                                  }),
-                                span: expr.span,
-                                kind: field_kind,
-                            }
-                            .to_ref(),
+                            temp_lifetime: temp_lifetime,
+                            temp_lifetime_was_shrunk: was_shrunk,
+                            ty: cx.tcx.mk_ref(borrow.region,
+                                              ty::TypeAndMut {
+                                                  ty: var_ty,
+                                                  mutbl: borrow.kind.to_mutbl_lossy(),
+                                              }),
+                            span: expr.span,
+                            kind: field_kind,
+                        }.to_ref(),
                     }
                 }
             }
@@ -944,7 +963,8 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         PassArgs::ByRef => {
             let region = cx.tcx.node_scope_region(expr.id);
-            let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
+            let (temp_lifetime, was_shrunk) =
+                cx.tcx.region_maps.temporary_scope2(expr.id);
             argrefs.extend(args.iter()
                 .map(|arg| {
                     let arg_ty = cx.tables().expr_ty_adjusted(arg);
@@ -954,16 +974,17 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                                         mutbl: hir::MutImmutable,
                                                     });
                     Expr {
-                            temp_lifetime: temp_lifetime,
-                            ty: adjusted_ty,
-                            span: expr.span,
-                            kind: ExprKind::Borrow {
-                                region: region,
-                                borrow_kind: BorrowKind::Shared,
-                                arg: arg.to_ref(),
-                            },
-                        }
-                        .to_ref()
+                        temp_lifetime: temp_lifetime,
+                        temp_lifetime_was_shrunk: was_shrunk,
+                        ty: adjusted_ty,
+                        span: expr.span,
+                        kind: ExprKind::Borrow {
+                            region: region,
+                            borrow_kind: BorrowKind::Shared,
+                            arg: arg.to_ref(),
+                        },
+                    }
+                    .to_ref()
                 }))
         }
     }
@@ -995,10 +1016,11 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
-    let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
+    let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(expr.id);
     let ref_kind = overloaded_operator(cx, expr, method_call, pass_args, receiver, args);
     let ref_expr = Expr {
         temp_lifetime: temp_lifetime,
+        temp_lifetime_was_shrunk: was_shrunk,
         ty: ref_ty,
         span: expr.span,
         kind: ref_kind,
@@ -1019,10 +1041,11 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         closure_expr_id: closure_expr.id,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id).unwrap();
-    let temp_lifetime = cx.tcx.region_maps.temporary_scope(closure_expr.id);
+    let (temp_lifetime, was_shrunk) = cx.tcx.region_maps.temporary_scope2(closure_expr.id);
     let var_ty = cx.tables().node_id_to_type(id_var);
     let captured_var = Expr {
         temp_lifetime: temp_lifetime,
+        temp_lifetime_was_shrunk: was_shrunk,
         ty: var_ty,
         span: closure_expr.span,
         kind: convert_var(cx, closure_expr, freevar.def),
@@ -1036,16 +1059,16 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::BorrowKind::MutBorrow => BorrowKind::Mut,
             };
             Expr {
-                    temp_lifetime: temp_lifetime,
-                    ty: freevar_ty,
-                    span: closure_expr.span,
-                    kind: ExprKind::Borrow {
-                        region: upvar_borrow.region,
-                        borrow_kind: borrow_kind,
-                        arg: captured_var.to_ref(),
-                    },
-                }
-                .to_ref()
+                temp_lifetime: temp_lifetime,
+                temp_lifetime_was_shrunk: was_shrunk,
+                ty: freevar_ty,
+                span: closure_expr.span,
+                kind: ExprKind::Borrow {
+                    region: upvar_borrow.region,
+                    borrow_kind: borrow_kind,
+                    arg: captured_var.to_ref(),
+                },
+            }.to_ref()
         }
     }
 }
