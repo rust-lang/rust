@@ -778,7 +778,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         //
         // More information can be found in libstd's seh.rs implementation.
         let i64p = Type::i64(ccx).ptr_to();
-        let slot = bcx.alloca(i64p, "slot");
+        let slot = bcx.alloca(i64p, "slot", None);
         bcx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
             None);
 

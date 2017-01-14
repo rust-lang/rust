@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,26 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
 #![allow(dead_code)]
 #![feature(attr_literals)]
 
-#[repr(C)]
-enum A { A }
+#[repr(align(16.0))] //~ ERROR: align representation must be a u16 power of two
+struct A(i32);
 
-#[repr(u64)]
-enum B { B }
+#[repr(align(15))] //~ ERROR: align representation must be a u16 power of two
+struct B(i32);
 
-#[repr(C, u64)] //~ WARNING conflicting representation hints
-enum C { C }
-
-#[repr(u32, u64)] //~ WARNING conflicting representation hints
-enum D { D }
-
-#[repr(C, packed)]
-struct E(i32);
-
-#[repr(packed, align(8))] //~ ERROR conflicting packed and align representation hints
-struct F(i32);
+#[repr(align(65536))] //~ ERROR: align representation must be a u16 power of tw
+struct C(i32);
 
 fn main() {}

@@ -4168,5 +4168,6 @@ register_diagnostics! {
            // but `{}` was found in the type `{}`
     E0567, // auto traits can not have type parameters
     E0568, // auto-traits can not have predicates,
+    E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 }
