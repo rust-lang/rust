@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: the `proc-macro` crate type is experimental
+// gate-test-struct_field_attributes
 
-#![crate_type = "proc-macro"]
+struct Foo {
+    present: (),
+}
+
+fn main() {
+    let foo = Foo { #[cfg(all())] present: () };
+    //~^ ERROR attributes on struct pattern or literal fields are unstable
+    let Foo { #[cfg(all())] present: () } = foo;
+    //~^ ERROR attributes on struct pattern or literal fields are unstable
+}

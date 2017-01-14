@@ -12,13 +12,15 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
+use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
 
 use asm;
 use base;
+use builder::Builder;
 use callee::Callee;
-use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder};
+use common::{self, val_ty, C_bool, C_null, C_uint};
 use common::{C_integral};
 use adt;
 use machine;
@@ -35,10 +37,10 @@ use super::lvalue::{LvalueRef};
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
-                        bcx: BlockAndBuilder<'a, 'tcx>,
+                        bcx: Builder<'a, 'tcx>,
                         dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> BlockAndBuilder<'a, 'tcx>
+                        -> Builder<'a, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
                Value(dest.llval), rvalue);
@@ -48,7 +50,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                let tr_operand = self.trans_operand(&bcx, operand);
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-               self.store_operand(&bcx, dest.llval, tr_operand);
+               self.store_operand(&bcx, dest.llval, tr_operand, None);
                bcx
            }
 
@@ -59,7 +61,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(&bcx, dest.llval, temp);
+                    self.store_operand(&bcx, dest.llval, temp, None);
                     return bcx;
                 }
 
@@ -79,7 +81,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
-                        let lltemp = base::alloc_ty(&bcx, operand.ty, "__unsize_temp");
+                        let lltemp = bcx.alloca_ty(operand.ty, "__unsize_temp");
                         base::store_ty(&bcx, llval, lltemp, operand.ty);
                         lltemp
                     }
@@ -95,13 +97,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
-                    self.store_operand(bcx, llslot, tr_elem);
+                    self.store_operand(bcx, llslot, tr_elem, None);
                 })
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
+                    mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
                         adt::trans_set_discr(&bcx, dest_ty, dest.llval, Disr::from(disr));
@@ -109,11 +111,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let val = adt::MaybeSizedValue::sized(dest.llval);
+                                let mut val = LvalueRef::new_sized(dest.llval, dest.ty);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr(&bcx, dest_ty, val, disr,
-                                    field_index);
-                                self.store_operand(&bcx, lldest_i, op);
+                                val.ty = LvalueTy::Downcast {
+                                    adt_def: adt_def,
+                                    substs: self.monomorphize(&substs),
+                                    variant_index: disr.0 as usize,
+                                };
+                                let lldest_i = val.trans_field_ptr(&bcx, field_index);
+                                self.store_operand(&bcx, lldest_i, op, None);
                             }
                         }
                     },
@@ -138,7 +144,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     i
                                 };
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
-                                self.store_operand(&bcx, dest, op);
+                                self.store_operand(&bcx, dest, op, None);
                             }
                         }
                     }
@@ -163,16 +169,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(&bcx, dest.llval, temp);
+                self.store_operand(&bcx, dest.llval, temp, None);
                 bcx
             }
         }
     }
 
     pub fn trans_rvalue_operand(&mut self,
-                                bcx: BlockAndBuilder<'a, 'tcx>,
+                                bcx: Builder<'a, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (BlockAndBuilder<'a, 'tcx>, OperandRef<'tcx>)
+                                -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
@@ -254,22 +260,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx, operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx, cast_ty);
-                        let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let l = bcx.ccx.layout_of(operand.ty);
-                            let discr = match operand.val {
-                                OperandValue::Immediate(llval) => llval,
-                                OperandValue::Ref(llptr) => {
-                                    adt::trans_get_discr(&bcx, operand.ty, llptr, None, true)
-                                }
-                                OperandValue::Pair(..) => bug!("Unexpected Pair operand")
-                            };
-                            let (signed, min, max) = match l {
-                                &Layout::CEnum { signed, min, max, .. } => {
-                                    (signed, min, max)
-                                }
-                                _ => bug!("CEnum {:?} is not an enum", operand)
-                            };
-
+                        let llval = operand.immediate();
+                        let l = bcx.ccx.layout_of(operand.ty);
+                        let signed = if let Layout::CEnum { signed, min, max, .. } = *l {
                             if max > min {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
@@ -277,14 +270,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
-                                    discr,
-                                    C_integral(common::val_ty(discr), max, false)
-                                ))
+                                    llval,
+                                    C_integral(common::val_ty(llval), max, false)
+                                ));
                             }
 
-                            (discr, signed)
+                            signed
                         } else {
-                            (operand.immediate(), operand.ty.is_signed())
+                            operand.ty.is_signed()
                         };
 
                         let newval = match (r_t_in, r_t_out) {
@@ -477,7 +470,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_scalar_binop(&mut self,
-                              bcx: &BlockAndBuilder<'a, 'tcx>,
+                              bcx: &Builder<'a, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
                               rhs: ValueRef,
@@ -552,7 +545,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_fat_ptr_binop(&mut self,
-                               bcx: &BlockAndBuilder<'a, 'tcx>,
+                               bcx: &Builder<'a, 'tcx>,
                                op: mir::BinOp,
                                lhs_addr: ValueRef,
                                lhs_extra: ValueRef,
@@ -599,7 +592,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_scalar_checked_binop(&mut self,
-                                      bcx: &BlockAndBuilder<'a, 'tcx>,
+                                      bcx: &Builder<'a, 'tcx>,
                                       op: mir::BinOp,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
@@ -681,7 +674,7 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(oop: OverflowOp, bcx: &BlockAndBuilder, ty: Ty) -> ValueRef {
+fn get_overflow_intrinsic(oop: OverflowOp, bcx: &Builder, ty: Ty) -> ValueRef {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{TyInt, TyUint};

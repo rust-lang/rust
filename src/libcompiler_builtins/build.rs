@@ -192,14 +192,12 @@ fn main() {
 
     if !target.contains("ios") {
         sources.extend(&["absvti2.c",
-                         "addtf3.c",
                          "addvti3.c",
                          "ashlti3.c",
                          "ashrti3.c",
                          "clzti2.c",
                          "cmpti2.c",
                          "ctzti2.c",
-                         "divtf3.c",
                          "divti3.c",
                          "ffsti2.c",
                          "fixdfti.c",
@@ -216,17 +214,13 @@ fn main() {
                          "floatuntixf.c",
                          "lshrti3.c",
                          "modti3.c",
-                         "multf3.c",
                          "multi3.c",
                          "mulvti3.c",
                          "negti2.c",
                          "negvti2.c",
                          "parityti2.c",
                          "popcountti2.c",
-                         "powitf2.c",
-                         "subtf3.c",
                          "subvti3.c",
-                         "trampoline_setup.c",
                          "ucmpti2.c",
                          "udivmodti4.c",
                          "udivti3.c",
@@ -240,10 +234,6 @@ fn main() {
                          "atomic_flag_test_and_set_explicit.c",
                          "atomic_signal_fence.c",
                          "atomic_thread_fence.c"]);
-    }
-
-    if !target.contains("redox") && !target.contains("windows") {
-        sources.extend(&["emutls.c"]);
     }
 
     if target.contains("msvc") {

@@ -16,6 +16,8 @@
 register_long_diagnostics! {
 
 E0001: r##"
+## Note: this error code is no longer emitted by the compiler.
+
 This error suggests that the expression arm corresponding to the noted pattern
 will never be reached as for all possible values of the expression being
 matched, one of the preceding patterns will match.
@@ -25,10 +27,10 @@ one is too specific or the ordering is incorrect.
 
 For example, the following `match` block has too many arms:
 
-```compile_fail,E0001
+```
 match Some(0) {
     Some(bar) => {/* ... */}
-    None => {/* ... */}
+    x => {/* ... */} // This handles the `None` case
     _ => {/* ... */} // All possible cases have already been handled
 }
 ```

@@ -46,3 +46,6 @@ dep_map_ty! { ItemVariances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>> }
 dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Vec<DefId> }
 dep_map_ty! { ReprHints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>> }
 dep_map_ty! { Mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>> }
+dep_map_ty! { ClosureKinds: ItemSignature(DefId) -> ty::ClosureKind }
+dep_map_ty! { ClosureTypes: ItemSignature(DefId) -> ty::ClosureTy<'tcx> }
+dep_map_ty! { Tables: Tables(DefId) -> &'tcx ty::Tables<'tcx> }

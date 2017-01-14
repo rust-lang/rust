@@ -9,18 +9,20 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, layout, Ty, TypeFoldable};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use adt;
-use base;
-use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
+use builder::Builder;
+use common::{self, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
 use type_of::type_of;
 use type_of;
-use Disr;
+use type_::Type;
+use value::Value;
+use glue;
 
 use std::ptr;
 
@@ -39,22 +41,24 @@ pub struct LvalueRef<'tcx> {
     pub ty: LvalueTy<'tcx>,
 }
 
-impl<'tcx> LvalueRef<'tcx> {
+impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>) -> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty }
     }
 
-    pub fn alloca<'a>(bcx: &BlockAndBuilder<'a, 'tcx>,
-                        ty: Ty<'tcx>,
-                        name: &str)
-                        -> LvalueRef<'tcx>
-    {
-        assert!(!ty.has_erasable_regions());
-        let lltemp = base::alloc_ty(bcx, ty, name);
-        LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
+    pub fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef::new_sized(llval, LvalueTy::from_ty(ty))
     }
 
-    pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+    pub fn new_unsized_ty(llval: ValueRef, llextra: ValueRef, ty: Ty<'tcx>) -> LvalueRef<'tcx> {
+        LvalueRef {
+            llval: llval,
+            llextra: llextra,
+            ty: LvalueTy::from_ty(ty),
+        }
+    }
+
+    pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         let ty = self.ty.to_ty(ccx.tcx());
         match ty.sty {
             ty::TyArray(_, n) => common::C_uint(ccx, n),
@@ -65,17 +69,170 @@ impl<'tcx> LvalueRef<'tcx> {
             _ => bug!("unexpected type `{}` in LvalueRef::len", ty)
         }
     }
+
+    pub fn has_extra(&self) -> bool {
+        !self.llextra.is_null()
+    }
+
+    fn struct_field_ptr(
+        self,
+        bcx: &Builder<'a, 'tcx>,
+        st: &layout::Struct,
+        fields: &Vec<Ty<'tcx>>,
+        ix: usize,
+        needs_cast: bool
+    ) -> ValueRef {
+        let fty = fields[ix];
+        let ccx = bcx.ccx;
+
+        let ptr_val = if needs_cast {
+            let fields = st.field_index_by_increasing_offset().map(|i| {
+                type_of::in_memory_type_of(ccx, fields[i])
+            }).collect::<Vec<_>>();
+            let real_ty = Type::struct_(ccx, &fields[..], st.packed);
+            bcx.pointercast(self.llval, real_ty.ptr_to())
+        } else {
+            self.llval
+        };
+
+        // Simple case - we can just GEP the field
+        //   * First field - Always aligned properly
+        //   * Packed struct - There is no alignment padding
+        //   * Field is sized - pointer is properly aligned already
+        if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
+            bcx.ccx.shared().type_is_sized(fty) {
+                return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
+            }
+
+        // If the type of the last field is [T] or str, then we don't need to do
+        // any adjusments
+        match fty.sty {
+            ty::TySlice(..) | ty::TyStr => {
+                return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
+            }
+            _ => ()
+        }
+
+        // There's no metadata available, log the case and just do the GEP.
+        if !self.has_extra() {
+            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
+                ix, Value(ptr_val));
+            return bcx.struct_gep(ptr_val, ix);
+        }
+
+        // We need to get the pointer manually now.
+        // We do this by casting to a *i8, then offsetting it by the appropriate amount.
+        // We do this instead of, say, simply adjusting the pointer from the result of a GEP
+        // because the field may have an arbitrary alignment in the LLVM representation
+        // anyway.
+        //
+        // To demonstrate:
+        //   struct Foo<T: ?Sized> {
+        //      x: u16,
+        //      y: T
+        //   }
+        //
+        // The type Foo<Foo<Trait>> is represented in LLVM as { u16, { u16, u8 }}, meaning that
+        // the `y` field has 16-bit alignment.
+
+        let meta = self.llextra;
+
+
+        let offset = st.offsets[ix].bytes();
+        let unaligned_offset = C_uint(bcx.ccx, offset);
+
+        // Get the alignment of the field
+        let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
+
+        // Bump the unaligned offset up to the appropriate alignment using the
+        // following expression:
+        //
+        //   (unaligned offset + (align - 1)) & -align
+
+        // Calculate offset
+        let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx, 1u64));
+        let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
+        bcx.neg(align));
+
+        debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
+
+        // Cast and adjust pointer
+        let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx));
+        let byte_ptr = bcx.gep(byte_ptr, &[offset]);
+
+        // Finally, cast back to the type expected
+        let ll_fty = type_of::in_memory_type_of(bcx.ccx, fty);
+        debug!("struct_field_ptr: Field type is {:?}", ll_fty);
+        bcx.pointercast(byte_ptr, ll_fty.ptr_to())
+    }
+
+    /// Access a field, at a point when the value's case is known.
+    pub fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> ValueRef {
+        let discr = match self.ty {
+            LvalueTy::Ty { .. } => 0,
+            LvalueTy::Downcast { variant_index, .. } => variant_index,
+        };
+        let t = self.ty.to_ty(bcx.tcx());
+        let l = bcx.ccx.layout_of(t);
+        // Note: if this ever needs to generate conditionals (e.g., if we
+        // decide to do some kind of cdr-coding-like non-unique repr
+        // someday), it will need to return a possibly-new bcx as well.
+        match *l {
+            layout::Univariant { ref variant, .. } => {
+                assert_eq!(discr, 0);
+                self.struct_field_ptr(bcx, &variant,
+                    &adt::compute_fields(bcx.ccx, t, 0, false), ix, false)
+            }
+            layout::Vector { count, .. } => {
+                assert_eq!(discr, 0);
+                assert!((ix as u64) < count);
+                bcx.struct_gep(self.llval, ix)
+            }
+            layout::General { discr: d, ref variants, .. } => {
+                let mut fields = adt::compute_fields(bcx.ccx, t, discr, false);
+                fields.insert(0, d.to_ty(&bcx.tcx(), false));
+                self.struct_field_ptr(bcx, &variants[discr], &fields, ix + 1, true)
+            }
+            layout::UntaggedUnion { .. } => {
+                let fields = adt::compute_fields(bcx.ccx, t, 0, false);
+                let ty = type_of::in_memory_type_of(bcx.ccx, fields[ix]);
+                bcx.pointercast(self.llval, ty.ptr_to())
+            }
+            layout::RawNullablePointer { nndiscr, .. } |
+            layout::StructWrappedNullablePointer { nndiscr,  .. } if discr as u64 != nndiscr => {
+                let nullfields = adt::compute_fields(bcx.ccx, t, (1-nndiscr) as usize, false);
+                // The unit-like case might have a nonzero number of unit-like fields.
+                // (e.d., Result of Either with (), as one side.)
+                let ty = type_of::type_of(bcx.ccx, nullfields[ix]);
+                assert_eq!(machine::llsize_of_alloc(bcx.ccx, ty), 0);
+                bcx.pointercast(self.llval, ty.ptr_to())
+            }
+            layout::RawNullablePointer { nndiscr, .. } => {
+                let nnty = adt::compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
+                assert_eq!(ix, 0);
+                assert_eq!(discr as u64, nndiscr);
+                let ty = type_of::type_of(bcx.ccx, nnty);
+                bcx.pointercast(self.llval, ty.ptr_to())
+            }
+            layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
+                assert_eq!(discr as u64, nndiscr);
+                self.struct_field_ptr(bcx, &nonnull,
+                    &adt::compute_fields(bcx.ccx, t, discr, false), ix, false)
+            }
+            _ => bug!("element access in type without elements: {} represented as {:#?}", t, l)
+        }
+    }
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_lvalue(&mut self,
-                        bcx: &BlockAndBuilder<'a, 'tcx>,
+                        bcx: &Builder<'a, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
                         -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
         let ccx = bcx.ccx;
-        let tcx = bcx.tcx();
+        let tcx = ccx.tcx();
 
         if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
@@ -134,26 +291,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let base_ty = tr_base.ty.to_ty(tcx);
-                        let discr = match tr_base.ty {
-                            LvalueTy::Ty { .. } => 0,
-                            LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
-                        };
-                        let discr = discr as u64;
-                        let is_sized = self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx));
-                        let base = if is_sized {
-                            adt::MaybeSizedValue::sized(tr_base.llval)
-                        } else {
-                            adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
-                        };
-                        let llprojected = adt::trans_field_ptr(bcx, base_ty, base, Disr(discr),
-                            field.index());
-                        let llextra = if is_sized {
+                        let llextra = if self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx)) {
                             ptr::null_mut()
                         } else {
                             tr_base.llextra
                         };
-                        (llprojected, llextra)
+                        (tr_base.trans_field_ptr(bcx, field.index()), llextra)
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
@@ -214,7 +357,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     // Perform an action using the given Lvalue.
     // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
     // is created first, then used as an operand to update the Lvalue.
-    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'a, 'tcx>,
+    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &Builder<'a, 'tcx>,
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
@@ -223,9 +366,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 LocalRef::Lvalue(lvalue) => f(self, lvalue),
                 LocalRef::Operand(None) => {
                     let lvalue_ty = self.monomorphized_lvalue_ty(lvalue);
-                    let lvalue = LvalueRef::alloca(bcx,
-                                                   lvalue_ty,
-                                                   "lvalue_temp");
+                    assert!(!lvalue_ty.has_erasable_regions());
+                    let lltemp = bcx.alloca_ty(lvalue_ty, "lvalue_temp");
+                    let lvalue = LvalueRef::new_sized(lltemp, LvalueTy::from_ty(lvalue_ty));
                     let ret = f(self, lvalue);
                     let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
                     self.locals[index] = LocalRef::Operand(Some(op));
@@ -254,18 +397,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     /// than we are.
     ///
     /// nmatsakis: is this still necessary? Not sure.
-    fn prepare_index(&mut self,
-                     bcx: &BlockAndBuilder<'a, 'tcx>,
-                     llindex: ValueRef)
-                     -> ValueRef
-    {
-        let ccx = bcx.ccx;
+    fn prepare_index(&mut self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
         let index_size = machine::llbitsize_of_real(bcx.ccx, common::val_ty(llindex));
-        let int_size = machine::llbitsize_of_real(bcx.ccx, ccx.int_type());
+        let int_size = machine::llbitsize_of_real(bcx.ccx, bcx.ccx.int_type());
         if index_size < int_size {
-            bcx.zext(llindex, ccx.int_type())
+            bcx.zext(llindex, bcx.ccx.int_type())
         } else if index_size > int_size {
-            bcx.trunc(llindex, ccx.int_type())
+            bcx.trunc(llindex, bcx.ccx.int_type())
         } else {
             llindex
         }

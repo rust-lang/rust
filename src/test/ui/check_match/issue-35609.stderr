@@ -4,11 +4,11 @@ error[E0004]: non-exhaustive patterns: `(B, _)`, `(C, _)`, `(D, _)` and 2 more n
 20 |     match (A, ()) {
    |           ^^^^^^^ patterns `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
 
-error[E0004]: non-exhaustive patterns: `(A, B)`, `(B, B)`, `(C, B)` and 27 more not covered
+error[E0004]: non-exhaustive patterns: `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
   --> $DIR/issue-35609.rs:24:11
    |
 24 |     match (A, A) {
-   |           ^^^^^^ patterns `(A, B)`, `(B, B)`, `(C, B)` and 27 more not covered
+   |           ^^^^^^ patterns `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:28:11

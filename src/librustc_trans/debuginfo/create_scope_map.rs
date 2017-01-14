@@ -14,7 +14,7 @@ use super::utils::{DIB, span_start};
 
 use llvm;
 use llvm::debuginfo::{DIScope, DISubprogram};
-use common::{CrateContext, FunctionContext};
+use common::CrateContext;
 use rustc::mir::{Mir, VisibilityScope};
 
 use libc::c_uint;
@@ -44,7 +44,7 @@ impl MirDebugScope {
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir, debug_context: &FunctionDebugContext)
+pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &FunctionDebugContext)
     -> IndexVec<VisibilityScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
@@ -71,7 +71,7 @@ pub fn create_mir_scopes(fcx: &FunctionContext, mir: &Mir, debug_context: &Funct
     // Instantiate all scopes.
     for idx in 0..mir.visibility_scopes.len() {
         let scope = VisibilityScope::new(idx);
-        make_mir_scope(fcx.ccx, &mir, &has_variables, fn_metadata, scope, &mut scopes);
+        make_mir_scope(ccx, &mir, &has_variables, fn_metadata, scope, &mut scopes);
     }
 
     scopes

@@ -1,0 +1,8 @@
+error: custom derive attribute panicked
+  --> $DIR/issue-36935.rs:17:15
+   |
+17 | #[derive(Foo, Bar)]
+   |               ^^^
+   |
+   = help: message: lolnope
+

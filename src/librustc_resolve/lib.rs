@@ -15,7 +15,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(associated_consts)]
 #![feature(rustc_diagnostic_macros)]
@@ -894,6 +894,7 @@ enum NameBindingKind<'a> {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
+        legacy_self_import: bool,
     },
     Ambiguity {
         b1: &'a NameBinding<'a>,
@@ -1346,8 +1347,13 @@ impl<'a> Resolver<'a> {
         }
 
         match binding.kind {
-            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
+            NameBindingKind::Import { directive, binding, ref used, legacy_self_import }
+                    if !used.get() => {
                 used.set(true);
+                if legacy_self_import {
+                    self.warn_legacy_self_import(directive);
+                    return false;
+                }
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
                 self.record_use(ident, ns, binding, span)
@@ -2084,10 +2090,25 @@ impl<'a> Resolver<'a> {
             let expected = source.descr_expected();
             let path_str = names_to_string(path);
             let code = source.error_code(def.is_some());
-            let base_msg = if let Some(def) = def {
-                format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str)
+            let (base_msg, fallback_label) = if let Some(def) = def {
+                (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
+                 format!("not a {}", expected))
             } else {
-                format!("unresolved {} `{}`", expected, path_str)
+                let item_str = path[path.len() - 1];
+                let (mod_prefix, mod_str) = if path.len() == 1 {
+                    (format!(""), format!("this scope"))
+                } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
+                    (format!(""), format!("the crate root"))
+                } else {
+                    let mod_path = &path[..path.len() - 1];
+                    let mod_prefix = match this.resolve_path(mod_path, Some(TypeNS), None) {
+                        PathResult::Module(module) => module.def(),
+                        _ => None,
+                    }.map_or(format!(""), |def| format!("{} ", def.kind_name()));
+                    (mod_prefix, format!("`{}`", names_to_string(mod_path)))
+                };
+                (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
+                 format!("not found in {}", mod_str))
             };
             let mut err = this.session.struct_span_err_with_code(span, &base_msg, code);
 
@@ -2170,19 +2191,13 @@ impl<'a> Resolver<'a> {
             }
 
             // Try Levenshtein if nothing else worked.
-            if path.len() == 1 {
-                if let Some(candidate) = this.lookup_typo_candidate(name, ns, is_expected) {
-                    err.span_label(span, &format!("did you mean `{}`?", candidate));
-                    return err;
-                }
+            if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
+                err.span_label(span, &format!("did you mean `{}`?", candidate));
+                return err;
             }
 
-            // Fallback labels.
-            if def.is_some() {
-                err.span_label(span, &format!("not a {}", expected));
-            } else {
-                err.span_label(span, &format!("no resolution found"));
-            }
+            // Fallback label.
+            err.span_label(span, &fallback_label);
             err
         };
         let report_errors = |this: &mut Self, def: Option<Def>| {
@@ -2336,20 +2351,19 @@ impl<'a> Resolver<'a> {
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
-        if path.len() == 1 || global_by_default || result.base_def == Def::Err {
-            return Some(result);
-        }
-
-        let unqualified_result = {
-            match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                PathResult::NonModule(path_res) => path_res.base_def,
-                PathResult::Module(module) => module.def().unwrap(),
-                _ => return Some(result),
+        if path.len() > 1 && !global_by_default && result.base_def != Def::Err &&
+           path[0].name != keywords::CrateRoot.name() && path[0].name != "$crate" {
+            let unqualified_result = {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
+                    PathResult::NonModule(path_res) => path_res.base_def,
+                    PathResult::Module(module) => module.def().unwrap(),
+                    _ => return Some(result),
+                }
+            };
+            if result.base_def == unqualified_result {
+                let lint = lint::builtin::UNUSED_QUALIFICATIONS;
+                self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
             }
-        };
-        if result.base_def == unqualified_result && path[0].name != "$crate" {
-            let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-            self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
         }
 
         Some(result)
@@ -2411,13 +2425,15 @@ impl<'a> Resolver<'a> {
 
             match binding {
                 Ok(binding) => {
+                    let def = binding.def();
+                    let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(next_module);
-                    } else if binding.def() == Def::Err {
+                    } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
-                    } else if opt_ns.is_some() && !(opt_ns == Some(MacroNS) && !is_last) {
+                    } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         return PathResult::NonModule(PathResolution {
-                            base_def: binding.def(),
+                            base_def: def,
                             depth: path.len() - i - 1,
                         });
                     } else {
@@ -2631,21 +2647,72 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_typo_candidate<FilterFn>(&mut self,
-                                       name: Name,
+                                       path: &[Ident],
                                        ns: Namespace,
                                        filter_fn: FilterFn)
-                                       -> Option<Name>
+                                       -> Option<String>
         where FilterFn: Fn(Def) -> bool
     {
-        // FIXME: bindings in ribs provide quite modest set of candidates,
-        // extend it with other names in scope.
-        let names = self.ribs[ns].iter().rev().flat_map(|rib| {
-            rib.bindings.iter().filter_map(|(ident, def)| {
-                if filter_fn(*def) { Some(&ident.name) } else { None }
-            })
-        });
-        match find_best_match_for_name(names, &name.as_str(), None) {
-            Some(found) if found != name => Some(found),
+        let add_module_candidates = |module: Module, names: &mut Vec<Name>| {
+            for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
+                if let Some(binding) = resolution.borrow().binding {
+                    if filter_fn(binding.def()) {
+                        names.push(ident.name);
+                    }
+                }
+            }
+        };
+
+        let mut names = Vec::new();
+        let prefix_str = if path.len() == 1 {
+            // Search in lexical scope.
+            // Walk backwards up the ribs in scope and collect candidates.
+            for rib in self.ribs[ns].iter().rev() {
+                // Locals and type parameters
+                for (ident, def) in &rib.bindings {
+                    if filter_fn(*def) {
+                        names.push(ident.name);
+                    }
+                }
+                // Items in scope
+                if let ModuleRibKind(module) = rib.kind {
+                    // Items from this module
+                    add_module_candidates(module, &mut names);
+
+                    if let ModuleKind::Block(..) = module.kind {
+                        // We can see through blocks
+                    } else {
+                        // Items from the prelude
+                        if let Some(prelude) = self.prelude {
+                            if !module.no_implicit_prelude {
+                                add_module_candidates(prelude, &mut names);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            // Add primitive types to the mix
+            if filter_fn(Def::PrimTy(TyBool)) {
+                for (name, _) in &self.primitive_type_table.primitive_types {
+                    names.push(*name);
+                }
+            }
+            String::new()
+        } else {
+            // Search in module.
+            let mod_path = &path[..path.len() - 1];
+            if let PathResult::Module(module) = self.resolve_path(mod_path, Some(TypeNS), None) {
+                add_module_candidates(module, &mut names);
+            }
+            names_to_string(mod_path) + "::"
+        };
+
+        let name = path[path.len() - 1].name;
+        // Make sure error reporting is deterministic.
+        names.sort_by_key(|name| name.as_str());
+        match find_best_match_for_name(names.iter(), &name.as_str(), None) {
+            Some(found) if found != name => Some(format!("{}{}", prefix_str, found)),
             _ => None,
         }
     }
@@ -2982,8 +3049,8 @@ impl<'a> Resolver<'a> {
             let participle = |binding: &NameBinding| {
                 if binding.is_import() { "imported" } else { "defined" }
             };
-            let msg1 = format!("`{}` could resolve to the name {} here", name, participle(b1));
-            let msg2 = format!("`{}` could also resolve to the name {} here", name, participle(b2));
+            let msg1 = format!("`{}` could refer to the name {} here", name, participle(b1));
+            let msg2 = format!("`{}` could also refer to the name {} here", name, participle(b2));
             let note = if !lexical && b1.is_glob_import() {
                 format!("consider adding an explicit import of `{}` to disambiguate", name)
             } else if let Def::Macro(..) = b1.def() {
@@ -3110,6 +3177,12 @@ impl<'a> Resolver<'a> {
         }
         err.emit();
         self.name_already_seen.insert(name, span);
+    }
+
+    fn warn_legacy_self_import(&self, directive: &'a ImportDirective<'a>) {
+        let (id, span) = (directive.id, directive.span);
+        let msg = "`self` no longer imports values".to_string();
+        self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
     }
 }
 

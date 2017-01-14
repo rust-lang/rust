@@ -21,6 +21,6 @@ mod module_of_many_things {
 fn main() {
     f1();
     f2();
-    f999(); //~ ERROR unresolved function `f999`
+    f999(); //~ ERROR cannot find function `f999` in this scope
     f4();
 }

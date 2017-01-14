@@ -16,7 +16,7 @@ impl Foo for i8 {}
 impl Foo for i16 {}
 impl Foo for i32 {}
 impl Foo for i64 {}
-impl Foo for DoesNotExist {} //~ ERROR unresolved type `DoesNotExist`
+impl Foo for DoesNotExist {} //~ ERROR cannot find type `DoesNotExist` in this scope
 impl Foo for u8 {}
 impl Foo for u16 {}
 impl Foo for u32 {}

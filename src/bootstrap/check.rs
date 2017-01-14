@@ -457,6 +457,8 @@ fn krate_android(build: &Build,
 
         let output = output(Command::new("adb").arg("shell").arg(&program));
         println!("{}", output);
+
+        t!(fs::create_dir_all(build.out.join("tmp")));
         build.run(Command::new("adb")
                           .arg("pull")
                           .arg(&log)
@@ -516,6 +518,7 @@ pub fn android_copy_libs(build: &Build,
     }
 
     println!("Android copy libs to emulator ({})", target);
+    build.run(Command::new("adb").arg("wait-for-device"));
     build.run(Command::new("adb").arg("remount"));
     build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
     build.run(Command::new("adb").args(&["shell", "mkdir", ADB_TEST_DIR]));
@@ -567,4 +570,15 @@ pub fn distcheck(build: &Build) {
     build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")
                      .current_dir(&dir));
+}
+
+/// Test the build system itself
+pub fn bootstrap(build: &Build) {
+    let mut cmd = Command::new(&build.cargo);
+    cmd.arg("test")
+       .current_dir(build.src.join("src/bootstrap"))
+       .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
+       .env("RUSTC", &build.rustc);
+    cmd.arg("--").args(&build.flags.cmd.test_args());
+    build.run(&mut cmd);
 }

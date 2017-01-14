@@ -84,3 +84,22 @@ pub struct TimeSpec {
     pub tv_sec: i64,
     pub tv_nsec: i32,
 }
+
+impl Deref for TimeSpec {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        unsafe {
+            slice::from_raw_parts(self as *const TimeSpec as *const u8,
+                                  mem::size_of::<TimeSpec>()) as &[u8]
+        }
+    }
+}
+
+impl DerefMut for TimeSpec {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            slice::from_raw_parts_mut(self as *mut TimeSpec as *mut u8,
+                                      mem::size_of::<TimeSpec>()) as &mut [u8]
+        }
+    }
+}

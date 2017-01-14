@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate proc_macro; //~ ERROR: use of unstable library feature
+// aux-build:issue_38586.rs
+
+#![feature(proc_macro)]
+
+#[macro_use]
+extern crate issue_38586;
+
+#[derive(A)] //~ ERROR `foo`
+struct A;
 
 fn main() {}

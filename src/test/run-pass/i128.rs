@@ -96,4 +96,12 @@ fn main() {
     assert_eq!((-z).checked_mul(-z), Some(0x734C_C2F2_A521));
     assert_eq!((z).checked_mul(z), Some(0x734C_C2F2_A521));
     assert_eq!((k).checked_mul(k), None);
+    let l: i128 = b(i128::min_value());
+    let o: i128 = b(17);
+    assert_eq!(l.checked_sub(b(2)), None);
+    assert_eq!(l.checked_add(l), None);
+    assert_eq!((-(l + 1)).checked_add(2), None);
+    assert_eq!(l.checked_sub(l), Some(0));
+    assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
+    assert_eq!(o.checked_shl(b(128)), None);
 }

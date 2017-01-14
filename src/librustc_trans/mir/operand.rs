@@ -14,7 +14,8 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, BlockAndBuilder};
+use common;
+use builder::Builder;
 use value::Value;
 use type_of;
 use type_::Type;
@@ -85,8 +86,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a Pair, we return an
     /// Immediate aggregate with the two values.
-    pub fn pack_if_pair(mut self, bcx: &BlockAndBuilder<'a, 'tcx>)
-                        -> OperandRef<'tcx> {
+    pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
             let llty = type_of::type_of(bcx.ccx, self.ty);
@@ -107,8 +107,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a pair in an Immediate,
     /// we return a Pair with the two halves.
-    pub fn unpack_if_pair(mut self, bcx: &BlockAndBuilder<'a, 'tcx>)
-                          -> OperandRef<'tcx> {
+    pub fn unpack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
             if common::type_is_imm_pair(bcx.ccx, self.ty) {
@@ -136,7 +135,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_load(&mut self,
-                      bcx: &BlockAndBuilder<'a, 'tcx>,
+                      bcx: &Builder<'a, 'tcx>,
                       llval: ValueRef,
                       ty: Ty<'tcx>)
                       -> OperandRef<'tcx>
@@ -165,7 +164,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_consume(&mut self,
-                         bcx: &BlockAndBuilder<'a, 'tcx>,
+                         bcx: &Builder<'a, 'tcx>,
                          lvalue: &mir::Lvalue<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -217,7 +216,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn trans_operand(&mut self,
-                         bcx: &BlockAndBuilder<'a, 'tcx>,
+                         bcx: &Builder<'a, 'tcx>,
                          operand: &mir::Operand<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -242,23 +241,26 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn store_operand(&mut self,
-                         bcx: &BlockAndBuilder<'a, 'tcx>,
+                         bcx: &Builder<'a, 'tcx>,
                          lldest: ValueRef,
-                         operand: OperandRef<'tcx>) {
-        debug!("store_operand: operand={:?}", operand);
+                         operand: OperandRef<'tcx>,
+                         align: Option<u32>) {
+        debug!("store_operand: operand={:?}, align={:?}", operand, align);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
         if common::type_is_zero_size(bcx.ccx, operand.ty) {
             return;
         }
         match operand.val {
-            OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
-            OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
+            OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty, align),
+            OperandValue::Immediate(s) => {
+                bcx.store(base::from_immediate(bcx, s), lldest, align);
+            }
             OperandValue::Pair(a, b) => {
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, 0));
-                bcx.store(b, bcx.struct_gep(lldest, 1));
+                bcx.store(a, bcx.struct_gep(lldest, 0), align);
+                bcx.store(b, bcx.struct_gep(lldest, 1), align);
             }
         }
     }

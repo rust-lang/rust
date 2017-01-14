@@ -29,7 +29,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, NodeMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -78,6 +78,7 @@ pub mod cast;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;
+pub mod inhabitedness;
 pub mod item_path;
 pub mod layout;
 pub mod _match;
@@ -226,6 +227,20 @@ pub enum Visibility {
 
 pub trait DefIdTree: Copy {
     fn parent(self, id: DefId) -> Option<DefId>;
+
+    fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
+        if descendant.krate != ancestor.krate {
+            return false;
+        }
+
+        while descendant != ancestor {
+            match self.parent(descendant) {
+                Some(parent) => descendant = parent,
+                None => return false,
+            }
+        }
+        true
+    }
 }
 
 impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
@@ -252,7 +267,7 @@ impl Visibility {
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: DefIdTree>(self, mut module: DefId, tree: T) -> bool {
+    pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
@@ -263,14 +278,7 @@ impl Visibility {
             Visibility::Restricted(module) => module,
         };
 
-        while module != restriction {
-            match tree.parent(module) {
-                Some(parent) => module = parent,
-                None => return false,
-            }
-        }
-
-        true
+        tree.is_descendant_of(module, restriction)
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
@@ -313,7 +321,7 @@ pub struct MethodCallee<'tcx> {
 /// needed to add to the side tables. Thus to disambiguate
 /// we also keep track of whether there's an adjustment in
 /// our key.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct MethodCall {
     pub expr_id: NodeId,
     pub autoderef: u32
@@ -493,7 +501,7 @@ impl<T> Slice<T> {
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
     pub var_id: NodeId,
     pub closure_expr_id: NodeId,
@@ -1407,20 +1415,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        if !visited.insert((self.did, substs)) {
-            return false;
-        };
-        self.variants.iter().all(|v| {
-            v.is_uninhabited_recurse(visited, block, tcx, substs, self.is_union())
-        })
-    }
-
-    #[inline]
     pub fn is_struct(&self) -> bool {
         !self.is_union() && !self.is_enum()
     }
@@ -1754,35 +1748,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     pub fn field_named(&self, name: ast::Name) -> &FieldDef {
         self.find_field_named(name).unwrap()
     }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>,
-                                  is_union: bool) -> bool {
-        if is_union {
-            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
-        } else {
-            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         tcx.item_type(self.did).subst(tcx, subst)
-    }
-
-    #[inline]
-    pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
-                                  block: Option<NodeId>,
-                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        block.map_or(true, |b| tcx.vis_is_accessible_from(self.vis, b)) &&
-        self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
@@ -1947,8 +1917,30 @@ impl BorrowKind {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn tables(self) -> Ref<'a, Tables<'gcx>> {
-        self.tables.borrow()
+    pub fn body_tables(self, body: hir::BodyId) -> &'gcx Tables<'gcx> {
+        self.item_tables(self.map.body_owner_def_id(body))
+    }
+
+    pub fn item_tables(self, def_id: DefId) -> &'gcx Tables<'gcx> {
+        self.tables.memoize(def_id, || {
+            if def_id.is_local() {
+                // Closures' tables come from their outermost function,
+                // as they are part of the same "inference environment".
+                let outer_def_id = self.closure_base_def_id(def_id);
+                if outer_def_id != def_id {
+                    return self.item_tables(outer_def_id);
+                }
+
+                bug!("No def'n found for {:?} in tcx.tables", def_id);
+            }
+
+            // Cross-crate side-tables only exist alongside serialized HIR.
+            self.sess.cstore.maybe_get_item_body(self.global_tcx(), def_id).map(|_| {
+                self.tables.borrow()[&def_id]
+            }).unwrap_or_else(|| {
+                bug!("tcx.item_tables({:?}): missing from metadata", def_id)
+            })
+        })
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
@@ -2484,12 +2476,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(&kind) = self.tables.borrow().closure_kinds.get(&def_id) {
+        if let Some(&kind) = self.closure_kinds.borrow().get(&def_id) {
             return kind;
         }
 
         let kind = self.sess.cstore.closure_kind(def_id);
-        self.tables.borrow_mut().closure_kinds.insert(def_id, kind);
+        self.closure_kinds.borrow_mut().insert(def_id, kind);
         kind
     }
 
@@ -2501,12 +2493,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
-        if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
+        if let Some(ty) = self.closure_tys.borrow().get(&def_id) {
             return ty.subst(self, substs.substs);
         }
 
         let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
-        self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        self.closure_tys.borrow_mut().insert(def_id, ty.clone());
         ty.subst(self, substs.substs)
     }
 

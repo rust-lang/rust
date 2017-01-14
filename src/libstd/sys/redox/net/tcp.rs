@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp;
 use io::{Error, ErrorKind, Result};
+use mem;
 use net::{SocketAddr, Shutdown};
 use path::Path;
 use sys::fs::{File, OpenOptions};
+use sys::syscall::TimeSpec;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 use vec::Vec;
@@ -77,15 +80,30 @@ impl TcpStream {
     }
 
     pub fn ttl(&self) -> Result<u32> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::ttl not implemented"))
+        let mut ttl = [0];
+        let file = self.0.dup(b"ttl")?;
+        file.read(&mut ttl)?;
+        Ok(ttl[0] as u32)
     }
 
     pub fn read_timeout(&self) -> Result<Option<Duration>> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::read_timeout not implemented"))
+        let mut time = TimeSpec::default();
+        let file = self.0.dup(b"read_timeout")?;
+        if file.read(&mut time)? >= mem::size_of::<TimeSpec>() {
+            Ok(Some(Duration::new(time.tv_sec as u64, time.tv_nsec as u32)))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn write_timeout(&self) -> Result<Option<Duration>> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::write_timeout not implemented"))
+        let mut time = TimeSpec::default();
+        let file = self.0.dup(b"write_timeout")?;
+        if file.read(&mut time)? >= mem::size_of::<TimeSpec>() {
+            Ok(Some(Duration::new(time.tv_sec as u64, time.tv_nsec as u32)))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn set_nodelay(&self, _nodelay: bool) -> Result<()> {
@@ -100,16 +118,36 @@ impl TcpStream {
         Err(Error::new(ErrorKind::Other, "TcpStream::set_only_v6 not implemented"))
     }
 
-    pub fn set_ttl(&self, _ttl: u32) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::set_ttl not implemented"))
+    pub fn set_ttl(&self, ttl: u32) -> Result<()> {
+        let file = self.0.dup(b"ttl")?;
+        file.write(&[cmp::min(ttl, 255) as u8])?;
+        Ok(())
     }
 
-    pub fn set_read_timeout(&self, _dur: Option<Duration>) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::set_read_timeout not implemented"))
+    pub fn set_read_timeout(&self, duration_option: Option<Duration>) -> Result<()> {
+        let file = self.0.dup(b"read_timeout")?;
+        if let Some(duration) = duration_option {
+            file.write(&TimeSpec {
+                tv_sec: duration.as_secs() as i64,
+                tv_nsec: duration.subsec_nanos() as i32
+            })?;
+        } else {
+            file.write(&[])?;
+        }
+        Ok(())
     }
 
-    pub fn set_write_timeout(&self, _dur: Option<Duration>) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::set_write_timeout not implemented"))
+    pub fn set_write_timeout(&self, duration_option: Option<Duration>) -> Result<()> {
+        let file = self.0.dup(b"write_timeout")?;
+        if let Some(duration) = duration_option {
+            file.write(&TimeSpec {
+                tv_sec: duration.as_secs() as i64,
+                tv_nsec: duration.subsec_nanos() as i32
+            })?;
+        } else {
+            file.write(&[])?;
+        }
+        Ok(())
     }
 }
 
@@ -168,7 +206,10 @@ impl TcpListener {
     }
 
     pub fn ttl(&self) -> Result<u32> {
-        Err(Error::new(ErrorKind::Other, "TcpListener::ttl not implemented"))
+        let mut ttl = [0];
+        let file = self.0.dup(b"ttl")?;
+        file.read(&mut ttl)?;
+        Ok(ttl[0] as u32)
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> Result<()> {
@@ -179,8 +220,10 @@ impl TcpListener {
         Err(Error::new(ErrorKind::Other, "TcpListener::set_only_v6 not implemented"))
     }
 
-    pub fn set_ttl(&self, _ttl: u32) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "TcpListener::set_ttl not implemented"))
+    pub fn set_ttl(&self, ttl: u32) -> Result<()> {
+        let file = self.0.dup(b"ttl")?;
+        file.write(&[cmp::min(ttl, 255) as u8])?;
+        Ok(())
     }
 }
 

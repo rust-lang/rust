@@ -70,7 +70,7 @@ This API is completely unstable and subject to change.
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![allow(non_camel_case_types)]
 
@@ -177,7 +177,7 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
+    ccx.tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
         match infcx.eq_types(false, &cause, expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations

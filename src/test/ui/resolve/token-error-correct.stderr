@@ -40,17 +40,17 @@ error: expected expression, found `)`
 23 | }
    | ^
 
-error[E0425]: unresolved function `foo`
+error[E0425]: cannot find function `foo` in this scope
   --> $DIR/token-error-correct.rs:14:5
    |
 14 |     foo(bar(;
-   |     ^^^ no resolution found
+   |     ^^^ not found in this scope
 
-error[E0425]: unresolved function `bar`
+error[E0425]: cannot find function `bar` in this scope
   --> $DIR/token-error-correct.rs:14:9
    |
 14 |     foo(bar(;
-   |         ^^^ no resolution found
+   |         ^^^ not found in this scope
 
 error: aborting due to 7 previous errors
 

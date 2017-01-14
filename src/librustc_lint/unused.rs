@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let t = cx.tcx.tables().expr_ty(&expr);
+        let t = cx.tables.expr_ty(&expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
@@ -440,7 +440,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
             _ => return,
         }
 
-        if let Some(adjustment) = cx.tcx.tables().adjustments.get(&e.id) {
+        if let Some(adjustment) = cx.tables.adjustments.get(&e.id) {
             if let adjustment::Adjust::DerefRef { autoref, .. } = adjustment.kind {
                 match autoref {
                     Some(adjustment::AutoBorrow::Ref(_, hir::MutImmutable)) => {

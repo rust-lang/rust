@@ -383,15 +383,27 @@ tempus vel, gravida nec quam.";
 
 // check the panic includes the prefix of the sliced string
 #[test]
-#[should_panic(expected="Lorem ipsum dolor sit amet")]
+#[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
 fn test_slice_fail_truncated_1() {
     &LOREM_PARAGRAPH[..1024];
 }
 // check the truncation in the panic message
 #[test]
-#[should_panic(expected="luctus, im`[...] do not lie on character boundary")]
+#[should_panic(expected="luctus, im`[...]")]
 fn test_slice_fail_truncated_2() {
     &LOREM_PARAGRAPH[..1024];
+}
+
+#[test]
+#[should_panic(expected="byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of")]
+fn test_slice_fail_boundary_1() {
+    &"abcαβγ"[4..];
+}
+
+#[test]
+#[should_panic(expected="byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of")]
+fn test_slice_fail_boundary_2() {
+    &"abcαβγ"[2..6];
 }
 
 #[test]

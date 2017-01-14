@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-concat_idents
+
 const XY_1: i32 = 10;
 
 fn main() {

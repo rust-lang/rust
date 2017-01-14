@@ -65,7 +65,7 @@
 #![no_core]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(allow_internal_unstable)]
 #![feature(asm)]

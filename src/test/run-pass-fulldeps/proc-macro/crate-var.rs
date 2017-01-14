@@ -10,7 +10,6 @@
 
 // aux-build:double.rs
 
-#![feature(proc_macro)]
 #![allow(unused)]
 
 #[macro_use]

@@ -279,9 +279,6 @@ declare_features! (
     // instead of just the platforms on which it is the C ABI
     (active, abi_sysv64, "1.13.0", Some(36167)),
 
-    // Macros 1.1
-    (active, proc_macro, "1.13.0", Some(35900)),
-
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
 
@@ -327,6 +324,9 @@ declare_features! (
 
     // The `unadjusted` ABI. Perma unstable.
     (active, abi_unadjusted, "1.16.0", None),
+
+    // Allows attributes on struct literal fields.
+    (active, struct_field_attributes, "1.16.0", Some(38814)),
 );
 
 declare_features! (
@@ -377,6 +377,8 @@ declare_features! (
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
     (accepted, item_like_imports, "1.14.0", Some(35120)),
+    // Macros 1.1
+    (accepted, proc_macro, "1.15.0", Some(35900)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -650,11 +652,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         is an experimental feature",
                                        cfg_fn!(fundamental))),
 
-    ("proc_macro_derive", Normal, Gated(Stability::Unstable,
-                                        "proc_macro",
-                                        "the `#[proc_macro_derive]` attribute \
-                                         is an experimental feature",
-                                        cfg_fn!(proc_macro))),
+    ("proc_macro_derive", Normal, Ungated),
 
     ("rustc_copy_clone_marker", Whitelisted, Gated(Stability::Unstable,
                                                    "rustc_attrs",
@@ -760,7 +758,6 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
-    ("proc_macro", "proc_macro", cfg_fn!(proc_macro)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]

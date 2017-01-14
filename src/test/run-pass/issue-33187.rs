@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar(Vec<u32>),
-    Baz,
+struct Foo<A: Repr>(<A as Repr>::Data);
+
+impl<A> Copy for Foo<A> where <A as Repr>::Data: Copy { }
+impl<A> Clone for Foo<A> where <A as Repr>::Data: Clone {
+    fn clone(&self) -> Self { Foo(self.0.clone()) }
 }
 
-impl Copy for Foo { }
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
+trait Repr {
+    type Data;
+}
 
-#[derive(Copy)]
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
-//~| NOTE in this expansion of #[derive(Copy)]
-enum Foo2<'a> {
-    Bar(&'a mut bool),
-    Baz,
+impl<A> Repr for A {
+    type Data = u32;
 }
 
 fn main() {

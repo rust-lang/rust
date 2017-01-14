@@ -188,12 +188,10 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
-                                     fn_id: ast::NodeId,
                                      body: &hir::Body) {
     debug!("check_loans(body id={})", body.value.id);
 
-    let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body.id());
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,

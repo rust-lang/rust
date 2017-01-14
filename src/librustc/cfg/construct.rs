@@ -18,6 +18,7 @@ use hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'a ty::Tables<'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -42,10 +43,23 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let fn_exit = graph.add_node(CFGNodeData::Exit);
     let body_exit;
 
+    // Find the function this expression is from.
+    let mut node_id = body.id;
+    loop {
+        let node = tcx.map.get(node_id);
+        if hir::map::blocks::FnLikeNode::from_node(node).is_some() {
+            break;
+        }
+        let parent = tcx.map.get_parent_node(node_id);
+        assert!(node_id != parent);
+        node_id = parent;
+    }
+
     let mut cfg_builder = CFGBuilder {
+        tcx: tcx,
+        tables: tcx.item_tables(tcx.map.local_def_id(node_id)),
         graph: graph,
         fn_exit: fn_exit,
-        tcx: tcx,
         loop_scopes: Vec::new()
     };
     body_exit = cfg_builder.expr(body, entry);
@@ -310,11 +324,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprIndex(ref l, ref r) |
-            hir::ExprBinary(_, ref l, ref r) if self.tcx.tables().is_method_call(expr.id) => {
+            hir::ExprBinary(_, ref l, ref r) if self.tables.is_method_call(expr.id) => {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprUnary(_, ref e) if self.tcx.tables().is_method_call(expr.id) => {
+            hir::ExprUnary(_, ref e) if self.tables.is_method_call(expr.id) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
 
@@ -368,9 +382,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &hir::Expr,
             args: I) -> CFGIndex {
         let method_call = ty::MethodCall::expr(call_expr.id);
-        let fn_ty = match self.tcx.tables().method_map.get(&method_call) {
+        let fn_ty = match self.tables.method_map.get(&method_call) {
             Some(method) => method.ty,
-            None => self.tcx.tables().expr_ty_adjusted(func_or_rcvr)
+            None => self.tables.expr_ty_adjusted(func_or_rcvr)
         };
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);

@@ -124,7 +124,16 @@
 [install]
 
 # Instead of installing to /usr/local, install to this path instead.
-#prefix = "/path/to/install"
+#prefix = "/usr/local"
+
+# Where to install libraries in `prefix` above
+#libdir = "lib"
+
+# Where to install man pages in `prefix` above
+#mandir = "share/man"
+
+# Where to install documentation in `prefix` above
+#docdir = "share/doc/rust"
 
 # =============================================================================
 # Options for compiling Rust code itself
@@ -148,6 +157,11 @@
 
 # Whether or not line number debug information is emitted
 #debuginfo-lines = false
+
+# Whether or not to only build debuginfo for the standard library if enabled.
+# If enabled, this will not compile the compiler with debuginfo, just the
+# standard library.
+#debuginfo-only-std = false
 
 # Whether or not jemalloc is built and enabled
 #use-jemalloc = true

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-conservative_impl_trait
+
 fn foo() -> impl Fn() { || {} }
 //~^ ERROR `impl Trait` is experimental
 

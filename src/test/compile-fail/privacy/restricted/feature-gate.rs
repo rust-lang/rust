@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-pub_restricted
+
 pub(crate) //~ ERROR experimental
 mod foo {}
 

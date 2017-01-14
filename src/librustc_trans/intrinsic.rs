@@ -16,6 +16,7 @@ use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType};
 use adt;
+use mir::lvalue::LvalueRef;
 use base::*;
 use common::*;
 use declare;
@@ -24,10 +25,10 @@ use type_of;
 use machine;
 use type_::Type;
 use rustc::ty::{self, Ty};
-use Disr;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
+use builder::Builder;
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -87,14 +88,14 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                       callee_ty: Ty<'tcx>,
                                       fn_ty: &FnType,
                                       llargs: &[ValueRef],
                                       llresult: ValueRef,
                                       span: Span) {
     let ccx = bcx.ccx;
-    let tcx = bcx.tcx();
+    let tcx = ccx.tcx();
 
     let (def_id, substs, fty) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs, ref fty) => (def_id, substs, fty),
@@ -125,7 +126,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             bcx.call(expect, &[llargs[0], C_bool(ccx, false)], None)
         }
         "try" => {
-            try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult);
+            try_intrinsic(bcx, ccx, llargs[0], llargs[1], llargs[2], llresult);
             C_nil(ccx)
         }
         "breakpoint" => {
@@ -290,8 +291,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
                             let result = bcx.extract_value(val, 0);
                             let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(ccx));
-                            bcx.store(result, bcx.struct_gep(llresult, 0));
-                            bcx.store(overflow, bcx.struct_gep(llresult, 1));
+                            bcx.store(result, bcx.struct_gep(llresult, 0), None);
+                            bcx.store(overflow, bcx.struct_gep(llresult, 1), None);
 
                             C_nil(bcx.ccx)
                         },
@@ -409,8 +410,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                             failorder, weak);
                         let result = bcx.extract_value(val, 0);
                         let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
-                        bcx.store(result, bcx.struct_gep(llresult, 0));
-                        bcx.store(success, bcx.struct_gep(llresult, 1));
+                        bcx.store(result, bcx.struct_gep(llresult, 0), None);
+                        bcx.store(success, bcx.struct_gep(llresult, 1), None);
                     } else {
                         invalid_monomorphization(sty);
                     }
@@ -533,7 +534,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
             // qux` to be converted into `foo, bar, baz, qux`, integer
             // arguments to be truncated as needed and pointers to be
             // cast.
-            fn modify_as_needed<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+            fn modify_as_needed<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                           t: &intrinsics::Type,
                                           arg_type: Ty<'tcx>,
                                           llarg: ValueRef)
@@ -548,12 +549,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
-                        let arg = adt::MaybeSizedValue::sized(llarg);
-                        (0..contents.len())
-                            .map(|i| {
-                                bcx.load(adt::trans_field_ptr(bcx, arg_type, arg, Disr(0), i))
-                            })
-                            .collect()
+                        let arg = LvalueRef::new_sized_ty(llarg, arg_type);
+                        (0..contents.len()).map(|i| bcx.load(arg.trans_field_ptr(bcx, i))).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
                         let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
@@ -615,7 +612,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 
                     for i in 0..elems.len() {
                         let val = bcx.extract_value(val, i);
-                        bcx.store(val, bcx.struct_gep(llresult, i));
+                        bcx.store(val, bcx.struct_gep(llresult, i), None);
                     }
                     C_nil(ccx)
                 }
@@ -627,17 +624,14 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     if val_ty(llval) != Type::void(ccx) && machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
         if let Some(ty) = fn_ty.ret.cast {
             let ptr = bcx.pointercast(llresult, ty.ptr_to());
-            let store = bcx.store(llval, ptr);
-            unsafe {
-                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, ret_ty));
-            }
+            bcx.store(llval, ptr, Some(type_of::align_of(ccx, ret_ty)));
         } else {
             store_ty(bcx, llval, llresult, ret_ty);
         }
     }
 }
 
-fn copy_intrinsic<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             allow_overlap: bool,
                             volatile: bool,
                             tp_ty: Ty<'tcx>,
@@ -673,7 +667,7 @@ fn copy_intrinsic<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 }
 
 fn memset_intrinsic<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     volatile: bool,
     ty: Ty<'tcx>,
     dst: ValueRef,
@@ -689,7 +683,8 @@ fn memset_intrinsic<'a, 'tcx>(
 }
 
 fn try_intrinsic<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
+    ccx: &CrateContext,
     func: ValueRef,
     data: ValueRef,
     local_ptr: ValueRef,
@@ -697,11 +692,11 @@ fn try_intrinsic<'a, 'tcx>(
 ) {
     if bcx.sess().no_landing_pads() {
         bcx.call(func, &[data], None);
-        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest);
+        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
     } else if wants_msvc_seh(bcx.sess()) {
-        trans_msvc_try(bcx, func, data, local_ptr, dest);
+        trans_msvc_try(bcx, ccx, func, data, local_ptr, dest);
     } else {
-        trans_gnu_try(bcx, func, data, local_ptr, dest);
+        trans_gnu_try(bcx, ccx, func, data, local_ptr, dest);
     }
 }
 
@@ -712,24 +707,25 @@ fn try_intrinsic<'a, 'tcx>(
 // instructions are meant to work for all targets, as of the time of this
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
-fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+                            ccx: &CrateContext,
                             func: ValueRef,
                             data: ValueRef,
                             local_ptr: ValueRef,
                             dest: ValueRef) {
-    let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
+    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
         let ccx = bcx.ccx;
 
         bcx.set_personality_fn(bcx.ccx.eh_personality());
 
-        let normal = bcx.fcx().build_new_block("normal");
-        let catchswitch = bcx.fcx().build_new_block("catchswitch");
-        let catchpad = bcx.fcx().build_new_block("catchpad");
-        let caught = bcx.fcx().build_new_block("caught");
+        let normal = bcx.build_sibling_block("normal");
+        let catchswitch = bcx.build_sibling_block("catchswitch");
+        let catchpad = bcx.build_sibling_block("catchpad");
+        let caught = bcx.build_sibling_block("caught");
 
-        let func = llvm::get_param(bcx.fcx().llfn, 0);
-        let data = llvm::get_param(bcx.fcx().llfn, 1);
-        let local_ptr = llvm::get_param(bcx.fcx().llfn, 2);
+        let func = llvm::get_param(bcx.llfn(), 0);
+        let data = llvm::get_param(bcx.llfn(), 1);
+        let local_ptr = llvm::get_param(bcx.llfn(), 2);
 
         // We're generating an IR snippet that looks like:
         //
@@ -771,7 +767,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         //
         // More information can be found in libstd's seh.rs implementation.
         let i64p = Type::i64(ccx).ptr_to();
-        let slot = bcx.fcx().alloca(i64p, "slot");
+        let slot = bcx.alloca(i64p, "slot");
         bcx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
             None);
 
@@ -791,8 +787,8 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         let val1 = C_i32(ccx, 1);
         let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]));
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        catchpad.store(arg1, local_ptr);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]));
+        catchpad.store(arg1, local_ptr, None);
+        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), None);
         catchpad.catch_ret(tok, caught.llbb());
 
         caught.ret(C_i32(ccx, 1));
@@ -801,7 +797,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest);
+    bcx.store(ret, dest, None);
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model
@@ -815,12 +811,13 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
-fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
+fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+                           ccx: &CrateContext,
                            func: ValueRef,
                            data: ValueRef,
                            local_ptr: ValueRef,
                            dest: ValueRef) {
-    let llfn = get_rust_try_fn(bcx.fcx(), &mut |bcx| {
+    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
         let ccx = bcx.ccx;
 
         // Translates the shims described above:
@@ -840,12 +837,12 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bcx.fcx().build_new_block("then");
-        let catch = bcx.fcx().build_new_block("catch");
+        let then = bcx.build_sibling_block("then");
+        let catch = bcx.build_sibling_block("catch");
 
-        let func = llvm::get_param(bcx.fcx().llfn, 0);
-        let data = llvm::get_param(bcx.fcx().llfn, 1);
-        let local_ptr = llvm::get_param(bcx.fcx().llfn, 2);
+        let func = llvm::get_param(bcx.llfn(), 0);
+        let data = llvm::get_param(bcx.llfn(), 1);
+        let local_ptr = llvm::get_param(bcx.llfn(), 2);
         bcx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
         then.ret(C_i32(ccx, 0));
 
@@ -857,28 +854,27 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &BlockAndBuilder<'a, 'tcx>,
         // rust_try ignores the selector.
         let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
                                     false);
-        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.fcx().llfn);
+        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.llfn());
         catch.add_clause(vals, C_null(Type::i8p(ccx)));
         let ptr = catch.extract_value(vals, 0);
-        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()));
+        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()), None);
         catch.ret(C_i32(ccx, 1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest);
+    bcx.store(ret, dest, None);
 }
 
 // Helper function to give a Block to a closure to translate a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
-fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
                     output: Ty<'tcx>,
-                    trans: &mut for<'b> FnMut(BlockAndBuilder<'b, 'tcx>))
+                    trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let ccx = fcx.ccx;
     let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
 
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
@@ -887,8 +883,8 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let fcx = FunctionContext::new(ccx, llfn);
-    trans(fcx.get_entry_block());
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
+    trans(bcx);
     llfn
 }
 
@@ -896,10 +892,9 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
-fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
-                             trans: &mut for<'b> FnMut(BlockAndBuilder<'b, 'tcx>))
+fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                             trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
-    let ccx = fcx.ccx;
     if let Some(llfn) = ccx.rust_try_fn().get() {
         return llfn;
     }
@@ -913,7 +908,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(tcx.mk_fn_sig(iter::once(i8p), tcx.mk_nil(), false)),
     }));
     let output = tcx.types.i32;
-    let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
+    let rust_try = gen_fn(ccx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));
     return rust_try
 }
@@ -923,7 +918,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 }
 
 fn generic_simd_intrinsic<'a, 'tcx>(
-    bcx: &BlockAndBuilder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     name: &str,
     callee_ty: Ty<'tcx>,
     llargs: &[ValueRef],

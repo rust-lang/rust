@@ -13,4 +13,4 @@
 //! *[See also the `u128` primitive type](../../std/primitive.u128.html).*
 
 #![unstable(feature = "i128", issue="35118")]
-uint_module! { u128 }
+uint_module! { u128, #[unstable(feature = "i128", issue="35118")] }

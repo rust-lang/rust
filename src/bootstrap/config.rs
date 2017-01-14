@@ -63,6 +63,7 @@ pub struct Config {
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
+    pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
     pub rustc_default_ar: Option<String>,
@@ -86,10 +87,10 @@ pub struct Config {
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
-    pub prefix: Option<String>,
-    pub docdir: Option<String>,
-    pub libdir: Option<String>,
-    pub mandir: Option<String>,
+    pub prefix: Option<PathBuf>,
+    pub docdir: Option<PathBuf>,
+    pub libdir: Option<PathBuf>,
+    pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
@@ -144,6 +145,9 @@ struct Build {
 #[derive(RustcDecodable, Default, Clone)]
 struct Install {
     prefix: Option<String>,
+    mandir: Option<String>,
+    docdir: Option<String>,
+    libdir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -179,6 +183,7 @@ struct Rust {
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
+    debuginfo_only_std: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
@@ -272,7 +277,10 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
 
         if let Some(ref install) = toml.install {
-            config.prefix = install.prefix.clone();
+            config.prefix = install.prefix.clone().map(PathBuf::from);
+            config.mandir = install.mandir.clone().map(PathBuf::from);
+            config.docdir = install.docdir.clone().map(PathBuf::from);
+            config.libdir = install.libdir.clone().map(PathBuf::from);
         }
 
         if let Some(ref llvm) = toml.llvm {
@@ -298,6 +306,7 @@ impl Config {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
             set(&mut config.rust_debuginfo_lines, rust.debuginfo_lines);
+            set(&mut config.rust_debuginfo_only_std, rust.debuginfo_only_std);
             set(&mut config.rust_optimize, rust.optimize);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
@@ -390,6 +399,7 @@ impl Config {
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
                 ("DEBUGINFO_LINES", self.rust_debuginfo_lines),
+                ("DEBUGINFO_ONLY_STD", self.rust_debuginfo_only_std),
                 ("JEMALLOC", self.use_jemalloc),
                 ("DEBUG_JEMALLOC", self.debug_jemalloc),
                 ("RPATH", self.rust_rpath),
@@ -459,16 +469,16 @@ impl Config {
                     self.channel = value.to_string();
                 }
                 "CFG_PREFIX" => {
-                    self.prefix = Some(value.to_string());
+                    self.prefix = Some(PathBuf::from(value));
                 }
                 "CFG_DOCDIR" => {
-                    self.docdir = Some(value.to_string());
+                    self.docdir = Some(PathBuf::from(value));
                 }
                 "CFG_LIBDIR" => {
-                    self.libdir = Some(value.to_string());
+                    self.libdir = Some(PathBuf::from(value));
                 }
                 "CFG_MANDIR" => {
-                    self.mandir = Some(value.to_string());
+                    self.mandir = Some(PathBuf::from(value));
                 }
                 "CFG_LLVM_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())

@@ -402,3 +402,155 @@ impl ChangeArgumentTypeTrait for Foo {
     fn method_name(&self, _x: char) { }
 }
 
+
+
+struct Bar<T>(T);
+
+// Add Type Parameter To Impl --------------------------------------------------
+trait AddTypeParameterToImpl<T> {
+    fn id(t: T) -> T;
+}
+
+#[cfg(cfail1)]
+impl AddTypeParameterToImpl<u32> for Bar<u32> {
+    fn id(t: u32) -> u32 { t }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T> AddTypeParameterToImpl<T> for Bar<T> {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn id(t: T) -> T { t }
+}
+
+
+
+// Change Self Type of Impl ----------------------------------------------------
+trait ChangeSelfTypeOfImpl {
+    fn id(self) -> Self;
+}
+
+#[cfg(cfail1)]
+impl ChangeSelfTypeOfImpl for u32 {
+    fn id(self) -> Self { self }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl ChangeSelfTypeOfImpl for u64 {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn id(self) -> Self { self }
+}
+
+
+
+// Add Lifetime Bound to Impl --------------------------------------------------
+trait AddLifetimeBoundToImplParameter {
+    fn id(self) -> Self;
+}
+
+#[cfg(cfail1)]
+impl<T> AddLifetimeBoundToImplParameter for T {
+    fn id(self) -> Self { self }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T: 'static> AddLifetimeBoundToImplParameter for T {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn id(self) -> Self { self }
+}
+
+
+
+// Add Trait Bound to Impl Parameter -------------------------------------------
+trait AddTraitBoundToImplParameter {
+    fn id(self) -> Self;
+}
+
+#[cfg(cfail1)]
+impl<T> AddTraitBoundToImplParameter for T {
+    fn id(self) -> Self { self }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl<T: Clone> AddTraitBoundToImplParameter for T {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn id(self) -> Self { self }
+}
+
+
+
+// Add #[no_mangle] to Method --------------------------------------------------
+trait AddNoMangleToMethod {
+    fn add_no_mangle_to_method(&self) { }
+}
+
+#[cfg(cfail1)]
+impl AddNoMangleToMethod for Foo {
+    fn add_no_mangle_to_method(&self) { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl AddNoMangleToMethod for Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    #[no_mangle]
+    fn add_no_mangle_to_method(&self) { }
+}
+
+
+// Make Method #[inline] -------------------------------------------------------
+trait MakeMethodInline {
+    fn make_method_inline(&self) -> u8 { 0 }
+}
+
+#[cfg(cfail1)]
+impl MakeMethodInline for Foo {
+    fn make_method_inline(&self) -> u8 { 0 }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl MakeMethodInline for Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    #[inline]
+    fn make_method_inline(&self) -> u8 { 0 }
+}

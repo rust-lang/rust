@@ -708,7 +708,7 @@ impl<T: ?Sized> Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Drop for Arc<T> {
+unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// Drops the `Arc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -736,7 +736,6 @@ impl<T: ?Sized> Drop for Arc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
-    #[unsafe_destructor_blind_to_params]
     #[inline]
     fn drop(&mut self) {
         // Because `fetch_sub` is already atomic, we do not need to synchronize

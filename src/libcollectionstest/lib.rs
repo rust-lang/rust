@@ -11,8 +11,10 @@
 #![deny(warnings)]
 
 #![feature(binary_heap_extras)]
+#![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
+#![feature(collection_placement)]
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
@@ -20,6 +22,7 @@
 #![feature(enumset)]
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
+#![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(repeat_str)]
 #![feature(step_by)]

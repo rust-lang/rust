@@ -16,7 +16,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -33,7 +33,6 @@ extern crate getopts;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_const_eval;
-extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_trans;
 extern crate rustc_driver;

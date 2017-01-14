@@ -23,11 +23,10 @@ use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
 use base;
-use base::*;
-use common::{
-    self, CrateContext, FunctionContext, SharedCrateContext
-};
-use adt::MaybeSizedValue;
+use builder::Builder;
+use common::{self, CrateContext, SharedCrateContext};
+use cleanup::CleanupScope;
+use mir::lvalue::LvalueRef;
 use consts;
 use declare;
 use value::Value;
@@ -235,18 +234,37 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            trait_closure_kind={:?}, llfn={:?})",
            llfn_closure_kind, trait_closure_kind, Value(llfn));
 
-    match (llfn_closure_kind, trait_closure_kind) {
+    match needs_fn_once_adapter_shim(llfn_closure_kind, trait_closure_kind) {
+        Ok(true) => trans_fn_once_adapter_shim(ccx,
+                                               def_id,
+                                               substs,
+                                               method_instance,
+                                               llfn),
+        Ok(false) => llfn,
+        Err(()) => {
+            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
+                 llfn_closure_kind,
+                 trait_closure_kind);
+        }
+    }
+}
+
+pub fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
+                                  trait_closure_kind: ty::ClosureKind)
+                                  -> Result<bool, ()>
+{
+    match (actual_closure_kind, trait_closure_kind) {
         (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
         (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
             // No adapter needed.
-            llfn
+           Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
             // `fn(&mut self, ...)`. In fact, at trans time, these are
             // basically the same thing, so we can just return llfn.
-            llfn
+            Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
@@ -258,13 +276,9 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
             //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
             //
             // These are both the same at trans time.
-            trans_fn_once_adapter_shim(ccx, def_id, substs, method_instance, llfn)
+            Ok(true)
         }
-        _ => {
-            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
-                 llfn_closure_kind,
-                 trait_closure_kind);
-        }
+        _ => Err(()),
     }
 }
 
@@ -330,8 +344,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let orig_fn_ty = fn_ty;
-    let fcx = FunctionContext::new(ccx, lloncefn);
-    let mut bcx = fcx.get_entry_block();
+    let mut bcx = Builder::new_block(ccx, lloncefn, "entry-block");
 
     let callee = Callee {
         data: Fn(llreffn),
@@ -340,7 +353,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // the first argument (`self`) will be the (by value) closure env.
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(lloncefn);
     let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let self_idx = fn_ty.ret.is_indirect() as usize;
@@ -348,7 +361,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llenv = if env_arg.is_indirect() {
         llargs[self_idx]
     } else {
-        let scratch = alloc_ty(&bcx, closure_ty, "self");
+        let scratch = bcx.alloca_ty(closure_ty, "self");
         let mut llarg_idx = self_idx;
         env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
         scratch
@@ -365,12 +378,14 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = fcx.schedule_drop_mem(MaybeSizedValue::sized(llenv), closure_ty);
+    let self_scope = CleanupScope::schedule_drop_mem(
+        &bcx, LvalueRef::new_sized_ty(llenv, closure_ty)
+    );
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
     if let Some(landing_pad) = self_scope.landing_pad {
-        let normal_bcx = bcx.fcx().build_new_block("normal-return");
+        let normal_bcx = bcx.build_sibling_block("normal-return");
         llret = bcx.invoke(llfn, &llargs[..], normal_bcx.llbb(), landing_pad, None);
         bcx = normal_bcx;
     } else {
@@ -489,10 +504,9 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
-    let fcx = FunctionContext::new(ccx, llfn);
-    let bcx = fcx.get_entry_block();
+    let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
-    let mut llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(llfn);
 
     let self_arg = llargs.remove(fn_ty.ret.is_indirect() as usize);
     let llfnpointer = llfnpointer.unwrap_or_else(|| {

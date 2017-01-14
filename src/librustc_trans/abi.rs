@@ -10,7 +10,8 @@
 
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
-use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
+use builder::Builder;
+use common::{type_is_fat_ptr, C_uint};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -236,7 +237,7 @@ impl ArgType {
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &BlockAndBuilder, mut val: ValueRef, dst: ValueRef) {
+    pub fn store(&self, bcx: &Builder, mut val: ValueRef, dst: ValueRef) {
         if self.is_ignore() {
             return;
         }
@@ -251,11 +252,8 @@ impl ArgType {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_dst = bcx.pointercast(dst, ty.ptr_to());
-                let store = bcx.store(val, cast_dst);
                 let llalign = llalign_of_min(ccx, self.ty);
-                unsafe {
-                    llvm::LLVMSetAlignment(store, llalign);
-                }
+                bcx.store(val, cast_dst, Some(llalign));
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -272,11 +270,11 @@ impl ArgType {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.fcx().alloca(ty, "abi_cast");
+                let llscratch = bcx.alloca(ty, "abi_cast");
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
-                bcx.store(val, llscratch);
+                bcx.store(val, llscratch, None);
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bcx,
@@ -292,18 +290,18 @@ impl ArgType {
             if self.original_ty == Type::i1(ccx) {
                 val = bcx.zext(val, Type::i8(ccx));
             }
-            bcx.store(val, dst);
+            bcx.store(val, dst, None);
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &BlockAndBuilder, idx: &mut usize, dst: ValueRef) {
+    pub fn store_fn_arg(&self, bcx: &Builder, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
         if self.is_ignore() {
             return;
         }
-        let val = llvm::get_param(bcx.fcx().llfn, *idx as c_uint);
+        let val = llvm::get_param(bcx.llfn(), *idx as c_uint);
         *idx += 1;
         self.store(bcx, val, dst);
     }

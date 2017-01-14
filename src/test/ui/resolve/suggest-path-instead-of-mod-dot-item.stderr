@@ -32,7 +32,7 @@ error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:12
    |
 55 |     v.push(a::b);
-   |            ^^^^ not a value
+   |            ^^^^ did you mean `a::I`?
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:61:5
@@ -44,13 +44,13 @@ error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:67:5
    |
 67 |     a::b
-   |     ^^^^ not a value
+   |     ^^^^ did you mean `a::I`?
 
 error[E0423]: expected function, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:73:5
    |
 73 |     a::b()
-   |     ^^^^ not a function
+   |     ^^^^ did you mean `a::I`?
 
 error: main function not found
 

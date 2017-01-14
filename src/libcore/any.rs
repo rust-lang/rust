@@ -101,7 +101,7 @@ pub trait Any: 'static {
     ///
     /// fn main() {
     ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_owned()), true);
+    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
     #[unstable(feature = "get_type_id",
@@ -154,7 +154,7 @@ impl Any {
     ///
     /// fn main() {
     ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_owned());
+    ///     is_string(&"cookie monster".to_string());
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -188,7 +188,7 @@ impl Any {
     ///
     /// fn main() {
     ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_owned());
+    ///     print_if_string(&"cookie monster".to_string());
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -219,7 +219,7 @@ impl Any {
     ///
     /// fn main() {
     ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_owned();
+    ///     let mut s = "starlord".to_string();
     ///
     ///     modify_if_u32(&mut x);
     ///     modify_if_u32(&mut s);
@@ -259,7 +259,7 @@ impl Any+Send {
     ///
     /// fn main() {
     ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_owned());
+    ///     is_string(&"cookie monster".to_string());
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -285,7 +285,7 @@ impl Any+Send {
     ///
     /// fn main() {
     ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_owned());
+    ///     print_if_string(&"cookie monster".to_string());
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -309,7 +309,7 @@ impl Any+Send {
     ///
     /// fn main() {
     ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_owned();
+    ///     let mut s = "starlord".to_string();
     ///
     ///     modify_if_u32(&mut x);
     ///     modify_if_u32(&mut s);
@@ -359,7 +359,7 @@ impl TypeId {
     ///
     /// fn main() {
     ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_owned()), true);
+    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

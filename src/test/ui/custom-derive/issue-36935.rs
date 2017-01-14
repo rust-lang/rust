@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-a.rs
+// aux-build:plugin.rs
 
-#[macro_use]
-extern crate derive_a;
+#![feature(proc_macro)]
 
-#[derive(A)] //~ ERROR custom derive macros are experimentally supported
-struct S;
+#[macro_use] extern crate plugin;
+
+#[derive(Foo, Bar)]
+struct Baz {
+    a: i32,
+    b: i32,
+}
+
+fn main() {}

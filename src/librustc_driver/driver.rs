@@ -716,8 +716,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                                      is_proc_macro_crate,
                                                      is_test_crate,
                                                      num_crate_types,
-                                                     sess.diagnostic(),
-                                                     &sess.features.borrow())
+                                                     sess.diagnostic())
         });
     }
 
@@ -1335,9 +1334,10 @@ pub fn build_output_filenames(input: &Input,
                                            .values()
                                            .filter(|a| a.is_none())
                                            .count();
-            let ofile = if unnamed_output_types > 1 {
-                sess.warn("ignoring specified output filename because multiple outputs were \
-                           requested");
+            let ofile = if unnamed_output_types > 1 &&
+                            sess.opts.output_types.contains_key(&OutputType::Exe) {
+                sess.warn("ignoring specified output filename for 'link' output because multiple \
+                           outputs were requested");
                 None
             } else {
                 Some(out_file.clone())
