@@ -130,10 +130,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => {
                         // If this is a tuple or closure, we need to translate GEP indices.
                         let layout = bcx.ccx.layout_of(dest.ty.to_ty(bcx.tcx()));
-                        let translation = if let Layout::Univariant { ref variant, .. } = *layout {
-                            Some(&variant.memory_index)
-                        } else {
-                            None
+                        let get_memory_index = |i| {
+                            if let Layout::Univariant { ref variant, .. } = *layout {
+                                adt::struct_llfields_index(variant, i)
+                            } else {
+                                i
+                            }
                         };
                         let alignment = dest.alignment;
                         for (i, operand) in operands.iter().enumerate() {
@@ -143,11 +145,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 // Note: perhaps this should be StructGep, but
                                 // note that in some cases the values here will
                                 // not be structs but arrays.
-                                let i = if let Some(ref t) = translation {
-                                    t[i] as usize
-                                } else {
-                                    i
-                                };
+                                let i = get_memory_index(i);
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
                                 self.store_operand(&bcx, dest, alignment.to_align(), op);
                             }

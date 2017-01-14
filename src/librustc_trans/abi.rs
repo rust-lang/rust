@@ -553,7 +553,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(ty, "abi_cast");
+                let llscratch = bcx.alloca(ty, "abi_cast", None);
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...

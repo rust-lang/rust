@@ -147,6 +147,24 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
     }
 
+    /// Returns a name and single literal value tuple of the MetaItem.
+    pub fn name_value_literal(&self) -> Option<(Name, &Lit)> {
+        self.meta_item().and_then(
+            |meta_item| meta_item.meta_item_list().and_then(
+                |meta_item_list| {
+                    if meta_item_list.len() == 1 {
+                        let nested_item = &meta_item_list[0];
+                        if nested_item.is_literal() {
+                            Some((meta_item.name(), nested_item.literal().unwrap()))
+                        } else {
+                            None
+                        }
+                    }
+                    else {
+                        None
+                    }}))
+    }
+
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
     pub fn word(&self) -> Option<&MetaItem> {
         self.meta_item().and_then(|meta_item| if meta_item.is_word() {
@@ -931,6 +949,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                     continue
                 }
 
+                let mut recognised = false;
                 if let Some(mi) = item.word() {
                     let word = &*mi.name().as_str();
                     let hint = match word {
@@ -941,20 +960,38 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         _ => match int_type_of_word(word) {
                             Some(ity) => Some(ReprInt(ity)),
                             None => {
-                                // Not a word we recognize
-                                span_err!(diagnostic, item.span, E0552,
-                                          "unrecognized representation hint");
                                 None
                             }
                         }
                     };
 
                     if let Some(h) = hint {
+                        recognised = true;
                         acc.push(h);
                     }
-                } else {
-                    span_err!(diagnostic, item.span, E0553,
-                              "unrecognized enum representation hint");
+                } else if let Some((name, value)) = item.name_value_literal() {
+                    if name == "align" {
+                        recognised = true;
+                        let mut valid_align = false;
+                        if let ast::LitKind::Int(align, ast::LitIntType::Unsuffixed) = value.node {
+                            if align.is_power_of_two() {
+                                // rustc::ty::layout::Align restricts align to <= 32768
+                                if align <= 32768 {
+                                    acc.push(ReprAlign(align as u16));
+                                    valid_align = true;
+                                }
+                            }
+                        }
+                        if !valid_align {
+                            span_err!(diagnostic, item.span, E0589,
+                                      "align representation must be a u16 power of two");
+                        }
+                    }
+                }
+                if !recognised {
+                    // Not a word we recognize
+                    span_err!(diagnostic, item.span, E0552,
+                              "unrecognized representation hint");
                 }
             }
         }
@@ -986,6 +1023,7 @@ pub enum ReprAttr {
     ReprExtern,
     ReprPacked,
     ReprSimd,
+    ReprAlign(u16),
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
