@@ -1888,11 +1888,13 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 if stab.unstable_reason.is_empty() {
                     stability.push(format!("<div class='stab unstable'>\
                                             <span class=microscope>🔬</span> \
-                                            This is a nightly-only experimental API. {}</div>",
+                                            This is a nightly-only experimental API. &nbsp;{}\
+                                            </div>",
                                    unstable_extra));
                 } else {
                     let text = format!("<summary><span class=microscope>🔬</span> \
-                                        This is a nightly-only experimental API. {}</summary>{}",
+                                        This is a nightly-only experimental API. &nbsp;{}\
+                                        </summary>{}",
                                        unstable_extra, MarkdownHtml(&stab.unstable_reason));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
