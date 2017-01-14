@@ -27,6 +27,7 @@
 
 #![feature(shared)]
 #![feature(collections_range)]
+#![feature(collections_bound)]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
