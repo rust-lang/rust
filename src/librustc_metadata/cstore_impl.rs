@@ -226,6 +226,10 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.do_is_statically_included_foreign_item(def_id)
     }
 
+    fn is_exported_symbol(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate).exported_symbols.contains(&def_id.index)
+    }
+
     fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
         if def_id.krate == LOCAL_CRATE {
             self.dllimport_foreign_items.borrow().contains(&def_id.index)
@@ -464,11 +468,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn is_item_mir_available(&self, def: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).is_item_mir_available(def.index)
-    }
-
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(def));
-        def.is_local() || self.get_crate_data(def.krate).can_have_local_instance(tcx, def.index)
     }
 
     fn crates(&self) -> Vec<CrateNum>

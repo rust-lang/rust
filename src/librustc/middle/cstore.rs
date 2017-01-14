@@ -211,6 +211,7 @@ pub trait CrateStore<'tcx> {
     fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
+    fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -257,11 +258,6 @@ pub trait CrateStore<'tcx> {
 
     fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
-
-    /// Take a look if we need to inline or monomorphize this. If so, we
-    /// will emit code for this item in the local crate, and thus
-    /// create a translation item for it.
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -368,6 +364,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
+    fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -435,9 +432,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                         -> Mir<'tcx> { bug!("get_item_mir") }
     fn is_item_mir_available(&self, def: DefId) -> bool {
         bug!("is_item_mir_available")
-    }
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool {
-        bug!("can_have_local_instance")
     }
 
     // This is basically a 1-based range of ints, which is a little
