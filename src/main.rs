@@ -234,7 +234,7 @@ pub fn main() {
         } else {
             option_env!("SYSROOT")
                 .map(|s| s.to_owned())
-                .or(Command::new("rustc")
+                .or_else(|| Command::new("rustc")
                     .arg("--print")
                     .arg("sysroot")
                     .output()
