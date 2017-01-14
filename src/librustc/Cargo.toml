@@ -10,7 +10,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
-flate = { path = "../libflate" }
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 log = { path = "../liblog" }

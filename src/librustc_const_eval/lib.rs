@@ -40,7 +40,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate graphviz;
 extern crate syntax_pos;
-extern crate serialize as rustc_serialize; // used by deriving
 
 extern crate rustc_i128;
 

@@ -23,14 +23,9 @@
 #![feature(staged_api)]
 #![feature(range_contains)]
 #![feature(libc)]
-#![feature(unicode)]
 
-extern crate serialize;
 extern crate term;
-extern crate log;
 extern crate libc;
-extern crate std_unicode;
-extern crate serialize as rustc_serialize; // used by deriving
 extern crate syntax_pos;
 
 pub use emitter::ColorConfig;

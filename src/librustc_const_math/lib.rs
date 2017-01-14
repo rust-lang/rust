@@ -28,7 +28,6 @@
 #![feature(const_fn)]
 #![cfg_attr(not(stage0), feature(i128))]
 
-extern crate log;
 extern crate syntax;
 
 // SNAP: remove use of this crate

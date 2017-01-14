@@ -26,7 +26,6 @@
 
 #![feature(associated_consts)]
 #![feature(const_fn)]
-#![feature(libc)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -35,10 +34,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
 
-extern crate core;
 extern crate serialize;
-extern crate term;
-extern crate libc;
 #[macro_use] extern crate log;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 extern crate std_unicode;

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate syntax;
-extern crate syntax_pos;
-
 use syntax::ast::Ident;
 use syntax::codemap::DUMMY_SP;
 use syntax::parse::token::{self, Token};

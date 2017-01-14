@@ -10,5 +10,3 @@ crate-type = ["dylib"]
 
 [dependencies]
 syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
-log = { path = "../liblog" }

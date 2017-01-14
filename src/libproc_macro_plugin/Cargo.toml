@@ -11,5 +11,4 @@ crate-type = ["dylib"]
 log = { path = "../liblog" }
 rustc_plugin = { path = "../librustc_plugin" }
 syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
 proc_macro_tokens = { path = "../libproc_macro_tokens" }
