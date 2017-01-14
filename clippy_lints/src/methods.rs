@@ -292,24 +292,6 @@ declare_lint! {
     "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
-/// **What it does:** Checks for usage of `.extend(s)` on a `Vec` to extend the
-/// vector by a slice.
-///
-/// **Why is this bad?** Since Rust 1.6, the `extend_from_slice(_)` method is
-/// stable and at least for now faster.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// my_vec.extend(&xs)
-/// ```
-declare_lint! {
-    pub EXTEND_FROM_SLICE,
-    Warn,
-    "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
-}
-
 /// **What it does:** Checks for usage of `.clone()` on a `Copy` type.
 ///
 /// **Why is this bad?** The only reason `Copy` types implement `Clone` is for
@@ -522,8 +504,7 @@ declare_lint! {
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(EXTEND_FROM_SLICE,
-                    OPTION_UNWRAP_USED,
+        lint_array!(OPTION_UNWRAP_USED,
                     RESULT_UNWRAP_USED,
                     SHOULD_IMPLEMENT_TRAIT,
                     WRONG_SELF_CONVENTION,
@@ -844,21 +825,6 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     }
 }
 
-fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
-    let arg_ty = cx.tables.expr_ty(&args[1]);
-    if let Some(slice) = derefs_to_slice(cx, &args[1], arg_ty) {
-        span_lint_and_then(cx,
-                           EXTEND_FROM_SLICE,
-                           expr.span,
-                           "use of `extend` to extend a Vec by a slice",
-                           |db| {
-            db.span_suggestion(expr.span,
-                               "try this",
-                               format!("{}.extend_from_slice({})", snippet(cx, args[0].span, "_"), slice));
-        });
-    }
-}
-
 fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
@@ -885,9 +851,7 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
 
 fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&args[0]));
-    if match_type(cx, obj_ty, &paths::VEC) {
-        lint_vec_extend(cx, expr, args);
-    } else if match_type(cx, obj_ty, &paths::STRING) {
+    if match_type(cx, obj_ty, &paths::STRING) {
         lint_string_extend(cx, expr, args);
     }
 }

@@ -4,6 +4,17 @@ macro_rules! declare_deprecated_lint {
     }
 }
 
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This used to check for `Vec::extend`, which was slower than
+/// `Vec::extend_from_slice`. Thanks to specialization, this is no longer true.
+declare_deprecated_lint! {
+    pub EXTEND_FROM_SLICE,
+    "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
+}
+
+
 /// **What it does:** Nothing. This lint has been deprecated.
 ///
 /// **Deprecation reason:** This used to check for `Vec::as_slice`, which was unstable with good

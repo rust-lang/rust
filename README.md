@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 184 lints included in this crate:
+There are 183 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -230,7 +230,6 @@ name                                                                            
 [explicit_counter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop)                         | warn    | for-looping with an explicit counter when `_.enumerate()` would do
 [explicit_into_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_into_iter_loop)                     | warn    | for-looping over `_.into_iter()` when `_` would do
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                               | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
-[extend_from_slice](https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice)                                 | warn    | `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
 [filter_map](https://github.com/Manishearth/rust-clippy/wiki#filter_map)                                               | allow   | using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call
 [filter_next](https://github.com/Manishearth/rust-clippy/wiki#filter_next)                                             | warn    | using `filter(p).next()`, which is more succinctly expressed as `.find(p)`
 [float_arithmetic](https://github.com/Manishearth/rust-clippy/wiki#float_arithmetic)                                   | allow   | any floating-point arithmetic statement
