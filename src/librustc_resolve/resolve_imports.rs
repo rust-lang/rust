@@ -62,6 +62,7 @@ pub struct ImportDirective<'a> {
     pub span: Span,
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
+    pub used: Cell<bool>,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -257,6 +258,7 @@ impl<'a> Resolver<'a> {
             id: id,
             vis: Cell::new(vis),
             expansion: expansion,
+            used: Cell::new(false),
         });
 
         self.indeterminate_imports.push(directive);

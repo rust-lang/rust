@@ -1099,7 +1099,6 @@ pub struct Resolver<'a> {
     pub glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    used_crates: FxHashSet<CrateNum>,
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1130,6 +1129,8 @@ pub struct Resolver<'a> {
 
     // A set of procedural macros imported by `#[macro_use]` that have already been warned about
     warned_proc_macros: FxHashSet<Name>,
+
+    potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1279,7 +1280,6 @@ impl<'a> Resolver<'a> {
             glob_map: NodeMap(),
 
             used_imports: FxHashSet(),
-            used_crates: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
 
             privacy_errors: Vec::new(),
@@ -1309,6 +1309,7 @@ impl<'a> Resolver<'a> {
             whitelisted_legacy_custom_derives: Vec::new(),
             proc_macro_enabled: features.proc_macro,
             warned_proc_macros: FxHashSet(),
+            potentially_unused_imports: Vec::new(),
         }
     }
 
@@ -1354,15 +1355,11 @@ impl<'a> Resolver<'a> {
 
     fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
-        // track extern crates for unused_extern_crate lint
-        if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleData::def_id) {
-            self.used_crates.insert(krate);
-        }
-
         match binding.kind {
             NameBindingKind::Import { directive, binding, ref used, legacy_self_import }
                     if !used.get() => {
                 used.set(true);
+                directive.used.set(true);
                 if legacy_self_import {
                     self.warn_legacy_self_import(directive);
                     return false;

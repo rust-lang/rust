@@ -33,6 +33,11 @@ use rand::isaac::IsaacRng;
 
 use other::*;
 
+mod foo {
+    // Test that this is unused even though an earler `extern crate rand` is used.
+    extern crate rand; //~ ERROR unused extern crate
+}
+
 fn main() {
     let x: collecs::vec::Vec<usize> = Vec::new();
     let y = foo();
