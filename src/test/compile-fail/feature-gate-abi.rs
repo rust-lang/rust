@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-intrinsics
+// gate-test-platform_intrinsics
+// gate-test-abi_vectorcall
+
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
 extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experimental

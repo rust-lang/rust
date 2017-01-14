@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-windows_subsystem
+
 #![windows_subsystem = "console"]
 //~^ ERROR: the windows subsystem attribute is currently unstable
 
