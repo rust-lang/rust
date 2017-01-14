@@ -35,29 +35,44 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
       os: osx
+      before_script: &osx_before_script >
+        ulimit -c unlimited
       install: &osx_install_sccache >
         curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
           tar xJf - -C /usr/local/bin --strip-components=1
+      after_failure: &osx_after_failure >
+        echo 'bt all' > cmds;
+        for file in $(ls /cores); do
+          echo core file $file;
+          lldb -c $file `which ld` -b -s cmds;
+        done
+
     - env: >
         SCRIPT="./x.py test && ./x.py dist"
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         DEPLOY=1
       os: osx
+      before_script: *osx_before_script
       install: *osx_install_sccache
+      after_failure: *osx_after_failure
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
+      before_script: *osx_before_script
       install: *osx_install_sccache
+      after_failure: *osx_after_failure
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS=--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios
         SRC=.
         DEPLOY=1
       os: osx
+      before_script: *osx_before_script
       install: *osx_install_sccache
+      after_failure: *osx_after_failure
 
 env:
   global:
