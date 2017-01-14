@@ -151,7 +151,7 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut, Place, Placer, InPlace};
 use core::iter::{FromIterator, FusedIterator};
 use core::mem::{swap, size_of};
 use core::ptr;
@@ -688,6 +688,22 @@ impl<T: Ord> BinaryHeap<T> {
         }
     }
 
+    fn sift_up_ind(&mut self, start: usize, pos: usize) -> usize {
+        unsafe {
+            // Take out the value at `pos` and create a hole.
+            let mut hole = Hole::new(&mut self.data, pos);
+
+            while hole.pos() > start {
+                let parent = (hole.pos() - 1) / 2;
+                if hole.element() <= hole.get(parent) {
+                    return hole.pos();
+                }
+                hole.move_to(parent);
+            }
+            hole.pos()
+        }
+    }
+
     /// Take an element at `pos` and move it down the heap,
     /// while its children are larger.
     fn sift_down_range(&mut self, pos: usize, end: usize) {
@@ -885,6 +901,19 @@ impl<T: Ord> BinaryHeap<T> {
             self.rebuild();
         } else {
             self.extend(other.drain());
+        }
+    }
+}
+
+impl<T> BinaryHeap<T>
+where T: Clone + Ord {
+    /// kek
+    #[unstable(feature = "collection_placement",
+               reason = "placement protocol is subject to change",
+               issue = "30172")]
+    pub fn place(&mut self) -> PlaceIn<T> {
+        PlaceIn {
+            heap: self,
         }
     }
 }
@@ -1187,5 +1216,51 @@ impl<T: Ord> BinaryHeap<T> {
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+pub struct PlaceIn<'a, T: 'a>
+where T: Clone + Ord {
+    heap: &'a mut BinaryHeap<T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for PlaceIn<'a, T>
+where T: Clone + Ord {
+    fn pointer(&mut self) -> *mut T {
+        self.heap.data.place_back().pointer()
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for PlaceIn<'a, T>
+where T: Clone + Ord {
+    type Place = PlaceIn<'a, T>;
+
+    fn make_place(self) -> Self {
+        let _ = self.heap.data.place_back().make_place();
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for PlaceIn<'a, T>
+where T: Clone + Ord {
+    type Owner = &'a T;
+
+    unsafe fn finalize(self) -> &'a T {
+        let len = self.heap.len();
+        let _ = self.heap.data.place_back().finalize();
+        let i = self.heap.sift_up_ind(0, len);
+        &mut self.heap.data[i]
     }
 }
