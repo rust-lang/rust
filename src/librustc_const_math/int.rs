@@ -661,7 +661,7 @@ impl ::std::ops::Neg for ConstInt {
             a@U8(0) | a@U16(0) | a@U32(0) | a@U64(0) | a@U128(0) |
             a@Usize(Us16(0)) | a@Usize(Us32(0)) | a@Usize(Us64(0)) => Ok(a),
             U8(_) | U16(_) | U32(_) | U64(_) | U128(_) | Usize(_) => Err(UnsignedNegation),
-            Infer(a @ 0...ubounds::I64MAX) => Ok(InferSigned(-(a as i128))),
+            Infer(a @ 0...ubounds::I128MAX) => Ok(InferSigned(-(a as i128))),
             Infer(_) => Err(Overflow(Op::Neg)),
             InferSigned(a) => Ok(InferSigned(overflowing!(a.overflowing_neg(), Op::Neg))),
         }
