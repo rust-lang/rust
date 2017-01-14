@@ -9,7 +9,6 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = { path = "../liblog" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 rustc_i128 = { path = "../librustc_i128" }

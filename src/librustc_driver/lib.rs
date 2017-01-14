@@ -32,7 +32,6 @@
 #![feature(staged_api)]
 
 extern crate arena;
-extern crate flate;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;

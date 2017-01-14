@@ -88,7 +88,6 @@
 
 extern crate rustc_plugin;
 extern crate syntax;
-extern crate syntax_pos;
 extern crate proc_macro_tokens;
 #[macro_use] extern crate log;
 

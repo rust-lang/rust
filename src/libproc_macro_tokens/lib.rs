@@ -58,8 +58,6 @@
 #![feature(rustc_private)]
 
 extern crate syntax;
-extern crate syntax_pos;
-extern crate log;
 
 pub mod build;
 pub mod parse;

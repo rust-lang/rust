@@ -10,7 +10,6 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_metadata = { path = "../librustc_metadata" }
