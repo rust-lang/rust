@@ -313,9 +313,6 @@ declare_features! (
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
 
-    // Allow safe suggestions for potential type conversions.
-    (active, safe_suggestion, "1.0.0", Some(37384)),
-
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", None),
 
