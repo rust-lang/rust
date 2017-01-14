@@ -23,6 +23,7 @@
 #![feature(nonzero)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(result_expect_err)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
 #![feature(step_by)]

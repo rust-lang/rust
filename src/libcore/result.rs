@@ -798,6 +798,31 @@ impl<T: fmt::Debug, E> Result<T, E> {
             Err(e) => e,
         }
     }
+
+    /// Unwraps a result, yielding the content of an `Err`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an `Ok`, with a panic message including the
+    /// passed message, and the content of the `Ok`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```{.should_panic}
+    /// # #![feature(result_expect_err)]
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_expect_err", issue = "39041")]
+    pub fn expect_err(self, msg: &str) -> E {
+        match self {
+            Ok(t) => unwrap_failed(msg, t),
+            Err(e) => e,
+        }
+    }
 }
 
 impl<T: Default, E> Result<T, E> {
