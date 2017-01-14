@@ -125,6 +125,11 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                 let msg = "unused extern crate".to_string();
                 resolver.session.add_lint(lint, directive.id, directive.span, msg);
             }
+            ImportDirectiveSubclass::MacroUse => {
+                let lint = lint::builtin::UNUSED_IMPORTS;
+                let msg = "unused `#[macro_use]` import".to_string();
+                resolver.session.add_lint(lint, directive.id, directive.span, msg);
+            }
             _ => {}
         }
     }

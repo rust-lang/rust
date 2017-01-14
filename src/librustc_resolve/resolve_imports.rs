@@ -49,6 +49,7 @@ pub enum ImportDirectiveSubclass<'a> {
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
     ExternCrate,
+    MacroUse,
 }
 
 /// One import directive.
@@ -835,5 +836,6 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
         ExternCrate => "<extern crate>".to_string(),
+        MacroUse => "#[macro_use]".to_string(),
     }
 }

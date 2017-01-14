@@ -59,7 +59,7 @@
 
 extern crate syntax;
 extern crate syntax_pos;
-#[macro_use] extern crate log;
+extern crate log;
 
 pub mod build;
 pub mod parse;

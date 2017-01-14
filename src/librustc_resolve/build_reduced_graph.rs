@@ -552,16 +552,35 @@ impl<'a> Resolver<'a> {
             used = true; // Avoid the normal unused extern crate warning
         }
 
+        let (graph_root, arenas) = (self.graph_root, self.arenas);
+        let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+            id: item.id,
+            parent: graph_root,
+            imported_module: Cell::new(Some(module)),
+            subclass: ImportDirectiveSubclass::MacroUse,
+            span: span,
+            module_path: Vec::new(),
+            vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
+            expansion: expansion,
+            used: Cell::new(false),
+        });
+
         if let Some(span) = legacy_imports.import_all {
+            let directive = macro_use_directive(span);
+            self.potentially_unused_imports.push(directive);
             module.for_each_child(|ident, ns, binding| if ns == MacroNS {
-                self.legacy_import_macro(ident.name, binding, span, allow_shadowing);
+                let imported_binding = self.import(binding, directive);
+                self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
                 let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
                 if let Ok(binding) = result {
-                    self.legacy_import_macro(name, binding, span, allow_shadowing);
+                    let directive = macro_use_directive(span);
+                    self.potentially_unused_imports.push(directive);
+                    let imported_binding = self.import(binding, directive);
+                    self.legacy_import_macro(name, imported_binding, span, allow_shadowing);
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
                 }

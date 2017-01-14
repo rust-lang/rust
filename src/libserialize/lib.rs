@@ -39,7 +39,7 @@ Core encoding and decoding interfaces.
 
 // test harness access
 #[cfg(test)] extern crate test;
-#[macro_use] extern crate log;
+extern crate log;
 
 extern crate std_unicode;
 extern crate collections;

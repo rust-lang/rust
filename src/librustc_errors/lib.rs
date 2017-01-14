@@ -27,9 +27,7 @@
 
 extern crate serialize;
 extern crate term;
-#[macro_use]
 extern crate log;
-#[macro_use]
 extern crate libc;
 extern crate std_unicode;
 extern crate serialize as rustc_serialize; // used by deriving
