@@ -306,8 +306,8 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self) -> TokenAndSpan {
-        'outer: loop {
-            let mut tok = if let Some((tts, i)) = self.tts.pop() {
+        loop {
+            let tok = if let Some((tts, i)) = self.tts.pop() {
                 let tt = tts.get_tt(i);
                 if i + 1 < tts.len() {
                     self.tts.push((tts, i + 1));
@@ -322,25 +322,11 @@ impl<'a> Parser<'a> {
                 TokenAndSpan { tok: token::Eof, sp: self.span }
             };
 
-            loop {
-                let nt = match tok.tok {
-                    token::Interpolated(ref nt) => nt.clone(),
-                    token::DocComment(name) if self.desugar_doc_comments => {
-                        self.tts.push((TokenTree::Token(tok.sp, token::DocComment(name)), 0));
-                        continue 'outer
-                    }
-                    _ => return tok,
-                };
-                match *nt {
-                    token::NtTT(TokenTree::Token(sp, ref t)) => {
-                        tok = TokenAndSpan { tok: t.clone(), sp: sp };
-                    }
-                    token::NtTT(ref tt) => {
-                        self.tts.push((tt.clone(), 0));
-                        continue 'outer
-                    }
-                    _ => return tok,
+            match tok.tok {
+                token::DocComment(name) if self.desugar_doc_comments => {
+                    self.tts.push((TokenTree::Token(tok.sp, token::DocComment(name)), 0));
                 }
+                _ => return tok,
             }
         }
     }

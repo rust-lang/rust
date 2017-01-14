@@ -12,7 +12,7 @@ use self::LockstepIterSize::*;
 use ast::Ident;
 use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use parse::token::{self, MatchNt, SubstNt, Token, NtIdent};
+use parse::token::{self, MatchNt, SubstNt, Token, NtIdent, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{self, TokenTree};
 use util::small_vector::SmallVector;
@@ -241,6 +241,7 @@ fn tt_next_token(r: &mut TtReader, prev_span: Span) -> Option<TokenTree> {
                             NtIdent(ref sn) => {
                                 return Some(TokenTree::Token(sn.span, token::Ident(sn.node)));
                             }
+                            NtTT(ref tt) => return Some(tt.clone()),
                             _ => {
                                 // FIXME(pcwalton): Bad copy
                                 return Some(TokenTree::Token(sp, token::Interpolated(nt.clone())));
