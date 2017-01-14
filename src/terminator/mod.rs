@@ -462,7 +462,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
             let mut selcx = traits::SelectionContext::new(&infcx);
 
             let obligation = traits::Obligation::new(
@@ -833,7 +833,7 @@ pub(super) fn get_impl_method<'a, 'tcx>(
 
     match trait_def.ancestors(impl_def_id).defs(tcx, name, ty::AssociatedKind::Method).next() {
         Some(node_item) => {
-            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
                 let substs = traits::translate_substs(&infcx, impl_def_id,
                                                       substs, node_item.node);
@@ -870,7 +870,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     match trait_def.ancestors(impl_def_id).defs(tcx, name, ty::AssociatedKind::Method).next() {
         Some(node_item) => {
-            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
                 let substs = traits::translate_substs(&infcx, impl_def_id, substs, node_item.node);
                 tcx.lift(&substs).unwrap_or_else(|| {

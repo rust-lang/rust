@@ -183,7 +183,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         debug!("normalize_and_test_predicates(predicates={:?})",
                predicates);
 
-        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
             let mut fulfill_cx = traits::FulfillmentContext::new();
             let cause = traits::ObligationCause::dummy();
