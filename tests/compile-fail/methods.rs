@@ -127,7 +127,6 @@ fn option_methods() {
                 );
     // macro case
     let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0); // should not lint
-
 }
 
 /// Struct to generate false positives for things with .iter()
@@ -340,6 +339,12 @@ fn or_fun_call() {
     //~^ERROR use of `or_insert` followed by a function call
     //~|HELP try this
     //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
+
+    let stringy = Some(String::from(""));
+    let _ = stringy.unwrap_or("".to_owned());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION stringy.unwrap_or_else(|| "".to_owned());
 }
 
 /// Checks implementation of `ITER_NTH` lint
