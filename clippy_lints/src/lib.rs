@@ -180,6 +180,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     let mut store = reg.sess.lint_store.borrow_mut();
     store.register_removed(
+        "extend_from_slice",
+        "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice",
+    );
+    store.register_removed(
         "unstable_as_slice",
         "`Vec::as_slice` has been stabilized in 1.7",
     );
@@ -408,7 +412,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
         methods::CLONE_ON_COPY,
-        methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
         methods::GET_UNWRAP,
         methods::ITER_NTH,
