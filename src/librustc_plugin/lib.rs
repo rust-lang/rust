@@ -63,9 +63,8 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 
-#[macro_use] extern crate log;
+extern crate log;
 #[macro_use] extern crate syntax;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate rustc;
 extern crate rustc_back;
