@@ -16,7 +16,7 @@ use ext::expand::{Expansion, ExpansionKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
-use ext::tt::transcribe::new_tt_reader;
+use ext::tt::transcribe::transcribe;
 use parse::{Directory, ParseSess};
 use parse::parser::Parser;
 use parse::token::{self, NtTT, Token};
@@ -113,16 +113,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut trncbr =
-                    new_tt_reader(&cx.parse_sess.span_diagnostic, Some(named_matches), rhs);
-                let mut tts = Vec::new();
-                loop {
-                    let tok = trncbr.real_token();
-                    if tok.tok == token::Eof {
-                        break
-                    }
-                    tts.push(TokenTree::Token(tok.sp, tok.tok));
-                }
+                let tts = transcribe(&cx.parse_sess.span_diagnostic, Some(named_matches), rhs);
                 let directory = Directory {
                     path: cx.current_expansion.module.directory.clone(),
                     ownership: cx.current_expansion.directory_ownership,
