@@ -156,22 +156,6 @@ enum PrevTokenKind {
     Other,
 }
 
-// Simple circular buffer used for keeping few next tokens.
-#[derive(Default)]
-struct LookaheadBuffer {
-    buffer: [TokenAndSpan; LOOKAHEAD_BUFFER_CAPACITY],
-    start: usize,
-    end: usize,
-}
-
-const LOOKAHEAD_BUFFER_CAPACITY: usize = 8;
-
-impl LookaheadBuffer {
-    fn len(&self) -> usize {
-        (LOOKAHEAD_BUFFER_CAPACITY + self.end - self.start) % LOOKAHEAD_BUFFER_CAPACITY
-    }
-}
-
 /* ident is handled by common.rs */
 
 pub struct Parser<'a> {
@@ -184,7 +168,6 @@ pub struct Parser<'a> {
     pub prev_span: Span,
     /// the previous token kind
     prev_token_kind: PrevTokenKind,
-    lookahead_buffer: LookaheadBuffer,
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
     parsing_token_tree: bool,
@@ -281,7 +264,6 @@ impl<'a> Parser<'a> {
             span: syntax_pos::DUMMY_SP,
             prev_span: syntax_pos::DUMMY_SP,
             prev_token_kind: PrevTokenKind::Other,
-            lookahead_buffer: Default::default(),
             restrictions: Restrictions::empty(),
             quote_depth: 0,
             parsing_token_tree: false,
@@ -875,14 +857,7 @@ impl<'a> Parser<'a> {
             _ => PrevTokenKind::Other,
         };
 
-        let next = if self.lookahead_buffer.start == self.lookahead_buffer.end {
-            self.next_tok()
-        } else {
-            // Avoid token copies with `replace`.
-            let old_start = self.lookahead_buffer.start;
-            self.lookahead_buffer.start = (old_start + 1) % LOOKAHEAD_BUFFER_CAPACITY;
-            mem::replace(&mut self.lookahead_buffer.buffer[old_start], Default::default())
-        };
+        let next = self.next_tok();
         self.span = next.sp;
         self.token = next.tok;
         self.expected_tokens.clear();
@@ -917,18 +892,20 @@ impl<'a> Parser<'a> {
         F: FnOnce(&token::Token) -> R,
     {
         if dist == 0 {
-            f(&self.token)
-        } else if dist < LOOKAHEAD_BUFFER_CAPACITY {
-            while self.lookahead_buffer.len() < dist {
-                self.lookahead_buffer.buffer[self.lookahead_buffer.end] = self.next_tok();
-                self.lookahead_buffer.end =
-                    (self.lookahead_buffer.end + 1) % LOOKAHEAD_BUFFER_CAPACITY;
-            }
-            let index = (self.lookahead_buffer.start + dist - 1) % LOOKAHEAD_BUFFER_CAPACITY;
-            f(&self.lookahead_buffer.buffer[index].tok)
-        } else {
-            self.bug("lookahead distance is too large");
+            return f(&self.token);
         }
+        let mut tok = token::Eof;
+        if let Some(&(ref tts, mut i)) = self.tts.last() {
+            i += dist - 1;
+            if i < tts.len() {
+                tok = match tts.get_tt(i) {
+                    TokenTree::Token(_, tok) => tok,
+                    TokenTree::Delimited(_, delimited) => token::OpenDelim(delimited.delim),
+                    TokenTree::Sequence(..) => token::Dollar,
+                };
+            }
+        }
+        f(&tok)
     }
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.span, m)
