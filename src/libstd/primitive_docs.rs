@@ -56,6 +56,7 @@
 ///
 /// Also, since `bool` implements the [`Copy`](marker/trait.Copy.html) trait, we don't
 /// have to worry about the move semantics (just like the integer and float primitives).
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_bool { }
 
 #[doc(primitive = "char")]
@@ -126,6 +127,7 @@ mod prim_bool { }
 /// assert_eq!(12, s.len() * std::mem::size_of::<u8>());
 /// assert_eq!(32, v.len() * std::mem::size_of::<char>());
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char { }
 
 #[doc(primitive = "unit")]
@@ -163,6 +165,7 @@ mod prim_char { }
 /// };
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit { }
 
 #[doc(primitive = "pointer")]
@@ -244,6 +247,7 @@ mod prim_unit { }
 ///
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer { }
 
 #[doc(primitive = "array")]
@@ -342,6 +346,7 @@ mod prim_pointer { }
 /// for x in &array { }
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array { }
 
 #[doc(primitive = "slice")]
@@ -372,6 +377,7 @@ mod prim_array { }
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice { }
 
 #[doc(primitive = "str")]
@@ -438,6 +444,7 @@ mod prim_slice { }
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
 /// used to get a string slice under normal circumstances. Use `.as_slice()`
 /// instead.
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
@@ -536,6 +543,7 @@ mod prim_str { }
 /// assert_eq!(y, 5);
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple { }
 
 #[doc(primitive = "f32")]
@@ -543,6 +551,7 @@ mod prim_tuple { }
 ///
 /// *[See also the `std::f32` module](f32/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 { }
 
 #[doc(primitive = "f64")]
@@ -551,6 +560,7 @@ mod prim_f32 { }
 ///
 /// *[See also the `std::f64` module](f64/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 { }
 
 #[doc(primitive = "i8")]
@@ -562,6 +572,7 @@ mod prim_f64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i64` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 { }
 
 #[doc(primitive = "i16")]
@@ -573,6 +584,7 @@ mod prim_i8 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i32` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 { }
 
 #[doc(primitive = "i32")]
@@ -584,6 +596,7 @@ mod prim_i16 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i16` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 { }
 
 #[doc(primitive = "i64")]
@@ -595,6 +608,7 @@ mod prim_i32 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i8` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 { }
 
 #[doc(primitive = "i128")]
@@ -606,6 +620,7 @@ mod prim_i64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i8` in there.
 ///
+#[unstable(feature = "i128", issue="35118")]
 mod prim_i128 { }
 
 #[doc(primitive = "u8")]
@@ -617,6 +632,7 @@ mod prim_i128 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u64` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 { }
 
 #[doc(primitive = "u16")]
@@ -628,6 +644,7 @@ mod prim_u8 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u32` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 { }
 
 #[doc(primitive = "u32")]
@@ -639,6 +656,7 @@ mod prim_u16 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u16` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 { }
 
 #[doc(primitive = "u64")]
@@ -650,6 +668,7 @@ mod prim_u32 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u8` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 { }
 
 #[doc(primitive = "u128")]
@@ -661,6 +680,7 @@ mod prim_u64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u8` in there.
 ///
+#[unstable(feature = "i128", issue="35118")]
 mod prim_u128 { }
 
 #[doc(primitive = "isize")]
@@ -672,6 +692,7 @@ mod prim_u128 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `usize` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
 #[doc(primitive = "usize")]
@@ -683,4 +704,5 @@ mod prim_isize { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `isize` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
