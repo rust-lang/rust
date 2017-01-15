@@ -45,7 +45,7 @@ fn main() {
 ```
 
 The `extern` block is a list of function signatures in a foreign library, in
-this case with the platform's C ABI. The `#[link(...)]` attribute is used to
+this case with the platform's C API. The `#[link(...)]` attribute is used to
 instruct the linker to link against the snappy library so the symbols are
 resolved.
 
