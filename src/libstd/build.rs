@@ -66,6 +66,10 @@ fn main() {
 }
 
 fn build_libbacktrace(host: &str, target: &str) {
+    match env::var("SKIP_LIBBACKTRACE") {
+        Ok(_) => return,
+        _ => (),
+    };
     let src_dir = env::current_dir().unwrap().join("../libbacktrace");
     let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
