@@ -82,7 +82,6 @@
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
-#![feature(reflect)]
 #![feature(unwind_attributes)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
