@@ -11,9 +11,25 @@
 
 set -ex
 
-ARCH=x86_64
+ARCH=$1
 BINUTILS=2.25.1
 GCC=5.3.0
+
+hide_output() {
+  set +x
+  on_err="
+echo ERROR: An error was encountered with the build.
+cat /tmp/build.log
+exit 1
+"
+  trap "$on_err" ERR
+  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+  PING_LOOP_PID=$!
+  $@ &> /tmp/build.log
+  trap - ERR
+  kill $PING_LOOP_PID
+  set -x
+}
 
 mkdir binutils
 cd binutils
@@ -22,10 +38,10 @@ cd binutils
 curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.bz2 | tar xjf -
 mkdir binutils-build
 cd binutils-build
-../binutils-$BINUTILS/configure \
+hide_output ../binutils-$BINUTILS/configure \
   --target=$ARCH-unknown-freebsd10
-make -j10
-make install
+hide_output make -j10
+hide_output make install
 cd ../..
 rm -rf binutils
 
@@ -76,7 +92,7 @@ cd gcc-$GCC
 
 mkdir ../gcc-build
 cd ../gcc-build
-../gcc-$GCC/configure                            \
+hide_output ../gcc-$GCC/configure                \
   --enable-languages=c,c++                       \
   --target=$ARCH-unknown-freebsd10               \
   --disable-multilib                             \
@@ -90,7 +106,7 @@ cd ../gcc-build
   --disable-libsanitizer                         \
   --disable-libquadmath-support                  \
   --disable-lto
-make -j10
-make install
+hide_output make -j10
+hide_output make install
 cd ../..
 rm -rf gcc

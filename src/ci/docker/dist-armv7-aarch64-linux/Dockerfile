@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   gdb \
   xz-utils \
-  g++-arm-linux-gnueabi
+  g++-arm-linux-gnueabihf \
+  g++-aarch64-linux-gnu
 
 ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
 RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
@@ -23,8 +24,11 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV RUST_CONFIGURE_ARGS --host=arm-unknown-linux-gnueabi
+ENV RUST_CONFIGURE_ARGS \
+      --host=armv7-unknown-linux-gnueabihf,aarch64-unknown-linux-gnu
 ENV SCRIPT \
       python2.7 ../x.py dist \
-        --host arm-unknown-linux-gnueabi \
-        --target arm-unknown-linux-gnueabi
+        --host armv7-unknown-linux-gnueabihf \
+        --target armv7-unknown-linux-gnueabihf \
+        --host aarch64-unknown-linux-gnu \
+        --target aarch64-unknown-linux-gnu

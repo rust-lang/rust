@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   bzip2 \
   xz-utils \
-  wget
+  wget \
+  patch \
+  g++-s390x-linux-gnu
 
 COPY build-toolchain.sh /tmp/
 RUN sh /tmp/build-toolchain.sh
@@ -27,12 +29,15 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
       tar xJf - -C /usr/local/bin --strip-components=1
 
 ENV \
-    AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-ar \
-    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-gcc \
-    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-g++
+    AR_x86_64_unknown_netbsd=x86_64-unknown-netbsd-ar \
+    CC_x86_64_unknown_netbsd=x86_64-unknown-netbsd-gcc \
+    CXX_x86_64_unknown_netbsd=x86_64-unknown-netbsd-g++
 
-ENV RUST_CONFIGURE_ARGS --host=x86_64-unknown-freebsd
+ENV RUST_CONFIGURE_ARGS \
+        --host=x86_64-unknown-netbsd,s390x-unknown-linux-gnu
 ENV SCRIPT \
       python2.7 ../x.py dist \
-        --host x86_64-unknown-freebsd \
-        --target x86_64-unknown-freebsd
+        --host x86_64-unknown-netbsd \
+        --target x86_64-unknown-netbsd \
+        --host s390x-unknown-linux-gnu \
+        --target s390x-unknown-linux-gnu
