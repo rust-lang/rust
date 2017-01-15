@@ -1618,8 +1618,7 @@ fn cookie() -> ! { // error: definition of an unknown language item: `cookie`
 "##,
 
 E0525: r##"
-A closure was attempted to get used whereas it doesn't implement the expected
-trait.
+A closure was used where it didn't implement the expected trait.
 
 Erroneous code example:
 
