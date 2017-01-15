@@ -138,7 +138,7 @@ impl EarlyLintPass for ReturnPass {
         match kind {
             FnKind::ItemFn(.., block) |
             FnKind::Method(.., block) => self.check_block_return(cx, block),
-            FnKind::Closure(body) => self.check_final_expr(cx, body, None),
+            FnKind::Closure(body) => self.check_final_expr(cx, body, Some(body.span)),
         }
     }
 
