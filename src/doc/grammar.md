@@ -795,6 +795,34 @@ never_type : "!" ;
 
 ### Memory allocation and lifetime
 
+#### Temporary lifetimes
+
+```text
+E& = & ET
+   | StructName { ..., f: E&, ... }
+   | [ ..., E&, ... ]
+   | ( ..., E&, ... )
+   | {...; E&}
+   | box E&
+   | E& as ...
+   | ( E& )
+
+P& = ref X
+   | StructName { ..., P&, ... }
+   | VariantName(..., P&, ...)
+   | [ ..., P&, ... ]
+   | ( ..., P&, ... )
+   | box P&
+
+ET = *ET
+   | ET[...]
+   | ET.f
+   | (ET)
+   | <rvalue>
+```
+
+
+
 ### Memory ownership
 
 ### Variables
