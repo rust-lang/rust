@@ -786,11 +786,11 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                 if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
                     check_general_case(cx, name, fun.span, &args[0], &args[1], or_has_args, expr.span);
                 }
-            }
+            },
             hir::ExprMethodCall(fun, _, ref or_args) => {
                 check_general_case(cx, name, fun.span, &args[0], &args[1], !or_args.is_empty(), expr.span)
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }

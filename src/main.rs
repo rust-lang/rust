@@ -234,13 +234,15 @@ pub fn main() {
         } else {
             option_env!("SYSROOT")
                 .map(|s| s.to_owned())
-                .or_else(|| Command::new("rustc")
-                    .arg("--print")
-                    .arg("sysroot")
-                    .output()
-                    .ok()
-                    .and_then(|out| String::from_utf8(out.stdout).ok())
-                    .map(|s| s.trim().to_owned()))
+                .or_else(|| {
+                    Command::new("rustc")
+                        .arg("--print")
+                        .arg("sysroot")
+                        .output()
+                        .ok()
+                        .and_then(|out| String::from_utf8(out.stdout).ok())
+                        .map(|s| s.trim().to_owned())
+                })
                 .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
         };
 
