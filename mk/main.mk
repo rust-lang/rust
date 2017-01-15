@@ -129,7 +129,7 @@ ifdef CFG_DISABLE_OPTIMIZE
   CFG_JEMALLOC_FLAGS += --enable-debug
 else
   # The rtopt cfg turns off runtime sanity checks
-  CFG_RUSTC_FLAGS += -O --cfg rtopt
+  CFG_RUSTC_FLAGS += -C opt-level=2 --cfg rtopt
 endif
 
 CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
