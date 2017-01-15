@@ -317,7 +317,45 @@ let f = plus_one;
 We can then use `f` to call the function:
 
 ```rust
-# fn plus_one(i: i32) -> i32 { i + 1 }
-# let f = plus_one;
 let six = f(5);
 ```
+
+We can accept a function as function argument. Let's assume we have the code:
+
+```rust
+pub struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Point {
+    pub fn new(x: i32, y: i32) -> Self {
+        Point {
+            x: x,
+            y: y,
+        }   
+    }   
+}
+
+pub fn create_point(x: i32, y: i32) -> Point {
+    Point::new(-x, -y) 
+}
+
+pub fn create_my_point(create_point: fn(i32, i32) -> Point) -> Point {
+    create_point(20, 50) 
+}
+```
+
+We can call `create_my_point` with free functions:
+
+```rust
+let my_point = create_my_point(create_point);
+```
+
+We can call `create_my_point` with associated functions:
+
+```rust
+let my_point = create_my_point(Point::new);
+```
+
+But we cannot call `create_my_point` with closures.
