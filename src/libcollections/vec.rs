@@ -84,6 +84,7 @@ use core::ptr::Shared;
 use core::slice;
 
 use super::range::RangeArgument;
+use ::Bound;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
@@ -1060,8 +1061,16 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.lower() {
+            Bound::Included(&start) => start,
+            Bound::Excluded(&start) => start + 1,
+            Bound::Unbounded => 0,
+        };
+        let end = match range.upper() {
+            Bound::Included(&end) => end + 1,
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
         assert!(start <= end);
         assert!(end <= len);
 
