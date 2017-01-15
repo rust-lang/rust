@@ -2903,6 +2903,7 @@ pub trait BoxPlace<Data: ?Sized> : Place<Data> {
 /// should not rely on any implementations of `Carrier` other than `Result`,
 /// i.e., you should not expect `?` to continue to work with `Option`, etc.
 #[unstable(feature = "question_mark_carrier", issue = "31436")]
+#[cfg_attr(not(stage0), rustc_deprecated(since = "", reason = "replaced by `QuestionMark`"))]
 pub trait Carrier {
     /// The type of the value when computation succeeds.
     type Success;
@@ -2910,17 +2911,21 @@ pub trait Carrier {
     type Error;
 
     /// Create a `Carrier` from a success value.
+    #[allow(deprecated)]
     fn from_success(Self::Success) -> Self;
 
     /// Create a `Carrier` from an error value.
+    #[allow(deprecated)]
     fn from_error(Self::Error) -> Self;
 
     /// Translate this `Carrier` to another implementation of `Carrier` with the
     /// same associated types.
+    #[allow(deprecated)]
     fn translate<T>(self) -> T where T: Carrier<Success=Self::Success, Error=Self::Error>;
 }
 
 #[unstable(feature = "question_mark_carrier", issue = "31436")]
+#[allow(deprecated)]
 impl<U, V> Carrier for Result<U, V> {
     type Success = U;
     type Error = V;
@@ -2933,6 +2938,7 @@ impl<U, V> Carrier for Result<U, V> {
         Err(e)
     }
 
+    #[allow(deprecated)]
     fn translate<T>(self) -> T
         where T: Carrier<Success=U, Error=V>
     {
@@ -2945,6 +2951,7 @@ impl<U, V> Carrier for Result<U, V> {
 
 struct _DummyErrorType;
 
+#[allow(deprecated)]
 impl Carrier for _DummyErrorType {
     type Success = ();
     type Error = ();
@@ -2957,9 +2964,55 @@ impl Carrier for _DummyErrorType {
         _DummyErrorType
     }
 
+    #[allow(deprecated)]
     fn translate<T>(self) -> T
         where T: Carrier<Success=(), Error=()>
     {
         T::from_success(())
+    }
+}
+
+/// The `QuestionMark` trait is used to specify the functionality of `?`.
+///
+#[cfg(not(stage0))]
+#[unstable(feature = "question_mark_qm", issue = "31436")]
+pub trait QuestionMark<Done> {
+    ///
+    type Continue;
+    ///
+    fn question_mark(self) -> Try<Self::Continue, Done>;
+}
+
+/// The `Try` enum.
+#[cfg(not(stage0))]
+#[unstable(feature = "question_mark_try", issue = "31436")]
+#[derive(Debug, Copy, Clone)]
+pub enum Try<T, E> {
+    ///
+    Continue(T),
+    ///
+    Done(E),
+}
+
+#[cfg(not(stage0))]
+#[unstable(feature = "question_mark_impl", issue = "31436")]
+impl<T, U, E, F> QuestionMark<Result<U, F>> for Result<T, E>
+    where F: From<E>
+{
+    type Continue = T;
+    fn question_mark(self) -> Try<T, Result<U, F>> {
+        match self {
+            Ok(x) => Try::Continue(x),
+            Err(e) => Try::Done(Err(From::from(e))),
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl QuestionMark<_DummyErrorType> for _DummyErrorType
+{
+    type Continue = Self;
+    fn question_mark(self) -> Try<Self, Self> {
+        Try::Continue(self)
     }
 }
