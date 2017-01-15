@@ -724,7 +724,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     fn check_general_case(
         cx: &LateContext,
         name: &str,
-        fun: &hir::Expr,
+        fun_span: Span,
         self_expr: &hir::Expr,
         arg: &hir::Expr,
         or_has_args: bool,
@@ -765,7 +765,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         let sugg: Cow<_> = match (fn_has_arguments, !or_has_args) {
             (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")).into(),
             (false, false) => format!("|| {}", snippet(cx, arg.span, "..")).into(),
-            (false, true) => snippet(cx, fun.span, ".."),
+            (false, true) => snippet(cx, fun_span, ".."),
         };
 
         span_lint_and_then(cx,
@@ -780,11 +780,17 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     }
 
     if args.len() == 2 {
-        if let hir::ExprCall(ref fun, ref or_args) = args[1].node {
-            let or_has_args = !or_args.is_empty();
-            if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
-                check_general_case(cx, name, fun, &args[0], &args[1], or_has_args, expr.span);
-            }
+        match args[1].node {
+            hir::ExprCall(ref fun, ref or_args) => {
+                let or_has_args = !or_args.is_empty();
+                if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
+                    check_general_case(cx, name, fun.span, &args[0], &args[1], or_has_args, expr.span);
+                }
+            },
+            hir::ExprMethodCall(fun, _, ref or_args) => {
+                check_general_case(cx, name, fun.span, &args[0], &args[1], !or_args.is_empty(), expr.span)
+            },
+            _ => {},
         }
     }
 }
