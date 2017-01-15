@@ -180,6 +180,20 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/%: $$(RT_OUTPUT_DIR_$(2))/% \
 	$$(Q)cp $$< $$@
 endef
 
+ERROR_METADATA_DIR:="tmp/extended-errors"
+
+define TARGET_HOST_RUSTC_CRATE
+# This is solely adding a dependency to ensure that we do the
+# appropriate check for each rustc crate that its associated error
+# diagnostics data has not become stale.
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.syntax: $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.meta.$(4).check-ext-errors
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.meta.$(4).check-ext-errors: $$(RSINPUTS_$(4))
+	$(CFG_SRC_DIR)src/etc/check-error-metadata.py $(ERROR_METADATA_DIR)/lib$(4).json $$(RSINPUTS_$(4))
+	touch $$@
+endef
+
+
 $(foreach source,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
   $(eval $(call TARGET_HOST_RULES,0,$(target),$(source))) \
@@ -195,6 +209,14 @@ $(foreach crate,$(CRATES), \
    $(eval $(call RUST_TARGET_STAGE_N,1,$(target),$(source),$(crate))) \
    $(eval $(call RUST_TARGET_STAGE_N,2,$(target),$(source),$(crate))) \
    $(eval $(call RUST_TARGET_STAGE_N,3,$(target),$(source),$(crate))))))
+
+$(foreach crate,$(RUSTC_CRATES), \
+ $(foreach source,$(CFG_HOST), \
+  $(foreach target,$(CFG_TARGET), \
+   $(eval $(call TARGET_HOST_RUSTC_CRATE,0,$(target),$(source),$(crate))) \
+   $(eval $(call TARGET_HOST_RUSTC_CRATE,1,$(target),$(source),$(crate))) \
+   $(eval $(call TARGET_HOST_RUSTC_CRATE,2,$(target),$(source),$(crate))) \
+   $(eval $(call TARGET_HOST_RUSTC_CRATE,3,$(target),$(source),$(crate))))))
 
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
