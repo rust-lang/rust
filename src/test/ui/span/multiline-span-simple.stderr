@@ -10,10 +10,10 @@ error[E0277]: the trait bound `u32: std::ops::Add<()>` is not satisfied
    | |______________^ ...ending here: the trait `std::ops::Add<()>` is not implemented for `u32`
    |
    = help: the following implementations were found:
-   = help:   <u32 as std::ops::Add>
-   = help:   <&'a u32 as std::ops::Add<u32>>
-   = help:   <u32 as std::ops::Add<&'a u32>>
-   = help:   <&'b u32 as std::ops::Add<&'a u32>>
+             <u32 as std::ops::Add>
+             <&'a u32 as std::ops::Add<u32>>
+             <u32 as std::ops::Add<&'a u32>>
+             <&'b u32 as std::ops::Add<&'a u32>>
 
 error: aborting due to previous error
 

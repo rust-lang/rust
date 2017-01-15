@@ -366,15 +366,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        err.help(&format!("the following implementations were found:"));
-
         let end = cmp::min(4, impl_candidates.len());
-        for candidate in &impl_candidates[0..end] {
-            err.help(&format!("  {:?}", candidate));
-        }
-        if impl_candidates.len() > 4 {
-            err.help(&format!("and {} others", impl_candidates.len()-4));
-        }
+        err.help(&format!("the following implementations were found:{}{}",
+                          &impl_candidates[0..end].iter().map(|candidate| {
+                              format!("\n  {:?}", candidate)
+                          }).collect::<String>(),
+                          if impl_candidates.len() > 4 {
+                              format!("\nand {} others", impl_candidates.len() - 4)
+                          } else {
+                              "".to_owned()
+                          }
+                          ));
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
