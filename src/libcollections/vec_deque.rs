@@ -33,6 +33,7 @@ use core::cmp;
 use alloc::raw_vec::RawVec;
 
 use super::range::RangeArgument;
+use Bound::{Excluded, Included, Unbounded};
 use super::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
@@ -852,8 +853,16 @@ impl<T> VecDeque<T> {
         // and the head/tail values will be restored correctly.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.start() {
+            Included(&n) => n,
+            Excluded(&n) => n + 1,
+            Unbounded    => 0,
+        };
+        let end = match range.end() {
+            Included(&n) => n + 1,
+            Excluded(&n) => n,
+            Unbounded    => len,
+        };
         assert!(start <= end, "drain lower bound was too large");
         assert!(end <= len, "drain upper bound was too large");
 

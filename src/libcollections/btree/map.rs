@@ -17,7 +17,8 @@ use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{self, Excluded, Included, Unbounded};
+use Bound::{Excluded, Included, Unbounded};
+use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -654,10 +655,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_right_edge();
     }
 
-    /// Constructs a double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range synax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
     ///
     /// # Examples
     ///
@@ -667,26 +670,25 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// #![feature(btree_range, collections_bound)]
     ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Unbounded};
+    /// use std::collections::Bound::Included;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(3, "a");
     /// map.insert(5, "b");
     /// map.insert(8, "c");
-    /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
+    /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<Min: ?Sized + Ord, Max: ?Sized + Ord>(&self,
-                                                       min: Bound<&Min>,
-                                                       max: Bound<&Max>)
-                                                       -> Range<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
+        let min = range.start();
+        let max = range.end();
         let front = match min {
             Included(key) => {
                 match search::search_tree(self.root.as_ref(), key) {
@@ -745,25 +747,26 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range synax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
+    /// #![feature(btree_range)]
     ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Excluded};
     ///
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
     ///                                                                       .collect();
-    /// for (_, balance) in map.range_mut(Included("B"), Excluded("Cheryl")) {
+    /// for (_, balance) in map.range_mut("B".."Cheryl") {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
@@ -773,12 +776,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range_mut<Min: ?Sized + Ord, Max: ?Sized + Ord>(&mut self,
-                                                           min: Bound<&Min>,
-                                                           max: Bound<&Max>)
-                                                           -> RangeMut<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
+        let min = range.start();
+        let max = range.end();
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
 

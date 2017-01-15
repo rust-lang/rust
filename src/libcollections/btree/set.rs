@@ -21,7 +21,7 @@ use core::ops::{BitOr, BitAnd, BitXor, Sub};
 use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use super::Recover;
-use Bound;
+use range::RangeArgument;
 
 // FIXME(conventions): implement bounded iterators
 
@@ -207,10 +207,12 @@ impl<T> BTreeSet<T> {
 }
 
 impl<T: Ord> BTreeSet<T> {
-    /// Constructs a double-ended iterator over a sub-range of elements in the set, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a double-ended iterator over a sub-range of elements in the set.
+    /// The simplest way is to use the range synax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
     ///
     /// # Examples
     ///
@@ -218,27 +220,24 @@ impl<T: Ord> BTreeSet<T> {
     /// #![feature(btree_range, collections_bound)]
     ///
     /// use std::collections::BTreeSet;
-    /// use std::collections::Bound::{Included, Unbounded};
+    /// use std::collections::Bound::Included;
     ///
     /// let mut set = BTreeSet::new();
     /// set.insert(3);
     /// set.insert(5);
     /// set.insert(8);
-    /// for &elem in set.range(Included(&4), Included(&8)) {
+    /// for &elem in set.range((Included(&4), Included(&8))) {
     ///     println!("{}", elem);
     /// }
-    /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<'a, Min: ?Sized + Ord, Max: ?Sized + Ord>(&'a self,
-                                                           min: Bound<&Min>,
-                                                           max: Bound<&Max>)
-                                                           -> Range<'a, T>
-        where T: Borrow<Min> + Borrow<Max>
+    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
+        where K: Ord, T: Borrow<K>, R: RangeArgument<K>
     {
-        Range { iter: self.map.range(min, max) }
+        Range { iter: self.map.range(range) }
     }
 }
 

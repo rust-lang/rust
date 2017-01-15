@@ -19,6 +19,7 @@ use std::slice;
 use std::fmt;
 use std::mem;
 use std::collections::range::RangeArgument;
+use std::collections::Bound::{Excluded, Included, Unbounded};
 
 pub unsafe trait Array {
     type Element;
@@ -119,8 +120,16 @@ impl<A: Array> ArrayVec<A> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.start() {
+            Included(&n) => n,
+            Excluded(&n) => n + 1,
+            Unbounded    => 0,
+        };
+        let end = match range.end() {
+            Included(&n) => n + 1,
+            Excluded(&n) => n,
+            Unbounded    => len,
+        };
         assert!(start <= end);
         assert!(end <= len);
 
