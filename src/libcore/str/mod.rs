@@ -164,10 +164,10 @@ impl Utf8Error {
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
-/// this function, [`from_utf8_unchecked()`][fromutf8u], which has the same
-/// behavior but skips the check.
+/// this function, [`from_utf8_unchecked()`], which has the same behavior but
+/// skips the check.
 ///
-/// [fromutf8u]: fn.from_utf8_unchecked.html
+/// [`from_utf8_unchecked()`]: #method.from_utf8_unchecked
 ///
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8()`][string].
