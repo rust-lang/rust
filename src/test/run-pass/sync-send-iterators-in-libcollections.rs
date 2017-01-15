@@ -57,11 +57,11 @@ fn main() {
     all_sync_send!(BinaryHeap::<usize>::new(), iter, drain, into_iter);
 
     all_sync_send!(BTreeMap::<usize, usize>::new(), iter, iter_mut, into_iter, keys, values);
-    is_sync_send!(BTreeMap::<usize, usize>::new(), range(Included(&0), Included(&9)));
-    is_sync_send!(BTreeMap::<usize, usize>::new(), range_mut(Included(&0), Included(&9)));
+    is_sync_send!(BTreeMap::<usize, usize>::new(), range((Included(&0), Included(&9))));
+    is_sync_send!(BTreeMap::<usize, usize>::new(), range_mut((Included(&0), Included(&9))));
 
     all_sync_send!(BTreeSet::<usize>::new(), iter, into_iter);
-    is_sync_send!(BTreeSet::<usize>::new(), range(Included(&0), Included(&9)));
+    is_sync_send!(BTreeSet::<usize>::new(), range((Included(&0), Included(&9))));
     is_sync_send!(BTreeSet::<usize>::new(), difference(&BTreeSet::<usize>::new()));
     is_sync_send!(BTreeSet::<usize>::new(), symmetric_difference(&BTreeSet::<usize>::new()));
     is_sync_send!(BTreeSet::<usize>::new(), intersection(&BTreeSet::<usize>::new()));

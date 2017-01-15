@@ -170,7 +170,7 @@ fn test_range_small() {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     let mut j = 0;
-    for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(2..size) {
+    for ((&k, &v), i) in map.range(2..).zip(2..size) {
         assert_eq!(k, i);
         assert_eq!(v, i);
         j += 1;
@@ -184,7 +184,7 @@ fn test_range_1000() {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
-        let mut kvs = map.range(min, max).map(|(&k, &v)| (k, v));
+        let mut kvs = map.range((min, max)).map(|(&k, &v)| (k, v));
         let mut pairs = (0..size).map(|i| (i, i));
 
         for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
@@ -202,13 +202,46 @@ fn test_range_1000() {
 }
 
 #[test]
+fn test_range_borrowed_key() {
+    let mut map = BTreeMap::new();
+    map.insert("aardvark".to_string(), 1);
+    map.insert("baboon".to_string(), 2);
+    map.insert("coyote".to_string(), 3);
+    map.insert("dingo".to_string(), 4);
+    // NOTE: would like to use simply "b".."d" here...
+    let mut iter = map.range::<str, _>((Included("b"),Excluded("d")));
+    assert_eq!(iter.next(), Some((&"baboon".to_string(), &2)));
+    assert_eq!(iter.next(), Some((&"coyote".to_string(), &3)));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_range() {
     let size = 200;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in 0..size {
         for j in i..size {
-            let mut kvs = map.range(Included(&i), Included(&j)).map(|(&k, &v)| (k, v));
+            let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
+            let mut pairs = (i..j + 1).map(|i| (i, i));
+
+            for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
+                assert_eq!(kv, pair);
+            }
+            assert_eq!(kvs.next(), None);
+            assert_eq!(pairs.next(), None);
+        }
+    }
+}
+
+#[test]
+fn test_range_mut() {
+    let size = 200;
+    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+
+    for i in 0..size {
+        for j in i..size {
+            let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
             let mut pairs = (i..j + 1).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {

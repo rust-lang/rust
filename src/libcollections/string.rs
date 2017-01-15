@@ -68,6 +68,7 @@ use std_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
+use Bound::{Excluded, Included, Unbounded};
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
@@ -1350,8 +1351,16 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.start() {
+            Included(&n) => n,
+            Excluded(&n) => n + 1,
+            Unbounded => 0,
+        };
+        let end = match range.end() {
+            Included(&n) => n + 1,
+            Excluded(&n) => n,
+            Unbounded => len,
+        };
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
