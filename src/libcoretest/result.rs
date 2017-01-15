@@ -202,3 +202,12 @@ pub fn test_unwrap_or_default() {
     assert_eq!(op1().unwrap_or_default(), 666);
     assert_eq!(op2().unwrap_or_default(), 0);
 }
+
+#[test]
+pub fn test_ignore() {
+    let ok: Result<int, &'static str> = Ok(100i);
+    let ok_err: Result<int, &'static str> = Err("Err");
+
+    ok.ignore();
+    ok_err.ignore();
+}
