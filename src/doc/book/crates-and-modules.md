@@ -103,6 +103,16 @@ parent module, the names don’t conflict: `english::greetings` and
 `japanese::greetings` are distinct, even though their names are both
 `greetings`.
 
+Before we build it, we need a bit configuration in the `Cargo.toml` file in the root folder of your project:
+
+```toml
+[package]
+
+name = "phrases"
+version = "0.0.1"
+authors = [ "Your name <you@example.com>" ]
+```
+
 Because this crate does not have a `main()` function, and is called `lib.rs`,
 Cargo will build this crate as a library:
 
@@ -277,6 +287,20 @@ rather than a library crate. Our package now has two crates: `src/lib.rs` and
 functionality is in a library crate, and the executable crate uses that
 library. This way, other programs can also use the library crate, and it’s also
 a nice separation of concerns.
+
+Since we have added a `main.rs` file, we need to change the `Cargo.toml` a bit, like this:
+
+```toml
+[package]
+
+name = "phrases"
+version = "0.0.1"
+authors = [ "Your name <you@example.com>" ]
+
+[[bin]]
+
+name = "usephrases"
+```
 
 This doesn’t quite work yet, though. We get four errors that look similar to
 this:
@@ -591,3 +615,5 @@ use sayings::english::farewells as en_farewells;
 As you can see, the curly brackets compress `use` statements for several items
 under the same path, and in this context `self` refers back to that path.
 Note: The curly brackets cannot be nested or mixed with star globbing.
+
+You can browse the entire project (with various branches) [here](https://github.com/kindlychung/rustbook-phrases). 
