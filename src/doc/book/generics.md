@@ -22,7 +22,7 @@ we substitute that type for the same type used in the generic. Here’s an
 example of using `Option<T>`, with some extra type annotations:
 
 ```rust
-let x: Option<i32> = Some(5);
+let x: Option<i32> = Option::Some(5);
 ```
 
 In the type declaration, we say `Option<i32>`. Note how similar this looks to
@@ -32,7 +32,7 @@ Since that’s an `i32`, the two sides match, and Rust is happy. If they didn’
 match, we’d get an error:
 
 ```rust,ignore
-let x: Option<f64> = Some(5);
+let x: Option<f64> = Option::Some(5);
 // error: mismatched types: expected `core::option::Option<f64>`,
 // found `core::option::Option<_>` (expected f64 but found integral variable)
 ```
@@ -41,8 +41,8 @@ That doesn’t mean we can’t make `Option<T>`s that hold an `f64`! They have
 to match up:
 
 ```rust
-let x: Option<i32> = Some(5);
-let y: Option<f64> = Some(5.0f64);
+let x: Option<i32> = Option::Some(5);
+let y: Option<f64> = Option::Some(5.0f64);
 ```
 
 This is just fine. One definition, multiple uses.
