@@ -148,9 +148,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::ZExt;
   case InReg:
     return Attribute::InReg;
-  default:
-    llvm_unreachable("bad AttributeKind");
   }
+  llvm_unreachable("bad AttributeKind");
 }
 
 extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
@@ -1233,9 +1232,8 @@ static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
     return LLVMExternalWeakLinkage;
   case LLVMRustLinkage::CommonLinkage:
     return LLVMCommonLinkage;
-  default:
-    llvm_unreachable("Invalid LLVMRustLinkage value!");
   }
+  llvm_unreachable("Invalid LLVMRustLinkage value!");
 }
 
 extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
@@ -1282,10 +1280,8 @@ static LLVMRustVisibility toRust(LLVMVisibility Vis) {
     return LLVMRustVisibility::Hidden;
   case LLVMProtectedVisibility:
     return LLVMRustVisibility::Protected;
-
-  default:
-    llvm_unreachable("Invalid LLVMRustVisibility value!");
   }
+  llvm_unreachable("Invalid LLVMRustVisibility value!");
 }
 
 static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
@@ -1296,10 +1292,8 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
     return LLVMHiddenVisibility;
   case LLVMRustVisibility::Protected:
     return LLVMProtectedVisibility;
-
-  default:
-    llvm_unreachable("Invalid LLVMRustVisibility value!");
   }
+  llvm_unreachable("Invalid LLVMRustVisibility value!");
 }
 
 extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
