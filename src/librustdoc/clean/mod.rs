@@ -150,8 +150,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     name: Some(prim.to_url_str().to_string()),
                     attrs: attrs.clone(),
                     visibility: Some(Public),
-                    stability: None,
-                    deprecation: None,
+                    stability: get_stability(cx, def_id),
+                    deprecation: get_deprecation(cx, def_id),
                     def_id: def_id,
                     inner: PrimitiveItem(prim),
                 }
