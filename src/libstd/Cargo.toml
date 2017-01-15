@@ -31,4 +31,5 @@ gcc = "0.3.27"
 backtrace = []
 debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
+force_alloc_system = []
 panic-unwind = ["panic_unwind"]

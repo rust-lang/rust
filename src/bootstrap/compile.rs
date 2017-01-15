@@ -42,7 +42,16 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
-    cargo.arg("--features").arg(build.std_features())
+    let mut features = build.std_features();
+    // When doing a local rebuild we tell cargo that we're stage1 rather than
+    // stage0. This works fine if the local rust and being-built rust have the
+    // same view of what the default allocator is, but fails otherwise. Since
+    // we don't have a way to express an allocator preference yet, work
+    // around the issue in the case of a local rebuild with jemalloc disabled.
+    if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
+        features.push_str(" force_alloc_system");
+    }
+    cargo.arg("--features").arg(features)
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
 
