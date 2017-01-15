@@ -501,4 +501,18 @@ impl Process {
         self.status = Some(ExitStatus(status as i32));
         Ok(ExitStatus(status as i32))
     }
+
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        if let Some(status) = self.status {
+            return Ok(status)
+        }
+        let mut status = 0;
+        let pid = cvt(syscall::waitpid(self.pid, &mut status, syscall::WNOHANG))?;
+        if pid == 0 {
+            Err(io::Error::from_raw_os_error(syscall::EWOULDBLOCK))
+        } else {
+            self.status = Some(ExitStatus(status as i32));
+            Ok(ExitStatus(status as i32))
+        }
+    }
 }
