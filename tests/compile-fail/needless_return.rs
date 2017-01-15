@@ -58,6 +58,10 @@ fn test_closure() {
         //~| HELP remove `return` as shown
         //~| SUGGESTION true
     };
+    let _ = || return true;
+    //~^ ERROR unneeded return statement
+    //~| HELP remove `return` as shown
+    //~| SUGGESTION true
 }
 
 fn main() {
