@@ -1099,6 +1099,16 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        let (mut c, mut predicate, mut iter) = (0, self.predicate, self.iter);
+        for x in iter.by_ref() {
+            // branchless count
+            c += (&mut predicate)(&x) as usize;
+        }
+        c
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
