@@ -126,6 +126,12 @@ impl DepGraph {
     pub fn work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
         self.data.work_products.borrow()
     }
+
+    /// Access the map of work-products created during the cached run. Only
+    /// used during saving of the dep-graph.
+    pub fn previous_work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
+        self.data.previous_work_products.borrow()
+    }
 }
 
 /// A "work product" is an intermediate result that we save into the
