@@ -145,6 +145,7 @@ pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
 pub mod map_clone;
+pub mod map_nil_fn;
 pub mod matches;
 pub mod mem_forget;
 pub mod methods;
@@ -405,6 +406,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
+    reg.register_late_lint_pass(box map_nil_fn::Pass);
 
 
     reg.register_lint_group("clippy_restriction", vec![
@@ -441,6 +443,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
+        map_nil_fn::OPTION_MAP_NIL_FN,
         matches::SINGLE_MATCH_ELSE,
         methods::FILTER_MAP,
         methods::OPTION_MAP_UNWRAP_OR,
