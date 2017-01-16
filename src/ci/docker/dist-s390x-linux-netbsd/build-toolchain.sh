@@ -31,9 +31,13 @@ rm -rf binutils
 
 # Next, download the NetBSD libc and relevant header files
 mkdir netbsd
-curl https://ftp.netbsd.org/pub/NetBSD/NetBSD-7.0/amd64/binary/sets/base.tgz | \
+# originally from:
+# https://ftp.netbsd.org/pub/NetBSD/NetBSD-7.0/amd64/binary/sets/base.tgz
+curl https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-01-16-netbsd-base.tgz | \
   tar xzf - -C netbsd ./usr/include ./usr/lib ./lib
-curl https://ftp.netbsd.org/pub/NetBSD/NetBSD-7.0/amd64/binary/sets/comp.tgz | \
+# originally from:
+# https://ftp.netbsd.org/pub/NetBSD/NetBSD-7.0/amd64/binary/sets/comp.tgz
+curl https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-01-16-netbsd-comp.tgz | \
   tar xzf - -C netbsd ./usr/include ./usr/lib
 
 dst=/usr/local/x86_64-unknown-netbsd
