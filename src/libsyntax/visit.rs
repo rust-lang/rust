@@ -508,12 +508,11 @@ pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics
                 visitor.visit_lifetime(lifetime);
                 walk_list!(visitor, visit_lifetime, bounds);
             }
-            WherePredicate::EqPredicate(WhereEqPredicate{id,
-                                                         ref path,
-                                                         ref ty,
+            WherePredicate::EqPredicate(WhereEqPredicate{ref lhs_ty,
+                                                         ref rhs_ty,
                                                          ..}) => {
-                visitor.visit_path(path, id);
-                visitor.visit_ty(ty);
+                visitor.visit_ty(lhs_ty);
+                visitor.visit_ty(rhs_ty);
             }
         }
     }

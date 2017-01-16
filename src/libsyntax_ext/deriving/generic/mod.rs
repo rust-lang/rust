@@ -558,8 +558,8 @@ impl<'a> TraitDef<'a> {
                     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                         id: ast::DUMMY_NODE_ID,
                         span: self.span,
-                        path: we.path.clone(),
-                        ty: we.ty.clone(),
+                        lhs_ty: we.lhs_ty.clone(),
+                        rhs_ty: we.rhs_ty.clone(),
                     })
                 }
             }

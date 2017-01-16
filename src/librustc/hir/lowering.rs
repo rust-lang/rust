@@ -719,13 +719,13 @@ impl<'a> LoweringContext<'a> {
                 })
             }
             WherePredicate::EqPredicate(WhereEqPredicate{ id,
-                                                          ref path,
-                                                          ref ty,
+                                                          ref lhs_ty,
+                                                          ref rhs_ty,
                                                           span}) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     id: id,
-                    path: self.lower_path(id, path, ParamMode::Explicit, false),
-                    ty: self.lower_ty(ty),
+                    lhs_ty: self.lower_ty(lhs_ty),
+                    rhs_ty: self.lower_ty(rhs_ty),
                     span: span,
                 })
             }

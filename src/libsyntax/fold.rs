@@ -766,13 +766,13 @@ pub fn noop_fold_where_predicate<T: Folder>(
             })
         }
         ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
-                                                               path,
-                                                               ty,
+                                                               lhs_ty,
+                                                               rhs_ty,
                                                                span}) => {
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{
                 id: fld.new_id(id),
-                path: fld.fold_path(path),
-                ty:fld.fold_ty(ty),
+                lhs_ty: fld.fold_ty(lhs_ty),
+                rhs_ty: fld.fold_ty(rhs_ty),
                 span: fld.new_span(span)
             })
         }
