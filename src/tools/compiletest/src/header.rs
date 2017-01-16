@@ -80,17 +80,22 @@ impl EarlyProps {
 
             if let Some(actual_version) = config.gdb_version {
                 if line.contains("min-gdb-version") {
-                    let min_version = extract_gdb_version_range(line);
+                    let (start_ver, end_ver) = extract_gdb_version_range(line);
 
-                    if min_version.0 != min_version.1 {
+                    if start_ver != end_ver {
                         panic!("Expected single GDB version")
                     }
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < min_version.0
+                    actual_version < start_ver
                 } else if line.contains("ignore-gdb-version") {
-                    let version_range = extract_gdb_version_range(line);
-                    actual_version >= version_range.0 && actual_version <= version_range.1
+                    let (min_version, max_version) = extract_gdb_version_range(line);
+
+                    if max_version < min_version {
+                        panic!("Malformed GDB version range: max < min")
+                    }
+
+                    actual_version >= min_version && actual_version <= max_version
                 } else {
                     false
                 }
@@ -99,6 +104,11 @@ impl EarlyProps {
             }
         }
 
+        // Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
+        // returns the numeric representation of <version1> and <version2> as
+        // tuple: (<version1> as u32, <version2> as u32)
+        // If the <version2> part is omitted, the second component of the tuple
+        // is the same as <version1>.
         fn extract_gdb_version_range(line: &str) -> (u32, u32) {
             const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
 
@@ -109,7 +119,6 @@ impl EarlyProps {
                                        .collect::<Vec<&str>>();
 
             match range_components.len() {
-                0 => panic!(ERROR_MESSAGE),
                 1 => {
                     let v = extract_gdb_version(range_components[0]).unwrap();
                     (v, v)
