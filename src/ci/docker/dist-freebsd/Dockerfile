@@ -35,11 +35,8 @@ ENV \
     CC_i686_unknown_freebsd=i686-unknown-freebsd10-gcc \
     CXX_i686_unknown_freebsd=i686-unknown-freebsd10-g++
 
-ENV RUST_CONFIGURE_ARGS \
-        --host=x86_64-unknown-freebsd,i686-unknown-freebsd
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host x86_64-unknown-freebsd \
-        --target x86_64-unknown-freebsd \
-        --host i686-unknown-freebsd \
-        --target i686-unknown-freebsd
+ENV HOSTS=x86_64-unknown-freebsd
+ENV HOSTS=$HOSTS,i686-unknown-freebsd
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

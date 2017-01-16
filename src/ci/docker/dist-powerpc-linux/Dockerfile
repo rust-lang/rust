@@ -23,12 +23,10 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV RUST_CONFIGURE_ARGS \
-      --host=powerpc-unknown-linux-gnu
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host powerpc-unknown-linux-gnu \
-        --target powerpc-unknown-linux-gnu
+ENV HOSTS=powerpc-unknown-linux-gnu
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
 
 # FIXME(#36150) this will fail the bootstrap. Probably means something bad is
 #               happening!
