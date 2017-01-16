@@ -596,7 +596,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_params(&mut self, tps: &P<[TyParam]>, add_bounds: &NodeMap<Vec<TyParamBound>>)
+    fn lower_ty_params(&mut self, tps: &Vec<TyParam>, add_bounds: &NodeMap<Vec<TyParamBound>>)
                        -> hir::HirVec<hir::TyParam> {
         tps.iter().map(|tp| {
             self.lower_ty_param(tp, add_bounds.get(&tp.id).map_or(&[][..], |x| &x))

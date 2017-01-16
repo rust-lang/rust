@@ -67,9 +67,6 @@ pub trait AstBuilder {
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
 
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
-
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
@@ -333,8 +330,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
+                types: types,
+                bindings: bindings,
             })))
         };
         segments.push(ast::PathSegment { identifier: last_identifier, parameters: parameters });
@@ -369,8 +366,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let mut path = trait_path;
         let parameters = ast::AngleBracketedParameterData {
             lifetimes: lifetimes,
-            types: P::from_vec(types),
-            bindings: P::from_vec(bindings),
+            types: types,
+            bindings: bindings,
         };
         path.segments.push(ast::PathSegment {
             identifier: ident,
@@ -456,20 +453,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             default: default,
             span: span
         }
-    }
-
-    // these are strange, and probably shouldn't be used outside of
-    // pipes. Specifically, the global version possible generates
-    // incorrect code.
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
-        ty_params.iter().map(|p| self.ty_ident(DUMMY_SP, p.ident)).collect()
-    }
-
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
-        ty_params
-            .iter()
-            .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec![p.ident])))
-            .collect()
     }
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {

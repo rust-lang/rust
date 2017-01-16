@@ -1009,7 +1009,7 @@ impl<'a> State<'a> {
             ast::TyKind::BareFn(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: P::new(),
+                    ty_params: Vec::new(),
                     where_clause: ast::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -2973,7 +2973,7 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             lifetimes: Vec::new(),
-            ty_params: P::new(),
+            ty_params: Vec::new(),
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
