@@ -60,14 +60,14 @@ pub fn qquote<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
 struct QDelimited {
     delim: token::DelimToken,
     open_span: Span,
-    tts: Vec<QTT>,
+    tts: Vec<Qtt>,
     close_span: Span,
 }
 
 #[derive(Debug)]
-enum QTT {
+enum Qtt {
     TT(TokenTree),
-    QDL(QDelimited),
+    Delimited(QDelimited),
     QIdent(TokenTree),
 }
 
@@ -103,10 +103,10 @@ fn qquoter<'cx>(cx: &'cx mut ExtCtxt, ts: TokenStream) -> TokenStream {
    }
 }
 
-fn qquote_iter<'cx>(cx: &'cx mut ExtCtxt, depth: i64, ts: TokenStream) -> (Bindings, Vec<QTT>) {
+fn qquote_iter<'cx>(cx: &'cx mut ExtCtxt, depth: i64, ts: TokenStream) -> (Bindings, Vec<Qtt>) {
     let mut depth = depth;
     let mut bindings: Bindings = Vec::new();
-    let mut output: Vec<QTT> = Vec::new();
+    let mut output: Vec<Qtt> = Vec::new();
 
     let mut iter = ts.iter();
 
@@ -133,10 +133,10 @@ fn qquote_iter<'cx>(cx: &'cx mut ExtCtxt, depth: i64, ts: TokenStream) -> (Bindi
                     for b in bindings.clone() {
                         debug!("{:?} = {}", b.0, pprust::tts_to_string(&b.1.to_tts()[..]));
                     }
-                    output.push(QTT::QIdent(as_tt(Token::Ident(new_id.clone()))));
+                    output.push(Qtt::QIdent(as_tt(Token::Ident(new_id.clone()))));
                 } else {
                     depth = depth - 1;
-                    output.push(QTT::TT(next.clone()));
+                    output.push(Qtt::TT(next.clone()));
                 }
             }
             TokenTree::Token(_, Token::Ident(id)) if is_qquote(id) => {
@@ -144,21 +144,21 @@ fn qquote_iter<'cx>(cx: &'cx mut ExtCtxt, depth: i64, ts: TokenStream) -> (Bindi
             }
             TokenTree::Delimited(_, ref dl) => {
                 let br = qquote_iter(cx, depth, TokenStream::from_tts(dl.tts.clone().to_owned()));
-                let mut bind_ = br.0;
-                let res_ = br.1;
-                bindings.append(&mut bind_);
+                let mut nested_bindings = br.0;
+                let nested = br.1;
+                bindings.append(&mut nested_bindings);
 
                 let new_dl = QDelimited {
                     delim: dl.delim,
                     open_span: dl.open_span,
-                    tts: res_,
+                    tts: nested,
                     close_span: dl.close_span,
                 };
 
-                output.push(QTT::QDL(new_dl));
+                output.push(Qtt::Delimited(new_dl));
             }
             t => {
-                output.push(QTT::TT(t));
+                output.push(Qtt::TT(t));
             }
         }
     }
@@ -188,9 +188,9 @@ fn unravel_concats(tss: Vec<TokenStream>) -> TokenStream {
     output
 }
 
-/// This converts the vector of QTTs into a seet of Bindings for construction and the main
+/// This converts the vector of Qtts into a set of Bindings for construction and the main
 /// body as a TokenStream.
-fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<QTT>) -> (Bindings, TokenStream) {
+fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<Qtt>) -> (Bindings, TokenStream) {
     let mut pushes: Vec<TokenStream> = Vec::new();
     let mut bindings: Bindings = Vec::new();
 
@@ -203,28 +203,37 @@ fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<QTT>) -> (Bindings, T
         }
         let next = next.unwrap();
         match next {
-            QTT::TT(TokenTree::Token(_, t)) => {
+            Qtt::TT(TokenTree::Token(_, t)) => {
                 let token_out = emit_token(t);
                 pushes.push(token_out);
             }
             // FIXME handle sequence repetition tokens
-            QTT::QDL(qdl) => {
-                debug!("  QDL: {:?} ", qdl.tts);
-                let new_id = Ident::with_empty_ctxt(Symbol::gensym("qdl_tmp"));
-                let mut cct_rec = convert_complex_tts(cx, qdl.tts);
-                bindings.append(&mut cct_rec.0);
-                bindings.push((new_id, cct_rec.1));
+            Qtt::Delimited(qdl) => {
+                debug!("  Delimited: {:?} ", qdl.tts);
+                let fresh_id = Ident::with_empty_ctxt(Symbol::gensym("qdl_tmp"));
+                let (mut nested_bindings, nested_toks) = convert_complex_tts(cx, qdl.tts);
 
-                let sep = build_delim_tok(qdl.delim);
+                let body = if nested_toks.is_empty() {
+                    assert!(nested_bindings.is_empty());
+                    build_mod_call(vec![Ident::from_str("TokenStream"),
+                                        Ident::from_str("mk_empty")],
+                                   TokenStream::mk_empty())
+                } else {
+                    bindings.append(&mut nested_bindings);
+                    bindings.push((fresh_id, nested_toks));
+                    TokenStream::from_tokens(vec![Token::Ident(fresh_id)])
+                };
 
-                pushes.push(build_mod_call(
-                    vec![Ident::from_str("proc_macro_tokens"),
-                         Ident::from_str("build"),
-                         Ident::from_str("build_delimited")],
-                    concat(from_tokens(vec![Token::Ident(new_id)]), concat(lex(","), sep)),
-                ));
+                let delimitiers = build_delim_tok(qdl.delim);
+
+                pushes.push(build_mod_call(vec![Ident::from_str("proc_macro_tokens"),
+                                                Ident::from_str("build"),
+                                                Ident::from_str("build_delimited")],
+                                           flatten(vec![body,
+                                                        lex(","),
+                                                        delimitiers].into_iter())));
             }
-            QTT::QIdent(t) => {
+            Qtt::QIdent(t) => {
                 pushes.push(TokenStream::from_tts(vec![t]));
                 pushes.push(TokenStream::mk_empty());
             }
@@ -240,14 +249,8 @@ fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<QTT>) -> (Bindings, T
 // Utilities
 
 /// Unravels Bindings into a TokenStream of `let` declarations.
-fn unravel(binds: Bindings) -> TokenStream {
-    let mut output = TokenStream::mk_empty();
-
-    for b in binds {
-        output = concat(output, build_let(b.0, b.1));
-    }
-
-    output
+fn unravel(bindings: Bindings) -> TokenStream {
+    flatten(bindings.into_iter().map(|(a, b)| build_let(a, b)))
 }
 
 /// Checks if the Ident is `unquote`.
