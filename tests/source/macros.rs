@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 itemmacro!(this, is.now() .formatted(yay));
 
 itemmacro!(really, long.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbb() .is.formatted());

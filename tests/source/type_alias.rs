@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 
 type PrivateTest<'a, I> = (Box<Parser<Input=I, Output=char> + 'a>, Box<Parser<Input=I, Output=char> + 'a>);
 

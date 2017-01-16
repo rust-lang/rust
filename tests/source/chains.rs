@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // rustfmt-single_line_if_else_max_width: 0
 // Test chain formatting.
 

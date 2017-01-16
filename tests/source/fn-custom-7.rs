@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // rustfmt-fn_args_layout: BlockAlways
 // rustfmt-fn_args_density: Vertical
 // rustfmt-fn_arg_indent: Tabbed

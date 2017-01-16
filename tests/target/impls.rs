@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 impl Foo for Bar {
     fn foo() {
         "hi"

@@ -1,3 +1,5 @@
+// rustfmt-normalize_comments: true
+
 fn main() {
 	if /* shouldn't be dropped
 	shouldn't be dropped */

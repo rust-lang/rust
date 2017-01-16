@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // rustfmt-condense_wildcard_suffices: true
 
 fn main() {

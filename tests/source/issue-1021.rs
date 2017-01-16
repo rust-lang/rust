@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 fn main() {
     match x {
         S(true , .., true ) => (),

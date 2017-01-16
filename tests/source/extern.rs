@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 
  extern  "C" {
   fn c_func(x: *mut *mut libc::c_void);

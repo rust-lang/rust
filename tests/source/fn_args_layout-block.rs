@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // rustfmt-fn_args_layout: Block
 
 fn foo() {

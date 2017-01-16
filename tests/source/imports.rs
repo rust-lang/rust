@@ -1,3 +1,5 @@
+// rustfmt-normalize_comments: true
+
 // Imports.
 
 // Long import.

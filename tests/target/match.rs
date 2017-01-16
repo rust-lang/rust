@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // Match expressions.
 
 fn foo() {

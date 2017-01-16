@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 
 fn simple(// pre-comment on a function!?
           i: i32, // yes, it's possible!

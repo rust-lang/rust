@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 // rustfmt-wrap_comments: true
 
                                                                        /// A Doc comment
