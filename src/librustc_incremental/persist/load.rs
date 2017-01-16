@@ -18,7 +18,6 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
-use std::fs;
 use std::path::{Path};
 
 use IncrementalHashesMap;
@@ -29,6 +28,7 @@ use super::dirty_clean;
 use super::hash::*;
 use super::fs::*;
 use super::file_format;
+use super::work_product;
 
 pub type DirtyNodes = FxHashSet<DepNode<DefPathIndex>>;
 
@@ -322,17 +322,7 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn delete_dirty_work_product(tcx: TyCtxt,
                              swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
-    for &(_, ref file_name) in &swp.work_product.saved_files {
-        let path = in_incr_comp_dir_sess(tcx.sess, file_name);
-        match fs::remove_file(&path) {
-            Ok(()) => { }
-            Err(err) => {
-                tcx.sess.warn(
-                    &format!("file-system error deleting outdated file `{}`: {}",
-                             path.display(), err));
-            }
-        }
-    }
+    work_product::delete_workproduct_files(tcx.sess, &swp.work_product);
 }
 
 fn load_prev_metadata_hashes(tcx: TyCtxt,

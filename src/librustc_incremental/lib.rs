@@ -57,3 +57,4 @@ pub use persist::save_trans_partition;
 pub use persist::save_work_products;
 pub use persist::in_incr_comp_dir;
 pub use persist::finalize_session_directory;
+pub use persist::delete_workproduct_files;
