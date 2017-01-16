@@ -1,3 +1,4 @@
+// rustfmt-normalize_comments: true
 
 fn main() {
     let constellation_chan =

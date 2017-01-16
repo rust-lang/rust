@@ -38,9 +38,21 @@ pub fn rewrite_comment(orig: &str,
                        offset: Indent,
                        config: &Config)
                        -> Option<String> {
-    let s = orig.trim();
+    // If there are lines without a starting sigil, we won't format them correctly
+    // so in that case we won't even re-align (if !config.normalize_comments) and
+    // we should stop now.
+    let num_bare_lines = orig.lines()
+        .map(|line| line.trim())
+        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
+        .count();
+    if num_bare_lines > 0 && !config.normalize_comments {
+        return Some(orig.to_owned());
+    }
 
-    // Edge case: block comments. Let's not trim their lines (for now).
+    if !config.normalize_comments && !config.wrap_comments {
+        return light_rewrite_comment(orig, offset, config);
+    }
+
     let (opener, closer, line_start) =
         if block_style {
             ("/* ", " */", " * ")
@@ -74,7 +86,7 @@ pub fn rewrite_comment(orig: &str,
         };
 
     let max_chars = width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
-
+    let indent_str = offset.to_string(config);
     let fmt = StringFormat {
         opener: "",
         closer: "",
@@ -86,29 +98,17 @@ pub fn rewrite_comment(orig: &str,
         config: config,
     };
 
-    let indent_str = offset.to_string(config);
-    let line_breaks = s.chars().filter(|&c| c == '\n').count();
-
-    let num_bare_lines = s.lines()
-        .enumerate()
-        .map(|(_, line)| line.trim())
-        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
-        .count();
-
-    if num_bare_lines > 0 && !config.normalize_comments {
-        return Some(orig.to_owned());
-    }
-
-    let lines = s.lines()
+    let line_breaks = orig.trim_right().chars().filter(|&c| c == '\n').count();
+    let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {
             line = line.trim();
             // Drop old closer.
             if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                line = &line[..(line.len() - 2)];
+                line = &line[..(line.len() - 2)].trim_right();
             }
 
-            line.trim_right()
+            line
         })
         .map(left_trim_comment_line)
         .map(|line| if orig.starts_with("/*") && line_breaks == 0 {
@@ -150,6 +150,31 @@ pub fn rewrite_comment(orig: &str,
     Some(result)
 }
 
+/// Trims whitespace and aligns to indent, but otherwise does not change comments.
+fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<String> {
+    let lines: Vec<&str> = orig.lines()
+        .map(|l| {
+            // This is basically just l.trim(), but in the case that a line starts
+            // with `*` we want to leave one space before it, so it aligns with the
+            // `*` in `/*`.
+            let first_non_whitespace = l.find(|c| !char::is_whitespace(c));
+            if let Some(fnw) = first_non_whitespace {
+                    if l.as_bytes()[fnw] == '*' as u8 && fnw > 0 {
+                        &l[fnw - 1..]
+                    } else {
+                        &l[fnw..]
+                    }
+                } else {
+                    ""
+                }
+                .trim_right()
+        })
+        .collect();
+    Some(lines.join(&format!("\n{}", offset.to_string(config))))
+}
+
+/// Trims comment characters and possibly a single space from the left of a string.
+/// Does not trim all whitespace.
 fn left_trim_comment_line(line: &str) -> &str {
     if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ") ||
        line.starts_with("/** ") {
@@ -708,6 +733,7 @@ mod test {
     fn format_comments() {
         let mut config: ::config::Config = Default::default();
         config.wrap_comments = true;
+        config.normalize_comments = true;
 
         let comment = rewrite_comment(" //test", true, 100, Indent::new(0, 100), &config).unwrap();
         assert_eq!("/* test */", comment);
