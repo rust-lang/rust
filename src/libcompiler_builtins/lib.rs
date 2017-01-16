@@ -392,7 +392,7 @@ pub mod reimpls {
             self.wrapping_shr(32) as i32
         }
         fn from_parts(low: u32, high: i32) -> i64 {
-            low as i64 | (high as i64).wrapping_shl(32)
+            u64::from_parts(low, high as u32) as i64
         }
     }
     #[cfg(not(stage0))]
@@ -404,11 +404,10 @@ pub mod reimpls {
             self as u64
         }
         fn high(self) -> u64 {
-            unsafe { *(&self as *const u128 as *const u64).offset(1) }
+            self.wrapping_shr(64) as u64
         }
         fn from_parts(low: u64, high: u64) -> u128 {
-            #[repr(C, packed)] struct Parts(u64, u64);
-            unsafe { ::core::mem::transmute(Parts(low, high)) }
+            (high as u128).wrapping_shl(64) | low as u128
         }
     }
     #[cfg(not(stage0))]
@@ -420,7 +419,7 @@ pub mod reimpls {
             self as u64
         }
         fn high(self) -> i64 {
-            unsafe { *(&self as *const i128 as *const i64).offset(1) }
+            self.wrapping_shr(64) as i64
         }
         fn from_parts(low: u64, high: i64) -> i128 {
             u128::from_parts(low, high as u64) as i128
