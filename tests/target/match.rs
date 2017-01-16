@@ -78,9 +78,7 @@ fn main() {
     };
 
     match x {
-        y => {
-            // Block with comment. Preserve me.
-        }
+        y => { /*Block with comment. Preserve me.*/ }
         z => {
             stmt();
         }

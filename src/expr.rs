@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Ordering;
+use std::cmp::{Ordering, min};
 use std::borrow::Borrow;
 use std::mem::swap;
 use std::ops::Deref;
@@ -595,9 +595,19 @@ impl Rewrite for ast::Block {
         // width is used only for the single line case: either the empty block `{}`,
         // or an unsafe expression `unsafe { e }`.
 
+        if self.stmts.is_empty() && !block_contains_comment(self, context.codemap) && width >= 2 {
+            return Some("{}".to_owned());
+        }
+
+        // If a block contains only a single-line comment, then leave it on one line.
         let user_str = context.snippet(self.span);
-        if user_str == "{}" && width >= 2 {
-            return Some(user_str);
+        let user_str = user_str.trim();
+        if user_str.starts_with('{') && user_str.ends_with('}') {
+            let comment_str = user_str[1..user_str.len() - 1].trim();
+            if self.stmts.is_empty() && !comment_str.contains('\n') &&
+               !comment_str.starts_with("//") && comment_str.len() + 4 <= width {
+                return Some(format!("{{ {} }}", comment_str));
+            }
         }
 
         let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
@@ -870,11 +880,17 @@ impl<'a> Rewrite for ControlFlow<'a> {
             }
         }
 
-        // This is used only for the empty block case: `{}`.
+        // This is used only for the empty block case: `{}`. So, we use 1 if we know
+        // we should avoid the single line case.
         // 2 = spaces after keyword and condition.
         let block_width = try_opt!(width.checked_sub(label_string.len() + self.keyword.len() +
                                                      extra_offset(&pat_expr_string, inner_offset) +
                                                      2));
+        let block_width = if self.else_block.is_some() || self.nested_if {
+            min(1, block_width)
+        } else {
+            block_width
+        };
 
         let block_str = try_opt!(self.block.rewrite(context, block_width, offset));
 
@@ -949,7 +965,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 }
                 _ => {
                     last_in_chain = true;
-                    else_block.rewrite(context, width, offset)
+                    // When rewriting a block, the width is only used for single line
+                    // blocks, passing 1 lets us avoid that.
+                    else_block.rewrite(context, min(1, width), offset)
                 }
             };
 
@@ -1021,8 +1039,8 @@ fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
 pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0]) &&
-    !block_contains_comment(block, codemap)
+    (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0]) &&
+     !block_contains_comment(block, codemap))
 }
 
 /// Checks whether a block contains at most one statement or expression, and no comments.

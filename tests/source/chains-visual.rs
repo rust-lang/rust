@@ -95,11 +95,11 @@ fn floaters() {
         .bar()
         .baz();
 
-    Foo { x: val } .baz(|| { /*force multiline    */    }) .quux(); 
+    Foo { x: val } .baz(|| { force(); multiline();    }) .quux(); 
 
     Foo { y: i_am_multi_line, z: ok }
         .baz(|| {
-            // force multiline
+            force(); multiline();
         })
         .quux(); 
 

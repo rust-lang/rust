@@ -105,7 +105,8 @@ fn floaters() {
 
     Foo { x: val }
         .baz(|| {
-            // force multiline
+            force();
+            multiline();
         })
         .quux();
 
@@ -114,7 +115,8 @@ fn floaters() {
         z: ok,
     }
     .baz(|| {
-        // force multiline
+        force();
+        multiline();
     })
     .quux();
 

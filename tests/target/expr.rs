@@ -60,8 +60,7 @@ fn foo() -> bool {
         1111 + 2222 {}
 
     if let (some_very_large,
-            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
-    }
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {}
 
     let test = if true { 5 } else { 3 };
 
@@ -136,12 +135,8 @@ fn baz() {
 fn qux() {
     {}
     // FIXME this one could be done better.
-    {
-        // a block with a comment
-    }
-    {
-
-    }
+    { /* a block with a comment */ }
+    {}
     {
         // A block with a comment.
     }
@@ -293,12 +288,10 @@ fn complex_if_else() {
 fn issue1106() {
     {
         if let hir::ItemEnum(ref enum_def, ref generics) =
-            self.ast_map.expect_item(enum_node_id).node {
-        }
+            self.ast_map.expect_item(enum_node_id).node {}
     }
 
     for entry in WalkDir::new(path)
         .into_iter()
-        .filter_entry(|entry| exclusions.filter_entry(entry)) {
-    }
+        .filter_entry(|entry| exclusions.filter_entry(entry)) {}
 }
