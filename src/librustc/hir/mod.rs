@@ -403,8 +403,8 @@ pub struct WhereRegionPredicate {
 pub struct WhereEqPredicate {
     pub id: NodeId,
     pub span: Span,
-    pub path: Path,
-    pub ty: P<Ty>,
+    pub lhs_ty: P<Ty>,
+    pub rhs_ty: P<Ty>,
 }
 
 pub type CrateConfig = HirVec<P<MetaItem>>;

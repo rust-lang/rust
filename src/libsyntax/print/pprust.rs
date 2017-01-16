@@ -2849,11 +2849,13 @@ impl<'a> State<'a> {
                                                                                ..}) => {
                     self.print_lifetime_bounds(lifetime, bounds)?;
                 }
-                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false, 0, false)?;
+                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref lhs_ty,
+                                                                       ref rhs_ty,
+                                                                       ..}) => {
+                    self.print_type(lhs_ty)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
-                    self.print_type(&ty)?;
+                    self.print_type(rhs_ty)?;
                 }
             }
         }

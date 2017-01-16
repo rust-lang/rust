@@ -323,12 +323,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         self.visit_lifetime(bound);
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ id,
-                                                                         ref path,
-                                                                         ref ty,
-                                                                         .. }) => {
-                    self.visit_path(path, id);
-                    self.visit_ty(&ty);
+                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref lhs_ty,
+                                                                        ref rhs_ty,
+                                                                        .. }) => {
+                    self.visit_ty(lhs_ty);
+                    self.visit_ty(rhs_ty);
                 }
             }
         }

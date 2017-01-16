@@ -2023,11 +2023,13 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false)?;
+                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref lhs_ty,
+                                                                        ref rhs_ty,
+                                                                        ..}) => {
+                    self.print_type(lhs_ty)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
-                    self.print_type(&ty)?;
+                    self.print_type(rhs_ty)?;
                 }
             }
         }
