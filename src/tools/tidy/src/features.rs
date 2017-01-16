@@ -165,10 +165,10 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     // FIXME get this whitelist empty.
     let whitelist = vec![
-        "abi_ptx", "simd", "safe_suggestion", "macro_reexport",
+        "abi_ptx", "simd", "macro_reexport",
         "more_struct_aliases", "static_recursion", "reflect",
         "quote", "cfg_target_has_atomic", "custom_attribute",
-        "default_type_parameter_fallback", "pushpop_unsafe",
+        "default_type_parameter_fallback",
         "use_extern_macros", "staged_api", "const_indexing",
         "unboxed_closures", "stmt_expr_attributes",
         "cfg_target_thread_local", "unwind_attributes",
