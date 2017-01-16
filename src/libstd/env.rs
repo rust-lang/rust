@@ -10,7 +10,7 @@
 
 //! Inspection and manipulation of the process's environment.
 //!
-//! This module contains methods to inspect various aspects such as
+//! This module contains functions to inspect various aspects such as
 //! environment variables, process arguments, the current directory, and various
 //! other important directories.
 
@@ -68,15 +68,17 @@ pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This iterator is created through `std::env::vars()` and yields `(String,
-/// String)` pairs.
+/// This structure is created through the [`std::env::vars`] function.
+///
+/// [`std::env::vars`]: fn.vars.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars { inner: VarsOs }
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This iterator is created through `std::env::vars_os()` and yields
-/// `(OsString, OsString)` pairs.
+/// This structure is created through the [`std::env::vars_os`] function.
+///
+/// [`std::env::vars_os`]: fn.vars_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs { inner: os_imp::Env }
 
@@ -218,7 +220,9 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
     })
 }
 
-/// Possible errors from the `env::var` method.
+/// Possible errors from the [`env::var`] function.
+///
+/// [env::var]: fn.var.html
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -570,7 +574,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// An iterator over the arguments of a process, yielding a [`String`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args`] method.
+/// This structure is created through the [`std::env::args`] function.
 ///
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
@@ -580,7 +584,7 @@ pub struct Args { inner: ArgsOs }
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args_os`] method.
+/// This structure is created through the [`std::env::args_os`] function.
 ///
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
