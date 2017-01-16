@@ -380,18 +380,14 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 });
                 TyKind::Path(qself, fld.fold_path(path))
             }
-            TyKind::ObjectSum(ty, bounds) => {
-                TyKind::ObjectSum(fld.fold_ty(ty),
-                            fld.fold_bounds(bounds))
-            }
             TyKind::Array(ty, e) => {
                 TyKind::Array(fld.fold_ty(ty), fld.fold_expr(e))
             }
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyKind::PolyTraitRef(bounds) => {
-                TyKind::PolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::ObjectSum(bounds) => {
+                TyKind::ObjectSum(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
             }
             TyKind::ImplTrait(bounds) => {
                 TyKind::ImplTrait(bounds.move_map(|b| fld.fold_ty_param_bound(b)))

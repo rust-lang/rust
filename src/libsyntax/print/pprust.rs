@@ -1028,11 +1028,7 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
             }
-            ast::TyKind::ObjectSum(ref ty, ref bounds) => {
-                self.print_type(&ty)?;
-                self.print_bounds("+", &bounds[..])?;
-            }
-            ast::TyKind::PolyTraitRef(ref bounds) => {
+            ast::TyKind::ObjectSum(ref bounds) => {
                 self.print_bounds("", &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {

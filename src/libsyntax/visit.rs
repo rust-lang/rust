@@ -342,15 +342,11 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             }
             visitor.visit_path(path, typ.id);
         }
-        TyKind::ObjectSum(ref ty, ref bounds) => {
-            visitor.visit_ty(ty);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
         TyKind::Array(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::PolyTraitRef(ref bounds) => {
+        TyKind::ObjectSum(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyKind::ImplTrait(ref bounds) => {

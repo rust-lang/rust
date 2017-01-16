@@ -13,8 +13,10 @@ fn main() {
     //~^ ERROR expected a path
     //~| HELP try adding parentheses
     //~| SUGGESTION let _: &(Copy + 'static);
+    //~| ERROR at least one non-builtin trait is required for an object type
     let _: &'static Copy + 'static;
     //~^ ERROR expected a path
     //~| HELP try adding parentheses
     //~| SUGGESTION let _: &'static (Copy + 'static);
+    //~| ERROR at least one non-builtin trait is required for an object type
 }

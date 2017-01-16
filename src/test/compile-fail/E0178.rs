@@ -17,12 +17,15 @@ struct Bar<'a> {
     x: &'a Foo + 'a,
     //~^ ERROR E0178
     //~| NOTE expected a path
+    //~| ERROR at least one non-builtin trait is required for an object type
     y: &'a mut Foo + 'a,
     //~^ ERROR E0178
     //~| NOTE expected a path
+    //~| ERROR at least one non-builtin trait is required for an object type
     z: fn() -> Foo + 'a,
     //~^ ERROR E0178
     //~| NOTE expected a path
+    //~| ERROR at least one non-builtin trait is required for an object type
 }
 
 fn main() {
