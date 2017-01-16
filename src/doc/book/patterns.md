@@ -23,6 +23,33 @@ match x {
 
 This prints `one`.
 
+It's possible to create a binding for the value in the any case:
+
+```rust
+let x = 1;
+
+match x {
+    y => println!("x: {} y: {}", x, y),
+}
+```
+
+This prints:
+
+```text
+x: 1 y: 1
+```
+
+Note it is an error to have both a catch-all `_` and a catch-all binding in the same match block:
+
+```rust
+let x = 1;
+
+match x {
+    y => println!("x: {} y: {}", x, y),
+    _ => println!("anything"), // this causes an error as it is unreachable
+}
+```
+
 There’s one pitfall with patterns: like anything that introduces a new binding,
 they introduce shadowing. For example:
 
