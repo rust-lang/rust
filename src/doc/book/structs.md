@@ -117,6 +117,28 @@ fn main() {
 }
 ```
 
+We can initializing a data structure (struct, enum, union) with named fields, by writing `fieldname` as a shorthand for `fieldname: fieldname`. This allows a compact syntax for initialization, with less duplication:
+
+```
+#![feature(field_init_shorthand)]
+
+#[derive(Debug)]
+struct Person<'a> {
+    name: &'a str,
+    age: u8
+}
+
+fn main() {
+    // Create struct with field init shorthand
+    let name = "Peter";
+    let age = 27;
+    let peter = Person { name, age };
+    
+    // Print debug struct
+    println!("{:?}", peter);
+}
+```
+
 # Update syntax
 
 A `struct` can include `..` to indicate that you want to use a copy of some
