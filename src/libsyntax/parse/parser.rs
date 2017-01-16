@@ -1128,7 +1128,7 @@ impl<'a> Parser<'a> {
                 self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
             self.expect(&token::Colon)?;
-            let ty = self.parse_ty_sum()?;
+            let ty = self.parse_ty()?;
             let default = if self.check(&token::Eq) {
                 self.bump();
                 let expr = self.parse_expr()?;
@@ -1244,24 +1244,24 @@ impl<'a> Parser<'a> {
     /// Parse a possibly mutable type
     pub fn parse_mt(&mut self) -> PResult<'a, MutTy> {
         let mutbl = self.parse_mutability()?;
-        let t = self.parse_ty()?;
+        let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl: mutbl })
     }
 
     /// Parse optional return type [ -> TY ] in function decl
     pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty()?))
+            Ok(FunctionRetTy::Ty(self.parse_ty_no_plus()?))
         } else {
             let pos = self.span.lo;
             Ok(FunctionRetTy::Default(mk_sp(pos, pos)))
         }
     }
 
-    /// Parse a type in a context where `T1+T2` is allowed.
-    pub fn parse_ty_sum(&mut self) -> PResult<'a, P<Ty>> {
+    /// Parse a type.
+    pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
         let lo = self.span.lo;
-        let lhs = self.parse_ty()?;
+        let lhs = self.parse_ty_no_plus()?;
 
         if !self.eat(&token::BinOp(token::Plus)) {
             return Ok(lhs);
@@ -1331,8 +1331,12 @@ impl<'a> Parser<'a> {
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 
-    /// Parse a type.
-    pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
+    /// Parse a type in restricted contexts where `+` is not permitted.
+    /// Example 1: `&'a TYPE`
+    ///     `+` is prohibited to maintain operator priority (P(+) < P(&)).
+    /// Example 2: `value1 as TYPE + value2`
+    ///     `+` is prohibited to avoid interactions with expression grammar.
+    pub fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span.lo;
@@ -1346,7 +1350,7 @@ impl<'a> Parser<'a> {
             let mut ts = vec![];
             let mut last_comma = false;
             while self.token != token::CloseDelim(token::Paren) {
-                ts.push(self.parse_ty_sum()?);
+                ts.push(self.parse_ty()?);
                 if self.check(&token::Comma) {
                     last_comma = true;
                     self.bump();
@@ -1371,7 +1375,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             // VECTOR
             self.expect(&token::OpenDelim(token::Bracket))?;
-            let t = self.parse_ty_sum()?;
+            let t = self.parse_ty()?;
 
             // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
@@ -1452,7 +1456,7 @@ impl<'a> Parser<'a> {
                            `*mut T` or `*const T` as appropriate)");
             Mutability::Immutable
         };
-        let t = self.parse_ty()?;
+        let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl: mutbl })
     }
 
@@ -1499,7 +1503,7 @@ impl<'a> Parser<'a> {
             })
         };
 
-        let t = self.parse_ty_sum()?;
+        let t = self.parse_ty()?;
 
         Ok(Arg {
             ty: t,
@@ -1517,7 +1521,7 @@ impl<'a> Parser<'a> {
     pub fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
         let pat = self.parse_pat()?;
         let t = if self.eat(&token::Colon) {
-            self.parse_ty_sum()?
+            self.parse_ty()?
         } else {
             P(Ty {
                 id: ast::DUMMY_NODE_ID,
@@ -1658,7 +1662,7 @@ impl<'a> Parser<'a> {
     pub fn parse_qualified_path(&mut self, mode: PathStyle)
                                 -> PResult<'a, (QSelf, ast::Path)> {
         let span = self.prev_span;
-        let self_type = self.parse_ty_sum()?;
+        let self_type = self.parse_ty()?;
         let mut path = if self.eat_keyword(keywords::As) {
             self.parse_path(PathStyle::Type)?
         } else {
@@ -1768,10 +1772,10 @@ impl<'a> Parser<'a> {
                 let inputs = self.parse_seq_to_end(
                     &token::CloseDelim(token::Paren),
                     SeqSep::trailing_allowed(token::Comma),
-                    |p| p.parse_ty_sum())?;
+                    |p| p.parse_ty())?;
 
                 let output_ty = if self.eat(&token::RArrow) {
-                    Some(self.parse_ty()?)
+                    Some(self.parse_ty_no_plus()?)
                 } else {
                     None
                 };
@@ -2981,12 +2985,12 @@ impl<'a> Parser<'a> {
             }
             // Special cases:
             if op == AssocOp::As {
-                let rhs = self.parse_ty()?;
+                let rhs = self.parse_ty_no_plus()?;
                 let (lo, hi) = (lhs_span.lo, rhs.span.hi);
                 lhs = self.mk_expr(lo, hi, ExprKind::Cast(lhs, rhs), ThinVec::new());
                 continue
             } else if op == AssocOp::Colon {
-                let rhs = self.parse_ty()?;
+                let rhs = self.parse_ty_no_plus()?;
                 let (lo, hi) = (lhs_span.lo, rhs.span.hi);
                 lhs = self.mk_expr(lo, hi, ExprKind::Type(lhs, rhs), ThinVec::new());
                 continue
@@ -3754,7 +3758,7 @@ impl<'a> Parser<'a> {
 
         let mut ty = None;
         if self.eat(&token::Colon) {
-            ty = Some(self.parse_ty_sum()?);
+            ty = Some(self.parse_ty()?);
         }
         let init = self.parse_initializer()?;
         Ok(P(ast::Local {
@@ -3775,7 +3779,7 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, StructField> {
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
-        let ty = self.parse_ty_sum()?;
+        let ty = self.parse_ty()?;
         Ok(StructField {
             span: mk_sp(lo, self.prev_span.hi),
             ident: Some(name),
@@ -4250,7 +4254,7 @@ impl<'a> Parser<'a> {
 
         let default = if self.check(&token::Eq) {
             self.bump();
-            Some(self.parse_ty_sum()?)
+            Some(self.parse_ty()?)
         } else {
             None
         };
@@ -4345,7 +4349,7 @@ impl<'a> Parser<'a> {
             let mut err = self.diagnostic().struct_span_err(self.span, &msg);
 
             let span_hi = self.span.hi;
-            let span_hi = match self.parse_ty() {
+            let span_hi = match self.parse_ty_no_plus() {
                 Ok(..) => self.span.hi,
                 Err(ref mut err) => {
                     self.cancel(err);
@@ -4368,7 +4372,7 @@ impl<'a> Parser<'a> {
                 if p.look_ahead(1, |t| t == &token::Eq) {
                     Ok(None)
                 } else {
-                    Ok(Some(p.parse_ty_sum()?))
+                    Ok(Some(p.parse_ty()?))
                 }
             }
         )?;
@@ -4386,7 +4390,7 @@ impl<'a> Parser<'a> {
                 let lo = p.span.lo;
                 let ident = p.parse_ident()?;
                 p.expect(&token::Eq)?;
-                let ty = p.parse_ty()?;
+                let ty = p.parse_ty_no_plus()?;
                 let hi = ty.span.hi;
                 let span = mk_sp(lo, hi);
                 return Ok(TypeBinding{id: ast::DUMMY_NODE_ID,
@@ -4484,7 +4488,7 @@ impl<'a> Parser<'a> {
                         vec![]
                     };
 
-                    let bounded_ty = self.parse_ty()?;
+                    let bounded_ty = self.parse_ty_no_plus()?;
 
                     if self.eat(&token::Colon) {
                         let bounds = self.parse_ty_param_bounds()?;
@@ -4507,7 +4511,7 @@ impl<'a> Parser<'a> {
 
                         parsed_something = true;
                     } else if self.eat(&token::Eq) {
-                        // let ty = try!(self.parse_ty());
+                        // let ty = try!(self.parse_ty_no_plus());
                         let hi = self.prev_span.hi;
                         let span = mk_sp(lo, hi);
                         // where_clause.predicates.push(
@@ -4679,7 +4683,7 @@ impl<'a> Parser<'a> {
                     // self: TYPE
                     let eself_ident = expect_ident(self);
                     if self.eat(&token::Colon) {
-                        let ty = self.parse_ty_sum()?;
+                        let ty = self.parse_ty()?;
                         (SelfKind::Explicit(ty, Mutability::Immutable), eself_ident)
                     } else {
                         (SelfKind::Value(Mutability::Immutable), eself_ident)
@@ -4691,7 +4695,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let eself_ident = expect_ident(self);
                     if self.eat(&token::Colon) {
-                        let ty = self.parse_ty_sum()?;
+                        let ty = self.parse_ty()?;
                         (SelfKind::Explicit(ty, Mutability::Mutable), eself_ident)
                     } else {
                         (SelfKind::Value(Mutability::Mutable), eself_ident)
@@ -4848,14 +4852,14 @@ impl<'a> Parser<'a> {
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
             self.expect(&token::Eq)?;
-            let typ = self.parse_ty_sum()?;
+            let typ = self.parse_ty()?;
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Type(typ))
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let name = self.parse_ident()?;
             self.expect(&token::Colon)?;
-            let typ = self.parse_ty_sum()?;
+            let typ = self.parse_ty()?;
             self.expect(&token::Eq)?;
             let expr = self.parse_expr()?;
             self.expect(&token::Semi)?;
@@ -4979,7 +4983,7 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the trait.
-        let mut ty = self.parse_ty_sum()?;
+        let mut ty = self.parse_ty()?;
 
         // Parse traits, if necessary.
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
@@ -5020,7 +5024,7 @@ impl<'a> Parser<'a> {
              ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
-                ty = self.parse_ty_sum()?;
+                ty = self.parse_ty()?;
             }
             generics.where_clause = self.parse_where_clause()?;
 
@@ -5172,7 +5176,7 @@ impl<'a> Parser<'a> {
                 let mut vis = p.parse_visibility(false)?;
                 let ty_is_interpolated =
                     p.token.is_interpolated() || p.look_ahead(1, |t| t.is_interpolated());
-                let mut ty = p.parse_ty_sum()?;
+                let mut ty = p.parse_ty()?;
 
                 // Handle `pub(path) type`, in which `vis` will be `pub` and `ty` will be `(path)`.
                 if vis == Visibility::Public && !ty_is_interpolated &&
@@ -5180,7 +5184,7 @@ impl<'a> Parser<'a> {
                     ty = if let TyKind::Paren(ref path_ty) = ty.node {
                         if let TyKind::Path(None, ref path) = path_ty.node {
                             vis = Visibility::Restricted { path: P(path.clone()), id: path_ty.id };
-                            Some(p.parse_ty_sum()?)
+                            Some(p.parse_ty()?)
                         } else {
                             None
                         }
@@ -5298,7 +5302,7 @@ impl<'a> Parser<'a> {
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         self.expect(&token::Colon)?;
-        let ty = self.parse_ty_sum()?;
+        let ty = self.parse_ty()?;
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
         self.expect(&token::Semi)?;
@@ -5539,7 +5543,7 @@ impl<'a> Parser<'a> {
 
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
-        let ty = self.parse_ty_sum()?;
+        let ty = self.parse_ty()?;
         let hi = self.span.hi;
         self.expect(&token::Semi)?;
         Ok(ForeignItem {
@@ -5628,7 +5632,7 @@ impl<'a> Parser<'a> {
         let mut tps = self.parse_generics()?;
         tps.where_clause = self.parse_where_clause()?;
         self.expect(&token::Eq)?;
-        let ty = self.parse_ty_sum()?;
+        let ty = self.parse_ty()?;
         self.expect(&token::Semi)?;
         Ok((ident, ItemKind::Ty(ty, tps), None))
     }
