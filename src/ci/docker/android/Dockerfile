@@ -53,8 +53,4 @@ ENV RUST_CONFIGURE_ARGS \
 # to all the targets above eventually.
 ENV SCRIPT \
   python2.7 ../x.py test --target arm-linux-androideabi && \
-  python2.7 ../x.py dist \
-      --target arm-linux-androideabi \
-      --target armv7-linux-androideabi \
-      --target i686-linux-android \
-      --target aarch64-linux-android
+  python2.7 ../x.py dist --target $TARGETS

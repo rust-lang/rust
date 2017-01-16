@@ -24,11 +24,8 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV RUST_CONFIGURE_ARGS \
-      --host=mips64-unknown-linux-gnuabi64,mips64el-unknown-linux-gnuabi64
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host mips64-unknown-linux-gnuabi64 \
-        --target mips64-unknown-linux-gnuabi64 \
-        --host mips64el-unknown-linux-gnuabi64 \
-        --target mips64el-unknown-linux-gnuabi64
+ENV HOSTS=mips64-unknown-linux-gnuabi64
+ENV HOSTS=$HOSTS,mips64el-unknown-linux-gnuabi64
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
