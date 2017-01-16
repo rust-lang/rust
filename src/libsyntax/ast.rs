@@ -204,11 +204,11 @@ pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: P<[P<Ty>]>,
+    pub types: Vec<P<Ty>>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: P<[TypeBinding]>,
+    pub bindings: Vec<TypeBinding>,
 }
 
 impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
@@ -297,7 +297,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = P<[TyParamBound]>;
+pub type TyParamBounds = Vec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -314,7 +314,7 @@ pub struct TyParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: P<[TyParam]>,
+    pub ty_params: Vec<TyParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -344,7 +344,7 @@ impl Default for Generics {
     fn default() ->  Generics {
         Generics {
             lifetimes: Vec::new(),
-            ty_params: P::new(),
+            ty_params: Vec::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),

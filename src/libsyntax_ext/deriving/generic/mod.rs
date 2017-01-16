@@ -507,9 +507,8 @@ impl<'a> TraitDef<'a> {
             }
         });
 
-        let Generics { mut lifetimes, ty_params, mut where_clause, span } = self.generics
+        let Generics { mut lifetimes, mut ty_params, mut where_clause, span } = self.generics
             .to_generics(cx, self.span, type_ident, generics);
-        let mut ty_params = ty_params.into_vec();
 
         // Copy the lifetimes
         lifetimes.extend(generics.lifetimes.iter().cloned());
@@ -533,7 +532,7 @@ impl<'a> TraitDef<'a> {
                 bounds.push((*declared_bound).clone());
             }
 
-            cx.typaram(self.span, ty_param.ident, vec![], P::from_vec(bounds), None)
+            cx.typaram(self.span, ty_param.ident, vec![], bounds, None)
         }));
 
         // and similarly for where clauses
@@ -596,7 +595,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: vec![],
                         bounded_ty: ty,
-                        bounds: P::from_vec(bounds),
+                        bounds: bounds,
                     };
 
                     let predicate = ast::WherePredicate::BoundPredicate(predicate);
@@ -607,7 +606,7 @@ impl<'a> TraitDef<'a> {
 
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: P::from_vec(ty_params),
+            ty_params: ty_params,
             where_clause: where_clause,
             span: span,
         };

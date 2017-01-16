@@ -685,7 +685,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_gt_or_return<T, F>(&mut self,
                                                   sep: Option<token::Token>,
                                                   mut f: F)
-                                                  -> PResult<'a, (P<[T]>, bool)>
+                                                  -> PResult<'a, (Vec<T>, bool)>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, Option<T>>,
     {
         let mut v = Vec::new();
@@ -706,7 +706,7 @@ impl<'a> Parser<'a> {
             if i % 2 == 0 {
                 match f(self)? {
                     Some(result) => v.push(result),
-                    None => return Ok((P::from_vec(v), true))
+                    None => return Ok((v, true))
                 }
             } else {
                 if let Some(t) = sep.as_ref() {
@@ -715,7 +715,7 @@ impl<'a> Parser<'a> {
 
             }
         }
-        return Ok((P::from_vec(v), false));
+        return Ok((v, false));
     }
 
     /// Parse a sequence bracketed by '<' and '>', stopping
@@ -723,7 +723,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_gt<T, F>(&mut self,
                                         sep: Option<token::Token>,
                                         mut f: F)
-                                        -> PResult<'a, P<[T]>> where
+                                        -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let (result, returned) = self.parse_seq_to_before_gt_or_return(sep,
@@ -735,7 +735,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_gt<T, F>(&mut self,
                                  sep: Option<token::Token>,
                                  f: F)
-                                 -> PResult<'a, P<[T]>> where
+                                 -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let v = self.parse_seq_to_before_gt(sep, f)?;
@@ -746,7 +746,7 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_gt_or_return<T, F>(&mut self,
                                            sep: Option<token::Token>,
                                            f: F)
-                                           -> PResult<'a, (P<[T]>, bool)> where
+                                           -> PResult<'a, (Vec<T>, bool)> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a, Option<T>>,
     {
         let (v, returned) = self.parse_seq_to_before_gt_or_return(sep, f)?;
@@ -1039,11 +1039,11 @@ impl<'a> Parser<'a> {
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
                 self.parse_ty_param_bounds()?
             } else {
-                P::new()
+                Vec::new()
             };
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
-                .chain(other_bounds.into_vec())
+                .chain(other_bounds)
                 .collect();
             Ok(ast::TyKind::ObjectSum(all_bounds))
         }
@@ -1267,7 +1267,7 @@ impl<'a> Parser<'a> {
             return Ok(lhs);
         }
 
-        let mut bounds = self.parse_ty_param_bounds()?.into_vec();
+        let mut bounds = self.parse_ty_param_bounds()?;
 
         // In type grammar, `+` is treated like a binary operator,
         // and hence both L and R side are required.
@@ -1327,7 +1327,7 @@ impl<'a> Parser<'a> {
         }
 
         let sp = mk_sp(lo, self.prev_span.hi);
-        let sum = TyKind::ObjectSum(bounds.into());
+        let sum = TyKind::ObjectSum(bounds);
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 
@@ -1759,8 +1759,8 @@ impl<'a> Parser<'a> {
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
                 ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
-                    types: P::from_vec(types),
-                    bindings: P::from_vec(bindings),
+                    types: types,
+                    bindings: bindings,
                 }.into()
             } else if self.eat(&token::OpenDelim(token::Paren)) {
                 let lo = self.prev_span.lo;
@@ -1819,8 +1819,8 @@ impl<'a> Parser<'a> {
                     identifier: identifier,
                     parameters: ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
-                        types: P::from_vec(types),
-                        bindings: P::from_vec(bindings),
+                        types: types,
+                        bindings: bindings,
                     }.into(),
                 });
 
@@ -4192,7 +4192,7 @@ impl<'a> Parser<'a> {
     fn parse_colon_then_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds>
     {
         if !self.eat(&token::Colon) {
-            Ok(P::new())
+            Ok(Vec::new())
         } else {
             self.parse_ty_param_bounds()
         }
@@ -4238,7 +4238,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Ok(P::from_vec(result));
+        return Ok(result);
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
@@ -4375,7 +4375,7 @@ impl<'a> Parser<'a> {
 
         // If we found the `>`, don't continue.
         if !returned {
-            return Ok((lifetimes, types.into_vec(), Vec::new()));
+            return Ok((lifetimes, types, Vec::new()));
         }
 
         // Then parse type bindings.
@@ -4396,7 +4396,7 @@ impl<'a> Parser<'a> {
                 });
             }
         )?;
-        Ok((lifetimes, types.into_vec(), bindings.into_vec()))
+        Ok((lifetimes, types, bindings))
     }
 
     fn forbid_lifetime(&mut self) -> PResult<'a, ()> {
