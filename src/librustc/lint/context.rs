@@ -705,17 +705,6 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl<'a, 'tcx> LateContext<'a, 'tcx> {
-    fn visit_ids<'b, F: 'b>(&'b mut self, f: F)
-        where F: FnOnce(&mut IdVisitor<'b, 'a, 'tcx>)
-    {
-        let mut v = IdVisitor::<'b, 'a, 'tcx> {
-            cx: self
-        };
-        f(&mut v);
-    }
-}
-
 impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     /// Get the overall compiler `Session` object.
     fn sess(&self) -> &Session {
@@ -782,6 +771,16 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::NestedVisitorMap::All(&self.tcx.map)
     }
 
+    // Output any lints that were previously added to the session.
+    fn visit_id(&mut self, id: ast::NodeId) {
+        if let Some(lints) = self.sess().lints.borrow_mut().remove(&id) {
+            debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
+            for early_lint in lints {
+                self.early_lint(early_lint);
+            }
+        }
+    }
+
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
@@ -793,7 +792,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, late_passes, it);
-            cx.visit_ids(|v| v.visit_item(it));
             hir_visit::walk_item(cx, it);
             run_lints!(cx, check_item_post, late_passes, it);
         })
@@ -918,7 +916,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         self.with_lint_attrs(&trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, late_passes, trait_item);
-            cx.visit_ids(|v| hir_visit::walk_trait_item(v, trait_item));
             hir_visit::walk_trait_item(cx, trait_item);
             run_lints!(cx, check_trait_item_post, late_passes, trait_item);
         });
@@ -927,7 +924,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         self.with_lint_attrs(&impl_item.attrs, |cx| {
             run_lints!(cx, check_impl_item, late_passes, impl_item);
-            cx.visit_ids(|v| hir_visit::walk_impl_item(v, impl_item));
             hir_visit::walk_impl_item(cx, impl_item);
             run_lints!(cx, check_impl_item_post, late_passes, impl_item);
         });
@@ -935,10 +931,12 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
         run_lints!(self, check_lifetime, late_passes, lt);
+        hir_visit::walk_lifetime(self, lt);
     }
 
     fn visit_lifetime_def(&mut self, lt: &'tcx hir::LifetimeDef) {
         run_lints!(self, check_lifetime_def, late_passes, lt);
+        hir_visit::walk_lifetime_def(self, lt);
     }
 
     fn visit_path(&mut self, p: &'tcx hir::Path, id: ast::NodeId) {
@@ -1100,35 +1098,6 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 }
 
-struct IdVisitor<'a, 'b: 'a, 'tcx: 'a+'b> {
-    cx: &'a mut LateContext<'b, 'tcx>
-}
-
-// Output any lints that were previously added to the session.
-impl<'a, 'b, 'tcx> hir_visit::Visitor<'tcx> for IdVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
-        hir_visit::NestedVisitorMap::OnlyBodies(&self.cx.tcx.map)
-    }
-
-    fn visit_id(&mut self, id: ast::NodeId) {
-        if let Some(lints) = self.cx.sess().lints.borrow_mut().remove(&id) {
-            debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
-            for early_lint in lints {
-                self.cx.early_lint(early_lint);
-            }
-        }
-    }
-
-    fn visit_trait_item(&mut self, _ti: &'tcx hir::TraitItem) {
-        // Do not recurse into trait or impl items automatically. These are
-        // processed separately by calling hir_visit::walk_trait_item()
-    }
-
-    fn visit_impl_item(&mut self, _ii: &'tcx hir::ImplItem) {
-        // See visit_trait_item()
-    }
-}
-
 enum CheckLintNameResult {
     Ok,
     // Lint doesn't exist
@@ -1252,10 +1221,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
-        cx.visit_ids(|v| {
-            hir_visit::walk_crate(v, krate);
-        });
-
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         run_lints!(cx, check_crate, late_passes, krate);
