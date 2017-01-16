@@ -1382,7 +1382,7 @@ impl<'a> LoweringContext<'a> {
                     return self.expr_block(P(block), e.attrs.clone());
                 }
 
-                ExprKind::Vec(ref exprs) => {
+                ExprKind::Array(ref exprs) => {
                     hir::ExprArray(exprs.iter().map(|x| self.lower_expr(x)).collect())
                 }
                 ExprKind::Repeat(ref expr, ref count) => {

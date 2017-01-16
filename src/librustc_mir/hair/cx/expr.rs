@@ -664,7 +664,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 value_extents: cx.tcx.region_maps.node_extent(value.id),
             }
         }
-        hir::ExprArray(ref fields) => ExprKind::Vec { fields: fields.to_ref() },
+        hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },
         hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
     };
 
