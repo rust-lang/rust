@@ -40,7 +40,7 @@ use ast::{Visibility, WhereClause};
 use ast::{BinOpKind, UnOp};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, spanned, respan};
-use syntax_pos::{self, Span, BytePos, mk_sp};
+use syntax_pos::{self, Span, Pos, BytePos, mk_sp};
 use errors::{self, DiagnosticBuilder};
 use ext::tt::macro_parser;
 use parse;
@@ -1045,7 +1045,7 @@ impl<'a> Parser<'a> {
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
                 .chain(other_bounds.into_vec())
                 .collect();
-            Ok(ast::TyKind::PolyTraitRef(all_bounds))
+            Ok(ast::TyKind::ObjectSum(all_bounds))
         }
     }
 
@@ -1267,7 +1267,7 @@ impl<'a> Parser<'a> {
             return Ok(lhs);
         }
 
-        let bounds = self.parse_ty_param_bounds()?;
+        let mut bounds = self.parse_ty_param_bounds()?.into_vec();
 
         // In type grammar, `+` is treated like a binary operator,
         // and hence both L and R side are required.
@@ -1277,9 +1277,57 @@ impl<'a> Parser<'a> {
                           "at least one type parameter bound \
                           must be specified");
         }
+        if let TyKind::Path(None, ref path) = lhs.node {
+            let poly_trait_ref = PolyTraitRef {
+                bound_lifetimes: Vec::new(),
+                trait_ref: TraitRef { path: path.clone(), ref_id: lhs.id },
+                span: lhs.span,
+            };
+            let poly_trait_ref = TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None);
+            bounds.insert(0, poly_trait_ref);
+        } else {
+            let mut err = struct_span_err!(self.sess.span_diagnostic, lhs.span, E0178,
+                                            "expected a path on the left-hand side \
+                                            of `+`, not `{}`",
+                                            pprust::ty_to_string(&lhs));
+            err.span_label(lhs.span, &format!("expected a path"));
+            let hi = bounds.iter().map(|x| match *x {
+                ast::TraitTyParamBound(ref tr, _) => tr.span.hi,
+                ast::RegionTyParamBound(ref r) => r.span.hi,
+            }).max_by_key(|x| x.to_usize());
+            let full_span = hi.map(|hi| Span {
+                lo: lhs.span.lo,
+                hi: hi,
+                expn_id: lhs.span.expn_id,
+            });
+            match (&lhs.node, full_span) {
+                (&TyKind::Rptr(ref lifetime, ref mut_ty), Some(full_span)) => {
+                    let ty_str = pprust::to_string(|s| {
+                        use print::pp::word;
+                        use print::pprust::PrintState;
+
+                        word(&mut s.s, "&")?;
+                        s.print_opt_lifetime(lifetime)?;
+                        s.print_mutability(mut_ty.mutbl)?;
+                        s.popen()?;
+                        s.print_type(&mut_ty.ty)?;
+                        s.print_bounds(" +", &bounds)?;
+                        s.pclose()
+                    });
+                    err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
+                                        ty_str);
+                }
+
+                _ => {
+                    help!(&mut err,
+                                "perhaps you forgot parentheses? (per RFC 438)");
+                }
+            }
+            err.emit();
+        }
 
         let sp = mk_sp(lo, self.prev_span.hi);
-        let sum = ast::TyKind::ObjectSum(lhs, bounds);
+        let sum = TyKind::ObjectSum(bounds.into());
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 

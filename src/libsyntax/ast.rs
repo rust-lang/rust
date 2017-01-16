@@ -1357,11 +1357,11 @@ pub enum TyKind {
     ///
     /// Type parameters are stored in the Path itself
     Path(Option<QSelf>, Path),
-    /// Something like `A+B`. Note that `B` must always be a path.
-    ObjectSum(P<Ty>, TyParamBounds),
-    /// A type like `for<'a> Foo<&'a Bar>`
-    PolyTraitRef(TyParamBounds),
-    /// An `impl TraitA+TraitB` type.
+    /// A trait object type `Bound1 + Bound2 + Bound3`
+    /// where `Bound` is a trait or a lifetime.
+    ObjectSum(TyParamBounds),
+    /// An `impl Bound1 + Bound2 + Bound3` type
+    /// where `Bound` is a trait or a lifetime.
     ImplTrait(TyParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),

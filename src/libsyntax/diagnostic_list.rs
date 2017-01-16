@@ -15,6 +15,28 @@
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
+E0178: r##"
+In types, the `+` type operator has low precedence, so it is often necessary
+to use parentheses.
+
+For example:
+
+```compile_fail,E0178
+trait Foo {}
+
+struct Bar<'a> {
+    w: &'a Foo + Copy,   // error, use &'a (Foo + Copy)
+    x: &'a Foo + 'a,     // error, use &'a (Foo + 'a)
+    y: &'a mut Foo + 'a, // error, use &'a mut (Foo + 'a)
+    z: fn() -> Foo + 'a, // error, use fn() -> (Foo + 'a)
+}
+```
+
+More details can be found in [RFC 438].
+
+[RFC 438]: https://github.com/rust-lang/rfcs/pull/438
+"##,
+
 E0534: r##"
 The `inline` attribute was malformed.
 

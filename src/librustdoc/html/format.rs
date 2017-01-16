@@ -679,19 +679,6 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
             }
         }
-        clean::PolyTraitRef(ref bounds) => {
-            for (i, bound) in bounds.iter().enumerate() {
-                if i != 0 {
-                    write!(f, " + ")?;
-                }
-                if f.alternate() {
-                    write!(f, "{:#}", *bound)?;
-                } else {
-                    write!(f, "{}", *bound)?;
-                }
-            }
-            Ok(())
-        }
         clean::ImplTrait(ref bounds) => {
             write!(f, "impl ")?;
             for (i, bound) in bounds.iter().enumerate() {

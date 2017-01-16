@@ -54,7 +54,6 @@ pub trait AstBuilder {
 
     fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty>;
     fn ty_path(&self, ast::Path) -> P<ast::Ty>;
-    fn ty_sum(&self, ast::Path, ast::TyParamBounds) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,
@@ -401,12 +400,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
         self.ty(path.span, ast::TyKind::Path(None, path))
-    }
-
-    fn ty_sum(&self, path: ast::Path, bounds: ast::TyParamBounds) -> P<ast::Ty> {
-        self.ty(path.span,
-                ast::TyKind::ObjectSum(self.ty_path(path),
-                                 bounds))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want

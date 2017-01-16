@@ -308,9 +308,6 @@ impl<'a> LoweringContext<'a> {
                         span: t.span,
                     })))
                 }
-                TyKind::ObjectSum(ref ty, ref bounds) => {
-                    hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
-                }
                 TyKind::Array(ref ty, ref length) => {
                     let length = self.lower_expr(length);
                     hir::TyArray(self.lower_ty(ty),
@@ -320,8 +317,8 @@ impl<'a> LoweringContext<'a> {
                     let expr = self.lower_expr(expr);
                     hir::TyTypeof(self.record_body(expr, None))
                 }
-                TyKind::PolyTraitRef(ref bounds) => {
-                    hir::TyPolyTraitRef(self.lower_bounds(bounds))
+                TyKind::ObjectSum(ref bounds) => {
+                    hir::TyObjectSum(self.lower_bounds(bounds))
                 }
                 TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))

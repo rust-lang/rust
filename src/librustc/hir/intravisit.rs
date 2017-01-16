@@ -562,15 +562,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPath(ref qpath) => {
             visitor.visit_qpath(qpath, typ.id, typ.span);
         }
-        TyObjectSum(ref ty, ref bounds) => {
-            visitor.visit_ty(ty);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
         TyArray(ref ty, length) => {
             visitor.visit_ty(ty);
             visitor.visit_nested_body(length)
         }
-        TyPolyTraitRef(ref bounds) => {
+        TyObjectSum(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyImplTrait(ref bounds) => {
