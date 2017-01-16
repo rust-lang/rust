@@ -737,17 +737,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
          "checking for inline asm in case the target doesn't support it",
          || no_asm::check_crate(sess, &krate));
 
-    // Needs to go *after* expansion to be able to check the results of macro expansion.
-    time(time_passes, "complete gated feature checking", || {
-        sess.track_errors(|| {
-            syntax::feature_gate::check_crate(&krate,
-                                              &sess.parse_sess,
-                                              &sess.features.borrow(),
-                                              &attributes,
-                                              sess.opts.unstable_features);
-        })
-    })?;
-
     time(sess.time_passes(),
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));
@@ -763,6 +752,17 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         resolver.resolve_crate(&krate);
         Ok(())
+    })?;
+
+    // Needs to go *after* expansion to be able to check the results of macro expansion.
+    time(time_passes, "complete gated feature checking", || {
+        sess.track_errors(|| {
+            syntax::feature_gate::check_crate(&krate,
+                                              &sess.parse_sess,
+                                              &sess.features.borrow(),
+                                              &attributes,
+                                              sess.opts.unstable_features);
+        })
     })?;
 
     // Lower ast -> hir.
