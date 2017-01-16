@@ -2018,7 +2018,7 @@ impl<'a> State<'a> {
             ast::ExprKind::InPlace(ref place, ref expr) => {
                 self.print_expr_in_place(place, expr)?;
             }
-            ast::ExprKind::Vec(ref exprs) => {
+            ast::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(&exprs[..], attrs)?;
             }
             ast::ExprKind::Repeat(ref element, ref count) => {

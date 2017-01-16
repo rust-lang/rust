@@ -214,7 +214,7 @@ pub enum ExprKind<'tcx> {
         value: ExprRef<'tcx>,
         count: TypedConstVal<'tcx>,
     },
-    Vec {
+    Array {
         fields: Vec<ExprRef<'tcx>>,
     },
     Tuple {
