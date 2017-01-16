@@ -127,9 +127,6 @@ declare_features! (
     (active, reflect, "1.0.0", Some(27749)),
     (active, unboxed_closures, "1.0.0", Some(29625)),
 
-    // rustc internal.
-    (active, pushpop_unsafe, "1.2.0", None),
-
     (active, allocator, "1.0.0", Some(27389)),
     (active, fundamental, "1.0.0", Some(29635)),
     (active, main, "1.0.0", Some(29634)),
@@ -313,9 +310,6 @@ declare_features! (
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
 
-    // Allow safe suggestions for potential type conversions.
-    (active, safe_suggestion, "1.0.0", Some(37384)),
-
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", None),
 
@@ -344,6 +338,7 @@ declare_features! (
     // Allows using items which are missing stability attributes
     // rustc internal
     (removed, unmarked_api, "1.0.0", None),
+    (removed, pushpop_unsafe, "1.2.0", None),
 );
 
 declare_features! (
