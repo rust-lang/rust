@@ -133,7 +133,7 @@ fn main() {
                        Cell::new(42usize,
                                  remaining_widthremaining_widthremaining_widthremaining_width),
                        42usize);
-    let rc = RefCell::new(42usize, remaining_width, remaining_width);  // a comment
+    let rc = RefCell::new(42usize, remaining_width, remaining_width); // a comment
     let x = "Hello!!!!!!!!! abcd  abcd abcd abcd abcd abcd\n abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \

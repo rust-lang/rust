@@ -359,9 +359,9 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     where I: Iterator<Item = &'a ast::Expr>
 {
     let bracket_size = if context.config.spaces_within_square_brackets {
-        2  // "[ "
+        2 // "[ "
     } else {
-        1  // "["
+        1 // "["
     };
     let offset = offset + bracket_size;
     let inner_context = &RewriteContext { block_indent: offset, ..*context };

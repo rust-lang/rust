@@ -123,16 +123,20 @@ impl<'a> FmtVisitor<'a> {
 
                 let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
 
-                if rewrite_next_comment && fix_indent {
-                    if let Some('{') = last_char {
-                        self.buffer.push_str("\n");
+                if rewrite_next_comment {
+                    if fix_indent {
+                        if let Some('{') = last_char {
+                            self.buffer.push_str("\n");
+                        }
+                        self.buffer.push_str(&self.block_indent.to_string(self.config));
+                    } else {
+                        self.buffer.push_str(" ");
                     }
 
                     let comment_width = ::std::cmp::min(self.config.ideal_width,
                                                         self.config.max_width -
                                                         self.block_indent.width());
 
-                    self.buffer.push_str(&self.block_indent.to_string(self.config));
                     self.buffer.push_str(&rewrite_comment(subslice,
                                                           false,
                                                           comment_width,

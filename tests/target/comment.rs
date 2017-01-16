@@ -9,8 +9,9 @@ fn test() {
     // comment
     // comment2
 
-    code(); /* leave this comment alone!
-             * ok? */
+    // FIXME(1275)
+    code(); // leave this comment alone!
+    // ok?
 
     // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a
     // diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam
@@ -31,8 +32,8 @@ fn test() {
     //                                       self.config)
     //                           .unwrap());
 
-    funk(); //dontchangeme
-            // or me
+    funk(); // dontchangeme
+    // or me
 }
 
 /// test123
