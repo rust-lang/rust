@@ -842,8 +842,11 @@ impl Clean<WherePredicate> for hir::WherePredicate {
                 }
             }
 
-            hir::WherePredicate::EqPredicate(_) => {
-                unimplemented!() // FIXME(#20041)
+            hir::WherePredicate::EqPredicate(ref wrp) => {
+                WherePredicate::EqPredicate {
+                    lhs: wrp.lhs_ty.clean(cx),
+                    rhs: wrp.rhs_ty.clean(cx)
+                }
             }
         }
     }

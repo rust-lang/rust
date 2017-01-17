@@ -10,10 +10,6 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
-struct Heap;
-
-struct Vec<A = Heap, T>; //~ ERROR type parameters with a default must be trailing
-
-struct Foo<A, B = Vec<C>, C>; //~ ERROR type parameters with a default must be trailing
+struct Bar<T> { x: T } where T: Copy //~ ERROR expected item, found `where`
 
 fn main() {}

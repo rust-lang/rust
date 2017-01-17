@@ -1833,11 +1833,8 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 }
             }
 
-            &hir::WherePredicate::EqPredicate(ref eq_pred) => {
+            &hir::WherePredicate::EqPredicate(..) => {
                 // FIXME(#20041)
-                span_bug!(eq_pred.span,
-                         "Equality constraints are not yet \
-                          implemented (#20041)")
             }
         }
     }

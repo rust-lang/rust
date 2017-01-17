@@ -16,7 +16,7 @@
 type Type_1_<'a, T> = &'a T;
 
 
-type Type_1<'a T> = &'a T; //~ error: expected `,` or `>` after lifetime name, found `T`
+type Type_1<'a T> = &'a T; //~ error: expected one of `,`, `:`, or `>`, found `T`
 
 
 //type Type_2 = Type_1_<'static ()>; // error: expected `,` or `>` after lifetime name, found `(`
