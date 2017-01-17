@@ -185,7 +185,6 @@ pub struct Parser<'a> {
     /// the previous token kind
     prev_token_kind: PrevTokenKind,
     lookahead_buffer: LookaheadBuffer,
-    pub tokens_consumed: usize,
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
     parsing_token_tree: bool,
@@ -282,7 +281,6 @@ impl<'a> Parser<'a> {
             prev_span: syntax_pos::DUMMY_SP,
             prev_token_kind: PrevTokenKind::Other,
             lookahead_buffer: Default::default(),
-            tokens_consumed: 0,
             restrictions: Restrictions::empty(),
             quote_depth: 0,
             parsing_token_tree: false,
@@ -902,7 +900,6 @@ impl<'a> Parser<'a> {
         };
         self.span = next.sp;
         self.token = next.tok;
-        self.tokens_consumed += 1;
         self.expected_tokens.clear();
         // check after each token
         self.check_unknown_macro_variable();
