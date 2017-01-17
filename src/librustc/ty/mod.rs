@@ -1325,6 +1325,7 @@ bitflags! {
     }
 }
 
+#[derive(Debug)]
 pub struct VariantDef {
     /// The variant's DefId. If this is a tuple-like struct,
     /// this is the DefId of the struct's ctor.
@@ -1335,6 +1336,7 @@ pub struct VariantDef {
     pub ctor_kind: CtorKind,
 }
 
+#[derive(Debug)]
 pub struct FieldDef {
     pub did: DefId,
     pub name: Name,

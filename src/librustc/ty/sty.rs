@@ -134,7 +134,7 @@ pub enum TypeVariants<'tcx> {
     TyRawPtr(TypeAndMut<'tcx>),
 
     /// A reference; a pointer with an associated lifetime. Written as
-    /// `&a mut T` or `&'a T`.
+    /// `&'a mut T` or `&'a T`.
     TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
     /// The anonymous type of a function declaration/definition. Each
