@@ -1347,7 +1347,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match path.def {
             Def::Trait(trait_def_id) => {
                 // N.B. this case overlaps somewhat with
-                // TyObjectSum, see that fn for details
+                // TyTraitObject, see that fn for details
 
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
@@ -1525,7 +1525,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
-            hir::TyObjectSum(ref bounds) => {
+            hir::TyTraitObject(ref bounds) => {
                 self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
             }
             hir::TyImplTrait(ref bounds) => {

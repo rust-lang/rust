@@ -317,8 +317,8 @@ impl<'a> LoweringContext<'a> {
                     let expr = self.lower_expr(expr);
                     hir::TyTypeof(self.record_body(expr, None))
                 }
-                TyKind::ObjectSum(ref bounds) => {
-                    hir::TyObjectSum(self.lower_bounds(bounds))
+                TyKind::TraitObject(ref bounds) => {
+                    hir::TyTraitObject(self.lower_bounds(bounds))
                 }
                 TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))

@@ -1359,7 +1359,7 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    ObjectSum(TyParamBounds),
+    TraitObject(TyParamBounds),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     ImplTrait(TyParamBounds),

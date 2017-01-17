@@ -1765,7 +1765,7 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyObjectSum(ref bounds) => {
+            TyTraitObject(ref bounds) => {
                 let lhs_ty = bounds[0].clean(cx);
                 match lhs_ty {
                     TraitBound(poly_trait, ..) => {

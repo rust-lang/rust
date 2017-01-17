@@ -1045,7 +1045,7 @@ impl<'a> Parser<'a> {
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
                 .chain(other_bounds)
                 .collect();
-            Ok(ast::TyKind::ObjectSum(all_bounds))
+            Ok(ast::TyKind::TraitObject(all_bounds))
         }
     }
 
@@ -1327,7 +1327,7 @@ impl<'a> Parser<'a> {
         }
 
         let sp = mk_sp(lo, self.prev_span.hi);
-        let sum = TyKind::ObjectSum(bounds);
+        let sum = TyKind::TraitObject(bounds);
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 

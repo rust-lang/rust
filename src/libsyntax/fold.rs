@@ -386,8 +386,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyKind::ObjectSum(bounds) => {
-                TyKind::ObjectSum(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::TraitObject(bounds) => {
+                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
             }
             TyKind::ImplTrait(bounds) => {
                 TyKind::ImplTrait(bounds.move_map(|b| fld.fold_ty_param_bound(b)))

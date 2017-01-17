@@ -1216,7 +1216,7 @@ pub enum Ty_ {
     TyPath(QPath),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TyObjectSum(TyParamBounds),
+    TyTraitObject(TyParamBounds),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     TyImplTrait(TyParamBounds),
