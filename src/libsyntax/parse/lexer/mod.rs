@@ -111,7 +111,7 @@ impl<'a> StringReader<'a> {
         }
     }
     /// Return the next token. EFFECT: advances the string_reader.
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+    pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
         assert!(self.fatal_errs.is_empty());
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::Underscore),
@@ -123,13 +123,13 @@ impl<'a> StringReader<'a> {
     fn fatal(&self, m: &str) -> FatalError {
         self.fatal_span(self.peek_span, m)
     }
-    fn emit_fatal_errors(&mut self) {
+    pub fn emit_fatal_errors(&mut self) {
         for err in &mut self.fatal_errs {
             err.emit();
         }
         self.fatal_errs.clear();
     }
-    fn peek(&self) -> TokenAndSpan {
+    pub fn peek(&self) -> TokenAndSpan {
         // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
             tok: self.peek_tok.clone(),
