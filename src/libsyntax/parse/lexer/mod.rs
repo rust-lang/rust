@@ -11,9 +11,9 @@
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span};
 use codemap::CodeMap;
-use errors::{FatalError, Handler, DiagnosticBuilder};
+use errors::{FatalError, DiagnosticBuilder};
 use ext::tt::transcribe::tt_next_token;
-use parse::token;
+use parse::{token, ParseSess};
 use str::char_at;
 use symbol::{Symbol, keywords};
 use std_unicode::property::Pattern_White_Space;
@@ -82,7 +82,7 @@ impl Default for TokenAndSpan {
 }
 
 pub struct StringReader<'a> {
-    pub span_diagnostic: &'a Handler,
+    pub sess: &'a ParseSess,
     /// The absolute offset within the codemap of the next character to read
     pub next_pos: BytePos,
     /// The absolute offset within the codemap of the current character
@@ -181,27 +181,22 @@ impl<'a> Reader for TtReader<'a> {
 
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into next_pos and ch
-    pub fn new_raw<'b>(span_diagnostic: &'b Handler,
-                       filemap: Rc<syntax_pos::FileMap>)
-                       -> StringReader<'b> {
-        let mut sr = StringReader::new_raw_internal(span_diagnostic, filemap);
+    pub fn new_raw<'b>(sess: &'a ParseSess, filemap: Rc<syntax_pos::FileMap>) -> Self {
+        let mut sr = StringReader::new_raw_internal(sess, filemap);
         sr.bump();
         sr
     }
 
-    fn new_raw_internal<'b>(span_diagnostic: &'b Handler,
-                            filemap: Rc<syntax_pos::FileMap>)
-                            -> StringReader<'b> {
+    fn new_raw_internal(sess: &'a ParseSess, filemap: Rc<syntax_pos::FileMap>) -> Self {
         if filemap.src.is_none() {
-            span_diagnostic.bug(&format!("Cannot lex filemap \
-                                          without source: {}",
-                                         filemap.name)[..]);
+            sess.span_diagnostic.bug(&format!("Cannot lex filemap without source: {}",
+                                              filemap.name));
         }
 
         let source_text = (*filemap.src.as_ref().unwrap()).clone();
 
         StringReader {
-            span_diagnostic: span_diagnostic,
+            sess: sess,
             next_pos: filemap.start_pos,
             pos: filemap.start_pos,
             col: CharPos(0),
@@ -217,10 +212,8 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new<'b>(span_diagnostic: &'b Handler,
-                   filemap: Rc<syntax_pos::FileMap>)
-                   -> StringReader<'b> {
-        let mut sr = StringReader::new_raw(span_diagnostic, filemap);
+    pub fn new(sess: &'a ParseSess, filemap: Rc<syntax_pos::FileMap>) -> Self {
+        let mut sr = StringReader::new_raw(sess, filemap);
         if let Err(_) = sr.advance_token() {
             sr.emit_fatal_errors();
             panic!(FatalError);
@@ -234,12 +227,12 @@ impl<'a> StringReader<'a> {
 
     /// Report a fatal lexical error with a given span.
     pub fn fatal_span(&self, sp: Span, m: &str) -> FatalError {
-        self.span_diagnostic.span_fatal(sp, m)
+        self.sess.span_diagnostic.span_fatal(sp, m)
     }
 
     /// Report a lexical error with a given span.
     pub fn err_span(&self, sp: Span, m: &str) {
-        self.span_diagnostic.span_err(sp, m)
+        self.sess.span_diagnostic.span_err(sp, m)
     }
 
 
@@ -274,7 +267,7 @@ impl<'a> StringReader<'a> {
         for c in c.escape_default() {
             m.push(c)
         }
-        self.span_diagnostic.struct_span_fatal(syntax_pos::mk_sp(from_pos, to_pos), &m[..])
+        self.sess.span_diagnostic.struct_span_fatal(syntax_pos::mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -298,7 +291,7 @@ impl<'a> StringReader<'a> {
         for c in c.escape_default() {
             m.push(c)
         }
-        self.span_diagnostic.struct_span_err(syntax_pos::mk_sp(from_pos, to_pos), &m[..])
+        self.sess.span_diagnostic.struct_span_err(syntax_pos::mk_sp(from_pos, to_pos), &m[..])
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -503,9 +496,8 @@ impl<'a> StringReader<'a> {
     fn scan_comment(&mut self) -> Option<TokenAndSpan> {
         if let Some(c) = self.ch {
             if c.is_whitespace() {
-                self.span_diagnostic.span_err(syntax_pos::mk_sp(self.pos, self.pos),
-                                              "called consume_any_line_comment, but there \
-                                               was whitespace");
+                let msg = "called consume_any_line_comment, but there was whitespace";
+                self.sess.span_diagnostic.span_err(syntax_pos::mk_sp(self.pos, self.pos), msg);
             }
         }
 
@@ -875,7 +867,7 @@ impl<'a> StringReader<'a> {
                                     self.scan_unicode_escape(delim) && !ascii_only
                                 } else {
                                     let span = syntax_pos::mk_sp(start, self.pos);
-                                    self.span_diagnostic
+                                    self.sess.span_diagnostic
                                         .struct_span_err(span, "incorrect unicode escape sequence")
                                         .span_help(span,
                                                    "format of unicode escape sequences is \
@@ -1701,35 +1693,41 @@ fn ident_continue(c: Option<char>) -> bool {
 mod tests {
     use super::*;
 
-    use ast::Ident;
+    use ast::{Ident, CrateConfig};
     use symbol::Symbol;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use codemap::CodeMap;
     use errors;
+    use feature_gate::UnstableFeatures;
     use parse::token;
+    use std::cell::RefCell;
     use std::io;
     use std::rc::Rc;
 
-    fn mk_sh(cm: Rc<CodeMap>) -> errors::Handler {
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                Some(cm));
-        errors::Handler::with_emitter(true, false, Box::new(emitter))
+    fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
+        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()), Some(cm.clone()));
+        ParseSess {
+            span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
+            unstable_features: UnstableFeatures::from_environment(),
+            config: CrateConfig::new(),
+            included_mod_stack: RefCell::new(Vec::new()),
+            code_map: cm,
+        }
     }
 
     // open a string reader for the given string
     fn setup<'a>(cm: &CodeMap,
-                 span_handler: &'a errors::Handler,
+                 sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
         let fm = cm.new_filemap("zebra.rs".to_string(), None, teststr);
-        StringReader::new(span_handler, fm)
+        StringReader::new(sess, fm)
     }
 
     #[test]
     fn t1() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         let mut string_reader = setup(&cm,
                                       &sh,
                                       "/* my source file */ fn main() { println!(\"zebra\"); }\n"
@@ -1781,7 +1779,7 @@ mod tests {
     #[test]
     fn doublecolonparsing() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a b".to_string()),
                            vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
     }
@@ -1789,7 +1787,7 @@ mod tests {
     #[test]
     fn dcparsing_2() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a::b".to_string()),
                            vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
     }
@@ -1797,7 +1795,7 @@ mod tests {
     #[test]
     fn dcparsing_3() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a ::b".to_string()),
                            vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
     }
@@ -1805,7 +1803,7 @@ mod tests {
     #[test]
     fn dcparsing_4() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a:: b".to_string()),
                            vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
     }
@@ -1813,7 +1811,7 @@ mod tests {
     #[test]
     fn character_a() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'a'".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern("a")), None));
     }
@@ -1821,7 +1819,7 @@ mod tests {
     #[test]
     fn character_space() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "' '".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern(" ")), None));
     }
@@ -1829,7 +1827,7 @@ mod tests {
     #[test]
     fn character_escaped() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'\\n'".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern("\\n")), None));
     }
@@ -1837,7 +1835,7 @@ mod tests {
     #[test]
     fn lifetime_name() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'abc".to_string()).next_token().tok,
                    token::Lifetime(Ident::from_str("'abc")));
     }
@@ -1845,7 +1843,7 @@ mod tests {
     #[test]
     fn raw_string() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                        .next_token()
                        .tok,
@@ -1855,7 +1853,7 @@ mod tests {
     #[test]
     fn literal_suffixes() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         macro_rules! test {
             ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
                 assert_eq!(setup(&cm, &sh, format!("{}suffix", $input)).next_token().tok,
@@ -1899,7 +1897,7 @@ mod tests {
     #[test]
     fn nested_block_comments() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         let mut lexer = setup(&cm, &sh, "/* /* */ */'a'".to_string());
         match lexer.next_token().tok {
             token::Comment => {}
@@ -1912,7 +1910,7 @@ mod tests {
     #[test]
     fn crlf_comments() {
         let cm = Rc::new(CodeMap::new());
-        let sh = mk_sh(cm.clone());
+        let sh = mk_sess(cm.clone());
         let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
         let comment = lexer.next_token();
         assert_eq!(comment.tok, token::Comment);

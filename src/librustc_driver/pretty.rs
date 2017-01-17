@@ -838,7 +838,7 @@ pub fn print_after_parsing(sess: &Session,
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 pprust::print_crate(sess.codemap(),
-                                    sess.diagnostic(),
+                                    &sess.parse_sess,
                                     krate,
                                     src_name.to_string(),
                                     &mut rdr,
@@ -896,7 +896,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
-                                        sess.diagnostic(),
+                                        &sess.parse_sess,
                                         krate,
                                         src_name.to_string(),
                                         &mut rdr,
@@ -920,7 +920,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
-                                            sess.diagnostic(),
+                                            &sess.parse_sess,
                                             krate,
                                             src_name.to_string(),
                                             &mut rdr,
@@ -945,7 +945,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map().expect("--unpretty missing HIR map");
                     let mut pp_state = pprust_hir::State::new_from_input(sess.codemap(),
-                                                                         sess.diagnostic(),
+                                                                         &sess.parse_sess,
                                                                          src_name.to_string(),
                                                                          &mut rdr,
                                                                          box out,

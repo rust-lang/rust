@@ -85,8 +85,7 @@ impl<'a> SpanUtils<'a> {
         let filemap = self.sess
                           .codemap()
                           .new_filemap(String::from("<anon-dxr>"), None, self.snippet(span));
-        let s = self.sess;
-        lexer::StringReader::new(s.diagnostic(), filemap)
+        lexer::StringReader::new(&self.sess.parse_sess, filemap)
     }
 
     fn span_to_tts(&self, span: Span) -> Vec<TokenTree> {
