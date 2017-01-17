@@ -337,7 +337,8 @@ impl<'a> LoweringContext<'a> {
                     return self.lower_ty(ty);
                 }
                 TyKind::Path(ref qself, ref path) => {
-                    hir::TyPath(self.lower_qpath(t.id, qself, path, ParamMode::Explicit))
+                    let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit);
+                    return self.ty_path(t.id, t.span, qpath);
                 }
                 TyKind::ImplicitSelf => {
                     hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
@@ -470,7 +471,8 @@ impl<'a> LoweringContext<'a> {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g. `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
-            self.ty(p.span, hir::TyPath(hir::QPath::Resolved(qself, path)))
+            let new_id = self.next_id();
+            self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path))
         };
 
         // Anything after the base path are associated "extensions",
@@ -493,7 +495,8 @@ impl<'a> LoweringContext<'a> {
             }
 
             // Wrap the associated extension in another type node.
-            ty = self.ty(p.span, hir::TyPath(qpath));
+            let new_id = self.next_id();
+            ty = self.ty_path(new_id, p.span, qpath);
         }
 
         // Should've returned in the for loop above.
@@ -2352,12 +2355,33 @@ impl<'a> LoweringContext<'a> {
         self.expr_block(block, attrs)
     }
 
-    fn ty(&mut self, span: Span, node: hir::Ty_) -> P<hir::Ty> {
-        P(hir::Ty {
-            id: self.next_id(),
-            node: node,
-            span: span,
-        })
+    fn ty_path(&mut self, id: NodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
+        let mut id = id;
+        let node = match qpath {
+            hir::QPath::Resolved(None, path) => {
+                // Turn trait object paths into `TyTraitObject` instead.
+                if let Def::Trait(_) = path.def {
+                    let principal = hir::TraitTyParamBound(hir::PolyTraitRef {
+                        bound_lifetimes: hir_vec![],
+                        trait_ref: hir::TraitRef {
+                            path: path.and_then(|path| path),
+                            ref_id: id,
+                        },
+                        span,
+                    }, hir::TraitBoundModifier::None);
+
+                    // The original ID is taken by the `PolyTraitRef`,
+                    // so the `Ty` itself needs a different one.
+                    id = self.next_id();
+
+                    hir::TyTraitObject(hir_vec![principal])
+                } else {
+                    hir::TyPath(hir::QPath::Resolved(None, path))
+                }
+            }
+            _ => hir::TyPath(qpath)
+        };
+        P(hir::Ty { id, node, span })
     }
 
     fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {

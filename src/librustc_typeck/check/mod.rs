@@ -3976,7 +3976,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match *qpath {
             hir::QPath::Resolved(ref maybe_qself, ref path) => {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::def_to_ty(self, self, opt_self_ty, path, node_id, true);
+                let ty = AstConv::def_to_ty(self, self, opt_self_ty, path, true);
                 (path.def, ty)
             }
             hir::QPath::TypeRelative(ref qself, ref segment) => {
