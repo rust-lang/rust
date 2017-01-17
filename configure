@@ -745,7 +745,7 @@ fi
 case "$CFG_RELEASE_CHANNEL" in
     nightly )
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
-	CFG_ENABLE_LLVM_ASSERTIONS=1
+        enable_if_not_disabled llvm-assertions
         # FIXME(stage0) re-enable this on the next stage0 now that #35566 is
         # fixed
         case "$CFG_BUILD" in
