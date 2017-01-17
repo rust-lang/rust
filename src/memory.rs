@@ -1,5 +1,4 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 
@@ -710,7 +709,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     {
         let start = ptr.offset.saturating_sub(self.pointer_size() - 1);
         let end = ptr.offset + size;
-        Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
+        Ok(self.get(ptr.alloc_id)?.relocations.range(start..end))
     }
 
     fn clear_relocations(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx, ()> {
