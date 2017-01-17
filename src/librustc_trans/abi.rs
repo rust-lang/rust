@@ -96,6 +96,7 @@ impl ArgAttribute {
 pub struct ArgAttributes {
     regular: ArgAttribute,
     dereferenceable_bytes: u64,
+    align: u64,
 }
 
 impl ArgAttributes {
@@ -109,6 +110,11 @@ impl ArgAttributes {
         self
     }
 
+    pub fn set_align(&mut self, align: u64) -> &mut Self {
+        self.align = align;
+        self
+    }
+
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
         unsafe {
             self.regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
@@ -116,6 +122,9 @@ impl ArgAttributes {
                 llvm::LLVMRustAddDereferenceableAttr(llfn,
                                                      idx.as_uint(),
                                                      self.dereferenceable_bytes);
+            }
+            if self.align != 0 {
+                llvm::LLVMRustAddAlignAttr(llfn, idx.as_uint(), self.align);
             }
         }
     }
@@ -127,6 +136,9 @@ impl ArgAttributes {
                 llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite,
                                                              idx.as_uint(),
                                                              self.dereferenceable_bytes);
+            }
+            if self.align != 0 {
+                llvm::LLVMRustAddAlignCallSiteAttr(callsite, idx.as_uint(), self.align);
             }
         }
     }
