@@ -745,7 +745,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_vec(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Vec(exprs))
+        self.expr(sp, ast::ExprKind::Array(exprs))
     }
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr> {
         self.expr_call_global(sp, self.std_path(&["vec", "Vec", "new"]),

@@ -1123,8 +1123,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::InPlace(p, e) => {
                 ExprKind::InPlace(folder.fold_expr(p), folder.fold_expr(e))
             }
-            ExprKind::Vec(exprs) => {
-                ExprKind::Vec(folder.fold_exprs(exprs))
+            ExprKind::Array(exprs) => {
+                ExprKind::Array(folder.fold_exprs(exprs))
             }
             ExprKind::Repeat(expr, count) => {
                 ExprKind::Repeat(folder.fold_expr(expr), folder.fold_expr(count))

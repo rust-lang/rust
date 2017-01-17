@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::VarRef { .. } |
             ExprKind::SelfRef |
             ExprKind::StaticRef { .. } |
-            ExprKind::Vec { .. } |
+            ExprKind::Array { .. } |
             ExprKind::Tuple { .. } |
             ExprKind::Adt { .. } |
             ExprKind::Closure { .. } |

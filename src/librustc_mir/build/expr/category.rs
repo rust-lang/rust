@@ -60,7 +60,7 @@ impl Category {
             ExprKind::Call { .. } =>
                 Some(Category::Rvalue(RvalueFunc::Into)),
 
-            ExprKind::Vec { .. } |
+            ExprKind::Array { .. } |
             ExprKind::Tuple { .. } |
             ExprKind::Adt { .. } |
             ExprKind::Closure { .. } |
