@@ -646,14 +646,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.to_u64()?),
                             _ => bug!("invalid fat pointer type: {}", ty),
                         };
-                        self.drop(
-                            Lvalue::Ptr {
-                                ptr: ptr,
-                                extra: extra,
-                            },
-                            contents_ty,
-                            drop,
-                        )?;
+                        self.drop(Lvalue::Ptr { ptr, extra }, contents_ty, drop)?;
                     },
                 }
                 let box_free_fn = self.tcx.lang_items.box_free_fn().expect("no box_free lang item");
@@ -771,7 +764,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..(len as u64) {
-                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i * size), extra: extra }, elem_ty, drop)?;
+                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i * size), extra }, elem_ty, drop)?;
                 }
             },
             // FIXME: what about TyClosure and TyAnon?
@@ -798,11 +791,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             if self.type_is_sized(field_ty) {
                 self.drop(Lvalue::from_ptr(ptr), field_ty, drop)?;
             } else {
-                let lvalue = Lvalue::Ptr {
-                    ptr: ptr,
-                    extra: extra,
-                };
-                self.drop(lvalue, field_ty, drop)?;
+                self.drop(Lvalue::Ptr { ptr, extra }, field_ty, drop)?;
                 break; // if it is not sized, then this is the last field anyway
             }
         }
@@ -845,7 +834,7 @@ pub(super) fn get_impl_method<'a, 'tcx>(
             });
             ImplMethod {
                 method: node_item.item,
-                substs: substs,
+                substs,
                 is_provided: node_item.node.is_from_trait(),
             }
         }

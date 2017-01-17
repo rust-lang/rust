@@ -129,7 +129,7 @@ impl Default for ResourceLimits {
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
         EvalContext {
-            tcx: tcx,
+            tcx,
             memory: Memory::new(&tcx.data_layout, limits.memory_size),
             globals: HashMap::new(),
             stack: Vec::new(),
@@ -283,15 +283,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let locals = vec![Value::ByVal(PrimVal::Undef); num_locals];
 
         self.stack.push(Frame {
-            mir: mir,
+            mir,
             block: mir::START_BLOCK,
-            return_to_block: return_to_block,
-            return_lvalue: return_lvalue,
-            locals: locals,
+            return_to_block,
+            return_lvalue,
+            locals,
             interpreter_temporaries: temporaries,
-            span: span,
-            def_id: def_id,
-            substs: substs,
+            span,
+            def_id,
+            substs,
             stmt: 0,
         });
 
@@ -764,11 +764,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             // function items are zero sized
                             Value::ByRef(self.memory.allocate(0, 0)?)
                         } else {
-                            let cid = GlobalId {
-                                def_id: def_id,
-                                substs: substs,
-                                promoted: None,
-                            };
+                            let cid = GlobalId { def_id, substs, promoted: None };
                             self.read_lvalue(Lvalue::Global(cid))
                         }
                     }

@@ -47,10 +47,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ecx: self,
                 mir: Ref::clone(&mir),
                 new_constants: &mut new,
-            }.visit_statement(block, stmt, mir::Location {
-                block: block,
-                statement_index: stmt_id,
-            });
+            }.visit_statement(block, stmt, mir::Location { block, statement_index: stmt_id });
             if new? == 0 {
                 self.statement(stmt)?;
             }
@@ -68,10 +65,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ecx: self,
             mir: Ref::clone(&mir),
             new_constants: &mut new,
-        }.visit_terminator(block, terminator, mir::Location {
-            block: block,
-            statement_index: stmt_id,
-        });
+        }.visit_terminator(block, terminator, mir::Location { block, statement_index: stmt_id });
         if new? == 0 {
             self.terminator(terminator)?;
         }
@@ -153,11 +147,7 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
-        let cid = GlobalId {
-            def_id: def_id,
-            substs: substs,
-            promoted: None,
-        };
+        let cid = GlobalId { def_id, substs, promoted: None };
         if self.ecx.globals.contains_key(&cid) {
             return;
         }

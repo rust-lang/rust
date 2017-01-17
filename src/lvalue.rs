@@ -63,7 +63,7 @@ pub struct Global<'tcx> {
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn from_ptr(ptr: Pointer) -> Self {
-        Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
+        Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
     pub(super) fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
@@ -101,7 +101,7 @@ impl<'tcx> Global<'tcx> {
         Global {
             value: Value::ByVal(PrimVal::Undef),
             mutable: true,
-            ty: ty,
+            ty,
         }
     }
 }
@@ -137,22 +137,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-
-            Local(local) => {
-                Lvalue::Local {
-                    frame: self.stack.len() - 1,
-                    local: local,
-                }
-            }
+            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local },
 
             Static(def_id) => {
                 let substs = self.tcx.intern_substs(&[]);
-                let cid = GlobalId {
-                    def_id: def_id,
-                    substs: substs,
-                    promoted: None,
-                };
-                Lvalue::Global(cid)
+                Lvalue::Global(GlobalId { def_id, substs, promoted: None })
             }
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
@@ -321,7 +310,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         };
 
-        Ok(Lvalue::Ptr { ptr: ptr, extra: extra })
+        Ok(Lvalue::Ptr { ptr, extra })
     }
 
     pub(super) fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {

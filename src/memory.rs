@@ -52,7 +52,7 @@ pub struct Pointer {
 
 impl Pointer {
     pub fn new(alloc_id: AllocId, offset: u64) -> Self {
-        Pointer { alloc_id: alloc_id, offset: offset }
+        Pointer { alloc_id, offset }
     }
 
     pub fn signed_offset(self, i: i64) -> Self {
@@ -133,7 +133,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
             next_id: AllocId(2),
-            layout: layout,
+            layout,
             memory_size: max_memory,
             memory_usage: 0,
         }
@@ -151,7 +151,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             sig: fn_ty.sig,
         });
         self.create_fn_alloc(FunctionDefinition {
-            def_id: def_id,
+            def_id,
             substs: substs.substs,
             abi: fn_ty.abi,
             // FIXME: why doesn't this compile?
@@ -162,8 +162,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
         self.create_fn_alloc(FunctionDefinition {
-            def_id: def_id,
-            substs: substs,
+            def_id,
+            substs,
             abi: fn_ty.abi,
             // FIXME: why doesn't this compile?
             //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
@@ -202,7 +202,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             bytes: vec![0; size as usize],
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
-            align: align,
+            align,
             immutable: false,
         };
         let id = self.next_id;
@@ -423,12 +423,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&[]);
         }
         let alloc = self.get(ptr.alloc_id)?;
-        if ptr.offset + size > alloc.bytes.len() as u64 {
-            return Err(EvalError::PointerOutOfBounds {
-                ptr: ptr,
-                size: size,
-                allocation_size: alloc.bytes.len() as u64,
-            });
+        let allocation_size = alloc.bytes.len() as u64;
+        if ptr.offset + size > allocation_size {
+            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
         }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
@@ -441,12 +438,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&mut []);
         }
         let alloc = self.get_mut(ptr.alloc_id)?;
-        if ptr.offset + size > alloc.bytes.len() as u64 {
-            return Err(EvalError::PointerOutOfBounds {
-                ptr: ptr,
-                size: size,
-                allocation_size: alloc.bytes.len() as u64,
-            });
+        let allocation_size = alloc.bytes.len() as u64;
+        if ptr.offset + size > allocation_size {
+            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
         }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);

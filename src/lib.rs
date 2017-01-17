@@ -2,9 +2,10 @@
     btree_range,
     collections,
     collections_bound,
+    field_init_shorthand,
+    i128_type,
     pub_restricted,
     rustc_private,
-    i128_type,
 )]
 
 // From rustc.
