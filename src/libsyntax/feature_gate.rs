@@ -896,9 +896,10 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         issue
     } else {
         // search in Accepted or Removed features
-        ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES.iter())
-            .find(|t| t.0 == feature)
-            .unwrap().2
+        match ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).find(|t| t.0 == feature) {
+            Some(&(_, _, issue)) => issue,
+            None => panic!("Feature `{}` is not declared anywhere", feature),
+        }
     }
 }
 
