@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Vector};
-use abi::{self, ArgType, ArgAttribute, FnType};
+use abi::{self, ArgType, ArgAttribute, FnType, ty_align};
 use context::CrateContext;
 use type_::Type;
 
@@ -343,6 +343,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 arg.make_indirect(ccx);
                 if let Some(attr) = ind_attr {
                     arg.attrs.set(attr);
+                    arg.attrs.set_align(ty_align(arg.ty, 0) as u64);
                 }
             } else {
                 arg.cast = Some(llreg_ty(ccx, &cls));

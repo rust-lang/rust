@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::*;
-use abi::{ArgAttribute, FnType};
+use abi::{ArgAttribute, FnType, ty_align};
 use type_::Type;
 use super::common::*;
 use super::machine::*;
@@ -53,6 +53,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
         if arg.ty.kind() == Struct {
             arg.make_indirect(ccx);
             arg.attrs.set(ArgAttribute::ByVal);
+            arg.attrs.set_align(ty_align(arg.ty, 0) as u64);
         } else {
             arg.extend_integer_width_to(32);
         }

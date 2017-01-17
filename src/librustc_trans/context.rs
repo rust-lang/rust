@@ -374,8 +374,11 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
         // FIXME(#34960)
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
         let custom_llvm_used = cfg_llvm_root.trim() != "";
+        // Ignore any `-i128:128` that we add to our own data-layouts
+        let this_dl = sess.target.target.data_layout.replace("-i128:128", "");
+        let that_dl = data_layout.replace("-i128:128", "");
 
-        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
+        if !custom_llvm_used && this_dl != that_dl {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
