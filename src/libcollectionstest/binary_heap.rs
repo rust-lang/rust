@@ -314,12 +314,12 @@ fn test_extend_specialization() {
 #[test]
 fn test_placement() {
     let mut a = BinaryHeap::new();
-    a.place() <- 2;
-    a.place() <- 4;
-    a.place() <- 3;
+    &mut a <- 2;
+    &mut a <- 4;
+    &mut a <- 3;
     assert_eq!(a.peek(), Some(&4));
     assert_eq!(a.len(), 3);
-    a.place() <- 1;
+    &mut a <- 1;
     assert_eq!(a.into_sorted_vec(), vec![1, 2, 3, 4]);
 }
 
@@ -327,7 +327,7 @@ fn test_placement() {
 fn test_placement_panic() {
     let mut heap = BinaryHeap::from(vec![1, 2, 3]);
     fn mkpanic() -> usize { panic!() }
-    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { heap.place() <- mkpanic(); }));
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { &mut heap <- mkpanic(); }));
     assert_eq!(heap.len(), 3);
 }
 
