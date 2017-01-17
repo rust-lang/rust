@@ -1560,7 +1560,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
 
     // FIXME #12092: These numbers are platform-specific and need more extensive testing/tuning.
     //
-    // If `v` has length up to `insertion_len`, simply switch to insertion sort because it is going
+    // If `v` has length up to `max_insertion`, simply switch to insertion sort because it is going
     // to perform better than merge sort. For bigger types `T`, the threshold is smaller.
     //
     // Short runs are extended using insertion sort to span at least `min_run` elements, in order
