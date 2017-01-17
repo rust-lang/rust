@@ -46,6 +46,7 @@ use std::mem;
 use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
+use std::iter;
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
@@ -667,7 +668,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                     new_path.push(path);
                 }
             }
-            env::set_var("PATH", &env::join_paths(new_path).unwrap());
+            env::set_var("PATH",
+                &env::join_paths(new_path.iter()
+                                         .filter(|p| env::join_paths(iter::once(p)).is_ok()))
+                     .unwrap());
         }
         let features = sess.features.borrow();
         let cfg = syntax::ext::expand::ExpansionConfig {
