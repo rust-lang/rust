@@ -657,10 +657,24 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
-fn remap_path(sess: &Session, path: &str) -> String {
-    for (old, new) in sess.opts.debug_prefix_map.clone() {
+fn remap_path(sess: &Session, dir: Option<&str>, remap_dir: Option<&str>, path: &str) -> String {
+    for &(ref old, ref new) in &sess.opts.debug_prefix_map {
+        // If `old` is not absolute and we've been given a dir, add the dir to make
+        // it absolute. Otherwise use `old` as-is.
+        let old = if dir.is_none() || Path::new(old).is_absolute() {
+            old.to_string()
+        } else {
+            format!("{}/{}", dir.unwrap(), old)
+        };
         if path.starts_with(&old) {
-            return new + &path[old.len()..];
+            // Likewise, add `remap_dir` to new if we have one and `new` isn't absolute.
+            let mut ret = if remap_dir.is_none() || Path::new(new).is_absolute() {
+                new.to_string()
+            } else {
+                format!("{}/{}", remap_dir.unwrap(), new)
+            };
+            ret.push_str(&path[old.len()..]);
+            return ret;
         }
     }
     path.to_string()
@@ -669,18 +683,23 @@ fn remap_path(sess: &Session, path: &str) -> String {
 pub fn file_metadata(cx: &CrateContext, path: &str, full_path: &Option<String>) -> DIFile {
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess().working_dir.to_str().unwrap();
-    let file_name =
-        full_path.as_ref().map(|p| p.as_str()).unwrap_or_else(|| {
-            if path.starts_with(work_dir) {
+    let sess = cx.sess();
+    let remap_dir = remap_path(sess, None, None, work_dir);
+
+    let remap_file_name = match full_path {
+        &None => {
+            // Huh: return a relative path?
+            let p = if path.starts_with(work_dir) {
                 &path[work_dir.len() + 1..path.len()]
             } else {
                 path
-            }
-        });
+            };
+            remap_path(sess, None, None, p)
+        },
+        // Huh: return an absolute path?
+        &Some(ref full) => remap_path(sess, Some(work_dir), Some(&remap_dir), full),
+    };
 
-    let sess = cx.sess();
-    let remap_file_name = remap_path(sess, file_name);
-    let remap_dir = remap_path(sess, work_dir);
     file_metadata_(cx, path, &remap_file_name, &remap_dir)
 }
 
@@ -793,7 +812,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
         }
     };
 
-    let work_dir = remap_path(sess, work_dir);
+    let work_dir = remap_path(sess, None, None, work_dir);
 
     debug!("compile_unit_metadata: {:?}", compile_unit_name);
     let producer = format!("rustc version {}",

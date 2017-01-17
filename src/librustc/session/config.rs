@@ -253,7 +253,7 @@ top_level_options!(
         // Include the debug_assertions flag into dependency tracking, since it
         // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
-        debug_prefix_map: Option<(String, String)> [TRACKED],
+        debug_prefix_map: Vec<(String, String)> [TRACKED],
         debuginfo: DebugInfoLevel [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
@@ -446,7 +446,7 @@ pub fn basic_options() -> Options {
         libs: Vec::new(),
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
-        debug_prefix_map: None,
+        debug_prefix_map: Vec::new(),
         actually_rustdoc: false,
     }
 }
@@ -803,7 +803,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "optimize with possible levels 0-3, s, or z"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the cfg(debug_assertions) directive"),
-    debug_prefix_map: String = ("".to_string(), parse_string, [TRACKED],
+    debug_prefix_map: Vec<String> = (vec![], parse_string_push, [TRACKED],
         "remap OLD to NEW in debug info (OLD=NEW)"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "set the inlining threshold for"),
@@ -1428,18 +1428,16 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     };
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
 
-    let debug_prefix_map = if !cg.debug_prefix_map.is_empty() {
-        let mut parts = cg.debug_prefix_map.splitn(2, '=');
-        let old = parts.next().unwrap();
-        let new = match parts.next() {
-            Some(new) => new,
-            None => early_error(error_format,
-                                "-C debug-prefix-map value must be of the format `OLD=NEW`"),
-        };
-        Some((old.to_string(), new.to_string()))
-    } else {
-        None
-    };
+    let debug_prefix_map = cg.debug_prefix_map.iter()
+        .map(|m| {
+            let parts = m.splitn(2, '=').collect::<Vec<_>>();
+            if parts.len() != 2 {
+                early_error(error_format,
+                            "-C debug-prefix-map value must be of the format `OLD=NEW`")
+            }
+            (parts[0].to_string(), parts[1].to_string())
+        })
+        .collect();
 
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
@@ -1733,7 +1731,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
-    impl_dep_tracking_hash_via_hash!(Option<(String, String)>);
+    impl_dep_tracking_hash_via_hash!(Vec<(String, String)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
