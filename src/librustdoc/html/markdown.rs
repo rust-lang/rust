@@ -429,12 +429,12 @@ pub fn render(w: &mut fmt::Formatter,
     }
 }
 
-pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
+pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, start_line: usize) {
     extern fn block(_ob: *mut hoedown_buffer,
                     text: *const hoedown_buffer,
                     lang: *const hoedown_buffer,
                     data: *const hoedown_renderer_data,
-                    _: libc::size_t) {
+                    line: libc::size_t) {
         unsafe {
             if text.is_null() { return }
             let block_info = if lang.is_null() {
@@ -453,11 +453,12 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 stripped_filtered_line(l).unwrap_or(l)
             });
             let text = lines.collect::<Vec<&str>>().join("\n");
+            let line = tests.get_line() + line;
             tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness,
                            block_info.compile_fail, block_info.error_codes,
-                           block_info.original);
+                           line);
         }
     }
 
@@ -478,6 +479,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
         }
     }
 
+    tests.set_line(start_line);
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);

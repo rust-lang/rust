@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
-use std::fs::File;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -39,6 +37,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
+use syntax_pos::{BytePos, DUMMY_SP, Pos};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -81,7 +80,7 @@ pub fn run(input: &str,
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap, cstore.clone(),
+        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
@@ -99,14 +98,6 @@ pub fn run(input: &str,
     });
     let opts = scrape_test_config(hir_forest.krate());
     let filename = input_path.to_str().unwrap_or("").to_owned();
-    let mut f = match File::open(input_path) {
-        Ok(f) => f,
-        _ => return 1,
-    };
-    let mut file_content = String::new();
-    if let Err(_) = f.read_to_string(&mut file_content) {
-        return 1;
-    }
     let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
@@ -114,8 +105,8 @@ pub fn run(input: &str,
                                        false,
                                        opts,
                                        maybe_sysroot,
-                                       &file_content,
-                                       filename);
+                                       filename,
+                                       Some(codemap));
 
     {
         let dep_graph = DepGraph::new(false);
@@ -399,27 +390,15 @@ pub struct Collector {
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
-    code_blocks: HashMap<String, Vec<u32>>,
     filename: String,
+    start_line: usize,
+    codemap: Option<Rc<CodeMap>>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               file_content: &str, filename: String) -> Collector {
-        let mut line_number = 1;
-        let mut block_lines = HashMap::new();
-        for (pos, block) in file_content.split("```").enumerate() {
-            if (pos & 1) != 0 {
-                let key = format!("{}", block.replace("/// ", "").replace("//!", ""));
-                if !block_lines.contains_key(&key) {
-                    block_lines.insert(key.clone(), Vec::new());
-                }
-                block_lines.get_mut(&key).unwrap().push(line_number);
-            }
-            line_number += block.lines().count() as u32 - 1;
-        }
-
+               filename: String, codemap: Option<Rc<CodeMap>>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -432,30 +411,17 @@ impl Collector {
             cratename: cratename,
             opts: opts,
             maybe_sysroot: maybe_sysroot,
-            code_blocks: block_lines,
             filename: filename,
+            start_line: 0,
+            codemap: codemap,
         }
-    }
-
-    fn get_line_from_key(&mut self, key: &String) -> u32 {
-        let (line, need_removal) = if let Some(l) = self.code_blocks.get_mut(key) {
-            let need_removal = l.len() > 1;
-            (l.pop().unwrap_or(1), need_removal)
-        } else {
-            return 1;
-        };
-        if need_removal {
-            self.code_blocks.remove(key);
-        }
-        line
     }
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    original: String) {
-        let line_number = self.get_line_from_key(&format!("{}\n{}\n", original, test));
-        let name = format!("{} - line {}", self.filename, line_number);
+                    line: usize) {
+        let name = format!("{} - line {}", self.filename, line);
         self.cnt += 1;
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -499,6 +465,18 @@ impl Collector {
         });
     }
 
+    pub fn get_line(&self) -> usize {
+        if let Some(ref codemap) = self.codemap{
+            codemap.lookup_char_pos(BytePos(self.start_line as u32)).line - 1
+        } else {
+            self.start_line
+        }
+    }
+
+    pub fn set_line(&mut self, start_line: usize) {
+        self.start_line = start_line;
+    }
+
     pub fn register_header(&mut self, name: &str, level: u32) {
         if self.use_headers && level == 1 {
             // we use these headings as test names, so it's good if
@@ -539,7 +517,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
-            markdown::find_testable_code(doc, self.collector);
+            markdown::find_testable_code(doc, self.collector,
+                                         attrs.span.unwrap_or(DUMMY_SP).lo.to_usize());
         }
 
         nested(self);
