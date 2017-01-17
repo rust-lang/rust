@@ -61,12 +61,12 @@ impl<'a> FmtVisitor<'a> {
                 let rewrite = stmt.rewrite(&self.get_context(),
                                            self.config.max_width - self.block_indent.width(),
                                            self.block_indent);
-
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, _) = **mac;
                 self.visit_mac(mac, None, MacroPosition::Statement);
+                self.format_missing(stmt.span.hi);
             }
         }
     }

@@ -75,3 +75,7 @@ gfx_pipeline!(pipe {
     vbuf: gfx::VertexBuffer<Vertex> = (),
     out: gfx::RenderTarget<ColorFormat> = "Target0",
 });
+
+fn issue_1279() {
+    println!("dsfs"); // a comment
+}
