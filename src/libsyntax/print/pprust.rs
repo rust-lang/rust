@@ -1028,7 +1028,7 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
             }
-            ast::TyKind::ObjectSum(ref bounds) => {
+            ast::TyKind::TraitObject(ref bounds) => {
                 self.print_bounds("", &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {

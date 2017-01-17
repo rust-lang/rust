@@ -456,7 +456,7 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
       TyPath(_) => SawTyPath,
-      TyObjectSum(..) => SawTyObjectSum,
+      TyTraitObject(..) => SawTyObjectSum,
       TyImplTrait(..) => SawTyImplTrait,
       TyTypeof(..) => SawTyTypeof,
       TyInfer => SawTyInfer

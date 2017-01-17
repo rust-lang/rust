@@ -566,7 +566,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_ty(ty);
             visitor.visit_nested_body(length)
         }
-        TyObjectSum(ref bounds) => {
+        TyTraitObject(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyImplTrait(ref bounds) => {

@@ -346,7 +346,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::ObjectSum(ref bounds) => {
+        TyKind::TraitObject(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyKind::ImplTrait(ref bounds) => {
