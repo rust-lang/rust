@@ -450,17 +450,14 @@ impl<'a> FmtVisitor<'a> {
 pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
     if let ast::ItemKind::Impl(_, _, ref generics, ref trait_ref, _, ref items) = item.node {
         let mut result = String::new();
-
         // First try to format the ref and type without a split at the 'for'.
         let mut ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, false));
 
         // If there is a line break present in the first result format it again
         // with a split at the 'for'. Skip this if there is no trait ref and
         // therefore no 'for'.
-        if let Some(_) = *trait_ref {
-            if ref_and_type.contains('\n') {
-                ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, true));
-            }
+        if ref_and_type.contains('\n') && trait_ref.is_some() {
+            ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, true));
         }
         result.push_str(&ref_and_type);
 
@@ -589,11 +586,13 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                                                      mk_sp(lo, hi)));
         result.push_str(&generics_str);
 
-        result.push(' ');
         if polarity == ast::ImplPolarity::Negative {
-            result.push('!');
+            result.push_str(" !");
         }
         if let Some(ref trait_ref) = *trait_ref {
+            if polarity != ast::ImplPolarity::Negative {
+                result.push_str(" ");
+            }
             let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
             let indent = offset + result.len();
             result.push_str(&*try_opt!(trait_ref.rewrite(context, budget, indent)));
@@ -606,9 +605,9 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                 let for_indent = Indent::new(0, width);
                 result.push_str(&for_indent.to_string(context.config));
 
-                result.push_str("for ");
+                result.push_str("for");
             } else {
-                result.push_str(" for ");
+                result.push_str(" for");
             }
         }
 
@@ -623,10 +622,21 @@ fn format_impl_ref_and_type(context: &RewriteContext,
             }
         }
 
-        let budget = try_opt!(context.config.max_width.checked_sub(used_space));
-        let indent = offset + result.len();
-        result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
+        // 1 = space before the type.
+        let budget = try_opt!(context.config.max_width.checked_sub(used_space + 1));
+        let indent = offset + result.len() + 1;
+        let self_ty_str = self_ty.rewrite(context, budget, indent);
+        if let Some(self_ty_str) = self_ty_str {
+            result.push_str(" ");
+            result.push_str(&self_ty_str);
+            return Some(result);
+        }
 
+        // Can't fit the self type on what's left of the line, so start a new one.
+        let indent = offset.block_indent(context.config);
+        result.push_str(&format!("\n{}", indent.to_string(context.config)));
+        let budget = try_opt!(context.config.max_width.checked_sub(indent.width()));
+        result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
         Some(result)
     } else {
         unreachable!();

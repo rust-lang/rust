@@ -112,3 +112,8 @@ mod x {
               C: 'static,
               D: 'static { }
 }
+
+impl<ConcreteThreadSafeLayoutNode: ThreadSafeLayoutNodeFoo> Issue1249<ConcreteThreadSafeLayoutNode> {
+    // Creates a new flow constructor.
+   fn foo() {}
+}
