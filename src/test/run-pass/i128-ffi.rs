@@ -20,6 +20,8 @@
 // Ignore 32 bit targets:
 // ignore-x86, ignore-arm
 
+// ignore-emscripten
+
 #![feature(i128_type)]
 
 #[link(name = "rust_test_helpers", kind = "static")]

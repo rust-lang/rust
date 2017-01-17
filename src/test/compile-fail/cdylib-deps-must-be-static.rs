@@ -11,6 +11,7 @@
 // error-pattern: dependency `cdylib_dep` not found in rlib format
 // aux-build:cdylib-dep.rs
 // ignore-musl
+// ignore-emscripten
 
 #![crate_type = "cdylib"]
 
