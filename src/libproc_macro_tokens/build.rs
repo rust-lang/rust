@@ -24,6 +24,19 @@ pub fn concat(ts1: TokenStream, ts2: TokenStream) -> TokenStream {
     TokenStream::concat(ts1, ts2)
 }
 
+/// Flatten a sequence of TokenStreams into a single TokenStream.
+pub fn flatten<T: Iterator<Item=TokenStream>>(mut iter: T) -> TokenStream {
+    match iter.next() {
+        Some(mut ts) => {
+            for next in iter {
+                ts = TokenStream::concat(ts, next);
+            }
+            ts
+        }
+        None => TokenStream::mk_empty()
+    }
+}
+
 /// Checks if two identifiers have the same name, disregarding context. This allows us to
 /// fake 'reserved' keywords.
 // FIXME We really want `free-identifier-=?` (a la Dybvig 1993). von Tander 2007 is
