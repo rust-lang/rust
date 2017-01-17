@@ -1864,55 +1864,6 @@ fn bar(foo: Foo) -> u32 {
 ```
 "##,
 
-E0172: r##"
-This error means that an attempt was made to specify the type of a variable with
-a combination of a concrete type and a trait. Consider the following example:
-
-```compile_fail,E0172
-fn foo(bar: i32+std::fmt::Display) {}
-```
-
-The code is trying to specify that we want to receive a signed 32-bit integer
-which also implements `Display`. This doesn't make sense: when we pass `i32`, a
-concrete type, it implicitly includes all of the traits that it implements.
-This includes `Display`, `Debug`, `Clone`, and a host of others.
-
-If `i32` implements the trait we desire, there's no need to specify the trait
-separately. If it does not, then we need to `impl` the trait for `i32` before
-passing it into `foo`. Either way, a fixed definition for `foo` will look like
-the following:
-
-```
-fn foo(bar: i32) {}
-```
-
-To learn more about traits, take a look at the Book:
-
-https://doc.rust-lang.org/book/traits.html
-"##,
-
-E0178: r##"
-In types, the `+` type operator has low precedence, so it is often necessary
-to use parentheses.
-
-For example:
-
-```compile_fail,E0178
-trait Foo {}
-
-struct Bar<'a> {
-    w: &'a Foo + Copy,   // error, use &'a (Foo + Copy)
-    x: &'a Foo + 'a,     // error, use &'a (Foo + 'a)
-    y: &'a mut Foo + 'a, // error, use &'a mut (Foo + 'a)
-    z: fn() -> Foo + 'a, // error, use fn() -> (Foo + 'a)
-}
-```
-
-More details can be found in [RFC 438].
-
-[RFC 438]: https://github.com/rust-lang/rfcs/pull/438
-"##,
-
 E0182: r##"
 You bound an associated type in an expression path which is not
 allowed.
@@ -4152,6 +4103,7 @@ register_diagnostics! {
 //  E0163, // merged into E0071
 //  E0167,
 //  E0168,
+//  E0172, // non-trait found in a type sum, moved to resolve
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
     E0183,

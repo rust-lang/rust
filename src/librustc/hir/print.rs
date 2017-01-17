@@ -418,11 +418,7 @@ impl<'a> State<'a> {
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
-            hir::TyObjectSum(ref ty, ref bounds) => {
-                self.print_type(&ty)?;
-                self.print_bounds("+", &bounds[..])?;
-            }
-            hir::TyPolyTraitRef(ref bounds) => {
+            hir::TyTraitObject(ref bounds) => {
                 self.print_bounds("", &bounds[..])?;
             }
             hir::TyImplTrait(ref bounds) => {
@@ -2023,11 +2019,13 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false)?;
+                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref lhs_ty,
+                                                                        ref rhs_ty,
+                                                                        ..}) => {
+                    self.print_type(lhs_ty)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
-                    self.print_type(&ty)?;
+                    self.print_type(rhs_ty)?;
                 }
             }
         }

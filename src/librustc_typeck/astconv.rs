@@ -73,7 +73,7 @@ use std::iter;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::symbol::{Symbol, keywords};
-use syntax_pos::{Span, Pos};
+use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
 pub trait AstConv<'gcx, 'tcx> {
@@ -930,87 +930,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         decl_ty.subst(self.tcx(), substs)
     }
 
-    fn ast_ty_to_object_trait_ref(&self,
-                                  rscope: &RegionScope,
-                                  span: Span,
-                                  ty: &hir::Ty,
-                                  bounds: &[hir::TyParamBound])
-                                  -> Ty<'tcx>
-    {
-        /*!
-         * In a type like `Foo + Send`, we want to wait to collect the
-         * full set of bounds before we make the object type, because we
-         * need them to infer a region bound.  (For example, if we tried
-         * made a type from just `Foo`, then it wouldn't be enough to
-         * infer a 'static bound, and hence the user would get an error.)
-         * So this function is used when we're dealing with a sum type to
-         * convert the LHS. It only accepts a type that refers to a trait
-         * name, and reports an error otherwise.
-         */
-
-        let tcx = self.tcx();
-        match ty.node {
-            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
-                if let Def::Trait(trait_def_id) = path.def {
-                    self.trait_path_to_object_type(rscope,
-                                                   path.span,
-                                                   trait_def_id,
-                                                   ty.id,
-                                                   path.segments.last().unwrap(),
-                                                   span,
-                                                   partition_bounds(bounds))
-                } else {
-                    struct_span_err!(tcx.sess, ty.span, E0172,
-                                     "expected a reference to a trait")
-                        .span_label(ty.span, &format!("expected a trait"))
-                        .emit();
-                    tcx.types.err
-                }
-            }
-            _ => {
-                let mut err = struct_span_err!(tcx.sess, ty.span, E0178,
-                                               "expected a path on the left-hand side \
-                                                of `+`, not `{}`",
-                                               tcx.map.node_to_pretty_string(ty.id));
-                err.span_label(ty.span, &format!("expected a path"));
-                let hi = bounds.iter().map(|x| match *x {
-                    hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
-                    hir::RegionTyParamBound(ref r) => r.span.hi,
-                }).max_by_key(|x| x.to_usize());
-                let full_span = hi.map(|hi| Span {
-                    lo: ty.span.lo,
-                    hi: hi,
-                    expn_id: ty.span.expn_id,
-                });
-                match (&ty.node, full_span) {
-                    (&hir::TyRptr(ref lifetime, ref mut_ty), Some(full_span)) => {
-                        let ty_str = hir::print::to_string(&tcx.map, |s| {
-                            use syntax::print::pp::word;
-                            use syntax::print::pprust::PrintState;
-
-                            word(&mut s.s, "&")?;
-                            s.print_opt_lifetime(lifetime)?;
-                            s.print_mutability(mut_ty.mutbl)?;
-                            s.popen()?;
-                            s.print_type(&mut_ty.ty)?;
-                            s.print_bounds(" +", bounds)?;
-                            s.pclose()
-                        });
-                        err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
-                                            ty_str);
-                    }
-
-                    _ => {
-                        help!(&mut err,
-                                   "perhaps you forgot parentheses? (per RFC 438)");
-                    }
-                }
-                err.emit();
-                tcx.types.err
-            }
-        }
-    }
-
     /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
     /// removing the dummy Self type (TRAIT_OBJECT_DUMMY_SELF).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
@@ -1428,7 +1347,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match path.def {
             Def::Trait(trait_def_id) => {
                 // N.B. this case overlaps somewhat with
-                // TyObjectSum, see that fn for details
+                // TyTraitObject, see that fn for details
 
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
@@ -1534,9 +1453,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TySlice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
             }
-            hir::TyObjectSum(ref ty, ref bounds) => {
-                self.ast_ty_to_object_trait_ref(rscope, ast_ty.span, ty, bounds)
-            }
             hir::TyPtr(ref mt) => {
                 tcx.mk_ptr(ty::TypeAndMut {
                     ty: self.ast_ty_to_ty(rscope, &mt.ty),
@@ -1609,7 +1525,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
-            hir::TyPolyTraitRef(ref bounds) => {
+            hir::TyTraitObject(ref bounds) => {
                 self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
             }
             hir::TyImplTrait(ref bounds) => {

@@ -403,8 +403,8 @@ pub struct WhereRegionPredicate {
 pub struct WhereEqPredicate {
     pub id: NodeId,
     pub span: Span,
-    pub path: Path,
-    pub ty: P<Ty>,
+    pub lhs_ty: P<Ty>,
+    pub rhs_ty: P<Ty>,
 }
 
 pub type CrateConfig = HirVec<P<MetaItem>>;
@@ -1214,12 +1214,11 @@ pub enum Ty_ {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     TyPath(QPath),
-
-    /// Something like `A+B`. Note that `B` must always be a path.
-    TyObjectSum(P<Ty>, TyParamBounds),
-    /// A type like `for<'a> Foo<&'a Bar>`
-    TyPolyTraitRef(TyParamBounds),
-    /// An `impl TraitA+TraitB` type.
+    /// A trait object type `Bound1 + Bound2 + Bound3`
+    /// where `Bound` is a trait or a lifetime.
+    TyTraitObject(TyParamBounds),
+    /// An `impl Bound1 + Bound2 + Bound3` type
+    /// where `Bound` is a trait or a lifetime.
     TyImplTrait(TyParamBounds),
     /// Unused for now
     TyTypeof(BodyId),

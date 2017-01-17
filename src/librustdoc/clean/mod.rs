@@ -1504,9 +1504,6 @@ pub enum Type {
     // _
     Infer,
 
-    // for<'a> Foo(&'a)
-    PolyTraitRef(Vec<TyParamBound>),
-
     // impl TraitA+TraitB
     ImplTrait(Vec<TyParamBound>),
 }
@@ -1768,24 +1765,26 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyObjectSum(ref lhs, ref bounds) => {
-                let lhs_ty = lhs.clean(cx);
+            TyTraitObject(ref bounds) => {
+                let lhs_ty = bounds[0].clean(cx);
                 match lhs_ty {
-                    ResolvedPath { path, typarams: None, did, is_generic } => {
-                        ResolvedPath {
-                            path: path,
-                            typarams: Some(bounds.clean(cx)),
-                            did: did,
-                            is_generic: is_generic,
+                    TraitBound(poly_trait, ..) => {
+                        match poly_trait.trait_ {
+                            ResolvedPath { path, typarams: None, did, is_generic } => {
+                                ResolvedPath {
+                                    path: path,
+                                    typarams: Some(bounds[1..].clean(cx)),
+                                    did: did,
+                                    is_generic: is_generic,
+                                }
+                            }
+                            _ => Infer // shouldn't happen
                         }
                     }
-                    _ => {
-                        lhs_ty // shouldn't happen
-                    }
+                    _ => Infer // shouldn't happen
                 }
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyPolyTraitRef(ref bounds) => PolyTraitRef(bounds.clean(cx)),
             TyImplTrait(ref bounds) => ImplTrait(bounds.clean(cx)),
             TyInfer => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
