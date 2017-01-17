@@ -51,6 +51,7 @@ use util::nodemap::{NodeMap, FxHashMap};
 use std::collections::BTreeMap;
 use std::iter;
 
+use syntax::attr;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ptr::P;
@@ -1814,7 +1815,8 @@ impl<'a> LoweringContext<'a> {
                     let match_expr = P(self.expr_match(e.span,
                                                        into_iter_expr,
                                                        hir_vec![iter_arm],
-                                                       hir::MatchSource::ForLoopDesugar));
+                                                       hir::MatchSource::ForLoopDesugar,
+                                                       ThinVec::new()));
 
                     // `{ let _result = ...; _result }`
                     // underscore prevents an unused_variables lint if the head diverges
@@ -1833,8 +1835,12 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Try(ref sub_expr) => {
                     // to:
                     //
+                    // #[allow(unreachable_patterns)]
                     // match Carrier::translate(<expr>) {
-                    //     Ok(val) => val,
+                    //     Ok(val) => {
+                    //         #[allow(unreachable_code)]
+                    //         val
+                    //     }
                     //     Err(err) => return Carrier::from_error(From::from(err))
                     // }
                     let unstable_span = self.allow_internal_unstable("?", e.span);
@@ -1849,14 +1855,31 @@ impl<'a> LoweringContext<'a> {
                         P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                     };
 
-                    // Ok(val) => val
+                    // Ok(val) => { #[allow(unreachable_code)] val }
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
                         let val_pat = self.pat_ident(e.span, val_ident);
-                        let val_expr = P(self.expr_ident(e.span, val_ident, val_pat.id));
+                        // #[allow(unreachable_code)]
+                        let val_attr = {
+                            // allow(unreachable_code)
+                            let allow = {
+                                let allow_ident = self.str_to_ident("allow");
+                                let uc_ident = self.str_to_ident("unreachable_code");
+                                let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
+                                let uc_nested_meta_item = NestedMetaItemKind::MetaItem(uc_meta_item);
+                                let uc_spanned = respan(e.span, uc_nested_meta_item);
+                                attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                            };
+                            attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                        };
+                        let attrs = From::from(vec![val_attr]);
+                        let val_expr = P(self.expr_ident_with_attrs(e.span, val_ident, val_pat.id, attrs));
+                        let val_block = P(self.block_expr(val_expr));
+                        let ok_expr = P(self.expr_block(val_block, ThinVec::new()));
+
                         let ok_pat = self.pat_ok(e.span, val_pat);
 
-                        self.arm(hir_vec![ok_pat], val_expr)
+                        self.arm(hir_vec![ok_pat], ok_expr)
                     };
 
                     // Err(err) => return Carrier::from_error(From::from(err))
@@ -1885,8 +1908,23 @@ impl<'a> LoweringContext<'a> {
                         self.arm(hir_vec![err_pat], ret_expr)
                     };
 
+                    // #[allow(unreachable_patterns)]
+                    let match_attr = {
+                        // allow(unreachable_patterns)
+                        let allow = {
+                            let allow_ident = self.str_to_ident("allow");
+                            let up_ident = self.str_to_ident("unreachable_patterns");
+                            let up_meta_item = attr::mk_spanned_word_item(e.span, up_ident);
+                            let up_nested_meta_item = NestedMetaItemKind::MetaItem(up_meta_item);
+                            let up_spanned = respan(e.span, up_nested_meta_item);
+                            attr::mk_spanned_list_item(e.span, allow_ident, vec![up_spanned])
+                        };
+                        attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                    };
+
+                    let attrs = From::from(vec![match_attr]);
                     return self.expr_match(e.span, discr, hir_vec![err_arm, ok_arm],
-                                           hir::MatchSource::TryDesugar);
+                                           hir::MatchSource::TryDesugar, attrs);
                 }
 
                 ExprKind::Mac(_) => panic!("Shouldn't exist here"),
@@ -2031,6 +2069,13 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_ident(&mut self, span: Span, id: Name, binding: NodeId) -> hir::Expr {
+        self.expr_ident_with_attrs(span, id, binding, ThinVec::new())
+    }
+
+    fn expr_ident_with_attrs(&mut self, span: Span,
+                                        id: Name,
+                                        binding: NodeId,
+                                        attrs: ThinVec<Attribute>) -> hir::Expr {
         let def = {
             let defs = self.resolver.definitions();
             Def::Local(defs.local_def_id(binding))
@@ -2042,7 +2087,7 @@ impl<'a> LoweringContext<'a> {
             segments: hir_vec![hir::PathSegment::from_name(id)],
         })));
 
-        self.expr(span, expr_path, ThinVec::new())
+        self.expr(span, expr_path, attrs)
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
@@ -2062,9 +2107,10 @@ impl<'a> LoweringContext<'a> {
                   span: Span,
                   arg: P<hir::Expr>,
                   arms: hir::HirVec<hir::Arm>,
-                  source: hir::MatchSource)
+                  source: hir::MatchSource,
+                  attrs: ThinVec<Attribute>)
                   -> hir::Expr {
-        self.expr(span, hir::ExprMatch(arg, arms, source), ThinVec::new())
+        self.expr(span, hir::ExprMatch(arg, arms, source), attrs)
     }
 
     fn expr_block(&mut self, b: P<hir::Block>, attrs: ThinVec<Attribute>) -> hir::Expr {
