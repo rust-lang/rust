@@ -1086,7 +1086,7 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        for x in self.iter.by_ref() {
+        for x in &mut self.iter {
             if (self.predicate)(&x) {
                 return Some(x);
             }
@@ -1101,13 +1101,12 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
     }
 
     #[inline]
-    fn count(self) -> usize {
-        let (mut c, mut predicate, mut iter) = (0, self.predicate, self.iter);
-        for x in iter.by_ref() {
-            // branchless count
-            c += (&mut predicate)(&x) as usize;
+    fn count(mut self) -> usize {
+        let mut count = 0;
+        for x in &mut self.iter {
+            count += (self.predicate)(&x) as usize;
         }
-        c
+        count
     }
 }
 
