@@ -45,7 +45,7 @@ pub fn check(build: &mut Build) {
             let target = path.join(cmd);
             let mut cmd_alt = cmd.to_os_string();
             cmd_alt.push(".exe");
-            if target.exists() ||
+            if target.is_file() ||
                target.with_extension("exe").exists() ||
                target.join(cmd_alt).exists() {
                 return Some(target);

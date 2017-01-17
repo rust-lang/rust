@@ -11,6 +11,7 @@
 // no-prefer-dynamic
 // ignore-macos this needs valgrind 3.11 or higher; see
 // https://github.com/rust-lang/rust/pull/30365#issuecomment-165763679
+// ignore-emscripten
 
 use std::env;
 use std::process::{exit, Command};

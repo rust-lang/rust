@@ -10,6 +10,9 @@
 
 // ignore-stage0
 // ignore-stage1
+
+// ignore-emscripten
+
 #![feature(i128_type, test)]
 
 extern crate test;

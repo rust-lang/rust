@@ -12,6 +12,7 @@
 // ignore-stage1
 // compile-flags: -C codegen-units=2
 // error-pattern: build without -C codegen-units for more exact errors
+// ignore-emscripten
 
 #![feature(asm)]
 
