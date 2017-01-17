@@ -92,11 +92,13 @@ impl ReturnPass {
         if in_external_macro(cx, inner_span) {
             return;
         }
-        span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
-            if let Some(snippet) = snippet_opt(cx, inner_span) {
-                db.span_suggestion(ret_span, "remove `return` as shown:", snippet);
-            }
-        });
+        span_lint_and_then(cx,
+                           NEEDLESS_RETURN,
+                           ret_span,
+                           "unneeded return statement",
+                           |db| if let Some(snippet) = snippet_opt(cx, inner_span) {
+                               db.span_suggestion(ret_span, "remove `return` as shown:", snippet);
+                           });
     }
 
     // Check for "let x = EXPR; x"

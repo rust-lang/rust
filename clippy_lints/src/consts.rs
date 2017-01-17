@@ -270,12 +270,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 }
             },
             ExprUnary(op, ref operand) => {
-                self.expr(operand).and_then(|o| {
-                    match op {
-                        UnNot => constant_not(o),
-                        UnNeg => constant_negate(o),
-                        UnDeref => Some(o),
-                    }
+                self.expr(operand).and_then(|o| match op {
+                    UnNot => constant_not(o),
+                    UnNeg => constant_negate(o),
+                    UnDeref => Some(o),
                 })
             },
             ExprBinary(op, ref left, ref right) => self.binop(op, left, right),

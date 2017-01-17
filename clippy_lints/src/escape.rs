@@ -206,13 +206,11 @@ impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
         // overflows.
         match ty.sty {
             ty::TyBox(inner) => {
-                self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-                    if let Ok(layout) = inner.layout(&infcx) {
-                        let size = layout.size(&self.target);
-                        size.bytes() > self.too_large_for_stack
-                    } else {
-                        false
-                    }
+                self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
+                    let size = layout.size(&self.target);
+                    size.bytes() > self.too_large_for_stack
+                } else {
+                    false
                 })
             },
             _ => false,

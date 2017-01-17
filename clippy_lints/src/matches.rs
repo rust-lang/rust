@@ -393,15 +393,13 @@ type TypedRanges = Vec<SpannedRange<ConstInt>>;
 /// `Uint` and `Int` probably don't make sense.
 fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
     ranges.iter()
-        .filter_map(|range| {
-            if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
-                Some(SpannedRange {
-                    span: range.span,
-                    node: (start, end),
-                })
-            } else {
-                None
-            }
+        .filter_map(|range| if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
+            Some(SpannedRange {
+                span: range.span,
+                node: (start, end),
+            })
+        } else {
+            None
         })
         .collect()
 }

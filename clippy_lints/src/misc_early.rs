@@ -276,12 +276,10 @@ impl EarlyLintPass for MiscEarly {
                                            REDUNDANT_CLOSURE_CALL,
                                            expr.span,
                                            "Try not to call a closure in the expression where it is declared.",
-                                           |db| {
-                            if decl.inputs.is_empty() {
-                                let hint = snippet(cx, block.span, "..").into_owned();
-                                db.span_suggestion(expr.span, "Try doing something like: ", hint);
-                            }
-                        });
+                                           |db| if decl.inputs.is_empty() {
+                                               let hint = snippet(cx, block.span, "..").into_owned();
+                                               db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                                           });
                     }
                 }
             },

@@ -240,7 +240,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
     match lit.node {
         ExprLit(ref lit_ptr) => {
             if let LitKind::Int(value, _) = lit_ptr.node {
-                Some(value) //TODO: Handle sign
+                Some(value) // TODO: Handle sign
             } else {
                 None
             }

@@ -94,14 +94,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                MISREFACTORED_ASSIGN_OP,
                                                expr.span,
                                                "variable appears on both sides of an assignment operation",
-                                               |db| {
-                                if let (Some(snip_a), Some(snip_r)) =
-                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
-                                    db.span_suggestion(expr.span,
+                                               |db| if let (Some(snip_a), Some(snip_r)) =
+                                                   (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
+                                                   db.span_suggestion(expr.span,
                                                        "replace it with",
                                                        format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                }
-                            });
+                                               });
                         };
                         // lhs op= l op r
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
@@ -177,14 +175,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                ASSIGN_OP_PATTERN,
                                                expr.span,
                                                "manual implementation of an assign operation",
-                                               |db| {
-                                if let (Some(snip_a), Some(snip_r)) =
-                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
-                                    db.span_suggestion(expr.span,
+                                               |db| if let (Some(snip_a), Some(snip_r)) =
+                                                   (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
+                                                   db.span_suggestion(expr.span,
                                                        "replace it with",
                                                        format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                }
-                            });
+                                               });
                         }
                     };
                     // a = a op b

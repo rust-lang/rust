@@ -120,9 +120,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         return;
                     }
                 }
-                span_lint_and_then(cx, UNNECESSARY_OPERATION, stmt.span, "statement can be reduced", |db| {
-                    db.span_suggestion(stmt.span, "replace it with", snippet);
-                });
+                span_lint_and_then(cx,
+                                   UNNECESSARY_OPERATION,
+                                   stmt.span,
+                                   "statement can be reduced",
+                                   |db| { db.span_suggestion(stmt.span, "replace it with", snippet); });
             }
         }
     }

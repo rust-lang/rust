@@ -351,13 +351,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn check_nan(cx: &LateContext, path: &Path, span: Span) {
-    path.segments.last().map(|seg| {
-        if &*seg.name.as_str() == "NAN" {
-            span_lint(cx,
-                      CMP_NAN,
-                      span,
-                      "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
-        }
+    path.segments.last().map(|seg| if &*seg.name.as_str() == "NAN" {
+        span_lint(cx,
+                  CMP_NAN,
+                  span,
+                  "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
     });
 }
 

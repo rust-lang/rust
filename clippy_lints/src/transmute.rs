@@ -106,17 +106,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                USELESS_TRANSMUTE,
                                                e.span,
                                                "transmute from a reference to a pointer",
-                                               |db| {
-                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                    let sugg = if ptr_ty == rty {
-                                        arg.as_ty(to_ty)
-                                    } else {
-                                        arg.as_ty(cx.tcx.mk_ptr(rty)).as_ty(to_ty)
-                                    };
+                                               |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                                   let sugg = if ptr_ty == rty {
+                                                       arg.as_ty(to_ty)
+                                                   } else {
+                                                       arg.as_ty(cx.tcx.mk_ptr(rty)).as_ty(to_ty)
+                                                   };
 
-                                    db.span_suggestion(e.span, "try", sugg.to_string());
-                                }
-                            })
+                                                   db.span_suggestion(e.span, "try", sugg.to_string());
+                                               })
                         },
                         (&ty::TyInt(_), &TyRawPtr(_)) |
                         (&ty::TyUint(_), &TyRawPtr(_)) => {
@@ -124,11 +122,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                USELESS_TRANSMUTE,
                                                e.span,
                                                "transmute from an integer to a pointer",
-                                               |db| {
-                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                    db.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()).to_string());
-                                }
-                            })
+                                               |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                                   db.span_suggestion(e.span,
+                                                                      "try",
+                                                                      arg.as_ty(&to_ty.to_string()).to_string());
+                                               })
                         },
                         (&ty::TyFloat(_), &TyRef(..)) |
                         (&ty::TyFloat(_), &TyRawPtr(_)) |

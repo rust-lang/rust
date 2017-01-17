@@ -445,12 +445,10 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
     if x > 0 {
         Cow::Owned(s.lines()
             .enumerate()
-            .map(|(i, l)| {
-                if (ignore_first && i == 0) || l.is_empty() {
-                    l
-                } else {
-                    l.split_at(x).1
-                }
+            .map(|(i, l)| if (ignore_first && i == 0) || l.is_empty() {
+                l
+            } else {
+                l.split_at(x).1
             })
             .collect::<Vec<_>>()
             .join("\n"))
@@ -467,12 +465,10 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     if node_id == parent_id {
         return None;
     }
-    map.find(parent_id).and_then(|node| {
-        if let Node::NodeExpr(parent) = node {
-            Some(parent)
-        } else {
-            None
-        }
+    map.find(parent_id).and_then(|node| if let Node::NodeExpr(parent) = node {
+        Some(parent)
+    } else {
+        None
     })
 }
 

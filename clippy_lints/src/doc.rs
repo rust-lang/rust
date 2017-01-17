@@ -305,7 +305,8 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
                             continue;
                         }
 
-                        try!(parser.jump_to('`')); // not a code block, just inline code
+                        // not a code block, just inline code
+                        try!(parser.jump_to('`'));
                     },
                     '~' => {
                         if try!(check_block!(parser, '~', new_line)) {
