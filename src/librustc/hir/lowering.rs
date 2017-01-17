@@ -1866,14 +1866,17 @@ impl<'a> LoweringContext<'a> {
                                 let allow_ident = self.str_to_ident("allow");
                                 let uc_ident = self.str_to_ident("unreachable_code");
                                 let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
-                                let uc_nested_meta_item = NestedMetaItemKind::MetaItem(uc_meta_item);
-                                let uc_spanned = respan(e.span, uc_nested_meta_item);
+                                let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
+                                let uc_spanned = respan(e.span, uc_nested);
                                 attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
                             };
                             attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
                         };
                         let attrs = From::from(vec![val_attr]);
-                        let val_expr = P(self.expr_ident_with_attrs(e.span, val_ident, val_pat.id, attrs));
+                        let val_expr = P(self.expr_ident_with_attrs(e.span,
+                                                                    val_ident,
+                                                                    val_pat.id,
+                                                                    attrs));
                         let val_block = P(self.block_expr(val_expr));
                         let ok_expr = P(self.expr_block(val_block, ThinVec::new()));
 
@@ -1915,8 +1918,8 @@ impl<'a> LoweringContext<'a> {
                             let allow_ident = self.str_to_ident("allow");
                             let up_ident = self.str_to_ident("unreachable_patterns");
                             let up_meta_item = attr::mk_spanned_word_item(e.span, up_ident);
-                            let up_nested_meta_item = NestedMetaItemKind::MetaItem(up_meta_item);
-                            let up_spanned = respan(e.span, up_nested_meta_item);
+                            let up_nested = NestedMetaItemKind::MetaItem(up_meta_item);
+                            let up_spanned = respan(e.span, up_nested);
                             attr::mk_spanned_list_item(e.span, allow_ident, vec![up_spanned])
                         };
                         attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
