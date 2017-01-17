@@ -296,7 +296,7 @@ impl DiagnosticSpanLine {
                          h_end: usize)
                          -> DiagnosticSpanLine {
         DiagnosticSpanLine {
-            text: fm.get_line(index).unwrap().to_owned(),
+            text: fm.get_line(index).unwrap_or("").to_owned(),
             highlight_start: h_start,
             highlight_end: h_end,
         }
