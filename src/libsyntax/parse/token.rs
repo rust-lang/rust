@@ -187,6 +187,29 @@ impl Token {
         }
     }
 
+    /// Returns `true` if the token can appear at the start of a type.
+    pub fn can_begin_type(&self) -> bool {
+        match *self {
+            OpenDelim(Paren)            => true, // tuple
+            OpenDelim(Bracket)          => true, // array
+            Ident(..)                   => true, // type name or keyword
+            Underscore                  => true, // placeholder
+            Not                         => true, // never
+            BinOp(Star)                 => true, // raw pointer
+            BinOp(And)                  => true, // reference
+            AndAnd                      => true, // double reference
+            Lt | BinOp(Shl)             => true, // associated path
+            ModSep                      => true, // global path
+            Interpolated(ref nt) => match **nt {
+                NtTy(..) => true,
+                NtIdent(..) => true,
+                NtPath(..) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {

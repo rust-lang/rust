@@ -25,7 +25,7 @@ type Type_1_<'a, T> = &'a T;
 //type Type_3<T> = Box<T,,>; // error: expected type, found `,`
 
 
-type Type_4<T> = Type_1_<'static,, T>; //~ error: expected type, found `,`
+type Type_4<T> = Type_1_<'static,, T>; //~ error: expected `>`, found `,`
 
 
 type Type_5_<'a> = Type_1_<'a, ()>;
