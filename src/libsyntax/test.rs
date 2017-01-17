@@ -628,7 +628,7 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
         node: ast::ExprKind::AddrOf(ast::Mutability::Immutable,
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Vec(cx.testfns.iter().map(|test| {
+                node: ast::ExprKind::Array(cx.testfns.iter().map(|test| {
                     mk_test_desc_and_fn_rec(cx, test)
                 }).collect()),
                 span: DUMMY_SP,

@@ -2140,7 +2140,7 @@ impl<'a> Parser<'a> {
                 if self.check(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
                     self.bump();
-                    ex = ExprKind::Vec(Vec::new());
+                    ex = ExprKind::Array(Vec::new());
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr()?;
@@ -2160,11 +2160,11 @@ impl<'a> Parser<'a> {
                         )?;
                         let mut exprs = vec![first_expr];
                         exprs.extend(remaining_exprs);
-                        ex = ExprKind::Vec(exprs);
+                        ex = ExprKind::Array(exprs);
                     } else {
                         // Vector with one element.
                         self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Vec(vec![first_expr]);
+                        ex = ExprKind::Array(vec![first_expr]);
                     }
                 }
                 hi = self.prev_span.hi;

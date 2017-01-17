@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))
             }
-            ExprKind::Vec { fields } => {
+            ExprKind::Array { fields } => {
                 // (*) We would (maybe) be closer to trans if we
                 // handled this and other aggregate cases via
                 // `into()`, not `as_rvalue` -- in that case, instead

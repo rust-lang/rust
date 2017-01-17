@@ -864,7 +864,7 @@ pub enum ExprKind {
     /// First expr is the place; second expr is the value.
     InPlace(P<Expr>, P<Expr>),
     /// An array (`[a, b, c, d]`)
-    Vec(Vec<P<Expr>>),
+    Array(Vec<P<Expr>>),
     /// A function call
     ///
     /// The first field resolves to the function itself,
