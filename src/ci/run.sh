@@ -18,24 +18,47 @@ if [ "$LOCAL_USER_ID" != "" ]; then
   exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
 fi
 
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
+
+# FIXME: we shouldn't forcibly enable debug assertions and llvm assertions when
+#        `DEPLOY` is set because then we'll be shipping slower binaries. We
+#        should only set these for auto branches, but we need to make sure that
+#        if we disable this all the relevant platforms are still tested
+#        somewhere with debug and llvm assertions.
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+
+# In general we always want to run tests with LLVM assertions enabled, but not
+# all platforms currently support that, so we have an option to disable.
 if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
-  ENABLE_LLVM_ASSERTIONS=--enable-llvm-assertions
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
 fi
 
+# If we're deploying artifacts then we set the release channel, otherwise if
+# we're not deploying then we want to be sure to enable all assertions becauase
+# we'll be running tests
+#
+# FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
+#        either automatically or manually.
+if [ "$DEPLOY" != "" ]; then
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
+
+  if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+  fi
+fi
+
+# We want to enable usage of the `src/vendor` dir as much as possible, but not
+# all test suites have all their deps in there (just the main bootstrap) so we
+# have the ability to disable this flag
 if [ "$NO_VENDOR" = "" ]; then
-  ENABLE_VENDOR=--enable-vendor
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-vendor"
 fi
 
 set -ex
 
-$SRC/configure \
-  --disable-manage-submodules \
-  --enable-debug-assertions \
-  --enable-quiet-tests \
-  --enable-sccache \
-  $ENABLE_VENDOR \
-  $ENABLE_LLVM_ASSERTIONS \
-  $RUST_CONFIGURE_ARGS
+$SRC/configure $RUST_CONFIGURE_ARGS
 
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
