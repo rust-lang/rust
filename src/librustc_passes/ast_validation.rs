@@ -143,8 +143,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            TyKind::ObjectSum(_, ref bounds) |
-            TyKind::PolyTraitRef(ref bounds) => {
+            TyKind::TraitObject(ref bounds) => {
                 self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             _ => {}

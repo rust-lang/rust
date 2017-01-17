@@ -388,7 +388,7 @@ pub fn parse_arm_panic(parser: &mut Parser) -> Arm {
 }
 
 pub fn parse_ty_panic(parser: &mut Parser) -> P<Ty> {
-    panictry!(parser.parse_ty())
+    panictry!(parser.parse_ty_no_plus())
 }
 
 pub fn parse_stmt_panic(parser: &mut Parser) -> Option<Stmt> {

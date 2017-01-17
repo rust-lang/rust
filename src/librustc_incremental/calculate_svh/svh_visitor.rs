@@ -441,7 +441,6 @@ enum SawTyComponent {
     SawTyTup,
     SawTyPath,
     SawTyObjectSum,
-    SawTyPolyTraitRef,
     SawTyImplTrait,
     SawTyTypeof,
     SawTyInfer
@@ -457,8 +456,7 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
       TyPath(_) => SawTyPath,
-      TyObjectSum(..) => SawTyObjectSum,
-      TyPolyTraitRef(..) => SawTyPolyTraitRef,
+      TyTraitObject(..) => SawTyObjectSum,
       TyImplTrait(..) => SawTyImplTrait,
       TyTypeof(..) => SawTyTypeof,
       TyInfer => SawTyInfer

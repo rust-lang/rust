@@ -853,7 +853,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
-                    self.visit_ty(&eq_pred.ty);
+                    self.visit_ty(&eq_pred.rhs_ty);
                 }
             }
         }

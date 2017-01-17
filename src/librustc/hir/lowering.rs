@@ -308,9 +308,6 @@ impl<'a> LoweringContext<'a> {
                         span: t.span,
                     })))
                 }
-                TyKind::ObjectSum(ref ty, ref bounds) => {
-                    hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
-                }
                 TyKind::Array(ref ty, ref length) => {
                     let length = self.lower_expr(length);
                     hir::TyArray(self.lower_ty(ty),
@@ -320,8 +317,8 @@ impl<'a> LoweringContext<'a> {
                     let expr = self.lower_expr(expr);
                     hir::TyTypeof(self.record_body(expr, None))
                 }
-                TyKind::PolyTraitRef(ref bounds) => {
-                    hir::TyPolyTraitRef(self.lower_bounds(bounds))
+                TyKind::TraitObject(ref bounds) => {
+                    hir::TyTraitObject(self.lower_bounds(bounds))
                 }
                 TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))
@@ -599,7 +596,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_params(&mut self, tps: &P<[TyParam]>, add_bounds: &NodeMap<Vec<TyParamBound>>)
+    fn lower_ty_params(&mut self, tps: &Vec<TyParam>, add_bounds: &NodeMap<Vec<TyParamBound>>)
                        -> hir::HirVec<hir::TyParam> {
         tps.iter().map(|tp| {
             self.lower_ty_param(tp, add_bounds.get(&tp.id).map_or(&[][..], |x| &x))
@@ -719,13 +716,13 @@ impl<'a> LoweringContext<'a> {
                 })
             }
             WherePredicate::EqPredicate(WhereEqPredicate{ id,
-                                                          ref path,
-                                                          ref ty,
+                                                          ref lhs_ty,
+                                                          ref rhs_ty,
                                                           span}) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     id: id,
-                    path: self.lower_path(id, path, ParamMode::Explicit, false),
-                    ty: self.lower_ty(ty),
+                    lhs_ty: self.lower_ty(lhs_ty),
+                    rhs_ty: self.lower_ty(rhs_ty),
                     span: span,
                 })
             }

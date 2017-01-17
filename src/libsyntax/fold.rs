@@ -225,7 +225,7 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: P<[TyParam]>) -> P<[TyParam]> {
+    fn fold_ty_params(&mut self, tps: Vec<TyParam>) -> Vec<TyParam> {
         noop_fold_ty_params(tps, self)
     }
 
@@ -380,18 +380,14 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 });
                 TyKind::Path(qself, fld.fold_path(path))
             }
-            TyKind::ObjectSum(ty, bounds) => {
-                TyKind::ObjectSum(fld.fold_ty(ty),
-                            fld.fold_bounds(bounds))
-            }
             TyKind::Array(ty, e) => {
                 TyKind::Array(fld.fold_ty(ty), fld.fold_expr(e))
             }
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyKind::PolyTraitRef(bounds) => {
-                TyKind::PolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::TraitObject(bounds) => {
+                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
             }
             TyKind::ImplTrait(bounds) => {
                 TyKind::ImplTrait(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
@@ -678,8 +674,7 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: P<[TyParam]>, fld: &mut T)
-                                      -> P<[TyParam]> {
+pub fn noop_fold_ty_params<T: Folder>(tps: Vec<TyParam>, fld: &mut T) -> Vec<TyParam> {
     tps.move_map(|tp| fld.fold_ty_param(tp))
 }
 
@@ -766,13 +761,13 @@ pub fn noop_fold_where_predicate<T: Folder>(
             })
         }
         ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
-                                                               path,
-                                                               ty,
+                                                               lhs_ty,
+                                                               rhs_ty,
                                                                span}) => {
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{
                 id: fld.new_id(id),
-                path: fld.fold_path(path),
-                ty:fld.fold_ty(ty),
+                lhs_ty: fld.fold_ty(lhs_ty),
+                rhs_ty: fld.fold_ty(rhs_ty),
                 span: fld.new_span(span)
             })
         }

@@ -54,7 +54,6 @@ pub trait AstBuilder {
 
     fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty>;
     fn ty_path(&self, ast::Path) -> P<ast::Ty>;
-    fn ty_sum(&self, ast::Path, ast::TyParamBounds) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,
@@ -67,9 +66,6 @@ pub trait AstBuilder {
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
-
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> ;
 
     fn typaram(&self,
                span: Span,
@@ -334,8 +330,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
                 lifetimes: lifetimes,
-                types: P::from_vec(types),
-                bindings: P::from_vec(bindings),
+                types: types,
+                bindings: bindings,
             })))
         };
         segments.push(ast::PathSegment { identifier: last_identifier, parameters: parameters });
@@ -370,8 +366,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let mut path = trait_path;
         let parameters = ast::AngleBracketedParameterData {
             lifetimes: lifetimes,
-            types: P::from_vec(types),
-            bindings: P::from_vec(bindings),
+            types: types,
+            bindings: bindings,
         };
         path.segments.push(ast::PathSegment {
             identifier: ident,
@@ -401,12 +397,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
         self.ty(path.span, ast::TyKind::Path(None, path))
-    }
-
-    fn ty_sum(&self, path: ast::Path, bounds: ast::TyParamBounds) -> P<ast::Ty> {
-        self.ty(path.span,
-                ast::TyKind::ObjectSum(self.ty_path(path),
-                                 bounds))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
@@ -463,20 +453,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             default: default,
             span: span
         }
-    }
-
-    // these are strange, and probably shouldn't be used outside of
-    // pipes. Specifically, the global version possible generates
-    // incorrect code.
-    fn ty_vars(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
-        ty_params.iter().map(|p| self.ty_ident(DUMMY_SP, p.ident)).collect()
-    }
-
-    fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
-        ty_params
-            .iter()
-            .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec![p.ident])))
-            .collect()
     }
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {

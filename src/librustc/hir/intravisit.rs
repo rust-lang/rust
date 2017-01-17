@@ -562,15 +562,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPath(ref qpath) => {
             visitor.visit_qpath(qpath, typ.id, typ.span);
         }
-        TyObjectSum(ref ty, ref bounds) => {
-            visitor.visit_ty(ty);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
         TyArray(ref ty, length) => {
             visitor.visit_ty(ty);
             visitor.visit_nested_body(length)
         }
-        TyPolyTraitRef(ref bounds) => {
+        TyTraitObject(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyImplTrait(ref bounds) => {
@@ -740,12 +736,12 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_lifetime, bounds);
         }
         &WherePredicate::EqPredicate(WhereEqPredicate{id,
-                                                      ref path,
-                                                      ref ty,
+                                                      ref lhs_ty,
+                                                      ref rhs_ty,
                                                       ..}) => {
             visitor.visit_id(id);
-            visitor.visit_path(path, id);
-            visitor.visit_ty(ty);
+            visitor.visit_ty(lhs_ty);
+            visitor.visit_ty(rhs_ty);
         }
     }
 }
