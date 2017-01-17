@@ -1,3 +1,463 @@
+Version 1.15.0 (2017-02-02)
+===========================
+
+Language
+--------
+
+* Basic procedural macros allowing custom `#[derive]`, aka "macros 1.1", are
+  stable. This allows popular code-generating crates like Serde and Diesel to
+  work ergonomically. [RFC 1681].
+* [Tuple structs may be empty. Unary and empty tuple structs may be instantiated
+  with curly braces][36868]. Part of [RFC 1506].
+* [A number of minor changes to name resolution have been activated][37127].
+  They add up to more consistent semantics, allowing for future evolution of
+  Rust macros. Specified in [RFC 1560], see its section on ["changes"] for
+  details of what is different. The breaking changes here have been transitioned
+  through the [`legacy_imports`] lint since 1.14, with no known regressions.
+* [In `macro_rules`, `path` fragments can now be parsed as type parameter
+  bounds][38279]
+* [`?Sized` can be used in `where` clauses][37791]
+* [There is now a limit on the size of monomorphized types and it can be
+  modified with the `#![type_size_limit]` crate attribute, similarly to
+  the `#![recursion_limit]` attribute][37789]
+
+Compiler
+--------
+
+* [On Windows, the compiler will apply dllimport attributes when linking to
+  extern functions][37973]. Additional attributes and flags can control which
+  library kind is linked and its name. [RFC 1717].
+* [Rust-ABI symbols are no longer exported from cdylibs][38117]
+* [The `--test` flag works with procedural macro crates][38107]
+* [Fix `extern "aapcs" fn` ABI][37814]
+* [The `-C no-stack-check` flag is deprecated][37636]. It does nothing.
+* [The `format!` expander recognizes incorrect `printf` and shell-style
+  formatting directives and suggests the correct format][37613].
+* [Only report one error for all unused imports in an import list][37456]
+
+Compiler Performance
+--------------------
+
+* [Avoid unnecessary `mk_ty` calls in `Ty::super_fold_with`][37705]
+* [Avoid more unnecessary `mk_ty` calls in `Ty::super_fold_with`][37979]
+* [Don't clone in `UnificationTable::probe`][37848]
+* [Remove `scope_auxiliary` to cut RSS by 10%][37764]
+* [Use small vectors in type walker][37760]
+* [Macro expansion performance was improved][37701]
+* [Change `HirVec<P<T>>` to `HirVec<T>` in `hir::Expr`][37642]
+* [Replace FNV with a faster hash function][37229]
+
+Stabilized APIs
+---------------
+
+* [`std::iter::Iterator::min_by`]
+* [`std::iter::Iterator::max_by`]
+* [`std::os::*::fs::FileExt`]
+* [`std::sync::atomic::Atomic*::get_mut`]
+* [`std::sync::atomic::Atomic*::into_inner`]
+* [`std::vec::IntoIter::as_slice`]
+* [`std::vec::IntoIter::as_mut_slice`]
+* [`std::sync::mpsc::Receiver::try_iter`]
+* [`std::os::unix::process::CommandExt::before_exec`]
+* [`std::rc::Rc::strong_count`]
+* [`std::rc::Rc::weak_count`]
+* [`std::sync::Arc::strong_count`]
+* [`std::sync::Arc::weak_count`]
+* [`std::char::encode_utf8`]
+* [`std::char::encode_utf16`]
+* [`std::cell::Ref::clone`]
+* [`std::io::Take::into_inner`]
+
+Libraries
+---------
+
+* [The standard sorting algorithm has been rewritten for dramatic performance
+  improvements][38192]. It is a hybrid merge sort, drawing influences from
+  Timsort. Previously it was a naive merge sort.
+* [`Iterator::nth` no longer has a `Sized` bound][38134]
+* [`Extend<&T>` is specialized for `Vec` where `T: Copy`][38182] to improve
+  performance.
+* [`chars().count()` is much faster][37888] and so are [`chars().last()`
+  and `char_indices().last()`][37882]
+* [Fix ARM Objective-C ABI in `std::env::args`][38146]
+* [Chinese characters display correctly in `fmt::Debug`][37855]
+* [Derive `Default` for `Duration`][37699]
+* [Support creation of anonymous pipes on WinXP/2k][37677]
+* [`mpsc::RecvTimeoutError` implements `Error`][37527]
+* [Don't pass overlapped handles to processes][38835]
+
+Cargo
+-----
+
+* [In this release, Cargo build scripts no longer have access to the `OUT_DIR`
+  environment variable at build time via `env!("OUT_DIR")`][cargo/3368]. They
+  should instead check the variable at runtime with `std::env`. That the value
+  was set at build time was a bug, and incorrect when cross-compiling. This
+  change is known to cause breakage.
+* [Add `--all` flag to `cargo test`][cargo/3221]
+* [Compile statically against the MSVC CRT][cargo/3363]
+* [Mix feature flags into fingerprint/metadata shorthash][cargo/3102]
+* [Link OpenSSL statically on OSX][cargo/3311]
+* [Apply new fingerprinting to build dir outputs][cargo/3310]
+* [Test for bad path overrides with summaries][cargo/3336]
+* [Require `cargo install --vers` to take a semver version][cargo/3338]
+* [Fix retrying crate downloads for network errors][cargo/3348]
+* [Implement string lookup for `build.rustflags` config key][cargo/3356]
+* [Emit more info on --message-format=json][cargo/3319]
+* [Assume `build.rs` in the same directory as `Cargo.toml` is a build script][cargo/3361]
+* [Don't ignore errors in workspace manifest][cargo/3409]
+* [Fix `--message-format JSON` when rustc emits non-JSON warnings][cargo/3410]
+
+Tooling
+-------
+
+* [Test runners (binaries built with `--test`) now support a `--list` argument
+  that lists the tests it contains][38185]
+* [Test runners now support a `--exact` argument that makes the test filter
+  match exactly, instead of matching only a substring of the test name][38181]
+* [rustdoc supports a `--playground-url` flag][37763]
+* [rustdoc provides more details about `#[should_panic]` errors][37749]
+
+Misc
+----
+
+* [The Rust build system is now written in Rust][37817]. The Makefiles may
+  continue to be used in this release by passing `--disable-rustbuild` to the
+  configure script, but they will be deleted soon. Note that the new build
+  system uses a different on-disk layout that will likely affect any scripts
+  building Rust.
+* [Rust supports i686-unknown-openbsd][38086]. Tier 3 support. No testing or
+  releases.
+* [Rust supports the MSP430][37627]. Tier 3 support. No testing or releases.
+* [Rust supports the ARMv5TE architecture][37615]. Tier 3 support. No testing or
+  releases.
+
+Compatibility Notes
+-------------------
+
+* [A number of minor changes to name resolution have been activated][37127].
+  They add up to more consistent semantics, allowing for future evolution of
+  Rust macros. Specified in [RFC 1560], see its section on ["changes"] for
+  details of what is different. The breaking changes here have been transitioned
+  through the [`legacy_imports`] lint since 1.14, with no known regressions.
+* [In this release, Cargo build scripts no longer have access to the `OUT_DIR`
+  environment variable at build time via `env!("OUT_DIR")`][cargo/3368]. They
+  should instead check the variable at runtime with `std::env`. That the value
+  was set at build time was a bug, and incorrect when cross-compiling. This
+  change is known to cause breakage.
+* [Higher-ranked lifetimes are no longer allowed to appear _only_ in associated
+  types][33685]. The [`hr_lifetime_in_assoc_type` lint] has been a warning since
+  1.10 and is now an error by default. It will become a hard error in the near
+  future.
+* [The semantics relating modules to file system directories are changing in
+  minor ways][37602]. This is captured in the new `legacy_directory_ownership`
+  lint, which is a warning in this release, and will become a hard error in the
+  future.
+* [Rust-ABI symbols are no longer exported from cdylibs][38117]
+* [Once `Peekable` peeks a `None` it will return that `None` without re-querying
+  the underlying iterator][37834]
+
+["changes"]: https://github.com/rust-lang/rfcs/blob/master/text/1560-name-resolution.md#changes-to-name-resolution-rules
+[33685]: https://github.com/rust-lang/rust/issues/33685
+[36868]: https://github.com/rust-lang/rust/pull/36868
+[37127]: https://github.com/rust-lang/rust/pull/37127
+[37229]: https://github.com/rust-lang/rust/pull/37229
+[37456]: https://github.com/rust-lang/rust/pull/37456
+[37527]: https://github.com/rust-lang/rust/pull/37527
+[37602]: https://github.com/rust-lang/rust/pull/37602
+[37613]: https://github.com/rust-lang/rust/pull/37613
+[37615]: https://github.com/rust-lang/rust/pull/37615
+[37636]: https://github.com/rust-lang/rust/pull/37636
+[37642]: https://github.com/rust-lang/rust/pull/37642
+[37677]: https://github.com/rust-lang/rust/pull/37677
+[37699]: https://github.com/rust-lang/rust/pull/37699
+[37701]: https://github.com/rust-lang/rust/pull/37701
+[37705]: https://github.com/rust-lang/rust/pull/37705
+[37749]: https://github.com/rust-lang/rust/pull/37749
+[37760]: https://github.com/rust-lang/rust/pull/37760
+[37763]: https://github.com/rust-lang/rust/pull/37763
+[37764]: https://github.com/rust-lang/rust/pull/37764
+[37789]: https://github.com/rust-lang/rust/pull/37789
+[37791]: https://github.com/rust-lang/rust/pull/37791
+[37814]: https://github.com/rust-lang/rust/pull/37814
+[37817]: https://github.com/rust-lang/rust/pull/37817
+[37834]: https://github.com/rust-lang/rust/pull/37834
+[37848]: https://github.com/rust-lang/rust/pull/37848
+[37855]: https://github.com/rust-lang/rust/pull/37855
+[37882]: https://github.com/rust-lang/rust/pull/37882
+[37888]: https://github.com/rust-lang/rust/pull/37888
+[37973]: https://github.com/rust-lang/rust/pull/37973
+[37979]: https://github.com/rust-lang/rust/pull/37979
+[38086]: https://github.com/rust-lang/rust/pull/38086
+[38107]: https://github.com/rust-lang/rust/pull/38107
+[38117]: https://github.com/rust-lang/rust/pull/38117
+[38134]: https://github.com/rust-lang/rust/pull/38134
+[38146]: https://github.com/rust-lang/rust/pull/38146
+[38181]: https://github.com/rust-lang/rust/pull/38181
+[38182]: https://github.com/rust-lang/rust/pull/38182
+[38185]: https://github.com/rust-lang/rust/pull/38185
+[38192]: https://github.com/rust-lang/rust/pull/38192
+[38279]: https://github.com/rust-lang/rust/pull/38279
+[38835]: https://github.com/rust-lang/rust/pull/38835
+[RFC 1492]: https://github.com/rust-lang/rfcs/blob/master/text/1492-dotdot-in-patterns.md
+[RFC 1506]: https://github.com/rust-lang/rfcs/blob/master/text/1506-adt-kinds.md
+[RFC 1560]: https://github.com/rust-lang/rfcs/blob/master/text/1560-name-resolution.md
+[RFC 1681]: https://github.com/rust-lang/rfcs/blob/master/text/1681-macros-1.1.md
+[RFC 1717]: https://github.com/rust-lang/rfcs/blob/master/text/1717-dllimport.md
+[`hr_lifetime_in_assoc_type` lint]: https://github.com/rust-lang/rust/issues/33685
+[`legacy_imports`]: https://github.com/rust-lang/rust/pull/38271
+[cargo/3102]: https://github.com/rust-lang/cargo/pull/3102
+[cargo/3221]: https://github.com/rust-lang/cargo/pull/3221
+[cargo/3310]: https://github.com/rust-lang/cargo/pull/3310
+[cargo/3311]: https://github.com/rust-lang/cargo/pull/3311
+[cargo/3319]: https://github.com/rust-lang/cargo/pull/3319
+[cargo/3336]: https://github.com/rust-lang/cargo/pull/3336
+[cargo/3338]: https://github.com/rust-lang/cargo/pull/3338
+[cargo/3348]: https://github.com/rust-lang/cargo/pull/3348
+[cargo/3356]: https://github.com/rust-lang/cargo/pull/3356
+[cargo/3361]: https://github.com/rust-lang/cargo/pull/3361
+[cargo/3363]: https://github.com/rust-lang/cargo/pull/3363
+[cargo/3368]: https://github.com/rust-lang/cargo/issues/3368
+[cargo/3409]: https://github.com/rust-lang/cargo/pull/3409
+[cargo/3410]: https://github.com/rust-lang/cargo/pull/3410
+[`std::iter::Iterator::min_by`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.min_by
+[`std::iter::Iterator::max_by`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.max_by
+[`std::os::*::fs::FileExt`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html
+[`std::sync::atomic::Atomic*::get_mut`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU8.html#method.get_mut
+[`std::sync::atomic::Atomic*::into_inner`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU8.html#method.into_inner
+[`std::vec::IntoIter::as_slice`]: https://doc.rust-lang.org/std/vec/struct.IntoIter.html#method.as_slice
+[`std::vec::IntoIter::as_mut_slice`]: https://doc.rust-lang.org/std/vec/struct.IntoIter.html#method.as_mut_slice
+[`std::sync::mpsc::Receiver::try_iter`]: https://doc.rust-lang.org/std/sync/mpsc/struct.Receiver.html#method.try_iter
+[`std::os::unix::process::CommandExt::before_exec`]: https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.before_exec
+[`std::rc::Rc::strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.strong_count
+[`std::rc::Rc::weak_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.weak_count
+[`std::sync::Arc::strong_count`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.strong_count
+[`std::sync::Arc::weak_count`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.weak_count
+[`std::char::encode_utf8`]: https://doc.rust-lang.org/std/primitive.char.html#method.encode_utf8
+[`std::char::encode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.encode_utf16
+[`std::cell::Ref::clone`]: https://doc.rust-lang.org/std/cell/struct.Ref.html#method.clone
+[`std::io::Take::into_inner`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.into_inner
+
+
+Version 1.14.0 (2016-12-22)
+===========================
+
+Language
+--------
+
+* [`..` matches multiple tuple fields in enum variants, structs
+  and tuples][36843]. [RFC 1492].
+* [Safe `fn` items can be coerced to `unsafe fn` pointers][37389]
+* [`use *` and `use ::*` both glob-import from the crate root][37367]
+* [It's now possible to call a `Vec<Box<Fn()>>` without explicit
+  dereferencing][36822]
+
+Compiler
+--------
+
+* [Mark enums with non-zero discriminant as non-zero][37224]
+* [Lower-case `static mut` names are linted like other
+  statics and consts][37162]
+* [Fix ICE on some macros in const integer positions
+   (e.g. `[u8; m!()]`)][36819]
+* [Improve error message and snippet for "did you mean `x`"][36798]
+* [Add a panic-strategy field to the target specification][36794]
+* [Include LLVM version in `--version --verbose`][37200]
+
+Compile-time Optimizations
+--------------------------
+
+* [Improve macro expansion performance][37569]
+* [Shrink `Expr_::ExprInlineAsm`][37445]
+* [Replace all uses of SHA-256 with BLAKE2b][37439]
+* [Reduce the number of bytes hashed by `IchHasher`][37427]
+* [Avoid more allocations when compiling html5ever][37373]
+* [Use `SmallVector` in `CombineFields::instantiate`][37322]
+* [Avoid some allocations in the macro parser][37318]
+* [Use a faster deflate setting][37298]
+* [Add `ArrayVec` and `AccumulateVec` to reduce heap allocations
+  during interning of slices][37270]
+* [Optimize `write_metadata`][37267]
+* [Don't process obligation forest cycles when stalled][37231]
+* [Avoid many `CrateConfig` clones][37161]
+* [Optimize `Substs::super_fold_with`][37108]
+* [Optimize `ObligationForest`'s `NodeState` handling][36993]
+* [Speed up `plug_leaks`][36917]
+
+Libraries
+---------
+
+* [`println!()`, with no arguments, prints newline][36825].
+  Previously, an empty string was required to achieve the same.
+* [`Wrapping` impls standard binary and unary operators, as well as
+   the `Sum` and `Product` iterators][37356]
+* [Implement `From<Cow<str>> for String` and `From<Cow<[T]>> for
+  Vec<T>`][37326]
+* [Improve `fold` performance for `chain`, `cloned`, `map`, and
+  `VecDeque` iterators][37315]
+* [Improve `SipHasher` performance on small values][37312]
+* [Add Iterator trait TrustedLen to enable better FromIterator /
+  Extend][37306]
+* [Expand `.zip()` specialization to `.map()` and `.cloned()`][37230]
+* [`ReadDir` implements `Debug`][37221]
+* [Implement `RefUnwindSafe` for atomic types][37178]
+* [Specialize `Vec::extend` to `Vec::extend_from_slice`][37094]
+* [Avoid allocations in `Decoder::read_str`][37064]
+* [`io::Error` implements `From<io::ErrorKind>`][37037]
+* [Impl `Debug` for raw pointers to unsized data][36880]
+* [Don't reuse `HashMap` random seeds][37470]
+* [The internal memory layout of `HashMap` is more cache-friendly, for
+  significant improvements in some operations][36692]
+* [`HashMap` uses less memory on 32-bit architectures][36595]
+* [Impl `Add<{str, Cow<str>}>` for `Cow<str>`][36430]
+
+Cargo
+-----
+
+* [Expose rustc cfg values to build scripts][cargo/3243]
+* [Allow cargo to work with read-only `CARGO_HOME`][cargo/3259]
+* [Fix passing --features when testing multiple packages][cargo/3280]
+* [Use a single profile set per workspace][cargo/3249]
+* [Load `replace` sections from lock files][cargo/3220]
+* [Ignore `panic` configuration for test/bench profiles][cargo/3175]
+
+Tooling
+-------
+
+* [rustup is the recommended Rust installation method][1.14rustup]
+* This release includes host (rustc) builds for Linux on MIPS, PowerPC, and
+  S390x. These are [tier 2] platforms and may have major defects. Follow the
+  instructions on the website to install, or add the targets to an existing
+  installation with `rustup target add`. The new target triples are:
+  - `mips-unknown-linux-gnu`
+  - `mipsel-unknown-linux-gnu`
+  - `mips64-unknown-linux-gnuabi64`
+  - `mips64el-unknown-linux-gnuabi64 `
+  - `powerpc-unknown-linux-gnu`
+  - `powerpc64-unknown-linux-gnu`
+  - `powerpc64le-unknown-linux-gnu`
+  - `s390x-unknown-linux-gnu `
+* This release includes target (std) builds for ARM Linux running MUSL
+  libc. These are [tier 2] platforms and may have major defects. Add the
+  following triples to an existing rustup installation with `rustup target add`:
+  - `arm-unknown-linux-musleabi`
+  - `arm-unknown-linux-musleabihf`
+  - `armv7-unknown-linux-musleabihf`
+* This release includes [experimental support for WebAssembly][1.14wasm], via
+  the `wasm32-unknown-emscripten` target. This target is known to have major
+  defects. Please test, report, and fix.
+* rustup no longer installs documentation by default. Run `rustup
+  component add rust-docs` to install.
+* [Fix line stepping in debugger][37310]
+* [Enable line number debuginfo in releases][37280]
+
+Misc
+----
+
+* [Disable jemalloc on aarch64/powerpc/mips][37392]
+* [Add support for Fuchsia OS][37313]
+* [Detect local-rebuild by only MAJOR.MINOR version][37273]
+
+Compatibility Notes
+-------------------
+
+* [A number of forward-compatibility lints used by the compiler
+  to gradually introduce language changes have been converted
+  to deny by default][36894]:
+  - ["use of inaccessible extern crate erroneously allowed"][36886]
+  - ["type parameter default erroneously allowed in invalid location"][36887]
+  - ["detects super or self keywords at the beginning of global path"][36888]
+  - ["two overlapping inherent impls define an item with the same name
+    were erroneously allowed"][36889]
+  - ["floating-point constants cannot be used in patterns"][36890]
+  - ["constants of struct or enum type can only be used in a pattern if
+     the struct or enum has `#[derive(PartialEq, Eq)]`"][36891]
+  - ["lifetimes or labels named `'_` were erroneously allowed"][36892]
+* [Prohibit patterns in trait methods without bodies][37378]
+* [The atomic `Ordering` enum may not be matched exhaustively][37351]
+* [Future-proofing `#[no_link]` breaks some obscure cases][37247]
+* [The `$crate` macro variable is accepted in fewer locations][37213]
+* [Impls specifying extra region requirements beyond the trait
+  they implement are rejected][37167]
+* [Enums may not be unsized][37111]. Unsized enums are intended to
+  work but never have. For now they are forbidden.
+* [Enforce the shadowing restrictions from RFC 1560 for today's macros][36767]
+
+[tier 2]: https://forge.rust-lang.org/platform-support.html
+[1.14rustup]: https://internals.rust-lang.org/t/beta-testing-rustup-rs/3316/204
+[1.14wasm]: https://users.rust-lang.org/t/compiling-to-the-web-with-rust-and-emscripten/7627
+[36430]: https://github.com/rust-lang/rust/pull/36430
+[36595]: https://github.com/rust-lang/rust/pull/36595
+[36595]: https://github.com/rust-lang/rust/pull/36595
+[36692]: https://github.com/rust-lang/rust/pull/36692
+[36767]: https://github.com/rust-lang/rust/pull/36767
+[36794]: https://github.com/rust-lang/rust/pull/36794
+[36798]: https://github.com/rust-lang/rust/pull/36798
+[36819]: https://github.com/rust-lang/rust/pull/36819
+[36822]: https://github.com/rust-lang/rust/pull/36822
+[36825]: https://github.com/rust-lang/rust/pull/36825
+[36843]: https://github.com/rust-lang/rust/pull/36843
+[36880]: https://github.com/rust-lang/rust/pull/36880
+[36886]: https://github.com/rust-lang/rust/issues/36886
+[36887]: https://github.com/rust-lang/rust/issues/36887
+[36888]: https://github.com/rust-lang/rust/issues/36888
+[36889]: https://github.com/rust-lang/rust/issues/36889
+[36890]: https://github.com/rust-lang/rust/issues/36890
+[36891]: https://github.com/rust-lang/rust/issues/36891
+[36892]: https://github.com/rust-lang/rust/issues/36892
+[36894]: https://github.com/rust-lang/rust/pull/36894
+[36917]: https://github.com/rust-lang/rust/pull/36917
+[36993]: https://github.com/rust-lang/rust/pull/36993
+[37037]: https://github.com/rust-lang/rust/pull/37037
+[37064]: https://github.com/rust-lang/rust/pull/37064
+[37094]: https://github.com/rust-lang/rust/pull/37094
+[37108]: https://github.com/rust-lang/rust/pull/37108
+[37111]: https://github.com/rust-lang/rust/pull/37111
+[37161]: https://github.com/rust-lang/rust/pull/37161
+[37162]: https://github.com/rust-lang/rust/pull/37162
+[37167]: https://github.com/rust-lang/rust/pull/37167
+[37178]: https://github.com/rust-lang/rust/pull/37178
+[37200]: https://github.com/rust-lang/rust/pull/37200
+[37213]: https://github.com/rust-lang/rust/pull/37213
+[37221]: https://github.com/rust-lang/rust/pull/37221
+[37224]: https://github.com/rust-lang/rust/pull/37224
+[37230]: https://github.com/rust-lang/rust/pull/37230
+[37231]: https://github.com/rust-lang/rust/pull/37231
+[37247]: https://github.com/rust-lang/rust/pull/37247
+[37267]: https://github.com/rust-lang/rust/pull/37267
+[37270]: https://github.com/rust-lang/rust/pull/37270
+[37273]: https://github.com/rust-lang/rust/pull/37273
+[37280]: https://github.com/rust-lang/rust/pull/37280
+[37298]: https://github.com/rust-lang/rust/pull/37298
+[37306]: https://github.com/rust-lang/rust/pull/37306
+[37310]: https://github.com/rust-lang/rust/pull/37310
+[37312]: https://github.com/rust-lang/rust/pull/37312
+[37313]: https://github.com/rust-lang/rust/pull/37313
+[37315]: https://github.com/rust-lang/rust/pull/37315
+[37318]: https://github.com/rust-lang/rust/pull/37318
+[37322]: https://github.com/rust-lang/rust/pull/37322
+[37326]: https://github.com/rust-lang/rust/pull/37326
+[37351]: https://github.com/rust-lang/rust/pull/37351
+[37356]: https://github.com/rust-lang/rust/pull/37356
+[37367]: https://github.com/rust-lang/rust/pull/37367
+[37373]: https://github.com/rust-lang/rust/pull/37373
+[37378]: https://github.com/rust-lang/rust/pull/37378
+[37389]: https://github.com/rust-lang/rust/pull/37389
+[37392]: https://github.com/rust-lang/rust/pull/37392
+[37427]: https://github.com/rust-lang/rust/pull/37427
+[37439]: https://github.com/rust-lang/rust/pull/37439
+[37445]: https://github.com/rust-lang/rust/pull/37445
+[37470]: https://github.com/rust-lang/rust/pull/37470
+[37569]: https://github.com/rust-lang/rust/pull/37569
+[RFC 1492]: https://github.com/rust-lang/rfcs/blob/master/text/1492-dotdot-in-patterns.md
+[cargo/3175]: https://github.com/rust-lang/cargo/pull/3175
+[cargo/3220]: https://github.com/rust-lang/cargo/pull/3220
+[cargo/3243]: https://github.com/rust-lang/cargo/pull/3243
+[cargo/3249]: https://github.com/rust-lang/cargo/pull/3249
+[cargo/3259]: https://github.com/rust-lang/cargo/pull/3259
+[cargo/3280]: https://github.com/rust-lang/cargo/pull/3280
+
+
 Version 1.13.0 (2016-11-10)
 ===========================
 

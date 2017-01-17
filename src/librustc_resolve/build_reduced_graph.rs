@@ -135,7 +135,7 @@ impl<'b> Resolver<'b> {
                 let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
 
                 match view_path.node {
-                    ViewPathSimple(binding, ref full_path) => {
+                    ViewPathSimple(mut binding, ref full_path) => {
                         let mut source = full_path.segments.last().unwrap().identifier;
                         let source_name = source.name;
                         if source_name == "mod" || source_name == "self" {
@@ -149,6 +149,9 @@ impl<'b> Resolver<'b> {
                                 ModuleKind::Block(..) => unreachable!(),
                             };
                             source.name = crate_name;
+                            if binding.name == "$crate" {
+                                binding.name = crate_name;
+                            }
 
                             self.session.struct_span_warn(item.span, "`$crate` may not be imported")
                                 .note("`use $crate;` was erroneously allowed and \
