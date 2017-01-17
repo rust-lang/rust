@@ -17,6 +17,7 @@ use rustc::session::config::OutputType;
 use rustc::util::fs::link_or_copy;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::fs as std_fs;
 
 pub fn save_trans_partition(sess: &Session,
                             cgu_name: &str,
@@ -60,4 +61,18 @@ pub fn save_trans_partition(sess: &Session,
     };
 
     sess.dep_graph.insert_work_product(&work_product_id, work_product);
+}
+
+pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
+    for &(_, ref file_name) in &work_product.saved_files {
+        let path = in_incr_comp_dir_sess(sess, file_name);
+        match std_fs::remove_file(&path) {
+            Ok(()) => { }
+            Err(err) => {
+                sess.warn(
+                    &format!("file-system error deleting outdated file `{}`: {}",
+                             path.display(), err));
+            }
+        }
+    }
 }

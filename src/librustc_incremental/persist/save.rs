@@ -30,6 +30,7 @@ use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
+use super::work_product;
 use calculate_svh::IchHasher;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -84,6 +85,31 @@ pub fn save_work_products(sess: &Session) {
     let _ignore = sess.dep_graph.in_ignore();
     let path = work_products_path(sess);
     save_in(sess, path, |e| encode_work_products(sess, e));
+
+    // We also need to clean out old work-products, as not all of them are
+    // deleted during invalidation. Some object files don't change their
+    // content, they are just not needed anymore.
+    let new_work_products = sess.dep_graph.work_products();
+    let previous_work_products = sess.dep_graph.previous_work_products();
+
+    for (id, wp) in previous_work_products.iter() {
+        if !new_work_products.contains_key(id) {
+            work_product::delete_workproduct_files(sess, wp);
+            debug_assert!(wp.saved_files.iter().all(|&(_, ref file_name)| {
+                !in_incr_comp_dir_sess(sess, file_name).exists()
+            }));
+        }
+    }
+
+    // Check that we did not delete one of the current work-products:
+    debug_assert!({
+        new_work_products.iter()
+                         .flat_map(|(_, wp)| wp.saved_files
+                                               .iter()
+                                               .map(|&(_, ref name)| name))
+                         .map(|name| in_incr_comp_dir_sess(sess, name))
+                         .all(|path| path.exists())
+    });
 }
 
 fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
