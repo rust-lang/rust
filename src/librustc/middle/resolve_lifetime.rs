@@ -322,24 +322,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
-            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
-                // if this path references a trait, then this will resolve to
-                // a trait ref, which introduces a binding scope.
-                match path.def {
-                    Def::Trait(..) => {
-                        let scope = Scope::Binder {
-                            lifetimes: FxHashMap(),
-                            s: self.scope
-                        };
-                        self.with(scope, |_, this| {
-                            this.visit_path(path, ty.id);
-                        });
-                    }
-                    _ => {
-                        intravisit::walk_ty(self, ty);
-                    }
-                }
-            }
             _ => {
                 intravisit::walk_ty(self, ty)
             }
@@ -889,7 +871,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         Def::Struct(_) |
                         Def::Union(_) |
                         Def::Enum(_) |
-                        Def::Trait(_) |
                         Def::PrimTy(_) => return def == path.def,
                         _ => {}
                     }
@@ -970,21 +951,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
-                let delta = match ty.node {
-                    hir::TyBareFn(_) => 1,
-                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
-                        // if this path references a trait, then this will resolve to
-                        // a trait ref, which introduces a binding scope.
-                        match path.def {
-                            Def::Trait(..) => 1,
-                            _ => 0
-                        }
-                    }
-                    _ => 0
-                };
-                self.binder_depth += delta;
+                if let hir::TyBareFn(_) = ty.node {
+                    self.binder_depth += 1;
+                }
                 intravisit::walk_ty(self, ty);
-                self.binder_depth -= delta;
+                if let hir::TyBareFn(_) = ty.node {
+                    self.binder_depth -= 1;
+                }
             }
 
             fn visit_poly_trait_ref(&mut self,

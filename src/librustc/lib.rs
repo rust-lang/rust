@@ -29,6 +29,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![feature(field_init_shorthand)]
 #![feature(libc)]
 #![feature(loop_break_value)]
 #![feature(nonzero)]

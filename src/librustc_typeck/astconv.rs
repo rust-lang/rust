@@ -1151,7 +1151,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                      rscope: &RegionScope,
                      opt_self_ty: Option<Ty<'tcx>>,
                      path: &hir::Path,
-                     path_id: ast::NodeId,
                      permit_variants: bool)
                      -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -1161,21 +1160,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let span = path.span;
         match path.def {
-            Def::Trait(trait_def_id) => {
-                // N.B. this case overlaps somewhat with
-                // TyTraitObject, see that fn for details
-
-                assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
-
-                self.trait_path_to_object_type(rscope,
-                                               span,
-                                               trait_def_id,
-                                               path_id,
-                                               path.segments.last().unwrap(),
-                                               span,
-                                               partition_bounds(&[]))
-            }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
@@ -1421,7 +1405,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
                     self.ast_ty_to_ty(rscope, qself)
                 });
-                self.def_to_ty(rscope, opt_self_ty, path, ast_ty.id, false)
+                self.def_to_ty(rscope, opt_self_ty, path, false)
             }
             hir::TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
