@@ -11,7 +11,7 @@ difficult to find which crates are meant for a particular purpose and then to
 decide among the available crates which one is most suitable in a particular
 context. [Categorization][cat-pr] and [badges][badge-pr] are coming to
 crates.io; categories help with finding a set of crates to consider and badges
-help communicate attributes of crates. 
+help communicate attributes of crates.
 
 **This RFC aims to create a default ranking of crates within a list of crates
 that have a category or keyword in order to make a recommendation to crate users
@@ -95,149 +95,107 @@ By far, the most common attribute people said they considered in the survey was
 whether a crate had good documentation. Frequently mentioned when discussing
 documentation was the desire to quickly find an example of how to use the crate.
 
-- Number of lines of documentation in Rust files:
-  `grep -r \/\/[\!\/] --binary-files=without-match --include=*.rs . | wc -l`
-- Number of lines in the README file, if specified in Cargo.toml
-- Number of lines in Rust files: `find . -name '*.rs' | xargs wc -l`
+This would be addressed through human evaluation, rather than automatic
+evaluation, in two ways:
 
-We would then add the lines in the README to the lines of documentation and
-subtract the lines of documentation from the total lines of code in order to
-get the ratio of documentation to code. Test code (and any documentation within
-test code) *is* part of this calculation.
+1. [Render README files on a crate's page on crates.io][render-readme] so that
+   people can quickly see for themselves the information that a crate author
+   chooses to make available in their README. We can nudge towards having an
+   example in the README by adding a template README that includes an Examples
+   section [in what `cargo new` generates][cargo-new].
+2. Add a mechanism for logged-in crates.io users to indicate that a crate has
+   particularly good documentation.
+   - This would be a very constrained form of voting/rating: one UI element
+     (ex: an up arrow, a thumbs up, a star, a checkbox, a link) that could be
+     toggled from "not indicated" to "this crate has good documentation" and
+     vice versa.
+   - The number of people who have indicated a crate has good documentation
+     would be displayed for each crate.
+   - That number would be limited to an amount of time (proposal: 6 mo). 6 mo
+     after you voted, your vote would disappear and you could choose to renew
+     your vote. This would prevent older crates from getting too much of an
+     advantage or a high rating being inaccurate if many new, undocumented
+     features get added to a crate.
+   - This would not influence ranking at all, and therefore is less likely to
+     be gamed. You'd need to make many github accounts to easily game this.
+   - Since there is no negative "this crate has bad documenation" indication,
+     nor is there free-form text, the moderation burden should be minimal.
 
-Any crate getting in the top 20% of all crates would get a badge saying "well
-documented".
+[render-readme]: https://github.com/rust-lang/crates.io/issues/81
+[cargo-new]: https://github.com/rust-lang/cargo/issues/3506
 
-Additionally, lists of crates would have a badge showing the number of files in
-the standard `/examples` directory, if any. A further enhancement would be to
-make that badge link to the examples displayed somewhere (crates.io? in the
-repository? in the documentation?).
+### Maintenance (and Popularity)
 
-* combine:
-  * 1,195 lines of documentation
-  * 99 lines in README.md
-  * 5,815 lines of Rust
-  * (1195 + 99) / (5815 - 1195) = 1294/4620 = .28
+The number of releases in the last 6 months and the number of downloads in the
+last 90 days can be combined into an automatic indicator of the status of a
+crate. This would be more like a badge and would not influence ranking at all.
 
-* nom:
-  * 2,263 lines of documentation
-  * 372 lines in README.md
-  * 15,661 lines of Rust
-  * (2263 + 372) / (15661 - 2263) = 2635/13398 = .20
+- Many recent releases and few downloads indicates an *experimental* crate.
+- At least occasional releases in the last 6 months and many recent downloads
+  indicates a *mainstream* crate.
+- Few to no releases in the last 6 months and few recent downloads indicates an
+  *inactive* crate.
 
-* peresil:
-  * 159 lines of documentation
-  * 20 lines in README.md
-  * 1,341 lines of Rust
-  * (159 + 20) / (1341 - 159) = 179/1182 = .15
+In table form:
 
-* lalrpop: ([in the /lalrpop directory in the repo][lalrpop-repo])
-  * 742 lines of documentation
-  * 110 lines in ../README.md
-  * 94,104 lines of Rust
-  * (742 + 110) / (94104 - 742) = 852/93362 = .01
+|                | Many releases | Few releases |
+|----------------|---------------|--------------|
+| Many downloads | Mainstream    | Mainstream   |
+| Few downloads  | Experimental  | Inactive     |
 
-* peg:
-  * 3 lines of documentation
-  * no readme specified in Cargo.toml
-  * 1,531 lines of Rust
-  * (3 + 0) / (1531 - 3) = 3/1528 = .00
+TODO: Decide what the cutoff values these measures should have, which we will do
+if people are generally in favor of this idea.
 
-[lalrpop-repo]: https://github.com/nikomatsakis/lalrpop/tree/master/lalrpop
+By using the number of downloads, crates that are "finished" and stable should
+still be regarded as mainstream while many people continue to use it.
 
-If we assume these are all the crates on crates.io for this example, then
-combine is the top 20% and would get a badge. None of the crates have files in
-`/examples`, so none would have the examples badge.
+These labels will have an indicator of their meaning and how they are calculated
+when you hover over them.
 
-### Maintenance
+A downside of this method is that it does not convey crate author *intent*,
+only what one might assume based only on these two measures. A crate might get
+popular while an author still considers it to be experimental, thus creating
+expectations of stability and support.
 
-We can add an optional attribute to Cargo.toml that crate authors could use to
-self-report their maintenance intentions. The valid values would be along the
-lines of the following, and would influence the ranking in the order they're
-presented:
+We might need to experiment with the thresholds for the number of releases and
+the number of downloads considered to be "few" and "many".
 
-- **Actively developed**, meaning new features are being added and bugs are
-  being fixed
-- **Passively maintained**, meaning there are no plans for new features, but
-  the maintainer intends to respond to issues that get filed
-- **As-is**, meaning the crate is feature complete, the maintainer does not
-  intend to continue working on it or providing support, but it works for the
-  purposes it was designed for
-- None, we don't display anything, since the maintainer has not chosen to
-  specify their intentions, potential crate users will need to investigate on
-  their own
-- **Experimental**, meaning the author wants to share it with the community but
-  is not intending to meet anyone's particular use case
-- **Looking for maintainer**, meaning the current maintainer would like to give
-  up the crate to someone else
+Alternatives:
 
-These would be displayed as badges on lists of crates.
+- Also factor in the version number: keep the "Experimental" label unless a
+  crate version has many downloads *and* its version number is >= 1.0.0. This
+  might be better once more crates release a 1.0.0 version.
+- Don't show any label for the "Mainstream" category and only label
+  "Experimental" or "Inactive" crates.
+- Use different words for these concepts
+- Use more words for these concepts that more clearly states what is measured:
+  - "This crate has many recent releases and many downloads"
+  - "This crate has many recent downloads but has not been updated in the last 6
+    months"
+  - "This crate has many recent releases but few downloads"
+  - "This crate has not been updated in the last 6 months and has few downloads"
 
-These levels would not have any time commitments attached to them-- maintainers
-who would like to batch changes into releases every 6 months could report
-"actively developed" just as much as mantainers who like to release every 6
-weeks. This would need to be clearly communicated to set crate user
-expectations properly.
+For the crates used in the survey, assuming that any release in the last 6 mo
+makes a crate "Experimental" rather than "Inactive", and that whatever the
+cutoff value for "many downloads" is exactly, the line lies somewhere between
+nom and combine since nom has an order of magnitude more downloads than combine:
 
-This is also inherently a crate author's statement of current intentions, which
-may get out of sync with the reality of the crate's maintenance over time.
+| Crate   | Releases in last 6 mo | Downloads in last 90 days | Label        |
+|---------|-----------------------|---------------------------|--------------|
+| nom     | 3                     | 82,975                    | Mainstream   |
+| combine | 4                     | 4,252                     | Experimental |
+| lalrpop | 3                     | 1,928                     | Experimental |
+| peg     | 7                     | 2,190                     | Experimental |
+| peresil | 0                     | 1,859                     | Inactive     |
 
-If I had to guess for the maintainers of the parsing crates, I would assume:
+### Overall ordering: Recent downloads
 
-* nom: actively developed
-* combine: actively developed
-* lalrpop: actively developed
-* peg: actively developed
-* peresil: passively maintained
-
-### Quality
-
-Given that so much of "quality" is subjective, we do not have a proposed
-quality measure at this time. Involving CI might be useful, but that would
-require taking a stand on supported 3rd party CI providers. The same problem
-would exist with test coverage percentage.
-
-Measures we have considered but that we do not have tools to compute at this
-time:
-
-- Number of unit and/or integration tests
-- Ratio of test code to implementation code
-
-If the community feels the effort to create these tools would be worth the
-information, we would investigate these further.
-
-### Popularity
-
-- Number of downloads in the last 90 days, and the top, say, 10% most
-  downloaded would get a bump in ranking and a badge that says "frequently
-  downloaded". Can be calculated as part of the [update-downloads][] background
-  job.
-
-[update-downloads]: https://github.com/rust-lang/crates.io/blob/master/src/bin/update-downloads.rs
-
-With this proposal, out of the 5 parser crates assuming these are the only
-crates on crates.io, nom would be marked as "frequently downloaded" and the
-others would not. nom is currently ranked at #83 in the list of crates by
-number of downloads, which easily puts it in the top 10% out of 7,239 crates.
-
-### Credibility
-
-We think credibility is an even more subjective measure than quality. We
-considered using number of other crates an author has, but that would skew
-heavily towards [retep998][]. Highlighting Rust team members is also a
-possibility since people tend to regard them more highly, but there are many
-crate authors who are not on any Rust team who are releasing excellent crates.
-We have [an idea for a more personal "favorite authors" list][favs] that we
-think would help indicate credibility. With this proposed feature, each person
-can define credibility for themselves, which makes this measure less gameable
-and less of a popularity contest.
-
-[retep998]: https://crates.io/users/retep998
-[favs]: https://github.com/rust-lang/crates.io/issues/494
-
-### Overall
-
-(Combining the new proposals for an overall ranking is a work in progress)
+To remove some of the bias towards older crates that may have been replaced with
+newer alternatives, we propose that the default ranking of crates be changed
+from the all-time number of downloads to the number of downloads in the last 90
+days. This is easy to understand and explain, and is being used as a rough
+measure of evaluation today. This should be enough to get the most suitable
+crates on the first page of results.
 
 ## Out of scope
 
