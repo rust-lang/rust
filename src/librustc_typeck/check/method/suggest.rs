@@ -27,6 +27,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
 use rustc::hir;
+use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 
 use std::cell;
@@ -71,7 +72,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                rcvr_ty: Ty<'tcx>,
                                item_name: ast::Name,
                                rcvr_expr: Option<&hir::Expr>,
-                               error: MethodError<'tcx>) {
+                               error: MethodError<'tcx>,
+                               args: Option<&'gcx [hir::Expr]>) {
         // avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
@@ -131,6 +133,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    "candidate #{} is defined in the trait `{}`",
                                    idx + 1,
                                    self.tcx.item_path_str(trait_did));
+                        err.help(&format!("to disambiguate the method call, write `{}::{}({}{})` \
+                                          instead",
+                                          self.tcx.item_path_str(trait_did),
+                                          item_name,
+                                          if rcvr_ty.is_region_ptr() && args.is_some() {
+                                              if rcvr_ty.is_mutable_pointer() {
+                                                  "&mut "
+                                              } else {
+                                                  "&"
+                                              }
+                                          } else {
+                                              ""
+                                          },
+                                          args.map(|arg| arg.iter()
+                                              .map(|arg| print::to_string(print::NO_ANN,
+                                                                          |s| s.print_expr(arg)))
+                                              .collect::<Vec<_>>()
+                                              .join(", ")).unwrap_or("...".to_owned())));
                     }
                 }
             }
