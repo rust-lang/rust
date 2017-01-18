@@ -10,6 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-type A = for<,> fn(); //~ ERROR expected `>`, found `,`
+type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
 
 fn main() {}

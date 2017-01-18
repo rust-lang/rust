@@ -10,6 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-type A where , = u8; //~ ERROR expected `=`, found `,`
+type A where , = u8; //~ ERROR expected one of `=`, lifetime, or type, found `,`
 
 fn main() {}
