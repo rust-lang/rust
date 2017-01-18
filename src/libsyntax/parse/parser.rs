@@ -183,6 +183,8 @@ pub struct Parser<'a> {
     pub expected_tokens: Vec<TokenType>,
     pub tts: Vec<(TokenTree, usize)>,
     pub desugar_doc_comments: bool,
+    /// Whether we should configure out of line modules as we parse.
+    pub cfg_mods: bool,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -273,6 +275,7 @@ impl<'a> Parser<'a> {
             expected_tokens: Vec::new(),
             tts: if tt.len() > 0 { vec![(tt, 0)] } else { Vec::new() },
             desugar_doc_comments: desugar_doc_comments,
+            cfg_mods: true,
         };
 
         let tok = parser.next_tok();
@@ -5210,7 +5213,7 @@ impl<'a> Parser<'a> {
                 features: None, // don't perform gated feature checking
             };
             let outer_attrs = strip_unconfigured.process_cfg_attrs(outer_attrs.to_owned());
-            (strip_unconfigured.in_cfg(&outer_attrs), outer_attrs)
+            (!self.cfg_mods || strip_unconfigured.in_cfg(&outer_attrs), outer_attrs)
         };
 
         let id_span = self.span;
@@ -5396,6 +5399,7 @@ impl<'a> Parser<'a> {
 
         let mut p0 =
             new_sub_parser_from_file(self.sess, &path, directory_ownership, Some(name), id_sp);
+        p0.cfg_mods = self.cfg_mods;
         let mod_inner_lo = p0.span.lo;
         let mod_attrs = p0.parse_inner_attributes()?;
         let m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
