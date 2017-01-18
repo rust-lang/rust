@@ -67,6 +67,7 @@ pub fn run(input: &str,
         crate_types: vec![config::CrateTypeDylib],
         externs: externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
+        actually_rustdoc: true,
         ..config::basic_options().clone()
     };
 
