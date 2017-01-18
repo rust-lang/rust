@@ -15,52 +15,45 @@
 #![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro_tokens;
 extern crate syntax;
-
-use proc_macro_tokens::prelude::*;
 
 use rustc_plugin::Registry;
 
-use syntax::ast::Ident;
-use syntax::codemap::{DUMMY_SP, Span};
-use syntax::ext::proc_macro_shim::build_block_emitter;
-use syntax::ext::base::{ExtCtxt, MacResult};
-use syntax::parse::token::{self, Token, DelimToken};
+use syntax::ext::base::SyntaxExtension;
+use syntax::parse::token::Token;
+use syntax::symbol::Symbol;
 use syntax::tokenstream::{TokenTree, TokenStream};
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("cond", cond);
+    reg.register_syntax_extension(Symbol::intern("cond"),
+                                  SyntaxExtension::ProcMacro(Box::new(cond)));
 }
 
-fn cond<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'cx> {
-    let output = cond_rec(TokenStream::from_tts(tts.clone().to_owned()));
-    build_block_emitter(cx, sp, output)
-}
+fn cond(input: TokenStream) -> TokenStream {
+    let mut conds = Vec::new();
+    let mut input = input.trees();
+    while let Some(tree) = input.next() {
+        let cond: TokenStream = match *tree {
+            TokenTree::Delimited(_, ref delimited) => delimited.tts.iter().cloned().collect(),
+            _ => panic!("Invalid input"),
+        };
+        let mut trees = cond.trees().cloned();
+        let test = trees.next();
+        let rhs = trees.collect::<TokenStream>();
+        if rhs.is_empty() {
+            panic!("Invalid macro usage in cond: {}", cond);
+        }
+        let is_else = match test {
+            Some(TokenTree::Token(_, Token::Ident(ident))) if ident.name == "else" => true,
+            _ => false,
+        };
+        conds.push(if is_else || input.peek().is_none() {
+            qquote!({ unquote rhs })
+        } else {
+            qquote!(if unquote(test.unwrap()) { unquote rhs } else)
+        });
+    }
 
-fn cond_rec(input: TokenStream) -> TokenStream {
-  if input.is_empty() {
-      return qquote!();
-  }
-
-  let next = input.slice(0..1);
-  let rest = input.slice_from(1..);
-
-  let clause : TokenStream = match next.maybe_delimited() {
-    Some(ts) => ts,
-    _ => panic!("Invalid input"),
-  };
-
-  // clause is ([test]) [rhs]
-  if clause.len() < 2 { panic!("Invalid macro usage in cond: {:?}", clause) }
-
-  let test: TokenStream = clause.slice(0..1);
-  let rhs: TokenStream = clause.slice_from(1..);
-
-  if ident_eq(&test[0], Ident::from_str("else")) || rest.is_empty() {
-    qquote!({unquote(rhs)})
-  } else {
-    qquote!({if unquote(test) { unquote(rhs) } else { cond!(unquote(rest)) } })
-  }
+    conds.into_iter().collect()
 }

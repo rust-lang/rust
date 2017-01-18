@@ -103,7 +103,7 @@ DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
 DEPS_proc_macro := syntax syntax_pos rustc_plugin log
 DEPS_syntax_pos := serialize
 DEPS_proc_macro_tokens := syntax syntax_pos log
-DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin log proc_macro_tokens
+DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin
 
 DEPS_rustc_const_math := std syntax log serialize rustc_i128
 DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \

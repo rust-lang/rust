@@ -14,22 +14,21 @@
 #![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro_tokens;
 extern crate syntax;
 
-use syntax::ext::proc_macro_shim::prelude::*;
-use proc_macro_tokens::prelude::*;
-
 use rustc_plugin::Registry;
+use syntax::ext::base::SyntaxExtension;
+use syntax::symbol::Symbol;
+use syntax::tokenstream::TokenStream;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("hello", hello);
+    reg.register_syntax_extension(Symbol::intern("hello"),
+                                  SyntaxExtension::ProcMacro(Box::new(hello)));
 }
 
 // This macro is not very interesting, but it does contain delimited tokens with
 // no content - `()` and `{}` - which has caused problems in the past.
-fn hello<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'cx> {
-    let output = qquote!({ fn hello() {} hello(); });
-    build_block_emitter(cx, sp, output)
+fn hello(_: TokenStream) -> TokenStream {
+    qquote!({ fn hello() {} hello(); })
 }

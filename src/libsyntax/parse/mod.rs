@@ -196,7 +196,7 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenT
 }
 
 pub fn new_parser_from_ts<'a>(sess: &'a ParseSess, ts: tokenstream::TokenStream) -> Parser<'a> {
-    tts_to_parser(sess, ts.to_tts())
+    tts_to_parser(sess, ts.trees().cloned().collect())
 }
 
 
