@@ -16,9 +16,8 @@ use syntax::tokenstream::TokenStream;
 /// Map a string to tts, using a made-up filename. For example, `lex("15")` will return a
 /// TokenStream containing the literal 15.
 pub fn lex(source_str: &str) -> TokenStream {
-    let ps = ParseSess::new();
-    TokenStream::from_tts(filemap_to_tts(&ps,
-                                         ps.codemap().new_filemap("<procmacro_lex>".to_string(),
-                                                                  None,
-                                                                  source_str.to_owned())))
+    let sess = ParseSess::new();
+    let filemap =
+        sess.codemap().new_filemap("<procmacro_lex>".to_string(), None, source_str.to_owned());
+    filemap_to_tts(&sess, filemap).into_iter().collect()
 }

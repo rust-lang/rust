@@ -18,20 +18,7 @@ use std::rc::Rc;
 /// A wrapper around `TokenStream::concat` to avoid extra namespace specification and
 /// provide TokenStream concatenation as a generic operator.
 pub fn concat(ts1: TokenStream, ts2: TokenStream) -> TokenStream {
-    TokenStream::concat(ts1, ts2)
-}
-
-/// Flatten a sequence of TokenStreams into a single TokenStream.
-pub fn flatten<T: Iterator<Item=TokenStream>>(mut iter: T) -> TokenStream {
-    match iter.next() {
-        Some(mut ts) => {
-            for next in iter {
-                ts = TokenStream::concat(ts, next);
-            }
-            ts
-        }
-        None => TokenStream::mk_empty()
-    }
+    TokenStream::concat([ts1, ts2].iter().cloned())
 }
 
 /// Checks if two identifiers have the same name, disregarding context. This allows us to
@@ -69,14 +56,12 @@ pub fn keyword_to_token_ident(kw: keywords::Keyword) -> Token {
 /// Generically takes a `ts` and delimiter and returns `ts` delimited by the specified
 /// delimiter.
 pub fn build_delimited(ts: TokenStream, delim: token::DelimToken) -> TokenStream {
-    let tts = ts.to_tts();
-    TokenStream::from_tts(vec![TokenTree::Delimited(DUMMY_SP,
-                                                    Rc::new(tokenstream::Delimited {
-                                                        delim: delim,
-                                                        open_span: DUMMY_SP,
-                                                        tts: tts,
-                                                        close_span: DUMMY_SP,
-                                                    }))])
+    TokenTree::Delimited(DUMMY_SP, Rc::new(tokenstream::Delimited {
+        delim: delim,
+        open_span: DUMMY_SP,
+        tts: ts.trees().cloned().collect(),
+        close_span: DUMMY_SP,
+    })).into()
 }
 
 /// Takes `ts` and returns `[ts]`.
@@ -96,5 +81,5 @@ pub fn build_paren_delimited(ts: TokenStream) -> TokenStream {
 
 /// Constructs `()`.
 pub fn build_empty_args() -> TokenStream {
-    build_paren_delimited(TokenStream::mk_empty())
+    build_paren_delimited(TokenStream::empty())
 }
