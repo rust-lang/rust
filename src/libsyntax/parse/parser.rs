@@ -192,14 +192,22 @@ pub enum TokenType {
     Token(token::Token),
     Keyword(keywords::Keyword),
     Operator,
+    Lifetime,
+    Ident,
+    Path,
+    Type,
 }
 
 impl TokenType {
     fn to_string(&self) -> String {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", Parser::token_to_string(t)),
-            TokenType::Operator => "an operator".to_string(),
             TokenType::Keyword(kw) => format!("`{}`", kw.name()),
+            TokenType::Operator => "an operator".to_string(),
+            TokenType::Lifetime => "lifetime".to_string(),
+            TokenType::Ident => "identifier".to_string(),
+            TokenType::Path => "path".to_string(),
+            TokenType::Type => "type".to_string(),
         }
     }
 }
@@ -549,6 +557,33 @@ impl<'a> Parser<'a> {
         if self.token.is_reserved_keyword() {
             let token_str = self.this_token_to_string();
             self.fatal(&format!("`{}` is a reserved keyword", token_str)).emit()
+        }
+    }
+
+    fn check_ident(&mut self) -> bool {
+        if self.token.is_ident() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Ident);
+            false
+        }
+    }
+
+    fn check_path(&mut self) -> bool {
+        if self.token.is_path_start() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Path);
+            false
+        }
+    }
+
+    fn check_type(&mut self) -> bool {
+        if self.token.can_begin_type() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Type);
+            false
         }
     }
 
@@ -1802,7 +1837,10 @@ impl<'a> Parser<'a> {
                     name: ident.name
                 })
             }
-            _ => None
+            _ => {
+                self.expected_tokens.push(TokenType::Lifetime);
+                None
+            }
         }
     }
 
@@ -3953,7 +3991,7 @@ impl<'a> Parser<'a> {
                                   "`?` may only modify trait bounds, not lifetime bounds");
                 }
                 bounds.push(RegionTyParamBound(lifetime));
-            } else if self.token.is_keyword(keywords::For) || self.token.is_path_start() {
+            } else {if self.check_keyword(keywords::For) || self.check_path() {
                 let poly_trait_ref = self.parse_poly_trait_ref()?;
                 let modifier = if question.is_some() {
                     TraitBoundModifier::Maybe
@@ -3963,7 +4001,7 @@ impl<'a> Parser<'a> {
                 bounds.push(TraitTyParamBound(poly_trait_ref, modifier));
             } else {
                 break
-            }
+            }}
 
             // Trailing plus is not allowed for now and we have to detect it.
             let is_bound_start = |token: &token::Token| {
@@ -4047,7 +4085,7 @@ impl<'a> Parser<'a> {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
                 }
-            } else if self.token.is_ident() {
+            } else {if self.check_ident() {
                 // Parse type parameter.
                 ty_params.push(self.parse_ty_param(attrs)?);
                 seen_ty_param = true;
@@ -4059,7 +4097,7 @@ impl<'a> Parser<'a> {
                         &format!("trailing attribute after {} parameters", param_kind));
                 }
                 break
-            }
+            }}
 
             if !self.eat(&token::Comma) {
                 break
@@ -4105,7 +4143,6 @@ impl<'a> Parser<'a> {
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
-            let eq_is_next = self.look_ahead(1, |t| t == &token::Eq); // borrowck workaround
             if let Some(lifetime) = self.eat_lifetime() {
                 // Parse lifetime argument.
                 lifetimes.push(lifetime);
@@ -4113,7 +4150,7 @@ impl<'a> Parser<'a> {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
                 }
-            } else if self.token.is_ident() && eq_is_next {
+            } else {if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
                 let lo = self.span.lo;
                 let ident = self.parse_ident()?;
@@ -4126,7 +4163,7 @@ impl<'a> Parser<'a> {
                     span: mk_sp(lo, self.prev_span.hi),
                 });
                 seen_binding = true;
-            } else if self.token.can_begin_type() {
+            } else if self.check_type() {
                 // Parse type argument.
                 types.push(self.parse_ty()?);
                 if seen_binding {
@@ -4136,7 +4173,7 @@ impl<'a> Parser<'a> {
                 seen_type = true;
             } else {
                 break
-            }
+            }}
 
             if !self.eat(&token::Comma) {
                 break
@@ -4192,7 +4229,7 @@ impl<'a> Parser<'a> {
                         bounds: bounds,
                     }
                 ));
-            } else if self.token.can_begin_type() {
+            } else {if self.check_type() {
                 // Parse optional `for<'a, 'b>`.
                 // This `for` is parsed greedily and applies to the whole predicate,
                 // the bounded type can have its own `for` applying only to it.
@@ -4230,7 +4267,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 break
-            }
+            }}
 
             if !self.eat(&token::Comma) {
                 break
