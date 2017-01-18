@@ -181,7 +181,7 @@ impl<T> [T] {
         core_slice::SliceExt::len(self)
     }
 
-    /// Returns true if the slice has a length of 0.
+    /// Returns `true` if the slice has a length of 0.
     ///
     /// # Example
     ///
@@ -540,12 +540,8 @@ impl<T> [T] {
     ///
     /// ```
     /// let x = &mut [1, 2, 4];
-    /// {
-    ///     let iterator = x.iter_mut();
-    ///
-    ///     for elem in iterator {
-    ///         *elem += 2;
-    ///     }
+    /// for elem in x.iter_mut() {
+    ///     *elem += 2;
     /// }
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
@@ -880,7 +876,7 @@ impl<T> [T] {
         core_slice::SliceExt::rsplitn_mut(self, n, pred)
     }
 
-    /// Returns true if the slice contains an element with the given value.
+    /// Returns `true` if the slice contains an element with the given value.
     ///
     /// # Examples
     ///
@@ -896,7 +892,7 @@ impl<T> [T] {
         core_slice::SliceExt::contains(self, x)
     }
 
-    /// Returns true if `needle` is a prefix of the slice.
+    /// Returns `true` if `needle` is a prefix of the slice.
     ///
     /// # Examples
     ///
@@ -907,6 +903,15 @@ impl<T> [T] {
     /// assert!(!v.starts_with(&[50]));
     /// assert!(!v.starts_with(&[10, 50]));
     /// ```
+    ///
+    /// Always returns `true` if `needle` is an empty slice:
+    ///
+    /// ```
+    /// let v = &[10, 40, 30];
+    /// assert!(v.starts_with(&[]));
+    /// let v: &[u8] = &[];
+    /// assert!(v.starts_with(&[]));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with(&self, needle: &[T]) -> bool
         where T: PartialEq
@@ -914,7 +919,7 @@ impl<T> [T] {
         core_slice::SliceExt::starts_with(self, needle)
     }
 
-    /// Returns true if `needle` is a suffix of the slice.
+    /// Returns `true` if `needle` is a suffix of the slice.
     ///
     /// # Examples
     ///
@@ -924,6 +929,15 @@ impl<T> [T] {
     /// assert!(v.ends_with(&[40, 30]));
     /// assert!(!v.ends_with(&[50]));
     /// assert!(!v.ends_with(&[50, 30]));
+    /// ```
+    ///
+    /// Always returns `true` if `needle` is an empty slice:
+    ///
+    /// ```
+    /// let v = &[10, 40, 30];
+    /// assert!(v.ends_with(&[]));
+    /// let v: &[u8] = &[];
+    /// assert!(v.ends_with(&[]));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with(&self, needle: &[T]) -> bool
