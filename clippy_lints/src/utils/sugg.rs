@@ -116,7 +116,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Try(..) |
             ast::ExprKind::Tup(..) |
             ast::ExprKind::TupField(..) |
-            ast::ExprKind::Vec(..) |
+            ast::ExprKind::Array(..) |
             ast::ExprKind::While(..) |
             ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),
             ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),

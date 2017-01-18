@@ -699,12 +699,23 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
             // the "normal" components of a type: named types, arrays/tuples
             TyPath(..) | TySlice(..) | TyTup(..) | TyArray(..) => (10 * self.nest, 1),
 
-            // "Sum" of trait bounds
-            TyObjectSum(..) => (20 * self.nest, 0),
+            // function types bring a lot of overhead
+            TyBareFn(..) => (50 * self.nest, 1),
 
-            // function types and "for<...>" bring a lot of overhead
-            TyBareFn(..) |
-            TyPolyTraitRef(..) => (50 * self.nest, 1),
+            TyTraitObject(ref bounds) => {
+                let has_lifetimes = bounds.iter()
+                    .any(|bound| match *bound {
+                        TraitTyParamBound(ref poly_trait, ..) => !poly_trait.bound_lifetimes.is_empty(),
+                        RegionTyParamBound(..) => true,
+                    });
+                if has_lifetimes {
+                    // complex trait bounds like A<'a, 'b>
+                    (50 * self.nest, 1)
+                } else {
+                    // simple trait bounds like A + B
+                    (20 * self.nest, 0)
+                }
+            },
 
             _ => (0, 0),
         };
