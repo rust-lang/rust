@@ -398,9 +398,16 @@ fn parse_input(input: Input,
                parse_session: &ParseSess)
                -> Result<ast::Crate, Option<DiagnosticBuilder>> {
     let result = match input {
-        Input::File(file) => parse::parse_crate_from_file(&file, parse_session),
+        Input::File(file) => {
+            let mut parser = parse::new_parser_from_file(parse_session, &file);
+            parser.cfg_mods = false;
+            parser.parse_crate_mod()
+        }
         Input::Text(text) => {
-            parse::parse_crate_from_source_str("stdin".to_owned(), text, parse_session)
+            let mut parser =
+                parse::new_parser_from_source_str(parse_session, "stdin".to_owned(), text);
+            parser.cfg_mods = false;
+            parser.parse_crate_mod()
         }
     };
 
