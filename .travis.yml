@@ -50,7 +50,7 @@ matrix:
         echo 'bt all' > cmds;
         for file in $(ls /cores); do
           echo core file $file;
-          lldb -c $file `which ld` -b -s cmds;
+          lldb -c /cores/$file `which ld` -b -s cmds;
         done
 
     - env: >
