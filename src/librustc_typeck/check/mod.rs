@@ -2867,8 +2867,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Err(error) => {
                 if method_name.node != keywords::Invalid.name() {
-                    self.report_method_error(method_name.span, expr_t,
-                                             method_name.node, Some(rcvr), error);
+                    self.report_method_error(method_name.span,
+                                             expr_t,
+                                             method_name.node,
+                                             Some(rcvr),
+                                             error,
+                                             Some(args));
                 }
                 self.write_error(expr.id);
                 self.tcx.types.err
@@ -4051,7 +4055,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => Def::Err,
                 };
                 if item_name != keywords::Invalid.name() {
-                    self.report_method_error(span, ty, item_name, None, error);
+                    self.report_method_error(span, ty, item_name, None, error, None);
                 }
                 def
             }

@@ -73,15 +73,19 @@ impl ManyImplTrait for Myisize {}
 fn no_param_bound(u: usize, m: Myisize) -> usize {
     u.f8(42) + u.f9(342) + m.fff(42)
             //~^ ERROR no method named `f9` found for type `usize` in the current scope
-            //~^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
-            //~^^^ ERROR no method named `fff` found for type `Myisize` in the current scope
-            //~^^^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
+            //~| NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
+            //~| NOTE to use it here write `CtxtFn::f9(u, 342)` instead
+            //~| ERROR no method named `fff` found for type `Myisize` in the current scope
+            //~| NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
+            //~| NOTE to use it here write `OtherTrait::f9(u, 342)` instead
+            //~| NOTE to use it here write `UnusedTrait::f9(u, 342)` instead
 }
 
 fn param_bound<T: ManyImplTrait>(t: T) -> bool {
     t.is_str()
     //~^ ERROR no method named `is_str` found for type `T` in the current scope
-    //~^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
+    //~| NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
+    //~| NOTE to use it here write `ManyImplTrait::is_str(t)` instead
 }
 
 fn main() {
