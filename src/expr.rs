@@ -26,7 +26,7 @@ use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_w
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
-use types::rewrite_path;
+use types::{rewrite_path, PathContext};
 use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
 use macros::{rewrite_macro, MacroPosition};
@@ -54,7 +54,7 @@ fn format_expr(expr: &ast::Expr,
                offset: Indent)
                -> Option<String> {
     let result = match expr.node {
-        ast::ExprKind::Vec(ref expr_vec) => {
+        ast::ExprKind::Array(ref expr_vec) => {
             rewrite_array(expr_vec.iter().map(|e| &**e),
                           mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
                           context,
@@ -148,7 +148,12 @@ fn format_expr(expr: &ast::Expr,
             rewrite_match(context, cond, arms, width, offset, expr.span)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, true, qself.as_ref(), path, width, offset)
+            rewrite_path(context,
+                         PathContext::Expr,
+                         qself.as_ref(),
+                         path,
+                         width,
+                         offset)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs) => {
             rewrite_assignment(context, lhs, rhs, None, width, offset)
@@ -1727,7 +1732,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     // 2 = " {".len()
     let path_budget = try_opt!(width.checked_sub(2));
-    let path_str = try_opt!(rewrite_path(context, true, None, path, path_budget, offset));
+    let path_str =
+        try_opt!(rewrite_path(context, PathContext::Expr, None, path, path_budget, offset));
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);

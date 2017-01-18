@@ -11,10 +11,11 @@
 use std::ops::Deref;
 use std::iter::ExactSizeIterator;
 
-use syntax::ast::{self, Mutability, FunctionRetTy};
-use syntax::print::pprust;
-use syntax::codemap::{self, Span, BytePos};
 use syntax::abi;
+use syntax::ast::{self, Mutability, FunctionRetTy};
+use syntax::codemap::{self, Span, BytePos};
+use syntax::print::pprust;
+use syntax::symbol::keywords;
 
 use {Indent, Spanned};
 use codemap::SpanUtils;
@@ -25,9 +26,16 @@ use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::TypeDensity;
 use itertools::Itertools;
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PathContext {
+    Expr,
+    Type,
+    Import,
+}
+
 // Does not wrap on simple segments.
 pub fn rewrite_path(context: &RewriteContext,
-                    expr_context: bool,
+                    path_context: PathContext,
                     qself: Option<&ast::QSelf>,
                     path: &ast::Path,
                     width: usize,
@@ -35,7 +43,8 @@ pub fn rewrite_path(context: &RewriteContext,
                     -> Option<String> {
     let skip_count = qself.map_or(0, |x| x.position);
 
-    let mut result = if path.global && qself.is_none() {
+    let mut result = if path.is_global() && qself.is_none() &&
+                        path_context != PathContext::Import {
         "::".to_owned()
     } else {
         String::new()
@@ -54,7 +63,7 @@ pub fn rewrite_path(context: &RewriteContext,
 
         if skip_count > 0 {
             result.push_str(" as ");
-            if path.global {
+            if path.is_global() && path_context != PathContext::Import {
                 result.push_str("::");
             }
 
@@ -62,7 +71,7 @@ pub fn rewrite_path(context: &RewriteContext,
             // 3 = ">::".len()
             let budget = try_opt!(width.checked_sub(extra_offset + 3));
 
-            result = try_opt!(rewrite_path_segments(false,
+            result = try_opt!(rewrite_path_segments(PathContext::Type,
                                                     result,
                                                     path.segments.iter().take(skip_count),
                                                     span_lo,
@@ -82,7 +91,7 @@ pub fn rewrite_path(context: &RewriteContext,
 
     let extra_offset = extra_offset(&result, offset);
     let budget = try_opt!(width.checked_sub(extra_offset));
-    rewrite_path_segments(expr_context,
+    rewrite_path_segments(path_context,
                           result,
                           path.segments.iter().skip(skip_count),
                           span_lo,
@@ -92,7 +101,7 @@ pub fn rewrite_path(context: &RewriteContext,
                           offset + extra_offset)
 }
 
-fn rewrite_path_segments<'a, I>(expr_context: bool,
+fn rewrite_path_segments<'a, I>(path_context: PathContext,
                                 mut buffer: String,
                                 iter: I,
                                 mut span_lo: BytePos,
@@ -106,6 +115,10 @@ fn rewrite_path_segments<'a, I>(expr_context: bool,
     let mut first = true;
 
     for segment in iter {
+        // Indicates a global path, shouldn't be rendered.
+        if segment.identifier.name == keywords::CrateRoot.name() {
+            continue;
+        }
         if first {
             first = false;
         } else {
@@ -115,7 +128,7 @@ fn rewrite_path_segments<'a, I>(expr_context: bool,
         let extra_offset = extra_offset(&buffer, offset);
         let remaining_width = try_opt!(width.checked_sub(extra_offset));
         let new_offset = offset + extra_offset;
-        let segment_string = try_opt!(rewrite_segment(expr_context,
+        let segment_string = try_opt!(rewrite_segment(path_context,
                                                       segment,
                                                       &mut span_lo,
                                                       span_hi,
@@ -172,7 +185,7 @@ impl<'a> Rewrite for SegmentParam<'a> {
 //
 // When the segment contains a positive number of parameters, we update span_lo
 // so that invariants described above will hold for the next segment.
-fn rewrite_segment(expr_context: bool,
+fn rewrite_segment(path_context: PathContext,
                    segment: &ast::PathSegment,
                    span_lo: &mut BytePos,
                    span_hi: BytePos,
@@ -184,62 +197,71 @@ fn rewrite_segment(expr_context: bool,
     let width = try_opt!(width.checked_sub(ident_len));
     let offset = offset + ident_len;
 
-    let params = match segment.parameters {
-        ast::PathParameters::AngleBracketed(ref data) if !data.lifetimes.is_empty() ||
-                                                         !data.types.is_empty() ||
-                                                         !data.bindings.is_empty() => {
-            let param_list = data.lifetimes
-                .iter()
-                .map(SegmentParam::LifeTime)
-                .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
-                .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
-                .collect::<Vec<_>>();
+    let params = if let Some(ref params) = segment.parameters {
+        match **params {
+            ast::PathParameters::AngleBracketed(ref data) if !data.lifetimes.is_empty() ||
+                                                             !data.types.is_empty() ||
+                                                             !data.bindings.is_empty() => {
+                let param_list = data.lifetimes
+                    .iter()
+                    .map(SegmentParam::LifeTime)
+                    .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
+                    .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
+                    .collect::<Vec<_>>();
 
-            let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-            let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
-            let separator = if expr_context { "::" } else { "" };
+                let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
+                let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
+                let separator = if path_context == PathContext::Expr {
+                    "::"
+                } else {
+                    ""
+                };
 
-            // 1 for <
-            let extra_offset = 1 + separator.len();
-            // 1 for >
-            let list_width = try_opt!(width.checked_sub(extra_offset + 1));
+                // 1 for <
+                let extra_offset = 1 + separator.len();
+                // 1 for >
+                let list_width = try_opt!(width.checked_sub(extra_offset + 1));
 
-            let items = itemize_list(context.codemap,
-                                     param_list.into_iter(),
-                                     ">",
-                                     |param| param.get_span().lo,
-                                     |param| param.get_span().hi,
-                                     |seg| seg.rewrite(context, list_width, offset + extra_offset),
-                                     list_lo,
-                                     span_hi);
-            let list_str = try_opt!(format_item_list(items,
-                                                     list_width,
-                                                     offset + extra_offset,
-                                                     context.config));
+                let items =
+                    itemize_list(context.codemap,
+                                 param_list.into_iter(),
+                                 ">",
+                                 |param| param.get_span().lo,
+                                 |param| param.get_span().hi,
+                                 |seg| seg.rewrite(context, list_width, offset + extra_offset),
+                                 list_lo,
+                                 span_hi);
+                let list_str = try_opt!(format_item_list(items,
+                                                         list_width,
+                                                         offset + extra_offset,
+                                                         context.config));
 
-            // Update position of last bracket.
-            *span_lo = next_span_lo;
+                // Update position of last bracket.
+                *span_lo = next_span_lo;
 
-            if context.config.spaces_within_angle_brackets && list_str.len() > 0 {
-                format!("{}< {} >", separator, list_str)
-            } else {
-                format!("{}<{}>", separator, list_str)
+                if context.config.spaces_within_angle_brackets && list_str.len() > 0 {
+                    format!("{}< {} >", separator, list_str)
+                } else {
+                    format!("{}<{}>", separator, list_str)
+                }
             }
+            ast::PathParameters::Parenthesized(ref data) => {
+                let output = match data.output {
+                    Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
+                    None => FunctionRetTy::Default(codemap::DUMMY_SP),
+                };
+                try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
+                                              &output,
+                                              false,
+                                              data.span,
+                                              context,
+                                              width,
+                                              offset))
+            }
+            _ => String::new(),
         }
-        ast::PathParameters::Parenthesized(ref data) => {
-            let output = match data.output {
-                Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
-                None => FunctionRetTy::Default(codemap::DUMMY_SP),
-            };
-            try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
-                                          &output,
-                                          false,
-                                          data.span,
-                                          context,
-                                          width,
-                                          offset))
-        }
-        _ => String::new(),
+    } else {
+        String::new()
     };
 
     Some(format!("{}{}", segment.identifier, params))
@@ -393,14 +415,15 @@ impl Rewrite for ast::WherePredicate {
                                                                              .. }) => {
                 try_opt!(rewrite_bounded_lifetime(lifetime, bounds.iter(), context, width, offset))
             }
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref path, ref ty, .. }) => {
-                let ty_str = try_opt!(ty.rewrite(context, width, offset));
+            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref lhs_ty,
+                                                                     ref rhs_ty,
+                                                                     .. }) => {
+                let lhs_ty_str = try_opt!(lhs_ty.rewrite(context, width, offset));
                 // 3 = " = ".len()
-                let used_width = 3 + ty_str.len();
+                let used_width = 3 + lhs_ty_str.len();
                 let budget = try_opt!(width.checked_sub(used_width));
-                let path_str =
-                    try_opt!(rewrite_path(context, false, None, path, budget, offset + used_width));
-                format!("{} = {}", path_str, ty_str)
+                let rhs_ty_str = try_opt!(rhs_ty.rewrite(context, budget, offset + used_width));
+                format!("{} = {}", lhs_ty_str, rhs_ty_str)
             }
         };
 
@@ -462,10 +485,14 @@ impl Rewrite for ast::Lifetime {
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        let joiner = match context.config.type_punctuation_density {
+            TypeDensity::Compressed => "+",
+            TypeDensity::Wide => " + ",
+        };
         let strs: Vec<_> = try_opt!(self.iter()
             .map(|b| b.rewrite(context, width, offset))
             .collect());
-        wrap_str(strs.join(" + "), context.config.max_width, width, offset)
+        wrap_str(strs.join(joiner), context.config.max_width, width, offset)
     }
 }
 
@@ -534,27 +561,14 @@ impl Rewrite for ast::PolyTraitRef {
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        rewrite_path(context, false, None, &self.path, width, offset)
+        rewrite_path(context, PathContext::Type, None, &self.path, width, offset)
     }
 }
 
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
-            ast::TyKind::ObjectSum(ref ty, ref bounds) => {
-                let ty_str = try_opt!(ty.rewrite(context, width, offset));
-                let overhead = ty_str.len() + 3;
-                let plus_str = match context.config.type_punctuation_density {
-                    TypeDensity::Compressed => "+",
-                    TypeDensity::Wide => " + ",
-                };
-                Some(format!("{}{}{}",
-                             ty_str,
-                             plus_str,
-                             try_opt!(bounds.rewrite(context,
-                                                     try_opt!(width.checked_sub(overhead)),
-                                                     offset + overhead))))
-            }
+            ast::TyKind::TraitObject(ref bounds) => bounds.rewrite(context, width, offset),
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
                     Mutability::Mutable => "*mut ",
@@ -618,9 +632,13 @@ impl Rewrite for ast::Ty {
                               width,
                               offset)
             }
-            ast::TyKind::PolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, false, q_self.as_ref(), path, width, offset)
+                rewrite_path(context,
+                             PathContext::Type,
+                             q_self.as_ref(),
+                             path,
+                             width,
+                             offset)
             }
             ast::TyKind::Array(ref ty, ref repeats) => {
                 let use_spaces = context.config.spaces_within_square_brackets;

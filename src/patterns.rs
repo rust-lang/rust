@@ -14,7 +14,7 @@ use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
 use lists::{format_item_list, itemize_list, ListItem};
 use expr::{rewrite_unary_prefix, rewrite_pair};
-use types::rewrite_path;
+use types::{rewrite_path, PathContext};
 use super::Spanned;
 use comment::FindUncommented;
 
@@ -65,10 +65,16 @@ impl Rewrite for Pat {
                 rewrite_tuple_pat(items, dotdot_pos, None, self.span, context, width, offset)
             }
             PatKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, true, q_self.as_ref(), path, width, offset)
+                rewrite_path(context,
+                             PathContext::Expr,
+                             q_self.as_ref(),
+                             path,
+                             width,
+                             offset)
             }
             PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
-                let path_str = try_opt!(rewrite_path(context, true, None, path, width, offset));
+                let path_str =
+                    try_opt!(rewrite_path(context, PathContext::Expr, None, path, width, offset));
                 rewrite_tuple_pat(pat_vec,
                                   dotdot_pos,
                                   Some(path_str),
@@ -102,7 +108,8 @@ impl Rewrite for Pat {
                 wrap_str(result, context.config.max_width, width, offset)
             }
             PatKind::Struct(ref path, ref fields, elipses) => {
-                let path = try_opt!(rewrite_path(context, true, None, path, width, offset));
+                let path =
+                    try_opt!(rewrite_path(context, PathContext::Expr, None, path, width, offset));
 
                 let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
 

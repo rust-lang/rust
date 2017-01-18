@@ -39,11 +39,13 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
         Visibility::Inherited => Cow::from(""),
         Visibility::Crate(_) => Cow::from("pub(crate) "),
         Visibility::Restricted { ref path, .. } => {
-            let Path { global, ref segments, .. } = **path;
-            let prefix = if global { "::" } else { "" };
+            let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.as_str());
+            if path.is_global() {
+                segments_iter.next().expect("Non-global path in pub(restricted)?");
+            }
 
-            Cow::from(format!("pub({}{}) ", prefix, segments_iter.join("::")))
+            Cow::from(format!("pub({}) ", segments_iter.join("::")))
         }
     }
 }

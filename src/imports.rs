@@ -13,7 +13,7 @@ use utils;
 use syntax::codemap::{self, BytePos, Span};
 use codemap::SpanUtils;
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
-use types::rewrite_path;
+use types::{rewrite_path, PathContext};
 use rewrite::{Rewrite, RewriteContext};
 use visitor::FmtVisitor;
 use std::cmp::{self, Ordering};
@@ -139,17 +139,20 @@ impl Rewrite for ast::ViewPath {
                 // 4 = " as ".len()
                 let budget = try_opt!(width.checked_sub(ident_str.len() + 4));
 
-                let path_str = if context.config.normalize_imports &&
-                                  path.segments.last().unwrap().identifier.to_string() == "self" &&
+                let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
                                   path.segments.len() > 1 {
                     let path = &ast::Path {
                         span: path.span.clone(),
                         segments: path.segments[..path.segments.len() - 1].to_owned(),
-                        global: path.global,
                     };
-                    try_opt!(rewrite_path(context, false, None, &path, budget, offset))
+                    try_opt!(rewrite_path(context,
+                                          PathContext::Import,
+                                          None,
+                                          &path,
+                                          budget,
+                                          offset))
                 } else {
-                    try_opt!(rewrite_path(context, false, None, path, budget, offset))
+                    try_opt!(rewrite_path(context, PathContext::Import, None, path, budget, offset))
                 };
 
                 Some(if path.segments.last().unwrap().identifier == ident {
@@ -248,17 +251,22 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_single_use_list(path_str: Option<String>,
-                           vpi: &ast::PathListItem,
-                           context: &RewriteContext)
-                           -> String {
-    let path_item_str = match path_str {
-        Some(ref path_str) if vpi.node.name.to_string() == "self" &&
-                              context.config.normalize_imports => path_str.to_owned(),
-        Some(path_str) => format!("{}::{}", path_str, vpi.node.name),
-        None => vpi.node.name.to_string(),
+fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String {
+    let mut item_str = vpi.node.name.to_string();
+    if item_str == "self" {
+        item_str = "".to_owned();
+    }
+    let path_item_str = if path_str.is_empty() {
+        if item_str.is_empty() {
+            "self".to_owned()
+        } else {
+            item_str
+        }
+    } else if item_str.is_empty() {
+        path_str
+    } else {
+        format!("{}::{}", path_str, item_str)
     };
-
     append_alias(path_item_str, vpi)
 }
 
@@ -283,27 +291,16 @@ pub fn rewrite_use_list(width: usize,
                         context: &RewriteContext)
                         -> Option<String> {
     // Returns a different option to distinguish `::foo` and `foo`
-    let opt_path_str = if !path.to_string().is_empty() {
-        Some(path.to_string())
-    } else if path.global {
-        // path is absolute, we return an empty String to avoid a double `::`
-        Some(String::new())
-    } else {
-        None
-    };
+    let path_str = try_opt!(rewrite_path(context, PathContext::Import, None, path, width, offset));
 
     match path_list.len() {
         0 => unreachable!(),
-        1 => return Some(rewrite_single_use_list(opt_path_str, &path_list[0], context)),
+        1 => return Some(rewrite_single_use_list(path_str, &path_list[0])),
         _ => (),
     }
 
-    // 2 = ::
-    let path_separation_w = if opt_path_str.is_some() { 2 } else { 0 };
-    // 1 = {
-    let supp_indent = path.to_string().len() + path_separation_w + 1;
-    // 1 = }
-    let remaining_width = width.checked_sub(supp_indent + 1).unwrap_or(0);
+    // 2 = {}
+    let remaining_width = width.checked_sub(path_str.len() + 2).unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -330,6 +327,8 @@ pub fn rewrite_use_list(width: usize,
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 
+    let colons_offset = if path_str.is_empty() { 0 } else { 2 };
+
     let tactic = definitive_tactic(&items[first_index..],
                                    ::lists::ListTactic::Mixed,
                                    remaining_width);
@@ -337,7 +336,7 @@ pub fn rewrite_use_list(width: usize,
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        indent: offset + supp_indent,
+        indent: offset + path_str.len() + 1 + colons_offset,
         // FIXME This is too conservative, and will not use all width
         // available
         // (loose 1 column (";"))
@@ -347,9 +346,10 @@ pub fn rewrite_use_list(width: usize,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    Some(match opt_path_str {
-        Some(opt_path_str) => format!("{}::{{{}}}", opt_path_str, list_str),
-        None => format!("{{{}}}", list_str),
+    Some(if path_str.is_empty() {
+        format!("{{{}}}", list_str)
+    } else {
+        format!("{}::{{{}}}", path_str, list_str)
     })
 }
 
