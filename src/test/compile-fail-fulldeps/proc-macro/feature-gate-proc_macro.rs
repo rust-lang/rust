@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:attr_proc_macro.rs
+// gate-test-proc_macro
+#![feature(use_extern_macros)]
 
-#![crate_type = "proc-macro"]
+extern crate attr_proc_macro;
+use attr_proc_macro::attr_proc_macro;
 
-extern crate proc_macro;
+#[attr_proc_macro]
+//~^ ERROR: attribute procedural macros are experimental
+struct Foo;
 
-use proc_macro::TokenStream;
-
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+fn main() {
+    let _ = Foo;
 }

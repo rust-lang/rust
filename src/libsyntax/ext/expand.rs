@@ -364,7 +364,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let attr_toks = TokenStream::from_tts(tts_for_attr(&attr, &self.cx.parse_sess));
+                let attr_toks = TokenStream::from_tts(tts_for_attr_args(&attr,
+                                                                        &self.cx.parse_sess));
+
                 let item_toks = TokenStream::from_tts(tts_for_item(&item, &self.cx.parse_sess));
 
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
@@ -640,8 +642,30 @@ fn tts_for_item(item: &Annotatable, parse_sess: &ParseSess) -> Vec<TokenTree> {
     string_to_tts(text, parse_sess)
 }
 
-fn tts_for_attr(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<TokenTree> {
-    string_to_tts(pprust::attr_to_string(attr), parse_sess)
+fn tts_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<TokenTree> {
+    use ast::MetaItemKind::*;
+    use print::pp::Breaks;
+    use print::pprust::PrintState;
+
+    let token_string = match attr.value.node {
+        // For `#[foo]`, an empty token
+        Word => return vec![],
+        // For `#[foo(bar, baz)]`, returns `(bar, baz)`
+        List(ref items) => pprust::to_string(|s| {
+            s.popen()?;
+            s.commasep(Breaks::Consistent,
+                       &items[..],
+                       |s, i| s.print_meta_list_item(&i))?;
+            s.pclose()
+        }),
+        // For `#[foo = "bar"]`, returns `= "bar"`
+        NameValue(ref lit) => pprust::to_string(|s| {
+            s.word_space("=")?;
+            s.print_literal(lit)
+        }),
+    };
+
+    string_to_tts(token_string, parse_sess)
 }
 
 fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {

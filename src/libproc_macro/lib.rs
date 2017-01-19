@@ -39,9 +39,9 @@ extern crate syntax;
 use std::fmt;
 use std::str::FromStr;
 
-use syntax::ast;
+use syntax::errors::DiagnosticBuilder;
 use syntax::parse;
-use syntax::ptr::P;
+use syntax::tokenstream::TokenStream as TokenStream_;
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens.
@@ -54,7 +54,7 @@ use syntax::ptr::P;
 /// time!
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 pub struct TokenStream {
-    inner: Vec<P<ast::Item>>,
+    inner: TokenStream_,
 }
 
 /// Error returned from `TokenStream::from_str`.
@@ -77,17 +77,41 @@ pub struct LexError {
 #[doc(hidden)]
 pub mod __internal {
     use std::cell::Cell;
+    use std::rc::Rc;
 
     use syntax::ast;
     use syntax::ptr::P;
-    use syntax::parse::ParseSess;
-    use super::TokenStream;
+    use syntax::parse::{self, token, ParseSess};
+    use syntax::tokenstream::TokenStream as TokenStream_;
+
+    use super::{TokenStream, LexError};
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
-        TokenStream { inner: vec![item] }
+        TokenStream { inner: TokenStream_::from_tokens(vec![
+            token::Interpolated(Rc::new(token::NtItem(item)))
+        ])}
     }
 
-    pub fn token_stream_items(stream: TokenStream) -> Vec<P<ast::Item>> {
+    pub fn token_stream_wrap(inner: TokenStream_) -> TokenStream {
+        TokenStream {
+            inner: inner
+        }
+    }
+
+    pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
+        with_parse_sess(move |sess| {
+            let mut parser = parse::new_parser_from_ts(sess, stream.inner);
+            let mut items = Vec::new();
+
+            while let Some(item) = try!(parser.parse_item().map_err(super::parse_to_lex_err)) {
+                items.push(item)
+            }
+
+            Ok(items)
+        })
+    }
+
+    pub fn token_stream_inner(stream: TokenStream) -> TokenStream_ {
         stream.inner
     }
 
@@ -96,6 +120,10 @@ pub mod __internal {
                                   trait_name: &str,
                                   expand: fn(TokenStream) -> TokenStream,
                                   attributes: &[&'static str]);
+
+        fn register_attr_proc_macro(&mut self,
+                                    name: &str,
+                                    expand: fn(TokenStream, TokenStream) -> TokenStream);
     }
 
     // Emulate scoped_thread_local!() here essentially
@@ -125,9 +153,15 @@ pub mod __internal {
         where F: FnOnce(&ParseSess) -> R
     {
         let p = CURRENT_SESS.with(|p| p.get());
-        assert!(!p.is_null());
+        assert!(!p.is_null(), "proc_macro::__internal::with_parse_sess() called \
+                               before set_parse_sess()!");
         f(unsafe { &*p })
     }
+}
+
+fn parse_to_lex_err(mut err: DiagnosticBuilder) -> LexError {
+    err.cancel();
+    LexError { _inner: () }
 }
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
@@ -138,18 +172,10 @@ impl FromStr for TokenStream {
         __internal::with_parse_sess(|sess| {
             let src = src.to_string();
             let name = "<proc-macro source code>".to_string();
-            let mut parser = parse::new_parser_from_source_str(sess, name, src);
-            let mut ret = TokenStream { inner: Vec::new() };
-            loop {
-                match parser.parse_item() {
-                    Ok(Some(item)) => ret.inner.push(item),
-                    Ok(None) => return Ok(ret),
-                    Err(mut err) => {
-                        err.cancel();
-                        return Err(LexError { _inner: () })
-                    }
-                }
-            }
+            let tts = try!(parse::parse_tts_from_source_str(name, src, sess)
+                .map_err(parse_to_lex_err));
+
+            Ok(__internal::token_stream_wrap(TokenStream_::from_tts(tts)))
         })
     }
 }
@@ -157,11 +183,6 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for item in self.inner.iter() {
-            let item = syntax::print::pprust::item_to_string(item);
-            try!(f.write_str(&item));
-            try!(f.write_str("\n"));
-        }
-        Ok(())
+        self.inner.fmt(f)
     }
 }

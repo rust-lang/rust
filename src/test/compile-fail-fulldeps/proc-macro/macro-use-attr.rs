@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:attr_proc_macro.rs
+#![feature(proc_macro)]
 
-#![crate_type = "proc-macro"]
+#[macro_use] extern crate attr_proc_macro;
 
-extern crate proc_macro;
+#[attr_proc_macro]
+//~^ ERROR: attribute procedural macros cannot be imported with `#[macro_use]`
+struct Foo;
 
-use proc_macro::TokenStream;
-
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+fn main() {
+    let _ = Foo;
 }

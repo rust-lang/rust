@@ -9,16 +9,24 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-
+#![feature(proc_macro)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn attr_with_args(args: TokenStream, input: TokenStream) -> TokenStream {
+    let args = args.to_string();
+
+    assert_eq!(args, r#"( text = "Hello, world!" )"#);
+
     let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+
+    assert_eq!(input, "fn foo (  ) {  }");
+
+    r#"
+        fn foo() -> &'static str { "Hello, world!" }
+    "#.parse().unwrap()
 }
