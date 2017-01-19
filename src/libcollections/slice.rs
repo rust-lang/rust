@@ -342,15 +342,22 @@ impl<T> [T] {
         core_slice::SliceExt::last_mut(self)
     }
 
-    /// Returns the element of a slice at the given index, or `None` if the
-    /// index is out of bounds.
+    /// Returns a reference to an element or subslice depending on the type of
+    /// index.
+    ///
+    /// - If given a position, returns a reference to the element at that
+    ///   position or `None` if out of bounds.
+    /// - If given a range, returns the subslice corresponding to that range,
+    ///   or `None` if out of bounds.
     ///
     /// # Examples
     ///
     /// ```
     /// let v = [10, 40, 30];
     /// assert_eq!(Some(&40), v.get(1));
+    /// assert_eq!(Some(&[10, 40][..]), v.get(0..2));
     /// assert_eq!(None, v.get(3));
+    /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -360,7 +367,10 @@ impl<T> [T] {
         core_slice::SliceExt::get(self, index)
     }
 
-    /// Returns a mutable reference to the element at the given index.
+    /// Returns a mutable reference to an element or subslice depending on the
+    /// type of index (see [`get()`]) or `None` if the index is out of bounds.
+    ///
+    /// [`get()`]: #method.get
     ///
     /// # Examples
     ///
@@ -372,7 +382,6 @@ impl<T> [T] {
     /// }
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
-    /// or `None` if the index is out of bounds
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
@@ -381,8 +390,8 @@ impl<T> [T] {
         core_slice::SliceExt::get_mut(self, index)
     }
 
-    /// Returns a pointer to the element at the given index, without doing
-    /// bounds checking. So use it very carefully!
+    /// Returns a reference to an element or subslice, without doing bounds
+    /// checking. So use it very carefully!
     ///
     /// # Examples
     ///
@@ -401,8 +410,8 @@ impl<T> [T] {
         core_slice::SliceExt::get_unchecked(self, index)
     }
 
-    /// Returns an unsafe mutable pointer to the element in index. So use it
-    /// very carefully!
+    /// Returns a mutable reference to an element or subslice, without doing
+    /// bounds checking. So use it very carefully!
     ///
     /// # Examples
     ///
