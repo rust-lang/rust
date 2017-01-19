@@ -42,6 +42,7 @@ pub enum CallConv {
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     ArmAapcsCallConv = 67,
+    Msp430Intr = 69,
     PtxKernel = 71,
     X86_64_SysV = 78,
     X86_64_Win64 = 79,

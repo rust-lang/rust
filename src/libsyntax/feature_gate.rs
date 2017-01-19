@@ -321,6 +321,9 @@ declare_features! (
 
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
+
+    // `extern "msp430-interrupt" fn()`
+    (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
 );
 
 declare_features! (
@@ -994,6 +997,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Unadjusted => {
                 gate_feature_post!(&self, abi_unadjusted, span,
                                    "unadjusted ABI is an implementation detail and perma-unstable");
+            },
+            Abi::Msp430Interrupt => {
+                gate_feature_post!(&self, abi_msp430_interrupt, span,
+                                   "msp430-interrupt ABI is experimental and subject to change");
             },
             // Stable
             Abi::Cdecl |
