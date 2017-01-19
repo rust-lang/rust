@@ -8,8 +8,6 @@ git:
   depth: 1
   submodules: false
 
-osx_image: xcode8.2
-
 matrix:
   include:
     # Linux builders, all docker images
@@ -41,6 +39,7 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
       os: osx
+      osx_image: xcode8.2
       before_script: &osx_before_script >
         ulimit -c unlimited
       install: &osx_install_sccache >
@@ -59,6 +58,7 @@ matrix:
         SRC=.
         DEPLOY=1
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
@@ -67,6 +67,7 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
@@ -76,6 +77,7 @@ matrix:
         SRC=.
         DEPLOY=1
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
