@@ -689,10 +689,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                        cfg_fn!(omit_gdb_pretty_printer_section))),
     ("unsafe_destructor_blind_to_params",
      Normal,
-     Gated(Stability::Unstable,
+     Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/34761"),
            "dropck_parametricity",
-           "unsafe_destructor_blind_to_params has unstable semantics \
-            and may be removed in the future",
+           "unsafe_destructor_blind_to_params has been replaced by \
+            may_dangle and will be removed in the future",
            cfg_fn!(dropck_parametricity))),
     ("may_dangle",
      Normal,
