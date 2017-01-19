@@ -1023,8 +1023,8 @@ impl<T> Vec<T> {
     /// Create a draining iterator that removes the specified range in the vector
     /// and yields the removed items.
     ///
-    /// Note 1: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// Note 1: The element range is removed even if the iterator is only
+    /// partially consumed or not consumed at all.
     ///
     /// Note 2: It is unspecified how many elements are removed from the vector,
     /// if the `Drain` value is leaked.
