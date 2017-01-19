@@ -67,6 +67,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
@@ -3224,7 +3225,7 @@ fn show_candidates(session: &mut DiagnosticBuilder,
                    better: bool) {
     // don't show more than MAX_CANDIDATES results, so
     // we're consistent with the trait suggestions
-    const MAX_CANDIDATES: usize = 5;
+    const MAX_CANDIDATES: usize = 4;
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -3237,21 +3238,21 @@ fn show_candidates(session: &mut DiagnosticBuilder,
         1 => " is found in another module, you can import it",
         _ => "s are found in other modules, you can import them",
     };
-    session.help(&format!("possible {}candidate{} into scope:", better, msg_diff));
 
-    let count = path_strings.len() as isize - MAX_CANDIDATES as isize + 1;
-    for (idx, path_string) in path_strings.iter().enumerate() {
-        if idx == MAX_CANDIDATES - 1 && count > 1 {
-            session.help(
-                &format!("  and {} other candidates", count).to_string(),
-            );
-            break;
-        } else {
-            session.help(
-                &format!("  `use {};`", path_string).to_string(),
-            );
-        }
-    }
+    let end = cmp::min(MAX_CANDIDATES, path_strings.len());
+    session.help(&format!("possible {}candidate{} into scope:{}{}",
+                          better,
+                          msg_diff,
+                          &path_strings[0..end].iter().map(|candidate| {
+                              format!("\n  `use {};`", candidate)
+                          }).collect::<String>(),
+                          if path_strings.len() > MAX_CANDIDATES {
+                              format!("\nand {} other candidates",
+                                      path_strings.len() - MAX_CANDIDATES)
+                          } else {
+                              "".to_owned()
+                          }
+                          ));
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

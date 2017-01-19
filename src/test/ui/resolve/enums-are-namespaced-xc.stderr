@@ -5,7 +5,7 @@ error[E0425]: cannot find value `A` in module `namespaced_enums`
    |             ^^^^^^^^^^^^^^^^^^^ not found in `namespaced_enums`
    |
    = help: possible candidate is found in another module, you can import it into scope:
-   = help:   `use namespaced_enums::Foo::A;`
+             `use namespaced_enums::Foo::A;`
 
 error[E0425]: cannot find function `B` in module `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:18:13
@@ -14,7 +14,7 @@ error[E0425]: cannot find function `B` in module `namespaced_enums`
    |             ^^^^^^^^^^^^^^^^^^^ not found in `namespaced_enums`
    |
    = help: possible candidate is found in another module, you can import it into scope:
-   = help:   `use namespaced_enums::Foo::B;`
+             `use namespaced_enums::Foo::B;`
 
 error[E0422]: cannot find struct, variant or union type `C` in module `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:21:13
@@ -23,7 +23,7 @@ error[E0422]: cannot find struct, variant or union type `C` in module `namespace
    |             ^^^^^^^^^^^^^^^^^^^ not found in `namespaced_enums`
    |
    = help: possible candidate is found in another module, you can import it into scope:
-   = help:   `use namespaced_enums::Foo::C;`
+             `use namespaced_enums::Foo::C;`
 
 error: aborting due to 3 previous errors
 
