@@ -27,7 +27,7 @@ struct Foo<T> { data: Vec<T> }
 
 impl<T> Drop for Foo<T> {
     #[unsafe_destructor_blind_to_params] // This is the UGEH attribute
-    //~^ ERROR unsafe_destructor_blind_to_params has unstable semantics
+    //~^ ERROR unsafe_destructor_blind_to_params has been replaced
     fn drop(&mut self) { }
 }
 
