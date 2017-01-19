@@ -131,9 +131,6 @@ before_deploy:
   - ps: |
         New-Item -Path deploy -ItemType directory
         Get-ChildItem -Path build\dist -Filter '*.tar.gz' | Move-Item -Destination deploy
-        Get-FileHash .\deploy\* | ForEach-Object {
-          [io.file]::WriteAllText($_.Path + ".sha256", $_.Hash.ToLower() + "`n")
-        }
         Get-ChildItem -Path deploy | Foreach-Object {
           Push-AppveyorArtifact $_.FullName -FileName ${env:APPVEYOR_REPO_COMMIT}/$_
         }
@@ -147,7 +144,7 @@ deploy:
     bucket: rust-lang-ci
     set_public: true
     region: us-east-1
-    artifact: /.*\.(tar.gz|sha256)/
+    artifact: /.*\.tar.gz/
     folder: rustc-builds
     on:
       branch: auto
