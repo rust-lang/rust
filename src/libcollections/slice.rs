@@ -181,7 +181,7 @@ impl<T> [T] {
         core_slice::SliceExt::len(self)
     }
 
-    /// Returns true if the slice has a length of 0.
+    /// Returns `true` if the slice has a length of 0.
     ///
     /// # Example
     ///
@@ -342,15 +342,22 @@ impl<T> [T] {
         core_slice::SliceExt::last_mut(self)
     }
 
-    /// Returns the element of a slice at the given index, or `None` if the
-    /// index is out of bounds.
+    /// Returns a reference to an element or subslice depending on the type of
+    /// index.
+    ///
+    /// - If given a position, returns a reference to the element at that
+    ///   position or `None` if out of bounds.
+    /// - If given a range, returns the subslice corresponding to that range,
+    ///   or `None` if out of bounds.
     ///
     /// # Examples
     ///
     /// ```
     /// let v = [10, 40, 30];
     /// assert_eq!(Some(&40), v.get(1));
+    /// assert_eq!(Some(&[10, 40][..]), v.get(0..2));
     /// assert_eq!(None, v.get(3));
+    /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -360,7 +367,10 @@ impl<T> [T] {
         core_slice::SliceExt::get(self, index)
     }
 
-    /// Returns a mutable reference to the element at the given index.
+    /// Returns a mutable reference to an element or subslice depending on the
+    /// type of index (see [`get()`]) or `None` if the index is out of bounds.
+    ///
+    /// [`get()`]: #method.get
     ///
     /// # Examples
     ///
@@ -372,7 +382,6 @@ impl<T> [T] {
     /// }
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
-    /// or `None` if the index is out of bounds
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
@@ -381,8 +390,8 @@ impl<T> [T] {
         core_slice::SliceExt::get_mut(self, index)
     }
 
-    /// Returns a pointer to the element at the given index, without doing
-    /// bounds checking. So use it very carefully!
+    /// Returns a reference to an element or subslice, without doing bounds
+    /// checking. So use it very carefully!
     ///
     /// # Examples
     ///
@@ -401,8 +410,8 @@ impl<T> [T] {
         core_slice::SliceExt::get_unchecked(self, index)
     }
 
-    /// Returns an unsafe mutable pointer to the element in index. So use it
-    /// very carefully!
+    /// Returns a mutable reference to an element or subslice, without doing
+    /// bounds checking. So use it very carefully!
     ///
     /// # Examples
     ///
@@ -540,12 +549,8 @@ impl<T> [T] {
     ///
     /// ```
     /// let x = &mut [1, 2, 4];
-    /// {
-    ///     let iterator = x.iter_mut();
-    ///
-    ///     for elem in iterator {
-    ///         *elem += 2;
-    ///     }
+    /// for elem in x.iter_mut() {
+    ///     *elem += 2;
     /// }
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
@@ -880,7 +885,7 @@ impl<T> [T] {
         core_slice::SliceExt::rsplitn_mut(self, n, pred)
     }
 
-    /// Returns true if the slice contains an element with the given value.
+    /// Returns `true` if the slice contains an element with the given value.
     ///
     /// # Examples
     ///
@@ -896,7 +901,7 @@ impl<T> [T] {
         core_slice::SliceExt::contains(self, x)
     }
 
-    /// Returns true if `needle` is a prefix of the slice.
+    /// Returns `true` if `needle` is a prefix of the slice.
     ///
     /// # Examples
     ///
@@ -907,6 +912,15 @@ impl<T> [T] {
     /// assert!(!v.starts_with(&[50]));
     /// assert!(!v.starts_with(&[10, 50]));
     /// ```
+    ///
+    /// Always returns `true` if `needle` is an empty slice:
+    ///
+    /// ```
+    /// let v = &[10, 40, 30];
+    /// assert!(v.starts_with(&[]));
+    /// let v: &[u8] = &[];
+    /// assert!(v.starts_with(&[]));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with(&self, needle: &[T]) -> bool
         where T: PartialEq
@@ -914,7 +928,7 @@ impl<T> [T] {
         core_slice::SliceExt::starts_with(self, needle)
     }
 
-    /// Returns true if `needle` is a suffix of the slice.
+    /// Returns `true` if `needle` is a suffix of the slice.
     ///
     /// # Examples
     ///
@@ -924,6 +938,15 @@ impl<T> [T] {
     /// assert!(v.ends_with(&[40, 30]));
     /// assert!(!v.ends_with(&[50]));
     /// assert!(!v.ends_with(&[50, 30]));
+    /// ```
+    ///
+    /// Always returns `true` if `needle` is an empty slice:
+    ///
+    /// ```
+    /// let v = &[10, 40, 30];
+    /// assert!(v.ends_with(&[]));
+    /// let v: &[u8] = &[];
+    /// assert!(v.ends_with(&[]));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with(&self, needle: &[T]) -> bool

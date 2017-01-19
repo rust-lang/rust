@@ -458,23 +458,38 @@ pub mod builtin {
 
     /// Parse a file as an expression or an item according to the context.
     ///
-    /// The file is located relative to the current file. (similarly to how
-    /// modules are found)
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found).
     ///
     /// Using this macro is often a bad idea, because if the file is
     /// parsed as an expression, it is going to be placed in the
-    /// surrounding code unhygenically. This could result in variables
+    /// surrounding code unhygienically. This could result in variables
     /// or functions being different from what the file expected if
     /// there are variables or functions that have the same name in
     /// the current file.
     ///
     /// # Examples
     ///
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'my_str.in':
+    ///
     /// ```ignore
-    /// fn foo() {
-    ///     include!("/path/to/a/file")
+    /// "Hello World!"
+    /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore
+    /// fn main() {
+    ///     let my_str = include!("my_str.in");
+    ///     println!("{}", my_str);
     /// }
     /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "Hello
+    /// World!".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
