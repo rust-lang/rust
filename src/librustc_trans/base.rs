@@ -1145,6 +1145,23 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
+    // Skip crate items and just output metadata in -Z no-trans mode.
+    if tcx.sess.opts.debugging_opts.no_trans ||
+       !tcx.sess.opts.output_types.should_trans() {
+        let empty_exported_symbols = ExportedSymbols::empty();
+        let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
+        return CrateTranslation {
+            modules: vec![],
+            metadata_module: metadata_module,
+            link: link_meta,
+            metadata: metadata,
+            exported_symbols: empty_exported_symbols,
+            no_builtins: no_builtins,
+            linker_info: linker_info,
+            windows_subsystem: None,
+        };
+    }
+
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let (codegen_units, symbol_map) = collect_and_partition_translation_items(&shared_ccx);
@@ -1180,22 +1197,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .collect();
 
     assert_module_sources::assert_module_sources(tcx, &modules);
-
-    // Skip crate items and just output metadata in -Z no-trans mode.
-    if tcx.sess.opts.debugging_opts.no_trans ||
-       tcx.sess.opts.output_types.contains_key(&config::OutputType::Metadata) {
-        let linker_info = LinkerInfo::new(&shared_ccx, &ExportedSymbols::empty());
-        return CrateTranslation {
-            modules: modules,
-            metadata_module: metadata_module,
-            link: link_meta,
-            metadata: metadata,
-            exported_symbols: ExportedSymbols::empty(),
-            no_builtins: no_builtins,
-            linker_info: linker_info,
-            windows_subsystem: None,
-        };
-    }
 
     // Instantiate translation items without filling out definitions yet...
     for ccx in crate_context_list.iter_need_trans() {
