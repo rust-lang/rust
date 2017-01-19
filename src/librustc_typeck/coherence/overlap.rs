@@ -102,6 +102,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
         match item.node {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
+            hir::ItemTrait(..) |
             hir::ItemUnion(..) => {
                 let type_def_id = self.tcx.map.local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
