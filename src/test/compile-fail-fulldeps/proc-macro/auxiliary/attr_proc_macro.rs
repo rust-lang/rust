@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// force-host
 // no-prefer-dynamic
-
+#![feature(proc_macro)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+#[proc_macro_attribute]
+pub fn attr_proc_macro(_: TokenStream, input: TokenStream) -> TokenStream {
+    input
 }

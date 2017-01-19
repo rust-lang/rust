@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:attr-args.rs
 
-#![crate_type = "proc-macro"]
+#![allow(warnings)]
+#![feature(proc_macro)]
 
-extern crate proc_macro;
+extern crate attr_args;
+use attr_args::attr_with_args;
 
-use proc_macro::TokenStream;
+#[attr_with_args(text = "Hello, world!")]
+fn foo() {}
 
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+fn main() {
+    assert_eq!(foo(), "Hello, world!");
 }

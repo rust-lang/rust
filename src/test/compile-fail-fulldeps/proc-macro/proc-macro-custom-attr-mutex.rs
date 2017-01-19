@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:attr_proc_macro.rs
 
-#![crate_type = "proc-macro"]
+#![feature(proc_macro, custom_attribute)]
+//~^ ERROR Cannot use `#![feature(proc_macro)]` and `#![feature(custom_attribute)] at the same time
 
-extern crate proc_macro;
+extern crate attr_proc_macro;
+use attr_proc_macro::attr_proc_macro;
 
-use proc_macro::TokenStream;
+#[attr_proc_macro]
+fn foo() {}
 
-#[proc_macro_derive(AToB)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
-    assert_eq!(input, "#[derive(Copy, Clone)]\nstruct A;");
-    "struct B;".parse().unwrap()
+fn main() {
+    foo();
 }
