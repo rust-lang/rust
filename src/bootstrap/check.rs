@@ -19,6 +19,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fmt;
 use std::fs;
+use std::io::Read;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
@@ -314,6 +315,76 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     cmd.arg("--test-args").arg(test_args);
 
     build.run(&mut cmd);
+}
+
+pub fn markdown_test_output_check(build: &Build, compiler: &Compiler) {
+    let _time = util::timeit();
+    for entry in fs::read_dir("src/test/rustdoc-test")
+                    .expect("markdown_test_output_check: read_dir failed") {
+        if let Ok(entry) = entry {
+            if entry.path().extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue
+            }
+            markdown_test_output_check_entry(build, compiler, entry.path().as_path());
+        }
+    }
+}
+
+fn markdown_test_output_check_entry(build: &Build, compiler: &Compiler, path: &Path) {
+    let mut file = fs::File::open(path)
+                            .expect("markdown_test_output_check_entry File::open failed");
+    let mut content = String::new();
+    file.read_to_string(&mut content)
+        .expect("markdown_test_output_check_entry read_to_string failed");
+    let mut ignore = false;
+    let mut v: Vec<usize> =
+        content.split("\n")
+               .enumerate()
+               .filter_map(|(line_nb, line)| {
+                   let sline = line.split("///").last().unwrap_or("");
+                   let line = sline.trim_left();
+                   if line.starts_with("```") &&
+                      !line.contains("ignore") {
+                       if ignore {
+                           ignore = false;
+                           None
+                       } else {
+                           ignore = true;
+                           Some(line_nb + 1)
+                       }
+                   } else {
+                       None
+                   }
+               })
+               .collect();
+    let mut cmd = Command::new(build.rustdoc(compiler));
+    build.add_rustc_lib_path(compiler, &mut cmd);
+    build.add_rust_test_threads(&mut cmd);
+    cmd.arg("--test");
+    cmd.arg(path);
+    cmd.env("RUSTC_BOOTSTRAP", "1");
+
+    cmd.arg("--test-args").arg(build.flags.cmd.test_args().join(" "));
+
+    output(&mut cmd).split("\n")
+                    .filter(|s| s.starts_with("test "))
+                    .inspect(|s| {
+                        let tmp: Vec<&str> = s.split(" - line ").collect();
+                        if tmp.len() == 2 {
+                            let line = usize::from_str_radix(tmp[1].split(" ...")
+                                                                   .next()
+                                                                   .unwrap_or("0"), 10)
+                                           .unwrap_or(0);
+                            if let Ok(pos) = v.binary_search(&line) {
+                                v.remove(pos);
+                            } else {
+                                panic!("Not found doc test: \"{}\" in {:?}", s, v);
+                            }
+                        }
+                    }).all(|_| true);
+    if v.len() != 0 {
+        panic!("Not found test at line{} {:?}", if v.len() > 1 { "s" } else { "" }, v);
+    }
 }
 
 /// Run all unit tests plus documentation tests for an entire crate DAG defined
