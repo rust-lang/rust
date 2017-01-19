@@ -82,7 +82,6 @@ use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
 use errors::FatalError;
-use parse::lexer::*; //resolve bug?
 use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
@@ -407,9 +406,9 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Option<Directory>)
+pub fn parse(sess: &ParseSess, tts: Vec<TokenTree>, ms: &[TokenTree], directory: Option<Directory>)
              -> NamedParseResult {
-    let mut parser = Parser::new(sess, Box::new(rdr), directory, true);
+    let mut parser = Parser::new(sess, tts, directory, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally
 
@@ -481,23 +480,8 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
-            let mut tt = panictry!(p.parse_token_tree());
+            let tt = panictry!(p.parse_token_tree());
             p.quote_depth -= 1;
-            while let TokenTree::Token(sp, token::Interpolated(nt)) = tt {
-                if let token::NtTT(..) = *nt {
-                    match Rc::try_unwrap(nt) {
-                        Ok(token::NtTT(sub_tt)) => tt = sub_tt,
-                        Ok(_) => unreachable!(),
-                        Err(nt_rc) => match *nt_rc {
-                            token::NtTT(ref sub_tt) => tt = sub_tt.clone(),
-                            _ => unreachable!(),
-                        },
-                    }
-                } else {
-                    tt = TokenTree::Token(sp, token::Interpolated(nt.clone()));
-                    break
-                }
-            }
             return token::NtTT(tt);
         }
         _ => {}
@@ -527,7 +511,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ident" => match p.token {
             token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Spanned::<Ident>{node: sn, span: p.span})
+                token::NtIdent(Spanned::<Ident>{node: sn, span: p.prev_span})
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
