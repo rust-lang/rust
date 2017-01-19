@@ -264,9 +264,7 @@ will free the memory. This is necessary for owning trait objects like
 `Box<Foo>`, which need to clean-up both the `Box` allocation as well as the
 internal type when they go out of scope. The `size` and `align` fields store
 the size of the erased type, and its alignment requirements; these are
-essentially unused at the moment since the information is embedded in the
-destructor, but will be used in the future, as trait objects are progressively
-made more flexible.
+used by the `std::mem::size_of_val` and `std::mem::align_of_val` functions.
 
 Suppose we’ve got some values that implement `Foo`. The explicit form of
 construction and use of `Foo` trait objects might look a bit like (ignoring the
