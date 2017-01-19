@@ -121,11 +121,9 @@ before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
-          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'shasum -a 256 -b "{}" > "{}.sha256"' \;;
+          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
       else
-          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
-          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'sha256sum -b "{}" > "{}.sha256"' \;;
+          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
       fi
 
 deploy:
