@@ -587,7 +587,6 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
         return Some(((major * 1000) + minor) * 1000 + patch);
     }
 
-    println!("Could not extract GDB version from line '{}'", full_version_line);
     None
 }
 
@@ -624,8 +623,6 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
                 }).collect::<String>();
                 if !vers.is_empty() { return Some(vers) }
             }
-            println!("Could not extract LLDB version from line '{}'",
-                     full_version_line);
         }
     }
     None
