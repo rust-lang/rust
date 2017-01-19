@@ -212,7 +212,7 @@ pub trait Iterator {
     /// Note that all preceding elements, as well as the returned element, will be
     /// consumed. That means that the preceding elements will be discarded, and also
     /// that calling `nth(0)` multiple times on the same iterator will return different
-    /// objects.
+    /// elements.
     ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
     /// returns the first value, `nth(1)` the second, and so on.
