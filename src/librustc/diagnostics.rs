@@ -1454,6 +1454,40 @@ struct Prince<'kiss, 'SnowWhite: 'kiss> { // You say here that 'kiss must live
 ```
 "##,
 
+E0491: r##"
+A reference has a longer lifetime than the data it references.
+
+Erroneous code example:
+
+```compile_fail,E0491
+// struct containing a reference requires a lifetime parameter,
+// because the data the reference points to must outlive the struct (see E0106)
+struct Struct<'a> {
+    ref_i32: &'a i32,
+}
+
+// However, a nested struct like this, the signature itself does not tell
+// whether 'a outlives 'b or the other way around.
+// So it could be possible that 'b of reference outlives 'a of the data.
+struct Nested<'a, 'b> {
+    ref_struct: &'b Struct<'a>, // compile error E0491
+}
+```
+
+To fix this issue, you can specify a bound to the lifetime like below:
+
+```
+struct Struct<'a> {
+    ref_i32: &'a i32,
+}
+
+// 'a: 'b means 'a outlives 'b
+struct Nested<'a: 'b, 'b> {
+    ref_struct: &'b Struct<'a>,
+}
+```
+"##,
+
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
@@ -1697,7 +1731,6 @@ register_diagnostics! {
     E0488, // lifetime of variable does not enclose its declaration
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
     E0566  // conflicting representation hints
 }
