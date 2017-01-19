@@ -716,6 +716,16 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
         }
     }
 
+    for predicate in generics.where_clause.predicates.iter() {
+        match *predicate {
+            hir::WherePredicate::BoundPredicate(..) => {
+                warn = true;
+            }
+            hir::WherePredicate::RegionPredicate(..) => { }
+            hir::WherePredicate::EqPredicate(..) => { }
+        }
+    }
+
     if warn {
         // According to accepted RFC #XXX, we should
         // eventually accept these, but it will not be

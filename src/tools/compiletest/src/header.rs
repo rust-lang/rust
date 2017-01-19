@@ -73,24 +73,62 @@ impl EarlyProps {
                 return false;
             }
 
-            if parse_name_directive(line, "ignore-gdb") {
+            if !line.contains("ignore-gdb-version") &&
+               parse_name_directive(line, "ignore-gdb") {
                 return true;
             }
 
             if let Some(actual_version) = config.gdb_version {
                 if line.contains("min-gdb-version") {
-                    let min_version = line.trim()
-                        .split(' ')
-                        .last()
-                        .expect("Malformed GDB version directive");
+                    let (start_ver, end_ver) = extract_gdb_version_range(line);
+
+                    if start_ver != end_ver {
+                        panic!("Expected single GDB version")
+                    }
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < extract_gdb_version(min_version).unwrap()
+                    actual_version < start_ver
+                } else if line.contains("ignore-gdb-version") {
+                    let (min_version, max_version) = extract_gdb_version_range(line);
+
+                    if max_version < min_version {
+                        panic!("Malformed GDB version range: max < min")
+                    }
+
+                    actual_version >= min_version && actual_version <= max_version
                 } else {
                     false
                 }
             } else {
                 false
+            }
+        }
+
+        // Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
+        // returns the numeric representation of <version1> and <version2> as
+        // tuple: (<version1> as u32, <version2> as u32)
+        // If the <version2> part is omitted, the second component of the tuple
+        // is the same as <version1>.
+        fn extract_gdb_version_range(line: &str) -> (u32, u32) {
+            const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
+
+            let range_components = line.split(' ')
+                                       .flat_map(|word| word.split('-'))
+                                       .filter(|word| word.len() > 0)
+                                       .skip_while(|word| extract_gdb_version(word).is_none())
+                                       .collect::<Vec<&str>>();
+
+            match range_components.len() {
+                1 => {
+                    let v = extract_gdb_version(range_components[0]).unwrap();
+                    (v, v)
+                }
+                2 => {
+                    let v_min = extract_gdb_version(range_components[0]).unwrap();
+                    let v_max = extract_gdb_version(range_components[1]).expect(ERROR_MESSAGE);
+                    (v_min, v_max)
+                }
+                _ => panic!(ERROR_MESSAGE),
             }
         }
 
