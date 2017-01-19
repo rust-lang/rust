@@ -82,6 +82,7 @@ use rustc::util::common::time;
 
 use serialize::json::ToJson;
 
+use std::any::Any;
 use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
@@ -1018,15 +1019,34 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
     }
 }
 
+/// Runs `f` in a suitable thread for running `rustc`; returns a
+/// `Result` with either the return value of `f` or -- if a panic
+/// occurs -- the panic value.
+pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
+    where F: FnOnce() -> R + Send + 'static,
+          R: Send + 'static,
+{
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
+
+    let mut cfg = thread::Builder::new().name("rustc".to_string());
+
+    // FIXME: Hacks on hacks. If the env is trying to override the stack size
+    // then *don't* set it explicitly.
+    if env::var_os("RUST_MIN_STACK").is_none() {
+        cfg = cfg.stack_size(STACK_SIZE);
+    }
+
+    let thread = cfg.spawn(f);
+    thread.unwrap().join()
+}
+
 /// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
-    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
-
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
         fn write(&mut self, data: &[u8]) -> io::Result<usize> {
@@ -1040,20 +1060,12 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     let data = Arc::new(Mutex::new(Vec::new()));
     let err = Sink(data.clone());
 
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
+    let result = in_rustc_thread(move || {
+        io::set_panic(Some(box err));
+        f()
+    });
 
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    if env::var_os("RUST_MIN_STACK").is_none() {
-        cfg = cfg.stack_size(STACK_SIZE);
-    }
-
-    let thread = cfg.spawn(move || {
-         io::set_panic(Some(box err));
-         f()
-     });
-
-     if let Err(value) = thread.unwrap().join() {
+    if let Err(value) = result {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
             let emitter =
