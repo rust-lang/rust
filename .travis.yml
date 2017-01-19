@@ -13,7 +13,7 @@ osx_image: xcode8.2
 matrix:
   include:
     # Linux builders, all docker images
-    - env: IMAGE=arm-android DEPLOY=1
+    - env: IMAGE=android DEPLOY=1
     - env: IMAGE=cross DEPLOY=1
     - env: IMAGE=linux-tested-targets DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
