@@ -206,7 +206,7 @@ declare_lint! {
 
 declare_lint! {
     pub EXTRA_REQUIREMENT_IN_IMPL,
-    Warn,
+    Deny,
     "detects extra requirements in impls that were erroneously allowed"
 }
 
