@@ -23,9 +23,10 @@ matrix:
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux-netbsd DEPLOY=1
-    - env: IMAGE=i686-gnu DEPLOY=1
+    - env: IMAGE=dist-x86-linux DEPLOY=1
+    - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
-    - env: IMAGE=x86_64-gnu DEPLOY=1
+    - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
