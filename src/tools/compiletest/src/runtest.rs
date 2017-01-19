@@ -2108,7 +2108,16 @@ actual:\n\
         }
         self.create_dir_racy(&tmpdir);
 
-        let mut cmd = Command::new("make");
+        let host = &self.config.host;
+        let make = if host.contains("bitrig") || host.contains("dragonfly") ||
+            host.contains("freebsd") || host.contains("netbsd") ||
+            host.contains("openbsd") {
+            "gmake"
+        } else {
+            "make"
+        };
+
+        let mut cmd = Command::new(make);
         cmd.current_dir(&self.testpaths.file)
            .env("TARGET", &self.config.target)
            .env("PYTHON", &self.config.docck_python)

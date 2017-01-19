@@ -10,6 +10,7 @@
 
 // ignore-android FIXME #17520
 // ignore-emscripten spawning processes is not supported
+// ignore-openbsd no support for libbacktrace without filename
 // compile-flags:-g
 
 use std::env;
