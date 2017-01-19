@@ -326,7 +326,8 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
             },
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
-                walk_ty(&mut visitor, &pred.ty);
+                walk_ty(&mut visitor, &pred.lhs_ty);
+                walk_ty(&mut visitor, &pred.rhs_ty);
                 if !visitor.lts.is_empty() {
                     return true;
                 }
