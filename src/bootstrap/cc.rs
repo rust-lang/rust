@@ -121,10 +121,14 @@ fn set_compiler(cfg: &mut gcc::Config,
         }
 
         "mips-unknown-linux-musl" => {
-            cfg.compiler("mips-linux-musl-gcc");
+            if cfg.get_compiler().path().to_str() == Some("gcc") {
+                cfg.compiler("mips-linux-musl-gcc");
+            }
         }
         "mipsel-unknown-linux-musl" => {
-            cfg.compiler("mipsel-linux-musl-gcc");
+            if cfg.get_compiler().path().to_str() == Some("gcc") {
+                cfg.compiler("mipsel-linux-musl-gcc");
+            }
         }
 
         t if t.contains("musl") => {
