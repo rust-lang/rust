@@ -330,6 +330,10 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
+    /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
+    /// Emscripten toolchain.
+    /// Defaults to false.
+    pub is_like_emscripten: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -428,6 +432,7 @@ impl Default for TargetOptions {
             is_like_solaris: false,
             is_like_windows: false,
             is_like_android: false,
+            is_like_emscripten: false,
             is_like_msvc: false,
             linker_is_gnu: false,
             allows_weak_linkage: true,
