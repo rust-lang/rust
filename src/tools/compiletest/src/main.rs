@@ -319,6 +319,10 @@ pub fn run_tests(config: &Config) {
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
+
+    // Let tests know which target they're running as
+    env::set_var("TARGET", &config.target);
+
     let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
