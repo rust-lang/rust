@@ -243,10 +243,8 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
                 err.span_help(span, &msg);
             },
             None => {
-                reader
-                .span_diagnostic
-                .span_bug_no_panic(span,
-                                   &format!("substitution character not found for '{}'", ch));
+                let msg = format!("substitution character not found for '{}'", ch);
+                reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
             }
         }
     });

@@ -13,11 +13,8 @@ pub use self::CommentStyle::*;
 use ast;
 use codemap::CodeMap;
 use syntax_pos::{BytePos, CharPos, Pos};
-use errors;
-use parse::lexer::is_block_doc_comment;
-use parse::lexer::{StringReader, TokenAndSpan};
-use parse::lexer::{is_pattern_whitespace, Reader};
-use parse::lexer;
+use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
+use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
 use print::pprust;
 use str::char_at;
 
@@ -346,16 +343,14 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(span_diagnostic: &errors::Handler,
-                                    path: String,
-                                    srdr: &mut Read)
+pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut Read)
                                     -> (Vec<Comment>, Vec<Literal>) {
     let mut src = Vec::new();
     srdr.read_to_end(&mut src).unwrap();
     let src = String::from_utf8(src).unwrap();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, None, src);
-    let mut rdr = lexer::StringReader::new_raw(span_diagnostic, filemap);
+    let mut rdr = lexer::StringReader::new_raw(sess, filemap);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut literals: Vec<Literal> = Vec::new();

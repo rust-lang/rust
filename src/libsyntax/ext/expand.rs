@@ -21,7 +21,7 @@ use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use parse::{ParseSess, DirectoryOwnership, PResult, lexer};
+use parse::{ParseSess, DirectoryOwnership, PResult, filemap_to_tts};
 use parse::parser::Parser;
 use parse::token;
 use print::pprust;
@@ -669,12 +669,8 @@ fn tts_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<Token
 }
 
 fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {
-    let filemap = parse_sess.codemap()
-                            .new_filemap(String::from("<macro expansion>"), None, text);
-
-    let lexer = lexer::StringReader::new(&parse_sess.span_diagnostic, filemap);
-    let mut parser = Parser::new(parse_sess, Box::new(lexer), None, false);
-    panictry!(parser.parse_all_token_trees())
+    let filename = String::from("<macro expansion>");
+    filemap_to_tts(parse_sess, parse_sess.codemap().new_filemap(filename, None, text))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {

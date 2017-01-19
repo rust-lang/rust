@@ -18,10 +18,9 @@ use util::parser::AssocOp;
 use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
-use errors;
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
-use parse;
+use parse::{self, ParseSess};
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
@@ -101,20 +100,15 @@ pub const DEFAULT_COLUMNS: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &errors::Handler,
+                       sess: &ParseSess,
                        krate: &ast::Crate,
                        filename: String,
                        input: &mut Read,
                        out: Box<Write+'a>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> io::Result<()> {
-    let mut s = State::new_from_input(cm,
-                                      span_diagnostic,
-                                      filename,
-                                      input,
-                                      out,
-                                      ann,
-                                      is_expanded);
+    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
+
     if is_expanded && !std_inject::injected_crate_name(krate).is_none() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
@@ -140,16 +134,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &errors::Handler,
+                          sess: &ParseSess,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write+'a>,
                           ann: &'a PpAnn,
                           is_expanded: bool) -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(
-            span_diagnostic,
-            filename,
-            input);
+        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
 
         State::new(
             cm,

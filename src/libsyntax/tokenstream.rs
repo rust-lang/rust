@@ -30,7 +30,6 @@ use codemap::{Spanned, combine_spans};
 use ext::base;
 use ext::tt::macro_parser;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::lexer;
 use parse::{self, Directory};
 use parse::token::{self, Token, Lit, Nonterminal};
 use print::pprust;
@@ -139,7 +138,10 @@ impl TokenTree {
                 if let Nonterminal::NtTT(..) = **nt { 1 } else { 0 }
             },
             TokenTree::Token(_, token::MatchNt(..)) => 3,
-            TokenTree::Delimited(_, ref delimed) => delimed.tts.len() + 2,
+            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
+                token::NoDelim => delimed.tts.len(),
+                _ => delimed.tts.len() + 2,
+            },
             TokenTree::Sequence(_, ref seq) => seq.tts.len(),
             TokenTree::Token(..) => 0,
         }
@@ -181,6 +183,9 @@ impl TokenTree {
                     close_span: sp,
                 }))
             }
+            (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
+                delimed.tts[index].clone()
+            }
             (&TokenTree::Delimited(_, ref delimed), _) => {
                 if index == 0 {
                     return delimed.open_tt();
@@ -215,14 +220,12 @@ impl TokenTree {
                  mtch: &[TokenTree],
                  tts: &[TokenTree])
                  -> macro_parser::NamedParseResult {
-        let diag = &cx.parse_sess().span_diagnostic;
         // `None` is because we're not interpolating
-        let arg_rdr = lexer::new_tt_reader(diag, None, tts.iter().cloned().collect());
         let directory = Directory {
             path: cx.current_expansion.module.directory.clone(),
             ownership: cx.current_expansion.directory_ownership,
         };
-        macro_parser::parse(cx.parse_sess(), arg_rdr, mtch, Some(directory))
+        macro_parser::parse(cx.parse_sess(), tts.iter().cloned().collect(), mtch, Some(directory))
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.
