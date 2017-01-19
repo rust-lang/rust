@@ -1,5 +1,5 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: stable_drop_order
+- Start Date: 2017-01-19
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
@@ -88,7 +88,9 @@ let x = MyStruct {
 
 In this case, `field2` is destructed first and `field1` second, which may
 seem counterintuitive at first but makes sense when you consider that the
-initialized fields are actually temporary variables.
+initialized fields are actually temporary variables. Note that the drop order
+depends on the order of the fields in the *initializer* and not in the struct
+declaration.
 
 ### Slices and Vec
 
