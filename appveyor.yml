@@ -11,7 +11,7 @@ environment:
     SCRIPT: python x.py test && python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
     SCRIPT: python x.py test && python x.py dist
     DEPLOY: 1
 
