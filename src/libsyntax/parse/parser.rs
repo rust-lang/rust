@@ -1236,10 +1236,17 @@ impl<'a> Parser<'a> {
                           "at least one type parameter bound \
                           must be specified");
         }
-        if let TyKind::Path(None, ref path) = lhs.node {
+
+        let mut lhs = lhs.unwrap();
+        if let TyKind::Paren(ty) = lhs.node {
+            // We have to accept the first bound in parens for backward compatibility.
+            // Example: `(Bound) + Bound + Bound`
+            lhs = ty.unwrap();
+        }
+        if let TyKind::Path(None, path) = lhs.node {
             let poly_trait_ref = PolyTraitRef {
                 bound_lifetimes: Vec::new(),
-                trait_ref: TraitRef { path: path.clone(), ref_id: lhs.id },
+                trait_ref: TraitRef { path: path, ref_id: lhs.id },
                 span: lhs.span,
             };
             let poly_trait_ref = TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None);
