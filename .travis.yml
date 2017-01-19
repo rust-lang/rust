@@ -15,6 +15,7 @@ matrix:
     # Linux builders, all docker images
     - env: IMAGE=arm-android DEPLOY=1
     - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=linux-tested-targets DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
     - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-freebsd DEPLOY=1
@@ -32,7 +33,6 @@ matrix:
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
-    - env: IMAGE=x86_64-musl DEPLOY=1
     - env: IMAGE=x86_64-gnu-distcheck
 
     # OSX builders
