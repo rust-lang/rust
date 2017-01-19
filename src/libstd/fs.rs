@@ -975,10 +975,16 @@ impl FileType {
 
     /// Test whether this file type represents a symbolic link.
     ///
-    /// The Metadata struct needs to be retreived with
-    /// fs::symlink_metadata() not fs::metadata(). metadata()
-    /// always follows symbolic links, so is_symlink will
-    /// always return false for the underlying file.
+    /// The underlying [`Metadata`] struct needs to be retrieved
+    /// with the [`fs::symlink_metadata`] function and not the
+    /// [`fs::metadata`] function. The [`fs::metadata`] function
+    /// follows symbolic links, so [`is_symlink`] would always
+    /// return false for the target file.
+    ///
+    /// [`Metadata`]: struct.Metadata.html
+    /// [`fs::metadata`]: fn.metadata.html
+    /// [`fs::symlink_metadata`]: fn.symlink_metadata.html
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
