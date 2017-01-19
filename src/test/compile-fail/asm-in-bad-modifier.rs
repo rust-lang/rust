@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-s390x
+// ignore-emscripten
 
 #![feature(asm)]
 
