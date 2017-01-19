@@ -29,7 +29,7 @@ use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
-use rustc_driver::{driver, Compilation};
+use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -429,19 +429,26 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
             },
             testfn: testing::DynTestFn(box move |()| {
-                runtest(&test,
-                        &cratename,
-                        cfgs,
-                        libs,
-                        externs,
-                        should_panic,
-                        no_run,
-                        as_test_harness,
-                        compile_fail,
-                        error_codes,
-                        &opts,
-                        maybe_sysroot);
-            })
+                match {
+                    rustc_driver::in_rustc_thread(move || {
+                        runtest(&test,
+                                &cratename,
+                                cfgs,
+                                libs,
+                                externs,
+                                should_panic,
+                                no_run,
+                                as_test_harness,
+                                compile_fail,
+                                error_codes,
+                                &opts,
+                                maybe_sysroot)
+                    })
+                } {
+                    Ok(()) => (),
+                    Err(err) => panic::resume_unwind(err),
+                }
+            }),
         });
     }
 
