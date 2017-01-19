@@ -975,13 +975,18 @@ impl FileType {
 
     /// Test whether this file type represents a symbolic link.
     ///
+    /// The Metadata struct needs to be retreived with
+    /// fs::symlink_metadata() not fs::metadata(). metadata()
+    /// always follows symbolic links, so is_symlink will
+    /// always return false for the underlying file.
+    ///
     /// # Examples
     ///
     /// ```
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = try!(fs::metadata("foo.txt"));
+    /// let metadata = try!(fs::symlink_metadata("foo.txt"));
     /// let file_type = metadata.file_type();
     ///
     /// assert_eq!(file_type.is_symlink(), false);
