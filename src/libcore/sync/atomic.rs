@@ -140,10 +140,15 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// to be moved either before or after the atomic operation; on the other end
 /// "relaxed" atomics allow all reorderings.
 ///
+/// If you are confused or don't have enough time to research which ordering to use, use `SeqCst`.
+/// Of all the options it has the most unsurpising effect (see the nomicon for details. [1]) 
+/// The downside is you miss out on several optimizations the other orderings offer.
+///
 /// Rust's memory orderings are [the same as
 /// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
 ///
-/// For more information see the [nomicon](https://doc.rust-lang.org/nomicon/atomics.html).
+/// For more information see the [nomicon][1].
+/// [1]: https://doc.rust-lang.org/nomicon/atomics.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
