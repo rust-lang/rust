@@ -1876,12 +1876,9 @@ impl<'a> LoweringContext<'a> {
                                                                     val_ident,
                                                                     val_pat.id,
                                                                     attrs));
-                        let val_block = P(self.block_expr(val_expr));
-                        let ok_expr = P(self.expr_block(val_block, ThinVec::new()));
-
                         let ok_pat = self.pat_ok(e.span, val_pat);
 
-                        self.arm(hir_vec![ok_pat], ok_expr)
+                        self.arm(hir_vec![ok_pat], val_expr)
                     };
 
                     // Err(err) => return Carrier::from_error(From::from(err))
