@@ -345,6 +345,9 @@ impl<'a> Resolver<'a> {
                     let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
                                                    CtorKind::from_ast(struct_def));
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
+                    if !ctor_vis.is_at_least(vis, &*self) {
+                        self.legacy_ctor_visibilities.insert(def.def_id(), (ctor_def, ctor_vis));
+                    }
                 }
             }
 
