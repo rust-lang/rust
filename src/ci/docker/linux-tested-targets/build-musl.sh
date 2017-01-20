@@ -57,7 +57,7 @@ cp lib/libunwind.a /musl-x86_64/lib
 # for x86_64 again)
 rm -rf *
 # for i686
-CFLAGS="$CFLAGS -m32 -g" CXXFLAGS="$CXXFLAGS -m32 -g" cmake ../libunwind-release_37 \
+CFLAGS="$CFLAGS -m32" CXXFLAGS="$CXXFLAGS -m32" cmake ../libunwind-release_37 \
           -DLLVM_PATH=/build/llvm-release_37 \
           -DLIBUNWIND_ENABLE_SHARED=0
 make -j10

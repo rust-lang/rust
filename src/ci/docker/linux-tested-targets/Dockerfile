@@ -32,10 +32,10 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-x86_64=/musl-x86_64 \
       --musl-root-i686=/musl-i686
 
-# FIXME should also test i686-unknown-linux-musl
 ENV SCRIPT \
       python2.7 ../x.py test \
           --target x86_64-unknown-linux-musl \
+          --target i686-unknown-linux-musl \
           --target i586-unknown-linux-gnu \
           && \
       python2.7 ../x.py dist \
