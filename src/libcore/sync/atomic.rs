@@ -21,7 +21,7 @@
 //!
 //! Each method takes an `Ordering` which represents the strength of
 //! the memory barrier for that operation. These orderings are the
-//! same as [LLVM atomic orderings][1]. For more information see the [nomicon][2]
+//! same as [LLVM atomic orderings][1]. For more information see the [nomicon][2].
 //!
 //! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
 //! [2]: https://doc.rust-lang.org/nomicon/atomics.html
