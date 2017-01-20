@@ -1236,6 +1236,15 @@ where T: Clone + Ord {
     place: vec::PlaceBack<'a, T>,
 }
 
+#[stable(feature = "collection_debug", since = "1.15.0")]
+impl<'a, T: Clone + Ord + fmt::Debug> fmt::Debug for BinaryHeapPlace<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BinaryHeapPlace")
+         .field(&self)
+         .finish()
+    }
+}
+
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
