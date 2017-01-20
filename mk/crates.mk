@@ -177,6 +177,7 @@ TARGET_SPECIFIC_alloc_jemalloc := 1
 DOC_CRATES := std alloc collections core libc std_unicode
 
 ifeq ($(CFG_DISABLE_JEMALLOC),)
+RUSTFLAGS_std := --cfg 'feature="jemalloc"'
 RUSTFLAGS_rustc_back := --cfg 'feature="jemalloc"'
 endif
 
