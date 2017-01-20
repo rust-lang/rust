@@ -51,5 +51,6 @@ exec docker \
   --env DEPLOY=$DEPLOY \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
+  --rm \
   rust-ci \
   /checkout/src/ci/run.sh
