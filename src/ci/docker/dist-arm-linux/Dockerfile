@@ -58,22 +58,8 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY arm-linux-gnueabi.config /tmp/
-RUN mkdir build && \
-      cd build && \
-      cp ../arm-linux-gnueabi.config .config && \
-      ct-ng oldconfig && \
-      ct-ng build && \
-      cd .. && \
-      rm -rf build
-COPY arm-linux-gnueabihf.config /tmp/
-RUN mkdir build && \
-      cd build && \
-      cp ../arm-linux-gnueabihf.config .config && \
-      ct-ng oldconfig && \
-      ct-ng build && \
-      cd .. && \
-      rm -rf build
+COPY arm-linux-gnueabihf.config arm-linux-gnueabi.config build-toolchains.sh /tmp/
+RUN ./build-toolchains.sh
 
 USER root
 

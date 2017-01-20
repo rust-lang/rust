@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -13,16 +13,33 @@ set -ex
 
 MUSL=1.1.16
 
+hide_output() {
+  set +x
+  on_err="
+echo ERROR: An error was encountered with the build.
+cat /tmp/build.log
+exit 1
+"
+  trap "$on_err" ERR
+  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+  PING_LOOP_PID=$!
+  $@ &> /tmp/build.log
+  trap - ERR
+  kill $PING_LOOP_PID
+  rm /tmp/build.log
+  set -x
+}
+
 curl -O https://www.musl-libc.org/releases/musl-$MUSL.tar.gz
 tar xf musl-$MUSL.tar.gz
 cd musl-$MUSL
 CC=arm-linux-gnueabi-gcc \
 CFLAGS="-march=armv6 -marm" \
-    ./configure \
+    hide_output ./configure \
         --prefix=/usr/local/arm-linux-musleabi \
         --enable-wrapper=gcc
-make -j$(nproc)
-make install
+hide_output make -j$(nproc)
+hide_output make install
 cd ..
 rm -rf musl-$MUSL
 
@@ -30,11 +47,11 @@ tar xf musl-$MUSL.tar.gz
 cd musl-$MUSL
 CC=arm-linux-gnueabihf-gcc \
 CFLAGS="-march=armv6 -marm" \
-    ./configure \
+    hide_output ./configure \
         --prefix=/usr/local/arm-linux-musleabihf \
         --enable-wrapper=gcc
-make -j$(nproc)
-make install
+hide_output make -j$(nproc)
+hide_output make install
 cd ..
 rm -rf musl-$MUSL
 
@@ -42,18 +59,17 @@ tar xf musl-$MUSL.tar.gz
 cd musl-$MUSL
 CC=arm-linux-gnueabihf-gcc \
 CFLAGS="-march=armv7-a" \
-    ./configure \
+    hide_output ./configure \
         --prefix=/usr/local/armv7-linux-musleabihf \
         --enable-wrapper=gcc
-make -j$(nproc)
-make install
+hide_output make -j$(nproc)
+hide_output make install
 cd ..
 rm -rf musl-$MUSL*
 
 ln -nsf ../arm-linux-musleabi/bin/musl-gcc /usr/local/bin/arm-linux-musleabi-gcc
 ln -nsf ../arm-linux-musleabihf/bin/musl-gcc /usr/local/bin/arm-linux-musleabihf-gcc
 ln -nsf ../armv7-linux-musleabihf/bin/musl-gcc /usr/local/bin/armv7-linux-musleabihf-gcc
-
 
 curl -L https://github.com/llvm-mirror/llvm/archive/release_39.tar.gz | tar xzf -
 curl -L https://github.com/llvm-mirror/libunwind/archive/release_39.tar.gz | tar xzf -

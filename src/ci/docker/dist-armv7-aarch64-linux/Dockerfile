@@ -59,21 +59,8 @@ USER rustbuild
 WORKDIR /tmp
 
 COPY armv7-linux-gnueabihf.config /tmp/
-RUN mkdir build && \
-      cd build && \
-      cp ../armv7-linux-gnueabihf.config .config && \
-      ct-ng oldconfig && \
-      ct-ng build && \
-      cd .. && \
-      rm -rf build
-COPY aarch64-linux-gnu.config /tmp/
-RUN mkdir build && \
-      cd build && \
-      cp ../aarch64-linux-gnu.config .config && \
-      ct-ng oldconfig && \
-      ct-ng build && \
-      cd .. && \
-      rm -rf build
+COPY armv7-linux-gnueabihf.config aarch64-linux-gnu.config build-toolchains.sh /tmp/
+RUN ./build-toolchains.sh
 
 USER root
 
