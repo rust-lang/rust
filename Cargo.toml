@@ -15,6 +15,10 @@ license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools"]
 
+[badges]
+travis-ci = { repository = "Manishearth/rust-clippy" }
+appveyor = { repository = "Manishearth/rust-clippy" }
+
 [lib]
 name = "clippy"
 plugin = true
@@ -36,7 +40,6 @@ regex = "0.2"
 rustc-serialize = "0.3"
 clippy-mini-macro-test = { version = "0.1", path = "mini-macro" }
 serde = "0.7"
-
 
 [features]
 debugging = []
