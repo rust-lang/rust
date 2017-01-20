@@ -1,5 +1,5 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: `try_trait`
+- Start Date: 2017-01-19
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
@@ -424,13 +424,14 @@ type to change.
 ### What to name the trait
 
 A number of names have been proposed for this trait. The original name
-was `Carrier`, as the trait "carrier" an error value. A proposed
-alternative was `QuestionMark`, named after the operator `?`. However,
-the general consensus seemed to be that since Rust operator
-overloading traits tend to be named after the *operation* that the
-operator performed (e.g., `Add` and not `Plus`, `Deref` and not `Star`
-or `Asterix`), it was more appropriate to name the trait `Try`, which
-seems to be the best name for the operation in question.
+was `Carrier`, as the implementing type was the "carrier" for an error
+value. A proposed alternative was `QuestionMark`, named after the
+operator `?`. However, the general consensus seemed to be that since
+Rust operator overloading traits tend to be named after the
+*operation* that the operator performed (e.g., `Add` and not `Plus`,
+`Deref` and not `Star` or `Asterix`), it was more appropriate to name
+the trait `Try`, which seems to be the best name for the operation in
+question.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
