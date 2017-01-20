@@ -9,6 +9,7 @@ readme = "README.md"
 license = "Apache-2.0/MIT"
 include = ["src/*.rs", "Cargo.toml", "build.rs"]
 build = "build.rs"
+categories = ["development-tools"]
 
 [features]
 default = ["cargo-fmt"]
