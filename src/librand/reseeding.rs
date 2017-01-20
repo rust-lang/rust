@@ -95,14 +95,8 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
     }
 }
 
-impl<R, Rsdr> fmt::Debug for ReseedingRng<R, Rsdr> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ReseedingRng { .. }")
-    }
-}
-
 impl<R: fmt::Debug, Rsdr: fmt::Debug> fmt::Debug for ReseedingRng<R, Rsdr> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ReseedingRng")
          .field("rng", &self.rng)
          .field("generation_threshold", &self.generation_threshold)

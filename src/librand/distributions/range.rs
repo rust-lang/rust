@@ -58,12 +58,6 @@ impl<Sup: SampleRange> IndependentSample<Sup> for Range<Sup> {
     }
 }
 
-impl<X> fmt::Debug for Range<X> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Range { .. }")
-    }
-}
-
 impl<X: fmt::Debug> fmt::Debug for Range<X> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Range")
