@@ -16,7 +16,15 @@ fn bar(x: Result<!, i32>) -> Result<u32, i32> {
     x?
 }
 
+fn foo(x: Result<!, i32>) -> Result<u32, i32> {
+    let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
+    //~^ ERROR unreachable pattern
+    //~| ERROR unreachable expression
+    Ok(y)
+}
+
 fn main() {
     let _ = bar(Err(123));
+    let _ = foo(Err(123));
 }
 

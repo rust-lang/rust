@@ -1815,8 +1815,7 @@ impl<'a> LoweringContext<'a> {
                     let match_expr = P(self.expr_match(e.span,
                                                        into_iter_expr,
                                                        hir_vec![iter_arm],
-                                                       hir::MatchSource::ForLoopDesugar,
-                                                       ThinVec::new()));
+                                                       hir::MatchSource::ForLoopDesugar));
 
                     // `{ let _result = ...; _result }`
                     // underscore prevents an unused_variables lint if the head diverges
@@ -1911,23 +1910,8 @@ impl<'a> LoweringContext<'a> {
                         self.arm(hir_vec![err_pat], ret_expr)
                     };
 
-                    // #[allow(unreachable_patterns)]
-                    let match_attr = {
-                        // allow(unreachable_patterns)
-                        let allow = {
-                            let allow_ident = self.str_to_ident("allow");
-                            let up_ident = self.str_to_ident("unreachable_patterns");
-                            let up_meta_item = attr::mk_spanned_word_item(e.span, up_ident);
-                            let up_nested = NestedMetaItemKind::MetaItem(up_meta_item);
-                            let up_spanned = respan(e.span, up_nested);
-                            attr::mk_spanned_list_item(e.span, allow_ident, vec![up_spanned])
-                        };
-                        attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
-                    };
-
-                    let attrs = From::from(vec![match_attr]);
                     return self.expr_match(e.span, discr, hir_vec![err_arm, ok_arm],
-                                           hir::MatchSource::TryDesugar, attrs);
+                                           hir::MatchSource::TryDesugar);
                 }
 
                 ExprKind::Mac(_) => panic!("Shouldn't exist here"),
@@ -2110,10 +2094,9 @@ impl<'a> LoweringContext<'a> {
                   span: Span,
                   arg: P<hir::Expr>,
                   arms: hir::HirVec<hir::Arm>,
-                  source: hir::MatchSource,
-                  attrs: ThinVec<Attribute>)
+                  source: hir::MatchSource)
                   -> hir::Expr {
-        self.expr(span, hir::ExprMatch(arg, arms, source), attrs)
+        self.expr(span, hir::ExprMatch(arg, arms, source), ThinVec::new())
     }
 
     fn expr_block(&mut self, b: P<hir::Block>, attrs: ThinVec<Attribute>) -> hir::Expr {
