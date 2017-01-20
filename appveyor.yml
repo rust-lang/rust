@@ -73,6 +73,9 @@ environment:
     MINGW_DIR: mingw64
     DEPLOY: 1
 
+matrix:
+  fast_finish: true
+
 clone_depth: 1
 build: false
 

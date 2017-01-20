@@ -22,17 +22,24 @@ exit 1
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
   $@ &> /tmp/build.log
+  rm /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
-  rm /tmp/build.log
   set -x
 }
 
-git clone https://github.com/rumpkernel/rumprun
-cd rumprun
-git reset --hard 39a97f37a85e44c69b662f6b97b688fbe892603b
-git submodule update --init
-
-CC=cc hide_output ./build-rr.sh -d /usr/local hw
+mkdir build
+cd build
+cp ../arm-linux-gnueabi.config .config
+ct-ng oldconfig
+hide_output ct-ng build
 cd ..
-rm -rf rumprun
+rm -rf build
+
+mkdir build
+cd build
+cp ../arm-linux-gnueabihf.config .config
+ct-ng oldconfig
+hide_output ct-ng build
+cd ..
+rm -rf build

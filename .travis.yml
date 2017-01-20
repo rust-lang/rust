@@ -9,6 +9,7 @@ git:
   submodules: false
 
 matrix:
+  fast_finish: true
   include:
     # Linux builders, all docker images
     - env: IMAGE=android DEPLOY=1
@@ -23,6 +24,7 @@ matrix:
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux-netbsd DEPLOY=1
     - env: IMAGE=dist-x86-linux DEPLOY=1
+    - env: IMAGE=emscripten
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=x86_64-gnu

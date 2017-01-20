@@ -13,10 +13,14 @@
 use std::env;
 
 fn main() {
-    // Skip this tests on i586-unknown-linux-gnu where sse2 is disabled
-    let real_target = env::var("TARGET").unwrap();
-    if real_target.contains("i586") {
-        return
+    match env::var("TARGET") {
+        Ok(s) => {
+            // Skip this tests on i586-unknown-linux-gnu where sse2 is disabled
+            if s.contains("i586") {
+                return
+            }
+        }
+        Err(_) => return,
     }
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         assert!(cfg!(target_feature = "sse2"),
