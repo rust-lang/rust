@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::panic;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
 
@@ -308,6 +309,26 @@ fn test_extend_specialization() {
     a.extend(b);
 
     assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
+}
+
+#[test]
+fn test_placement() {
+    let mut a = BinaryHeap::new();
+    &mut a <- 2;
+    &mut a <- 4;
+    &mut a <- 3;
+    assert_eq!(a.peek(), Some(&4));
+    assert_eq!(a.len(), 3);
+    &mut a <- 1;
+    assert_eq!(a.into_sorted_vec(), vec![1, 2, 3, 4]);
+}
+
+#[test]
+fn test_placement_panic() {
+    let mut heap = BinaryHeap::from(vec![1, 2, 3]);
+    fn mkpanic() -> usize { panic!() }
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { &mut heap <- mkpanic(); }));
+    assert_eq!(heap.len(), 3);
 }
 
 #[allow(dead_code)]
