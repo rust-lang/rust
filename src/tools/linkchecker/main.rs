@@ -151,9 +151,6 @@ fn check(cache: &mut Cache,
         }
         let mut parts = url.splitn(2, "#");
         let url = parts.next().unwrap();
-        if url.is_empty() {
-            return
-        }
         let fragment = parts.next();
         let mut parts = url.splitn(2, "?");
         let url = parts.next().unwrap();
@@ -161,14 +158,16 @@ fn check(cache: &mut Cache,
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.
         let mut path = file.to_path_buf();
-        path.pop();
-        for part in Path::new(url).components() {
-            match part {
-                Component::Prefix(_) |
-                Component::RootDir => panic!(),
-                Component::CurDir => {}
-                Component::ParentDir => { path.pop(); }
-                Component::Normal(s) => { path.push(s); }
+        if !url.is_empty() {
+            path.pop();
+            for part in Path::new(url).components() {
+                match part {
+                    Component::Prefix(_) |
+                    Component::RootDir => panic!(),
+                    Component::CurDir => {}
+                    Component::ParentDir => { path.pop(); }
+                    Component::Normal(s) => { path.push(s); }
+                }
             }
         }
 
