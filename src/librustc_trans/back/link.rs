@@ -715,7 +715,7 @@ fn link_natively(sess: &Session,
 
     if sess.target.target.options.is_like_emscripten &&
        sess.panic_strategy() == PanicStrategy::Abort {
-        cmd.arg("-s DISABLE_EXCEPTION_CATCHING=1");
+        cmd.args(&["-s", "DISABLE_EXCEPTION_CATCHING=1"]);
     }
 
     {
