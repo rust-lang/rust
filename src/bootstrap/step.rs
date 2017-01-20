@@ -474,11 +474,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(true)
          .host(true)
          .run(move |s| check::docs(build, &s.compiler()));
-    rules.test("check-rustdoc-output", "src/test/rustdoc-test")
-         .dep(|s| s.name("libtest"))
-         .default(true)
-         .host(true)
-         .run(move |s| check::markdown_test_output_check(build, &s.compiler()));
     rules.test("check-distcheck", "distcheck")
          .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
