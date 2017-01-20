@@ -275,6 +275,7 @@ pub fn docs(build: &Build, compiler: &Compiler) {
         println!("doc tests for: {}", p.display());
         markdown_test(build, compiler, &p);
     }
+    markdown_test(build, compiler, &output);
 }
 
 /// Run the error index generator tool to execute the tests located in the error
@@ -296,8 +297,6 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
                    .arg("markdown")
                    .arg(&output)
                    .env("CFG_BUILD", &build.config.build));
-
-    markdown_test(build, compiler, &output);
 }
 
 fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
