@@ -296,6 +296,11 @@ have. So if the code is invoking `foo.write()?` (i.e., applying `?` to an
 the return type to `Result<(), io::Error>`" or perhaps just "consider
 changing the return type to a `Result"`. 
 
+On an implementation note, it would probably be helpful for improving
+the error message if `?` were not desugared when lowering from AST to
+HIR but rather when lowering from HIR to MIR. This would also make it
+easier to implement `catch`.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
