@@ -13,6 +13,7 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
+use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
@@ -21,7 +22,6 @@ use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
-use errors;
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
@@ -116,7 +116,7 @@ pub const default_columns: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &errors::Handler,
+                       sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: String,
                        input: &mut Read,
@@ -124,8 +124,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        ann: &'a PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
-    let mut s = State::new_from_input(cm, span_diagnostic, filename, input,
-                                      out, ann, is_expanded);
+    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -137,16 +136,14 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &errors::Handler,
+                          sess: &ParseSess,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write + 'a>,
                           ann: &'a PpAnn,
                           is_expanded: bool)
                           -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(span_diagnostic,
-                                                                   filename,
-                                                                   input);
+        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
 
         State::new(cm,
                    out,

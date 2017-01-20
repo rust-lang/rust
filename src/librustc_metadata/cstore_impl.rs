@@ -29,7 +29,7 @@ use rustc_back::PanicStrategy;
 
 use syntax::ast;
 use syntax::attr;
-use syntax::parse::new_parser_from_source_str;
+use syntax::parse::filemap_to_tts;
 use syntax::symbol::Symbol;
 use syntax_pos::{mk_sp, Span};
 use rustc::hir::svh::Svh;
@@ -399,19 +399,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let (name, def) = data.get_macro(id.index);
         let source_name = format!("<{} macros>", name);
 
-        // NB: Don't use parse_tts_from_source_str because it parses with quote_depth > 0.
-        let mut parser = new_parser_from_source_str(&sess.parse_sess, source_name, def.body);
-
-        let lo = parser.span.lo;
-        let body = match parser.parse_all_token_trees() {
-            Ok(body) => body,
-            Err(mut err) => {
-                err.emit();
-                sess.abort_if_errors();
-                unreachable!();
-            }
-        };
-        let local_span = mk_sp(lo, parser.prev_span.hi);
+        let filemap = sess.parse_sess.codemap().new_filemap(source_name, None, def.body);
+        let local_span = mk_sp(filemap.start_pos, filemap.end_pos);
+        let body = filemap_to_tts(&sess.parse_sess, filemap);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index);
