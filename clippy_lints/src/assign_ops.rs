@@ -97,8 +97,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                |db| if let (Some(snip_a), Some(snip_r)) =
                                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
                                                    db.span_suggestion(expr.span,
-                                                       "replace it with",
-                                                       format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                                                      "replace it with",
+                                                                      format!("{} {}= {}",
+                                                                              snip_a,
+                                                                              op.node.as_str(),
+                                                                              snip_r));
                                                });
                         };
                         // lhs op= l op r
@@ -178,8 +181,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                                |db| if let (Some(snip_a), Some(snip_r)) =
                                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
                                                    db.span_suggestion(expr.span,
-                                                       "replace it with",
-                                                       format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                                                      "replace it with",
+                                                                      format!("{} {}= {}",
+                                                                              snip_a,
+                                                                              op.node.as_str(),
+                                                                              snip_r));
                                                });
                         }
                     };
