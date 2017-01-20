@@ -110,7 +110,7 @@ fn main() {
 
         // Pass down incremental directory, if any.
         if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
-            cmd.arg(format!("-Zincremental={}", dir));
+            cmd.arg(format!("-Cincremental={}", dir));
 
             if verbose > 0 {
                 cmd.arg("-Zincremental-info");

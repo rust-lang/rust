@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// We specify -Z incremental here because we want to test the partitioning for
+// We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-trans-items=eager -Zincremental=tmp/partitioning-tests/local-generic
+// compile-flags:-Zprint-trans-items=eager -Cincremental=tmp/partitioning-tests/local-generic
 
 #![allow(dead_code)]
 #![crate_type="lib"]
