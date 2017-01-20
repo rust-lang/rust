@@ -229,16 +229,11 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: Ord> fmt::Debug for PeekMut<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("PeekMut { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("PeekMut({:?})", self.heap.data[0]))
+        f.debug_tuple("PeekMut")
+         .field(&self.heap.data[0])
+         .finish()
     }
 }
 
@@ -983,13 +978,6 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Iter<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BinaryHeap::Iter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BinaryHeap::Iter")
@@ -1047,13 +1035,6 @@ pub struct IntoIter<T> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<T> fmt::Debug for IntoIter<T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BinaryHeap::IntoIter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BinaryHeap::IntoIter")
@@ -1102,16 +1083,11 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Drain<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BinaryHeap::Drain { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("BinaryHeap::Drain({:?})", self.iter))
+        f.debug_tuple("BinaryHeap::Drain")
+         .field(&self.iter)
+         .finish()
     }
 }
 

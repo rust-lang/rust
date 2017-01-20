@@ -1867,13 +1867,6 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Iter<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("VecDeque::Iter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VecDeque::Iter")
@@ -1955,13 +1948,6 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for IterMut<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("VecDeque::IterMut { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VecDeque::IterMut")
@@ -2037,13 +2023,6 @@ pub struct IntoIter<T> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<T> fmt::Debug for IntoIter<T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("VecDeque::IntoIter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VecDeque::IntoIter")
@@ -2093,13 +2072,6 @@ pub struct Drain<'a, T: 'a> {
     after_head: usize,
     iter: Iter<'a, T>,
     deque: Shared<VecDeque<T>>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Drain<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("VecDeque::Drain { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]

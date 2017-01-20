@@ -271,13 +271,6 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for Iter<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::Iter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -289,13 +282,6 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
 pub struct IterMut<'a, K: 'a, V: 'a> {
     range: RangeMut<'a, K, V>,
     length: usize,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for IterMut<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::IterMut { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
@@ -311,13 +297,6 @@ pub struct IntoIter<K, V> {
     front: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
     length: usize,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<K, V> fmt::Debug for IntoIter<K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::IntoIter { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
@@ -338,13 +317,6 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for Keys<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::Keys { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.inner.clone()).finish()
@@ -355,13 +327,6 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for Values<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::Values { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
@@ -378,13 +343,6 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for ValuesMut<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::ValuesMut { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for ValuesMut<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&format!("BTreeMap::ValuesMut({:?})", self.inner))
@@ -395,13 +353,6 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for ValuesMut<'a, K,
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for Range<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::Range { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
@@ -418,13 +369,6 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 
     // Be invariant in `K` and `V`
     _marker: PhantomData<&'a mut (K, V)>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, K: 'a, V: 'a> fmt::Debug for RangeMut<'a, K, V> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("BTreeMap::RangeMut { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]

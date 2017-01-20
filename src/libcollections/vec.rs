@@ -2093,13 +2093,6 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Drain<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Vec::Drain { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Vec::Drain")
@@ -2176,13 +2169,6 @@ impl<'a, T> FusedIterator for Drain<'a, T> {}
            issue = "30172")]
 pub struct PlaceBack<'a, T: 'a> {
     vec: &'a mut Vec<T>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for PlaceBack<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Vec::PlaceBack { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]

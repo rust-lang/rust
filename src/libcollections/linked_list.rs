@@ -66,13 +66,6 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for Iter<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("LinkedList::Iter { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("LinkedList::Iter")
@@ -99,13 +92,6 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for IterMut<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("LinkedList::IterMut { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("LinkedList::IterMut")
@@ -119,13 +105,6 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     list: LinkedList<T>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<T> fmt::Debug for IntoIter<T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("LinkedList::IntoIter { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
@@ -1126,13 +1105,6 @@ pub struct FrontPlace<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for FrontPlace<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("LinkedList::FrontPlace { .. }")
-    }
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for FrontPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("LinkedList::FrontPlace")
@@ -1183,13 +1155,6 @@ impl<'a, T> InPlace<T> for FrontPlace<'a, T> {
 pub struct BackPlace<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
     node: IntermediateBox<Node<T>>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a> fmt::Debug for BackPlace<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("LinkedList::BackPlace { .. }")
-    }
 }
 
 #[stable(feature = "collection_debug", since = "1.15.0")]
