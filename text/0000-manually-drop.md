@@ -105,12 +105,13 @@ impl<T> ManuallyDrop<T> {
 // Other common impls such as `Debug for T: Debug`.
 ```
 
-Let us apply this union to the example from the motivation:
+Let us apply this union to a somewhat expanded example from the motivation:
 
 ```rust
 struct FruitBox {
     // Immediately clear there’s something non-trivial going on with these fields.
     peach: ManuallyDrop<Peach>,
+    melon: Melon, // Field that’s independent of the other two.
     banana: ManuallyDrop<Banana>,
 }
 
@@ -123,6 +124,8 @@ impl Drop for FruitBox {
             peach.manually_drop();
             banana.manually_drop();
         }
+        // After destructor for `FruitBox` runs (this function), the destructor for Melon gets
+        // invoked in the usual manner, as it is not wrapped in `ManuallyDrop`.
     }
 }
 ```
