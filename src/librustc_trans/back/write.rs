@@ -121,13 +121,13 @@ impl SharedEmitter {
 impl Emitter for SharedEmitter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         self.buffer.lock().unwrap().push(Diagnostic {
-            msg: db.message.to_string(),
+            msg: db.message(),
             code: db.code.clone(),
             lvl: db.level,
         });
         for child in &db.children {
             self.buffer.lock().unwrap().push(Diagnostic {
-                msg: child.message.to_string(),
+                msg: child.message(),
                 code: None,
                 lvl: child.level,
             });
