@@ -185,4 +185,5 @@ pub enum Style {
     NoStyle,
     ErrorCode,
     Level(Level),
+    Highlight,
 }

@@ -17,7 +17,7 @@ error[E0053]: method `bar` has an incompatible type for trait
    |                            ^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Bar, &mut Bar)`
-   = note:    found type `fn(&mut Bar, &Bar)`
+              found type `fn(&mut Bar, &Bar)`
 
 error: aborting due to 2 previous errors
 

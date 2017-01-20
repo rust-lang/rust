@@ -5,7 +5,7 @@ error[E0308]: mismatched types
    |                    ^^^^^^^^^^^^^ expected usize, found struct `std::string::String`
    |
    = note: expected type `usize`
-   = note:    found type `std::string::String`
+              found type `std::string::String`
    = help: here are some functions which might fulfill your needs:
            - .capacity()
            - .len()
@@ -17,7 +17,7 @@ error[E0308]: mismatched types
    |                   ^^^^^^^^^^^^^ expected &str, found struct `std::string::String`
    |
    = note: expected type `&str`
-   = note:    found type `std::string::String`
+              found type `std::string::String`
    = help: here are some functions which might fulfill your needs:
            - .as_str()
            - .trim()
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
    |          ^^ types differ in mutability
    |
    = note: expected type `&mut std::string::String`
-   = note:    found type `&std::string::String`
+              found type `&std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:36:11
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
    |           ^^ types differ in mutability
    |
    = note: expected type `&mut i32`
-   = note:    found type `&std::string::String`
+              found type `&std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:42:9
@@ -49,7 +49,7 @@ error[E0308]: mismatched types
    |         ^^^^^ cyclic type of infinite size
    |
    = note: expected type `_`
-   = note:    found type `Box<_>`
+              found type `Box<_>`
 
 error: aborting due to 5 previous errors
 
