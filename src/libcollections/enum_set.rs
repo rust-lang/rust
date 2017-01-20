@@ -220,10 +220,9 @@ pub struct Iter<E> {
     marker: marker::PhantomData<E>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
 impl<E: fmt::Debug> fmt::Debug for Iter<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("EnumSet::Iter")
+        f.debug_tuple("Iter")
          .field(&self.clone())
          .finish()
     }

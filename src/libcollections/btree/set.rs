@@ -85,10 +85,10 @@ pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BTreeSet::Iter")
+        f.debug_tuple("Iter")
          .field(&self.iter.clone())
          .finish()
     }
@@ -101,15 +101,9 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("BTreeSet::IntoIter({:?})", self.iter))
-    }
 }
 
 /// An iterator over a sub-range of `BTreeSet`'s items.
@@ -118,15 +112,9 @@ impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`range`]: struct.BTreeSet.html#method.range
+#[derive(Debug)]
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Range<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad(&format!("BTreeSet::Range({:?})", self.iter))
-    }
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
@@ -141,10 +129,10 @@ pub struct Difference<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BTreeSet::Difference")
+        f.debug_tuple("Difference")
          .field(&self.clone())
          .finish()
     }
@@ -163,10 +151,10 @@ pub struct SymmetricDifference<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BTreeSet::SymmetricDifference")
+        f.debug_tuple("SymmetricDifference")
          .field(&self.clone())
          .finish()
     }
@@ -184,10 +172,10 @@ pub struct Intersection<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BTreeSet::Intersection")
+        f.debug_tuple("Intersection")
          .field(&self.clone())
          .finish()
     }
@@ -205,10 +193,10 @@ pub struct Union<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Union<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BTreeSet::Union")
+        f.debug_tuple("Union")
          .field(&self.clone())
          .finish()
     }

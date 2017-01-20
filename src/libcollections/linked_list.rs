@@ -65,10 +65,10 @@ pub struct Iter<'a, T: 'a> {
     marker: PhantomData<&'a Node<T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("LinkedList::Iter")
+        f.debug_tuple("Iter")
          .field(&self.clone())
          .finish()
     }
@@ -91,10 +91,10 @@ pub struct IterMut<'a, T: 'a> {
     len: usize,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("LinkedList::IterMut")
+        f.debug_tuple("IterMut")
          .field(self.clone())
          .finish()
     }
@@ -107,10 +107,10 @@ pub struct IntoIter<T> {
     list: LinkedList<T>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("LinkedList::IntoIter")
+        f.debug_tuple("IntoIter")
          .field(self.clone())
          .finish()
     }
@@ -1104,10 +1104,12 @@ pub struct FrontPlace<'a, T: 'a> {
     node: IntermediateBox<Node<T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for FrontPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("LinkedList::FrontPlace")
+        f.debug_tuple("FrontPlace")
          .field(self.clone())
          .finish()
     }
@@ -1157,10 +1159,12 @@ pub struct BackPlace<'a, T: 'a> {
     node: IntermediateBox<Node<T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for BackPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("LinkedList::BackPlace")
+        f.debug_tuple("BackPlace")
          .field(self.clone())
          .finish()
     }
