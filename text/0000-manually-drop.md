@@ -46,14 +46,14 @@ annotate the dependencies somehow.
 # Detailed design
 [design]: #detailed-design
 
-This RFC proposes adding following `struct` to the `core::mem` (and by extension the `std::mem`)
+This RFC proposes adding following `union` to the `core::mem` (and by extension the `std::mem`)
 module. `mem` module is a most suitable place for such `struct`, as the module already a place for
 functions very similar in purpose: `drop` and `forget`.
 
 ```rust
 /// Inhibits compiler from automatically calling `T`’s destructor.
 #[unstable(feature = "manually_drop", reason = "recently added", issue = "0")]
-#[allow(missing_debug_implementations, unions_with_drop_fields)]
+#[allow(unions_with_drop_fields)]
 pub union ManuallyDrop<T>{ value: T }
 
 impl<T> ManuallyDrop<T> {
@@ -101,6 +101,8 @@ impl<T> ManuallyDrop<T> {
         ptr::drop_in_place(&mut self.value)
     }
 }
+
+// Other common impls such as `Debug for T: Debug`.
 ```
 
 Let us apply this structure to the example from the motivation:
