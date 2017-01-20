@@ -105,7 +105,7 @@ impl<T> ManuallyDrop<T> {
 // Other common impls such as `Debug for T: Debug`.
 ```
 
-Let us apply this structure to the example from the motivation:
+Let us apply this union to the example from the motivation:
 
 ```rust
 struct FruitBox {
@@ -127,8 +127,8 @@ impl Drop for FruitBox {
 }
 ```
 
-It is proposed that such code would become idiomatic for structures where fields must be dropped in
-a particular order.
+It is proposed that such pattern would become idiomatic for structures where fields must be dropped
+in a particular order.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -136,9 +136,9 @@ a particular order.
 It is expected that the functions and wrapper added as a result of this RFC would be seldom
 necessary.
 
-In addition to the usual API documentation, this structure should be mentioned in
-reference/nomicon/elsewhere where drop ordering guarantees are described as a way to explicitly
-control the order in which the structure fields gets dropped.
+In addition to the usual API documentation, `ManuallyDrop` should be mentioned in
+reference/nomicon/elsewhere as the solution to the desire of explicit control of the order in which
+the structure fields gets dropped.
 
 <!--
 # Drawbacks
