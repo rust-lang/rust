@@ -1854,28 +1854,29 @@ impl<'a> LoweringContext<'a> {
                         P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                     };
 
+                    // #[allow(unreachable_code)]
+                    let attr = {
+                        // allow(unreachable_code)
+                        let allow = {
+                            let allow_ident = self.str_to_ident("allow");
+                            let uc_ident = self.str_to_ident("unreachable_code");
+                            let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
+                            let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
+                            let uc_spanned = respan(e.span, uc_nested);
+                            attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                        };
+                        attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                    };
+                    let attrs = vec![attr];
+
                     // Ok(val) => { #[allow(unreachable_code)] val }
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
                         let val_pat = self.pat_ident(e.span, val_ident);
-                        // #[allow(unreachable_code)]
-                        let val_attr = {
-                            // allow(unreachable_code)
-                            let allow = {
-                                let allow_ident = self.str_to_ident("allow");
-                                let uc_ident = self.str_to_ident("unreachable_code");
-                                let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
-                                let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
-                                let uc_spanned = respan(e.span, uc_nested);
-                                attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
-                            };
-                            attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
-                        };
-                        let attrs = From::from(vec![val_attr]);
                         let val_expr = P(self.expr_ident_with_attrs(e.span,
                                                                     val_ident,
                                                                     val_pat.id,
-                                                                    attrs));
+                                                                    From::from(attrs.clone())));
                         let ok_pat = self.pat_ok(e.span, val_pat);
 
                         self.arm(hir_vec![ok_pat], val_expr)
@@ -1901,7 +1902,7 @@ impl<'a> LoweringContext<'a> {
 
                         let ret_expr = P(self.expr(e.span,
                                                    hir::Expr_::ExprRet(Some(from_err_expr)),
-                                                                       ThinVec::new()));
+                                                                       From::from(attrs)));
 
                         let err_pat = self.pat_err(e.span, err_local);
                         self.arm(hir_vec![err_pat], ret_expr)
