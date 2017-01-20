@@ -608,6 +608,7 @@ impl Target {
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
+        key!(is_like_emscripten, bool);
         key!(is_like_android, bool);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -772,6 +773,7 @@ impl ToJson for Target {
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
+        target_option_val!(is_like_emscripten);
         target_option_val!(is_like_android);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
