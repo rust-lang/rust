@@ -81,8 +81,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let mut violations = vec![];
 
-        if self.supertraits_reference_self(trait_def_id) {
-            violations.push(ObjectSafetyViolation::SupertraitSelf);
+        for def_id in traits::supertrait_def_ids(self, trait_def_id) {
+            if self.predicates_reference_self(def_id, true) {
+                violations.push(ObjectSafetyViolation::SupertraitSelf);
+            }
         }
 
         debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
@@ -115,7 +117,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if self.trait_has_sized_self(trait_def_id) {
             violations.push(ObjectSafetyViolation::SizedSelf);
         }
-        if self.supertraits_reference_self(trait_def_id) {
+        if self.predicates_reference_self(trait_def_id, false) {
             violations.push(ObjectSafetyViolation::SupertraitSelf);
         }
 
@@ -126,12 +128,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         violations
     }
 
-    fn supertraits_reference_self(self, trait_def_id: DefId) -> bool {
+    fn predicates_reference_self(
+        self,
+        trait_def_id: DefId,
+        supertraits_only: bool) -> bool
+    {
         let trait_ref = ty::Binder(ty::TraitRef {
             def_id: trait_def_id,
             substs: Substs::identity_for_item(self, trait_def_id)
         });
-        let predicates = self.item_super_predicates(trait_def_id);
+        let predicates = if supertraits_only {
+            self.item_super_predicates(trait_def_id)
+        } else {
+            self.item_predicates(trait_def_id)
+        };
         predicates
             .predicates
             .into_iter()
