@@ -248,11 +248,16 @@ This merits more investigation but need not hold up the RFC.
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
+### Where and how to document it
+
 This RFC proposes extending an existing operator to permit the same
-general short-circuiting pattern to be used with more types. This more
-general behavior can be taught at the same time as the `?` operator is
-introduced more generally, as part of teaching how best to do error
-handling in Rust.
+general short-circuiting pattern to be used with more types. When
+initially teaching the `?` operator, it would probably be best to
+stick to examples around `Result`, so as to avoid confusing the
+issue. However, at that time we can also mention that `?` can be
+overloaded and offer a link to more comprehensive documentation, which
+would show how `?` can be applied to `Option` and then explain the
+desugaring and how one goes about implementing one's own impls.
 
 The reference will have to be updated to include the new trait,
 naturally.  The Rust book and Rust by example should be expanded to
@@ -263,6 +268,33 @@ explaining when it is appropriate to implement a `Try` interconversion
 impl and when it is not (i.e., expand on the concept of semantic
 equivalence used to justify why we do not permit `Option` to be
 interconverted with `Result` and so forth).
+
+### Error messages
+
+Another important factor is the error message when `?` is used in a
+function whose return type is not suitable. The current error message
+in this scenario is quite opaque and directly references the `Carrer`
+trait. A better message would be contingent on whether `?` is applied
+to a value that implements the `Try` trait (for any return type). If
+not, we can give a message like
+
+> `?` cannot be applied to a value of type `Foo`
+
+If, however, `?` *can* be applied to this type, but not with a function
+of the given return type, we can instead report something like this:
+
+> cannot use the `?` operator in a function that returns `()`
+
+or perhaps if we want to be more strictly correct:
+
+> `?` cannot be applied to a `io::Result` in a function that returns `()`
+
+We could also go further and analyze the type to which `?` is applied
+and figure out the set of legal return types for the function to
+have. So if the code is invoking `foo.write()?` (i.e., applying `?` to an
+`io::Result`), then we could offer a suggestion like "consider changing
+the return type to `Result<(), io::Error>`" or perhaps just "consider
+changing the return type to a `Result"`. 
 
 # Drawbacks
 [drawbacks]: #drawbacks
