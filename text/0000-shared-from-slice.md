@@ -6,7 +6,9 @@
 # Summary
 [summary]: #summary
 
-This is an RFC to add the APIs: `From<&[T]> for Rc<[T]>` where [`T: Clone`][Clone] or [`T: Copy`][Copy] as well as `From<&str> for Rc<str>`. Identical APIs will also be added for [`Arc`][Arc].
+This is an RFC to add the APIs: `From<&[T]> for Rc<[T]>` where [`T: Clone`][Clone] or [`T: Copy`][Copy] as well as `From<&str> for Rc<str>`. In addition: `From<Vec<T>> for Rc<[T]>` and `From<Box<T: ?Sized>> for Rc<T>` will be added.
+
+Identical APIs will also be added for [`Arc`][Arc].
 
 # Motivation
 [motivation]: #motivation
@@ -119,17 +121,19 @@ impl Rc<str> {
 }
 ```
 
-## [`repr(C)`][repr(C)]
-[repr-c]: #repr-c
-
-This implementation relies on the layout of [`RcBox`][RcBox] being linear, i.e: exactly as in the order specified in the aforementioned struct. In anticipation of work on reordering struct members for optimization, the layout of [`RcBox`][RcBox] as is must be fixed and `#[repr(C)]` must be added to it. This should be backwards compatible, because the fields are not reordered yet.
-
-The idea is to use the bulk of the implementation of that, generalize it to [slices][slice], specialize it for [`&str`][str], provide documentation for both, and add `#[repr(C)]` to [`RcBox`][RcBox].
+The idea is to use the bulk of the implementation of that, generalize it to [`Vec`][Vec]s and [slices][slice], specialize it for [`&str`][str], provide documentation for both, and add `#[repr(C)]` to [`RcBox`][RcBox].
 
 ## [`Copy`][Copy] and [`Clone`][Clone]
 [copy-clone]: #copy-clone
 
 For the implementation of `From<&[T]> for Rc<[T]>`, `T` must be [`Copy`][Copy] if `ptr::copy_nonoverlapping` is used because this relies on it being memory safe to simply copy the bits over. If instead, [`T::clone()`][Clone] is used in a loop, then `T` can simply be [`Clone`][Clone] instead. This is however slower than using `ptr::copy_nonoverlapping`.
+
+## [`Vec`][Vec] and [`Box`][Box]
+
+For the implementation of `From<Vec<T>> for Rc<[T]>`, `T` need not be [`Copy`][Copy], nor [`Clone`][Clone]. The input vector already owns valid `T`s, and these elements are simply copied over bit for bit. After copying all elements, they are no longer
+owned in the vector, which is then deallocated. Unfortunately, at this stage, the memory used by the vector can not be reused - this could potentially be changed in the future.
+
+This is similar for [`Box`][Box].
 
 ## Suggested implementation
 
@@ -143,7 +147,7 @@ unsafe fn slice_to_rc<'a, T, U, W, C>(src: &'a [T], cast: C, write_elems: W)
    -> Rc<U>
 where U: ?Sized,
       W: FnOnce(&mut [T], &[T]),
-      C: FnOnce(*mut [T]) -> *mut RcBox<U> {
+      C: FnOnce(*mut RcBox<[T]>) -> *mut RcBox<U> {
     // Compute space to allocate for `RcBox<U>`.
     let susize = mem::size_of::<usize>();
     let aligned_len = 2 + (mem::size_of_val(src) + susize - 1) / susize;
@@ -153,18 +157,57 @@ where U: ?Sized,
     let ptr = vec.ptr();
     forget(vec);
 
-    let dst = |p: *mut usize| slice::from_raw_parts_mut(p as *mut T, src.len());
-
-    // Initialize fields of `RcBox<U>`.
-    ptr::write(ptr,           1);         // strong: Cell::new(1)
-    ptr::write(ptr.offset(1), 1);         // weak:   Cell::new(1)
-    write_elems(dst(ptr.offset(2)), src); // value:  T
-
     // Combine the allocation address and the slice length into a
-    // fat pointer to `RcBox`.
-    let rcbox_ptr = cast(dst(ptr) as *mut [T]);
-    debug_assert_eq!(aligned_len * susize, mem::size_of_val(&*rcbox_ptr));
+    // fat pointer to RcBox<[T]>.
+    let rbp = slice::from_raw_parts_mut(ptr as *mut T, src.len())
+                as *mut [T] as *mut RcBox<[T]>;
+
+    // Initialize fields of RcBox<[T]>.
+    (*rbp).strong.set(1);
+    (*rbp).weak.set(1);
+    write_elems(&mut (*rbp).value, src);
+
+    // Recast to RcBox<U> and yield the Rc:
+    let rcbox_ptr = cast(rbp);
+    assert_eq!(aligned_len * susize, mem::size_of_val(&*rcbox_ptr));
     Rc { ptr: Shared::new(rcbox_ptr) }
+}
+
+#[unstable(feature = "shared_from_slice",
+           reason = "TODO",
+           issue = "TODO")]
+impl<T> From<Vec<T>> for Rc<[T]> {
+    /// Constructs a new `Rc<[T]>` from a `Vec<T>`.
+    /// The allocated space of the `Vec<T>` is not reused,
+    /// but new space is allocated and the old is deallocated.
+    /// This happens due to the internal layout of `Rc`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shared_from_slice)]
+    /// use std::rc::Rc;
+    ///
+    /// let arr = [1, 2, 3];
+    /// let vec = vec![Box::new(1), Box::new(2), Box::new(3)];
+    /// let rc: Rc<[Box<usize>]> = Rc::from(vec);
+    /// assert_eq!(rc.len(), arr.len());
+    /// for (x, y) in rc.iter().zip(&arr) {
+    ///     assert_eq!(**x, *y);
+    /// }
+    /// ```
+    #[inline]
+    fn from(mut vec: Vec<T>) -> Self {
+        unsafe {
+            let rc = slice_to_rc(vec.as_slice(), |p| p, |dst, src|
+                ptr::copy_nonoverlapping(
+                    src.as_ptr(), dst.as_mut_ptr(), src.len())
+            );
+            // Prevent vec from trying to drop the elements:
+            vec.set_len(0);
+            rc
+        }
+    }
 }
 
 #[unstable(feature = "shared_from_slice",
@@ -209,7 +252,11 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
     #[inline]
     default fn from(slice: &'a [T]) -> Self {
         unsafe {
-            slice_to_rc(slice, |p| p as *mut RcBox<[T]>, <[T]>::clone_from_slice)
+            slice_to_rc(slice, |p| p, |dst, src| {
+                for (d, s) in dst.iter_mut().zip(src) {
+                    ptr::write(d, s.clone())
+                }
+            })
         }
     }
 }
@@ -251,7 +298,7 @@ impl<'a, T: Copy> From<&'a [T]> for Rc<[T]> {
     #[inline]
     fn from(slice: &'a [T]) -> Self {
         unsafe {
-            slice_to_rc(slice, |p| p as *mut RcBox<[T]>, <[T]>::copy_from_slice)
+            slice_to_rc(slice, |p| p, <[T]>::copy_from_slice)
         }
     }
 }
@@ -340,9 +387,70 @@ impl<'a> From<&'a str> for Rc<str> {
         }
     }
 }
+
+#[unstable(feature = "shared_from_slice",
+           reason = "TODO",
+           issue = "TODO")]
+impl<T: ?Sized> From<Box<T>> for Rc<T> {
+    /// Constructs a new `Rc<T>` from a `Box<T>` where `T` can be unsized.
+    /// The allocated space of the `Box<T>` is not reused,
+    /// but new space is allocated and the old is deallocated.
+    /// This happens due to the internal layout of `Rc`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shared_from_slice)]
+    /// use std::rc::Rc;
+    ///
+    /// let arr = [1, 2, 3];
+    /// let vec = vec![Box::new(1), Box::new(2), Box::new(3)].into_boxed_slice();
+    /// let rc: Rc<[Box<usize>]> = Rc::from(vec);
+    /// assert_eq!(rc.len(), arr.len());
+    /// for (x, y) in rc.iter().zip(&arr) {
+    ///     assert_eq!(**x, *y);
+    /// }
+    /// ```
+    #[inline]
+    fn from(boxed: Box<T>) -> Self {
+        unsafe {
+            // Compute space to allocate + alignment for `RcBox<T>`.
+            let sizeb  = mem::size_of_val(&*boxed);
+            let alignb = mem::align_of_val(&*boxed);
+            let align  = cmp::max(alignb, mem::align_of::<usize>());
+            let size   = offset_of_unsafe!(RcBox<T>, value) + sizeb;
+
+            // Allocate the space.
+            let alloc  = heap::allocate(size, align);
+
+            // Cast to fat pointer: *mut RcBox<T>.
+            let bptr      = Box::into_raw(boxed);
+            let rcbox_ptr = {
+                let mut tmp = bptr;
+                ptr::write(&mut tmp as *mut _ as *mut * mut u8, alloc);
+                tmp as *mut RcBox<T>
+            };
+
+            // Initialize fields of RcBox<T>.
+            (*rcbox_ptr).strong.set(1);
+            (*rcbox_ptr).weak.set(1);
+            ptr::copy_nonoverlapping(
+                bptr as *const u8,
+                (&mut (*rcbox_ptr).value) as *mut T as *mut u8,
+                sizeb);
+
+            // Deallocate box, we've already forgotten it.
+            heap::deallocate(bptr as *mut u8, sizeb, alignb);
+
+            // Yield the Rc:
+            assert_eq!(size, mem::size_of_val(&*rcbox_ptr));
+            Rc { ptr: Shared::new(rcbox_ptr) }
+        }
+    }
+}
 ```
 
-These work on zero sized slices as well.
+These work on zero sized slices and vectors as well.
 
 With more safe abstractions in the future, this can perhaps be rewritten with
 less unsafe code. But this should not change the API itself and thus will never
@@ -375,6 +483,9 @@ section above regarding [`RcBox`][RcBox] not being publically exposed as well as
 the amount of feature gates needed to roll ones own [`Rc`][Rc] alternative - for
 little gain.
 3. Only implement this for [`Rc`][Rc] and skip it for [`Arc`][Arc].
+4. Skip this for [`Vec`][Vec].
+4. Only implement this for [`Vec`][Vec].
+5. Skip this for [`Box`][Box].
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
@@ -405,6 +516,8 @@ impl Arc<str> {
 ```
 
 <!-- references -->
+[Box]: https://doc.rust-lang.org/alloc/boxed/struct.Box.html
+[Vec]: https://doc.rust-lang.org/std/collections/struct.HashSet.html
 [Clone]: https://doc.rust-lang.org/std/clone/trait.Clone.html
 [Copy]: https://doc.rust-lang.org/std/marker/trait.Copy.html
 [From]: https://doc.rust-lang.org/std/convert/trait.From.html
