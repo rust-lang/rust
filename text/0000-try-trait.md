@@ -291,10 +291,15 @@ or perhaps if we want to be more strictly correct:
 
 We could also go further and analyze the type to which `?` is applied
 and figure out the set of legal return types for the function to
-have. So if the code is invoking `foo.write()?` (i.e., applying `?` to an
-`io::Result`), then we could offer a suggestion like "consider changing
-the return type to `Result<(), io::Error>`" or perhaps just "consider
-changing the return type to a `Result"`. 
+have. So if the code is invoking `foo.write()?` (i.e., applying `?` to
+an `io::Result`), then we could offer a suggestion like "consider
+changing the return type to `Result<(), io::Error>`" or perhaps just
+"consider changing the return type to a `Result"`. Note however that
+if `?` is used within an impl of a trait method, or within `main()`,
+or in some other context where the user is not free to change the type
+signature, then we should make this suggestion. In the case of an impl
+of a trait defined in the current crate, we could consider suggesting
+that the user change the definition of the trait.
 
 On an implementation note, it would probably be helpful for improving
 the error message if `?` were not desugared when lowering from AST to
