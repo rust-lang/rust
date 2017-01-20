@@ -90,11 +90,13 @@ pub struct File {
 
 /// Metadata information about a file.
 ///
-/// This structure is returned from the [`metadata`] function or method and
-/// represents known metadata about a file such as its permissions, size,
-/// modification times, etc.
+/// This structure is returned from the [`metadata`] or
+/// [`symlink_metadata`] function or method and represents known
+/// metadata about a file such as its permissions, size, modification
+/// times, etc.
 ///
 /// [`metadata`]: fn.metadata.html
+/// [`symlink_metadata`]: fn.symlink_metadata.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
