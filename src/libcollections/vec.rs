@@ -2092,10 +2092,10 @@ pub struct Drain<'a, T: 'a> {
     vec: Shared<Vec<T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Vec::Drain")
+        f.debug_tuple("Drain")
          .field(&self.iter.as_slice())
          .finish()
     }
@@ -2167,17 +2167,9 @@ impl<'a, T> FusedIterator for Drain<'a, T> {}
 #[unstable(feature = "collection_placement",
            reason = "struct name and placement protocol are subject to change",
            issue = "30172")]
+#[derive(Debug)]
 pub struct PlaceBack<'a, T: 'a> {
     vec: &'a mut Vec<T>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for PlaceBack<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Vec::PlaceBack")
-         .field(&self.vec.as_slice())
-         .finish()
-    }
 }
 
 #[unstable(feature = "collection_placement",

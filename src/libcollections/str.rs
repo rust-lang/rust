@@ -123,7 +123,7 @@ pub struct EncodeUtf16<'a> {
     encoder: Utf16Encoder<Chars<'a>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a> fmt::Debug for EncodeUtf16<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("EncodeUtf16 { .. }")

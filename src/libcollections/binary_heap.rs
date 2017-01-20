@@ -228,7 +228,7 @@ pub struct PeekMut<'a, T: 'a + Ord> {
     sift: bool,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("PeekMut")
@@ -977,10 +977,10 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BinaryHeap::Iter")
+        f.debug_tuple("Iter")
          .field(&self.iter.as_slice())
          .finish()
     }
@@ -1034,10 +1034,10 @@ pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BinaryHeap::IntoIter")
+        f.debug_tuple("IntoIter")
          .field(&self.iter.as_slice())
          .finish()
     }
@@ -1078,17 +1078,9 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 #[stable(feature = "drain", since = "1.6.0")]
+#[derive(Debug)]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
-}
-
-#[stable(feature = "collection_debug", since = "1.15.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BinaryHeap::Drain")
-         .field(&self.iter)
-         .finish()
-    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1236,11 +1228,13 @@ where T: Clone + Ord {
     place: vec::PlaceBack<'a, T>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
 impl<'a, T: Clone + Ord + fmt::Debug> fmt::Debug for BinaryHeapPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BinaryHeapPlace")
-         .field(&self)
+         .field(&self.place)
          .finish()
     }
 }

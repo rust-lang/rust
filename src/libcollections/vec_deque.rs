@@ -1866,10 +1866,10 @@ pub struct Iter<'a, T: 'a> {
     head: usize,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("VecDeque::Iter")
+        f.debug_tuple("Iter")
          .field(&self.clone())
          .finish()
     }
@@ -1947,10 +1947,10 @@ pub struct IterMut<'a, T: 'a> {
     head: usize,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("VecDeque::IterMut")
+        f.debug_tuple("IterMut")
          .field(&self.clone())
          .finish()
     }
@@ -2022,10 +2022,10 @@ pub struct IntoIter<T> {
     inner: VecDeque<T>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("VecDeque::IntoIter")
+        f.debug_tuple("IntoIter")
          .field(&self.clone())
          .finish()
     }
@@ -2074,10 +2074,10 @@ pub struct Drain<'a, T: 'a> {
     deque: Shared<VecDeque<T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.15.0")]
+#[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("VecDeque::Drain")
+        f.debug_tuple("Drain")
          .field(&self.clone())
          .finish()
     }
