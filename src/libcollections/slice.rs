@@ -1067,7 +1067,7 @@ impl<T> [T] {
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
     /// # Current implementation
-    /// 
+    ///
     /// The current algorithm is an adaptive, iterative merge sort inspired by
     /// [timsort](https://en.wikipedia.org/wiki/Timsort).
     /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
