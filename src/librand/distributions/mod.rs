@@ -94,12 +94,6 @@ pub struct Weighted<T> {
     pub item: T,
 }
 
-impl<T> fmt::Debug for Weighted<T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Weighted")
-    }
-}
-
 impl<T: fmt::Debug> fmt::Debug for Weighted<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Weighted")
@@ -209,12 +203,6 @@ impl<'a, T: Clone> IndependentSample<T> for WeightedChoice<'a, T> {
             modifier /= 2;
         }
         return self.items[idx + 1].item.clone();
-    }
-}
-
-impl<'a, T> fmt::Debug for WeightedChoice<'a, T> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("WeightedChoice")
     }
 }
 

@@ -291,12 +291,6 @@ impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
     }
 }
 
-impl<'a, T, R> fmt::Debug for Generator<'a, T, R> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Generator { .. }")
-    }
-}
-
 impl<'a, T, R: fmt::Debug> fmt::Debug for Generator<'a, T, R> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Generator")
@@ -320,12 +314,6 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
                                                        abcdefghijklmnopqrstuvwxyz\
                                                        0123456789";
         Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
-    }
-}
-
-impl<'a, R> fmt::Debug for AsciiGenerator<'a, R> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("AsciiGenerator { .. }")
     }
 }
 
@@ -446,12 +434,6 @@ impl Rand for XorShiftRng {
 /// `[0,1)`.
 pub struct Open01<F>(pub F);
 
-impl<F> fmt::Debug for Open01<F> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Open01 { .. }")
-    }
-}
-
 impl<F: fmt::Debug> fmt::Debug for Open01<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Open01")
@@ -467,12 +449,6 @@ impl<F: fmt::Debug> fmt::Debug for Open01<F> {
 /// `Rand` implementation of `f32` and `f64` for the half-open
 /// `[0,1)`.
 pub struct Closed01<F>(pub F);
-
-impl<F> fmt::Debug for Closed01<F> {
-    default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Closed01 { .. }")
-    }
-}
 
 impl<F: fmt::Debug> fmt::Debug for Closed01<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
