@@ -24,6 +24,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![deny(warnings)]
+#![deny(missing_debug_implementations)]
 #![no_std]
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io",
@@ -32,6 +33,7 @@
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]
+#![feature(specialization)]
 #![allow(unused_attributes)]
 
 #![cfg_attr(not(test), feature(core_float))] // only necessary for no_std
@@ -43,6 +45,7 @@
 #[macro_use]
 extern crate std;
 
+use core::fmt;
 use core::f64;
 use core::intrinsics;
 use core::marker::PhantomData;
@@ -288,6 +291,14 @@ impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
     }
 }
 
+impl<'a, T, R: fmt::Debug> fmt::Debug for Generator<'a, T, R> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Generator")
+         .field("rng", &self.rng)
+         .finish()
+    }
+}
+
 /// Iterator which will continuously generate random ascii characters.
 ///
 /// This iterator is created via the `gen_ascii_chars` method on `Rng`.
@@ -303,6 +314,14 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
                                                        abcdefghijklmnopqrstuvwxyz\
                                                        0123456789";
         Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
+    }
+}
+
+impl<'a, R: fmt::Debug> fmt::Debug for AsciiGenerator<'a, R> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("AsciiGenerator")
+         .field("rng", &self.rng)
+         .finish()
     }
 }
 
@@ -326,7 +345,7 @@ pub trait SeedableRng<Seed>: Rng {
 /// [1]: Marsaglia, George (July 2003). ["Xorshift
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
@@ -415,6 +434,14 @@ impl Rand for XorShiftRng {
 /// `[0,1)`.
 pub struct Open01<F>(pub F);
 
+impl<F: fmt::Debug> fmt::Debug for Open01<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Open01")
+         .field(&self.0)
+         .finish()
+    }
+}
+
 /// A wrapper for generating floating point numbers uniformly in the
 /// closed interval `[0,1]` (including both endpoints).
 ///
@@ -422,6 +449,14 @@ pub struct Open01<F>(pub F);
 /// `Rand` implementation of `f32` and `f64` for the half-open
 /// `[0,1)`.
 pub struct Closed01<F>(pub F);
+
+impl<F: fmt::Debug> fmt::Debug for Closed01<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Closed01")
+         .field(&self.0)
+         .finish()
+    }
+}
 
 #[cfg(test)]
 mod test {

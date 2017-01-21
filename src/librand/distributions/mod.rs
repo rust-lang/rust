@@ -17,6 +17,8 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
+use core::fmt;
+
 #[cfg(not(test))] // only necessary for no_std
 use core::num::Float;
 
@@ -78,12 +80,27 @@ impl<Sup: Rand> IndependentSample<Sup> for RandSample<Sup> {
     }
 }
 
+impl<Sup> fmt::Debug for RandSample<Sup> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("RandSample { .. }")
+    }
+}
+
 /// A value with a particular weight for use with `WeightedChoice`.
 pub struct Weighted<T> {
     /// The numerical weight of this item
     pub weight: usize,
     /// The actual item which is being weighted
     pub item: T,
+}
+
+impl<T: fmt::Debug> fmt::Debug for Weighted<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Weighted")
+         .field("weight", &self.weight)
+         .field("item", &self.item)
+         .finish()
+    }
 }
 
 /// A distribution that selects from a finite collection of weighted items.
@@ -186,6 +203,15 @@ impl<'a, T: Clone> IndependentSample<T> for WeightedChoice<'a, T> {
             modifier /= 2;
         }
         return self.items[idx + 1].item.clone();
+    }
+}
+
+impl<'a, T: fmt::Debug> fmt::Debug for WeightedChoice<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("WeightedChoice")
+         .field("items", &self.items)
+         .field("weight_range", &self.weight_range)
+         .finish()
     }
 }
 
