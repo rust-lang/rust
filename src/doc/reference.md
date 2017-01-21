@@ -650,15 +650,15 @@ Rust syntax is restricted in two ways:
 
 [RFC 550]: https://github.com/rust-lang/rfcs/blob/master/text/0550-macro-future-proofing.md
 
-## Procedrual Macros
+## Procedural Macros
 
-"Procedrual macros" are the second way to implement a macro. For now, the only
+"Procedural macros" are the second way to implement a macro. For now, the only
 thing they can be used for is to implement derive on your own types. See
 [the book][procedural macros] for a tutorial.
 
 Procedural macros involve a few different parts of the language and its
 standard libraries. First is the `proc_macro` crate, included with Rust,
-that defines an interface for building a procedrual macro. The 
+that defines an interface for building a procedural macro. The
 `#[proc_macro_derive(Foo)]` attribute is used to mark the the deriving
 function. This function must have the type signature:
 
@@ -3805,7 +3805,7 @@ impl From<i32> for String {
 }
 ```
 
-The notation `Self` in the impl refers to the implementing type: `String`. In another 
+The notation `Self` in the impl refers to the implementing type: `String`. In another
 example:
 
 ```
