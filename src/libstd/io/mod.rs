@@ -290,6 +290,8 @@ pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+#[unstable(feature = "eprint", issue="39228")]
+pub use self::stdio::_eprint;
 #[unstable(feature = "libstd_io_internals", issue = "0")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
