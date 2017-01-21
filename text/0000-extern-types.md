@@ -41,6 +41,8 @@ invalid.
 The second definition says that the type is a ZST, that we can store it on the stack and that we can call `ptr::read`, `mem::size_of` etc. on it.
 None of this is of course valid.
 
+The controversies on how to represent foreign types even extend to the standard library too; see the discussion in the [libc_types RFC PR](https://github.com/rust-lang/rfcs/pull/1783).
+
 This RFC instead proposes a way to directly express that a type exists but is unknown to Rust.
 
 Finally, In the 2017 roadmap, [integration with other languages](https://github.com/rust-lang/rfcs/blob/master/text/1774-roadmap-2017.md#integration-with-other-languages), is listed as a priority.
@@ -87,6 +89,10 @@ As a DST, `size_of` and `align_of` do not work, but we must also be careful that
 For an initial implementation, those methods can just panic, but before this is stabilized there should be some trait bound or similar on them that prevents their use statically.
 The exact mechanism is more the domain of the custom DST RFC, [RFC 1524](https://github.com/rust-lang/rfcs/pull/1524), and so figuring that mechanism out will be delegated to it.
 
+C's "pointer `void`" (not `()`, but the `void` used in `void*` and similar) is currently defined in two official places: [`std::os::raw::c_void`](https://doc.rust-lang.org/stable/std/os/raw/enum.c_void.html) and [`libc::c_void`](https://doc.rust-lang.org/libc/x86_64-unknown-linux-gnu/libc/enum.c_void.html).
+Unifying these is out of scope for this RFC, but this feature should be used in their definition instead of the current tricks.
+Strictly speaking, this is breaking change, but the `std` docs explicitly say this shouldn't be used without indirection, and `libc` worse-case can make a breaking release.
+
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
@@ -116,5 +122,10 @@ Not do this.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should we allow generic lifetime and type parameters on extern types?
-If so, how do they effect the type in terms of variance?
+- Should we allow generic lifetime and type parameters on extern types?
+  If so, how do they effect the type in terms of variance?
+
+- [In std's source](https://github.com/rust-lang/rust/blob/164619a8cfe6d376d25bd3a6a9a5f2856c8de64d/src/libstd/os/raw.rs#L59-L64), it is mentioned that LLVM expects `i8*` for C's `void*`.
+  We'd need to continue to hack this for the two `c_void`s in std and libc.
+  But perhaps this should be done across-the-board for all extern types?
+  Somebody should check what Clang does.
