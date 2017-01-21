@@ -69,6 +69,7 @@ pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
+pub type LPSTR = *mut CHAR;
 pub type LPWSTR = *mut WCHAR;
 pub type LPFILETIME = *mut FILETIME;
 
@@ -157,6 +158,7 @@ pub const WSAECONNREFUSED: c_int = 10061;
 
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
+pub const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
 pub const TOKEN_READ: DWORD = 0x20008;
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
 pub const FSCTL_GET_REPARSE_POINT: DWORD = 0x900a8;
@@ -217,6 +219,10 @@ pub const DETACHED_PROCESS: DWORD = 0x00000008;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
 pub const CREATE_UNICODE_ENVIRONMENT: DWORD = 0x00000400;
 pub const STARTF_USESTDHANDLES: DWORD = 0x00000100;
+
+pub const CP_ACP: UINT = 0;
+
+pub const WC_NO_BEST_FIT_CHARS: DWORD = 0x00000400;
 
 pub const AF_INET: c_int = 2;
 pub const AF_INET6: c_int = 23;
@@ -888,6 +894,9 @@ extern "system" {
                               pNumArgs: *mut c_int) -> *mut *mut u16;
     pub fn GetTempPathW(nBufferLength: DWORD,
                         lpBuffer: LPCWSTR) -> DWORD;
+    pub fn OpenProcess(dwDesiredAccess: DWORD,
+                       bInheritHandle: BOOL,
+                       dwProcessId: DWORD) -> HANDLE;
     pub fn OpenProcessToken(ProcessHandle: HANDLE,
                             DesiredAccess: DWORD,
                             TokenHandle: *mut HANDLE) -> BOOL;
@@ -973,6 +982,14 @@ extern "system" {
     pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
     pub fn GetCurrentDirectoryW(nBufferLength: DWORD, lpBuffer: LPWSTR) -> DWORD;
     pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+    pub fn WideCharToMultiByte(CodePage: UINT,
+                               dwFlags: DWORD,
+                               lpWideCharStr: LPCWSTR,
+                               cchWideChar: c_int,
+                               lpMultiByteStr: LPSTR,
+                               cbMultiByte: c_int,
+                               lpDefaultChar: LPCSTR,
+                               lpUsedDefaultChar: LPBOOL) -> c_int;
 
     pub fn closesocket(socket: SOCKET) -> c_int;
     pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int,
@@ -1134,6 +1151,12 @@ compat_fn! {
                                      _lpszFilePath: LPCWSTR,
                                      _cchFilePath: DWORD,
                                      _dwFlags: DWORD) -> DWORD {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn QueryFullProcessImageNameW(_hProcess: HANDLE,
+                                      _dwFlags: DWORD,
+                                      _lpExeName: LPWSTR,
+                                      _lpdwSize: LPDWORD) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
