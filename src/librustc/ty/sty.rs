@@ -977,6 +977,15 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    // Test whether this is a `()` which was produced by defaulting a
+    // diverging type variable with feature(never_type) disabled.
+    pub fn is_defaulted_unit(&self) -> bool {
+        match self.sty {
+            TyTuple(_, true) => true,
+            _ => false,
+        }
+    }
+
     /// Checks whether a type is visibly uninhabited from a particular module.
     /// # Example
     /// ```rust
