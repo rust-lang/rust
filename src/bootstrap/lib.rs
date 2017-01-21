@@ -170,6 +170,8 @@ pub struct Build {
     version: String,
     package_vers: String,
     local_rebuild: bool,
+    release_num: String,
+    prerelease_version: String,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -271,6 +273,8 @@ impl Build {
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
+            release_num: String::new(),
+            prerelease_version: String::new(),
         }
     }
 

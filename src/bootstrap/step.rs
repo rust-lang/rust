@@ -618,6 +618,20 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.dist("install", "path/to/nowhere")
          .dep(|s| s.name("default:dist"))
          .run(move |s| install::install(build, s.stage, s.target));
+    rules.dist("dist-cargo", "cargo")
+         .host(true)
+         .only_host_build(true)
+         .run(move |s| dist::cargo(build, s.stage, s.target));
+    rules.dist("dist-extended", "extended")
+         .default(build.config.extended)
+         .host(true)
+         .only_host_build(true)
+         .dep(|d| d.name("dist-std"))
+         .dep(|d| d.name("dist-rustc"))
+         .dep(|d| d.name("dist-mingw"))
+         .dep(|d| d.name("dist-docs"))
+         .dep(|d| d.name("dist-cargo"))
+         .run(move |s| dist::extended(build, s.stage, s.target));
 
     rules.verify();
     return rules;
