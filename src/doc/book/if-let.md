@@ -1,9 +1,8 @@
 % if let
 
-`if let` is a figurative combination of `if` and `let`.  `if let` does not literally 
-mean `if` + `let` to the compiler; it has its own special meaning,which was added for 
-convenience and as a way to reduce the overhead of certain kinds of pattern matches.
-
+`if let` allows us to match [patterns][patterns] within the condition of an [if][if].
+As a consequence, we reduce the overhead of certain kinds of [pattern][patterns] matches
+and express them in a more convenient way.  
 
 For example, let’s say we have some sort of `Option<T>`. We want to call a function
 on it if it’s `Some<T>`, but do nothing if it’s `None`. That looks like this:
@@ -82,3 +81,4 @@ while let Some(x) = v.pop() {
 ```
 
 [patterns]: patterns.html
+[if]: if.html
