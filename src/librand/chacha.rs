@@ -10,6 +10,7 @@
 
 //! The ChaCha random number generator.
 
+use core::fmt;
 use {Rand, Rng, SeedableRng};
 
 const KEY_WORDS: usize = 8; // 8 words for the 256-bit key
@@ -30,6 +31,16 @@ pub struct ChaChaRng {
     buffer: [u32; STATE_WORDS], // Internal buffer of output
     state: [u32; STATE_WORDS], // Initial state
     index: usize, // Index into state
+}
+
+impl fmt::Debug for ChaChaRng {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ChaChaRng")
+         .field("buffer", &self.buffer.iter())
+         .field("state", &self.state.iter())
+         .field("index", &self.index)
+         .finish()
+    }
 }
 
 static EMPTY: ChaChaRng = ChaChaRng {
