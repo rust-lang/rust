@@ -7,11 +7,11 @@ environment:
   matrix:
   # 32/64 bit MSVC
   - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended
     SCRIPT: python x.py test && python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc --enable-extended
     SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc && python x.py dist
     DEPLOY: 1
 
@@ -51,7 +51,7 @@ environment:
   # *not* use debug assertions and llvm assertions. This is because they take
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
     SCRIPT: python x.py test && python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
@@ -67,7 +67,7 @@ environment:
 
   - MSYS_BITS: 64
     SCRIPT: python x.py test && python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
@@ -102,6 +102,10 @@ install:
   - 7z x -y sccache.tar.bz2 > nul
   - 7z x -y sccache.tar > nul
   - set PATH=%PATH%;%CD%\sccache2
+
+  # Install InnoSetup to get `iscc` used to produce installers
+  - choco install -y InnoSetup
+  - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
   - ps: Invoke-WebRequest -Uri https://download.sysinternals.com/files/Handle.zip -OutFile handle.zip
