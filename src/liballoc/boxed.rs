@@ -293,6 +293,14 @@ impl<T: ?Sized> Box<T> {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
+    fn drop(&mut self) {
+        // FIXME: Do nothing, drop is currently performed by compiler.
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.

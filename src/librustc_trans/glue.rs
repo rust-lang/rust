@@ -211,9 +211,8 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
 
     let bcx = match t.sty {
         ty::TyAdt(def, _) if def.is_box() => {
-            // Support for Box is built-in and its drop glue is
-            // special. It may move to library and have Drop impl. As
-            // a safe-guard, assert Box not used with TyContents.
+            // Support for Box is built-in as yet and its drop glue is special
+            // despite having a dummy Drop impl in the library.
             assert!(!skip_dtor);
             let content_ty = t.boxed_ty();
             let ptr = if !bcx.ccx.shared().type_is_sized(content_ty) {

@@ -740,7 +740,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         _ => None
     };
 
-    if let Some(destructor_did) = destructor_did {
+    if let (Some(destructor_did), false) = (destructor_did, ty.is_box()) {
         use rustc::ty::ToPolyTraitRef;
 
         let drop_trait_def_id = scx.tcx()
