@@ -22,15 +22,15 @@ In Rust, we don't have this feature. Instead, a couple of problematic hacks are 
 One is, we define the type as an uninhabited type. eg.
 
 ```rust
-    enum MyFfiType {}
+enum MyFfiType {}
 ```
 
 Another is, we define the type with a private field and no methods to construct it.
 
 ```rust
-    struct MyFfiType {
-        _priv: (),
-    }
+struct MyFfiType {
+    _priv: (),
+}
 ```
 
 The point of both these constructions is to prevent the user from being able to create or deal directly with instances of the type.
@@ -51,18 +51,12 @@ Just like unions, this is an unsafe feature necessary for dealing with legacy co
 # Detailed design
 [design]: #detailed-design
 
-Add a new kind of type declaration, an `extern type`:
+Add a new kind of type declaration, an extern type:
 
 ```rust
-    extern type Foo;
-```
-
-These can also be declared inside an `extern` block:
-
-```rust
-    extern {
-        type Foo;
-    }
+extern {
+    type Foo;
+}
 ```
 
 These types are FFI-safe. They are also DSTs, meaning that they do not implement `Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
@@ -75,7 +69,9 @@ It also means that if we store an extern type at the end of a container (such as
 This is useful to support a pattern found in some C APIs where structs are passed around which have arbitrary data appended to the end of them: eg.
 
 ```rust
-extern type OpaqueTail;
+extern {
+    type OpaqueTail;
+}
 
 #[repr(C)]
 struct FfiStruct {
