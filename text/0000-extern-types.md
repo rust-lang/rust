@@ -74,6 +74,16 @@ struct FfiStruct {
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
+Really, the question is "how do we teach *without* this".
+As described above, the current tricks for doing this are wrong.
+Furthermore, they are quite advanced touching upon many advanced corners of the language: zero-sized and uninhabited types are phenomena few programmer coming from mainstream languages have considered.
+From reading around other RFCs, issues, and internal threads, one gets a sense of two issues:
+First, even among the group Rust programmers enthusiastic enough to participate in these fora, the semantics of foreign types are not widely understood.
+Send, there is annoyance that none of the current tricks, by nature of them all being flawed in different ways, would become standard.
+
+By contrast, `extern type` does exactly what one wants, with an obvious and guessable syntax, without forcing the user to immediately understand all the nuance about why *these* semantics are indeed the right ones.
+As they see various options fail: moves, stack variables, they can discover these semantics incrementally.
+The benefits are such that this would soon displace the current hacks, making code in the wild more readable through consistent use of a pattern.
 
 This should be taught in the foreign function interface chapter of the rust book in place of where it currently tells people to use uninhabited enums (ack!).
 
