@@ -322,6 +322,8 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                                             hir_pat.id, diagnostic);
                         },
 
+                        // Unreachable patterns in try expressions occur when one of the arms
+                        // are an uninhabited type. Which is OK.
                         hir::MatchSource::TryDesugar => {}
                     }
                 }
