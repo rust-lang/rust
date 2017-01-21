@@ -10,17 +10,24 @@
 
 #![deny(resolve_trait_on_defaulted_unit)]
 
-trait Deserialize {
-    fn deserialize() -> Result<Self, String>
+trait Deserialize: Sized {
+    fn deserialize() -> Result<Self, String>;
+}
+
+impl Deserialize for () {
+    fn deserialize() -> Result<(), String> {
+        Ok(())
+    }
 }
 
 fn doit() -> Result<(), String> {
     let _ = Deserialize::deserialize()?;
-    //~^ ERROR attempt to resolve a trait
+    //~^ ERROR code relies on type
+    //~| WARNING previously accepted
     Ok(())
 }
 
 fn main() {
-    doit();
+    let _ = doit();
 }
 
