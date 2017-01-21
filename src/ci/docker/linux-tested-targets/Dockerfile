@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
+  g++-multilib \
   make \
   file \
   curl \
@@ -11,10 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   xz-utils \
   sudo \
-  gdb
+  gdb \
+  patch
 
 WORKDIR /build/
-COPY build-musl.sh /build/
+COPY musl-libunwind-patch.patch build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
@@ -27,9 +28,17 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
       tar xJf - -C /usr/local/bin --strip-components=1
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=x86_64-unknown-linux-musl \
-      --musl-root-x86_64=/musl-x86_64
-ENV PATH=$PATH:/musl-x86_64/bin
+      --target=x86_64-unknown-linux-musl,i686-unknown-linux-musl,i586-unknown-linux-gnu \
+      --musl-root-x86_64=/musl-x86_64 \
+      --musl-root-i686=/musl-i686
+
+# FIXME should also test i686-unknown-linux-musl
 ENV SCRIPT \
-      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
-      python2.7 ../x.py dist --target x86_64-unknown-linux-musl
+      python2.7 ../x.py test \
+          --target x86_64-unknown-linux-musl \
+          --target i586-unknown-linux-gnu \
+          && \
+      python2.7 ../x.py dist \
+          --target x86_64-unknown-linux-musl \
+          --target i686-unknown-linux-musl \
+          --target i586-unknown-linux-gnu

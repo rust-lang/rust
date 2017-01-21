@@ -5,7 +5,7 @@ error[E0405]: cannot find trait `T` in this scope
    |      ^ not found in this scope
    |
    = help: possible candidate is found in another module, you can import it into scope:
-   = help:   `use foo::bar::T;`
+             `use foo::bar::T;`
 
 error: main function not found
 

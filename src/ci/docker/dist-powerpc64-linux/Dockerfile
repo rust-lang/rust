@@ -29,11 +29,8 @@ ENV \
     CC_powerpc64_unknown_linux_gnu=powerpc64-linux-gnu-gcc \
     CXX_powerpc64_unknown_linux_gnu=powerpc64-linux-gnu-g++
 
-ENV RUST_CONFIGURE_ARGS \
-      --host=powerpc64-unknown-linux-gnu,powerpc64le-unknown-linux-gnu
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host powerpc64-unknown-linux-gnu \
-        --target powerpc64-unknown-linux-gnu \
-        --host powerpc64le-unknown-linux-gnu \
-        --target powerpc64le-unknown-linux-gnu
+ENV HOSTS=powerpc64-unknown-linux-gnu
+ENV HOSTS=$HOSTS,powerpc64le-unknown-linux-gnu
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

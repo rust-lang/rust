@@ -1,19 +1,29 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
+  automake \
+  bison \
+  bzip2 \
   ca-certificates \
-  python2.7 \
-  git \
   cmake \
-  sudo \
+  curl \
+  file \
+  flex \
+  g++ \
+  gawk \
   gdb \
-  xz-utils \
-  g++-arm-linux-gnueabihf \
-  g++-aarch64-linux-gnu
+  git \
+  gperf \
+  help2man \
+  libncurses-dev \
+  libtool-bin \
+  make \
+  patch \
+  python2.7 \
+  sudo \
+  texinfo \
+  wget \
+  xz-utils
 
 ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
 RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
@@ -24,11 +34,48 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV RUST_CONFIGURE_ARGS \
-      --host=armv7-unknown-linux-gnueabihf,aarch64-unknown-linux-gnu
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host armv7-unknown-linux-gnueabihf \
-        --target armv7-unknown-linux-gnueabihf \
-        --host aarch64-unknown-linux-gnu \
-        --target aarch64-unknown-linux-gnu
+# Ubuntu 16.04 (this contianer) ships with make 4, but something in the
+# toolchains we build below chokes on that, so go back to make 3
+RUN curl https://ftp.gnu.org/gnu/make/make-3.81.tar.gz | tar xzf - && \
+      cd make-3.81 && \
+      ./configure --prefix=/usr && \
+      make && \
+      make install && \
+      cd .. && \
+      rm -rf make-3.81
+
+RUN curl http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.22.0.tar.bz2 | \
+      tar xjf - && \
+      cd crosstool-ng && \
+      ./configure --prefix=/usr/local && \
+      make -j$(nproc) && \
+      make install && \
+      cd .. && \
+      rm -rf crosstool-ng
+
+RUN groupadd -r rustbuild && useradd -m -r -g rustbuild rustbuild
+RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
+USER rustbuild
+WORKDIR /tmp
+
+COPY armv7-linux-gnueabihf.config /tmp/
+COPY armv7-linux-gnueabihf.config aarch64-linux-gnu.config build-toolchains.sh /tmp/
+RUN ./build-toolchains.sh
+
+USER root
+
+ENV PATH=$PATH:/x-tools/aarch64-unknown-linux-gnueabi/bin
+ENV PATH=$PATH:/x-tools/armv7-unknown-linux-gnueabihf/bin
+
+ENV CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-gcc \
+    AR_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-ar \
+    CXX_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-g++ \
+    CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \
+    AR_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-ar \
+    CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++
+
+ENV HOSTS=armv7-unknown-linux-gnueabihf
+ENV HOSTS=$HOSTS,aarch64-unknown-linux-gnu
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

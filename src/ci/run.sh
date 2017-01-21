@@ -22,19 +22,6 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 
-# FIXME: we shouldn't forcibly enable debug assertions and llvm assertions when
-#        `DEPLOY` is set because then we'll be shipping slower binaries. We
-#        should only set these for auto branches, but we need to make sure that
-#        if we disable this all the relevant platforms are still tested
-#        somewhere with debug and llvm assertions.
-RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
-
-# In general we always want to run tests with LLVM assertions enabled, but not
-# all platforms currently support that, so we have an option to disable.
-if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
-fi
-
 # If we're deploying artifacts then we set the release channel, otherwise if
 # we're not deploying then we want to be sure to enable all assertions becauase
 # we'll be running tests
@@ -43,9 +30,18 @@ fi
 #        either automatically or manually.
 if [ "$DEPLOY" != "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+  fi
+else
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+
+  # In general we always want to run tests with LLVM assertions enabled, but not
+  # all platforms currently support that, so we have an option to disable.
+  if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
 fi
 
@@ -63,7 +59,7 @@ $SRC/configure $RUST_CONFIGURE_ARGS
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
 else
-    ncpus=$(nproc)
+    ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
 
 if [ ! -z "$SCRIPT" ]; then

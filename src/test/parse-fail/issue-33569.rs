@@ -13,6 +13,6 @@
 macro_rules! foo {
     { $+ } => { //~ ERROR expected identifier, found `+`
         $(x)(y) //~ ERROR expected `*` or `+`
-                //~^ ERROR no rules expected the token `y`
+                //~^ ERROR no rules expected the token `)`
     }
 }

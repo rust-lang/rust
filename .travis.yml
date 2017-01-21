@@ -8,13 +8,13 @@ git:
   depth: 1
   submodules: false
 
-osx_image: xcode8.2
-
 matrix:
+  fast_finish: true
   include:
     # Linux builders, all docker images
-    - env: IMAGE=arm-android DEPLOY=1
+    - env: IMAGE=android DEPLOY=1
     - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=linux-tested-targets DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
     - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-freebsd DEPLOY=1
@@ -23,16 +23,17 @@ matrix:
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux-netbsd DEPLOY=1
-    - env: IMAGE=i686-gnu DEPLOY=1
+    - env: IMAGE=dist-x86-linux DEPLOY=1
+    - env: IMAGE=emscripten
+    - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
-    - env: IMAGE=x86_64-gnu DEPLOY=1
+    - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
-    - env: IMAGE=x86_64-musl DEPLOY=1
     - env: IMAGE=x86_64-gnu-distcheck
 
     # OSX builders
@@ -41,6 +42,7 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
       os: osx
+      osx_image: xcode8.2
       before_script: &osx_before_script >
         ulimit -c unlimited
       install: &osx_install_sccache >
@@ -50,7 +52,7 @@ matrix:
         echo 'bt all' > cmds;
         for file in $(ls /cores); do
           echo core file $file;
-          lldb -c $file `which ld` -b -s cmds;
+          lldb -c /cores/$file `which ld` -b -s cmds;
         done
 
     - env: >
@@ -59,6 +61,7 @@ matrix:
         SRC=.
         DEPLOY=1
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
@@ -67,6 +70,7 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
@@ -76,6 +80,7 @@ matrix:
         SRC=.
         DEPLOY=1
       os: osx
+      osx_image: xcode8.2
       before_script: *osx_before_script
       install: *osx_install_sccache
       after_failure: *osx_after_failure
@@ -119,11 +124,9 @@ before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
-          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'shasum -a 256 -b "{}" > "{}.sha256"' \;;
+          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
       else
-          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT &&
-          find "deploy/$TRAVIS_COMMIT" -maxdepth 1 -type f -exec sh -c 'sha256sum -b "{}" > "{}.sha256"' \;;
+          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
       fi
 
 deploy:

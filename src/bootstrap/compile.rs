@@ -213,7 +213,11 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
-    if build.config.llvm_static_stdcpp {
+    // Building with a static libstdc++ is only supported on linux right now,
+    // not for MSVC or OSX
+    if build.config.llvm_static_stdcpp &&
+       !target.contains("windows") &&
+       !target.contains("apple") {
         cargo.env("LLVM_STATIC_STDCPP",
                   compiler_file(build.cxx(target), "libstdc++.a"));
     }

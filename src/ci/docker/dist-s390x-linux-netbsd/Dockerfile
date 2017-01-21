@@ -33,11 +33,8 @@ ENV \
     CC_x86_64_unknown_netbsd=x86_64-unknown-netbsd-gcc \
     CXX_x86_64_unknown_netbsd=x86_64-unknown-netbsd-g++
 
-ENV RUST_CONFIGURE_ARGS \
-        --host=x86_64-unknown-netbsd,s390x-unknown-linux-gnu
-ENV SCRIPT \
-      python2.7 ../x.py dist \
-        --host x86_64-unknown-netbsd \
-        --target x86_64-unknown-netbsd \
-        --host s390x-unknown-linux-gnu \
-        --target s390x-unknown-linux-gnu
+ENV HOSTS=x86_64-unknown-netbsd
+ENV HOSTS=$HOSTS,s390x-unknown-linux-gnu
+
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

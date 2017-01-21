@@ -1,4 +1,4 @@
-error[E0276]: impl has stricter requirements than trait
+error[E0276]: impl has stricter requirements than trait, #[deny(extra_requirement_in_impl)] on by default
   --> $DIR/proj-outlives-region.rs:22:5
    |
 17 |     fn foo() where T: 'a;
@@ -9,11 +9,6 @@ error[E0276]: impl has stricter requirements than trait
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #37166 <https://github.com/rust-lang/rust/issues/37166>
-note: lint level defined here
-  --> $DIR/proj-outlives-region.rs:12:9
-   |
-12 | #![deny(extra_requirement_in_impl)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

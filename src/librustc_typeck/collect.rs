@@ -1675,7 +1675,6 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     for ab in ast_bounds {
         if let &hir::TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
             if unbound.is_none() {
-                assert!(ptr.bound_lifetimes.is_empty());
                 unbound = Some(ptr.trait_ref.clone());
             } else {
                 span_err!(tcx.sess, span, E0203,
