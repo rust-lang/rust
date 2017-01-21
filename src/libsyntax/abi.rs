@@ -10,24 +10,6 @@
 
 use std::fmt;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[allow(non_camel_case_types)]
-pub enum Os {
-    Windows,
-    Macos,
-    Linux,
-    Android,
-    Freebsd,
-    iOS,
-    Dragonfly,
-    Bitrig,
-    Netbsd,
-    Openbsd,
-    NaCl,
-    Haiku,
-    Solaris,
-}
-
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
@@ -52,16 +34,6 @@ pub enum Abi {
     RustCall,
     PlatformIntrinsic,
     Unadjusted
-}
-
-#[allow(non_camel_case_types)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Architecture {
-    X86,
-    X86_64,
-    Arm,
-    Mips,
-    Mipsel
 }
 
 #[derive(Copy, Clone)]
@@ -130,26 +102,6 @@ impl Abi {
 impl fmt::Display for Abi {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\"{}\"", self.name())
-    }
-}
-
-impl fmt::Display for Os {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Os::Linux => "linux".fmt(f),
-            Os::Windows => "windows".fmt(f),
-            Os::Macos => "macos".fmt(f),
-            Os::iOS => "ios".fmt(f),
-            Os::Android => "android".fmt(f),
-            Os::Freebsd => "freebsd".fmt(f),
-            Os::Dragonfly => "dragonfly".fmt(f),
-            Os::Bitrig => "bitrig".fmt(f),
-            Os::Netbsd => "netbsd".fmt(f),
-            Os::Openbsd => "openbsd".fmt(f),
-            Os::NaCl => "nacl".fmt(f),
-            Os::Haiku => "haiku".fmt(f),
-            Os::Solaris => "solaris".fmt(f),
-        }
     }
 }
 
