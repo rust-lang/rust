@@ -21,13 +21,17 @@ In Rust, we don't have this feature. Instead, a couple of problematic hacks are 
 
 One is, we define the type as an uninhabited type. eg.
 
+```rust
     enum MyFfiType {}
+```
 
 Another is, we define the type with a private field and no methods to construct it.
 
+```rust
     struct MyFfiType {
         _priv: (),
     }
+```
 
 The point of both these constructions is to prevent the user from being able to create or deal directly with instances of the type.
 Neither of these types accurately reflect the reality of the situation.
@@ -47,13 +51,17 @@ Just like unions, this is an unsafe feature necessary for dealing with legacy co
 
 Add a new kind of type declaration, an `extern type`:
 
+```rust
     extern type Foo;
+```
 
 These can also be declared inside an `extern` block:
 
+```rust
     extern {
         type Foo;
     }
+```
 
 These types are FFI-safe. They are also DSTs, meaning that they implement `?Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
 
