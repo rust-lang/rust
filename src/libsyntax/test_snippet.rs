@@ -494,6 +494,7 @@ error: foo
 
 "#);
 }
+
 #[test]
 fn overlaping_start_and_end() {
     test_harness(r#"
@@ -541,6 +542,393 @@ error: foo
 5 | |    X2 Y2 Z2
 6 | |    X3 Y3 Z3
   | |___________- ...ending here: `Y` is a good letter too
+
+"#);
+}
+
+#[test]
+fn multiple_labels_primary_without_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "`a` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "c",
+                count: 1,
+            },
+            end: Position {
+                string: "c",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:7
+  |
+3 |   a { b { c } d }
+  |   ----^^^^-^^-- `a` is a good letter
+
+"#);
+}
+
+#[test]
+fn multiple_labels_secondary_without_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "`a` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^-------^^ `a` is a good letter
+
+"#);
+}
+
+#[test]
+fn multiple_labels_primary_without_message_2() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "`b` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "c",
+                count: 1,
+            },
+            end: Position {
+                string: "c",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:7
+  |
+3 |   a { b { c } d }
+  |   ----^^^^-^^--
+  |       |
+  |       `b` is a good letter
+
+"#);
+}
+
+#[test]
+fn multiple_labels_secondary_without_message_2() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "`b` is a good letter",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^-------^^
+  |       |
+  |       `b` is a good letter
+
+"#);
+}
+
+#[test]
+fn multiple_labels_without_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^-------^^
+
+"#);
+}
+
+#[test]
+fn multiple_labels_without_message_2() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+        SpanLabel {
+            start: Position {
+                string: "c",
+                count: 1,
+            },
+            end: Position {
+                string: "c",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:7
+  |
+3 |   a { b { c } d }
+  |   ----^^^^-^^--
+
+"#);
+}
+
+#[test]
+fn multiple_labels_with_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "`a` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "b",
+                count: 1,
+            },
+            end: Position {
+                string: "}",
+                count: 1,
+            },
+            label: "`b` is a good letter",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^-------^^
+  |   |   |
+  |   |   `b` is a good letter
+  |   `a` is a good letter
+
+"#);
+}
+
+#[test]
+fn single_label_with_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "`a` is a good letter",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^^^^^^^^^^ `a` is a good letter
+
+"#);
+}
+
+#[test]
+fn single_label_without_message() {
+    test_harness(r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^^^^^^^^^^
 
 "#);
 }
