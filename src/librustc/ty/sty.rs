@@ -1142,8 +1142,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn boxed_ty(&self) -> Ty<'tcx> {
         match self.sty {
-            TyAdt(def, substs) if def.is_box() =>
-                substs.types().next().expect("Box<T> doesn't have type parameters"),
+            TyAdt(def, substs) if def.is_box() => substs.type_at(0),
             _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
         }
     }
