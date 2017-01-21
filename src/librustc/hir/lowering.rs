@@ -1834,13 +1834,10 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Try(ref sub_expr) => {
                     // to:
                     //
-                    // #[allow(unreachable_patterns)]
                     // match Carrier::translate(<expr>) {
-                    //     Ok(val) => {
-                    //         #[allow(unreachable_code)]
-                    //         val
-                    //     }
-                    //     Err(err) => return Carrier::from_error(From::from(err))
+                    //     Ok(val) => #[allow(unreachable_code)] val,
+                    //     Err(err) => #[allow(unreachable_code)]
+                    //                 return Carrier::from_error(From::from(err)),
                     // }
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
