@@ -1,11 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.111 — 2017-01-21
+* Rustup to *rustc 1.16.0-nightly (a52da95ce 2017-01-20)*
+
 ## 0.0.110 — 2017-01-20
 * Add badges and categories to `Cargo.toml`
 
 ## 0.0.109 — 2017-01-19
-* Update to *1.16.0-nightly (c07a6ae77 2017-01-17)*
+* Update to *rustc 1.16.0-nightly (c07a6ae77 2017-01-17)*
 
 ## 0.0.108 — 2017-01-12
 * Update to *rustc 1.16.0-nightly (2782e8f8f 2017-01-12)*
