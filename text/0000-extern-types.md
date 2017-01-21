@@ -82,6 +82,10 @@ struct FfiStruct {
 }
 ```
 
+As a DST, `size_of` and `align_of` do not work, but we must also be careful that `size_of_val` and `align_of_val` do not work either, as there is not necessarily a way at run-time to get the size of extern types either.
+For an initial implementation, those methods can just panic, but before this is stabilized there should be some trait bound or similar on them that prevents their use statically.
+The exact mechanism is more the domain of the custom DST RFC, [RFC 1524](https://github.com/rust-lang/rfcs/pull/1524), and so figuring that mechanism out will be delegated to it.
+
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
