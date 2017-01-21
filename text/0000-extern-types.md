@@ -66,7 +66,8 @@ These can also be declared inside an `extern` block:
 These types are FFI-safe. They are also DSTs, meaning that they implement `?Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
 
 In Rust, pointers to DSTs carry metadata about the object being pointed to.
-For strings and slices this is the length of the buffer, for trait objects this is the object's vtable. For extern types the metadata is simply `()`.
+For strings and slices this is the length of the buffer, for trait objects this is the object's vtable.
+For extern types the metadata is simply `()`.
 This means that a pointer to an extern type is identical to a raw pointer.
 It also means that if we store an extern type at the end of a container (such as a struct or tuple) pointers to that container will also be identical to raw pointers (despite the container as a whole being unsized).
 This is useful to support a pattern found in some C APIs where structs are passed around which have arbitrary data appended to the end of them: eg.
