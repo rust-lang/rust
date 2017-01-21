@@ -16,7 +16,9 @@ const fn foo() -> usize { 0 } //~ ERROR const fn is unstable
 
 trait Foo {
     const fn foo() -> u32; //~ ERROR const fn is unstable
+                           //~| ERROR trait fns cannot be declared const
     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
+                                //~| ERROR trait fns cannot be declared const
 }
 
 impl Foo {
@@ -25,6 +27,7 @@ impl Foo {
 
 impl Foo for u32 {
     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
+                                //~| ERROR trait fns cannot be declared const
 }
 
 static FOO: usize = foo();

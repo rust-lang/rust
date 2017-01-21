@@ -667,7 +667,9 @@ pub fn run_passes(sess: &Session,
 
     // Sanity check
     assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
-            sess.opts.debugging_opts.incremental.is_some());
+            sess.opts.debugging_opts.incremental.is_some() ||
+            !sess.opts.output_types.should_trans() ||
+            sess.opts.debugging_opts.no_trans);
 
     let tm = create_target_machine(sess);
 
@@ -756,7 +758,7 @@ pub fn run_passes(sess: &Session,
     //       the compiler decides the number of codegen units (and will
     //       potentially create hundreds of them).
     let num_workers = work_items.len() - 1;
-    if num_workers == 1 {
+    if num_workers <= 1 {
         run_work_singlethreaded(sess, &trans.exported_symbols, work_items);
     } else {
         run_work_multithreaded(sess, work_items, num_workers);

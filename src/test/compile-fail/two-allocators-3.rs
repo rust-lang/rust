@@ -11,6 +11,7 @@
 // aux-build:allocator1.rs
 // error-pattern: cannot link together two allocators
 // ignore-musl no dylibs on musl yet
+// ignore-emscripten
 
 // We're linking std dynamically (via -C prefer-dynamic for this test) which
 // has an allocator and then we're also linking in a new allocator (allocator1)

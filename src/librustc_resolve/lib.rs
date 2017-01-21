@@ -61,12 +61,13 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
@@ -1123,6 +1124,12 @@ pub struct Resolver<'a> {
 
     // Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
+
+    // If `#![feature(proc_macro)]` is set
+    proc_macro_enabled: bool,
+
+    // A set of procedural macros imported by `#[macro_use]` that have already been warned about
+    warned_proc_macros: FxHashSet<Name>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1227,6 +1234,8 @@ impl<'a> Resolver<'a> {
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
+        let features = session.features.borrow();
+
         Resolver {
             session: session,
 
@@ -1284,7 +1293,9 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
-            use_extern_macros: session.features.borrow().use_extern_macros,
+
+            // `#![feature(proc_macro)]` implies `#[feature(extern_macros)]`
+            use_extern_macros: features.use_extern_macros || features.proc_macro,
 
             exported_macros: Vec::new(),
             crate_loader: crate_loader,
@@ -1296,6 +1307,8 @@ impl<'a> Resolver<'a> {
             invocations: invocations,
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
+            proc_macro_enabled: features.proc_macro,
+            warned_proc_macros: FxHashSet(),
         }
     }
 
@@ -1525,6 +1538,8 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving item) resolving {}", name);
 
+        self.check_proc_macro_attrs(&item.attrs);
+
         match item.node {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
@@ -1554,6 +1569,8 @@ impl<'a> Resolver<'a> {
                         walk_list!(this, visit_ty_param_bound, bounds);
 
                         for trait_item in trait_items {
+                            this.check_proc_macro_attrs(&trait_item.attrs);
+
                             match trait_item.node {
                                 TraitItemKind::Const(_, ref default) => {
                                     // Only impose the restrictions of
@@ -1738,6 +1755,7 @@ impl<'a> Resolver<'a> {
                 this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
+                            this.check_proc_macro_attrs(&impl_item.attrs);
                             this.resolve_visibility(&impl_item.vis);
                             match impl_item.node {
                                 ImplItemKind::Const(..) => {
@@ -3184,6 +3202,31 @@ impl<'a> Resolver<'a> {
         let msg = "`self` no longer imports values".to_string();
         self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
     }
+
+    fn check_proc_macro_attrs(&mut self, attrs: &[ast::Attribute]) {
+        if self.proc_macro_enabled { return; }
+
+        for attr in attrs {
+            let maybe_binding = self.builtin_macros.get(&attr.name()).cloned().or_else(|| {
+                let ident = Ident::with_empty_ctxt(attr.name());
+                self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
+            });
+
+            if let Some(binding) = maybe_binding {
+                if let SyntaxExtension::AttrProcMacro(..) = *binding.get_macro(self) {
+                    attr::mark_known(attr);
+
+                    let msg = "attribute procedural macros are experimental";
+                    let feature = "proc_macro";
+
+                    feature_err(&self.session.parse_sess, feature,
+                                attr.span, GateIssue::Language, msg)
+                        .span_note(binding.span, "procedural macro imported here")
+                        .emit();
+                }
+            }
+        }
+    }
 }
 
 fn is_struct_like(def: Def) -> bool {
@@ -3224,7 +3267,7 @@ fn show_candidates(session: &mut DiagnosticBuilder,
                    better: bool) {
     // don't show more than MAX_CANDIDATES results, so
     // we're consistent with the trait suggestions
-    const MAX_CANDIDATES: usize = 5;
+    const MAX_CANDIDATES: usize = 4;
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -3237,21 +3280,21 @@ fn show_candidates(session: &mut DiagnosticBuilder,
         1 => " is found in another module, you can import it",
         _ => "s are found in other modules, you can import them",
     };
-    session.help(&format!("possible {}candidate{} into scope:", better, msg_diff));
 
-    let count = path_strings.len() as isize - MAX_CANDIDATES as isize + 1;
-    for (idx, path_string) in path_strings.iter().enumerate() {
-        if idx == MAX_CANDIDATES - 1 && count > 1 {
-            session.help(
-                &format!("  and {} other candidates", count).to_string(),
-            );
-            break;
-        } else {
-            session.help(
-                &format!("  `use {};`", path_string).to_string(),
-            );
-        }
-    }
+    let end = cmp::min(MAX_CANDIDATES, path_strings.len());
+    session.help(&format!("possible {}candidate{} into scope:{}{}",
+                          better,
+                          msg_diff,
+                          &path_strings[0..end].iter().map(|candidate| {
+                              format!("\n  `use {};`", candidate)
+                          }).collect::<String>(),
+                          if path_strings.len() > MAX_CANDIDATES {
+                              format!("\nand {} other candidates",
+                                      path_strings.len() - MAX_CANDIDATES)
+                          } else {
+                              "".to_owned()
+                          }
+                          ));
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

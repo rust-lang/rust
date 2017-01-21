@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C codegen-units=3 --crate-type=rlib,dylib
+// compile-flags: -C codegen-units=3 --crate-type=rlib,dylib -g
 
 pub mod a {
     pub fn one() -> usize {

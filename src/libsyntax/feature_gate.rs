@@ -30,7 +30,7 @@ use ast::{self, NodeId, PatKind};
 use attr;
 use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
-use errors::{DiagnosticBuilder, Handler};
+use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use symbol::Symbol;
@@ -319,6 +319,9 @@ declare_features! (
     // The `unadjusted` ABI. Perma unstable.
     (active, abi_unadjusted, "1.16.0", None),
 
+    // Macros 1.1
+    (active, proc_macro, "1.16.0", Some(35900)),
+
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
 
@@ -375,8 +378,6 @@ declare_features! (
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
     (accepted, item_like_imports, "1.14.0", Some(35120)),
-    // Macros 1.1
-    (accepted, proc_macro, "1.15.0", Some(35900)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -442,6 +443,10 @@ macro_rules! cfg_fn {
 
 pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, AttributeGate)> {
     BUILTIN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
+}
+
+pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name))
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
@@ -737,6 +742,16 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               is currently unstable",
                                              cfg_fn!(windows_subsystem))),
 
+    ("proc_macro_attribute", Normal, Gated(Stability::Unstable,
+                                           "proc_macro",
+                                           "attribute proc macros are currently unstable",
+                                           cfg_fn!(proc_macro))),
+
+    ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
+                                             "rustc_derive_registrar",
+                                             "used internally by rustc",
+                                             cfg_fn!(rustc_attrs))),
+
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
     ("crate_type", CrateLevel, Ungated),
@@ -879,9 +894,10 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         issue
     } else {
         // search in Accepted or Removed features
-        ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES.iter())
-            .find(|t| t.0 == feature)
-            .unwrap().2
+        match ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).find(|t| t.0 == feature) {
+            Some(&(_, _, issue)) => issue,
+            None => panic!("Feature `{}` is not declared anywhere", feature),
+        }
     }
 }
 
@@ -1382,6 +1398,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> Features {
     let mut features = Features::new();
 
+    let mut feature_checker = MutexFeatureChecker::default();
+
     for attr in krate_attrs {
         if !attr.check_name("feature") {
             continue
@@ -1405,6 +1423,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                     if let Some(&(_, _, _, setter)) = ACTIVE_FEATURES.iter()
                         .find(|& &(n, _, _, _)| name == n) {
                         *(setter(&mut features)) = true;
+                        feature_checker.collect(&features, mi.span);
                     }
                     else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
@@ -1421,7 +1440,43 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
         }
     }
 
+    feature_checker.check(span_handler);
+
     features
+}
+
+// A collector for mutually-exclusive features and their flag spans
+#[derive(Default)]
+struct MutexFeatureChecker {
+    proc_macro: Option<Span>,
+    custom_attribute: Option<Span>,
+}
+
+impl MutexFeatureChecker {
+    // If this method turns out to be a hotspot due to branching,
+    // the branching can be eliminated by modifying `setter!()` to set these spans
+    // only for the features that need to be checked for mutual exclusion.
+    fn collect(&mut self, features: &Features, span: Span) {
+        if features.proc_macro {
+            // If self.proc_macro is None, set to Some(span)
+            self.proc_macro = self.proc_macro.or(Some(span));
+        }
+
+        if features.custom_attribute {
+            self.custom_attribute = self.custom_attribute.or(Some(span));
+        }
+    }
+
+    fn check(self, handler: &Handler) {
+        if let (Some(pm_span), Some(ca_span)) = (self.proc_macro, self.custom_attribute) {
+            handler.struct_span_err(pm_span, "Cannot use `#![feature(proc_macro)]` and \
+                                              `#![feature(custom_attribute)] at the same time")
+                .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
+                .emit();
+
+            panic!(FatalError);
+        }
+    }
 }
 
 pub fn check_crate(krate: &ast::Crate,

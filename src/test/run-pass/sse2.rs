@@ -10,9 +10,20 @@
 
 #![feature(cfg_target_feature)]
 
-pub fn main() {
+use std::env;
+
+fn main() {
+    match env::var("TARGET") {
+        Ok(s) => {
+            // Skip this tests on i586-unknown-linux-gnu where sse2 is disabled
+            if s.contains("i586") {
+                return
+            }
+        }
+        Err(_) => return,
+    }
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         assert!(cfg!(target_feature = "sse2"),
-            "SSE2 was not detected as available on an x86 platform");
+                "SSE2 was not detected as available on an x86 platform");
     }
 }

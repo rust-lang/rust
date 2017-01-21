@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(cfg_target_feature)]
 
-
+#[cfg(any(not(target_arch = "x86"), target_feature = "sse2"))]
 fn main() {
     if let Ok(x) = "3.1415".parse::<f64>() {
         assert_eq!(false, x <= 0.0);
@@ -21,3 +22,6 @@ fn main() {
         assert_eq!(8.1415, { x += 5.0; x });
     }
 }
+
+#[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+fn main() {}
