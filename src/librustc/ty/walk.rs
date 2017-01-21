@@ -83,7 +83,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
         ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => {
         }
-        ty::TyBox(ty) | ty::TyArray(ty, _) | ty::TySlice(ty) => {
+        ty::TyArray(ty, _) | ty::TySlice(ty) => {
             stack.push(ty);
         }
         ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {

@@ -1302,6 +1302,7 @@ bitflags! {
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
         const IS_UNION            = 1 << 6,
+        const IS_BOX              = 1 << 7,
     }
 }
 
@@ -1375,6 +1376,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
+        }
+        if Some(did) == tcx.lang_items.owned_box() {
+            flags = flags | AdtFlags::IS_BOX;
         }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
@@ -1466,6 +1470,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
         self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
+    }
+
+    /// Returns true if this is Box<T>.
+    #[inline]
+    pub fn is_box(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_BOX)
     }
 
     /// Returns whether this type has a destructor.
@@ -1641,7 +1651,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyClosure(..) | TyNever => {
                 vec![]
             }

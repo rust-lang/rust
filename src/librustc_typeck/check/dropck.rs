@@ -448,7 +448,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
             Ok(())
         }
 
-        ty::TyBox(ity) | ty::TyArray(ity, _) | ty::TySlice(ity) => {
+        ty::TyArray(ity, _) | ty::TySlice(ity) => {
             // single-element containers, behave like their element
             iterate_over_potentially_unsafe_regions_in_type(
                 cx, context, ity, depth+1)

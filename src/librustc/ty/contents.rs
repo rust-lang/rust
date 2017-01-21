@@ -191,10 +191,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     TC::None
                 }
 
-                ty::TyBox(typ) => {
-                    tc_ty(tcx, typ, cache).owned_pointer()
-                }
-
                 ty::TyDynamic(..) => {
                     TC::All - TC::InteriorParam
                 }
@@ -225,6 +221,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 ty::TyTuple(ref tys) => {
                     TypeContents::union(&tys[..],
                                         |ty| tc_ty(tcx, *ty, cache))
+                }
+
+                ty::TyAdt(def, _) if def.is_box() => {
+                    tc_ty(tcx, ty.boxed_ty(), cache).owned_pointer()
                 }
 
                 ty::TyAdt(def, substs) => {

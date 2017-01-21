@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                tstr);
                 }
             }
-            ty::TyBox(..) => {
+            ty::TyAdt(def, ..) if def.is_box() => {
                 match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
                     Ok(s) => {
                         err.span_suggestion(self.cast_span,

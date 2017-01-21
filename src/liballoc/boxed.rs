@@ -103,6 +103,7 @@ pub struct ExchangeHeapSingleton {
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
+#[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized>(Unique<T>);
 

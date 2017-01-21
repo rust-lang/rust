@@ -19,6 +19,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
+use middle::lang_items;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
@@ -1088,7 +1089,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            TyAdt, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
             TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
@@ -1336,7 +1337,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyBox(ty))
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        let adt_def = self.lookup_adt_def(def_id);
+        let substs = self.mk_substs(iter::once(Kind::from(ty)));
+        self.mk_ty(TyAdt(adt_def, substs))
     }
 
     pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
