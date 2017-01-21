@@ -138,7 +138,7 @@ impl FlagComputation {
                 self.add_region(r);
             }
 
-            &ty::TyBox(tt) | &ty::TyArray(tt, _) | &ty::TySlice(tt) => {
+            &ty::TyArray(tt, _) | &ty::TySlice(tt) => {
                 self.add_ty(tt)
             }
 

@@ -815,9 +815,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 self.type_must_outlive(infer::RelateObjectBound(cast_expr.span), from_ty, r);
             }
 
-            /*From:*/ (&ty::TyBox(from_referent_ty),
-            /*To:  */  &ty::TyBox(to_referent_ty)) => {
-                self.walk_cast(cast_expr, from_referent_ty, to_referent_ty);
+            /*From:*/ (&ty::TyAdt(from_def, _),
+            /*To:  */  &ty::TyAdt(to_def, _)) if from_def.is_box() && to_def.is_box() => {
+                self.walk_cast(cast_expr, from_ty.boxed_ty(), to_ty.boxed_ty());
             }
 
             _ => { }

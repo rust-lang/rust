@@ -51,6 +51,5 @@ fn main() {
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
     //~| expected type `T`
-    //~| found type `Box<_>`
-    //~| expected trait T, found box
+    //~| found type `std::boxed::Box<_>`
 }

@@ -329,7 +329,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::TyBox(typ) |
             ty::TyArray(typ, _) |
             ty::TySlice(typ) => {
                 self.add_constraints_from_ty(generics, typ, variance);

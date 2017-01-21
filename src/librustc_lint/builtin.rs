@@ -95,7 +95,7 @@ pub struct BoxPointers;
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &LateContext, span: Span, ty: Ty) {
         for leaf_ty in ty.walk() {
-            if let ty::TyBox(_) = leaf_ty.sty {
+            if leaf_ty.is_box() {
                 let m = format!("type uses owned (Box type) pointers: {}", ty);
                 cx.span_lint(BOX_POINTERS, span, &m);
             }

@@ -580,9 +580,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let arg_ty = match args[0].ty(mir, self.tcx()).sty {
+        let ty = args[0].ty(mir, self.tcx());
+        let arg_ty = match ty.sty {
             ty::TyRawPtr(mt) => mt.ty,
-            ty::TyBox(ty) => ty,
+            ty::TyAdt(def, _) if def.is_box() => ty.boxed_ty(),
             _ => {
                 span_mirbug!(self, term, "box_free called with bad arg ty");
                 return;

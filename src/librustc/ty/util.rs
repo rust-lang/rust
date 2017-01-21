@@ -481,7 +481,6 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyBool |
             TyChar |
             TyStr |
-            TyBox(_) |
             TySlice(_) => {}
 
             TyError |
@@ -563,7 +562,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 mutbl: hir::MutImmutable, ..
             }) => Some(false),
 
-            TyStr | TyBox(..) | TyRef(_, TypeAndMut {
+            TyStr | TyRef(_, TypeAndMut {
                 mutbl: hir::MutMutable, ..
             }) => Some(true),
 
@@ -606,7 +605,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) | TyNever => Some(true),
 
             TyStr | TyDynamic(..) | TySlice(_) => Some(false),

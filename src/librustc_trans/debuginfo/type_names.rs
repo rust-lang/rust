@@ -60,11 +60,6 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             output.push(')');
         },
-        ty::TyBox(inner_type) => {
-            output.push_str("Box<");
-            push_debuginfo_type_name(cx, inner_type, true, output);
-            output.push('>');
-        },
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
             output.push('*');
             match mutbl {

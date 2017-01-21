@@ -670,16 +670,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
         };
 
-        let substs = self.ast_path_substs_for_ty(span,
-                                                 did,
-                                                 item_segment);
-
-        // FIXME(#12938): This is a hack until we have full support for DST.
-        if Some(did) == self.tcx().lang_items.owned_box() {
-            assert_eq!(substs.types().count(), 1);
-            return self.tcx().mk_box(substs.type_at(0));
-        }
-
+        let substs = self.ast_path_substs_for_ty(span, did, item_segment);
         decl_ty.subst(self.tcx(), substs)
     }
 
@@ -1674,7 +1665,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
         fn count_modifiers(ty: Ty) -> usize {
             match ty.sty {
                 ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
-                ty::TyBox(t) => count_modifiers(t) + 1,
+                ty::TyAdt(def, _) if def.is_box() => count_modifiers(ty.boxed_ty()) + 1,
                 _ => 0,
             }
         }
@@ -1687,7 +1678,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
         } else {
             match self_arg_ty.sty {
                 ty::TyRef(r, mt) => ExplicitSelf::ByReference(r, mt.mutbl),
-                ty::TyBox(_) => ExplicitSelf::ByBox,
+                ty::TyAdt(def, _) if def.is_box() => ExplicitSelf::ByBox,
                 _ => ExplicitSelf::ByValue,
             }
         }

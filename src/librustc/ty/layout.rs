@@ -1053,6 +1053,23 @@ impl<'a, 'gcx, 'tcx> Layout {
         let dl = &tcx.data_layout;
         assert!(!ty.has_infer_types());
 
+        let ptr_layout = |pointee: Ty<'gcx>| {
+            let non_zero = !ty.is_unsafe_ptr();
+            let pointee = normalize_associated_type(infcx, pointee);
+            if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
+                Ok(Scalar { value: Pointer, non_zero: non_zero })
+            } else {
+                let unsized_part = tcx.struct_tail(pointee);
+                let meta = match unsized_part.sty {
+                    ty::TySlice(_) | ty::TyStr => {
+                        Int(dl.ptr_sized_integer())
+                    }
+                    ty::TyDynamic(..) => Pointer,
+                    _ => return Err(LayoutError::Unknown(unsized_part))
+                };
+                Ok(FatPointer { metadata: meta, non_zero: non_zero })
+            }
+        };
 
         let layout = match ty.sty {
             // Basic scalars.
@@ -1082,24 +1099,12 @@ impl<'a, 'gcx, 'tcx> Layout {
             },
 
             // Potentially-fat pointers.
-            ty::TyBox(pointee) |
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                let non_zero = !ty.is_unsafe_ptr();
-                let pointee = normalize_associated_type(infcx, pointee);
-                if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
-                    Scalar { value: Pointer, non_zero: non_zero }
-                } else {
-                    let unsized_part = tcx.struct_tail(pointee);
-                    let meta = match unsized_part.sty {
-                        ty::TySlice(_) | ty::TyStr => {
-                            Int(dl.ptr_sized_integer())
-                        }
-                        ty::TyDynamic(..) => Pointer,
-                        _ => return Err(LayoutError::Unknown(unsized_part))
-                    };
-                    FatPointer { metadata: meta, non_zero: non_zero }
-                }
+                ptr_layout(pointee)?
+            }
+            ty::TyAdt(def, _) if def.is_box() => {
+                ptr_layout(ty.boxed_ty())?
             }
 
             // Arrays and slices.
@@ -1560,26 +1565,32 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
             Err(err) => err
         };
 
+        let ptr_skeleton = |pointee: Ty<'gcx>| {
+            let non_zero = !ty.is_unsafe_ptr();
+            let tail = tcx.struct_tail(pointee);
+            match tail.sty {
+                ty::TyParam(_) | ty::TyProjection(_) => {
+                    assert!(tail.has_param_types() || tail.has_self_ty());
+                    Ok(SizeSkeleton::Pointer {
+                        non_zero: non_zero,
+                        tail: tcx.erase_regions(&tail)
+                    })
+                }
+                _ => {
+                    bug!("SizeSkeleton::compute({}): layout errored ({}), yet \
+                            tail `{}` is not a type parameter or a projection",
+                            ty, err, tail)
+                }
+            }
+        };
+
         match ty.sty {
-            ty::TyBox(pointee) |
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                let non_zero = !ty.is_unsafe_ptr();
-                let tail = tcx.struct_tail(pointee);
-                match tail.sty {
-                    ty::TyParam(_) | ty::TyProjection(_) => {
-                        assert!(tail.has_param_types() || tail.has_self_ty());
-                        Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero,
-                            tail: tcx.erase_regions(&tail)
-                        })
-                    }
-                    _ => {
-                        bug!("SizeSkeleton::compute({}): layout errored ({}), yet \
-                              tail `{}` is not a type parameter or a projection",
-                             ty, err, tail)
-                    }
-                }
+                ptr_skeleton(pointee)
+            }
+            ty::TyAdt(def, _) if def.is_box() => {
+                ptr_skeleton(ty.boxed_ty())
             }
 
             ty::TyAdt(def, substs) => {

@@ -519,11 +519,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Primitive types with a stable representation.
             ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
 
-            ty::TyBox(..) => {
-                FfiUnsafe("found Rust type Box<_> in foreign module, \
-                           consider using a raw pointer instead")
-            }
-
             ty::TySlice(_) => {
                 FfiUnsafe("found Rust slice type in foreign module, \
                            consider using a raw pointer instead")

@@ -20,6 +20,5 @@ pub fn main() {
     let x: Box<Trait> = Box::new(Foo);
     let _y: &Trait = x; //~  ERROR mismatched types
                         //~| expected type `&Trait`
-                        //~| found type `Box<Trait>`
-                        //~| expected &Trait, found box
+                        //~| found type `std::boxed::Box<Trait>`
 }
