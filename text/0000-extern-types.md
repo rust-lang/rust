@@ -63,7 +63,7 @@ These can also be declared inside an `extern` block:
     }
 ```
 
-These types are FFI-safe. They are also DSTs, meaning that they implement `?Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
+These types are FFI-safe. They are also DSTs, meaning that they do not implement `Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
 
 In Rust, pointers to DSTs carry metadata about the object being pointed to.
 For strings and slices this is the length of the buffer, for trait objects this is the object's vtable.
