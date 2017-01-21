@@ -52,6 +52,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
+use lint;
 use util::nodemap::FxHashMap;
 
 struct InferredObligationsSnapshotVecDelegate<'tcx> {
@@ -455,13 +456,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             if raise_warning {
-                let sess = tcx.sess;
-                let span = obligation.cause.span;
-                let mut warn = sess.struct_span_warn(span, "code relies on type inference rules \
-                                                            which are likely to change");
-                warn.span_label(span, &"the type of this expression may change from () \
-                                        to ! in a future version of Rust");
-                warn.emit();
+                tcx.sess.add_lint(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+                                  obligation.cause.body_id,
+                                  obligation.cause.span,
+                                  format!("code relies on type inference rules which are likely \
+                                           to change"));
             }
         }
         Ok(ret)
