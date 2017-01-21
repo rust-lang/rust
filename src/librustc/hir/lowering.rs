@@ -1869,20 +1869,21 @@ impl<'a> LoweringContext<'a> {
                     };
                     let attrs = vec![attr];
 
-                    // Ok(val) => { #[allow(unreachable_code)] val }
+                    // Ok(val) => #[allow(unreachable_code)] val,
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
                         let val_pat = self.pat_ident(e.span, val_ident);
                         let val_expr = P(self.expr_ident_with_attrs(e.span,
                                                                     val_ident,
                                                                     val_pat.id,
-                                                                    From::from(attrs.clone())));
+                                                                    ThinVec::from(attrs.clone())));
                         let ok_pat = self.pat_ok(e.span, val_pat);
 
                         self.arm(hir_vec![ok_pat], val_expr)
                     };
 
-                    // Err(err) => return Carrier::from_error(From::from(err))
+                    // Err(err) => #[allow(unreachable_code)]
+                    //             return Carrier::from_error(From::from(err)),
                     let err_arm = {
                         let err_ident = self.str_to_ident("err");
                         let err_local = self.pat_ident(e.span, err_ident);
@@ -1902,7 +1903,7 @@ impl<'a> LoweringContext<'a> {
 
                         let ret_expr = P(self.expr(e.span,
                                                    hir::Expr_::ExprRet(Some(from_err_expr)),
-                                                                       From::from(attrs)));
+                                                                       ThinVec::from(attrs)));
 
                         let err_pat = self.pat_err(e.span, err_local);
                         self.arm(hir_vec![err_pat], ret_expr)
