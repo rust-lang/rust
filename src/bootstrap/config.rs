@@ -90,6 +90,7 @@ pub struct Config {
     pub prefix: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
+    pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
@@ -476,6 +477,9 @@ impl Config {
                 }
                 "CFG_LIBDIR" => {
                     self.libdir = Some(PathBuf::from(value));
+                }
+                "CFG_LIBDIR_RELATIVE" => {
+                    self.libdir_relative = Some(PathBuf::from(value));
                 }
                 "CFG_MANDIR" => {
                     self.mandir = Some(PathBuf::from(value));

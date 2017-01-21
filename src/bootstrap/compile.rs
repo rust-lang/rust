@@ -194,8 +194,14 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     cargo.env("CFG_RELEASE", &build.release)
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", &build.version)
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()))
-         .env("CFG_LIBDIR_RELATIVE", "lib");
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
+
+    if compiler.stage == 0 {
+        cargo.env("CFG_LIBDIR_RELATIVE", "lib");
+    } else {
+        let libdir_relative = build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
+        cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
+    }
 
     // If we're not building a compiler with debugging information then remove
     // these two env vars which would be set otherwise.
