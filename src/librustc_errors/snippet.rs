@@ -151,6 +151,15 @@ impl Annotation {
         }
     }
 
+    /// Wether this annotation is a vertical line placeholder.
+    pub fn is_line(&self) -> bool {
+        if let AnnotationType::MultilineLine(_) = self.annotation_type {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn is_multiline(&self) -> bool {
         match self.annotation_type {
             AnnotationType::Multiline(_) |
@@ -161,6 +170,32 @@ impl Annotation {
         }
     }
 
+    pub fn len(&self) -> usize {
+        // Account for usize underflows
+        if self.end_col > self.start_col {
+            self.end_col - self.start_col
+        } else {
+            self.start_col - self.end_col
+        }
+    }
+
+    pub fn has_label(&self) -> bool {
+        if let Some(ref label) = self.label {
+            // Consider labels with no text as effectively not being there
+            // to avoid weird output with unnecessary vertical lines, like:
+            //
+            //     X | fn foo(x: u32) {
+            //       | -------^------
+            //       | |      |
+            //       | |
+            //       |
+            //
+            // Note that this would be the complete output users would see.
+            label.len() > 0
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug)]
