@@ -576,7 +576,7 @@ pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: &[(Spa
 
     let sub = rustc_errors::SubDiagnostic {
         level: rustc_errors::Level::Help,
-        message: help_msg,
+        message: vec![(help_msg, rustc_errors::snippet::Style::LabelPrimary)],
         span: MultiSpan::new(),
         render_span: Some(sugg),
     };
