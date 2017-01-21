@@ -91,7 +91,8 @@ The exact mechanism is more the domain of the custom DST RFC, [RFC 1524](https:/
 
 C's "pointer `void`" (not `()`, but the `void` used in `void*` and similar) is currently defined in two official places: [`std::os::raw::c_void`](https://doc.rust-lang.org/stable/std/os/raw/enum.c_void.html) and [`libc::c_void`](https://doc.rust-lang.org/libc/x86_64-unknown-linux-gnu/libc/enum.c_void.html).
 Unifying these is out of scope for this RFC, but this feature should be used in their definition instead of the current tricks.
-Strictly speaking, this is breaking change, but the `std` docs explicitly say this shouldn't be used without indirection, and `libc` worse-case can make a breaking release.
+Strictly speaking, this is a breaking change, but the `std` docs explicitly say that `void` shouldn't be used without indirection.
+And `libc` can, in the worst-case, make a breaking change.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
