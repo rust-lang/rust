@@ -39,6 +39,9 @@ None of this is of course valid.
 
 This RFC instead proposes a way to directly express that a type exists but is unknown to Rust.
 
+Finally, In the 2017 roadmap, [integration with other languages](https://github.com/rust-lang/rfcs/blob/master/text/1774-roadmap-2017.md#integration-with-other-languages), is listed as a priority.
+Just like unions, this is an unsafe feature necessary for dealing with legacy code in a correct and understandable manner.
+
 # Detailed design
 [design]: #detailed-design
 
