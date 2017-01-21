@@ -12,7 +12,8 @@
 //
 /// The boolean type.
 ///
-/// The `bool` represents a value, which could only be either `true` or `false`.
+/// The `bool` represents a value, which could only be either `true` or `false`. If you cast
+/// a `bool` into an integer, `true` will be 1 and `false` will be 0.
 ///
 /// # Basic usage
 ///
@@ -56,6 +57,13 @@
 ///
 /// Also, since `bool` implements the [`Copy`](marker/trait.Copy.html) trait, we don't
 /// have to worry about the move semantics (just like the integer and float primitives).
+///
+/// Now an example of `bool` cast to integer type:
+///
+/// ```
+/// assert_eq!(true as i32, 1);
+/// assert_eq!(false as i32, 0);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_bool { }
 
