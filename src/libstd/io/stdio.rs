@@ -694,6 +694,42 @@ pub fn _print(args: fmt::Arguments) {
     }
 }
 
+#[unstable(feature = "eprint_internal",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+pub fn _eprint(args: fmt::Arguments) {
+    // As an implementation of the `eprintln!` macro, we want to try our best to
+    // not panic wherever possible and get the output somewhere. There are
+    // currently two possible vectors for panics we take care of here:
+    //
+    // 1. If the TLS key for the local stderr has been destroyed, accessing it
+    //    would cause a panic. Note that we just lump in the uninitialized case
+    //    here for convenience, we're not trying to avoid a panic.
+    // 2. If the local stderr is currently in use (e.g. we're in the middle of
+    //    already printing) then accessing again would cause a panic.
+    //
+    // If, however, the actual I/O causes an error, we do indeed panic.
+    use panicking::LOCAL_STDERR;
+    let result = match LOCAL_STDERR.state() {
+        LocalKeyState::Uninitialized |
+        LocalKeyState::Destroyed => stderr().write_fmt(args),
+        LocalKeyState::Valid => {
+            LOCAL_STDERR.with(|s| {
+                if let Ok(mut borrowed) = s.try_borrow_mut() {
+                    if let Some(w) = borrowed.as_mut() {
+                        return w.write_fmt(args);
+                    }
+                }
+                stderr().write_fmt(args)
+            })
+        }
+    };
+    if let Err(e) = result {
+        panic!("failed printing to stderr: {}", e);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use thread;
