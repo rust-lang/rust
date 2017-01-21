@@ -10,8 +10,11 @@
 
 // ignore-emscripten
 
+#![feature(command_envs)]
+
 use std::process::Command;
 use std::env;
+use std::collections::HashMap;
 
 #[cfg(all(unix, not(target_os="android")))]
 pub fn env_cmd() -> Command {
@@ -38,7 +41,7 @@ fn main() {
     env::set_var("RUN_TEST_NEW_ENV", "123");
 
     // create filtered environment vector
-    let filtered_env : Vec<(String, String)> =
+    let filtered_env : HashMap<String, String> =
         env::vars().filter(|&(ref k, _)| k == "PATH").collect();
 
     let mut cmd = env_cmd();
