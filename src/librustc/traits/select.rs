@@ -425,9 +425,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // Test whether this is a `()` which was produced by defaulting a
         // diverging type variable with `!` disabled. If so, we may need
         // to raise a warning.
-        if let ty::TyTuple(_, true) = obligation.predicate.skip_binder()
-                                                          .self_ty().sty {
-
+        if obligation.predicate.skip_binder().self_ty().is_defaulted_unit() {
             let mut raise_warning = true;
             // Don't raise a warning if the trait is implemented for ! and only
             // permits a trivial implementation for !. This stops us warning
