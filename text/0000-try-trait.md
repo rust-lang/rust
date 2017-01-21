@@ -294,12 +294,44 @@ and figure out the set of legal return types for the function to
 have. So if the code is invoking `foo.write()?` (i.e., applying `?` to
 an `io::Result`), then we could offer a suggestion like "consider
 changing the return type to `Result<(), io::Error>`" or perhaps just
-"consider changing the return type to a `Result"`. Note however that
-if `?` is used within an impl of a trait method, or within `main()`,
-or in some other context where the user is not free to change the type
-signature, then we should make this suggestion. In the case of an impl
-of a trait defined in the current crate, we could consider suggesting
-that the user change the definition of the trait.
+"consider changing the return type to a `Result"`.
+
+Note however that if `?` is used within an impl of a trait method, or
+within `main()`, or in some other context where the user is not free
+to change the type signature, then we should not make this
+suggestion. In the case of an impl of a trait defined in the current
+crate, we could consider suggesting that the user change the
+definition of the trait.
+
+Especially in contexts where the return type cannot be changed, but
+possibly in other contexts as well, it would make sense to advise the
+user about how they can catch an error instead, if they chose. Once
+`catch` is implemented, this could be as simple as saying "consider
+introducing a `catch`, or changing the return type to ...". In the
+absence of `catch`, we would have to suggest the introduction of a
+`match` block.
+
+In the extended error message, for those cases where the return type
+cannot easily be changed, we might consider suggesting that the
+fallible portion of the code is refactored into a helper function, thus
+roughly following this pattern:
+
+```rust
+fn inner_main() -> Result<(), HLError> {
+    let args = parse_cmdline()?;
+    // all the real work here
+}
+
+fn main() {
+    process::exit(match inner_main() {
+        Ok(_) => 0,
+        Err(ref e) => {
+            writeln!(io::stderr(), "{}", e).unwrap();
+            1
+        }
+    });
+}
+```
 
 On an implementation note, it would probably be helpful for improving
 the error message if `?` were not desugared when lowering from AST to
