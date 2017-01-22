@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-more_struct_aliases
+
 struct S;
 
 trait Tr {
