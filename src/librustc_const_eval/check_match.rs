@@ -308,14 +308,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 .emit();
                         },
 
-                        hir::MatchSource::ForLoopDesugar => {
-                            // this is a bug, because on `match iter.next()` we cover
-                            // `Some(<head>)` and `None`. It's impossible to have an unreachable
-                            // pattern
-                            // (see libsyntax/ext/expand.rs for the full expansion of a for loop)
-                            span_bug!(pat.span, "unreachable for-loop pattern")
-                        },
-
+                        hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
                             let mut diagnostic = Diagnostic::new(Level::Warning,
                                                                  "unreachable pattern");
@@ -329,9 +322,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                                             hir_pat.id, diagnostic);
                         },
 
-                        hir::MatchSource::TryDesugar => {
-                            span_bug!(pat.span, "unreachable try pattern")
-                        },
+                        // Unreachable patterns in try expressions occur when one of the arms
+                        // are an uninhabited type. Which is OK.
+                        hir::MatchSource::TryDesugar => {}
                     }
                 }
                 Useful => (),
