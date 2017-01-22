@@ -3038,6 +3038,42 @@ impl Foo for Bar {
 ```
 "##,
 
+E0328: r##"
+The Unsize trait should not be implemented directly. All implementations of
+Unsize are provided automatically by the compiler.
+
+Erroneous code example:
+
+```compile_fail,E0328
+#![feature(unsize)]
+
+use std::marker::Unsize;
+
+pub struct MyType;
+
+impl<T> Unsize<T> for MyType {}
+```
+
+If you are defining your own smart pointer type and would like to enable
+conversion from a sized to an unsized type with the [DST coercion system]
+(https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md), use
+[`CoerceUnsized`](https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html)
+instead.
+
+```
+#![feature(coerce_unsized)]
+
+use std::ops::CoerceUnsized;
+
+pub struct MyType<T: ?Sized> {
+    field_with_unsized_type: T,
+}
+
+impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
+    where T: CoerceUnsized<U> {}
+```
+"##,
+
 E0329: r##"
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
@@ -4147,7 +4183,6 @@ register_diagnostics! {
 //  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
-    E0328, // cannot implement Unsize explicitly
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
