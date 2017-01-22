@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{span_lint, snippet};
+use utils::{span_lint_and_then, snippet};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -36,41 +36,39 @@ impl LintPass for Precedence {
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
+            let span_sugg =
+                |expr: &Expr, sugg| {
+                    span_lint_and_then(cx, PRECEDENCE, expr.span, "operator precedence can trip the unwary", |db| {
+                        db.span_suggestion(expr.span, "consider parenthesizing your expression", sugg);
+                    });
+                };
+
             if !is_bit_op(op) {
                 return;
             }
             match (is_arith_expr(left), is_arith_expr(right)) {
                 (true, true) => {
-                    span_lint(cx,
-                              PRECEDENCE,
-                              expr.span,
-                              &format!("operator precedence can trip the unwary. Consider parenthesizing your \
-                                        expression:`({}) {} ({})`",
+                    let sugg = format!("({}) {} ({})",
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
-                                       snippet(cx, right.span, "..")));
+                                       snippet(cx, right.span, ".."));
+                    span_sugg(expr, sugg);
                 },
                 (true, false) => {
-                    span_lint(cx,
-                              PRECEDENCE,
-                              expr.span,
-                              &format!("operator precedence can trip the unwary. Consider parenthesizing your \
-                                        expression:`({}) {} {}`",
+                    let sugg = format!("({}) {} {}",
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
-                                       snippet(cx, right.span, "..")));
+                                       snippet(cx, right.span, ".."));
+                    span_sugg(expr, sugg);
                 },
                 (false, true) => {
-                    span_lint(cx,
-                              PRECEDENCE,
-                              expr.span,
-                              &format!("operator precedence can trip the unwary. Consider parenthesizing your \
-                                        expression:`{} {} ({})`",
+                    let sugg = format!("{} {} ({})",
                                        snippet(cx, left.span, ".."),
                                        op.to_string(),
-                                       snippet(cx, right.span, "..")));
+                                       snippet(cx, right.span, ".."));
+                    span_sugg(expr, sugg);
                 },
-                _ => (),
+                (false, false) => (),
             }
         }
 
@@ -82,12 +80,15 @@ impl EarlyLintPass for Precedence {
                             LitKind::Int(..) |
                             LitKind::Float(..) |
                             LitKind::FloatUnsuffixed(..) => {
-                                span_lint(cx,
-                                          PRECEDENCE,
-                                          expr.span,
-                                          &format!("unary minus has lower precedence than method call. Consider \
-                                                    adding parentheses to clarify your intent: -({})",
-                                                   snippet(cx, rhs.span, "..")));
+                                span_lint_and_then(cx,
+                                                   PRECEDENCE,
+                                                   expr.span,
+                                                   "unary minus has lower precedence than method call",
+                                                   |db| {
+                                    db.span_suggestion(expr.span,
+                                                       "consider adding parentheses to clarify your intent",
+                                                       format!("-({})", snippet(cx, rhs.span, "..")));
+                                });
                             },
                             _ => (),
                         }
