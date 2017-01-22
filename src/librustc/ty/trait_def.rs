@@ -26,7 +26,7 @@ pub struct TraitDef {
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
-    /// sugar. This is a temporary thing -- eventually any trait wil
+    /// sugar. This is a temporary thing -- eventually any trait will
     /// be usable with the sugar (or without it).
     pub paren_sugar: bool,
 
