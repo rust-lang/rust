@@ -904,7 +904,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 /// should continue, returns a getopts::Matches object parsed from args,
 /// otherwise returns None.
 ///
-/// The compiler's handling of options is a little complication as it ties into
+/// The compiler's handling of options is a little complicated as it ties into
 /// our stability story, and it's even *more* complicated by historical
 /// accidents. The current intention of each compiler option is to have one of
 /// three modes:
