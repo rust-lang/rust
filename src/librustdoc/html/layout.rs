@@ -72,7 +72,9 @@ r##"<!DOCTYPE html>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">
-                <input class="search-input" name="search"
+                <input class="search-input"
+                       name="search"
+                       aria-label="Search"
                        autocomplete="off"
                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
                        type="search">
