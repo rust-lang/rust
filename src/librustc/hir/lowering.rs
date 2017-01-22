@@ -51,6 +51,7 @@ use util::nodemap::{NodeMap, FxHashMap};
 use std::collections::BTreeMap;
 use std::iter;
 
+use syntax::attr;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ptr::P;
@@ -1831,8 +1832,9 @@ impl<'a> LoweringContext<'a> {
                     // to:
                     //
                     // match Carrier::translate(<expr>) {
-                    //     Ok(val) => val,
-                    //     Err(err) => return Carrier::from_error(From::from(err))
+                    //     Ok(val) => #[allow(unreachable_code)] val,
+                    //     Err(err) => #[allow(unreachable_code)]
+                    //                 return Carrier::from_error(From::from(err)),
                     // }
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
@@ -1846,17 +1848,36 @@ impl<'a> LoweringContext<'a> {
                         P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                     };
 
-                    // Ok(val) => val
+                    // #[allow(unreachable_code)]
+                    let attr = {
+                        // allow(unreachable_code)
+                        let allow = {
+                            let allow_ident = self.str_to_ident("allow");
+                            let uc_ident = self.str_to_ident("unreachable_code");
+                            let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
+                            let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
+                            let uc_spanned = respan(e.span, uc_nested);
+                            attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                        };
+                        attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                    };
+                    let attrs = vec![attr];
+
+                    // Ok(val) => #[allow(unreachable_code)] val,
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
                         let val_pat = self.pat_ident(e.span, val_ident);
-                        let val_expr = P(self.expr_ident(e.span, val_ident, val_pat.id));
+                        let val_expr = P(self.expr_ident_with_attrs(e.span,
+                                                                    val_ident,
+                                                                    val_pat.id,
+                                                                    ThinVec::from(attrs.clone())));
                         let ok_pat = self.pat_ok(e.span, val_pat);
 
                         self.arm(hir_vec![ok_pat], val_expr)
                     };
 
-                    // Err(err) => return Carrier::from_error(From::from(err))
+                    // Err(err) => #[allow(unreachable_code)]
+                    //             return Carrier::from_error(From::from(err)),
                     let err_arm = {
                         let err_ident = self.str_to_ident("err");
                         let err_local = self.pat_ident(e.span, err_ident);
@@ -1876,7 +1897,7 @@ impl<'a> LoweringContext<'a> {
 
                         let ret_expr = P(self.expr(e.span,
                                                    hir::Expr_::ExprRet(Some(from_err_expr)),
-                                                                       ThinVec::new()));
+                                                                       ThinVec::from(attrs)));
 
                         let err_pat = self.pat_err(e.span, err_local);
                         self.arm(hir_vec![err_pat], ret_expr)
@@ -2028,6 +2049,13 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_ident(&mut self, span: Span, id: Name, binding: NodeId) -> hir::Expr {
+        self.expr_ident_with_attrs(span, id, binding, ThinVec::new())
+    }
+
+    fn expr_ident_with_attrs(&mut self, span: Span,
+                                        id: Name,
+                                        binding: NodeId,
+                                        attrs: ThinVec<Attribute>) -> hir::Expr {
         let def = {
             let defs = self.resolver.definitions();
             Def::Local(defs.local_def_id(binding))
@@ -2039,7 +2067,7 @@ impl<'a> LoweringContext<'a> {
             segments: hir_vec![hir::PathSegment::from_name(id)],
         })));
 
-        self.expr(span, expr_path, ThinVec::new())
+        self.expr(span, expr_path, attrs)
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
