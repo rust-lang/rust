@@ -377,6 +377,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_highlight"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "syntax 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
 name = "rustc_i128"
 version = "0.0.0"
 
@@ -572,6 +581,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_highlight 0.0.0",
  "rustc_lint 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_resolve 0.0.0",

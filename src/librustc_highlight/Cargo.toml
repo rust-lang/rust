@@ -1,0 +1,14 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_highlight"
+version = "0.0.0"
+
+[lib]
+name = "rustc_highlight"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+log = { path = "../liblog" }

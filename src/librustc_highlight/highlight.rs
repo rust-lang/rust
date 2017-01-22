@@ -1,4 +1,4 @@
-// Copyright 2014-2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -20,7 +20,7 @@
 //! other then HTML), then you should implement the `Writer` trait and use a
 //! `Classifier`.
 
-use html::escape::Escape;
+use escape::Escape;
 
 use std::fmt::Display;
 use std::io;
