@@ -31,16 +31,20 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// * In Rust, strings are always valid UTF-8, but may contain zeros.
 ///
-/// `OsString` and `OsStr` bridge this gap by simultaneously representing Rust
+/// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost.
+///
+/// [`OsStr`]: struct.OsStr.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf
 }
 
-/// Slices into OS strings (see `OsString`).
+/// Slices into OS strings (see [`OsString`]).
+///
+/// [`OsString`]: struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
     inner: Slice
@@ -61,7 +65,9 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
-    /// Converts to an `OsStr` slice.
+    /// Converts to an [`OsStr`] slice.
+    ///
+    /// [`OsStr`]: struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -77,9 +83,11 @@ impl OsString {
         self
     }
 
-    /// Converts the `OsString` into a `String` if it contains valid Unicode data.
+    /// Converts the `OsString` into a [`String`] if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `OsString` is returned.
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
     ///
     /// # Examples
     ///
@@ -95,7 +103,9 @@ impl OsString {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
     }
 
-    /// Extends the string with the given `&OsStr` slice.
+    /// Extends the string with the given [`&OsStr`] slice.
+    ///
+    /// [`&OsStr`]: struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -329,9 +339,11 @@ impl OsStr {
         unsafe { mem::transmute(inner) }
     }
 
-    /// Yields a `&str` slice if the `OsStr` is valid Unicode.
+    /// Yields a [`&str`] slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    ///
+    /// [`&str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -346,9 +358,12 @@ impl OsStr {
         self.inner.to_str()
     }
 
-    /// Converts an `OsStr` to a `Cow<str>`.
+    /// Converts an `OsStr` to a [`Cow`]`<`[`str`]`>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// [`Cow`]: ../../std/borrow/enum.Cow.html
+    /// [`str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -368,7 +383,9 @@ impl OsStr {
         self.inner.to_string_lossy()
     }
 
-    /// Copies the slice into an owned `OsString`.
+    /// Copies the slice into an owned [`OsString`].
+    ///
+    /// [`OsString`]: struct.OsString.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
@@ -397,9 +414,11 @@ impl OsStr {
     /// Note that this does **not** return the number of bytes in this string
     /// as, for example, OS strings on Windows are encoded as a list of `u16`
     /// rather than a list of bytes. This number is simply useful for passing to
-    /// other methods like `OsString::with_capacity` to avoid reallocations.
+    /// other methods like [`OsString::with_capacity`] to avoid reallocations.
     ///
     /// See `OsStr` introduction for more information about encoding.
+    ///
+    /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
     ///
     /// # Examples
     ///
