@@ -214,13 +214,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc_macro_tokens"
-version = "0.0.0"
-dependencies = [
- "syntax 0.0.0",
-]
-
-[[package]]
 name = "rand"
 version = "0.0.0"
 dependencies = [
