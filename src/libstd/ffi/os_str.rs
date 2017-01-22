@@ -48,12 +48,30 @@ pub struct OsStr {
 
 impl OsString {
     /// Constructs a new empty `OsString`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let os_string = OsString::new();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
     /// Converts to an `OsStr` slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{OsString, OsStr};
+    ///
+    /// let os_string = OsString::from("foo");
+    /// let os_str = OsStr::new("foo");
+    /// assert_eq!(os_string.as_os_str(), os_str);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {
         self
@@ -62,12 +80,32 @@ impl OsString {
     /// Converts the `OsString` into a `String` if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `OsString` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let os_string = OsString::from("foo");
+    /// let string = os_string.into_string();
+    /// assert_eq!(string, Ok(String::from("foo")));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
     }
 
     /// Extends the string with the given `&OsStr` slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::from("foo");
+    /// os_string.push("bar");
+    /// assert_eq!(&os_string, "foobar");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
@@ -80,6 +118,20 @@ impl OsString {
     /// allocate.
     ///
     /// See main `OsString` documentation information about encoding.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::with_capacity(10);
+    /// let capacity = os_string.capacity();
+    ///
+    /// // This push is done without reallocating
+    /// os_string.push("foo");
+    ///
+    /// assert_eq!(capacity, os_string.capacity());
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn with_capacity(capacity: usize) -> OsString {
         OsString {
@@ -88,6 +140,18 @@ impl OsString {
     }
 
     /// Truncates the `OsString` to zero length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::from("foo");
+    /// assert_eq!(&os_string, "foo");
+    ///
+    /// os_string.clear();
+    /// assert_eq!(&os_string, "");
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn clear(&mut self) {
         self.inner.clear()
@@ -96,6 +160,15 @@ impl OsString {
     /// Returns the capacity this `OsString` can hold without reallocating.
     ///
     /// See `OsString` introduction for information about encoding.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::with_capacity(10);
+    /// assert!(os_string.capacity() >= 10);
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
