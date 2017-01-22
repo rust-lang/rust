@@ -249,6 +249,8 @@ impl<'a> Resolver<'a> {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id).unwrap();
                 let module = self.get_extern_crate_root(crate_id);
+                self.populate_module_if_necessary(module);
+                let used = self.process_legacy_macro_imports(item, module, expansion);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
@@ -260,11 +262,11 @@ impl<'a> Resolver<'a> {
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
                     expansion: expansion,
+                    used: Cell::new(used),
                 });
+                self.potentially_unused_imports.push(directive);
                 let imported_binding = self.import(binding, directive);
                 self.define(parent, ident, TypeNS, imported_binding);
-                self.populate_module_if_necessary(module);
-                self.process_legacy_macro_imports(item, module, expansion);
             }
 
             ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
@@ -522,7 +524,6 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        self.used_crates.insert(binding.def().def_id().krate);
         self.macro_names.insert(name);
         if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
@@ -532,43 +533,61 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>, expansion: Mark) {
+    // This returns true if we should consider the underlying `extern crate` to be used.
+    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>, expansion: Mark)
+                                    -> bool {
         let allow_shadowing = expansion == Mark::root();
         let legacy_imports = self.legacy_macro_imports(&item.attrs);
-        let cnum = module.def_id().unwrap().krate;
+        let mut used = legacy_imports != LegacyMacroImports::default();
 
         // `#[macro_use]` and `#[macro_reexport]` are only allowed at the crate root.
-        if self.current_module.parent.is_some() && legacy_imports != LegacyMacroImports::default() {
+        if self.current_module.parent.is_some() && used {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
-        } else if !self.use_extern_macros &&
-                  self.session.cstore.dep_kind(cnum).macros_only() &&
-                  legacy_imports == LegacyMacroImports::default() {
+        } else if !self.use_extern_macros && !used &&
+                  self.session.cstore.dep_kind(module.def_id().unwrap().krate).macros_only() {
             let msg = "custom derive crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
             self.session.span_warn(item.span, msg);
-            self.used_crates.insert(cnum); // Avoid the normal unused extern crate warning
+            used = true; // Avoid the normal unused extern crate warning
         }
 
+        let (graph_root, arenas) = (self.graph_root, self.arenas);
+        let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+            id: item.id,
+            parent: graph_root,
+            imported_module: Cell::new(Some(module)),
+            subclass: ImportDirectiveSubclass::MacroUse,
+            span: span,
+            module_path: Vec::new(),
+            vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
+            expansion: expansion,
+            used: Cell::new(false),
+        });
+
         if let Some(span) = legacy_imports.import_all {
+            let directive = macro_use_directive(span);
+            self.potentially_unused_imports.push(directive);
             module.for_each_child(|ident, ns, binding| if ns == MacroNS {
-                self.legacy_import_macro(ident.name, binding, span, allow_shadowing);
+                let imported_binding = self.import(binding, directive);
+                self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
                 let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
                 if let Ok(binding) = result {
-                    self.legacy_import_macro(name, binding, span, allow_shadowing);
+                    let directive = macro_use_directive(span);
+                    self.potentially_unused_imports.push(directive);
+                    let imported_binding = self.import(binding, directive);
+                    self.legacy_import_macro(name, imported_binding, span, allow_shadowing);
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
                 }
             }
         }
         for (name, span) in legacy_imports.reexports {
-            let krate = module.def_id().unwrap().krate;
-            self.used_crates.insert(krate);
-            self.session.cstore.export_macros(krate);
+            self.session.cstore.export_macros(module.def_id().unwrap().krate);
             let ident = Ident::with_empty_ctxt(name);
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
             if let Ok(binding) = result {
@@ -577,6 +596,7 @@ impl<'a> Resolver<'a> {
                 span_err!(self.session, span, E0470, "reexported macro not found");
             }
         }
+        used
     }
 
     // does this attribute list contain "macro_use"?

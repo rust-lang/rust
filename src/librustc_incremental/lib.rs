@@ -30,10 +30,8 @@ extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
-
-extern crate rustc_i128;
 
 const ATTR_DIRTY: &'static str = "rustc_dirty";
 const ATTR_CLEAN: &'static str = "rustc_clean";

@@ -26,7 +26,6 @@
 #![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
@@ -39,11 +38,9 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![cfg_attr(test, feature(test))]
 
 extern crate arena;
 extern crate core;
-extern crate flate;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
@@ -52,21 +49,17 @@ extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate serialize;
-extern crate collections;
 extern crate rustc_const_math;
 extern crate rustc_errors as errors;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-#[macro_use] extern crate syntax_pos;
+extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
 // SNAP:
 extern crate rustc_i128;
-
-#[cfg(test)]
-extern crate test;
 
 #[macro_use]
 mod macros;

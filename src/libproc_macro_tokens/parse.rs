@@ -10,8 +10,6 @@
 
 //! Parsing utilities for writing procedural macros.
 
-extern crate syntax;
-
 use syntax::parse::{ParseSess, filemap_to_tts};
 use syntax::tokenstream::TokenStream;
 

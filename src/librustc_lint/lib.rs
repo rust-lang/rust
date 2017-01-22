@@ -37,7 +37,6 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 
-#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
