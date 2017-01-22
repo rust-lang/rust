@@ -115,9 +115,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     });
 
-    super::walk(&path.join("test/compile-fail"),
-                &mut |path| super::filter_dirs(path),
-                &mut |file| {
+    super::walk_many(&[&path.join("test/compile-fail"),
+                       &path.join("test/compile-fail-fulldeps")],
+                     &mut |path| super::filter_dirs(path),
+                     &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
@@ -170,7 +171,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         "cfg_target_has_atomic", "staged_api", "const_indexing",
         "unboxed_closures", "stmt_expr_attributes",
         "cfg_target_thread_local", "unwind_attributes",
-        "inclusive_range_syntax", "proc_macro"
+        "inclusive_range_syntax"
     ];
 
     // Only check the number of lang features.
