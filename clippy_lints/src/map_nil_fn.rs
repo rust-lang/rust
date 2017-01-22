@@ -1,7 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
-use std::borrow::Cow;
+use syntax::codemap::Span;
 use utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use utils::paths;
 
@@ -72,7 +72,7 @@ fn is_nil_expression(cx: &LateContext, expr: &hir::Expr) -> bool {
 // semicolons, which causes problems when generating a suggestion. Given an
 // expression that evaluates to '()' or '!', recursively remove useless braces
 // and semi-colons until is suitable for including in the suggestion template
-fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Cow<'a, str>> {
+fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Span> {
     if !is_nil_expression(cx, expr) {
         return None;
     }
@@ -81,7 +81,7 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Co
         hir::ExprCall(_, _) |
         hir::ExprMethodCall(_, _, _) => {
             // Calls can't be reduced any more
-            Some(snippet(cx, expr.span, "_"))
+            Some(expr.span)
         },
         hir::ExprBlock(ref block) => {
             match (&block.stmts[..], block.expr.as_ref()) {
@@ -92,8 +92,8 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Co
                 (&[ref inner_stmt], None) => {
                     // Reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
-                        hir::StmtDecl(ref d, _) => Some(snippet(cx, d.span, "_")),
-                        hir::StmtExpr(ref e, _) => Some(snippet(cx, e.span, "_")),
+                        hir::StmtDecl(ref d, _) => Some(d.span),
+                        hir::StmtExpr(ref e, _) => Some(e.span),
                         hir::StmtSemi(ref e, _) => {
                             if is_nil_expression(cx, e) {
                                 // `X` returns nil so we can strip the
@@ -102,7 +102,7 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Co
                             } else {
                                 // `X` doesn't return nil so it needs a
                                 // trailing semicolon
-                                Some(snippet(cx, inner_stmt.span, "_"))
+                                Some(inner_stmt.span)
                             }
                         },
                     }
@@ -114,20 +114,16 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Co
     }
 }
 
-fn reduce_nil_closure<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'a hir::Expr
-) -> Option<(Cow<'a, str>, Cow<'a, str>)> {
+fn reduce_nil_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(Span, Span)> {
     if let hir::ExprClosure(_, ref decl, inner_expr_id, _) = expr.node {
         let body = cx.tcx.map.body(inner_expr_id);
 
         if_let_chain! {[
             decl.inputs.len() == 1,
             let Some(binding) = iter_input_pats(&decl, body).next(),
-            let Some(expr_snippet) = reduce_nil_expression(cx, &body.value),
+            let Some(expr_span) = reduce_nil_expression(cx, &body.value),
         ], {
-            let binding_snippet = snippet(cx, binding.pat.span, "_");
-            return Some((binding_snippet, expr_snippet));
+            return Some((binding.pat.span, expr_span))
         }}
     }
     None
@@ -152,12 +148,12 @@ fn lint_map_nil_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_arg
                            expr.span,
                            msg,
                            |db| { db.span_suggestion(stmt.span, "try this", suggestion); });
-    } else if let Some((binding_snippet, expr_snippet)) = reduce_nil_closure(cx, fn_arg) {
+    } else if let Some((binding_span, expr_span)) = reduce_nil_closure(cx, fn_arg) {
         let msg = "called `map(f)` on an Option value where `f` is a nil closure";
         let suggestion = format!("if let Some({0}) = {1} {{ {2} }}",
-                                 binding_snippet,
+                                 snippet(cx, binding_span, "_"),
                                  snippet(cx, var_arg.span, "_"),
-                                 expr_snippet);
+                                 snippet(cx, expr_span, "_"));
 
         span_lint_and_then(cx,
                            OPTION_MAP_NIL_FN,
