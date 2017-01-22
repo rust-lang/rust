@@ -130,7 +130,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// println!("{}", socket.local_addr().unwrap());
+    /// println!("{}", stream.local_addr().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
