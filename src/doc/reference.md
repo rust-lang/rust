@@ -659,7 +659,7 @@ thing they can be used for is to implement derive on your own types. See
 Procedural macros involve a few different parts of the language and its
 standard libraries. First is the `proc_macro` crate, included with Rust,
 that defines an interface for building a procedural macro. The
-`#[proc_macro_derive(Foo)]` attribute is used to mark the the deriving
+`#[proc_macro_derive(Foo)]` attribute is used to mark the deriving
 function. This function must have the type signature:
 
 ```rust,ignore
