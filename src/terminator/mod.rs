@@ -579,7 +579,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             traits::VtableFnPointer(vtable_fn_ptr) => {
-                if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
+                if let ty::TyFnDef(did, substs, _) = vtable_fn_ptr.fn_ty.sty {
                     args.remove(0);
                     self.unpack_fn_args(args)?;
                     Ok((did, substs, Vec::new()))
@@ -775,14 +775,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn drop_fields<
-        I: Iterator<Item=(Ty<'tcx>, ty::layout::Size)>,
-    >(
+    fn drop_fields<I>(
         &mut self,
         mut fields: I,
         lval: Lvalue<'tcx>,
         drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx, ()>
+        where I: Iterator<Item = (Ty<'tcx>, ty::layout::Size)>,
+    {
         // FIXME: some aggregates may be represented by Value::ByValPair
         let (adt_ptr, extra) = self.force_allocation(lval)?.to_ptr_and_extra();
         // manual iteration, because we need to be careful about the last field if it is unsized

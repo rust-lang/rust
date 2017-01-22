@@ -332,7 +332,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::None => {},
         }
         // deallocate all locals that are backed by an allocation
-        for local in frame.locals.into_iter() {
+        for local in frame.locals {
             if let Value::ByRef(ptr) = local {
                 trace!("deallocating local");
                 self.memory.dump_alloc(ptr.alloc_id);
@@ -1457,7 +1457,7 @@ impl IntegerExt for layout::Integer {
 
 
 pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::FieldDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-    let substituted = &f.ty(tcx, substs);
+    let substituted = f.ty(tcx, substs);
     tcx.normalize_associated_type(&substituted)
 }
 

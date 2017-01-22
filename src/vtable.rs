@@ -27,11 +27,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 traits::VtableBuiltin(_) => {
                     Vec::new().into_iter()
                 }
-                traits::VtableImpl(
-                    traits::VtableImplData {
-                        impl_def_id: id,
-                        substs,
-                        nested: _ }) => {
+
+                traits::VtableImpl(traits::VtableImplData { impl_def_id: id, substs, .. }) => {
                     self.get_vtable_methods(id, substs)
                         .into_iter()
                         .map(|opt_mth| opt_mth.map(|mth| {
@@ -46,18 +43,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         .collect::<Vec<_>>()
                         .into_iter()
                 }
+
                 traits::VtableClosure(
                     traits::VtableClosureData {
                         closure_def_id,
                         substs,
-                        nested: _ }) => {
+                        ..
+                    }
+                ) => {
                     let closure_type = self.tcx.closure_type(closure_def_id, substs);
                     vec![Some(self.memory.create_closure_ptr(self.tcx, closure_def_id, substs, closure_type))].into_iter()
                 }
-                traits::VtableFnPointer(
-                    traits::VtableFnPointerData {
-                        fn_ty,
-                        nested: _ }) => {
+
+                traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, .. }) => {
                     match fn_ty.sty {
                         ty::TyFnDef(did, substs, bare_fn_ty) => {
                             vec![Some(self.memory.create_fn_ptr(self.tcx, did, substs, bare_fn_ty))].into_iter()
@@ -65,6 +63,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         _ => bug!("bad VtableFnPointer fn_ty: {:?}", fn_ty),
                     }
                 }
+
                 traits::VtableObject(ref data) => {
                     // this would imply that the Self type being erased is
                     // an object type; this cannot happen because we
@@ -72,6 +71,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     bug!("cannot get vtable for an object type: {:?}",
                          data);
                 }
+
                 vtable @ traits::VtableParam(..) => {
                     bug!("resolved vtable for {:?} to bad vtable {:?} in trans",
                          trait_ref,
@@ -100,7 +100,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         self.memory.write_usize(vtable.offset(ptr_size), size)?;
-        self.memory.write_usize(vtable.offset((ptr_size * 2)), align)?;
+        self.memory.write_usize(vtable.offset(ptr_size * 2), align)?;
 
         for (i, method) in methods.into_iter().enumerate() {
             if let Some(method) = method {

@@ -1,7 +1,6 @@
 #![feature(
     btree_range,
     collections,
-    collections_bound,
     field_init_shorthand,
     i128_type,
     pub_restricted,

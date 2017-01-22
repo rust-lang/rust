@@ -153,7 +153,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             EvalError::AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
                       has, required),
-            EvalError::TypeNotPrimitive(ref ty) =>
+            EvalError::TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
             EvalError::Layout(ref err) =>
                 write!(f, "rustc layout computation failed: {:?}", err),
