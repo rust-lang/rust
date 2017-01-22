@@ -71,6 +71,11 @@ fn filter_dirs(path: &Path) -> bool {
     skip.iter().any(|p| path.ends_with(p))
 }
 
+fn walk_many(paths: &[&Path], skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
+    for path in paths {
+        walk(path, skip, f);
+    }
+}
 
 fn walk(path: &Path, skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
     for entry in t!(fs::read_dir(path), path) {
