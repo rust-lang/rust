@@ -45,10 +45,10 @@ use io::{self, SeekFrom, Error, ErrorKind};
 ///
 /// // a library function we've written
 /// fn write_ten_bytes_at_end<W: Write + Seek>(writer: &mut W) -> io::Result<()> {
-///     try!(writer.seek(SeekFrom::End(-10)));
+///     writer.seek(SeekFrom::End(-10))?;
 ///
 ///     for i in 0..10 {
-///         try!(writer.write(&[i]));
+///         writer.write(&[i])?;
 ///     }
 ///
 ///     // all went well
@@ -60,9 +60,9 @@ use io::{self, SeekFrom, Error, ErrorKind};
 /// //
 /// // We might want to use a BufReader here for efficiency, but let's
 /// // keep this example focused.
-/// let mut file = try!(File::create("foo.txt"));
+/// let mut file = File::create("foo.txt")?;
 ///
-/// try!(write_ten_bytes_at_end(&mut file));
+/// write_ten_bytes_at_end(&mut file)?;
 /// # Ok(())
 /// # }
 ///

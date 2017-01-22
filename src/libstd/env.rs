@@ -497,7 +497,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// let mut dir = env::temp_dir();
 /// dir.push("foo.txt");
 ///
-/// let f = try!(File::create(dir));
+/// let f = File::create(dir)?;
 /// # Ok(())
 /// # }
 /// ```
