@@ -45,7 +45,7 @@ fn is_nil_function(cx: &LateContext, expr: &hir::Expr) -> bool {
 
     if let ty::TyFnDef(_, _, bare) = ty.sty {
         if let Some(fn_type) = cx.tcx.no_late_bound_regions(&bare.sig) {
-            return fn_type.output().is_nil();
+            return fn_type.output().is_nil() || fn_type.output().is_never();
         }
     }
     false

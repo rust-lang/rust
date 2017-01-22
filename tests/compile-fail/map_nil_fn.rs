@@ -7,6 +7,10 @@
 
 fn do_nothing<T>(_: T) {}
 
+fn diverge<T>(_: T) -> ! {
+    panic!()
+}
+
 fn plus_one(value: usize) -> usize {
     value + 1
 }
@@ -39,4 +43,9 @@ fn main() {
     //~^ ERROR called `map(f)` on an Option value where `f` is a nil function
     //~| HELP try this
     //~| SUGGESTION if let Some(...) = x.field { do_nothing(...) }
+
+    x.field.map(diverge);
+    //~^ ERROR called `map(f)` on an Option value where `f` is a nil function
+    //~| HELP try this
+    //~| SUGGESTION if let Some(...) = x.field { diverge(...) }
 }
