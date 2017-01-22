@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-default_type_parameter_fallback
+
 #![deny(future_incompatible)]
 #![allow(dead_code)]
 
