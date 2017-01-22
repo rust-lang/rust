@@ -15,6 +15,8 @@
 
 // FIXME the error message that is current emitted seems pretty bad.
 
+// gate-test-quote
+
 #![feature(rustc_private)]
 #![allow(dead_code, unused_imports, unused_variables)]
 
