@@ -22,8 +22,9 @@
 use std::ops::{Deref, DerefMut};
 
 use Resolver;
+use resolve_imports::ImportDirectiveSubclass;
 
-use rustc::lint;
+use rustc::{lint, ty};
 use rustc::util::nodemap::NodeMap;
 use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
@@ -86,16 +87,6 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         }
 
         match item.node {
-            ast::ItemKind::ExternCrate(_) => {
-                if let Some(crate_num) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
-                    if !self.used_crates.contains(&crate_num) {
-                        self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
-                                              item.id,
-                                              item.span,
-                                              "unused extern crate".to_string());
-                    }
-                }
-            }
             ast::ItemKind::Use(ref p) => {
                 match p.node {
                     ViewPathSimple(..) => {
@@ -124,6 +115,25 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
 }
 
 pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
+    for directive in resolver.potentially_unused_imports.iter() {
+        match directive.subclass {
+            _ if directive.used.get() ||
+                 directive.vis.get() == ty::Visibility::Public ||
+                 directive.span.source_equal(&DUMMY_SP) => {}
+            ImportDirectiveSubclass::ExternCrate => {
+                let lint = lint::builtin::UNUSED_EXTERN_CRATES;
+                let msg = "unused extern crate".to_string();
+                resolver.session.add_lint(lint, directive.id, directive.span, msg);
+            }
+            ImportDirectiveSubclass::MacroUse => {
+                let lint = lint::builtin::UNUSED_IMPORTS;
+                let msg = "unused `#[macro_use]` import".to_string();
+                resolver.session.add_lint(lint, directive.id, directive.span, msg);
+            }
+            _ => {}
+        }
+    }
+
     let mut visitor = UnusedImportCheckVisitor {
         resolver: resolver,
         unused_imports: NodeMap(),

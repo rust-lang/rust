@@ -9,5 +9,4 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-log = { path = "../liblog" }
 rustc_i128 = { path = "../librustc_i128" }

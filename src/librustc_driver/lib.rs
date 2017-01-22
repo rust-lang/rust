@@ -32,7 +32,6 @@
 #![feature(staged_api)]
 
 extern crate arena;
-extern crate flate;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
@@ -57,7 +56,6 @@ extern crate serialize;
 extern crate rustc_llvm as llvm;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate syntax;
 extern crate syntax_ext;
 extern crate syntax_pos;

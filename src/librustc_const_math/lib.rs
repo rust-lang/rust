@@ -28,8 +28,7 @@
 #![feature(const_fn)]
 #![cfg_attr(not(stage0), feature(i128))]
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 
 // SNAP: remove use of this crate
 extern crate rustc_i128;

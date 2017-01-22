@@ -31,7 +31,6 @@ extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_back;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;

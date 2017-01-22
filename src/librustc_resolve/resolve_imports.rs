@@ -49,6 +49,7 @@ pub enum ImportDirectiveSubclass<'a> {
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
     ExternCrate,
+    MacroUse,
 }
 
 /// One import directive.
@@ -62,6 +63,7 @@ pub struct ImportDirective<'a> {
     pub span: Span,
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
+    pub used: Cell<bool>,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -257,6 +259,7 @@ impl<'a> Resolver<'a> {
             id: id,
             vis: Cell::new(vis),
             expansion: expansion,
+            used: Cell::new(false),
         });
 
         self.indeterminate_imports.push(directive);
@@ -833,5 +836,6 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
         ExternCrate => "<extern crate>".to_string(),
+        MacroUse => "#[macro_use]".to_string(),
     }
 }
