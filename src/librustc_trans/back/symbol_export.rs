@@ -81,10 +81,24 @@ impl ExportedSymbols {
         for cnum in scx.sess().cstore.crates() {
             debug_assert!(cnum != LOCAL_CRATE);
 
+            // If this crate is a plugin and/or a custom derive crate, then
+            // we're not even going to link those in so we skip those crates.
             if scx.sess().cstore.plugin_registrar_fn(cnum).is_some() ||
                scx.sess().cstore.derive_registrar_fn(cnum).is_some() {
                 continue;
             }
+
+            // Check to see if this crate is a "special runtime crate". These
+            // crates, implementation details of the standard library, typically
+            // have a bunch of `pub extern` and `#[no_mangle]` functions as the
+            // ABI between them. We don't want their symbols to have a `C`
+            // export level, however, as they're just implementation details.
+            // Down below we'll hardwire all of the symbols to the `Rust` export
+            // level instead.
+            let special_runtime_crate =
+                scx.sess().cstore.is_allocator(cnum) ||
+                scx.sess().cstore.is_panic_runtime(cnum) ||
+                scx.sess().cstore.is_compiler_builtins(cnum);
 
             let crate_exports = scx
                 .sess()
@@ -93,7 +107,24 @@ impl ExportedSymbols {
                 .iter()
                 .map(|&def_id| {
                     let name = Instance::mono(scx, def_id).symbol_name(scx);
-                    let export_level = export_level(scx, def_id);
+                    let export_level = if special_runtime_crate {
+                        // We can probably do better here by just ensuring that
+                        // it has hidden visibility rather than public
+                        // visibility, as this is primarily here to ensure it's
+                        // not stripped during LTO.
+                        //
+                        // In general though we won't link right if these
+                        // symbols are stripped, and LTO currently strips them.
+                        if name == "rust_eh_personality" ||
+                           name == "rust_eh_register_frames" ||
+                           name == "rust_eh_unregister_frames" {
+                            SymbolExportLevel::C
+                        } else {
+                            SymbolExportLevel::Rust
+                        }
+                    } else {
+                        export_level(scx, def_id)
+                    };
                     debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
                     (name, export_level)
                 })

@@ -143,7 +143,7 @@ mod imp {
     // we're building on doesn't have them defined, so just make sure the symbols
     // are available.
     #[no_mangle]
-    #[cfg(target_os = "android")]
+    #[cfg(all(target_os = "android", not(cargobuild)))]
     pub extern "C" fn pthread_atfork(_prefork: *mut u8,
                                      _postfork_parent: *mut u8,
                                      _postfork_child: *mut u8)
