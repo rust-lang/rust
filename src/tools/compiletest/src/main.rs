@@ -21,16 +21,9 @@
 extern crate libc;
 extern crate test;
 extern crate getopts;
-
-#[cfg(cargobuild)]
 extern crate rustc_serialize;
-#[cfg(not(cargobuild))]
-extern crate serialize as rustc_serialize;
-
 #[macro_use]
 extern crate log;
-
-#[cfg(cargobuild)]
 extern crate env_logger;
 
 use std::env;
@@ -58,11 +51,7 @@ mod raise_fd_limit;
 mod uidiff;
 
 fn main() {
-    #[cfg(cargobuild)]
-    fn log_init() { env_logger::init().unwrap(); }
-    #[cfg(not(cargobuild))]
-    fn log_init() {}
-    log_init();
+    env_logger::init().unwrap();
 
     let config = parse_config(env::args().collect());
 
