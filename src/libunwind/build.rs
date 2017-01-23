@@ -11,8 +11,6 @@
 use std::env;
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
-
     let target = env::var("TARGET").expect("TARGET was not set");
 
     if target.contains("linux") {
