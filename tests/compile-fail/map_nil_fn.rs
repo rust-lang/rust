@@ -130,6 +130,13 @@ fn main() {
     //~| SUGGESTION if let Some(ref value) = x.field { do_nothing(value + captured) }
 
 
-    // closures with multiple statements are not linted:
     x.field.map(|value| { do_nothing(value); do_nothing(value) });
+    //~^ ERROR called `map(f)` on an Option value where `f` is a nil closure
+    //~| HELP try this
+    //~| SUGGESTION if let Some(value) = x.field { ... }
+
+    x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+    //~^ ERROR called `map(f)` on an Option value where `f` is a nil closure
+    //~| HELP try this
+    //~| SUGGESTION if let Some(value) = x.field { ... }
 }

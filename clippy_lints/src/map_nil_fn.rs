@@ -14,7 +14,7 @@ pub struct Pass;
 /// **Why is this bad?** Readability, this can be written more clearly with
 /// an if statement
 ///
-/// **Known problems:** Closures with multiple statements are not handled
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -114,16 +114,17 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Sp
     }
 }
 
-fn reduce_nil_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(Span, Span)> {
+fn nil_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(&'tcx hir::Arg, &'a hir::Expr)> {
     if let hir::ExprClosure(_, ref decl, inner_expr_id, _) = expr.node {
         let body = cx.tcx.map.body(inner_expr_id);
+        let body_expr = &body.value;
 
         if_let_chain! {[
             decl.inputs.len() == 1,
+            is_nil_expression(cx, body_expr),
             let Some(binding) = iter_input_pats(&decl, body).next(),
-            let Some(expr_span) = reduce_nil_expression(cx, &body.value),
         ], {
-            return Some((binding.pat.span, expr_span))
+            return Some((binding, body_expr))
         }}
     }
     None
@@ -148,12 +149,18 @@ fn lint_map_nil_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_arg
                            expr.span,
                            msg,
                            |db| { db.span_suggestion(stmt.span, "try this", suggestion); });
-    } else if let Some((binding_span, expr_span)) = reduce_nil_closure(cx, fn_arg) {
+    } else if let Some((binding, closure_expr)) = nil_closure(cx, fn_arg) {
         let msg = "called `map(f)` on an Option value where `f` is a nil closure";
-        let suggestion = format!("if let Some({0}) = {1} {{ {2} }}",
-                                 snippet(cx, binding_span, "_"),
-                                 snippet(cx, var_arg.span, "_"),
-                                 snippet(cx, expr_span, "_"));
+        let suggestion = if let Some(expr_span) = reduce_nil_expression(cx, closure_expr) {
+            format!("if let Some({0}) = {1} {{ {2} }}",
+                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, var_arg.span, "_"),
+                    snippet(cx, expr_span, "_"))
+        } else {
+            format!("if let Some({0}) = {1} {{ ... }}",
+                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, var_arg.span, "_"))
+        };
 
         span_lint_and_then(cx,
                            OPTION_MAP_NIL_FN,
