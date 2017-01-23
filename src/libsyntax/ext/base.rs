@@ -510,7 +510,11 @@ pub enum SyntaxExtension {
     ///
     IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
 
-    CustomDerive(Box<MultiItemModifier>),
+    /// An attribute-like procedural macro. TokenStream -> TokenStream.
+    /// The input is the annotated item.
+    /// Allows generating code to implement a Trait for a given struct
+    /// or enum item.
+    ProcMacroDerive(Box<MultiItemModifier>),
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
