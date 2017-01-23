@@ -52,8 +52,6 @@ fn delimit(delim: token::DelimToken, stream: TokenStream) -> TokenStream {
     TokenTree::Delimited(DUMMY_SP, Rc::new(Delimited {
         delim: delim,
         tts: stream.trees().cloned().collect(),
-        open_span: DUMMY_SP,
-        close_span: DUMMY_SP,
     })).into()
 }
 
@@ -129,8 +127,6 @@ impl Quote for TokenTree {
 impl Quote for Rc<Delimited> {
     fn quote(&self) -> TokenStream {
         quote!(::std::rc::Rc::new(::syntax::tokenstream::Delimited {
-            open_span: ::syntax::ext::quote::rt::DUMMY_SP,
-            close_span: ::syntax::ext::quote::rt::DUMMY_SP,
             delim: (quote self.delim),
             tts: (quote self.tts),
         }))

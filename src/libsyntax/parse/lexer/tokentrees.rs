@@ -59,7 +59,6 @@ impl<'a> StringReader<'a> {
 
                 // Parse the open delimiter.
                 self.open_braces.push((delim, self.span));
-                let open_span = self.span;
                 self.real_token();
 
                 // Parse the token trees within the delimiters.
@@ -67,9 +66,8 @@ impl<'a> StringReader<'a> {
                 // uses an incorrect delimiter.
                 let tts = self.parse_token_trees_until_close_delim();
 
-                let close_span = self.span;
                 // Expand to cover the entire delimited token tree
-                let span = Span { hi: close_span.hi, ..pre_span };
+                let span = Span { hi: self.span.hi, ..pre_span };
 
                 match self.token {
                     // Correct delimiter.
@@ -115,9 +113,7 @@ impl<'a> StringReader<'a> {
 
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
                     delim: delim,
-                    open_span: open_span,
                     tts: tts,
-                    close_span: close_span,
                 })))
             },
             token::CloseDelim(_) => {

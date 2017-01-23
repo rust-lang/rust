@@ -25,7 +25,7 @@
 //! ownership of the original.
 
 use ast::{self, AttrStyle, LitKind};
-use syntax_pos::Span;
+use syntax_pos::{BytePos, Span, DUMMY_SP};
 use codemap::Spanned;
 use ext::base;
 use ext::tt::macro_parser;
@@ -45,12 +45,8 @@ use std::rc::Rc;
 pub struct Delimited {
     /// The type of delimiter
     pub delim: token::DelimToken,
-    /// The span covering the opening delimiter
-    pub open_span: Span,
     /// The delimited sequence of token trees
     pub tts: Vec<TokenTree>,
-    /// The span covering the closing delimiter
-    pub close_span: Span,
 }
 
 impl Delimited {
@@ -65,13 +61,21 @@ impl Delimited {
     }
 
     /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(&self) -> TokenTree {
-        TokenTree::Token(self.open_span, self.open_token())
+    pub fn open_tt(&self, span: Span) -> TokenTree {
+        let open_span = match span {
+            DUMMY_SP => DUMMY_SP,
+            _ => Span { hi: span.lo + BytePos(self.delim.len()), ..span },
+        };
+        TokenTree::Token(open_span, self.open_token())
     }
 
     /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(&self) -> TokenTree {
-        TokenTree::Token(self.close_span, self.close_token())
+    pub fn close_tt(&self, span: Span) -> TokenTree {
+        let close_span = match span {
+            DUMMY_SP => DUMMY_SP,
+            _ => Span { lo: span.hi - BytePos(self.delim.len()), ..span },
+        };
+        TokenTree::Token(close_span, self.close_token())
     }
 
     /// Returns the token trees inside the delimiters.
@@ -175,23 +179,21 @@ impl TokenTree {
 
                 TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
-                    open_span: sp,
                     tts: vec![TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
                                   token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))],
-                    close_span: sp,
                 }))
             }
             (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
                 delimed.tts[index].clone()
             }
-            (&TokenTree::Delimited(_, ref delimed), _) => {
+            (&TokenTree::Delimited(span, ref delimed), _) => {
                 if index == 0 {
-                    return delimed.open_tt();
+                    return delimed.open_tt(span);
                 }
                 if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt();
+                    return delimed.close_tt(span);
                 }
                 delimed.tts[index - 1].clone()
             }
