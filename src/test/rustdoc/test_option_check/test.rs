@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--test
-// check-stdout
+// compile-flags: --test
+// check-test-line-numbers-match
 
 /// This is a Foo;
 ///
 /// ```
 /// println!("baaaaaar");
 /// ```
-#[unstable]
 pub struct Foo;
 
 /// This is a Bar;

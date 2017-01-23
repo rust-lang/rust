@@ -1879,20 +1879,19 @@ actual:\n\
     fn run_rustdoc_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        if self.props.compile_flags.contains(&"--test".to_owned()) &&
-           self.props.check_stdout == true {
-            self.check_rustdoc_test_option();
+        let out_dir = self.output_base_name();
+        let _ = fs::remove_dir_all(&out_dir);
+        self.create_dir_racy(&out_dir);
+
+        let proc_res = self.document(&out_dir);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("rustdoc failed!", &proc_res);
+        }
+
+        if self.props.check_test_line_numbers_match == true {
+            self.check_rustdoc_test_option(proc_res);
         } else {
-            let out_dir = self.output_base_name();
-            let _ = fs::remove_dir_all(&out_dir);
-            self.create_dir_racy(&out_dir);
-
-            let proc_res = self.document(&out_dir);
-            if !proc_res.status.success() {
-                self.fatal_proc_rec("rustdoc failed!", &proc_res);
-            }
             let root = self.find_rust_src_root().unwrap();
-
             let res = self.cmd2procres(Command::new(&self.config.docck_python)
                                        .arg(root.join("src/etc/htmldocck.py"))
                                        .arg(out_dir)
@@ -1903,7 +1902,7 @@ actual:\n\
         }
     }
 
-    fn check_rustdoc_test_option(&self) {
+    fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut file = fs::File::open(&self.testpaths.file)
                                 .expect("markdown_test_output_check_entry File::open failed");
         let mut content = String::new();
@@ -1911,13 +1910,12 @@ actual:\n\
             .expect("markdown_test_output_check_entry read_to_string failed");
         let mut ignore = false;
         let mut v: Vec<usize> =
-            content.split("\n")
+            content.lines()
                    .enumerate()
                    .filter_map(|(line_nb, line)| {
                        let sline = line.split("///").last().unwrap_or("");
                        let line = sline.trim_left();
-                       if line.starts_with("```") &&
-                          !line.contains("ignore") {
+                       if line.starts_with("```") {
                            if ignore {
                                ignore = false;
                                None
@@ -1931,37 +1929,30 @@ actual:\n\
                    })
                    .collect();
 
-        let args = ProcArgs {
-            prog: self.config.rustdoc_path.to_str().unwrap().to_owned(),
-            args: vec!["--test".to_owned(), self.testpaths.file.to_str().unwrap().to_owned()],
-        };
-        let env = self.props.exec_env.clone();
-        let res = self.compose_and_run(args,
-                                       env,
-                                       self.config.run_lib_path.to_str().unwrap(),
-                                       None,
-                                       None);
-
-        res.stdout.split("\n")
-                  .filter(|s| s.starts_with("test "))
-                  .inspect(|s| {
-                      let tmp: Vec<&str> = s.split(" - line ").collect();
-                      if tmp.len() == 2 {
-                          let line = usize::from_str_radix(tmp[1].split(" ...")
-                                                                 .next()
-                                                                 .unwrap_or("0"), 10)
-                                         .unwrap_or(0);
-                          if let Ok(pos) = v.binary_search(&line) {
-                              v.remove(pos);
-                          } else {
-                              self.fatal_proc_rec(&format!("Not found doc test: \"{}\" in {:?}",
-                                                           s, v),
-                                                  &res);
-                          }
-                      }
-                  })
-                  .all(|_| true);
-        if v.len() != 0 {
+        let mut tested = 0;
+        for _ in res.stdout.split("\n")
+                           .filter(|s| s.starts_with("test "))
+                           .inspect(|s| {
+                               let tmp: Vec<&str> = s.split(" - line ").collect();
+                               if tmp.len() == 2 {
+                                   tested += 1;
+                                   let line = tmp[1].split(" ...")
+                                                    .next()
+                                                    .unwrap_or("0")
+                                                    .parse()
+                                                    .unwrap_or(0);
+                                   if let Ok(pos) = v.binary_search(&line) {
+                                       v.remove(pos);
+                                   } else {
+                                       self.fatal_proc_rec(
+                                           &format!("Not found doc test: \"{}\" in {:?}", s, v),
+                                           &res);
+                                   }
+                               }
+                           }) {}
+        if tested == 0 {
+            self.fatal_proc_rec("No test has been found", &res);
+        } else if v.len() != 0 {
             self.fatal_proc_rec(&format!("Not found test at line{} {:?}",
                                          if v.len() > 1 { "s" } else { "" }, v),
                                 &res);

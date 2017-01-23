@@ -224,6 +224,8 @@ pub struct TestProps {
     pub incremental_dir: Option<PathBuf>,
     // Specifies that a cfail test must actually compile without errors.
     pub must_compile_successfully: bool,
+    // rustdoc will test the output of the `--test` option
+    pub check_test_line_numbers_match: bool,
 }
 
 impl TestProps {
@@ -248,6 +250,7 @@ impl TestProps {
             forbid_output: vec![],
             incremental_dir: None,
             must_compile_successfully: false,
+            check_test_line_numbers_match: false,
         }
     }
 
@@ -346,6 +349,10 @@ impl TestProps {
 
             if !self.must_compile_successfully {
                 self.must_compile_successfully = parse_must_compile_successfully(ln);
+            }
+
+            if !self.check_test_line_numbers_match {
+                self.check_test_line_numbers_match = parse_check_test_line_numbers_match(ln);
             }
         });
 
@@ -456,6 +463,10 @@ fn parse_pretty_compare_only(line: &str) -> bool {
 
 fn parse_must_compile_successfully(line: &str) -> bool {
     parse_name_directive(line, "must-compile-successfully")
+}
+
+fn parse_check_test_line_numbers_match(line: &str) -> bool {
+    parse_name_directive(line, "check-test-line-numbers-match")
 }
 
 fn parse_env(line: &str, name: &str) -> Option<(String, String)> {
