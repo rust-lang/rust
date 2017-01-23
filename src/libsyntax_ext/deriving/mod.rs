@@ -10,10 +10,11 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
+use std::rc::Rc;
 use syntax::ast::{self, MetaItem};
 use syntax::attr::HasAttrs;
 use syntax::codemap;
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension};
+use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::ptr::P;
@@ -292,7 +293,10 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     for titem in traits.iter() {
         let tname = titem.word().unwrap().name();
         let name = Symbol::intern(&format!("derive({})", tname));
+        let tname_cx = ast::Ident::with_empty_ctxt(titem.name().unwrap());
         let mitem = cx.meta_word(titem.span, name);
+        let path = ast::Path::from_ident(titem.span, tname_cx);
+        let ext = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).unwrap();
 
         let span = Span {
             expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
@@ -306,11 +310,15 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             ..titem.span
         };
 
-        let my_item = Annotatable::Item(item);
-        expand_builtin(&tname.as_str(), cx, span, &mitem, &my_item, &mut |a| {
-            items.push(a);
-        });
-        item = my_item.expect_item();
+        if let SyntaxExtension::BuiltinDerive(ref func) = *ext {
+            let my_item = Annotatable::Item(item);
+            func(cx, span, &mitem, &my_item, &mut |a| {
+                items.push(a)
+            });
+            item = my_item.expect_item();
+        } else {
+            unreachable!();
+        }
     }
 
     items.insert(0, Annotatable::Item(item));
@@ -326,21 +334,13 @@ macro_rules! derive_traits {
             }
         }
 
-        fn expand_builtin(name: &str,
-                          ecx: &mut ExtCtxt,
-                          span: Span,
-                          mitem: &MetaItem,
-                          item: &Annotatable,
-                          push: &mut FnMut(Annotatable)) {
-            match name {
-                $(
-                    $name => {
-                        warn_if_deprecated(ecx, span, $name);
-                        $func(ecx, span, mitem, item, push);
-                    }
-                )*
-                _ => panic!("not a builtin derive mode: {}", name),
-            }
+        pub fn register_builtin_derives(resolver: &mut Resolver) {
+            $(
+                resolver.add_ext(
+                    ast::Ident::with_empty_ctxt(Symbol::intern($name)),
+                    Rc::new(SyntaxExtension::BuiltinDerive($func))
+                );
+            )*
         }
     }
 }

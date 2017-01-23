@@ -112,6 +112,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut FnMut(Annotatable)) {
+    deriving::warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
 
