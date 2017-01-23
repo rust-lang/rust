@@ -1034,18 +1034,14 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                 hash_span!(self, span);
                 let tokenstream::Delimited {
                     ref delim,
-                    open_span,
                     ref tts,
-                    close_span,
                 } = **delimited;
 
                 delim.hash(self.st);
-                hash_span!(self, open_span);
                 tts.len().hash(self.st);
                 for sub_tt in tts {
                     self.hash_token_tree(sub_tt);
                 }
-                hash_span!(self, close_span);
             }
             tokenstream::TokenTree::Sequence(span, ref sequence_repetition) => {
                 hash_span!(self, span);
