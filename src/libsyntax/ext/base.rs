@@ -10,7 +10,7 @@
 
 pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
 
-use ast::{self, Attribute, Name, PatKind};
+use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
 use syntax_pos::{Span, ExpnId, NO_EXPANSION};
@@ -471,6 +471,9 @@ impl MacResult for DummyResult {
     }
 }
 
+pub type BuiltinDeriveFn =
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut FnMut(Annotatable));
+
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
@@ -508,6 +511,9 @@ pub enum SyntaxExtension {
     IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
 
     CustomDerive(Box<MultiItemModifier>),
+
+    /// An attribute-like procedural macro that derives a builtin trait.
+    BuiltinDerive(BuiltinDeriveFn),
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
