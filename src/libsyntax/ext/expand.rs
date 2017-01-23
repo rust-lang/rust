@@ -370,7 +370,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
             }
-            SyntaxExtension::CustomDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
+            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", name));
                 kind.dummy(attr.span)
             }
@@ -440,7 +440,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 return kind.dummy(span);
             }
 
-            SyntaxExtension::CustomDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
+            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(path.span, &format!("`{}` is a derive mode", extname));
                 return kind.dummy(span);
             }
