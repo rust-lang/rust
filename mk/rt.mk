@@ -552,7 +552,9 @@ endif
 ifeq ($$(findstring msvc,$(1)),)
 
 ifeq ($$(findstring freebsd,$(1)),)
+ifeq ($$(findstring netbsd,$(1)),)
 $(call ADD_INTRINSIC,$(1),gcc_personality_v0.o)
+endif
 endif
 endif
 
