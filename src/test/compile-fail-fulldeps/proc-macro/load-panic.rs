@@ -14,7 +14,7 @@
 extern crate derive_panic;
 
 #[derive(A)]
-//~^ ERROR: custom derive attribute panicked
+//~^ ERROR: proc_macro_derive attribute panicked
 //~| HELP: message: nope!
 struct Foo;
 

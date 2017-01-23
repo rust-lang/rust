@@ -163,7 +163,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         if is_builtin_trait(tname) || {
             let derive_mode = ast::Path::from_ident(titem.span, ast::Ident::with_empty_ctxt(tname));
             cx.resolver.resolve_macro(cx.current_expansion.mark, &derive_mode, false).map(|ext| {
-                if let SyntaxExtension::CustomDerive(_) = *ext { true } else { false }
+                if let SyntaxExtension::ProcMacroDerive(_) = *ext { true } else { false }
             }).unwrap_or(false)
         } {
             return true;
@@ -249,7 +249,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             ..mitem.span
         };
 
-        if let SyntaxExtension::CustomDerive(ref ext) = *ext {
+        if let SyntaxExtension::ProcMacroDerive(ref ext) = *ext {
             return ext.expand(cx, span, &mitem, item);
         } else {
             unreachable!()
