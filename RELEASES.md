@@ -168,6 +168,7 @@ Compatibility Notes
 [37613]: https://github.com/rust-lang/rust/pull/37613
 [37615]: https://github.com/rust-lang/rust/pull/37615
 [37636]: https://github.com/rust-lang/rust/pull/37636
+[37627]: https://github.com/rust-lang/rust/pull/37627
 [37642]: https://github.com/rust-lang/rust/pull/37642
 [37677]: https://github.com/rust-lang/rust/pull/37677
 [37699]: https://github.com/rust-lang/rust/pull/37699
