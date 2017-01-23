@@ -17,6 +17,10 @@
 # most intimate workings of the compiler itself, you've come to the
 # right place. Let's see what's on the menu.
 #
+# Please note that most of these options only work if configure was
+# run with --disable-rustbuild. For documentation on the new build
+# system, see CONTRIBUTING.md.
+#
 # First, start with one of these build targets:
 #
 #   * all - The default. Build a complete, bootstrapped compiler.
