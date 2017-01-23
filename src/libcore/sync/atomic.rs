@@ -21,9 +21,10 @@
 //!
 //! Each method takes an `Ordering` which represents the strength of
 //! the memory barrier for that operation. These orderings are the
-//! same as [LLVM atomic orderings][1].
+//! same as [LLVM atomic orderings][1]. For more information see the [nomicon][2].
 //!
 //! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
+//! [2]: https://doc.rust-lang.org/nomicon/atomics.html
 //!
 //! Atomic variables are safe to share between threads (they implement `Sync`)
 //! but they do not themselves provide the mechanism for sharing and follow the
@@ -141,6 +142,9 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 ///
 /// Rust's memory orderings are [the same as
 /// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
+///
+/// For more information see the [nomicon][1].
+/// [1]: https://doc.rust-lang.org/nomicon/atomics.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
