@@ -32,7 +32,6 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
@@ -53,13 +52,6 @@ matrix:
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
         SRC=.
         DEPLOY=1
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
-        SRC=.
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
