@@ -1146,16 +1146,26 @@ impl f64 {
     ///
     /// Note that this function is distinct from casting.
     ///
+    /// Returns `Err(())` if the representation of a signaling NaN "sNaN"
+    /// float, is passed to the function.
+    ///
     /// ```
     /// #![feature(float_bits_conv)]
     /// use std::f64;
-    /// let difference = (f64::from_bits(0x4029000000000000) - 12.5).abs();
+    /// let v = f64::from_bits(0x4029000000000000).unwrap();
+    /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
+    /// // Example for a signaling NaN value:
+    /// assert_eq!(f64::from_bits(0x7FF0000000000001), Err(()));
     /// ```
     #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
     #[inline]
-    pub fn from_bits(v: u64) -> Self {
-        unsafe { ::mem::transmute(v) }
+    pub fn from_bits(v: u64) -> Result<Self, ()> {
+        match v {
+            0x7FF0000000000001 ... 0x7FF7FFFFFFFFFFFF |
+            0xFFF0000000000001 ... 0xFFF7FFFFFFFFFFFF => Err(()),
+            _ => Ok(unsafe { ::mem::transmute(v) }),
+        }
     }
 }
 
@@ -1801,9 +1811,9 @@ mod tests {
         assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
         assert_eq!((1337f64).to_bits(), 0x4094e40000000000);
         assert_eq!((-14.25f64).to_bits(), 0xc02c800000000000);
-        assert_approx_eq!(f64::from_bits(0x3ff0000000000000), 1.0);
-        assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
-        assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
-        assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
+        assert_approx_eq!(f64::from_bits(0x3ff0000000000000).unwrap(), 1.0);
+        assert_approx_eq!(f64::from_bits(0x4029000000000000).unwrap(), 12.5);
+        assert_approx_eq!(f64::from_bits(0x4094e40000000000).unwrap(), 1337.0);
+        assert_approx_eq!(f64::from_bits(0xc02c800000000000).unwrap(), -14.25);
     }
 }
