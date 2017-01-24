@@ -16,8 +16,9 @@ type A = for<'a:> fn(); // OK
 type A = for<'a:,> fn(); // OK
 type A = for<'a> fn(); // OK
 type A = for<> fn(); // OK
+type A = for<'a: 'b +> fn(); // OK
 
 type A = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
-type A = for<'a: 'b +> fn(); //~ ERROR expected one of `,` or `>`, found `+`
+type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
 
 fn main() {}
