@@ -4096,7 +4096,6 @@ register_diagnostics! {
 //  E0222, // Error code E0045 (variadic function must have C calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
-    E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
     E0231, // only named substitution parameters are allowed

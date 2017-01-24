@@ -322,6 +322,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
+            hir::TyTraitObject(ref bounds, ref lifetime) => {
+                for bound in bounds {
+                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                }
+                if !lifetime.is_elided() {
+                    self.visit_lifetime(lifetime);
+                }
+            }
             _ => {
                 intravisit::walk_ty(self, ty)
             }
@@ -441,7 +449,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_poly_trait_ref(&mut self,
                             trait_ref: &'tcx hir::PolyTraitRef,
-                            _modifier: &'tcx hir::TraitBoundModifier) {
+                            _modifier: hir::TraitBoundModifier) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
         if !self.trait_ref_hack || !trait_ref.bound_lifetimes.is_empty() {
@@ -962,7 +970,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             fn visit_poly_trait_ref(&mut self,
                                     trait_ref: &hir::PolyTraitRef,
-                                    modifier: &hir::TraitBoundModifier) {
+                                    modifier: hir::TraitBoundModifier) {
                 self.binder_depth += 1;
                 intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
                 self.binder_depth -= 1;

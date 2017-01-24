@@ -453,24 +453,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         (self.tcx().mk_ty(ty::TyTuple(inputs)), output_binding)
     }
 
-    pub fn instantiate_poly_trait_ref(&self,
-        rscope: &RegionScope,
-        ast_trait_ref: &hir::PolyTraitRef,
-        self_ty: Ty<'tcx>,
-        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-        -> ty::PolyTraitRef<'tcx>
-    {
-        let trait_ref = &ast_trait_ref.trait_ref;
-        let trait_def_id = self.trait_def_id(trait_ref);
-        self.ast_path_to_poly_trait_ref(rscope,
-                                        trait_ref.path.span,
-                                        trait_def_id,
-                                        self_ty,
-                                        trait_ref.ref_id,
-                                        trait_ref.path.segments.last().unwrap(),
-                                        poly_projections)
-    }
-
     /// Instantiates the path for the given trait reference, assuming that it's
     /// bound to a valid trait type. Returns the def_id for the defining trait.
     /// Fails if the type is a type other than a trait type.
@@ -505,17 +487,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    fn ast_path_to_poly_trait_ref(&self,
+    pub fn instantiate_poly_trait_ref(&self,
         rscope: &RegionScope,
-        span: Span,
-        trait_def_id: DefId,
+        ast_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
-        path_id: ast::NodeId,
-        trait_segment: &hir::PathSegment,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
         -> ty::PolyTraitRef<'tcx>
     {
-        debug!("ast_path_to_poly_trait_ref(trait_segment={:?})", trait_segment);
+        let trait_ref = &ast_trait_ref.trait_ref;
+        let trait_def_id = self.trait_def_id(trait_ref);
+
+        debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
         // The trait reference introduces a binding level here, so
         // we need to shift the `rscope`. It'd be nice if we could
         // do away with this rscope stuff and work this knowledge
@@ -525,23 +507,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let (substs, assoc_bindings) =
             self.create_substs_for_ast_trait_ref(shifted_rscope,
-                                                 span,
+                                                 trait_ref.path.span,
                                                  trait_def_id,
                                                  self_ty,
-                                                 trait_segment);
+                                                 trait_ref.path.segments.last().unwrap());
         let poly_trait_ref = ty::Binder(ty::TraitRef::new(trait_def_id, substs));
 
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
-                self.ast_type_binding_to_poly_projection_predicate(path_id,
+                self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id,
                                                                    poly_trait_ref,
                                                                    binding);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
 
-        debug!("ast_path_to_poly_trait_ref(trait_segment={:?}, projections={:?}) -> {:?}",
-               trait_segment, poly_projections, poly_trait_ref);
+        debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
+               trait_ref, poly_projections, poly_trait_ref);
         poly_trait_ref
     }
 
@@ -754,32 +736,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
-    fn trait_path_to_object_type(&self,
-                                 rscope: &RegionScope,
-                                 path_span: Span,
-                                 trait_def_id: DefId,
-                                 trait_path_ref_id: ast::NodeId,
-                                 trait_segment: &hir::PathSegment,
-                                 span: Span,
-                                 partitioned_bounds: PartitionedBounds)
-                                 -> Ty<'tcx> {
+    fn conv_object_ty_poly_trait_ref(&self,
+        rscope: &RegionScope,
+        span: Span,
+        trait_bounds: &[hir::PolyTraitRef],
+        lifetime: &hir::Lifetime)
+        -> Ty<'tcx>
+    {
         let tcx = self.tcx();
+
+        if trait_bounds.is_empty() {
+            span_err!(tcx.sess, span, E0224,
+                      "at least one non-builtin trait is required for an object type");
+            return tcx.types.err;
+        }
 
         let mut projection_bounds = vec![];
         let dummy_self = tcx.mk_ty(TRAIT_OBJECT_DUMMY_SELF);
-        let principal = self.ast_path_to_poly_trait_ref(rscope,
-                                                        path_span,
-                                                        trait_def_id,
+        let principal = self.instantiate_poly_trait_ref(rscope,
+                                                        &trait_bounds[0],
                                                         dummy_self,
-                                                        trait_path_ref_id,
-                                                        trait_segment,
                                                         &mut projection_bounds);
 
-        let PartitionedBounds { trait_bounds,
-                                region_bounds } =
-            partitioned_bounds;
-
-        let (auto_traits, trait_bounds) = split_auto_traits(tcx, trait_bounds);
+        let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
@@ -854,13 +833,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         v.sort_by(|a, b| a.cmp(tcx, b));
         let existential_predicates = ty::Binder(tcx.mk_existential_predicates(v.into_iter()));
 
-        let region_bound = self.compute_object_lifetime_bound(span,
-                                                              &region_bounds,
-                                                              existential_predicates);
 
-        let region_bound = match region_bound {
-            Some(r) => r,
-            None => {
+        // Explicitly specified region bound. Use that.
+        let region_bound = if !lifetime.is_elided() {
+            self.ast_region_to_region(lifetime, None)
+        } else {
+            self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
                 tcx.mk_region(match rscope.object_lifetime_default(span) {
                     Some(r) => r,
                     None => {
@@ -870,7 +848,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         ty::ReStatic
                     }
                 })
-            }
+            })
         };
 
         debug!("region_bound: {:?}", region_bound);
@@ -1330,8 +1308,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
-            hir::TyTraitObject(ref bounds) => {
-                self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
+            hir::TyTraitObject(ref bounds, ref lifetime) => {
+                self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds, lifetime)
             }
             hir::TyImplTrait(ref bounds) => {
                 use collect::{compute_bounds, SizedByDefault};
@@ -1537,33 +1515,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    fn conv_object_ty_poly_trait_ref(&self,
-        rscope: &RegionScope,
-        span: Span,
-        ast_bounds: &[hir::TyParamBound])
-        -> Ty<'tcx>
-    {
-        let mut partitioned_bounds = partition_bounds(ast_bounds);
-
-        let trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
-            partitioned_bounds.trait_bounds.remove(0)
-        } else {
-            span_err!(self.tcx().sess, span, E0224,
-                      "at least one non-builtin trait is required for an object type");
-            return self.tcx().types.err;
-        };
-
-        let trait_ref = &trait_bound.trait_ref;
-        let trait_def_id = self.trait_def_id(trait_ref);
-        self.trait_path_to_object_type(rscope,
-                                       trait_ref.path.span,
-                                       trait_def_id,
-                                       trait_ref.ref_id,
-                                       trait_ref.path.segments.last().unwrap(),
-                                       span,
-                                       partitioned_bounds)
-    }
-
     /// Given the bounds on an object, determines what single region bound (if any) we can
     /// use to summarize this type. The basic idea is that we will use the bound the user
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds
@@ -1571,26 +1522,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// we return `None`.
     fn compute_object_lifetime_bound(&self,
         span: Span,
-        explicit_region_bounds: &[&hir::Lifetime],
         existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
         -> Option<&'tcx ty::Region> // if None, use the default
     {
         let tcx = self.tcx();
 
-        debug!("compute_opt_region_bound(explicit_region_bounds={:?}, \
-               existential_predicates={:?})",
-               explicit_region_bounds,
+        debug!("compute_opt_region_bound(existential_predicates={:?})",
                existential_predicates);
-
-        if explicit_region_bounds.len() > 1 {
-            span_err!(tcx.sess, explicit_region_bounds[1].span, E0226,
-                "only a single explicit lifetime bound is permitted");
-        }
-
-        if let Some(&r) = explicit_region_bounds.get(0) {
-            // Explicitly specified region bound. Use that.
-            return Some(self.ast_region_to_region(r, None));
-        }
 
         if let Some(principal) = existential_predicates.principal() {
             if let Err(ErrorReported) = self.ensure_super_predicates(span, principal.def_id()) {
@@ -1627,18 +1565,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 }
 
-pub struct PartitionedBounds<'a> {
-    pub trait_bounds: Vec<&'a hir::PolyTraitRef>,
-    pub region_bounds: Vec<&'a hir::Lifetime>,
-}
-
 /// Divides a list of general trait bounds into two groups: builtin bounds (Sync/Send) and the
 /// remaining general trait bounds.
 fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         trait_bounds: Vec<&'b hir::PolyTraitRef>)
+                                         trait_bounds: &'b [hir::PolyTraitRef])
     -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
 {
-    let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.into_iter().partition(|bound| {
+    let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.iter().partition(|bound| {
         match bound.trait_ref.path.def {
             Def::Trait(trait_did) => {
                 // Checks whether `trait_did` refers to one of the builtin
@@ -1673,30 +1606,6 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }).collect::<Vec<_>>();
 
     (auto_traits, trait_bounds)
-}
-
-/// Divides a list of bounds from the AST into two groups: general trait bounds and region bounds
-pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(ast_bounds: &'b [hir::TyParamBound])
-    -> PartitionedBounds<'b>
-{
-    let mut region_bounds = Vec::new();
-    let mut trait_bounds = Vec::new();
-    for ast_bound in ast_bounds {
-        match *ast_bound {
-            hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                trait_bounds.push(b);
-            }
-            hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
-            hir::RegionTyParamBound(ref l) => {
-                region_bounds.push(l);
-            }
-        }
-    }
-
-    PartitionedBounds {
-        trait_bounds: trait_bounds,
-        region_bounds: region_bounds,
-    }
 }
 
 fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,

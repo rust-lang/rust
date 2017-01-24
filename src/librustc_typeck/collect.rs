@@ -57,7 +57,7 @@ There are some shortcomings in this design:
 
 */
 
-use astconv::{AstConv, Bounds, PartitionedBounds, partition_bounds};
+use astconv::{AstConv, Bounds};
 use lint;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
@@ -1961,10 +1961,19 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         span: Span)
                                         -> Bounds<'tcx>
 {
-    let PartitionedBounds {
-        trait_bounds,
-        region_bounds
-    } = partition_bounds(&ast_bounds);
+    let mut region_bounds = vec![];
+    let mut trait_bounds = vec![];
+    for ast_bound in ast_bounds {
+        match *ast_bound {
+            hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
+                trait_bounds.push(b);
+            }
+            hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
+            hir::RegionTyParamBound(ref l) => {
+                region_bounds.push(l);
+            }
+        }
+    }
 
     let mut projection_bounds = vec![];
 
