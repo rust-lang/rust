@@ -11,7 +11,8 @@
 
 fn main() {
     let _foo = Vec::new();
-    //~^ ERROR unable to infer enough type information about `T` [E0282]
-    //~| NOTE cannot infer type for `T`
+    //~^ ERROR unable to fully infer type(s) [E0282]
+    //~| NOTE cannot infer type
+    //~| NOTE annotating the type for the variable `_foo` would help
     //~| NOTE type annotations or generic parameter binding
 }

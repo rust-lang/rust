@@ -39,6 +39,8 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use std::cmp;
 use std::fmt;
 use syntax::ast;
+use hir::{intravisit, Local, Pat};
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use syntax_pos::{DUMMY_SP, Span};
 use errors::DiagnosticBuilder;
 
@@ -57,6 +59,30 @@ impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
             span: e.obligation.cause.span,
             predicate: infcx.tcx.erase_regions(&predicate)
         }
+    }
+}
+
+struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    target_ty: &'a Ty<'tcx>,
+    found_pattern: Option<&'a Pat>,
+}
+
+impl<'a, 'gcx, 'tcx> Visitor<'a> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'a> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_local(&mut self, local: &'a Local) {
+        if let Some(&ty) = self.infcx.tables.borrow().node_types.get(&local.id) {
+            let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+            let is_match = ty.walk().any(|t| t == *self.target_ty);
+
+            if is_match && self.found_pattern.is_none() {
+                self.found_pattern = Some(&*local.pat);
+            }
+        }
+        intravisit::walk_local(self, local);
     }
 }
 
@@ -775,7 +801,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             self.tcx.lang_items.sized_trait()
                             .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                         {
-                            self.need_type_info(obligation.cause.span, self_ty);
+                            self.need_type_info(obligation, self_ty);
                         } else {
                             let mut err = struct_span_err!(self.tcx.sess,
                                                            obligation.cause.span, E0283,
@@ -793,7 +819,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if !ty.references_error() && !self.tcx.sess.has_errors() {
-                    self.need_type_info(obligation.cause.span, ty);
+                    self.need_type_info(obligation, ty);
                 }
             }
 
@@ -858,26 +884,42 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
 
-    fn need_type_info(&self, span: Span, ty: Ty<'tcx>) {
+    fn need_type_info(&self,
+                      obligation: &PredicateObligation<'tcx>,
+                      ty: Ty<'tcx>) {
+
         let ty = self.resolve_type_vars_if_possible(&ty);
-        let name = if let ty::TyInfer(ty::TyVar(ty_vid)) = ty.sty {
-            let ty_vars = self.type_variables.borrow();
-            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                    *ty_vars.var_origin(ty_vid)
-            {
-                name.to_string()
-            } else {
-                ty.to_string()
-            }
-        } else {
-            ty.to_string()
+        let ref cause = obligation.cause;
+
+        let mut err = struct_span_err!(self.tcx.sess,
+                                       cause.span,
+                                       E0282,
+                                       "unable to fully infer type(s)");
+
+        err.note("type annotations or generic parameter binding required");
+        err.span_label(cause.span, &format!("cannot infer type"));
+
+        let expr = self.tcx.hir.expect_expr(cause.body_id);
+
+        let mut local_visitor = FindLocalByTypeVisitor {
+            infcx: &self,
+            target_ty: &ty,
+            found_pattern: None
         };
 
-        let mut err = struct_span_err!(self.tcx.sess, span, E0282,
-                                       "unable to infer enough type information about `{}`",
-                                       name);
-        err.note("type annotations or generic parameter binding required");
-        err.span_label(span, &format!("cannot infer type for `{}`", name));
+        local_visitor.visit_expr(expr);
+
+        if let Some(pattern) = local_visitor.found_pattern {
+            let pattern_span = pattern.span;
+            if let Some(n) = pattern.simple_name() {
+                err.span_label(pattern_span,
+                    &format!("annotating the type for the variable `{}` would help", n));
+            } else {
+                err.span_label(pattern_span,
+                    &format!("annotating the type of pattern would help"));
+            }
+        }
+
         err.emit();
     }
 
