@@ -339,43 +339,56 @@ impl EmitterWriter {
         // which is...less weird, at least. In fact, in general, if
         // the rightmost span overlaps with any other span, we should
         // use the "hang below" version, so we can at least make it
-        // clear where the span *starts*.
+        // clear where the span *starts*. There's an exception for this
+        // logic, when the labels do not have a message:
+        //
+        //      fn foo(x: u32) {
+        //      --------------
+        //             |
+        //             x_span
+        //
+        // instead of:
+        //
+        //      fn foo(x: u32) {
+        //      --------------
+        //      |      |
+        //      |      x_span
+        //      <EMPTY LINE>
+        //
         let mut annotations_position = vec![];
         let mut line_len = 0;
         let mut p = 0;
         let mut ann_iter = annotations.iter().peekable();
         while let Some(annotation) = ann_iter.next() {
-            let is_line = if let AnnotationType::MultilineLine(_) = annotation.annotation_type {
-                true
-            } else {
-                false
-            };
             let peek = ann_iter.peek();
             if let Some(next) = peek {
-                let next_is_line = if let AnnotationType::MultilineLine(_) = next.annotation_type {
-                    true
-                } else {
-                    false
-                };
-
-                if overlaps(next, annotation) && !is_line && !next_is_line {
+                if overlaps(next, annotation) && !annotation.is_line() && !next.is_line()
+                    && annotation.has_label()
+                {
+                    // This annotation needs a new line in the output.
                     p += 1;
                 }
             }
             annotations_position.push((p, annotation));
             if let Some(next) = peek {
-                let next_is_line = if let AnnotationType::MultilineLine(_) = next.annotation_type {
-                    true
-                } else {
-                    false
-                };
                 let l = if let Some(ref label) = next.label {
                     label.len() + 2
                 } else {
                     0
                 };
-                if (overlaps(next, annotation) || next.end_col + l > annotation.start_col)
-                    && !is_line && !next_is_line
+                if (overlaps(next, annotation)  // Do not allow two labels to be in the same line
+                    || next.end_col + l > annotation.start_col)  // if they overlap including
+                                                // padding, to avoid situations like:
+                                                //
+                                                //      fn foo(x: u32) {
+                                                //      -------^------
+                                                //      |      |
+                                                //      fn_spanx_span
+                                                //
+                    && !annotation.is_line()    // Do not add a new line if this annotation or the
+                    && !next.is_line()          // next are vertical line placeholders.
+                    && annotation.has_label()   // Both labels must have some text, otherwise
+                    && next.has_label()         // they are not overlapping.
                 {
                     p += 1;
                 }
@@ -412,6 +425,17 @@ impl EmitterWriter {
             return;
         }
 
+        // Write the colunmn separator.
+        //
+        // After this we will have:
+        //
+        // 2 |   fn foo() {
+        //   |
+        //   |
+        //   |
+        // 3 |
+        // 4 |   }
+        //   |
         for pos in 0..line_len + 1 {
             draw_col_separator(buffer, line_offset + pos + 1, width_offset - 2);
             buffer.putc(line_offset + pos + 1,
@@ -472,7 +496,8 @@ impl EmitterWriter {
                 Style::UnderlineSecondary
             };
             let pos = pos + 1;
-            if pos > 1 {
+
+            if pos > 1 && annotation.has_label() {
                 for p in line_offset + 1..line_offset + pos + 1 {
                     buffer.putc(p,
                                 code_offset + annotation.start_col,
@@ -550,16 +575,8 @@ impl EmitterWriter {
         //   | |  something about `foo`
         //   | something about `fn foo()`
         annotations_position.sort_by(|a, b| {
-            fn len(a: &Annotation) -> usize {
-                // Account for usize underflows
-                if a.end_col > a.start_col {
-                    a.end_col - a.start_col
-                } else {
-                    a.start_col - a.end_col
-                }
-            }
             // Decreasing order
-            len(a.1).cmp(&len(b.1)).reverse()
+            a.1.len().cmp(&b.1.len()).reverse()
         });
 
         // Write the underlines.
