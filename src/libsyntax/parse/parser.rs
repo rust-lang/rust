@@ -4003,14 +4003,7 @@ impl<'a> Parser<'a> {
                 break
             }}
 
-            // Trailing plus is not allowed for now and we have to detect it.
-            let is_bound_start = |token: &token::Token| {
-                token == &token::Question || token.is_lifetime() ||
-                token.is_keyword(keywords::For) || token.is_path_start()
-            };
-            if self.check(&token::BinOp(token::Plus)) && self.look_ahead(1, is_bound_start) {
-                self.bump();
-            } else {
+            if !self.eat(&token::BinOp(token::Plus)) {
                 break
             }
         }
@@ -4024,9 +4017,8 @@ impl<'a> Parser<'a> {
         let mut lifetimes = Vec::new();
         while let Some(lifetime) = self.eat_lifetime() {
             lifetimes.push(lifetime);
-            if self.check(&token::BinOp(token::Plus)) && self.look_ahead(1, |t| t.is_lifetime()) {
-                self.bump();
-            } else {
+
+            if !self.eat(&token::BinOp(token::Plus)) {
                 break
             }
         }
