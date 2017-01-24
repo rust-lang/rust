@@ -17,6 +17,20 @@ pub fn target() -> TargetResult {
     base.pre_link_args.push("-m32".to_string());
     base.pre_link_args.push("-Wl,-melf_i386".to_string());
 
+    // The unwinder used by i686-unknown-linux-musl, the LLVM libunwind
+    // implementation, apparently relies on frame pointers existing... somehow.
+    // It's not clear to me why nor where this dependency is introduced, but the
+    // test suite does not pass with frame pointers eliminated and it passes
+    // with frame pointers present.
+    //
+    // If you think that this is no longer necessary, then please feel free to
+    // ignore! If it still passes the test suite and the bots then sounds good
+    // to me.
+    //
+    // This may or may not be related to this bug:
+    // https://llvm.org/bugs/show_bug.cgi?id=30879
+    base.eliminate_frame_pointer = false;
+
     Ok(Target {
         llvm_target: "i686-unknown-linux-musl".to_string(),
         target_endian: "little".to_string(),
