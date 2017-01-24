@@ -154,7 +154,7 @@ pub trait Visitor<'v> : Sized {
     /// hashed separately.
     ///
     /// **If for some reason you want the nested behavior, but don't
-    /// have a `Map` are your disposal:** then you should override the
+    /// have a `Map` at your disposal:** then you should override the
     /// `visit_nested_XXX` methods, and override this method to
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
