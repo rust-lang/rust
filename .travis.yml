@@ -11,7 +11,12 @@ before_script:
 script:
 - |
   env RUST_SYSROOT=$HOME/rust travis-cargo build &&
-  env RUST_SYSROOT=$HOME/rust travis-cargo test
+  env RUST_SYSROOT=$HOME/rust travis-cargo test &&
+  env RUST_SYSROOT=$HOME/rust travis-cargo install &&
+  cd cargo-miri-test &&
+  env RUST_SYSROOT=$HOME/rust travis-cargo miri &&
+  env RUST_SYSROOT=$HOME/rust travis-cargo miri test &&
+  cd ..
 notifications:
   email:
     on_success: never

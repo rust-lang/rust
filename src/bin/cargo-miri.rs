@@ -84,19 +84,16 @@ fn main() {
         let package = metadata.packages.remove(package_index);
         for target in package.targets {
             let args = std::env::args().skip(skip);
-            if test && target.kind.get(0).map_or(false, |kind| kind == "test") {
+            let kind = target.kind.get(0).expect("badly formatted cargo metadata: target::kind is an empty array");
+            if test && kind == "test" {
                 if let Err(code) = process(vec!["--test".to_string(), target.name].into_iter().chain(args),
                                            &dep_path) {
                     std::process::exit(code);
                 }
-            } else if !test {
-                if target.kind.get(0).map_or(false, |kind| kind == "bin") {
-                    if let Err(code) = process(vec!["--bin".to_string(), target.name].into_iter().chain(args),
-                                               &dep_path) {
-                        std::process::exit(code);
-                    }
-                } else {
-                    panic!("badly formatted cargo metadata: target::kind is an empty array");
+            } else if !test && kind == "bin" {
+                if let Err(code) = process(vec!["--bin".to_string(), target.name].into_iter().chain(args),
+                                           &dep_path) {
+                    std::process::exit(code);
                 }
             }
         }
