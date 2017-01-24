@@ -1234,6 +1234,8 @@ impl f32 {
     ///
     /// Note that this function is distinct from casting.
     ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(float_bits_conv)]
     /// assert!((1f32).to_bits() != 1f32 as u32); // to_bits() is not casting!
@@ -1256,6 +1258,8 @@ impl f32 {
     ///
     /// Returns `Err(())` if the representation of a signaling NaN "sNaN"
     /// float, is passed to the function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(float_bits_conv)]
