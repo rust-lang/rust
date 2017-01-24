@@ -272,7 +272,7 @@ mod prim_pointer { }
 /// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
 /// the element type allows it:
 ///
-/// - [`Clone`][clone] (only if `T: Copy`)
+/// - [`Clone`][clone] (only if `T: [Copy][copy]`)
 /// - [`Debug`][debug]
 /// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
@@ -287,8 +287,8 @@ mod prim_pointer { }
 /// entirely different types. As a stopgap, trait implementations are
 /// statically generated up to size 32.
 ///
-/// Arrays of *any* size are [`Copy`][copy] if the element type is `Copy`. This
-/// works because the `Copy` trait is specially known to the compiler.
+/// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]. This
+/// works because the [`Copy`][copy] trait is specially known to the compiler.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -296,23 +296,6 @@ mod prim_pointer { }
 ///
 /// There is no way to move elements out of an array. See [`mem::replace`][replace]
 /// for an alternative.
-///
-/// [slice]: primitive.slice.html
-/// [copy]: marker/trait.Copy.html
-/// [clone]: clone/trait.Clone.html
-/// [debug]: fmt/trait.Debug.html
-/// [intoiterator]: iter/trait.IntoIterator.html
-/// [partialeq]: cmp/trait.PartialEq.html
-/// [partialord]: cmp/trait.PartialOrd.html
-/// [eq]: cmp/trait.Eq.html
-/// [ord]: cmp/trait.Ord.html
-/// [hash]: hash/trait.Hash.html
-/// [asref]: convert/trait.AsRef.html
-/// [asmut]: convert/trait.AsMut.html
-/// [borrow]: borrow/trait.Borrow.html
-/// [borrowmut]: borrow/trait.BorrowMut.html
-/// [default]: default/trait.Default.html
-/// [replace]: mem/fn.replace.html
 ///
 /// # Examples
 ///
@@ -347,12 +330,30 @@ mod prim_pointer { }
 /// ```
 ///
 /// If the array has 32 or fewer elements (see above), you can also use the
-/// array reference's `IntoIterator` implementation:
+/// array reference's [`IntoIterator`] implementation:
 ///
 /// ```
 /// # let array: [i32; 3] = [0; 3];
 /// for x in &array { }
 /// ```
+///
+/// [slice]: primitive.slice.html
+/// [copy]: marker/trait.Copy.html
+/// [clone]: clone/trait.Clone.html
+/// [debug]: fmt/trait.Debug.html
+/// [intoiterator]: iter/trait.IntoIterator.html
+/// [partialeq]: cmp/trait.PartialEq.html
+/// [partialord]: cmp/trait.PartialOrd.html
+/// [eq]: cmp/trait.Eq.html
+/// [ord]: cmp/trait.Ord.html
+/// [hash]: hash/trait.Hash.html
+/// [asref]: convert/trait.AsRef.html
+/// [asmut]: convert/trait.AsMut.html
+/// [borrow]: borrow/trait.Borrow.html
+/// [borrowmut]: borrow/trait.BorrowMut.html
+/// [default]: default/trait.Default.html
+/// [replace]: mem/fn.replace.html
+/// [`IntoIterator`]: iter/trait.IntoIterator.html
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array { }
