@@ -14,12 +14,14 @@
 #![feature(rustc_private)]
 #![plugin(proc_macro_plugin)]
 
-extern crate proc_macro_tokens;
-use proc_macro_tokens::prelude::*;
-
 extern crate syntax;
+extern crate syntax_pos;
+
+use syntax::ast::Ident;
+use syntax::parse::token;
+use syntax::tokenstream::TokenTree;
 
 fn main() {
-    let lex_true = lex("true");
-    assert_eq!(qquote!(true).eq_unspanned(&lex_true), true);
+    let true_tok = TokenTree::Token(syntax_pos::DUMMY_SP, token::Ident(Ident::from_str("true")));
+    assert!(qquote!(true).eq_unspanned(&true_tok.into()));
 }

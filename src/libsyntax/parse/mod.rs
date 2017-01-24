@@ -196,7 +196,7 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenT
 }
 
 pub fn new_parser_from_ts<'a>(sess: &'a ParseSess, ts: tokenstream::TokenStream) -> Parser<'a> {
-    tts_to_parser(sess, ts.to_tts())
+    tts_to_parser(sess, ts.trees().cloned().collect())
 }
 
 
@@ -725,24 +725,20 @@ mod tests {
                 sp(5, 14),
                 Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Paren,
-                    open_span: sp(5, 6),
                     tts: vec![
                         TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(8, 9), token::Colon),
                         TokenTree::Token(sp(10, 13), token::Ident(Ident::from_str("i32"))),
                     ],
-                    close_span: sp(13, 14),
                 })),
             TokenTree::Delimited(
                 sp(15, 21),
                 Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Brace,
-                    open_span: sp(15, 16),
                     tts: vec![
                         TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(18, 19), token::Semi),
                     ],
-                    close_span: sp(20, 21),
                 }))
         ];
 

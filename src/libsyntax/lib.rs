@@ -89,6 +89,9 @@ pub mod util {
 
     mod thin_vec;
     pub use self::thin_vec::ThinVec;
+
+    mod rc_slice;
+    pub use self::rc_slice::RcSlice;
 }
 
 pub mod json;
@@ -129,7 +132,6 @@ pub mod ext {
     pub mod expand;
     pub mod placeholders;
     pub mod hygiene;
-    pub mod proc_macro_shim;
     pub mod quote;
     pub mod source_util;
 

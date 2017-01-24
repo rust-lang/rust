@@ -256,9 +256,7 @@ impl<'a> Parser<'a> {
                -> Self {
         let tt = TokenTree::Delimited(syntax_pos::DUMMY_SP, Rc::new(Delimited {
             delim: token::NoDelim,
-            open_span: syntax_pos::DUMMY_SP,
             tts: tokens,
-            close_span: syntax_pos::DUMMY_SP,
         }));
         let mut parser = Parser {
             sess: sess,
@@ -2720,7 +2718,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let parsing_token_tree = ::std::mem::replace(&mut self.parsing_token_tree, true);
-                let open_span = self.span;
+                let lo = self.span.lo;
                 self.bump();
                 let tts = self.parse_seq_to_before_tokens(&[&token::CloseDelim(token::Brace),
                                                             &token::CloseDelim(token::Paren),
@@ -2729,16 +2727,11 @@ impl<'a> Parser<'a> {
                                                           |p| p.parse_token_tree(),
                                                           |mut e| e.emit());
                 self.parsing_token_tree = parsing_token_tree;
-
-                let close_span = self.span;
                 self.bump();
 
-                let span = Span { lo: open_span.lo, ..close_span };
-                Ok(TokenTree::Delimited(span, Rc::new(Delimited {
+                Ok(TokenTree::Delimited(Span { lo: lo, ..self.prev_span }, Rc::new(Delimited {
                     delim: delim,
-                    open_span: open_span,
                     tts: tts,
-                    close_span: close_span,
                 })))
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),

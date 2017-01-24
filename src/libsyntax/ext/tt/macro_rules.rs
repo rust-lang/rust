@@ -350,9 +350,9 @@ impl FirstSets {
                     TokenTree::Token(sp, ref tok) => {
                         first.replace_with((sp, tok.clone()));
                     }
-                    TokenTree::Delimited(_, ref delimited) => {
+                    TokenTree::Delimited(span, ref delimited) => {
                         build_recur(sets, &delimited.tts[..]);
-                        first.replace_with((delimited.open_span,
+                        first.replace_with((delimited.open_tt(span).span(),
                                             Token::OpenDelim(delimited.delim)));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
@@ -410,8 +410,8 @@ impl FirstSets {
                     first.add_one((sp, tok.clone()));
                     return first;
                 }
-                TokenTree::Delimited(_, ref delimited) => {
-                    first.add_one((delimited.open_span,
+                TokenTree::Delimited(span, ref delimited) => {
+                    first.add_one((delimited.open_tt(span).span(),
                                    Token::OpenDelim(delimited.delim)));
                     return first;
                 }
@@ -603,8 +603,9 @@ fn check_matcher_core(sess: &ParseSess,
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(_, ref d) => {
-                let my_suffix = TokenSet::singleton((d.close_span, Token::CloseDelim(d.delim)));
+            TokenTree::Delimited(span, ref d) => {
+                let my_suffix = TokenSet::singleton((d.close_tt(span).span(),
+                                                     Token::CloseDelim(d.delim)));
                 check_matcher_core(sess, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();

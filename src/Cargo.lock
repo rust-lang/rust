@@ -208,17 +208,9 @@ dependencies = [
 name = "proc_macro_plugin"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
- "proc_macro_tokens 0.0.0",
  "rustc_plugin 0.0.0",
  "syntax 0.0.0",
-]
-
-[[package]]
-name = "proc_macro_tokens"
-version = "0.0.0"
-dependencies = [
- "syntax 0.0.0",
+ "syntax_pos 0.0.0",
 ]
 
 [[package]]

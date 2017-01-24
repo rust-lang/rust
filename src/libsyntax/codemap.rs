@@ -73,23 +73,6 @@ pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
     respan(DUMMY_SP, t)
 }
 
-/// Build a span that covers the two provided spans.
-pub fn combine_spans(sp1: Span, sp2: Span) -> Span {
-    if sp1 == DUMMY_SP && sp2 == DUMMY_SP {
-        DUMMY_SP
-    } else if sp1 == DUMMY_SP {
-        sp2
-    } else if sp2 == DUMMY_SP {
-        sp1
-    } else {
-        Span {
-            lo: if sp1.lo < sp2.lo { sp1.lo } else { sp2.lo },
-            hi: if sp1.hi > sp2.hi { sp1.hi } else { sp2.hi },
-            expn_id: if sp1.expn_id == sp2.expn_id { sp1.expn_id } else { NO_EXPANSION },
-        }
-    }
-}
-
 #[derive(Clone, Hash, Debug)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
