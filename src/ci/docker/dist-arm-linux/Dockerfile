@@ -76,5 +76,5 @@ ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
 ENV HOSTS=arm-unknown-linux-gnueabi
 ENV HOSTS=$HOSTS,arm-unknown-linux-gnueabihf
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
