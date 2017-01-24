@@ -360,7 +360,23 @@ impl<'a> LoweringContext<'a> {
                     hir::TyTypeof(self.record_body(expr, None))
                 }
                 TyKind::TraitObject(ref bounds) => {
-                    hir::TyTraitObject(self.lower_bounds(bounds))
+                    let mut lifetime_bound = None;
+                    let bounds = bounds.iter().filter_map(|bound| {
+                        match *bound {
+                            TraitTyParamBound(ref ty, TraitBoundModifier::None) => {
+                                Some(self.lower_poly_trait_ref(ty))
+                            }
+                            TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                            RegionTyParamBound(ref lifetime) => {
+                                lifetime_bound = Some(self.lower_lifetime(lifetime));
+                                None
+                            }
+                        }
+                    }).collect();
+                    let lifetime_bound = lifetime_bound.unwrap_or_else(|| {
+                        self.elided_lifetime(t.span)
+                    });
+                    hir::TyTraitObject(bounds, lifetime_bound)
                 }
                 TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))
@@ -2361,20 +2377,20 @@ impl<'a> LoweringContext<'a> {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyTraitObject` instead.
                 if let Def::Trait(_) = path.def {
-                    let principal = hir::TraitTyParamBound(hir::PolyTraitRef {
+                    let principal = hir::PolyTraitRef {
                         bound_lifetimes: hir_vec![],
                         trait_ref: hir::TraitRef {
                             path: path.and_then(|path| path),
                             ref_id: id,
                         },
                         span,
-                    }, hir::TraitBoundModifier::None);
+                    };
 
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
 
-                    hir::TyTraitObject(hir_vec![principal])
+                    hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
                 } else {
                     hir::TyPath(hir::QPath::Resolved(None, path))
                 }

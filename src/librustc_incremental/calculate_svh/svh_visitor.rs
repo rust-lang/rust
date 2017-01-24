@@ -828,7 +828,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_ty_param_bound(self, bounds)
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'tcx PolyTraitRef, m: &'tcx TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &'tcx PolyTraitRef, m: TraitBoundModifier) {
         debug!("visit_poly_trait_ref: st={:?}", self.st);
         SawPolyTraitRef.hash(self.st);
         m.hash(self.st);

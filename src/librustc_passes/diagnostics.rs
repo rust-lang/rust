@@ -244,6 +244,7 @@ match 5u32 {
 }
 
 register_diagnostics! {
+    E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
     E0571, // `break` with a value in a non-`loop`-loop

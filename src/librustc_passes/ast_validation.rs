@@ -144,6 +144,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
             }
             TyKind::TraitObject(ref bounds) => {
+                let mut any_lifetime_bounds = false;
+                for bound in bounds {
+                    if let RegionTyParamBound(ref lifetime) = *bound {
+                        if any_lifetime_bounds {
+                            span_err!(self.session, lifetime.span, E0226,
+                                      "only a single explicit lifetime bound is permitted");
+                            break;
+                        }
+                        any_lifetime_bounds = true;
+                    }
+                }
                 self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(ref bounds) => {

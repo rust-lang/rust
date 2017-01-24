@@ -416,8 +416,21 @@ impl<'a> State<'a> {
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
-            hir::TyTraitObject(ref bounds) => {
-                self.print_bounds("", &bounds[..])?;
+            hir::TyTraitObject(ref bounds, ref lifetime) => {
+                let mut first = true;
+                for bound in bounds {
+                    self.nbsp()?;
+                    if first {
+                        first = false;
+                    } else {
+                        self.word_space("+")?;
+                    }
+                    self.print_poly_trait_ref(bound)?;
+                }
+                if !lifetime.is_elided() {
+                    self.word_space("+")?;
+                    self.print_lifetime(lifetime)?;
+                }
             }
             hir::TyImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;

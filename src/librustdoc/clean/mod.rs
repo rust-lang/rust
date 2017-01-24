@@ -1776,20 +1776,20 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyTraitObject(ref bounds) => {
-                let lhs_ty = bounds[0].clean(cx);
-                match lhs_ty {
-                    TraitBound(poly_trait, ..) => {
-                        match poly_trait.trait_ {
-                            ResolvedPath { path, typarams: None, did, is_generic } => {
-                                ResolvedPath {
-                                    path: path,
-                                    typarams: Some(bounds[1..].clean(cx)),
-                                    did: did,
-                                    is_generic: is_generic,
-                                }
-                            }
-                            _ => Infer // shouldn't happen
+            TyTraitObject(ref bounds, ref lifetime) => {
+                match bounds[0].clean(cx).trait_ {
+                    ResolvedPath { path, typarams: None, did, is_generic } => {
+                        let mut bounds: Vec<_> = bounds[1..].iter().map(|bound| {
+                            TraitBound(bound.clean(cx), hir::TraitBoundModifier::None)
+                        }).collect();
+                        if !lifetime.is_elided() {
+                            bounds.push(RegionBound(lifetime.clean(cx)));
+                        }
+                        ResolvedPath {
+                            path: path,
+                            typarams: Some(bounds),
+                            did: did,
+                            is_generic: is_generic,
                         }
                     }
                     _ => Infer // shouldn't happen
