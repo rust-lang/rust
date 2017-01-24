@@ -11,7 +11,7 @@ Allow types with destructors to be used in `static` items, `const` items, and `c
 # Motivation
 [motivation]: #motivation
 
-Some of the collection types do not allocate any memory when constructed empty (most notably `Vec`). With the change to make leaking safe, the restriction on `static` items with destructors
+Some of the collection types do not allocate any memory when constructed empty (most notably `Vec`). With the change to make leaking safe, the restriction on `static` or `const` items with destructors
 is no longer required to be a hard error (as it is safe and accepted that these destructors may never run).
 
 Allowing types with destructors to be directly used in `const` functions and stored in `static`s or `const`s will remove the need to have
@@ -57,7 +57,7 @@ const fn sample(_v: Vec<u8>) -> usize {
 
 Destructors do not run on `static` items (by design), so this can lead to unexpected behavior when a type's destructor has effects outside the program (e.g. a RAII temporary folder handle, which deletes the folder on drop). However, this can already happen using the `lazy_static` crate.
 
-Destructors _will_ run on `const` items at runtime, which can lead to unexpected behavior when a type's destructor has effects outside the program.
+A `const` item's destructor _will_ run at each point where the `const` item is used. If a `const` item is never used, its destructor will never run. These behaviors may be unexpected.
 
 # Alternatives
 [alternatives]: #alternatives
