@@ -57,7 +57,7 @@ matrix:
 
     - env: >
         SCRIPT="./x.py test && ./x.py dist"
-        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
         SRC=.
         DEPLOY=1
       os: osx
@@ -76,7 +76,7 @@ matrix:
       after_failure: *osx_after_failure
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS=--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
         SRC=.
         DEPLOY=1
       os: osx

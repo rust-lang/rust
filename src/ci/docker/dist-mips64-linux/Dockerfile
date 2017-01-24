@@ -27,5 +27,5 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 ENV HOSTS=mips64-unknown-linux-gnuabi64
 ENV HOSTS=$HOSTS,mips64el-unknown-linux-gnuabi64
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

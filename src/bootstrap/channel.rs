@@ -40,6 +40,9 @@ pub fn collect(build: &mut Build) {
         }
     }
 
+    build.release_num = release_num.to_string();
+    build.prerelease_version = release_num.to_string();
+
     // Depending on the channel, passed in `./configure --release-channel`,
     // determine various properties of the build.
     match &build.config.channel[..] {
