@@ -6,10 +6,14 @@
 # Summary
 [summary]: #summary
 
-For `T: Copy`, add conversion functions with the following signatures to std:
+For all `T`, define `Cell<T>` as having the same memory layout as `T` and
+add conversion functions with the following signatures to std:
 
 - `&mut T -> &Cell<T>`
 - `&mut [T] -> &[Cell<T>]`
+
+> Note: https://github.com/rust-lang/rfcs/pull/1651 has been accepted recently,
+> so no `T: Copy` bound is needed anymore.
 
 # Motivation
 [motivation]: #motivation
@@ -51,8 +55,8 @@ for i in n..v.len() {
 
 ...but this reintroduces the bound-checking costs.
 
-However, there exists a third alternative: Using internal mutability
-to enable safe mutation even with only shared views into the data:
+The alternative, short of changing the actual algorithms involved, is to use
+internal mutability to enable safe mutations even with overlapping shared views into the data:
 
 ```rust
 let v: Vec<Cell<i32>> = ...;
@@ -77,20 +81,18 @@ applicable, namely:
 
 - The need to modify the data structure containing the data (Which might not
   always be possible because it might come from external code).
-- Restriction to `Copy` types for `Cell`, and ref count overhead for `RefCell`.
 - Loss of the ability to directly hand out `&T` and `&mut T` references to the data.
+- Refcounting overhead in case of `RefCell<T>`.
 
-This RFC proposes a way to address the first and the last of the
-previous restrictions by introducing simple conversions functions
+This RFC proposes a way to address these in cases where `Cell<T>`
+would be used by introducing simple conversions functions
 to the standard library that allow the creation of shared borrowed
 `Cell<T>`s from mutably borrowed `T`s.
 
-This allows the original data structure to remain unchanged in type, which makes
-this approach more applicable to more problems, and an answer to many of the
-situations that require C-style for loops at the moment.
-
+This in turn allows the original data structure to remain unchanged,
+while allowing to temporary opt-in to the `Cell` API as needed.
 As an example, given `Cell::from_mut_slice(&mut [T]) -> &[Cell<T>]`,
-the previous Example can be written as this:
+the previous examples can be written as this:
 
 ```rust
 let mut v: Vec<i32> = ...;
@@ -114,6 +116,26 @@ for (i, j) in v_slice[n..].iter().zip(v_slice) {
 
 # Detailed design
 [design]: #detailed-design
+
+## Language
+
+In order for this proposal to be safe, __it needs to be guaranteed that
+`T` and `Cell<T>` have the same memory layout__, and that there are no codegen
+issues based on viewing a reference to a `UnsafeCell`-less types as a
+reference to a `UnsafeCell`-containing type.
+
+As far as the author is aware, both should already implicitly
+fall out of the semantic of `Cell` and llvms notion of aliasing:
+
+- `Cell` is safe interior mutability based on memcopying the `T`,
+  and thus does not need additional fields.
+- `&mut T -> &U` is a sub borrow, which prevents access to the original `&mut T`
+  for its duration, thus no aliasing.
+
+However, we might have to add an explicit language guarantee about
+the validity of this cast.
+
+## Std library
 
 Add conversions functions for `&mut T -> &Cell<T>` and `&mut [T] -> &[Cell<T>]`
 to std, implemented with the equivalent of a simple `transmute()`.
@@ -139,19 +161,6 @@ and the trivially implementable extension to `[T]`,
 but in theory this conversion could be enabled for
 many "higher level mutable reference" types, like for example
 mutable iterators (with the goal of making them cloneable through this).
-
-In order for this proposal to be safe, it needs to be guaranteed that
-`T` and `Cell<T>` have the same memory layout, and that there are no codegen
-issues based on viewing a reference to a `UnsafeCell`-less types as a
-reference to a `UnsafeCell`-containing type.
-
-As far as the author is aware, both should already fall out of the semantic of
-`Cell` and llvms notion of aliasing:
-
-- `Cell` is safe interior mutability based on memcopying the `T`,
-  and thus does not need additional fields.
-- `&mut T -> &U` is a sub borrow, which prevents access to the original `&mut T`
-  for its duration, thus no aliasing.
 
 See https://play.rust-lang.org/?gist=d012cebf462841887323185cff8ccbcc&version=stable&backtrace=0 for
 an example implementation and a more complex use case, and
@@ -222,17 +231,6 @@ impl<'a, T: Copy> AsCell for &'a mut [T] {
 }
 ```
 
-Method dispatch would work as expected with this design:
-
-- `v.as_cell()` where `v: Vec` would correctly pick the `[T]` impl.
-- `x.as_cell()` where `x` is a copyable type correctly picks the `T` impl.
-- `a.as_cell()` where `a` is a copyable array would pick the `T` impl,
-  and require explicit slicing with `a[..].as_cell()` to pick the `[T]` one.
-
-However, if changes as proposed in https://github.com/rust-lang/rfcs/pull/1651 should
-get implemented, the `Copy` bound might get relaxed or removed entirely,
-which would affect the ergonomics here.
-
 But given the issues of adding methods to pointer-like types,
 this approach in general would probably be not a good idea
 (See the situation with `Rc` and `Arc`).
@@ -241,4 +239,5 @@ this approach in general would probably be not a good idea
 [unresolved]: #unresolved-questions
 
 Interactions with proposals like https://github.com/rust-lang/rfcs/pull/1651
-is unclear, but possibly beneficial.
+are not investigated, but seem to only be beneficial by allowing the proposed
+change to apply to more types.
