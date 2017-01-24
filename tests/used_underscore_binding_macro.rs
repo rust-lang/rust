@@ -1,11 +1,11 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-extern crate rustc_serialize;
+#[macro_use] extern crate serde_derive;
 
 /// Test that we do not lint for unused underscores in a `MacroAttribute` expansion
 #[deny(used_underscore_binding)]
-#[derive(RustcEncodable)]
+#[derive(Deserialize)]
 struct MacroAttributesTest {
     _foo: u32,
 }
