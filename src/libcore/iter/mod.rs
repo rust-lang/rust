@@ -1100,6 +1100,17 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
         (0, upper) // can't know a lower bound, due to the predicate
     }
 
+    // this special case allows the compiler to make `.filter(_).count()`
+    // branchless. Barring perfect branch prediction (which is unattainable in
+    // the general case), this will be much faster in >90% of cases (containing
+    // virtually all real workloads) and only a tiny bit slower in the rest.
+    //
+    // Having this specialization thus allows us to write `.filter(p).count()`
+    // where we would otherwise write `.map(|x| p(x) as usize).sum()`, which is
+    // less readable and also less backwards-compatible to Rust before 1.10.
+    //
+    // Using the branchless version will also simplify the LLVM byte code, thus
+    // leaving more budget for LLVM optimizations.
     #[inline]
     fn count(mut self) -> usize {
         let mut count = 0;
