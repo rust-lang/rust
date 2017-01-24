@@ -364,10 +364,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let attr_toks = TokenStream::from_tts(tts_for_attr_args(&attr,
-                                                                        &self.cx.parse_sess));
-
-                let item_toks = TokenStream::from_tts(tts_for_item(&item, &self.cx.parse_sess));
+                let attr_toks = tts_for_attr_args(&attr, &self.cx.parse_sess).into_iter().collect();
+                let item_toks = tts_for_item(&item, &self.cx.parse_sess).into_iter().collect();
 
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
@@ -467,7 +465,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     },
                 });
 
-                let toks = TokenStream::from_tts(marked_tts);
+                let toks = marked_tts.into_iter().collect();
                 let tok_result = expandfun.expand(self.cx, span, toks);
                 Some(self.parse_expansion(tok_result, kind, extname, span))
             }
@@ -490,7 +488,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, name: Name, span: Span)
                        -> Expansion {
-        let mut parser = self.cx.new_parser_from_tts(&toks.to_tts());
+        let mut parser = self.cx.new_parser_from_tts(&toks.trees().cloned().collect::<Vec<_>>());
         let expansion = match parser.parse_expansion(kind, false) {
             Ok(expansion) => expansion,
             Err(mut err) => {

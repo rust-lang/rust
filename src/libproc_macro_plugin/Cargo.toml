@@ -8,7 +8,6 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = { path = "../liblog" }
 rustc_plugin = { path = "../librustc_plugin" }
 syntax = { path = "../libsyntax" }
-proc_macro_tokens = { path = "../libproc_macro_tokens" }
+syntax_pos = { path = "../libsyntax_pos" }

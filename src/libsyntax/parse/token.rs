@@ -49,6 +49,12 @@ pub enum DelimToken {
     NoDelim,
 }
 
+impl DelimToken {
+    pub fn len(&self) -> u32 {
+        if *self == NoDelim { 0 } else { 1 }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Lit {
     Byte(ast::Name),

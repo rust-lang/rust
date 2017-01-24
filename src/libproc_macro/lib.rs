@@ -82,14 +82,15 @@ pub mod __internal {
     use syntax::ast;
     use syntax::ptr::P;
     use syntax::parse::{self, token, ParseSess};
-    use syntax::tokenstream::TokenStream as TokenStream_;
+    use syntax::tokenstream::{TokenTree, TokenStream as TokenStream_};
 
     use super::{TokenStream, LexError};
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
-        TokenStream { inner: TokenStream_::from_tokens(vec![
-            token::Interpolated(Rc::new(token::NtItem(item)))
-        ])}
+        TokenStream {
+            inner: TokenTree::Token(item.span, token::Interpolated(Rc::new(token::NtItem(item))))
+                .into()
+        }
     }
 
     pub fn token_stream_wrap(inner: TokenStream_) -> TokenStream {
@@ -175,7 +176,7 @@ impl FromStr for TokenStream {
             let tts = try!(parse::parse_tts_from_source_str(name, src, sess)
                 .map_err(parse_to_lex_err));
 
-            Ok(__internal::token_stream_wrap(TokenStream_::from_tts(tts)))
+            Ok(__internal::token_stream_wrap(tts.into_iter().collect()))
         })
     }
 }
