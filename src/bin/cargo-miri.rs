@@ -51,7 +51,10 @@ fn main() {
     if let Some("miri") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is when `cargo miri` is called
 
-        let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
+        let test = std::env::args().nth(2).map_or(false, |text| text == "test");
+        let skip = if test { 3 } else { 2 };
+
+        let manifest_path_arg = std::env::args().skip(skip).find(|val| val.starts_with("--manifest-path="));
 
         let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
             metadata
@@ -80,14 +83,21 @@ fn main() {
             .expect("could not find matching package");
         let package = metadata.packages.remove(package_index);
         for target in package.targets {
-            let args = std::env::args().skip(2);
-            if let Some("bin") = target.kind.get(0).map(AsRef::as_ref) {
-                if let Err(code) = process(vec!["--bin".to_string(), target.name].into_iter().chain(args),
+            let args = std::env::args().skip(skip);
+            if test && target.kind.get(0).map_or(false, |kind| kind == "test") {
+                if let Err(code) = process(vec!["--test".to_string(), target.name].into_iter().chain(args),
                                            &dep_path) {
                     std::process::exit(code);
                 }
-            } else {
-                panic!("badly formatted cargo metadata: target::kind is an empty array");
+            } else if !test {
+                if target.kind.get(0).map_or(false, |kind| kind == "bin") {
+                    if let Err(code) = process(vec!["--bin".to_string(), target.name].into_iter().chain(args),
+                                               &dep_path) {
+                        std::process::exit(code);
+                    }
+                } else {
+                    panic!("badly formatted cargo metadata: target::kind is an empty array");
+                }
             }
         }
     } else {
