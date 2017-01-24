@@ -1226,6 +1226,45 @@ impl f32 {
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
+
+    /// Raw transmutation to `u32`.
+    ///
+    /// Converts the `f32` into its raw memory representation,
+    /// similar to the `transmute` function.
+    ///
+    /// Note that this function is distinct from casting.
+    ///
+    /// ```
+    /// #![feature(float_bits_conv)]
+    /// assert!((1f32).to_bits() != 1f32 as u32); // to_bits() is not casting!
+    /// assert_eq!((12.5f32).to_bits(), 0x41480000);
+    ///
+    /// ```
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[inline]
+    pub fn to_bits(self) -> u32 {
+        unsafe { ::mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u32`.
+    ///
+    /// Converts the given `u32` containing the float's raw memory
+    /// representation into the `f32` type, similar to the
+    /// `transmute` function.
+    ///
+    /// Note that this function is distinct from casting.
+    ///
+    /// ```
+    /// #![feature(float_bits_conv)]
+    /// use std::f32;
+    /// let difference = (f32::from_bits(0x41480000) - 12.5).abs();
+    /// assert!(difference <= 1e-5);
+    /// ```
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[inline]
+    pub fn from_bits(v: u32) -> Self {
+        unsafe { ::mem::transmute(v) }
+    }
 }
 
 #[cfg(test)]
@@ -1869,5 +1908,17 @@ mod tests {
         assert_approx_eq!(log10_e, e.log10());
         assert_approx_eq!(ln_2, 2f32.ln());
         assert_approx_eq!(ln_10, 10f32.ln());
+    }
+
+    #[test]
+    fn test_float_bits_conv() {
+        assert_eq!((1f32).to_bits(), 0x3f800000);
+        assert_eq!((12.5f32).to_bits(), 0x41480000);
+        assert_eq!((1337f32).to_bits(), 0x44a72000);
+        assert_eq!((-14.25f32).to_bits(), 0xc1640000);
+        assert_approx_eq!(f32::from_bits(0x3f800000), 1.0);
+        assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
+        assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
+        assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
     }
 }
