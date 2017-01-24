@@ -18,15 +18,13 @@
        html_playground_url = "https://play.rust-lang.org/")]
 #![deny(warnings)]
 
-#![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(slice_patterns)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 #[macro_use] extern crate log;
+extern crate term;
 
 pub mod highlight;
 pub mod escape;
