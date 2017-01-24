@@ -760,6 +760,14 @@ impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
     }
 }
 
+#[stable(feature = "string_to_socket_addrs", since = "1.16.0")]
+impl ToSocketAddrs for String {
+    type Iter = vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
+        (&**self).to_socket_addrs()
+    }
+}
+
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use net::*;
@@ -795,6 +803,18 @@ mod tests {
 
         let a = sa4(Ipv4Addr::new(127, 0, 0, 1), 23924);
         assert!(tsa("localhost:23924").unwrap().contains(&a));
+    }
+
+    #[test]
+    fn to_socket_addr_string() {
+        let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 24352);
+        assert_eq!(Ok(vec![a]), tsa(&*format!("{}:{}", "77.88.21.11", "24352")));
+        assert_eq!(Ok(vec![a]), tsa(&format!("{}:{}", "77.88.21.11", "24352")));
+        assert_eq!(Ok(vec![a]), tsa(format!("{}:{}", "77.88.21.11", "24352")));
+
+        let s = format!("{}:{}", "77.88.21.11", "24352");
+        assert_eq!(Ok(vec![a]), tsa(s));
+        // s has been moved into the tsa call
     }
 
     // FIXME: figure out why this fails on openbsd and bitrig and fix it
