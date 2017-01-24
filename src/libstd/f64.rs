@@ -1126,6 +1126,8 @@ impl f64 {
     ///
     /// Note that this function is distinct from casting.
     ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(float_bits_conv)]
     /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
@@ -1148,6 +1150,8 @@ impl f64 {
     ///
     /// Returns `Err(())` if the representation of a signaling NaN "sNaN"
     /// float, is passed to the function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(float_bits_conv)]
