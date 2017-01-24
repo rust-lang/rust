@@ -4,21 +4,55 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
 #[macro_use] extern crate log;
 
 use rustc::session::Session;
-use rustc_driver::{Compilation, CompilerCalls};
+use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
-use syntax::ast::{MetaItemKind, NestedMetaItemKind};
+use rustc::session::config::{self, Input, ErrorOutputType};
+use syntax::ast::{MetaItemKind, NestedMetaItemKind, self};
+use std::path::PathBuf;
 
-struct MiriCompilerCalls;
+struct MiriCompilerCalls(RustcDefaultCalls);
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a> {
-        let mut control = CompileController::basic();
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType
+    ) -> Compilation {
+        self.0.early_callback(matches, sopts, cfg, descriptions, output)
+    }
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry
+    ) -> Option<(Input, Option<PathBuf>)> {
+        self.0.no_input(matches, sopts, cfg, odir, ofile, descriptions)
+    }
+    fn late_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sess: &Session,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>
+    ) -> Compilation {
+        self.0.late_callback(matches, sess, input, odir, ofile)
+    }
+    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
+        let mut control = self.0.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
         if std::env::var("MIRI_HOST_TARGET") != Ok("yes".to_owned()) {
@@ -147,5 +181,5 @@ fn main() {
     // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls, None, None);
+    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls(RustcDefaultCalls), None, None);
 }
