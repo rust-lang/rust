@@ -1,7 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 
 /// Test that we do not lint for unused underscores in a `MacroAttribute` expansion
 #[deny(used_underscore_binding)]
