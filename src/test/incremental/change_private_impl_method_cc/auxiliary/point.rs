@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z incremental-cc
+
 pub struct Point {
     pub x: f32,
     pub y: f32,
