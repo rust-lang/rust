@@ -1359,6 +1359,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 }
 
                 self.write_sub_paths_truncated(path);
+                visit::walk_path(self, path);
             }
             ast::TyKind::Array(ref element, ref length) => {
                 self.visit_ty(element);
