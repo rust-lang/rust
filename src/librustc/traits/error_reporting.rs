@@ -883,40 +883,50 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
+    fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
+        if let ty::TyInfer(ty::TyVar(ty_vid)) = (*ty).sty {
+            let ty_vars = self.type_variables.borrow();
+            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
+                *ty_vars.var_origin(ty_vid) {
+                name.to_string()
+            } else {
+                ty.to_string()
+            }
+        } else {
+            ty.to_string()
+        }
+    }
 
-    fn need_type_info(&self,
-                      obligation: &PredicateObligation<'tcx>,
-                      ty: Ty<'tcx>) {
-
+    fn need_type_info(&self, obligation: &PredicateObligation<'tcx>, ty: Ty<'tcx>) {
         let ty = self.resolve_type_vars_if_possible(&ty);
+        let name = self.extract_type_name(&ty);
         let ref cause = obligation.cause;
 
         let mut err = struct_span_err!(self.tcx.sess,
                                        cause.span,
                                        E0282,
-                                       "unable to fully infer type(s)");
+                                       "type annotations needed");
 
-        err.note("type annotations or generic parameter binding required");
-        err.span_label(cause.span, &format!("cannot infer type"));
+        err.span_label(cause.span, &format!("cannot infer type for `{}`", name));
 
         let expr = self.tcx.hir.expect_expr(cause.body_id);
 
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
             target_ty: &ty,
-            found_pattern: None
+            found_pattern: None,
         };
 
         local_visitor.visit_expr(expr);
 
         if let Some(pattern) = local_visitor.found_pattern {
             let pattern_span = pattern.span;
-            if let Some(n) = pattern.simple_name() {
+            if let Some(simple_name) = pattern.simple_name() {
                 err.span_label(pattern_span,
-                    &format!("annotating the type for the variable `{}` would help", n));
+                               &format!("consider giving `{}` a type",
+                                        simple_name));
             } else {
-                err.span_label(pattern_span,
-                    &format!("annotating the type of pattern would help"));
+                err.span_label(pattern_span, &format!("consider giving a type to pattern"));
             }
         }
 
