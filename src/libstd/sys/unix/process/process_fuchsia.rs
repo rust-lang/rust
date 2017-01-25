@@ -54,7 +54,7 @@ impl Command {
                       -> io::Result<(*mut launchpad_t, mx_handle_t)> {
         use sys::process::magenta::*;
 
-        let job_handle = mxio_get_startup_handle(mx_hnd_info(MX_HND_TYPE_JOB, 0));
+        let job_handle = mx_job_default();
         let envp = match *self.get_envp() {
             Some(ref envp) => envp.as_ptr(),
             None => ptr::null(),
@@ -66,14 +66,14 @@ impl Command {
             fn drop(&mut self) { unsafe { launchpad_destroy(self.0); } }
         }
 
-        let mut launchpad: *mut launchpad_t = ptr::null_mut();
-        let launchpad_destructor = LaunchpadDestructor(launchpad);
-
         // Duplicate the job handle
         let mut job_copy: mx_handle_t = MX_HANDLE_INVALID;
         mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS, &mut job_copy))?;
         // Create a launchpad
+        let mut launchpad: *mut launchpad_t = ptr::null_mut();
         mx_cvt(launchpad_create(job_copy, self.get_argv()[0], &mut launchpad))?;
+        let launchpad_destructor = LaunchpadDestructor(launchpad);
+
         // Set the process argv
         mx_cvt(launchpad_arguments(launchpad, self.get_argv().len() as i32 - 1,
                                    self.get_argv().as_ptr()))?;
@@ -88,19 +88,19 @@ impl Command {
 
         // Clone stdin, stdout, and stderr
         if let Some(fd) = stdio.stdin.fd() {
-            launchpad_transfer_fd(launchpad, fd, 0);
+            mx_cvt(launchpad_transfer_fd(launchpad, fd, 0))?;
         } else {
-            launchpad_clone_fd(launchpad, 0, 0);
+            mx_cvt(launchpad_clone_fd(launchpad, 0, 0))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
-            launchpad_transfer_fd(launchpad, fd, 1);
+            mx_cvt(launchpad_transfer_fd(launchpad, fd, 1))?;
         } else {
-            launchpad_clone_fd(launchpad, 1, 1);
+            mx_cvt(launchpad_clone_fd(launchpad, 1, 1))?;
         }
         if let Some(fd) = stdio.stderr.fd() {
-            launchpad_transfer_fd(launchpad, fd, 2);
+            mx_cvt(launchpad_transfer_fd(launchpad, fd, 2))?;
         } else {
-            launchpad_clone_fd(launchpad, 2, 2);
+            mx_cvt(launchpad_clone_fd(launchpad, 2, 2))?;
         }
 
         // We don't want FileDesc::drop to be called on any stdio. It would close their fds. The
@@ -153,6 +153,36 @@ impl Process {
         unsafe {
             mx_cvt(mx_handle_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
                                       MX_TIME_INFINITE, ptr::null_mut()))?;
+            mx_cvt(mx_object_get_info(self.handle.raw(), MX_INFO_PROCESS,
+                                      &mut proc_info as *mut _ as *mut libc::c_void,
+                                      mem::size_of::<mx_info_process_t>(), &mut actual,
+                                      &mut avail))?;
+        }
+        if actual != 1 {
+            return Err(io::Error::new(io::ErrorKind::InvalidData,
+                                      "Failed to get exit status of process"));
+        }
+        Ok(ExitStatus::new(proc_info.rec.return_code))
+    }
+
+    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+        use default::Default;
+        use sys::process::magenta::*;
+
+        let mut proc_info: mx_info_process_t = Default::default();
+        let mut actual: mx_size_t = 0;
+        let mut avail: mx_size_t = 0;
+
+        unsafe {
+            let status = mx_handle_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
+                                            0, ptr::null_mut());
+            match status {
+                0 => { }, // Success
+                x if x == ERR_TIMED_OUT => {
+                    return Err(io::Error::from(io::ErrorKind::WouldBlock));
+                },
+                _ => { panic!("Failed to wait on process handle: {}", status); },
+            }
             mx_cvt(mx_object_get_info(self.handle.raw(), MX_INFO_PROCESS,
                                       &mut proc_info as *mut _ as *mut libc::c_void,
                                       mem::size_of::<mx_info_process_t>(), &mut actual,
