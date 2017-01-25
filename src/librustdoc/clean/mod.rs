@@ -794,7 +794,7 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     }
 }
 
-impl<'tcx> Clean<Lifetime> for ty::RegionParameterDef<'tcx> {
+impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
         Lifetime(self.name.to_string())
     }
@@ -970,11 +970,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                 Some(tp.clean(cx))
             }
         }).collect::<Vec<_>>();
-        let stripped_lifetimes = gens.regions.iter().map(|rp| {
-            let mut srp = rp.clone();
-            srp.bounds = Vec::new();
-            srp.clean(cx)
-        }).collect::<Vec<_>>();
 
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
@@ -1017,7 +1012,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
 
         Generics {
             type_params: simplify::ty_params(stripped_typarams),
-            lifetimes: stripped_lifetimes,
+            lifetimes: gens.regions.clean(cx),
             where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }

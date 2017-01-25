@@ -1446,9 +1446,6 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 name: l.lifetime.name,
                 index: own_start + i as u32,
                 def_id: tcx.hir.local_def_id(l.lifetime.id),
-                bounds: l.bounds.iter().map(|l| {
-                    AstConv::ast_region_to_region(&ccx.icx(&()), l, None)
-                }).collect(),
                 pure_wrt_drop: l.pure_wrt_drop,
             }
         }).collect::<Vec<_>>();

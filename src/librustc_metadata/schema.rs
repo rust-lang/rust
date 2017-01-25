@@ -256,7 +256,7 @@ pub struct Generics<'tcx> {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
     pub parent_types: u32,
-    pub regions: LazySeq<ty::RegionParameterDef<'tcx>>,
+    pub regions: LazySeq<ty::RegionParameterDef>,
     pub types: LazySeq<ty::TypeParameterDef<'tcx>>,
     pub has_self: bool,
     pub object_lifetime_defaults: LazySeq<ObjectLifetimeDefault>,
