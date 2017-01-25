@@ -119,6 +119,7 @@ enum TargetKind {
     Example, // example file
     Test, // test file
     Bench, // bench file
+    CustomBuild, // build script
     Other, // plugin,...
 }
 
@@ -126,7 +127,7 @@ impl TargetKind {
     fn should_format(&self) -> bool {
         match *self {
             TargetKind::Lib | TargetKind::Bin | TargetKind::Example | TargetKind::Test |
-            TargetKind::Bench => true,
+            TargetKind::Bench | TargetKind::CustomBuild => true,
             _ => false,
         }
     }
@@ -169,6 +170,7 @@ fn target_from_json(jtarget: &Json) -> Target {
         "test" => TargetKind::Test,
         "example" => TargetKind::Example,
         "bench" => TargetKind::Bench,
+        "custom-build" => TargetKind::CustomBuild,
         _ => TargetKind::Other,
     };
 
