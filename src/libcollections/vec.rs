@@ -820,15 +820,13 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(dedup_by)]
-    ///
     /// let mut vec = vec![10, 20, 21, 30, 20];
     ///
     /// vec.dedup_by_key(|i| *i / 10);
     ///
     /// assert_eq!(vec, [10, 20, 30, 20]);
     /// ```
-    #[unstable(feature = "dedup_by", reason = "recently added", issue = "37087")]
+    #[stable(feature = "dedup_by", since = "1.16.0")]
     #[inline]
     pub fn dedup_by_key<F, K>(&mut self, mut key: F) where F: FnMut(&mut T) -> K, K: PartialEq {
         self.dedup_by(|a, b| key(a) == key(b))
@@ -841,7 +839,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(dedup_by)]
     /// use std::ascii::AsciiExt;
     ///
     /// let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
@@ -850,7 +847,7 @@ impl<T> Vec<T> {
     ///
     /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
     /// ```
-    #[unstable(feature = "dedup_by", reason = "recently added", issue = "37087")]
+    #[stable(feature = "dedup_by", since = "1.16.0")]
     pub fn dedup_by<F>(&mut self, mut same_bucket: F) where F: FnMut(&mut T, &mut T) -> bool {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make

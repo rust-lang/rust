@@ -17,6 +17,8 @@
             reason = "matches collection reform specification, \
                       waiting for dust to settle",
             issue = "37966")]
+#![rustc_deprecated(since = "1.16.0", reason = "long since replaced")]
+#![allow(deprecated)]
 
 use core::marker;
 use core::fmt;

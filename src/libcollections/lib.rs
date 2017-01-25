@@ -79,6 +79,7 @@ pub use btree_set::BTreeSet;
 #[doc(no_inline)]
 pub use linked_list::LinkedList;
 #[doc(no_inline)]
+#[allow(deprecated)]
 pub use enum_set::EnumSet;
 #[doc(no_inline)]
 pub use vec_deque::VecDeque;
