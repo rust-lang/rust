@@ -384,7 +384,7 @@ currently trying to run the tests. This can save compile time, and also ensures
 that our tests are entirely left out of a normal build.
 
 The second change is the `use` declaration. Because we're in an inner module,
-we need to bring our test function into scope. This can be annoying if you have
+we need to bring the tested function into scope. This can be annoying if you have
 a large module, and so this is a common use of globs. Let's change our
 `src/lib.rs` to make use of it:
 

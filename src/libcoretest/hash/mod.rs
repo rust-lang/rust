@@ -62,9 +62,8 @@ fn test_writer_hasher() {
 
     let s: &str = "a";
     assert_eq!(hash(& s), 97 + 0xFF);
-    // FIXME (#18283) Enable test
-    //let s: Box<str> = box "a";
-    //assert_eq!(hasher.hash(& s), 97 + 0xFF);
+    let s: Box<str> = String::from("a").into_boxed_str();
+    assert_eq!(hash(& s), 97 + 0xFF);
     let cs: &[u8] = &[1, 2, 3];
     assert_eq!(hash(& cs), 9);
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.

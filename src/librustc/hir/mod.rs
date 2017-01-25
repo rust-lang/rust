@@ -1014,7 +1014,7 @@ pub enum QPath {
     ///
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
-    /// the `X` and `Y` nodes being each a `TyPath(QPath::TypeRelative(..))`.
+    /// the `X` and `Y` nodes each being a `TyPath(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
 }
 
