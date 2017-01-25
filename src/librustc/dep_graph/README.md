@@ -422,24 +422,3 @@ to see something like:
 That first edge looks suspicious to you. So you set
 `RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and
 then observe the backtrace. Voila, bug fixed!
-
-### Inlining of HIR nodes
-
-For the time being, at least, we still sometimes "inline" HIR nodes
-from other crates into the current HIR map. This creates a weird
-scenario where the same logical item (let's call it `X`) has two
-def-ids: the original def-id `X` and a new, inlined one `X'`. `X'` is
-in the current crate, but it's not like other HIR nodes: in
-particular, when we restart compilation, it will not be available to
-hash. Therefore, we do not want `Hir(X')` nodes appearing in our
-graph.  Instead, we want a "read" of `Hir(X')` to be represented as a
-read of `MetaData(X)`, since the metadata for `X` is where the inlined
-representation originated in the first place.
-
-To achieve this, the HIR map will detect if the def-id originates in
-an inlined node and add a dependency to a suitable `MetaData` node
-instead. If you are reading a HIR node and are not sure if it may be
-inlined or not, you can use `tcx.map.read(node_id)` and it will detect
-whether the node is inlined or not and do the right thing.  You can
-also use `tcx.map.is_inlined_def_id()` and
-`tcx.map.is_inlined_node_id()` to test.
