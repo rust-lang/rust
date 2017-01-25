@@ -16,6 +16,7 @@ use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
+use rustc::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc_back::PanicStrategy;
@@ -258,6 +259,7 @@ pub struct Generics<'tcx> {
     pub regions: LazySeq<ty::RegionParameterDef<'tcx>>,
     pub types: LazySeq<ty::TypeParameterDef<'tcx>>,
     pub has_self: bool,
+    pub object_lifetime_defaults: LazySeq<ObjectLifetimeDefault>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

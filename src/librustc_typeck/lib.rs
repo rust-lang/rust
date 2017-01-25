@@ -127,7 +127,6 @@ pub mod diagnostics;
 
 pub mod check;
 pub mod check_unused;
-mod rscope;
 mod astconv;
 pub mod collect;
 mod constrained_type_params;

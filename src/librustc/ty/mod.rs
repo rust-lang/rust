@@ -592,24 +592,6 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-/// Default region to use for the bound of objects that are
-/// supplied as the value for this type parameter. This is derived
-/// from `T:'a` annotations appearing in the type definition.  If
-/// this is `None`, then the default is inherited from the
-/// surrounding context. See RFC #599 for details.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum ObjectLifetimeDefault<'tcx> {
-    /// Require an explicit annotation. Occurs when multiple
-    /// `T:'a` constraints are found.
-    Ambiguous,
-
-    /// Use the base default, typically 'static, but in a fn body it is a fresh variable
-    BaseDefault,
-
-    /// Use the given region as the default.
-    Specific(&'tcx Region),
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef<'tcx> {
     pub name: Name,
@@ -617,7 +599,6 @@ pub struct TypeParameterDef<'tcx> {
     pub index: u32,
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `T`, asserts data behind the parameter
