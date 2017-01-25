@@ -336,13 +336,12 @@ impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::RegionParameterDef<'tcx> {
+impl fmt::Debug for ty::RegionParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {:?}, {}, {:?})",
+        write!(f, "RegionParameterDef({}, {:?}, {})",
                self.name,
                self.def_id,
-               self.index,
-               self.bounds)
+               self.index)
     }
 }
 
