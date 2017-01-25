@@ -10,7 +10,7 @@
 
 //! Conversion from AST representation of types to the ty.rs
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
-//! is parameterized by an instance of `AstConv` and a `RegionScope`.
+//! is parameterized by an instance of `AstConv`.
 //!
 //! The parameterization of `ast_ty_to_ty()` is because it behaves
 //! somewhat differently during the collect and check phases,
@@ -22,31 +22,6 @@
 //! an error).  In the check phase, when the FnCtxt is used as the
 //! `AstConv`, `get_item_type()` just looks up the item type in
 //! `tcx.types` (using `TyCtxt::item_type`).
-//!
-//! The `RegionScope` trait controls what happens when the user does
-//! not specify a region in some location where a region is required
-//! (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
-//! See the `rscope` module for more details.
-//!
-//! Unlike the `AstConv` trait, the region scope can change as we descend
-//! the type.  This is to accommodate the fact that (a) fn types are binding
-//! scopes and (b) the default region may change.  To understand case (a),
-//! consider something like:
-//!
-//!   type foo = { x: &a.int, y: |&a.int| }
-//!
-//! The type of `x` is an error because there is no region `a` in scope.
-//! In the type of `y`, however, region `a` is considered a bound region
-//! as it does not already appear in scope.
-//!
-//! Case (b) says that if you have a type:
-//!   type foo<'a> = ...;
-//!   type bar = fn(&foo, &a.foo)
-//! The fully expanded version of type bar is:
-//!   type bar = fn(&'foo &, &a.foo<'a>)
-//! Note that the self region for the `foo` defaulted to `&` in the first
-//! case but `&a` in the second.  Basically, defaults that appear inside
-//! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use rustc_const_eval::eval_length;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -61,8 +36,6 @@ use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
-use rscope::{RegionScope, ObjectLifetimeDefaultRscope, ShiftedRscope};
-use rscope::ExplicitRscope;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FxHashSet};
 
@@ -110,7 +83,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
     fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
-                -> &'tcx ty::Region;
+                -> Option<&'tcx ty::Region>;
 
     /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
@@ -220,7 +193,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     // (*) -- not late-bound, won't change
             }
 
-            None => self.re_infer(lifetime.span, def)
+            None => {
+                self.re_infer(lifetime.span, def).expect("unelided lifetime in signature")
+            }
         };
 
         debug!("ast_region_to_region(lifetime={:?}) yields {:?}",
@@ -233,7 +208,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
     /// returns an appropriate set of substitutions for this particular reference to `I`.
     pub fn ast_path_substs_for_ty(&self,
-        rscope: &RegionScope,
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment)
@@ -258,8 +232,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let (substs, assoc_bindings) =
-            self.create_substs_for_ast_path(rscope,
-                                            span,
+            self.create_substs_for_ast_path(span,
                                             def_id,
                                             &item_segment.parameters,
                                             None);
@@ -275,7 +248,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
     fn create_substs_for_ast_path(&self,
-        rscope: &RegionScope,
         span: Span,
         def_id: DefId,
         parameters: &hir::PathParameters,
@@ -357,11 +329,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // A provided type parameter.
                 match *parameters {
                     hir::AngleBracketedParameters(ref data) => {
-                        self.ast_ty_arg_to_ty(rscope, Some(def), substs, &data.types[i])
+                        self.ast_ty_to_ty(&data.types[i])
                     }
                     hir::ParenthesizedParameters(ref data) => {
                         assert_eq!(i, 0);
-                        let (ty, assoc) = self.convert_parenthesized_parameters(substs, data);
+                        let (ty, assoc) = self.convert_parenthesized_parameters(data);
                         output_assoc_binding = Some(assoc);
                         ty
                     }
@@ -406,7 +378,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 data.bindings.iter().map(|b| {
                     ConvertedBinding {
                         item_name: b.name,
-                        ty: self.ast_ty_to_ty(rscope, &b.ty),
+                        ty: self.ast_ty_to_ty(&b.ty),
                         span: b.span
                     }
                 }).collect()
@@ -415,7 +387,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 vec![output_assoc_binding.unwrap_or_else(|| {
                     // This is an error condition, but we should
                     // get the associated type binding anyway.
-                    self.convert_parenthesized_parameters(substs, data).1
+                    self.convert_parenthesized_parameters(data).1
                 })]
             }
         };
@@ -427,17 +399,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn convert_parenthesized_parameters(&self,
-                                        region_substs: &[Kind<'tcx>],
                                         data: &hir::ParenthesizedParameterData)
                                         -> (Ty<'tcx>, ConvertedBinding<'tcx>)
     {
         let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
-            self.ast_ty_arg_to_ty(&ExplicitRscope, None, region_substs, a_t)
+            self.ast_ty_to_ty(a_t)
         }));
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
-                (self.ast_ty_to_ty(&ExplicitRscope, output_ty), output_ty.span)
+                (self.ast_ty_to_ty(output_ty), output_ty.span)
             }
             None => {
                 (self.tcx().mk_nil(), data.span)
@@ -460,14 +431,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
-        rscope: &RegionScope,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
         let trait_def_id = self.trait_def_id(trait_ref);
-        self.ast_path_to_mono_trait_ref(rscope,
-                                        trait_ref.path.span,
+        self.ast_path_to_mono_trait_ref(trait_ref.path.span,
                                         trait_def_id,
                                         self_ty,
                                         trait_ref.path.segments.last().unwrap())
@@ -488,7 +457,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     pub fn instantiate_poly_trait_ref(&self,
-        rscope: &RegionScope,
         ast_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
@@ -498,16 +466,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_def_id = self.trait_def_id(trait_ref);
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
-        // The trait reference introduces a binding level here, so
-        // we need to shift the `rscope`. It'd be nice if we could
-        // do away with this rscope stuff and work this knowledge
-        // into resolve_lifetimes, as we do with non-omitted
-        // lifetimes. Oh well, not there yet.
-        let shifted_rscope = &ShiftedRscope::new(rscope);
 
         let (substs, assoc_bindings) =
-            self.create_substs_for_ast_trait_ref(shifted_rscope,
-                                                 trait_ref.path.span,
+            self.create_substs_for_ast_trait_ref(trait_ref.path.span,
                                                  trait_def_id,
                                                  self_ty,
                                                  trait_ref.path.segments.last().unwrap());
@@ -528,7 +489,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn ast_path_to_mono_trait_ref(&self,
-                                  rscope: &RegionScope,
                                   span: Span,
                                   trait_def_id: DefId,
                                   self_ty: Ty<'tcx>,
@@ -536,8 +496,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                   -> ty::TraitRef<'tcx>
     {
         let (substs, assoc_bindings) =
-            self.create_substs_for_ast_trait_ref(rscope,
-                                                 span,
+            self.create_substs_for_ast_trait_ref(span,
                                                  trait_def_id,
                                                  self_ty,
                                                  trait_segment);
@@ -546,7 +505,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn create_substs_for_ast_trait_ref(&self,
-                                       rscope: &RegionScope,
                                        span: Span,
                                        trait_def_id: DefId,
                                        self_ty: Ty<'tcx>,
@@ -590,8 +548,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
         }
 
-        self.create_substs_for_ast_path(rscope,
-                                        span,
+        self.create_substs_for_ast_path(span,
                                         trait_def_id,
                                         &trait_segment.parameters,
                                         Some(self_ty))
@@ -700,7 +657,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn ast_path_to_ty(&self,
-        rscope: &RegionScope,
         span: Span,
         did: DefId,
         item_segment: &hir::PathSegment)
@@ -714,8 +670,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
         };
 
-        let substs = self.ast_path_substs_for_ty(rscope,
-                                                 span,
+        let substs = self.ast_path_substs_for_ty(span,
                                                  did,
                                                  item_segment);
 
@@ -737,7 +692,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn conv_object_ty_poly_trait_ref(&self,
-        rscope: &RegionScope,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
         lifetime: &hir::Lifetime)
@@ -753,8 +707,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let mut projection_bounds = vec![];
         let dummy_self = tcx.mk_ty(TRAIT_OBJECT_DUMMY_SELF);
-        let principal = self.instantiate_poly_trait_ref(rscope,
-                                                        &trait_bounds[0],
+        let principal = self.instantiate_poly_trait_ref(&trait_bounds[0],
                                                         dummy_self,
                                                         &mut projection_bounds);
 
@@ -839,15 +792,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                tcx.mk_region(match rscope.object_lifetime_default(span) {
-                    Some(r) => r,
-                    None => {
-                        span_err!(self.tcx().sess, span, E0228,
+                if tcx.named_region_map.defs.contains_key(&lifetime.id) {
+                    self.ast_region_to_region(lifetime, None)
+                } else {
+                    self.re_infer(span, None).unwrap_or_else(|| {
+                        span_err!(tcx.sess, span, E0228,
                                   "the lifetime bound for this object type cannot be deduced \
                                    from context; please supply an explicit bound");
-                        ty::ReStatic
-                    }
-                })
+                        tcx.mk_region(ty::ReStatic)
+                    })
+                }
             })
         };
 
@@ -1059,7 +1013,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     fn qpath_to_ty(&self,
-                   rscope: &RegionScope,
                    span: Span,
                    opt_self_ty: Option<Ty<'tcx>>,
                    trait_def_id: DefId,
@@ -1084,8 +1037,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
 
-        let trait_ref = self.ast_path_to_mono_trait_ref(rscope,
-                                                        span,
+        let trait_ref = self.ast_path_to_mono_trait_ref(span,
                                                         trait_def_id,
                                                         self_ty,
                                                         trait_segment);
@@ -1095,38 +1047,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self.projected_ty(span, trait_ref, item_segment.name)
     }
 
-    /// Convert a type supplied as value for a type argument from AST into our
-    /// our internal representation. This is the same as `ast_ty_to_ty` but that
-    /// it applies the object lifetime default.
-    ///
-    /// # Parameters
-    ///
-    /// * `this`, `rscope`: the surrounding context
-    /// * `def`: the type parameter being instantiated (if available)
-    /// * `region_substs`: a partial substitution consisting of
-    ///   only the region type parameters being supplied to this type.
-    /// * `ast_ty`: the ast representation of the type being supplied
-    fn ast_ty_arg_to_ty(&self,
-                        rscope: &RegionScope,
-                        def: Option<&ty::TypeParameterDef<'tcx>>,
-                        region_substs: &[Kind<'tcx>],
-                        ast_ty: &hir::Ty)
-                        -> Ty<'tcx>
-    {
-        let tcx = self.tcx();
-
-        if let Some(def) = def {
-            let object_lifetime_default = def.object_lifetime_default.subst(tcx, region_substs);
-            let rscope1 = &ObjectLifetimeDefaultRscope::new(rscope, object_lifetime_default);
-            self.ast_ty_to_ty(rscope1, ast_ty)
-        } else {
-            self.ast_ty_to_ty(rscope, ast_ty)
-        }
-    }
-
     // Check a type Path and convert it to a Ty.
     pub fn def_to_ty(&self,
-                     rscope: &RegionScope,
                      opt_self_ty: Option<Ty<'tcx>>,
                      path: &hir::Path,
                      permit_variants: bool)
@@ -1141,15 +1063,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
-                self.ast_path_to_ty(rscope, span, did, path.segments.last().unwrap())
+                self.ast_path_to_ty(span, did, path.segments.last().unwrap())
             }
             Def::Variant(did) if permit_variants => {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
-                self.ast_path_to_ty(rscope,
-                                    span,
+                self.ast_path_to_ty(span,
                                     tcx.parent_def_id(did).unwrap(),
                                     path.segments.last().unwrap())
             }
@@ -1207,8 +1128,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::AssociatedTy(def_id) => {
                 tcx.prohibit_type_params(&path.segments[..path.segments.len()-2]);
                 let trait_did = tcx.parent_def_id(def_id).unwrap();
-                self.qpath_to_ty(rscope,
-                                 span,
+                self.qpath_to_ty(span,
                                  opt_self_ty,
                                  trait_did,
                                  &path.segments[path.segments.len()-2],
@@ -1228,7 +1148,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
-    pub fn ast_ty_to_ty(&self, rscope: &RegionScope, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?})",
                ast_ty.id, ast_ty);
 
@@ -1241,29 +1161,25 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let result_ty = match ast_ty.node {
             hir::TySlice(ref ty) => {
-                tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
+                tcx.mk_slice(self.ast_ty_to_ty(&ty))
             }
             hir::TyPtr(ref mt) => {
                 tcx.mk_ptr(ty::TypeAndMut {
-                    ty: self.ast_ty_to_ty(rscope, &mt.ty),
+                    ty: self.ast_ty_to_ty(&mt.ty),
                     mutbl: mt.mutbl
                 })
             }
             hir::TyRptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!("TyRef r={:?}", r);
-                let rscope1 =
-                    &ObjectLifetimeDefaultRscope::new(
-                        rscope,
-                        ty::ObjectLifetimeDefault::Specific(r));
-                let t = self.ast_ty_to_ty(rscope1, &mt.ty);
+                let t = self.ast_ty_to_ty(&mt.ty);
                 tcx.mk_ref(r, ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
             hir::TyNever => {
                 tcx.types.never
             },
             hir::TyTup(ref fields) => {
-                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(rscope, &t)))
+                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
@@ -1309,7 +1225,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
-                self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds, lifetime)
+                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
             hir::TyImplTrait(ref bounds) => {
                 use collect::{compute_bounds, SizedByDefault};
@@ -1381,13 +1297,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
-                    self.ast_ty_to_ty(rscope, qself)
+                    self.ast_ty_to_ty(qself)
                 });
-                self.def_to_ty(rscope, opt_self_ty, path, false)
+                self.def_to_ty(opt_self_ty, path, false)
             }
             hir::TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
-                let ty = self.ast_ty_to_ty(rscope, qself);
+                let ty = self.ast_ty_to_ty(qself);
 
                 let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
                     path.def
@@ -1398,7 +1314,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyArray(ref ty, length) => {
                 if let Ok(length) = eval_length(tcx.global_tcx(), length, "array length") {
-                    tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
+                    tcx.mk_array(self.ast_ty_to_ty(&ty), length)
                 } else {
                     self.tcx().types.err
                 }
@@ -1426,7 +1342,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     pub fn ty_of_arg(&self,
-                     rscope: &RegionScope,
                      ty: &hir::Ty,
                      expected_ty: Option<Ty<'tcx>>)
                      -> Ty<'tcx>
@@ -1434,7 +1349,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
             hir::TyInfer => self.ty_infer(ty.span),
-            _ => self.ast_ty_to_ty(rscope, ty),
+            _ => self.ast_ty_to_ty(ty),
         }
     }
 
@@ -1446,10 +1361,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("ty_of_fn");
 
         let input_tys: Vec<Ty> =
-            decl.inputs.iter().map(|a| self.ty_of_arg(&ExplicitRscope, a, None)).collect();
+            decl.inputs.iter().map(|a| self.ty_of_arg(a, None)).collect();
 
         let output_ty = match decl.output {
-            hir::Return(ref output) => self.ast_ty_to_ty(&ExplicitRscope, output),
+            hir::Return(ref output) => self.ast_ty_to_ty(output),
             hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
@@ -1486,7 +1401,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     None
                 }
             });
-            self.ty_of_arg(&ExplicitRscope, a, expected_arg_ty)
+            self.ty_of_arg(a, expected_arg_ty)
         });
 
         let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
@@ -1502,7 +1417,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 expected_ret_ty.unwrap(),
             _ if is_infer => self.ty_infer(decl.output.span()),
             hir::Return(ref output) =>
-                self.ast_ty_to_ty(&ExplicitRscope, &output),
+                self.ast_ty_to_ty(&output),
             hir::DefaultReturn(..) => bug!(),
         };
 

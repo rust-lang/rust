@@ -523,16 +523,6 @@ impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ObjectLifetimeDefault<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ty::ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
-            ty::ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
-            ty::ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
-        }
-    }
-}
-
 impl fmt::Display for ty::Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {

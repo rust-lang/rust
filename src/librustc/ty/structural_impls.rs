@@ -726,36 +726,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
             index: self.index,
             default: self.default.fold_with(folder),
             default_def_id: self.default_def_id,
-            object_lifetime_default: self.object_lifetime_default.fold_with(folder),
             pure_wrt_drop: self.pure_wrt_drop,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.default.visit_with(visitor) ||
-            self.object_lifetime_default.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            ty::ObjectLifetimeDefault::Ambiguous =>
-                ty::ObjectLifetimeDefault::Ambiguous,
-
-            ty::ObjectLifetimeDefault::BaseDefault =>
-                ty::ObjectLifetimeDefault::BaseDefault,
-
-            ty::ObjectLifetimeDefault::Specific(r) =>
-                ty::ObjectLifetimeDefault::Specific(r.fold_with(folder)),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            ty::ObjectLifetimeDefault::Specific(r) => r.visit_with(visitor),
-            _ => false,
-        }
+        self.default.visit_with(visitor)
     }
 }
 
