@@ -1360,7 +1360,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn get_generics(&self, _: Span, id: DefId)
-                    -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>
+                    -> Result<&'tcx ty::Generics, ErrorReported>
     {
         Ok(self.tcx().item_generics(id))
     }
@@ -1390,14 +1390,17 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                  node_id: ast::NodeId)
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
-        let def = self.tcx.type_parameter_def(node_id);
+        let tcx = self.tcx;
+        let item_def_id = tcx.hir.local_def_id(::ty_param_owner(tcx, node_id));
+        let generics = tcx.item_generics(item_def_id);
+        let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
         let r = self.parameter_environment
                                   .caller_bounds
                                   .iter()
                                   .filter_map(|predicate| {
                                       match *predicate {
                                           ty::Predicate::Trait(ref data) => {
-                                              if data.0.self_ty().is_param(def.index) {
+                                              if data.0.self_ty().is_param(index) {
                                                   Some(data.to_poly_trait_ref())
                                               } else {
                                                   None
@@ -1426,7 +1429,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer_for_def(&self,
-                        ty_param_def: &ty::TypeParameterDef<'tcx>,
+                        ty_param_def: &ty::TypeParameterDef,
                         substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.type_var_for_def(span, ty_param_def, substs)
@@ -4423,8 +4426,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if let (false, Some(default)) = (infer_types, def.default) {
+            } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
+                let default = self.tcx.item_type(def.def_id);
                 default.subst_spanned(self.tcx, substs, Some(span))
             } else {
                 // No type parameters were provided, we can infer all.
@@ -4537,9 +4541,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 &generics.types
             }
         });
-        let required_len = type_defs.iter()
-                                    .take_while(|d| d.default.is_none())
-                                    .count();
+        let required_len = type_defs.iter().take_while(|d| !d.has_default).count();
         if types.len() > type_defs.len() {
             let span = types[type_defs.len()].span;
             let expected_text = count_type_params(type_defs.len());

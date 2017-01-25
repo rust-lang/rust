@@ -596,14 +596,18 @@ impl Clean<TyParam> for hir::TyParam {
     }
 }
 
-impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
+impl<'tcx> Clean<TyParam> for ty::TypeParameterDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
             bounds: vec![], // these are filled in from the where-clauses
-            default: self.default.clean(cx),
+            default: if self.has_default {
+                Some(cx.tcx.item_type(self.def_id).clean(cx))
+            } else {
+                None
+            }
         }
     }
 }
@@ -965,7 +969,7 @@ impl Clean<Generics> for hir::Generics {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
+impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                                     &'a ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use self::WherePredicate as WP;

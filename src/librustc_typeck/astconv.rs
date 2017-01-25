@@ -42,7 +42,7 @@ use std::cell::RefCell;
 use std::iter;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 pub trait AstConv<'gcx, 'tcx> {
@@ -53,7 +53,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// Returns the generic type and lifetime parameters for an item.
     fn get_generics(&self, span: Span, id: DefId)
-                    -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>;
+                    -> Result<&'tcx ty::Generics, ErrorReported>;
 
     /// Identify the type for an item, like a type alias, fn, or struct.
     fn get_item_type(&self, span: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>;
@@ -89,7 +89,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
-                        _def: &ty::TypeParameterDef<'tcx>,
+                        _def: &ty::TypeParameterDef,
                         _substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
@@ -277,9 +277,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
-        let default_needs_object_self = |p: &ty::TypeParameterDef<'tcx>| {
-            if let Some(ref default) = p.default {
-                if is_object && default.has_self_ty() {
+        let default_needs_object_self = |p: &ty::TypeParameterDef| {
+            if is_object && p.has_default {
+                let default = self.get_item_type(span, p.def_id).ok();
+                if default.has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -327,7 +328,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     self.ty_infer(span)
                 };
                 ty_var
-            } else if let Some(default) = def.default {
+            } else if def.has_default {
                 // No type parameter provided, but a default exists.
 
                 // If we are converting an object type, then the
@@ -346,7 +347,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    default.subst_spanned(tcx, substs, Some(span))
+                    match self.get_item_type(span, def.def_id) {
+                        Ok(ty) => ty.subst_spanned(tcx, substs, Some(span)),
+                        Err(ErrorReported) => tcx.types.err
+                    }
                 }
             } else {
                 // We've already errored above about the mismatch.
@@ -954,19 +958,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
-            (&ty::TyParam(_), Def::SelfTy(Some(trait_did), None)) => {
-                let trait_node_id = tcx.hir.as_local_node_id(trait_did).unwrap();
-                match self.find_bound_for_assoc_item(trait_node_id,
-                                                     keywords::SelfType.name(),
-                                                     assoc_name,
-                                                     span) {
-                    Ok(bound) => bound,
-                    Err(ErrorReported) => return (tcx.types.err, Def::Err),
-                }
-            }
+            (&ty::TyParam(_), Def::SelfTy(Some(param_did), None)) |
             (&ty::TyParam(_), Def::TyParam(param_did)) => {
                 let param_node_id = tcx.hir.as_local_node_id(param_did).unwrap();
-                let param_name = tcx.type_parameter_def(param_node_id).name;
+                let param_name = ::ty_param_name(tcx, param_node_id);
                 match self.find_bound_for_assoc_item(param_node_id,
                                                      param_name,
                                                      assoc_name,
@@ -1063,21 +1058,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.prohibit_type_params(&path.segments);
 
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
-                let param = tcx.ty_param_defs.borrow().get(&node_id)
-                               .map(ty::ParamTy::for_def);
-                if let Some(p) = param {
-                    p.to_ty(tcx)
-                } else {
-                    // Only while computing defaults of earlier type
-                    // parameters can a type parameter be missing its def.
-                    struct_span_err!(tcx.sess, span, E0128,
-                                     "type parameters with a default cannot use \
-                                      forward declared identifiers")
-                        .span_label(span, &format!("defaulted type parameters \
-                                                    cannot be forward declared"))
-                        .emit();
-                    tcx.types.err
-                }
+                let item_def_id = tcx.hir.local_def_id(::ty_param_owner(tcx, node_id));
+                let index = match self.get_generics(span, item_def_id) {
+                    Ok(generics) => {
+                        generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index]
+                    }
+                    Err(ErrorReported) => return tcx.types.err
+                };
+                tcx.mk_param(index, ::ty_param_name(tcx, node_id))
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
@@ -1510,7 +1498,7 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
                              ty_param_defs: &[ty::TypeParameterDef]) {
     let accepted = ty_param_defs.len();
-    let required = ty_param_defs.iter().take_while(|x| x.default.is_none()) .count();
+    let required = ty_param_defs.iter().take_while(|x| !x.has_default).count();
     if supplied < required {
         let expected = if required < accepted {
             "expected at least"

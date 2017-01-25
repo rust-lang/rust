@@ -353,7 +353,7 @@ macro_rules! CopyImpls {
     }
 }
 
-CopyImpls! { (), hir::Unsafety, abi::Abi, ty::RegionParameterDef }
+CopyImpls! { (), hir::Unsafety, abi::Abi }
 
 impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T, U) {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> (T, U) {
@@ -713,40 +713,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoBorrow<'tcx> {
             ty::adjustment::AutoBorrow::Ref(r, _m) => r.visit_with(visitor),
             ty::adjustment::AutoBorrow::RawPtr(_m) => false,
         }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::TypeParameterDef {
-            name: self.name,
-            def_id: self.def_id,
-            index: self.index,
-            default: self.default.fold_with(folder),
-            default_def_id: self.default_def_id,
-            pure_wrt_drop: self.pure_wrt_drop,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.default.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::Generics {
-            parent: self.parent,
-            parent_regions: self.parent_regions,
-            parent_types: self.parent_types,
-            regions: self.regions.fold_with(folder),
-            types: self.types.fold_with(folder),
-            has_self: self.has_self,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.regions.visit_with(visitor) || self.types.visit_with(visitor)
     }
 }
 

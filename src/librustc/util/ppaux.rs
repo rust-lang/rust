@@ -137,11 +137,14 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
 
         if !verbose {
-            if generics.types.last().map_or(false, |def| def.default.is_some()) {
+            if generics.types.last().map_or(false, |def| def.has_default) {
                 if let Some(substs) = tcx.lift(&substs) {
                     let tps = substs.types().rev().skip(child_types);
                     for (def, actual) in generics.types.iter().rev().zip(tps) {
-                        if def.default.subst(tcx, substs) != Some(actual) {
+                        if !def.has_default {
+                            break;
+                        }
+                        if tcx.item_type(def.def_id).subst(tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
@@ -326,7 +329,7 @@ impl<'tcx> fmt::Display for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
+impl fmt::Debug for ty::TypeParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeParameterDef({}, {:?}, {})",
                self.name,

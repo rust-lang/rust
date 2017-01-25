@@ -64,7 +64,7 @@ pub struct GlobalArenas<'tcx> {
     layout: TypedArena<Layout>,
 
     // references
-    generics: TypedArena<ty::Generics<'tcx>>,
+    generics: TypedArena<ty::Generics>,
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
@@ -467,9 +467,6 @@ pub struct GlobalCtxt<'tcx> {
     // Cache for the type-contents routine. FIXME -- track deps?
     pub tc_cache: RefCell<FxHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
 
-    // FIXME no dep tracking, but we should be able to remove this
-    pub ty_param_defs: RefCell<NodeMap<ty::TypeParameterDef<'tcx>>>,
-
     // FIXME dep tracking -- should be harmless enough
     pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
@@ -646,15 +643,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn type_parameter_def(self,
-                              node_id: NodeId)
-                              -> ty::TypeParameterDef<'tcx>
-    {
-        self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
-    }
-
-    pub fn alloc_generics(self, generics: ty::Generics<'gcx>)
-                          -> &'gcx ty::Generics<'gcx> {
+    pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
 
@@ -785,7 +774,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             tc_cache: RefCell::new(FxHashMap()),
             associated_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             associated_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
             lang_items: lang_items,

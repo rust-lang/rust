@@ -386,8 +386,8 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::AssociatedItem,
-                                                trait_generics: &ty::Generics<'tcx>,
-                                                impl_generics: &ty::Generics<'tcx>,
+                                                trait_generics: &ty::Generics,
+                                                impl_generics: &ty::Generics,
                                                 trait_to_skol_substs: &Substs<'tcx>,
                                                 impl_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
