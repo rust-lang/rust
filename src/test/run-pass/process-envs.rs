@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014, 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,11 @@
 
 // ignore-emscripten
 
+#![feature(command_envs)]
+
 use std::process::Command;
 use std::env;
+use std::collections::HashMap;
 
 #[cfg(all(unix, not(target_os="android")))]
 pub fn env_cmd() -> Command {
@@ -37,8 +40,13 @@ fn main() {
 
     env::set_var("RUN_TEST_NEW_ENV", "123");
 
+    // create filtered environment vector
+    let filtered_env : HashMap<String, String> =
+        env::vars().filter(|&(ref k, _)| k == "PATH").collect();
+
     let mut cmd = env_cmd();
-    cmd.env_remove("RUN_TEST_NEW_ENV");
+    cmd.env_clear();
+    cmd.envs(&filtered_env);
 
     // restore original environment
     match old_env {

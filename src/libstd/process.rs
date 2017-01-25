@@ -352,7 +352,9 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Command {
+    pub fn args<I, S>(&mut self, args: I) -> &mut Command
+        where I: IntoIterator<Item=S>, S: AsRef<OsStr>
+    {
         for arg in args {
             self.arg(arg.as_ref());
         }
@@ -381,6 +383,39 @@ impl Command {
         where K: AsRef<OsStr>, V: AsRef<OsStr>
     {
         self.inner.env(key.as_ref(), val.as_ref());
+        self
+    }
+
+    /// Add or update multiple environment variable mappings.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    /// use std::env;
+    /// use std::collections::HashMap;
+    ///
+    /// let filtered_env : HashMap<String, String> =
+    ///     env::vars().filter(|&(ref k, _)|
+    ///         k == "TERM" || k == "TZ" || k == "LANG" || k == "PATH"
+    ///     ).collect();
+    ///
+    /// Command::new("printenv")
+    ///         .stdin(Stdio::null())
+    ///         .stdout(Stdio::inherit())
+    ///         .env_clear()
+    ///         .envs(&filtered_env)
+    ///         .spawn()
+    ///         .expect("printenv failed to start");
+    /// ```
+    #[unstable(feature = "command_envs", issue = "38526")]
+    pub fn envs<I, K, V>(&mut self, vars: I) -> &mut Command
+        where I: IntoIterator<Item=(K, V)>, K: AsRef<OsStr>, V: AsRef<OsStr>
+    {
+        for (ref key, ref val) in vars {
+            self.inner.env(key.as_ref(), val.as_ref());
+        }
         self
     }
 
