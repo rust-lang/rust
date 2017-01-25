@@ -26,7 +26,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{self, NodeId, PatKind};
+use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
 use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
@@ -247,6 +247,9 @@ declare_features! (
 
     // a...b and ...b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
+
+    // X..Y patterns
+    (active, exclusive_range_pattern, "1.11.0", Some(37854)),
 
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
@@ -1284,6 +1287,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                           "numeric fields in struct patterns are unstable");
                     }
                 }
+            }
+            PatKind::Range(_, _, RangeEnd::Excluded) => {
+                gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
+                                   "exclusive range pattern syntax is experimental");
             }
             _ => {}
         }

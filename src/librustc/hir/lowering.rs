@@ -1250,8 +1250,10 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Ref(ref inner, mutbl) => {
                     hir::PatKind::Ref(self.lower_pat(inner), self.lower_mutability(mutbl))
                 }
-                PatKind::Range(ref e1, ref e2) => {
-                    hir::PatKind::Range(P(self.lower_expr(e1)), P(self.lower_expr(e2)))
+                PatKind::Range(ref e1, ref e2, ref end) => {
+                    hir::PatKind::Range(P(self.lower_expr(e1)),
+                                        P(self.lower_expr(e2)),
+                                        self.lower_range_end(end))
                 }
                 PatKind::Slice(ref before, ref slice, ref after) => {
                     hir::PatKind::Slice(before.iter().map(|x| self.lower_pat(x)).collect(),
@@ -1262,6 +1264,13 @@ impl<'a> LoweringContext<'a> {
             },
             span: p.span,
         })
+    }
+
+    fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
+        match *e {
+            RangeEnd::Included => hir::RangeEnd::Included,
+            RangeEnd::Excluded => hir::RangeEnd::Excluded,
+        }
     }
 
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {

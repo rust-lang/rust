@@ -24,7 +24,7 @@ use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 
 use hir;
-use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
 
 use std::io::{self, Write, Read};
 
@@ -1732,10 +1732,13 @@ impl<'a> State<'a> {
                 self.print_pat(&inner)?;
             }
             PatKind::Lit(ref e) => self.print_expr(&e)?,
-            PatKind::Range(ref begin, ref end) => {
+            PatKind::Range(ref begin, ref end, ref end_kind) => {
                 self.print_expr(&begin)?;
                 space(&mut self.s)?;
-                word(&mut self.s, "...")?;
+                match *end_kind {
+                    RangeEnd::Included => word(&mut self.s, "...")?,
+                    RangeEnd::Excluded => word(&mut self.s, "..")?,
+                }
                 self.print_expr(&end)?;
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
