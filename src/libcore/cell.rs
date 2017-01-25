@@ -176,6 +176,7 @@
 use cmp::Ordering;
 use fmt::{self, Debug, Display};
 use marker::Unsize;
+use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
 
 /// A mutable memory location that admits only `Copy` data.
@@ -187,23 +188,6 @@ pub struct Cell<T> {
 }
 
 impl<T:Copy> Cell<T> {
-    /// Creates a new `Cell` containing the given value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub const fn new(value: T) -> Cell<T> {
-        Cell {
-            value: UnsafeCell::new(value),
-        }
-    }
-
     /// Returns a copy of the contained value.
     ///
     /// # Examples
@@ -219,25 +203,6 @@ impl<T:Copy> Cell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> T {
         unsafe{ *self.value.get() }
-    }
-
-    /// Sets the contained value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// c.set(10);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set(&self, value: T) {
-        unsafe {
-            *self.value.get() = value;
-        }
     }
 
     /// Returns a reference to the underlying `UnsafeCell`.
@@ -375,6 +340,99 @@ impl<T:Ord + Copy> Ord for Cell<T> {
 impl<T: Copy> From<T> for Cell<T> {
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
+    }
+}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T> Cell<T> {
+    /// Creates a new `Cell` containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub const fn new(value: T) -> Cell<T> {
+        Cell {
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    /// Sets the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// c.set(10);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn set(&self, val: T) {
+        let old = self.replace(val);
+        drop(old);
+    }
+
+    /// Replaces the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(move_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// let old = c.replace(10);
+    ///
+    /// assert_eq!(5, old);
+    /// ```
+    pub fn replace(&self, val: T) -> T {
+        mem::replace(unsafe { &mut *self.value.get() }, val)
+    }
+
+    /// Unwraps the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(move_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// let five = c.into_inner();
+    ///
+    /// assert_eq!(five, 5);
+    /// ```
+    pub fn into_inner(self) -> T {
+        unsafe { self.value.into_inner() }
+    }
+}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T: Default> Cell<T> {
+    /// Takes the value of the cell, leaving `Default::default()` in its place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(move_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// let five = c.take();
+    ///
+    /// assert_eq!(five, 5);
+    /// assert_eq!(c.into_inner(), 0);
+    /// ```
+    pub fn take(&self) -> T {
+        self.replace(Default::default())
     }
 }
 
