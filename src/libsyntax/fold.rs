@@ -112,6 +112,10 @@ pub trait Folder : Sized {
         e.map(|e| noop_fold_expr(e, self))
     }
 
+    fn fold_range_end(&mut self, re: RangeEnd) -> RangeEnd {
+        noop_fold_range_end(re, self)
+    }
+
     fn fold_opt_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
         noop_fold_opt_expr(e, self)
     }
@@ -1093,8 +1097,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
             PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
-            PatKind::Range(e1, e2) => {
-                PatKind::Range(folder.fold_expr(e1), folder.fold_expr(e2))
+            PatKind::Range(e1, e2, end) => {
+                PatKind::Range(folder.fold_expr(e1),
+                               folder.fold_expr(e2),
+                               folder.fold_range_end(end))
             },
             PatKind::Slice(before, slice, after) => {
                 PatKind::Slice(before.move_map(|x| folder.fold_pat(x)),
@@ -1105,6 +1111,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
         },
         span: folder.new_span(span)
     })
+}
+
+pub fn noop_fold_range_end<T: Folder>(end: RangeEnd, _folder: &mut T) -> RangeEnd {
+    end
 }
 
 pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mut T) -> Expr {

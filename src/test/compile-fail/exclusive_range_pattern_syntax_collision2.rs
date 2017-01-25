@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Parsing of range patterns
+#![feature(exclusive_range_pattern)]
 
 fn main() {
-    let 10 - 3 ... 10 = 8; //~ error: expected one of `...`, `..`, `:`, `;`, or `=`, found `-`
+    match [5..4, 99..105, 43..44] {
+        [_, 99..] => {}, //~ ERROR unexpected token: `]`
+        _ => {},
+    }
 }

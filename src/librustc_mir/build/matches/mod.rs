@@ -19,6 +19,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
 use rustc::mir::*;
+use rustc::hir;
 use hair::*;
 use syntax::ast::{Name, NodeId};
 use syntax_pos::Span;
@@ -318,11 +319,12 @@ enum TestKind<'tcx> {
         ty: Ty<'tcx>,
     },
 
-    // test whether the value falls within an inclusive range
+    // test whether the value falls within an inclusive or exclusive range
     Range {
         lo: Literal<'tcx>,
         hi: Literal<'tcx>,
         ty: Ty<'tcx>,
+        end: hir::RangeEnd,
     },
 
     // test length of the slice is equal to len

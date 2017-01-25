@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(exclusive_range_pattern)]
 
-pub fn main() {
-    match 22 {
-        0 .. 3 => {} //~ ERROR expected one of `...`, `=>`, `if`, or `|`, found `..`
-        _ => {}
+fn main() {
+    match [5..4, 99..105, 43..44] {
+        [_, 99.., _] => {}, //~ ERROR unexpected token: `,`
+        _ => {},
     }
 }
