@@ -170,7 +170,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx
     }
 
-    pub fn tables(&self) -> &'a ty::Tables<'gcx> {
+    pub fn tables(&self) -> &'a ty::TypeckTables<'gcx> {
         self.infcx.tables.expect_interned()
     }
 

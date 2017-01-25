@@ -112,7 +112,7 @@ pub enum DepNode<D: Clone + Debug> {
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
-    Tables(D),
+    TypeckTables(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -161,7 +161,7 @@ impl<D: Clone + Debug> DepNode<D> {
             ItemSignature,
             AssociatedItemDefIds,
             InherentImpls,
-            Tables,
+            TypeckTables,
             TraitImpls,
             ReprHints,
         }
@@ -229,7 +229,7 @@ impl<D: Clone + Debug> DepNode<D> {
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
-            Tables(ref d) => op(d).map(Tables),
+            TypeckTables(ref d) => op(d).map(TypeckTables),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),

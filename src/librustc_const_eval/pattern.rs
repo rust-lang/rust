@@ -264,13 +264,13 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
 
 pub struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub tables: &'a ty::Tables<'gcx>,
+    pub tables: &'a ty::TypeckTables<'gcx>,
     pub errors: Vec<PatternError>,
 }
 
 impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    tables: &'a ty::Tables<'gcx>,
+                    tables: &'a ty::TypeckTables<'gcx>,
                     pat: &hir::Pat) -> Self {
         let mut pcx = PatternContext::new(tcx, tables);
         let result = pcx.lower_pattern(pat);
@@ -283,7 +283,7 @@ impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, tables: &'a ty::Tables<'gcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, tables: &'a ty::TypeckTables<'gcx>) -> Self {
         PatternContext { tcx: tcx, tables: tables, errors: vec![] }
     }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the `Tables` nodes for impl items are independent from
+// Test that the `TypeckTables` nodes for impl items are independent from
 // one another.
 
 // compile-flags: -Z query-dep-graph
@@ -27,7 +27,7 @@ impl Foo {
     }
 
     // ...should not cause us to recompute the tables for `with`!
-    #[rustc_then_this_would_need(Tables)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
     fn with(x: u8) -> Foo {
         Foo { x: x }
     }
