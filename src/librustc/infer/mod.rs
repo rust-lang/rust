@@ -1197,16 +1197,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
                             span: Span,
-                            def: &ty::TypeParameterDef<'tcx>,
+                            def: &ty::TypeParameterDef,
                             substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
-        let default = def.default.map(|default| {
-            type_variable::Default {
+        let default = if def.has_default {
+            let default = self.tcx.item_type(def.def_id);
+            Some(type_variable::Default {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,
-                def_id: def.default_def_id
-            }
-        });
+                def_id: def.def_id
+            })
+        } else {
+            None
+        };
 
 
         let ty_var_id = self.type_variables

@@ -423,26 +423,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_generics(&mut self, def_id: DefId) -> Lazy<Generics<'tcx>> {
+    fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics> {
         let tcx = self.tcx;
-        let g = tcx.item_generics(def_id);
-        let regions = self.lazy_seq_ref(&g.regions);
-        let types = self.lazy_seq_ref(&g.types);
-        let mut object_lifetime_defaults = LazySeq::empty();
-        if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-            if let Some(o) = tcx.named_region_map.object_lifetime_defaults.get(&id) {
-                object_lifetime_defaults = self.lazy_seq_ref(o);
-            }
-        }
-        self.lazy(&Generics {
-            parent: g.parent,
-            parent_regions: g.parent_regions,
-            parent_types: g.parent_types,
-            regions: regions,
-            types: types,
-            has_self: g.has_self,
-            object_lifetime_defaults: object_lifetime_defaults,
-        })
+        self.lazy(tcx.item_generics(def_id))
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {
@@ -1008,6 +991,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
                           EncodeContext::encode_info_for_foreign_item,
                           (def_id, ni));
     }
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+        intravisit::walk_generics(self, generics);
+        self.index.encode_info_for_generics(generics);
+    }
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, ty);
         self.index.encode_info_for_ty(ty);
@@ -1019,6 +1006,14 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
+    fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
+        for ty_param in &generics.ty_params {
+            let def_id = self.tcx.hir.local_def_id(ty_param.id);
+            let has_default = Untracked(ty_param.default.is_some());
+            self.record(def_id, EncodeContext::encode_info_for_ty_param, (def_id, has_default));
+        }
+    }
+
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         if let hir::TyImplTrait(_) = ty.node {
             let def_id = self.tcx.hir.local_def_id(ty.id);
@@ -1038,6 +1033,34 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn encode_info_for_ty_param(&mut self,
+                                (def_id, Untracked(has_default)): (DefId, Untracked<bool>))
+                                -> Entry<'tcx> {
+        let tcx = self.tcx;
+        Entry {
+            kind: EntryKind::Type,
+            visibility: self.lazy(&ty::Visibility::Public),
+            span: self.lazy(&tcx.def_span(def_id)),
+            attributes: LazySeq::empty(),
+            children: LazySeq::empty(),
+            stability: None,
+            deprecation: None,
+
+            ty: if has_default {
+                Some(self.encode_item_type(def_id))
+            } else {
+                None
+            },
+            inherent_impls: LazySeq::empty(),
+            variances: LazySeq::empty(),
+            generics: None,
+            predicates: None,
+
+            ast: None,
+            mir: None,
+        }
+    }
+
     fn encode_info_for_anon_ty(&mut self, def_id: DefId) -> Entry<'tcx> {
         let tcx = self.tcx;
         Entry {

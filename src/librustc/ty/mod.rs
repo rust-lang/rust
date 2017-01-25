@@ -19,9 +19,10 @@ use dep_graph::{self, DepNode};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
+use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use traits;
 use ty;
@@ -33,6 +34,7 @@ use util::nodemap::{NodeSet, NodeMap, FxHashMap};
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell, Ref};
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -585,13 +587,13 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct TypeParameterDef<'tcx> {
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+pub struct TypeParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
-    pub default_def_id: DefId, // for use in error reporing about defaults
-    pub default: Option<Ty<'tcx>>,
+    pub has_default: bool,
+    pub object_lifetime_default: ObjectLifetimeDefault,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `T`, asserts data behind the parameter
@@ -628,16 +630,21 @@ impl RegionParameterDef {
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to hir::Generics.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct Generics<'tcx> {
+pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
     pub parent_types: u32,
     pub regions: Vec<RegionParameterDef>,
-    pub types: Vec<TypeParameterDef<'tcx>>,
+    pub types: Vec<TypeParameterDef>,
+
+    /// Reverse map to each `TypeParameterDef`'s `index` field, from
+    /// `def_id.index` (`def_id.krate` is the same as the item's).
+    pub type_param_to_index: BTreeMap<DefIndex, u32>,
+
     pub has_self: bool,
 }
 
-impl<'tcx> Generics<'tcx> {
+impl Generics {
     pub fn parent_count(&self) -> usize {
         self.parent_regions as usize + self.parent_types as usize
     }
@@ -651,10 +658,12 @@ impl<'tcx> Generics<'tcx> {
     }
 
     pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
+        assert_eq!(self.parent_count(), 0);
         &self.regions[param.index as usize - self.has_self as usize]
     }
 
-    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef<'tcx> {
+    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef {
+        assert_eq!(self.parent_count(), 0);
         &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
     }
 }
@@ -2319,10 +2328,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of an item, returns its generics.
-    pub fn item_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
+    pub fn item_generics(self, did: DefId) -> &'gcx Generics {
         lookup_locally_or_in_crate_store(
             "generics", did, &self.generics,
-            || self.alloc_generics(self.sess.cstore.item_generics(self.global_tcx(), did)))
+            || self.alloc_generics(self.sess.cstore.item_generics(did)))
     }
 
     /// Given the did of an item, returns its full set of predicates.

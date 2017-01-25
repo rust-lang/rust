@@ -332,7 +332,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                         generics: &ty::Generics<'tcx>,
+                                         generics: &ty::Generics,
                                          substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
@@ -382,9 +382,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                          generics: &ty::Generics<'tcx>)
-                                          -> Vec<ast::Name> {
+    fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
         });

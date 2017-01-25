@@ -1701,33 +1701,6 @@ struct Foo {
 ```
 "##,
 
-E0128: r##"
-Type parameter defaults can only use parameters that occur before them.
-Erroneous code example:
-
-```compile_fail,E0128
-struct Foo<T=U, U=()> {
-    field1: T,
-    filed2: U,
-}
-// error: type parameters with a default cannot use forward declared
-// identifiers
-```
-
-Since type parameters are evaluated in-order, you may be able to fix this issue
-by doing:
-
-```
-struct Foo<U=(), T=U> {
-    field1: T,
-    filed2: U,
-}
-```
-
-Please also verify that this wasn't because of a name-clash and rename the type
-parameter if so.
-"##,
-
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.

@@ -279,7 +279,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 
     fn add_constraints_from_trait_ref(&mut self,
-                                      generics: &ty::Generics<'tcx>,
+                                      generics: &ty::Generics,
                                       trait_ref: ty::TraitRef<'tcx>,
                                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}",
@@ -305,7 +305,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// in a context with the generics defined in `generics` and
     /// ambient variance `variance`
     fn add_constraints_from_ty(&mut self,
-                               generics: &ty::Generics<'tcx>,
+                               generics: &ty::Generics,
                                ty: Ty<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={:?}, variance={:?})",
@@ -433,9 +433,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a nominal type (enum, struct,
     /// object, etc) appearing in a context with ambient variance `variance`
     fn add_constraints_from_substs(&mut self,
-                                   generics: &ty::Generics<'tcx>,
+                                   generics: &ty::Generics,
                                    def_id: DefId,
-                                   type_param_defs: &[ty::TypeParameterDef<'tcx>],
+                                   type_param_defs: &[ty::TypeParameterDef],
                                    region_param_defs: &[ty::RegionParameterDef],
                                    substs: &Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
@@ -465,7 +465,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
-                                generics: &ty::Generics<'tcx>,
+                                generics: &ty::Generics,
                                 sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
@@ -478,7 +478,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
-                                   generics: &ty::Generics<'tcx>,
+                                   generics: &ty::Generics,
                                    region: &'tcx ty::Region,
                                    variance: VarianceTermPtr<'a>) {
         match *region {
@@ -518,7 +518,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a mutability-type pair
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_mt(&mut self,
-                               generics: &ty::Generics<'tcx>,
+                               generics: &ty::Generics,
                                mt: &ty::TypeAndMut<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
