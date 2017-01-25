@@ -1401,11 +1401,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(&path.segments);
-                let ty = tcx.item_type(def_id);
-                if let Some(free_substs) = self.get_free_substs() {
-                    ty.subst(tcx, free_substs)
+
+                // FIXME: Self type is not always computed when we are here because type parameter
+                // bounds may affect Self type and have to be converted before it.
+                let ty = if def_id.is_local() {
+                    tcx.item_types.borrow().get(&def_id).cloned()
                 } else {
-                    ty
+                    Some(tcx.item_type(def_id))
+                };
+                if let Some(ty) = ty {
+                    if let Some(free_substs) = self.get_free_substs() {
+                        ty.subst(tcx, free_substs)
+                    } else {
+                        ty
+                    }
+                } else {
+                    tcx.sess.span_err(span, "`Self` type is used before it's determined");
+                    tcx.types.err
                 }
             }
             Def::SelfTy(Some(_), None) => {

@@ -1548,7 +1548,10 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::DefaultImpl(_, ref trait_ref) => {
-                self.with_optional_trait_ref(Some(trait_ref), |_, _| {});
+                self.with_optional_trait_ref(Some(trait_ref), |this, _| {
+                    // Resolve type arguments in trait path
+                    visit::walk_trait_ref(this, trait_ref);
+                });
             }
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
                 self.resolve_implementation(generics,
@@ -1712,7 +1715,6 @@ impl<'a> Resolver<'a> {
                 new_val = Some((def.def_id(), trait_ref.clone()));
                 new_id = Some(def.def_id());
             }
-            visit::walk_trait_ref(self, trait_ref);
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
         let result = f(self, new_id);
@@ -1740,60 +1742,66 @@ impl<'a> Resolver<'a> {
                               impl_items: &[ImplItem]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
-            // Resolve the type parameters.
-            this.visit_generics(generics);
-
-            // Resolve the trait reference, if necessary.
-            this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                // Resolve the self type.
-                this.visit_ty(self_type);
-
-                let item_def_id = this.definitions.local_def_id(item_id);
-                this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
-                    this.with_current_self_type(self_type, |this| {
-                        for impl_item in impl_items {
-                            this.check_proc_macro_attrs(&impl_item.attrs);
-                            this.resolve_visibility(&impl_item.vis);
-                            match impl_item.node {
-                                ImplItemKind::Const(..) => {
-                                    // If this is a trait impl, ensure the const
-                                    // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
-                                                          ValueNS,
-                                                          impl_item.span,
-                                        |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
-                                    visit::walk_impl_item(this, impl_item);
-                                }
-                                ImplItemKind::Method(ref sig, _) => {
-                                    // If this is a trait impl, ensure the method
-                                    // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
-                                                          ValueNS,
-                                                          impl_item.span,
-                                        |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
-
-                                    // We also need a new scope for the method-
-                                    // specific type parameters.
-                                    let type_parameters =
-                                        HasTypeParameters(&sig.generics,
-                                                          MethodRibKind(!sig.decl.has_self()));
-                                    this.with_type_parameter_rib(type_parameters, |this| {
-                                        visit::walk_impl_item(this, impl_item);
-                                    });
-                                }
-                                ImplItemKind::Type(ref ty) => {
-                                    // If this is a trait impl, ensure the type
-                                    // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
-                                                          TypeNS,
-                                                          impl_item.span,
-                                        |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
-
-                                    this.visit_ty(ty);
-                                }
-                                ImplItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
-                            }
+            // Dummy self type for better errors if `Self` is used in the trait path.
+            this.with_self_rib(Def::SelfTy(None, None), |this| {
+                // Resolve the trait reference, if necessary.
+                this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
+                    let item_def_id = this.definitions.local_def_id(item_id);
+                    this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
+                        if let Some(trait_ref) = opt_trait_reference.as_ref() {
+                            // Resolve type arguments in trait path
+                            visit::walk_trait_ref(this, trait_ref);
                         }
+                        // Resolve the self type.
+                        this.visit_ty(self_type);
+                        // Resolve the type parameters.
+                        this.visit_generics(generics);
+                        this.with_current_self_type(self_type, |this| {
+                            for impl_item in impl_items {
+                                this.check_proc_macro_attrs(&impl_item.attrs);
+                                this.resolve_visibility(&impl_item.vis);
+                                match impl_item.node {
+                                    ImplItemKind::Const(..) => {
+                                        // If this is a trait impl, ensure the const
+                                        // exists in trait
+                                        this.check_trait_item(impl_item.ident.name,
+                                                            ValueNS,
+                                                            impl_item.span,
+                                            |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
+                                        visit::walk_impl_item(this, impl_item);
+                                    }
+                                    ImplItemKind::Method(ref sig, _) => {
+                                        // If this is a trait impl, ensure the method
+                                        // exists in trait
+                                        this.check_trait_item(impl_item.ident.name,
+                                                            ValueNS,
+                                                            impl_item.span,
+                                            |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
+
+                                        // We also need a new scope for the method-
+                                        // specific type parameters.
+                                        let type_parameters =
+                                            HasTypeParameters(&sig.generics,
+                                                            MethodRibKind(!sig.decl.has_self()));
+                                        this.with_type_parameter_rib(type_parameters, |this| {
+                                            visit::walk_impl_item(this, impl_item);
+                                        });
+                                    }
+                                    ImplItemKind::Type(ref ty) => {
+                                        // If this is a trait impl, ensure the type
+                                        // exists in trait
+                                        this.check_trait_item(impl_item.ident.name,
+                                                            TypeNS,
+                                                            impl_item.span,
+                                            |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
+
+                                        this.visit_ty(ty);
+                                    }
+                                    ImplItemKind::Macro(_) =>
+                                        panic!("unexpanded macro in resolve!"),
+                                }
+                            }
+                        });
                     });
                 });
             });
