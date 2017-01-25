@@ -1359,6 +1359,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 }
 
                 self.write_sub_paths_truncated(path);
+                visit::walk_path(self, path);
             }
             ast::TyKind::Array(ref element, ref length) => {
                 self.visit_ty(element);
@@ -1369,6 +1370,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
     }
 
     fn visit_expr(&mut self, ex: &'l ast::Expr) {
+        debug!("visit_expr {:?}", ex.node);
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
             ast::ExprKind::Call(ref _f, ref _args) => {
@@ -1462,6 +1464,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
+                debug!("for loop, walk sub-expr: {:?}", subexpression.node);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
             }
@@ -1554,6 +1557,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         }
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
+    }
+
+    fn visit_path(&mut self, p: &'l ast::Path, id: NodeId) {
+        self.process_path(id, p, None);
     }
 
     fn visit_stmt(&mut self, s: &'l ast::Stmt) {
