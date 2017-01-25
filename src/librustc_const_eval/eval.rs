@@ -52,7 +52,7 @@ macro_rules! math {
 
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   variant_def: DefId)
-                                  -> Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>)> {
+                                  -> Option<(&'tcx Expr, Option<&'a ty::TypeckTables<'tcx>>)> {
     if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
         let enum_node_id = tcx.map.get_parent(variant_node_id);
         if let Some(ast_map::NodeItem(it)) = tcx.map.find(enum_node_id) {
@@ -81,7 +81,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         substs: Option<&'tcx Substs<'tcx>>)
                                         -> Option<(&'tcx Expr,
-                                                   Option<&'a ty::Tables<'tcx>>,
+                                                   Option<&'a ty::TypeckTables<'tcx>>,
                                                    Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -154,7 +154,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                   -> Option<(&'tcx hir::Body, Option<&'a ty::Tables<'tcx>>)>
+                                   -> Option<(&'tcx hir::Body, Option<&'a ty::TypeckTables<'tcx>>)>
 {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         FnLikeNode::from_node(tcx.map.get(node_id)).and_then(|fn_like| {
@@ -226,7 +226,7 @@ pub fn note_const_eval_err<'a, 'tcx>(
 
 pub struct ConstContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    tables: Option<&'a ty::Tables<'tcx>>,
+    tables: Option<&'a ty::TypeckTables<'tcx>>,
     fn_args: Option<DefIdMap<ConstVal>>
 }
 
@@ -240,7 +240,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
         }
     }
 
-    pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::Tables<'tcx>) -> Self {
+    pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::TypeckTables<'tcx>) -> Self {
         ConstContext {
             tcx: tcx,
             tables: Some(tables),
@@ -920,10 +920,10 @@ fn infer<'a, 'tcx>(i: ConstInt,
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_item_id: DefId,
-    default_value: Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>, Option<ty::Ty<'tcx>>)>,
+    default_value: Option<(&'tcx Expr, Option<&'a ty::TypeckTables<'tcx>>, Option<ty::Ty<'tcx>>)>,
     trait_id: DefId,
     rcvr_substs: &'tcx Substs<'tcx>
-) -> Option<(&'tcx Expr, Option<&'a ty::Tables<'tcx>>, Option<ty::Ty<'tcx>>)>
+) -> Option<(&'tcx Expr, Option<&'a ty::TypeckTables<'tcx>>, Option<ty::Ty<'tcx>>)>
 {
     let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, rcvr_substs));
     debug!("resolve_trait_associated_const: trait_ref={:?}",

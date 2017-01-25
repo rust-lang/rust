@@ -21,7 +21,7 @@ use rustc_serialize::Encodable;
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
     pub body: Lazy<hir::Body>,
-    pub tables: Lazy<ty::Tables<'tcx>>,
+    pub tables: Lazy<ty::TypeckTables<'tcx>>,
     pub nested_bodies: LazySeq<hir::Body>,
     pub rvalue_promotable_to_static: bool,
 }

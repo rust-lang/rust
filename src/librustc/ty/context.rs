@@ -65,7 +65,7 @@ pub struct GlobalArenas<'tcx> {
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
-    tables: TypedArena<ty::Tables<'tcx>>,
+    tables: TypedArena<ty::TypeckTables<'tcx>>,
 }
 
 impl<'tcx> GlobalArenas<'tcx> {
@@ -192,7 +192,7 @@ pub struct CommonTypes<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct Tables<'tcx> {
+pub struct TypeckTables<'tcx> {
     /// Resolved definitions for `<T>::X` associated paths.
     pub type_relative_path_defs: NodeMap<Def>,
 
@@ -234,9 +234,9 @@ pub struct Tables<'tcx> {
     pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
-impl<'tcx> Tables<'tcx> {
-    pub fn empty() -> Tables<'tcx> {
-        Tables {
+impl<'tcx> TypeckTables<'tcx> {
+    pub fn empty() -> TypeckTables<'tcx> {
+        TypeckTables {
             type_relative_path_defs: NodeMap(),
             node_types: FxHashMap(),
             item_substs: NodeMap(),
@@ -402,7 +402,7 @@ pub struct GlobalCtxt<'tcx> {
     free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
     // FIXME: jroesch make this a refcell
 
-    pub tables: RefCell<DepTrackingMap<maps::Tables<'tcx>>>,
+    pub tables: RefCell<DepTrackingMap<maps::TypeckTables<'tcx>>>,
 
     /// Maps from a trait item to the trait item "descriptor"
     pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
@@ -654,7 +654,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.mir.alloc(RefCell::new(mir))
     }
 
-    pub fn alloc_tables(self, tables: ty::Tables<'gcx>) -> &'gcx ty::Tables<'gcx> {
+    pub fn alloc_tables(self, tables: ty::TypeckTables<'gcx>) -> &'gcx ty::TypeckTables<'gcx> {
         self.global_arenas.tables.alloc(tables)
     }
 

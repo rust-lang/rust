@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
 
-    tables: ty::Tables<'gcx>,
+    tables: ty::TypeckTables<'gcx>,
 
     // Mapping from free regions of the function to the
     // early-bound versions of them, visible from the
@@ -81,7 +81,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>) -> WritebackCx<'cx, 'gcx, 'tcx> {
         let mut wbcx = WritebackCx {
             fcx: fcx,
-            tables: ty::Tables::empty(),
+            tables: ty::TypeckTables::empty(),
             free_to_bound_regions: DefIdMap()
         };
 

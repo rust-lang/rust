@@ -392,7 +392,7 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     curitem: DefId,
     in_foreign: bool,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
@@ -1212,7 +1212,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         curitem: DefId::local(CRATE_DEF_INDEX),
         in_foreign: false,
         tcx: tcx,
-        tables: &ty::Tables::empty(),
+        tables: &ty::TypeckTables::empty(),
     };
     intravisit::walk_crate(&mut visitor, krate);
 
