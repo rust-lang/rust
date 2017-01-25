@@ -18,17 +18,12 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
-#![feature(dedup_by)]
-#![feature(enumset)]
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
-#![feature(repeat_str)]
 #![feature(step_by)]
 #![feature(str_escape)]
-#![feature(str_replacen)]
-#![feature(string_split_off)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -47,7 +42,6 @@ mod bench;
 mod binary_heap;
 mod btree;
 mod cow_str;
-mod enum_set;
 mod fmt;
 mod linked_list;
 mod slice;
