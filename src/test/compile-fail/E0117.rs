@@ -11,6 +11,7 @@
 impl Drop for u32 {} //~ ERROR E0117
 //~^ NOTE impl doesn't use types inside crate
 //~| NOTE the impl does not reference any types defined in this crate
+//~| NOTE define and implement a trait or new type instead
 
 fn main() {
 }
