@@ -163,7 +163,7 @@ impl Token {
     pub fn can_begin_expr(&self) -> bool {
         match *self {
             OpenDelim(..)               => true,
-            Ident(..)                   => true,
+            ref ident @ Ident(..)       => !ident.is_keyword(keywords::As),
             Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
