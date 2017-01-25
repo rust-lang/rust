@@ -165,6 +165,7 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
+    ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("i686-unknown-freebsd", i686_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
 
