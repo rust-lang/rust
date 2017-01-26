@@ -18,7 +18,7 @@ add conversion functions with the following signatures to std:
 # Motivation
 [motivation]: #motivation
 
-Rusts iterators offer a safe, fast way to iterate over collections while avoiding
+Rust's iterators offer a safe, fast way to iterate over collections while avoiding
 additional bound checks.
 
 However, due to the borrow checker, they run into issues if you try to have
@@ -143,12 +143,16 @@ to std, implemented with the equivalent of a simple `transmute()`.
 As an initial design, `Cell` would provide them through additional constructors:
 
 ```rust
-impl<T: Copy> Cell<T> {
+impl<T> Cell<T> {
     fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
-        unsafe { mem::transmute(t) }
+        unsafe {
+            &*(t as *mut T as *const Cell<T>)
+        }
     }
     fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
-        unsafe { mem::transmute(t) }
+        unsafe {
+            &*(t as *mut [T] as *const [Cell<T>])
+        }
     }
 }
 ```
@@ -195,12 +199,16 @@ Instead of `Cell` constructors, we could just have freestanding functions
 in, say, `std::cell`:
 
 ```rust
-fn ref_as_cell<T: Copy>(t: &mut T) -> &Cell<T> {
-    unsafe { mem::transmute(t) }
+fn ref_as_cell<T>(t: &mut T) -> &Cell<T> {
+    unsafe {
+        &*(t as *mut T as *const Cell<T>)
+    }
 }
 
-fn slice_as_cell<T: Copy>(t: &mut [T]) -> &[Cell<T>] {
-    unsafe { mem::transmute(t) }
+fn slice_as_cell<T>(t: &mut [T]) -> &[Cell<T>] {
+    unsafe {
+        &*(t as *mut [T] as *const [Cell<T>])
+    }
 }
 ```
 
@@ -216,17 +224,21 @@ trait AsCell {
     fn as_cell(self) -> Self::Cell;
 }
 
-impl<'a, T: Copy> AsCell for &'a mut T {
+impl<'a, T> AsCell for &'a mut T {
     type Cell = &'a Cell<T>;
     fn as_cell(self) -> Self::Cell {
-        unsafe { mem::transmute(t) }
+        unsafe {
+            &*(self as *mut T as *const Cell<T>)
+        }
     }
 }
 
-impl<'a, T: Copy> AsCell for &'a mut [T] {
+impl<'a, T> AsCell for &'a mut [T] {
     type Cell = &'a [Cell<T>];
     fn as_cell(self) -> Self::Cell {
-        unsafe { mem::transmute(t) }
+        unsafe {
+            &*(self as *mut [T] as *const [Cell<T>])
+        }
     }
 }
 ```
