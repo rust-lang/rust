@@ -13,11 +13,10 @@
 extern crate gcc;
 extern crate build_helper;
 
-use std::env;
+use std::{env, fs};
 use std::path::PathBuf;
 use std::process::Command;
-
-use build_helper::run;
+use build_helper::{run, rerun_if_changed_anything_in_dir};
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
@@ -66,24 +65,18 @@ fn main() {
 }
 
 fn build_libbacktrace(host: &str, target: &str) {
-    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
-    let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let build_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let build_dir = PathBuf::from(build_dir).join("libbacktrace");
+    let _ = fs::create_dir_all(&build_dir);
 
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
-
-    let mut stack = src_dir.read_dir().unwrap()
-                           .map(|e| e.unwrap())
-                           .collect::<Vec<_>>();
-    while let Some(entry) = stack.pop() {
-        let path = entry.path();
-        if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-        } else {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
+    if !cfg!(stage0) {
+        return
     }
 
+    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
+    rerun_if_changed_anything_in_dir(&src_dir);
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
@@ -105,6 +98,7 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .env("AR", &ar)
                 .env("RANLIB", format!("{} s", ar.display()))
                 .env("CFLAGS", cflags));
+
     run(Command::new(build_helper::make(host))
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
