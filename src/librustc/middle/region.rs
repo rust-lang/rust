@@ -272,6 +272,13 @@ pub struct RegionMaps {
     /// block (see `terminating_scopes`).
     rvalue_scopes: RefCell<NodeMap<CodeExtent>>,
 
+    /// Records the value of rvalue scopes before they were shrunk by
+    /// #36082, for error reporting.
+    ///
+    /// FIXME: this should be temporary. Remove this by 1.18.0 or
+    /// so.
+    shrunk_rvalue_scopes: RefCell<NodeMap<CodeExtent>>,
+
     /// Encodes the hierarchy of fn bodies. Every fn body (including
     /// closures) forms its own distinct region hierarchy, rooted in
     /// the block that is the fn body. This map points from the id of
@@ -419,11 +426,7 @@ impl RegionMaps {
             e(child, parent)
         }
     }
-    pub fn each_rvalue_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
-        for (child, parent) in self.rvalue_scopes.borrow().iter() {
-            e(child, parent)
-        }
-    }
+
     /// Records that `sub_fn` is defined within `sup_fn`. These ids
     /// should be the id of the block that is the fn body, which is
     /// also the root of the region hierarchy for that fn.
@@ -457,6 +460,12 @@ impl RegionMaps {
         self.rvalue_scopes.borrow_mut().insert(var, lifetime);
     }
 
+    fn record_shrunk_rvalue_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
+        debug!("record_rvalue_scope(sub={:?}, sup={:?})", var, lifetime);
+        assert!(var != lifetime.node_id(self));
+        self.shrunk_rvalue_scopes.borrow_mut().insert(var, lifetime);
+    }
+
     pub fn opt_encl_scope(&self, id: CodeExtent) -> Option<CodeExtent> {
         //! Returns the narrowest scope that encloses `id`, if any.
         self.scope_map.borrow()[id.0 as usize].into_option()
@@ -474,6 +483,30 @@ impl RegionMaps {
             Some(&r) => r,
             None => { bug!("no enclosing scope for id {:?}", var_id); }
         }
+    }
+
+    pub fn temporary_scope2(&self, expr_id: ast::NodeId) -> (Option<CodeExtent>, bool) {
+        let temporary_scope = self.temporary_scope(expr_id);
+        let was_shrunk = match self.shrunk_rvalue_scopes.borrow().get(&expr_id) {
+            Some(&s) => {
+                info!("temporary_scope2({:?}, scope={:?}, shrunk={:?})",
+                      expr_id, temporary_scope, s);
+                temporary_scope != Some(s)
+            }
+            _ => false
+        };
+        info!("temporary_scope2({:?}) - was_shrunk={:?}", expr_id, was_shrunk);
+        (temporary_scope, was_shrunk)
+    }
+
+    pub fn old_and_new_temporary_scope(&self, expr_id: ast::NodeId) ->
+        (Option<CodeExtent>, Option<CodeExtent>)
+    {
+        let temporary_scope = self.temporary_scope(expr_id);
+        (temporary_scope,
+         self.shrunk_rvalue_scopes
+             .borrow().get(&expr_id).cloned()
+             .or(temporary_scope))
     }
 
     pub fn temporary_scope(&self, expr_id: ast::NodeId) -> Option<CodeExtent> {
@@ -929,8 +962,10 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
         let is_borrow =
             if let Some(ref ty) = local.ty { is_borrowed_ty(&ty) } else { false };
 
-        if is_binding_pat(&local.pat) || is_borrow {
-            record_rvalue_scope(visitor, &expr, blk_scope);
+        if is_binding_pat(&local.pat) {
+            record_rvalue_scope(visitor, &expr, blk_scope, false);
+        } else if is_borrow {
+            record_rvalue_scope(visitor, &expr, blk_scope, true);
         }
     }
 
@@ -995,7 +1030,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
         match expr.node {
             hir::ExprAddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
-                record_rvalue_scope(visitor, &subexpr, blk_id);
+                record_rvalue_scope(visitor, &subexpr, blk_id, false);
             }
             hir::ExprStruct(_, ref fields, _) => {
                 for field in fields {
@@ -1040,7 +1075,8 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
     /// Note: ET is intended to match "rvalues or lvalues based on rvalues".
     fn record_rvalue_scope<'a>(visitor: &mut RegionResolutionVisitor,
                                expr: &'a hir::Expr,
-                               blk_scope: CodeExtent) {
+                               blk_scope: CodeExtent,
+                               is_shrunk: bool) {
         let mut expr = expr;
         loop {
             // Note: give all the expressions matching `ET` with the
@@ -1048,7 +1084,12 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
             // because in trans if we must compile e.g. `*rvalue()`
             // into a temporary, we request the temporary scope of the
             // outer expression.
-            visitor.region_maps.record_rvalue_scope(expr.id, blk_scope);
+            if is_shrunk {
+                // this changed because of #36082
+                visitor.region_maps.record_shrunk_rvalue_scope(expr.id, blk_scope);
+            } else {
+                visitor.region_maps.record_rvalue_scope(expr.id, blk_scope);
+            }
 
             match expr.node {
                 hir::ExprAddrOf(_, ref subexpr) |
@@ -1225,6 +1266,7 @@ pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
         scope_map: RefCell::new(vec![]),
         var_map: RefCell::new(NodeMap()),
         rvalue_scopes: RefCell::new(NodeMap()),
+        shrunk_rvalue_scopes: RefCell::new(NodeMap()),
         fn_tree: RefCell::new(NodeMap()),
     };
     let root_extent = maps.bogus_code_extent(
