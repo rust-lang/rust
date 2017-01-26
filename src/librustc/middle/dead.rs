@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use dep_graph::DepNode;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use hir::{self, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -36,10 +36,10 @@ use syntax_pos;
 fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             node_id: ast::NodeId) -> bool {
     match tcx.hir.find(node_id) {
-        Some(ast_map::NodeItem(..)) |
-        Some(ast_map::NodeImplItem(..)) |
-        Some(ast_map::NodeForeignItem(..)) |
-        Some(ast_map::NodeTraitItem(..)) =>
+        Some(hir_map::NodeItem(..)) |
+        Some(hir_map::NodeImplItem(..)) |
+        Some(hir_map::NodeForeignItem(..)) |
+        Some(hir_map::NodeTraitItem(..)) =>
             true,
         _ =>
             false
@@ -150,13 +150,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_node(&mut self, node: &ast_map::Node<'tcx>) {
+    fn visit_node(&mut self, node: &hir_map::Node<'tcx>) {
         let had_extern_repr = self.struct_has_extern_repr;
         self.struct_has_extern_repr = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         self.inherited_pub_visibility = false;
         match *node {
-            ast_map::NodeItem(item) => {
+            hir_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
@@ -179,13 +179,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     _ => ()
                 }
             }
-            ast_map::NodeTraitItem(trait_item) => {
+            hir_map::NodeTraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
             }
-            ast_map::NodeImplItem(impl_item) => {
+            hir_map::NodeImplItem(impl_item) => {
                 intravisit::walk_impl_item(self, impl_item);
             }
-            ast_map::NodeForeignItem(foreign_item) => {
+            hir_map::NodeForeignItem(foreign_item) => {
                 intravisit::walk_foreign_item(self, &foreign_item);
             }
             _ => ()

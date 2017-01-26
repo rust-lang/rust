@@ -71,7 +71,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use hir::def_id::DefId;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
 use ty::adjustment;
@@ -269,7 +269,7 @@ impl MutabilityCategory {
 
     fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.hir.get(id) {
-            ast_map::NodeLocal(p) => match p.node {
+            hir_map::NodeLocal(p) => match p.node {
                 PatKind::Binding(bind_mode, ..) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
@@ -699,7 +699,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // a free region within it
         let fn_body_id = {
             let fn_expr = match self.tcx().hir.find(upvar_id.closure_expr_id) {
-                Some(ast_map::NodeExpr(e)) => e,
+                Some(hir_map::NodeExpr(e)) => e,
                 _ => bug!()
             };
 

@@ -16,17 +16,17 @@ use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax_pos::Span;
 
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
-pub struct NodeCollector<'ast> {
+pub struct NodeCollector<'hir> {
     /// The crate
-    pub krate: &'ast Crate,
+    pub krate: &'hir Crate,
     /// The node map
-    pub(super) map: Vec<MapEntry<'ast>>,
+    pub(super) map: Vec<MapEntry<'hir>>,
     /// The parent of this node
     pub parent_node: NodeId,
 }
 
-impl<'ast> NodeCollector<'ast> {
-    pub fn root(krate: &'ast Crate) -> NodeCollector<'ast> {
+impl<'hir> NodeCollector<'hir> {
+    pub fn root(krate: &'hir Crate) -> NodeCollector<'hir> {
         let mut collector = NodeCollector {
             krate: krate,
             map: vec![],
@@ -37,8 +37,8 @@ impl<'ast> NodeCollector<'ast> {
         collector
     }
 
-    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
-        debug!("ast_map: {:?} => {:?}", id, entry);
+    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'hir>) {
+        debug!("hir_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
         if id.as_usize() >= len {
             self.map.extend(repeat(NotPresent).take(id.as_usize() - len + 1));
@@ -46,7 +46,7 @@ impl<'ast> NodeCollector<'ast> {
         self.map[id.as_usize()] = entry;
     }
 
-    fn insert(&mut self, id: NodeId, node: Node<'ast>) {
+    fn insert(&mut self, id: NodeId, node: Node<'hir>) {
         let entry = MapEntry::from_node(self.parent_node, node);
         self.insert_entry(id, entry);
     }
@@ -59,12 +59,12 @@ impl<'ast> NodeCollector<'ast> {
     }
 }
 
-impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
+impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -85,7 +85,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.visit_body(self.krate.body(id));
     }
 
-    fn visit_item(&mut self, i: &'ast Item) {
+    fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
 
         self.insert(i.id, NodeItem(i));
@@ -104,7 +104,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem) {
         self.insert(foreign_item.id, NodeForeignItem(foreign_item));
 
         self.with_parent(foreign_item.id, |this| {
@@ -112,7 +112,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &'ast Generics) {
+    fn visit_generics(&mut self, generics: &'hir Generics) {
         for ty_param in generics.ty_params.iter() {
             self.insert(ty_param.id, NodeTyParam(ty_param));
         }
@@ -120,7 +120,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         intravisit::walk_generics(self, generics);
     }
 
-    fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
         self.insert(ti.id, NodeTraitItem(ti));
 
         self.with_parent(ti.id, |this| {
@@ -128,7 +128,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
         self.insert(ii.id, NodeImplItem(ii));
 
         self.with_parent(ii.id, |this| {
@@ -136,7 +136,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_pat(&mut self, pat: &'ast Pat) {
+    fn visit_pat(&mut self, pat: &'hir Pat) {
         let node = if let PatKind::Binding(..) = pat.node {
             NodeLocal(pat)
         } else {
@@ -149,7 +149,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_expr(&mut self, expr: &'ast Expr) {
+    fn visit_expr(&mut self, expr: &'hir Expr) {
         self.insert(expr.id, NodeExpr(expr));
 
         self.with_parent(expr.id, |this| {
@@ -157,7 +157,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_stmt(&mut self, stmt: &'ast Stmt) {
+    fn visit_stmt(&mut self, stmt: &'hir Stmt) {
         let id = stmt.node.id();
         self.insert(id, NodeStmt(stmt));
 
@@ -166,7 +166,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_ty(&mut self, ty: &'ast Ty) {
+    fn visit_ty(&mut self, ty: &'hir Ty) {
         self.insert(ty.id, NodeTy(ty));
 
         self.with_parent(ty.id, |this| {
@@ -174,7 +174,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_trait_ref(&mut self, tr: &'ast TraitRef) {
+    fn visit_trait_ref(&mut self, tr: &'hir TraitRef) {
         self.insert(tr.ref_id, NodeTraitRef(tr));
 
         self.with_parent(tr.ref_id, |this| {
@@ -182,24 +182,24 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
+    fn visit_fn(&mut self, fk: intravisit::FnKind<'hir>, fd: &'hir FnDecl,
                 b: BodyId, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
 
-    fn visit_block(&mut self, block: &'ast Block) {
+    fn visit_block(&mut self, block: &'hir Block) {
         self.insert(block.id, NodeBlock(block));
         self.with_parent(block.id, |this| {
             intravisit::walk_block(this, block);
         });
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }
 
-    fn visit_vis(&mut self, visibility: &'ast Visibility) {
+    fn visit_vis(&mut self, visibility: &'hir Visibility) {
         match *visibility {
             Visibility::Public |
             Visibility::Crate |
@@ -213,11 +213,11 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         }
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'hir MacroDef) {
         self.insert_entry(macro_def.id, NotPresent);
     }
 
-    fn visit_variant(&mut self, v: &'ast Variant, g: &'ast Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: NodeId) {
         let id = v.node.data.id();
         self.insert(id, NodeVariant(v));
         self.with_parent(id, |this| {
@@ -225,7 +225,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
-    fn visit_struct_field(&mut self, field: &'ast StructField) {
+    fn visit_struct_field(&mut self, field: &'hir StructField) {
         self.insert(field.id, NodeField(field));
         self.with_parent(field.id, |this| {
             intravisit::walk_struct_field(this, field);

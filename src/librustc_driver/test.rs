@@ -131,19 +131,19 @@ fn test_env<F>(source_string: &str,
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let ast_map = hir_map::map_crate(&mut hir_forest, defs);
+    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &ast_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &ast_map);
-    let region_map = region::resolve_crate(&sess, &ast_map);
-    let index = stability::Index::new(&ast_map);
+    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
+    let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
+    let region_map = region::resolve_crate(&sess, &hir_map);
+    let index = stability::Index::new(&hir_map);
     TyCtxt::create_and_enter(&sess,
                              &arenas,
                              &arena,
                              resolutions,
                              named_region_map.unwrap(),
-                             ast_map,
+                             hir_map,
                              region_map,
                              lang_items,
                              index,

@@ -16,7 +16,7 @@
 // reachable as well.
 
 use dep_graph::DepNode;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::DefId;
 use ty::{self, TyCtxt};
@@ -65,7 +65,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
-            Some(ast_map::NodeItem(item)) =>
+            Some(hir_map::NodeItem(item)) =>
                 item_might_be_inlined(&item),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
@@ -153,13 +153,13 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         };
 
         match self.tcx.hir.find(node_id) {
-            Some(ast_map::NodeItem(item)) => {
+            Some(hir_map::NodeItem(item)) => {
                 match item.node {
                     hir::ItemFn(..) => item_might_be_inlined(&item),
                     _ => false,
                 }
             }
-            Some(ast_map::NodeTraitItem(trait_method)) => {
+            Some(hir_map::NodeTraitItem(trait_method)) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                     hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => true,
@@ -167,7 +167,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::TraitItemKind::Type(..) => false,
                 }
             }
-            Some(ast_map::NodeImplItem(impl_item)) => {
+            Some(hir_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(ref sig, _) => {
@@ -216,12 +216,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         }
     }
 
-    fn propagate_node(&mut self, node: &ast_map::Node<'tcx>,
+    fn propagate_node(&mut self, node: &hir_map::Node<'tcx>,
                       search_item: ast::NodeId) {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            if let ast_map::NodeItem(item) = *node {
+            if let hir_map::NodeItem(item) = *node {
                 let reachable = if let hir::ItemFn(.., abi, _, _) = item.node {
                     abi != Abi::Rust
                 } else {
@@ -242,7 +242,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         }
 
         match *node {
-            ast_map::NodeItem(item) => {
+            hir_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemFn(.., body) => {
                         if item_might_be_inlined(&item) {
@@ -268,7 +268,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemUnion(..) | hir::ItemDefaultImpl(..) => {}
                 }
             }
-            ast_map::NodeTraitItem(trait_method) => {
+            hir_map::NodeTraitItem(trait_method) => {
                 match trait_method.node {
                     hir::TraitItemKind::Const(_, None) |
                     hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
@@ -281,7 +281,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::TraitItemKind::Type(..) => {}
                 }
             }
-            ast_map::NodeImplItem(impl_item) => {
+            hir_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(_, body) => {
                         self.visit_nested_body(body);
@@ -296,11 +296,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 }
             }
             // Nothing to recurse on for these
-            ast_map::NodeForeignItem(_) |
-            ast_map::NodeVariant(_) |
-            ast_map::NodeStructCtor(_) |
-            ast_map::NodeField(_) |
-            ast_map::NodeTy(_) => {}
+            hir_map::NodeForeignItem(_) |
+            hir_map::NodeVariant(_) |
+            hir_map::NodeStructCtor(_) |
+            hir_map::NodeField(_) |
+            hir_map::NodeTy(_) => {}
             _ => {
                 bug!("found unexpected thingy in worklist: {}",
                      self.tcx.hir.node_to_string(search_item))

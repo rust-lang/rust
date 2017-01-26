@@ -15,7 +15,7 @@ use rustc::middle::const_val::ConstVal;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
-use rustc::hir::map as ast_map;
+use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits;
 use rustc::hir::def::Def;
@@ -55,7 +55,7 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   -> Option<(&'tcx Expr, Option<&'a ty::TypeckTables<'tcx>>)> {
     if let Some(variant_node_id) = tcx.hir.as_local_node_id(variant_def) {
         let enum_node_id = tcx.hir.get_parent(variant_node_id);
-        if let Some(ast_map::NodeItem(it)) = tcx.hir.find(enum_node_id) {
+        if let Some(hir_map::NodeItem(it)) = tcx.hir.find(enum_node_id) {
             if let hir::ItemEnum(ref edef, _) = it.node {
                 for variant in &edef.variants {
                     if variant.node.data.id() == variant_node_id {
@@ -86,17 +86,17 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         match tcx.hir.find(node_id) {
             None => None,
-            Some(ast_map::NodeItem(&hir::Item {
+            Some(hir_map::NodeItem(&hir::Item {
                 node: hir::ItemConst(ref ty, body), ..
             })) |
-            Some(ast_map::NodeImplItem(&hir::ImplItem {
+            Some(hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Const(ref ty, body), ..
             })) => {
                 Some((&tcx.hir.body(body).value,
                       tcx.tables.borrow().get(&def_id).cloned(),
                       tcx.ast_ty_to_prim_ty(ty)))
             }
-            Some(ast_map::NodeTraitItem(ti)) => match ti.node {
+            Some(hir_map::NodeTraitItem(ti)) => match ti.node {
                 hir::TraitItemKind::Const(ref ty, default) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
