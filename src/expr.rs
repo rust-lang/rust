@@ -694,6 +694,7 @@ impl Rewrite for ast::Stmt {
 }
 
 // Abstraction over control flow expressions
+#[derive(Debug)]
 struct ControlFlow<'a> {
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
@@ -845,6 +846,7 @@ impl<'a> ControlFlow<'a> {
 
 impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        debug!("ControlFlow::rewrite {:?} {} {:?}", self, width, offset);
         let (budget, indent) = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()

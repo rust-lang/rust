@@ -31,6 +31,7 @@ use syntax::ast::ImplItem;
 // let pat: ty = init;
 impl Rewrite for ast::Local {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        debug!("Local::rewrite {:?} {} {:?}", self, width, offset);
         let mut result = "let ".to_owned();
         let pattern_offset = offset + result.len();
         // 1 = ;
@@ -64,9 +65,9 @@ impl Rewrite for ast::Local {
         result.push_str(&infix);
 
         if let Some(ref ex) = self.init {
+            // 1 = trailing semicolon;
             let budget = try_opt!(width.checked_sub(context.block_indent.width() + 1));
 
-            // 1 = trailing semicolon;
             result =
                 try_opt!(rewrite_assign_rhs(&context, result, ex, budget, context.block_indent));
         }
