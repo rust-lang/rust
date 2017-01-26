@@ -1,3 +1,4 @@
+// rustfmt-format_strings: true
 // rustfmt-max_width: 80
 // rustfmt-control_brace_style: AlwaysNextLine
 

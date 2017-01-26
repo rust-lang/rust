@@ -387,7 +387,7 @@ create_config! {
     single_line_if_else_max_width: usize, 50, "Maximum line length for single line if-else \
                                                 expressions. A value of zero means always break \
                                                 if-else expressions.";
-    format_strings: bool, true, "Format string literals where necessary";
+    format_strings: bool, false, "Format string literals where necessary";
     force_format_strings: bool, false, "Always format string literals";
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
