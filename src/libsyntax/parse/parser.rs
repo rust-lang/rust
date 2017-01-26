@@ -1357,10 +1357,10 @@ impl<'a> Parser<'a> {
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.check_keyword(keywords::For) {
-            // FIXME plus priority
+            // FIXME `+` has incorrect priority in trait object types starting with `for` (#39317).
             self.parse_for_in_type()?
         } else if self.eat_keyword(keywords::Impl) {
-            // FIXME plus priority
+            // FIXME figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
             self.parse_impl_trait_type()?
         } else if self.token_is_bare_fn_keyword() {
             // BARE FUNCTION
