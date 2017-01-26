@@ -1349,8 +1349,6 @@ fn rewrite_fn_base(context: &RewriteContext,
                    has_body: bool)
                    -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
-    // FIXME we'll lose any comments in between parts of the function decl, but
-    // anyone who comments there probably deserves what they get.
 
     let where_clause = &generics.where_clause;
 
@@ -1410,7 +1408,7 @@ fn rewrite_fn_base(context: &RewriteContext,
            multi_line_budget,
            arg_indent);
 
-    // Check if vertical layout was forced by compute_budget_for_args.
+    // Check if vertical layout was forced.
     if one_line_budget == 0 {
         if context.config.fn_args_paren_newline {
             result.push('\n');
@@ -1721,6 +1719,11 @@ fn compute_budgets_for_args(context: &RewriteContext,
                             ret_str_len: usize,
                             newline_brace: bool)
                             -> Option<((usize, usize, Indent))> {
+    debug!("compute_budgets_for_args {} {:?}, {}, {}",
+           result.len(),
+           indent,
+           ret_str_len,
+           newline_brace);
     // Try keeping everything on the same line.
     if !result.contains('\n') {
         // 3 = `() `, space is before ret_string.
