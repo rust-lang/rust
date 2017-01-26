@@ -88,6 +88,21 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
+    let mut stack = dir.read_dir().unwrap()
+                       .map(|e| e.unwrap())
+                       .filter(|e| &*e.file_name() != ".git")
+                       .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
+}
+
 fn fail(s: &str) -> ! {
     println!("\n\n{}\n\n", s);
     std::process::exit(1);
