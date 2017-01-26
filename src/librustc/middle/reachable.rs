@@ -79,7 +79,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -370,7 +370,7 @@ pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let mut reachable_context = ReachableContext {
         tcx: tcx,
-        tables: &ty::Tables::empty(),
+        tables: &ty::TypeckTables::empty(),
         reachable_symbols: NodeSet(),
         worklist: Vec::new(),
         any_library: any_library,

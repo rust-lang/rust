@@ -14,11 +14,11 @@
 //! we will check that a suitable node for that item either appears
 //! or does not appear in the dep-graph, as appropriate:
 //!
-//! - `#[rustc_dirty(label="TypeckItemBody", cfg="rev2")]` if we are
+//! - `#[rustc_dirty(label="TypeckTables", cfg="rev2")]` if we are
 //!   in `#[cfg(rev2)]`, then there MUST NOT be a node
-//!   `DepNode::TypeckItemBody(X)` where `X` is the def-id of the
+//!   `DepNode::TypeckTables(X)` where `X` is the def-id of the
 //!   current node.
-//! - `#[rustc_clean(label="TypeckItemBody", cfg="rev2")]` same as above,
+//! - `#[rustc_clean(label="TypeckTables", cfg="rev2")]` same as above,
 //!   except that the node MUST exist.
 //!
 //! Errors are reported if we are in the suitable configuration but

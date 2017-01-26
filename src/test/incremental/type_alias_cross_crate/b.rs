@@ -16,15 +16,15 @@
 
 extern crate a;
 
-#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
+#[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+#[rustc_clean(label="TypeckTables", cfg="rpass3")]
 pub fn use_X() -> u32 {
     let x: a::X = 22;
     x as u32
 }
 
-#[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
+#[rustc_clean(label="TypeckTables", cfg="rpass2")]
+#[rustc_clean(label="TypeckTables", cfg="rpass3")]
 pub fn use_Y() {
     let x: a::Y = 'c';
 }

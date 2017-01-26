@@ -38,7 +38,7 @@ mod x {
 mod y {
     use {Foo, Bar};
 
-    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
     pub fn call_bar() {
         char::bar('a');
     }
@@ -47,7 +47,7 @@ mod y {
 mod z {
     use y;
 
-    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
     pub fn z() {
         y::call_bar();
     }

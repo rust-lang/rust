@@ -84,7 +84,7 @@ pub mod recorder {
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
-    tables: &'l ty::Tables<'tcx>,
+    tables: &'l ty::TypeckTables<'tcx>,
     analysis: &'l ty::CrateAnalysis<'tcx>,
     span_utils: SpanUtils<'tcx>,
 }
@@ -899,7 +899,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
 
     let save_ctxt = SaveContext {
         tcx: tcx,
-        tables: &ty::Tables::empty(),
+        tables: &ty::TypeckTables::empty(),
         analysis: analysis,
         span_utils: SpanUtils::new(&tcx.sess),
     };

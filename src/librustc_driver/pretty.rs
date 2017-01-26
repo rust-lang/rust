@@ -237,7 +237,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let empty_tables = ty::Tables::empty();
+                    let empty_tables = ty::TypeckTables::empty();
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                         tables: Cell::new(&empty_tables)
@@ -493,7 +493,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    tables: Cell<&'a ty::Tables<'tcx>>,
+    tables: Cell<&'a ty::TypeckTables<'tcx>>,
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {

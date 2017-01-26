@@ -483,7 +483,7 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> CrateCtxt<'a, 'gcx> {
     pub fn inherited(&'a self, id: ast::NodeId)
                      -> InheritedBuilder<'a, 'gcx, 'tcx> {
-        let tables = ty::Tables::empty();
+        let tables = ty::TypeckTables::empty();
         let param_env = ParameterEnvironment::for_item(self.tcx, id);
         InheritedBuilder {
             ccx: self,
@@ -570,16 +570,43 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
-        check_item_body(self.ccx, i);
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+        match item.node {
+            hir::ItemFn(ref decl, .., body_id) => {
+                check_bare_fn(self.ccx, &decl, body_id, item.id, item.span);
+            }
+            _ => { }
+        }
     }
 
-    fn visit_trait_item(&mut self, _item: &'tcx hir::TraitItem) {
-        // done as part of `visit_item` above
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        match trait_item.node {
+            hir::TraitItemKind::Const(_, Some(expr)) => {
+                check_const(self.ccx, expr, trait_item.id)
+            }
+            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body_id)) => {
+                check_bare_fn(self.ccx, &sig.decl, body_id, trait_item.id, trait_item.span);
+            }
+            hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
+            hir::TraitItemKind::Const(_, None) |
+            hir::TraitItemKind::Type(..) => {
+                // Nothing to do.
+            }
+        }
     }
 
-    fn visit_impl_item(&mut self, _item: &'tcx hir::ImplItem) {
-        // done as part of `visit_item` above
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        match impl_item.node {
+            hir::ImplItemKind::Const(_, expr) => {
+                check_const(self.ccx, expr, impl_item.id)
+            }
+            hir::ImplItemKind::Method(ref sig, body_id) => {
+                check_bare_fn(self.ccx, &sig.decl, body_id, impl_item.id, impl_item.span);
+            }
+            hir::ImplItemKind::Type(_) => {
+                // Nothing to do here.
+            }
+        }
     }
 }
 
@@ -601,14 +628,14 @@ pub fn check_item_types(ccx: &CrateCtxt) -> CompileResult {
 pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemBody, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckTables, &mut visit);
 
         // Process deferred obligations, now that all functions
         // bodies have been fully inferred.
         for (&item_id, obligations) in ccx.deferred_obligations.borrow().iter() {
             // Use the same DepNode as for the body of the original function/item.
             let def_id = ccx.tcx.map.local_def_id(item_id);
-            let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeckItemBody(def_id));
+            let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeckTables(def_id));
 
             let param_env = ParameterEnvironment::for_item(ccx.tcx, item_id);
             ccx.tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
@@ -889,55 +916,6 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 
                 if let hir::ForeignItemFn(ref fn_decl, _, _) = item.node {
                     require_c_abi_if_variadic(ccx.tcx, fn_decl, m.abi, item.span);
-                }
-            }
-        }
-      }
-      _ => {/* nothing to do */ }
-    }
-}
-
-pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
-    debug!("check_item_body(it.id={}, it.name={})",
-           it.id,
-           ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(it.id)));
-    let _indenter = indenter();
-    match it.node {
-      hir::ItemFn(ref decl, .., body_id) => {
-        check_bare_fn(ccx, &decl, body_id, it.id, it.span);
-      }
-      hir::ItemImpl(.., ref impl_item_refs) => {
-        debug!("ItemImpl {} with id {}", it.name, it.id);
-
-        for impl_item_ref in impl_item_refs {
-            let impl_item = ccx.tcx.map.impl_item(impl_item_ref.id);
-            match impl_item.node {
-                hir::ImplItemKind::Const(_, expr) => {
-                    check_const(ccx, expr, impl_item.id)
-                }
-                hir::ImplItemKind::Method(ref sig, body_id) => {
-                    check_bare_fn(ccx, &sig.decl, body_id, impl_item.id, impl_item.span);
-                }
-                hir::ImplItemKind::Type(_) => {
-                    // Nothing to do here.
-                }
-            }
-        }
-      }
-      hir::ItemTrait(.., ref trait_item_refs) => {
-        for trait_item_ref in trait_item_refs {
-            let trait_item = ccx.tcx.map.trait_item(trait_item_ref.id);
-            match trait_item.node {
-                hir::TraitItemKind::Const(_, Some(expr)) => {
-                    check_const(ccx, expr, trait_item.id)
-                }
-                hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body_id)) => {
-                    check_bare_fn(ccx, &sig.decl, body_id, trait_item.id, trait_item.span);
-                }
-                hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
-                hir::TraitItemKind::Const(_, None) |
-                hir::TraitItemKind::Type(..) => {
-                    // Nothing to do.
                 }
             }
         }

@@ -60,7 +60,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParameterEnvironment<'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
@@ -462,7 +462,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_item_likes_in_krate(DepNode::CheckConst,
                                       &mut CheckCrateVisitor {
                                           tcx: tcx,
-                                          tables: &ty::Tables::empty(),
+                                          tables: &ty::TypeckTables::empty(),
                                           in_fn: false,
                                           promotable: false,
                                           mut_rvalue_borrows: NodeSet(),

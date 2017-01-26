@@ -52,7 +52,7 @@ fn type_is_unsafe_function(ty: Ty) -> bool {
 
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
@@ -245,7 +245,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
-        tables: &ty::Tables::empty(),
+        tables: &ty::TypeckTables::empty(),
         unsafe_context: UnsafeContext::new(SafeContext),
     };
 
