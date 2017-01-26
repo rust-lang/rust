@@ -339,7 +339,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
-            Categorization::Rvalue(_) |
+            Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {
                 return;
@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
-            Categorization::Rvalue(_) |
+            Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {
             }

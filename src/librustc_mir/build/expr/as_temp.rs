@@ -39,6 +39,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
+        if expr.temp_lifetime_was_shrunk && this.hir.needs_drop(expr_ty) {
+            this.hir.tcx().sess.span_warn(
+                expr_span,
+                "this temporary used to live longer - see issue #39283 \
+(https://github.com/rust-lang/rust/issues/39283)");
+        }
+
         if temp_lifetime.is_some() {
             this.cfg.push(block, Statement {
                 source_info: source_info,
