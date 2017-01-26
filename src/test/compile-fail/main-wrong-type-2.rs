@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() -> char {
-//~^ ERROR: main function has wrong type
+//~^ ERROR: main function has wrong type [E0580]
     ' '
 }
