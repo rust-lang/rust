@@ -768,7 +768,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// items in the context of the outer item, so enable
     /// deep-walking.
     fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
-        hir_visit::NestedVisitorMap::All(&self.tcx.map)
+        hir_visit::NestedVisitorMap::All(&self.tcx.hir)
     }
 
     // Output any lints that were previously added to the session.
@@ -784,7 +784,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
-        let body = self.tcx.map.body(body);
+        let body = self.tcx.hir.body(body);
         self.visit_body(body);
         self.tables = old_tables;
     }
@@ -834,7 +834,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         // in order for `check_fn` to be able to use them.
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body_id);
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
@@ -1206,7 +1206,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              access_levels: &AccessLevels) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
 
-    let krate = tcx.map.krate();
+    let krate = tcx.hir.krate();
 
     // We want to own the lint store, so move it out of the session.
     let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), LintStore::new());
@@ -1236,7 +1236,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         for early_lint in v {
             span_bug!(early_lint.diagnostic.span.clone(),
                       "unprocessed lint {:?} at {}",
-                      early_lint, tcx.map.node_to_string(*id));
+                      early_lint, tcx.hir.node_to_string(*id));
         }
     }
 

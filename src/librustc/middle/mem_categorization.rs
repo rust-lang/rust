@@ -71,7 +71,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use hir::def_id::DefId;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
 use ty::adjustment;
@@ -268,8 +268,8 @@ impl MutabilityCategory {
     }
 
     fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
-        let ret = match tcx.map.get(id) {
-            ast_map::NodeLocal(p) => match p.node {
+        let ret = match tcx.hir.get(id) {
+            hir_map::NodeLocal(p) => match p.node {
                 PatKind::Binding(bind_mode, ..) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
@@ -279,7 +279,7 @@ impl MutabilityCategory {
                 }
                 _ => span_bug!(p.span, "expected identifier pattern")
             },
-            _ => span_bug!(tcx.map.span(id), "expected identifier pattern")
+            _ => span_bug!(tcx.hir.span(id), "expected identifier pattern")
         };
         debug!("MutabilityCategory::{}(tcx, id={:?}) => {:?}",
                "from_local", id, ret);
@@ -539,7 +539,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           Def::Upvar(def_id, _, fn_node_id) => {
-              let var_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+              let var_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
               let ty = self.node_ty(fn_node_id)?;
               match ty.sty {
                   ty::TyClosure(closure_id, _) => {
@@ -576,7 +576,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           Def::Local(def_id) => {
-            let vid = self.tcx().map.as_local_node_id(def_id).unwrap();
+            let vid = self.tcx().hir.as_local_node_id(def_id).unwrap();
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
@@ -698,8 +698,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // Look up the node ID of the closure body so we can construct
         // a free region within it
         let fn_body_id = {
-            let fn_expr = match self.tcx().map.find(upvar_id.closure_expr_id) {
-                Some(ast_map::NodeExpr(e)) => e,
+            let fn_expr = match self.tcx().hir.find(upvar_id.closure_expr_id) {
+                Some(hir_map::NodeExpr(e)) => e,
                 _ => bug!()
             };
 
@@ -1313,7 +1313,7 @@ impl<'tcx> cmt_<'tcx> {
                 "non-lvalue".to_string()
             }
             Categorization::Local(vid) => {
-                if tcx.map.is_argument(vid) {
+                if tcx.hir.is_argument(vid) {
                     "argument".to_string()
                 } else {
                     "local variable".to_string()

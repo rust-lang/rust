@@ -99,8 +99,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     item_name
                                 )
                             }).unwrap();
-                        let note_span = self.tcx.map.span_if_local(item.def_id).or_else(|| {
-                            self.tcx.map.span_if_local(impl_did)
+                        let note_span = self.tcx.hir.span_if_local(item.def_id).or_else(|| {
+                            self.tcx.hir.span_if_local(impl_did)
                         });
 
                         let impl_ty = self.impl_self_ty(span, impl_did).ty;
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let msg = if let Some(callee) = rcvr_expr {
                     format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                             msg,
-                            self.tcx.map.node_to_pretty_string(callee.id))
+                            self.tcx.hir.node_to_pretty_string(callee.id))
                 } else {
                     msg
                 };
@@ -488,8 +488,8 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
             }
         }
-        ccx.tcx.map.krate().visit_all_item_likes(&mut Visitor {
-            map: &ccx.tcx.map,
+        ccx.tcx.hir.krate().visit_all_item_likes(&mut Visitor {
+            map: &ccx.tcx.hir,
             traits: &mut traits,
         });
 

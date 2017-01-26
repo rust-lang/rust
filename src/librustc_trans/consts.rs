@@ -85,10 +85,10 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     }
 
     let ty = ccx.tcx().item_type(def_id);
-    let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
+    let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
-        let (g, attrs) = match ccx.tcx().map.get(id) {
+        let (g, attrs) = match ccx.tcx().hir.get(id) {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
@@ -219,7 +219,7 @@ pub fn trans_static(ccx: &CrateContext,
                     attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
     unsafe {
-        let def_id = ccx.tcx().map.local_def_id(id);
+        let def_id = ccx.tcx().hir.local_def_id(id);
         let g = get_static(ccx, def_id);
 
         let v = ::mir::trans_static_initializer(ccx, def_id)?;

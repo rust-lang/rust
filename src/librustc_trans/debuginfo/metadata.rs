@@ -1738,7 +1738,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let tcx = cx.tcx();
 
-    let node_def_id = tcx.map.local_def_id(node_id);
+    let node_def_id = tcx.hir.local_def_id(node_id);
     let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {

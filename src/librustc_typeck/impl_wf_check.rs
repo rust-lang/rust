@@ -76,7 +76,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemImpl(.., ref generics, _, _, ref impl_item_refs) => {
-                let impl_def_id = self.ccx.tcx.map.local_def_id(item.id);
+                let impl_def_id = self.ccx.tcx.hir.local_def_id(item.id);
                 enforce_impl_params_are_constrained(self.ccx,
                                                     generics,
                                                     impl_def_id,
@@ -117,7 +117,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
-        .map(|item_ref|  ccx.tcx.map.local_def_id(item_ref.id.node_id))
+        .map(|item_ref|  ccx.tcx.hir.local_def_id(item_ref.id.node_id))
         .filter(|&def_id| {
             let item = ccx.tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
@@ -181,7 +181,7 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut seen_type_items = FxHashMap();
     let mut seen_value_items = FxHashMap();
     for impl_item_ref in impl_item_refs {
-        let impl_item = tcx.map.impl_item(impl_item_ref.id);
+        let impl_item = tcx.hir.impl_item(impl_item_ref.id);
         let seen_items = match impl_item.node {
             hir::ImplItemKind::Type(_) => &mut seen_type_items,
             _                    => &mut seen_value_items,

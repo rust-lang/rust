@@ -283,7 +283,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           expected.ty,
                                           found.ty));
 
-                match self.map.span_if_local(expected.def_id) {
+                match self.hir.span_if_local(expected.def_id) {
                     Some(span) => {
                         db.span_note(span, "a default was defined here...");
                     }
@@ -297,7 +297,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     expected.origin_span,
                     "...that was applied to an unconstrained type variable here");
 
-                match self.map.span_if_local(found.def_id) {
+                match self.hir.span_if_local(found.def_id) {
                     Some(span) => {
                         db.span_note(span, "a second default was defined here...");
                     }

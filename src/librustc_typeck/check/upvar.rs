@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
             hir::ExprClosure(cc, _, body_id, _) => {
-                let body = self.fcx.tcx.map.body(body_id);
+                let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
                 self.check_closure(expr, cc);
             }
@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
         self.fcx.tcx.with_freevars(expr.id, |freevars| {
             for freevar in freevars {
                 let def_id = freevar.def.def_id();
-                let var_node_id = self.fcx.tcx.map.as_local_node_id(def_id).unwrap();
+                let var_node_id = self.fcx.tcx.hir.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: var_node_id,
                                              closure_expr_id: expr.id };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -208,7 +208,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
         // If we are also inferred the closure kind here, update the
         // main table and process any deferred resolutions.
-        let closure_def_id = self.fcx.tcx.map.local_def_id(id);
+        let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
         if let Some(&kind) = self.temp_closure_kinds.get(&id) {
             self.fcx.tables.borrow_mut().closure_kinds.insert(id, kind);
             debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
@@ -232,7 +232,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter().map(|freevar| {
                 let def_id = freevar.def.def_id();
-                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
                 let freevar_ty = self.fcx.node_ty(var_id);
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
@@ -500,7 +500,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
     {
         intravisit::walk_fn(self, fn_kind, decl, body, span, id);
 
-        let body = self.fcx.tcx.map.body(body);
+        let body = self.fcx.tcx.hir.body(body);
         self.visit_body(body);
         self.analyze_closure(id, span, body);
     }

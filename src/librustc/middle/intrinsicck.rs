@@ -110,7 +110,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         self.tcx.infer_ctxt(body_id, Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx

@@ -46,18 +46,18 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Find the function this expression is from.
     let mut node_id = body.id;
     loop {
-        let node = tcx.map.get(node_id);
+        let node = tcx.hir.get(node_id);
         if hir::map::blocks::FnLikeNode::from_node(node).is_some() {
             break;
         }
-        let parent = tcx.map.get_parent_node(node_id);
+        let parent = tcx.hir.get_parent_node(node_id);
         assert!(node_id != parent);
         node_id = parent;
     }
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,
-        tables: tcx.item_tables(tcx.map.local_def_id(node_id)),
+        tables: tcx.item_tables(tcx.hir.local_def_id(node_id)),
         graph: graph,
         fn_exit: fn_exit,
         loop_scopes: Vec::new()

@@ -13,7 +13,7 @@
 use hir::def_id::DefId;
 use hir::map::DefPathData;
 use infer::InferCtxt;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
@@ -429,7 +429,7 @@ impl<'a, 'gcx, 'tcx, W> TypeIdHasher<'a, 'gcx, 'tcx, W>
         self.def_path(&path)
     }
 
-    pub fn def_path(&mut self, def_path: &ast_map::DefPath) {
+    pub fn def_path(&mut self, def_path: &hir_map::DefPath) {
         def_path.deterministic_hash_to(self.tcx, &mut self.state);
     }
 }

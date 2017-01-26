@@ -186,7 +186,7 @@ impl<'tcx> CodegenUnit<'tcx> {
             symbol_name.hash(&mut state);
             let exported = match item {
                TransItem::Fn(ref instance) => {
-                    let node_id = scx.tcx().map.as_local_node_id(instance.def);
+                    let node_id = scx.tcx().hir.as_local_node_id(instance.def);
                     node_id.map(|node_id| exported_symbols.contains(&node_id))
                            .unwrap_or(false)
                }
@@ -241,7 +241,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         fn local_node_id(tcx: TyCtxt, trans_item: TransItem) -> Option<NodeId> {
             match trans_item {
                 TransItem::Fn(instance) => {
-                    tcx.map.as_local_node_id(instance.def)
+                    tcx.hir.as_local_node_id(instance.def)
                 }
                 TransItem::Static(node_id) => Some(node_id),
                 TransItem::DropGlue(_) => None,
@@ -482,7 +482,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
             Some(instance.def)
         }
         TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
-        TransItem::Static(node_id) => Some(tcx.map.local_def_id(node_id)),
+        TransItem::Static(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }
 

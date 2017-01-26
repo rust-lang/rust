@@ -76,13 +76,13 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn visit_item(&mut self, item: &hir::Item) {
-        let def_id = self.tcx.map.local_def_id(item.id);
+        let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
             hir::ItemImpl(.., None, ref ty, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
-                       self.tcx.map.node_to_string(item.id));
+                       self.tcx.hir.node_to_string(item.id));
                 let self_ty = self.tcx.item_type(def_id);
                 match self_ty.sty {
                     ty::TyAdt(def, _) => {
@@ -249,7 +249,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
             hir::ItemImpl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
-                       self.tcx.map.node_to_string(item.id));
+                       self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
@@ -374,7 +374,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(_, ref item_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
-                       self.tcx.map.node_to_string(item.id));
+                       self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 if trait_ref.def_id.krate != LOCAL_CRATE {
                     struct_span_err!(self.tcx.sess,
@@ -384,7 +384,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                       the crate they're defined in; define a new trait instead")
                         .span_label(item_trait_ref.path.span,
                                     &format!("`{}` trait not defined in this crate",
-                            self.tcx.map.node_to_pretty_string(item_trait_ref.ref_id)))
+                            self.tcx.hir.node_to_pretty_string(item_trait_ref.ref_id)))
                         .emit();
                     return;
                 }

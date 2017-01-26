@@ -109,7 +109,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
     fn nested(&self, state: &mut pprust::State, nested: pprust::Nested) -> io::Result<()> {
-        pprust::PpAnn::nested(&self.tcx.map, state, nested)
+        pprust::PpAnn::nested(&self.tcx.hir, state, nested)
     }
     fn pre(&self,
            ps: &mut pprust::State,

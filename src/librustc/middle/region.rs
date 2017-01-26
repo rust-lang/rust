@@ -17,7 +17,7 @@
 //! `middle/infer/region_inference/README.md`
 
 use dep_graph::DepNode;
-use hir::map as ast_map;
+use hir::map as hir_map;
 use session::Session;
 use util::nodemap::{FxHashMap, NodeMap, NodeSet};
 use ty;
@@ -217,9 +217,9 @@ impl CodeExtent {
     /// Returns the span of this CodeExtent.  Note that in general the
     /// returned span may not correspond to the span of any node id in
     /// the AST.
-    pub fn span(&self, region_maps: &RegionMaps, ast_map: &ast_map::Map) -> Option<Span> {
-        match ast_map.find(self.node_id(region_maps)) {
-            Some(ast_map::NodeBlock(ref blk)) => {
+    pub fn span(&self, region_maps: &RegionMaps, hir_map: &hir_map::Map) -> Option<Span> {
+        match hir_map.find(self.node_id(region_maps)) {
+            Some(hir_map::NodeBlock(ref blk)) => {
                 match region_maps.code_extent_data(*self) {
                     CodeExtentData::CallSiteScope { .. } |
                     CodeExtentData::ParameterScope { .. } |
@@ -240,9 +240,9 @@ impl CodeExtent {
                     }
                 }
             }
-            Some(ast_map::NodeExpr(ref expr)) => Some(expr.span),
-            Some(ast_map::NodeStmt(ref stmt)) => Some(stmt.span),
-            Some(ast_map::NodeItem(ref item)) => Some(item.span),
+            Some(hir_map::NodeExpr(ref expr)) => Some(expr.span),
+            Some(hir_map::NodeStmt(ref stmt)) => Some(stmt.span),
+            Some(hir_map::NodeItem(ref item)) => Some(item.span),
             Some(_) | None => None,
          }
     }
@@ -302,7 +302,7 @@ pub struct Context {
     parent: CodeExtent
 }
 
-struct RegionResolutionVisitor<'ast: 'a, 'a> {
+struct RegionResolutionVisitor<'hir: 'a, 'a> {
     sess: &'a Session,
 
     // Generated maps:
@@ -310,7 +310,7 @@ struct RegionResolutionVisitor<'ast: 'a, 'a> {
 
     cx: Context,
 
-    map: &'a ast_map::Map<'ast>,
+    map: &'a hir_map::Map<'hir>,
 
     /// `terminating_scopes` is a set containing the ids of each
     /// statement, or conditional/repeating expression. These scopes
@@ -1137,7 +1137,7 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
     visitor.terminating_scopes = outer_ts;
 }
 
-impl<'ast, 'a> RegionResolutionVisitor<'ast, 'a> {
+impl<'hir, 'a> RegionResolutionVisitor<'hir, 'a> {
     /// Records the current parent (if any) as the parent of `child_scope`.
     fn new_code_extent(&mut self, child_scope: CodeExtentData) -> CodeExtent {
         self.region_maps.intern_code_extent(child_scope, self.cx.parent)
@@ -1173,49 +1173,49 @@ impl<'ast, 'a> RegionResolutionVisitor<'ast, 'a> {
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for RegionResolutionVisitor<'ast, 'a> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+impl<'hir, 'a> Visitor<'hir> for RegionResolutionVisitor<'hir, 'a> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
         NestedVisitorMap::OnlyBodies(&self.map)
     }
 
-    fn visit_block(&mut self, b: &'ast Block) {
+    fn visit_block(&mut self, b: &'hir Block) {
         resolve_block(self, b);
     }
 
-    fn visit_item(&mut self, i: &'ast Item) {
+    fn visit_item(&mut self, i: &'hir Item) {
         resolve_item_like(self, i.id, |this| intravisit::walk_item(this, i));
     }
 
-    fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'hir hir::ImplItem) {
         resolve_item_like(self, ii.id, |this| intravisit::walk_impl_item(this, ii));
     }
 
-    fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'hir hir::TraitItem) {
         resolve_item_like(self, ti.id, |this| intravisit::walk_trait_item(this, ti));
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl,
+    fn visit_fn(&mut self, fk: FnKind<'hir>, fd: &'hir FnDecl,
                 b: hir::BodyId, s: Span, n: NodeId) {
         resolve_fn(self, fk, fd, b, s, n);
     }
-    fn visit_arm(&mut self, a: &'ast Arm) {
+    fn visit_arm(&mut self, a: &'hir Arm) {
         resolve_arm(self, a);
     }
-    fn visit_pat(&mut self, p: &'ast Pat) {
+    fn visit_pat(&mut self, p: &'hir Pat) {
         resolve_pat(self, p);
     }
-    fn visit_stmt(&mut self, s: &'ast Stmt) {
+    fn visit_stmt(&mut self, s: &'hir Stmt) {
         resolve_stmt(self, s);
     }
-    fn visit_expr(&mut self, ex: &'ast Expr) {
+    fn visit_expr(&mut self, ex: &'hir Expr) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &'ast Local) {
+    fn visit_local(&mut self, l: &'hir Local) {
         resolve_local(self, l);
     }
 }
 
-pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
+pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
     let _task = map.dep_graph.in_task(DepNode::RegionResolveCrate);
     let krate = map.krate();
 

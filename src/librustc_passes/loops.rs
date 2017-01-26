@@ -43,9 +43,9 @@ enum Context {
 }
 
 #[derive(Copy, Clone)]
-struct CheckLoopVisitor<'a, 'ast: 'a> {
+struct CheckLoopVisitor<'a, 'hir: 'a> {
     sess: &'a Session,
-    hir_map: &'a Map<'ast>,
+    hir_map: &'a Map<'hir>,
     cx: Context,
 }
 
@@ -59,20 +59,20 @@ pub fn check_crate(sess: &Session, map: &Map) {
     }.as_deep_visitor());
 }
 
-impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 
-    fn visit_item(&mut self, i: &'ast hir::Item) {
+    fn visit_item(&mut self, i: &'hir hir::Item) {
         self.with_context(Normal, |v| intravisit::walk_item(v, i));
     }
 
-    fn visit_impl_item(&mut self, i: &'ast hir::ImplItem) {
+    fn visit_impl_item(&mut self, i: &'hir hir::ImplItem) {
         self.with_context(Normal, |v| intravisit::walk_impl_item(v, i));
     }
 
-    fn visit_expr(&mut self, e: &'ast hir::Expr) {
+    fn visit_expr(&mut self, e: &'hir hir::Expr) {
         match e.node {
             hir::ExprWhile(ref e, ref b, _) => {
                 self.with_context(Loop(LoopKind::WhileLoop), |v| {
@@ -125,9 +125,9 @@ impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
     }
 }
 
-impl<'a, 'ast> CheckLoopVisitor<'a, 'ast> {
+impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     fn with_context<F>(&mut self, cx: Context, f: F)
-        where F: FnOnce(&mut CheckLoopVisitor<'a, 'ast>)
+        where F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>)
     {
         let old_cx = self.cx;
         self.cx = cx;

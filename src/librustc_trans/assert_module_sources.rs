@@ -50,7 +50,7 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let ams = AssertModuleSource { tcx: tcx, modules: modules };
-    for attr in &tcx.map.krate().attrs {
+    for attr in &tcx.hir.krate().attrs {
         ams.check_attr(attr);
     }
 }

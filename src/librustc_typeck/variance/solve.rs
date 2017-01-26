@@ -125,13 +125,13 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
             debug!("item_id={} item_variances={:?}", item_id, item_variances);
 
-            let item_def_id = tcx.map.local_def_id(item_id);
+            let item_def_id = tcx.hir.local_def_id(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
             if tcx.has_attr(item_def_id, "rustc_variance") {
                 span_err!(tcx.sess,
-                          tcx.map.span(item_id),
+                          tcx.hir.span(item_id),
                           E0208,
                           "{:?}",
                           item_variances);

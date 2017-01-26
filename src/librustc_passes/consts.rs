@@ -98,8 +98,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>) {
         self.add_type(ret_ty);
 
-        self.promotable &= if let Some(fn_id) = self.tcx.map.as_local_node_id(def_id) {
-            FnLikeNode::from_node(self.tcx.map.get(fn_id)).map_or(false, |fn_like| {
+        self.promotable &= if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
+            FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
                 fn_like.constness() == hir::Constness::Const
             })
         } else {
@@ -122,7 +122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             }
         }
 
-        let item_id = self.tcx.map.body_owner(body_id);
+        let item_id = self.tcx.hir.body_owner(body_id);
 
         let outer_in_fn = self.in_fn;
         self.in_fn = match MirSource::from_node(self.tcx, item_id) {
@@ -131,9 +131,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.item_tables(self.tcx.map.local_def_id(item_id));
+        self.tables = self.tcx.item_tables(self.tcx.hir.local_def_id(item_id));
 
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
             self.check_const_eval(&body.value);
         }
@@ -329,8 +329,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 Def::Fn(..) | Def::Method(..) => {}
                 Def::AssociatedConst(_) => v.add_type(node_ty),
                 Def::Const(did) => {
-                    v.promotable &= if let Some(node_id) = v.tcx.map.as_local_node_id(did) {
-                        match v.tcx.map.expect_item(node_id).node {
+                    v.promotable &= if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
+                        match v.tcx.hir.expect_item(node_id).node {
                             hir::ItemConst(_, body) => {
                                 v.visit_nested_body(body);
                                 v.tcx.rvalue_promotable_to_static.borrow()[&body.node_id]

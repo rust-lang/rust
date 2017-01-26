@@ -196,11 +196,11 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
     let tcx = ccx.tcx;
-    let main_def_id = tcx.map.local_def_id(main_id);
+    let main_def_id = tcx.hir.local_def_id(main_id);
     let main_t = tcx.item_type(main_def_id);
     match main_t.sty {
         ty::TyFnDef(..) => {
-            match tcx.map.find(main_id) {
+            match tcx.hir.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
@@ -244,11 +244,11 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
                      start_span: Span) {
     let tcx = ccx.tcx;
-    let start_def_id = ccx.tcx.map.local_def_id(start_id);
+    let start_def_id = ccx.tcx.hir.local_def_id(start_id);
     let start_t = tcx.item_type(start_def_id);
     match start_t.sty {
         ty::TyFnDef(..) => {
-            match tcx.map.find(start_id) {
+            match tcx.hir.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(..,ref ps,_)

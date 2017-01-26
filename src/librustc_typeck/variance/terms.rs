@@ -132,7 +132,7 @@ fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
     all.into_iter() // iterating over (Option<DefId>, Variance)
        .filter(|&(ref d,_)| d.is_some())
        .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
-       .filter_map(|(d, v)| tcx.map.as_local_node_id(d).map(|n| (n, v))) // (NodeId, Variance)
+       .filter_map(|(d, v)| tcx.hir.as_local_node_id(d).map(|n| (n, v))) // (NodeId, Variance)
        .collect()
 }
 
@@ -177,7 +177,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // "invalid item id" from "item id with no
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
-            let item_def_id = self.tcx.map.local_def_id(item_id);
+            let item_def_id = self.tcx.hir.local_def_id(item_id);
             let newly_added = self.tcx
                 .item_variance_map
                 .borrow_mut()
@@ -207,7 +207,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
-               self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
+               self.tcx.item_path_str(self.tcx.hir.local_def_id(item_id)),
                item_id,
                index,
                param_id,
@@ -230,7 +230,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}",
-               self.tcx.map.node_to_string(item.id));
+               self.tcx.hir.node_to_string(item.id));
 
         match item.node {
             hir::ItemEnum(_, ref generics) |

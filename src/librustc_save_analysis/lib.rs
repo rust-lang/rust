@@ -285,7 +285,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
-            let def_id = self.tcx.map.local_def_id(field.id);
+            let def_id = self.tcx.hir.local_def_id(field.id);
             let typ = self.tcx.item_type(def_id).to_string();
 
             let span = field.span;
@@ -307,7 +307,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 qualname: qualname,
                 span: sub_span.unwrap(),
                 scope: scope,
-                parent: Some(make_def_id(scope, &self.tcx.map)),
+                parent: Some(make_def_id(scope, &self.tcx.hir)),
                 value: "".to_owned(),
                 type_value: typ,
                 visibility: From::from(&field.vis),
@@ -326,13 +326,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, vis, docs) =
-          match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
-            Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
+          match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
+            Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
                 Some(Node::NodeItem(item)) => {
                     match item.node {
                         hir::ItemImpl(.., ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&self.tcx.map.node_to_pretty_string(ty.id));
+                            result.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
 
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
@@ -365,9 +365,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               r);
                 }
             },
-            None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
+            None => match self.tcx.trait_of_item(self.tcx.hir.local_def_id(id)) {
                 Some(def_id) => {
-                    match self.tcx.map.get_if_local(def_id) {
+                    match self.tcx.hir.get_if_local(def_id) {
                         Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
@@ -442,14 +442,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let hir_node = self.tcx.map.expect_expr(expr.id);
+        let hir_node = self.tcx.hir.expect_expr(expr.id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::TyError {
             return None;
         }
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
-                let hir_node = match self.tcx.map.find(sub_ex.id) {
+                let hir_node = match self.tcx.hir.find(sub_ex.id) {
                     Some(Node::NodeExpr(expr)) => expr,
                     _ => {
                         debug!("Missing or weird node for sub-expression {} in {:?}",
@@ -523,7 +523,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_def(&self, id: NodeId) -> Def {
-        match self.tcx.map.get(id) {
+        match self.tcx.hir.get(id) {
             Node::NodeTraitRef(tr) => tr.path.def,
 
             Node::NodeItem(&hir::Item { node: hir::ItemUse(ref path, _), .. }) |
@@ -733,7 +733,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     #[inline]
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
-        self.tcx.map.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
+        self.tcx.hir.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 }
 

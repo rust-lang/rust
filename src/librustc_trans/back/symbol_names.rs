@@ -175,7 +175,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         debug!("symbol_name(def_id={:?}, substs={:?})",
                def_id, substs);
 
-        let node_id = scx.tcx().map.as_local_node_id(def_id);
+        let node_id = scx.tcx().hir.as_local_node_id(def_id);
 
         if let Some(id) = node_id {
             if scx.sess().plugin_registrar_fn.get() == Some(id) {
@@ -193,7 +193,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         // FIXME(eddyb) Precompute a custom symbol name based on attributes.
         let attrs = scx.tcx().get_attrs(def_id);
         let is_foreign = if let Some(id) = node_id {
-            match scx.tcx().map.get(id) {
+            match scx.tcx().hir.get(id) {
                 hir_map::NodeForeignItem(_) => true,
                 _ => false
             }

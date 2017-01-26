@@ -48,7 +48,7 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(ref filters) => filters,
     };
     let node_id = src.item_id();
-    let node_path = tcx.item_path_str(tcx.map.local_def_id(node_id));
+    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
     let is_matched =
         filters.split("&")
                .any(|filter| {
@@ -102,7 +102,7 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
             writeln!(w, "")?;
         }
 
-        let id = tcx.map.as_local_node_id(def_id).unwrap();
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let src = MirSource::from_node(tcx, id);
         write_mir_fn(tcx, src, mir, w)?;
 

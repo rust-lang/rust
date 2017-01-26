@@ -131,19 +131,19 @@ fn test_env<F>(source_string: &str,
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let ast_map = hir_map::map_crate(&mut hir_forest, defs);
+    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &ast_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &ast_map);
-    let region_map = region::resolve_crate(&sess, &ast_map);
-    let index = stability::Index::new(&ast_map);
+    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
+    let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
+    let region_map = region::resolve_crate(&sess, &hir_map);
+    let index = stability::Index::new(&hir_map);
     TyCtxt::create_and_enter(&sess,
                              &arenas,
                              &arena,
                              resolutions,
                              named_region_map.unwrap(),
-                             ast_map,
+                             hir_map,
                              region_map,
                              lang_items,
                              index,
@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
     pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
-        return match search_mod(self, &self.infcx.tcx.map.krate().module, 0, names) {
+        return match search_mod(self, &self.infcx.tcx.hir.krate().module, 0, names) {
             Some(id) => id,
             None => {
                 panic!("no item found: `{}`", names.join("::"));
@@ -211,7 +211,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
-                let item = this.infcx.tcx.map.expect_item(item.id);
+                let item = this.infcx.tcx.hir.expect_item(item.id);
                 if item.name.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }

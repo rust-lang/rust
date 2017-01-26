@@ -183,7 +183,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
 
 impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
@@ -197,7 +197,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
-    tcx.map.krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -364,7 +364,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
-    let body = ir.tcx.map.body(body_id);
+    let body = ir.tcx.hir.body(body_id);
 
     for arg in &body.arguments {
         arg.pat.each_binding(|_bm, arg_id, _x, path1| {
@@ -440,7 +440,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
                 if let Def::Local(def_id) = fv.def {
-                    let rv = ir.tcx.map.as_local_node_id(def_id).unwrap();
+                    let rv = ir.tcx.hir.as_local_node_id(def_id).unwrap();
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     call_caps.push(CaptureInfo {ln: fv_ln,
                                                 var_nid: rv});
@@ -807,7 +807,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for body, {}", self.ir.tcx.map.node_to_pretty_string(body.id));
+        debug!("compute: using id for body, {}", self.ir.tcx.hir.node_to_pretty_string(body.id));
 
         let exit_ln = self.s.exit_ln;
         let entry_ln: LiveNode = self.with_loop_nodes(body.id, exit_ln, exit_ln, |this| {
@@ -900,7 +900,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", self.ir.tcx.map.node_to_pretty_string(expr.id));
+        debug!("propagate_through_expr: {}", self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
@@ -919,7 +919,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprClosure(.., blk_id, _) => {
               debug!("{} is an ExprClosure",
-                     self.ir.tcx.map.node_to_pretty_string(expr.id));
+                     self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
               /*
               The next-node for a break is the successor of the entire
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                    -> LiveNode {
         match path.def {
           Def::Local(def_id) => {
-            let nid = self.ir.tcx.map.as_local_node_id(def_id).unwrap();
+            let nid = self.ir.tcx.hir.as_local_node_id(def_id).unwrap();
             let ln = self.live_node(id, path.span);
             if acc != 0 {
                 self.init_from_succ(ln, succ);
@@ -1295,7 +1295,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, self.ir.tcx.map.node_to_pretty_string(body.id));
+               expr.id, self.ir.tcx.hir.node_to_pretty_string(body.id));
 
         let cond_ln = match kind {
             LoopLoop => ln,
@@ -1440,7 +1440,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  entry_ln: LiveNode,
                  body: &hir::Body)
     {
-        let fn_ty = self.ir.tcx.item_type(self.ir.tcx.map.local_def_id(id));
+        let fn_ty = self.ir.tcx.item_type(self.ir.tcx.hir.local_def_id(id));
         let fn_ret = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
-                    let nid = self.ir.tcx.map.as_local_node_id(def_id).unwrap();
+                    let nid = self.ir.tcx.hir.as_local_node_id(def_id).unwrap();
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
                     self.warn_about_dead_assign(expr.span, expr.id, ln, var);

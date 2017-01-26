@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                 return
             }
             MirSource::Fn(function_node_id) => {
-                if qualify_consts::is_const_fn(tcx, tcx.map.local_def_id(function_node_id)) {
+                if qualify_consts::is_const_fn(tcx, tcx.hir.local_def_id(function_node_id)) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return

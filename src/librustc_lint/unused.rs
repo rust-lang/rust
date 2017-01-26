@@ -64,7 +64,7 @@ impl UnusedMut {
         for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
                 cx.span_lint(UNUSED_MUT,
-                             cx.tcx.map.span(v[0]),
+                             cx.tcx.hir.span(v[0]),
                              "variable does not need to be mutable");
             }
         }
