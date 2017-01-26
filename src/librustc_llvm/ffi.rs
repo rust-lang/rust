@@ -804,7 +804,7 @@ extern "C" {
                                     Name: *const c_char)
                                     -> ValueRef;
     pub fn LLVMRustAddHandler(CatchSwitch: ValueRef, Handler: BasicBlockRef);
-    pub fn LLVMRustSetPersonalityFn(B: BuilderRef, Pers: ValueRef);
+    pub fn LLVMSetPersonalityFn(Func: ValueRef, Pers: ValueRef);
 
     // Add a case to the switch instruction
     pub fn LLVMAddCase(Switch: ValueRef, OnVal: ValueRef, Dest: BasicBlockRef);
