@@ -25,6 +25,8 @@ pub mod condvar;
 pub mod dynamic_lib;
 pub mod env;
 pub mod ext;
+pub mod f32;
+pub mod f64;
 pub mod fs;
 pub mod handle;
 pub mod memchr;
