@@ -45,3 +45,13 @@ fn issue716() {
     println!("forall x. mult(e(), x) = x /\\
               forall x. mult(x, x) = e()");
 }
+
+fn issue_1282() {
+    {
+        match foo {
+            Permission::AndroidPermissionAccessLocationExtraCommands => {
+                "android.permission.ACCESS_LOCATION_EXTRA_COMMANDS"
+            }
+        }
+    }
+}

@@ -64,7 +64,7 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Lit(ref l) => {
             match l.node {
                 ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
-                    Some(rewrite_string_lit(context, l.span, width, offset))
+                    rewrite_string_lit(context, l.span, width, offset)
                 }
                 _ => {
                     wrap_str(context.snippet(expr.span),
@@ -586,6 +586,7 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 }
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
+    debug!("nop_block_collapse {:?} {}", block_str, budget);
     block_str.map(|block_str| if block_str.starts_with('{') && budget >= 2 &&
                                  (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() ==
                                   block_str.len() - 2) {
@@ -1219,6 +1220,7 @@ fn arm_comma(config: &Config, arm: &ast::Arm, body: &ast::Expr) -> &'static str 
 // Match arms.
 impl Rewrite for ast::Arm {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        debug!("Arm::rewrite {:?} {} {:?}", self, width, offset);
         let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
@@ -1310,13 +1312,14 @@ impl Rewrite for ast::Arm {
                 false
             };
 
-            let block_sep = match context.config.control_brace_style {
-                ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
-                _ => " ",
-            };
             match rewrite {
                 Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
                                       is_block => {
+                    let block_sep = match context.config.control_brace_style {
+                        ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
+                        _ => " ",
+                    };
+
                     return Some(format!("{}{} =>{}{}{}",
                                         attr_str.trim_left(),
                                         pats_str,
@@ -1477,16 +1480,16 @@ fn rewrite_string_lit(context: &RewriteContext,
                       span: Span,
                       width: usize,
                       offset: Indent)
-                      -> String {
+                      -> Option<String> {
     let string_lit = context.snippet(span);
 
     if !context.config.format_strings && !context.config.force_format_strings {
-        return string_lit;
+        return Some(string_lit);
     }
 
     if !context.config.force_format_strings &&
        !string_requires_rewrite(context, span, &string_lit, width, offset) {
-        return string_lit;
+        return Some(string_lit);
     }
 
     let fmt = StringFormat {
@@ -1503,7 +1506,7 @@ fn rewrite_string_lit(context: &RewriteContext,
     // Remove the quote characters.
     let str_lit = &string_lit[1..string_lit.len() - 1];
 
-    rewrite_string(str_lit, &fmt).unwrap_or_else(|| string_lit.to_owned())
+    rewrite_string(str_lit, &fmt)
 }
 
 fn string_requires_rewrite(context: &RewriteContext,
