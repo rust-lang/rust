@@ -124,7 +124,6 @@ declare_features! (
     (active, advanced_slice_patterns, "1.0.0", Some(23121)),
     (active, box_syntax, "1.0.0", Some(27779)),
     (active, placement_in_syntax, "1.0.0", Some(27779)),
-    (active, reflect, "1.0.0", Some(27749)),
     (active, unboxed_closures, "1.0.0", Some(29625)),
 
     (active, allocator, "1.0.0", Some(27389)),
@@ -337,6 +336,7 @@ declare_features! (
     (removed, managed_boxes, "1.0.0", None),
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
     (removed, negate_unsigned, "1.0.0", Some(29645)),
+    (removed, reflect, "1.0.0", Some(27749)),
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
     (removed, opt_out_copy, "1.0.0", None),
     (removed, quad_precision_float, "1.0.0", None),
@@ -734,10 +734,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         "unboxed_closures",
                                         "unboxed_closures are still evolving",
                                         cfg_fn!(unboxed_closures))),
-    ("rustc_reflect_like", Whitelisted, Gated(Stability::Unstable,
-                                              "reflect",
-                                              "defining reflective traits is still evolving",
-                                              cfg_fn!(reflect))),
 
     ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
                                              "windows_subsystem",
