@@ -10,8 +10,6 @@
 
 // aux-build:fat_drop.rs
 
-#![feature(drop_in_place)]
-
 extern crate fat_drop;
 
 fn main() {
