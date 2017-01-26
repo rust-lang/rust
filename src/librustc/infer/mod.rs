@@ -76,23 +76,23 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
-/// A version of &ty::Tables which can be `Missing` (not needed),
+/// A version of &ty::TypeckTables which can be `Missing` (not needed),
 /// `InProgress` (during typeck) or `Interned` (result of typeck).
 /// Only the `InProgress` version supports `borrow_mut`.
 #[derive(Copy, Clone)]
 pub enum InferTables<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    Interned(&'a ty::Tables<'gcx>),
-    InProgress(&'a RefCell<ty::Tables<'tcx>>),
+    Interned(&'a ty::TypeckTables<'gcx>),
+    InProgress(&'a RefCell<ty::TypeckTables<'tcx>>),
     Missing
 }
 
 pub enum InferTablesRef<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    Interned(&'a ty::Tables<'gcx>),
-    InProgress(Ref<'a, ty::Tables<'tcx>>)
+    Interned(&'a ty::TypeckTables<'gcx>),
+    InProgress(Ref<'a, ty::TypeckTables<'tcx>>)
 }
 
 impl<'a, 'gcx, 'tcx> Deref for InferTablesRef<'a, 'gcx, 'tcx> {
-    type Target = ty::Tables<'tcx>;
+    type Target = ty::TypeckTables<'tcx>;
     fn deref(&self) -> &Self::Target {
         match *self {
             InferTablesRef::Interned(tables) => tables,
@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> InferTables<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn expect_interned(self) -> &'a ty::Tables<'gcx> {
+    pub fn expect_interned(self) -> &'a ty::TypeckTables<'gcx> {
         match self {
             InferTables::Interned(tables) => tables,
             InferTables::InProgress(_) => {
@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> InferTables<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn borrow_mut(self) -> RefMut<'a, ty::Tables<'tcx>> {
+    pub fn borrow_mut(self) -> RefMut<'a, ty::TypeckTables<'tcx>> {
         match self {
             InferTables::Interned(_) => {
                 bug!("InferTables: infcx.tables.borrow_mut() outside of type-checking");
@@ -407,15 +407,15 @@ impl fmt::Display for FixupError {
 
 pub trait InferEnv<'a, 'tcx> {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>);
 }
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         (None, None, None)
     }
@@ -423,26 +423,26 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParameterEnvironment<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         (None, None, Some(self))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::Tables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         (Some(self.0), None, Some(self.1))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::Tables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         (None, Some(self.0), Some(self.1))
     }
@@ -450,8 +450,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::Tables<'tcx>, ty::ParameterEnvironmen
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::Tables<'tcx>>,
-                    Option<ty::Tables<'tcx>>,
+                -> (Option<&'a ty::TypeckTables<'tcx>>,
+                    Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         let item_id = tcx.map.body_owner(self);
         (Some(tcx.item_tables(tcx.map.local_def_id(item_id))),
@@ -466,8 +466,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
 pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: DroplessArena,
-    fresh_tables: Option<RefCell<ty::Tables<'tcx>>>,
-    tables: Option<&'a ty::Tables<'gcx>>,
+    fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
+    tables: Option<&'a ty::TypeckTables<'gcx>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
     projection_mode: Reveal,
 }

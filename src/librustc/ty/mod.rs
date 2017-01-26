@@ -69,7 +69,7 @@ pub use self::sty::TypeVariants::*;
 
 pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, GlobalArenas, tls};
-pub use self::context::{Lift, Tables};
+pub use self::context::{Lift, TypeckTables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 
@@ -1917,11 +1917,11 @@ impl BorrowKind {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn body_tables(self, body: hir::BodyId) -> &'gcx Tables<'gcx> {
+    pub fn body_tables(self, body: hir::BodyId) -> &'gcx TypeckTables<'gcx> {
         self.item_tables(self.map.body_owner_def_id(body))
     }
 
-    pub fn item_tables(self, def_id: DefId) -> &'gcx Tables<'gcx> {
+    pub fn item_tables(self, def_id: DefId) -> &'gcx TypeckTables<'gcx> {
         self.tables.memoize(def_id, || {
             if def_id.is_local() {
                 // Closures' tables come from their outermost function,

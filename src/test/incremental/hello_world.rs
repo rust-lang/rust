@@ -31,7 +31,7 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn yyyy() {
         x::xxxx();
     }
@@ -40,7 +40,7 @@ mod y {
 mod z {
     use y;
 
-    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn z() {
         y::yyyy();
     }

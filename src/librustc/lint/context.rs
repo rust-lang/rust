@@ -337,7 +337,7 @@ pub struct LateContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// Side-tables for the body we are in.
-    pub tables: &'a ty::Tables<'tcx>,
+    pub tables: &'a ty::TypeckTables<'tcx>,
 
     /// The crate being checked.
     pub krate: &'a hir::Crate,
@@ -1212,7 +1212,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), LintStore::new());
     let mut cx = LateContext {
         tcx: tcx,
-        tables: &ty::Tables::empty(),
+        tables: &ty::TypeckTables::empty(),
         krate: krate,
         access_levels: access_levels,
         lints: lint_store,
