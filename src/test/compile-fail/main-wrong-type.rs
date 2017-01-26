@@ -14,5 +14,5 @@ struct S {
 }
 
 fn main(foo: S) {
-//~^ ERROR: main function has wrong type [E0579]
+//~^ ERROR: main function has wrong type [E0580]
 }

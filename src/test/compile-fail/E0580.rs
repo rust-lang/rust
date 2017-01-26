@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() -> i32 { 0 } //~ ERROR E0579
+fn main() -> i32 { 0 } //~ ERROR E0580

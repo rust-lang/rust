@@ -631,7 +631,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             }
             ObligationCauseCode::MainFunctionType => {
-                struct_span_err!(self.tcx.sess, span, E0579, "{}", failure_str)
+                struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
             _ => {
                 struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
