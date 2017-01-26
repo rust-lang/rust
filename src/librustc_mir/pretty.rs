@@ -92,7 +92,7 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
     where I: Iterator<Item=DefId>, 'tcx: 'a
 {
     let mut first = true;
-    for def_id in iter {
+    for def_id in iter.filter(DefId::is_local) {
         let mir = &tcx.item_mir(def_id);
 
         if first {
