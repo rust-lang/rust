@@ -1149,6 +1149,26 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
     }
 }
 
+#[unstable(feature = "i128", issue = "35118")]
+impl From<Ipv6Addr> for u128 {
+    fn from(ip: Ipv6Addr) -> u128 {
+        let ip = ip.segments();
+        ((ip[0] as u128) << 112) + ((ip[1] as u128) << 96) + ((ip[2] as u128) << 80) +
+            ((ip[3] as u128) << 64) + ((ip[4] as u128) << 48) + ((ip[5] as u128) << 32) +
+            ((ip[6] as u128) << 16) + (ip[7] as u128)
+    }
+}
+#[unstable(feature = "i128", issue = "35118")]
+impl From<u128> for Ipv6Addr {
+    fn from(ip: u128) -> Ipv6Addr {
+        Ipv6Addr::new(
+            (ip >> 112) as u16, (ip >> 96) as u16, (ip >> 80) as u16,
+            (ip >> 64) as u16, (ip >> 48) as u16, (ip >> 32) as u16,
+            (ip >> 16) as u16, ip as u16,
+        )
+    }
+}
+
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
 impl From<[u8; 16]> for Ipv6Addr {
     fn from(octets: [u8; 16]) -> Ipv6Addr {
@@ -1500,14 +1520,26 @@ mod tests {
 
     #[test]
     fn test_ipv4_to_int() {
-        let a = Ipv4Addr::new(127, 0, 0, 1);
-        assert_eq!(u32::from(a), 2130706433);
+        let a = Ipv4Addr::new(0x11, 0x22, 0x33, 0x44);
+        assert_eq!(u32::from(a), 0x11223344);
     }
 
     #[test]
     fn test_int_to_ipv4() {
-        let a = Ipv4Addr::new(127, 0, 0, 1);
-        assert_eq!(Ipv4Addr::from(2130706433), a);
+        let a = Ipv4Addr::new(0x11, 0x22, 0x33, 0x44);
+        assert_eq!(Ipv4Addr::from(0x11223344), a);
+    }
+
+    #[test]
+    fn test_ipv6_to_int() {
+        let a = Ipv6Addr::new(0x1122, 0x3344, 0x5566, 0x7788, 0x99aa, 0xbbcc, 0xddee, 0xff11);
+        assert_eq!(u128::from(a), 0x112233445566778899aabbccddeeff11u128);
+    }
+
+    #[test]
+    fn test_int_to_ipv6() {
+        let a = Ipv6Addr::new(0x1122, 0x3344, 0x5566, 0x7788, 0x99aa, 0xbbcc, 0xddee, 0xff11);
+        assert_eq!(Ipv6Addr::from(0x112233445566778899aabbccddeeff11u128), a);
     }
 
     #[test]
