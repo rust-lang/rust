@@ -514,7 +514,7 @@ pub enum BorrowKind {
 
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
-    /// implicit closure bindings. It is needed when you the closure
+    /// implicit closure bindings. It is needed when the closure
     /// is borrowing or mutating a mutable referent, e.g.:
     ///
     ///    let x: &mut isize = ...;
