@@ -16,7 +16,7 @@ use middle;
 use hir::TraitMap;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use hir::map as ast_map;
+use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
@@ -428,7 +428,7 @@ pub struct GlobalCtxt<'tcx> {
     /// additional acyclicity requirements).
     pub super_predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
-    pub hir: ast_map::Map<'tcx>,
+    pub hir: hir_map::Map<'tcx>,
 
     /// Maps from the def-id of a function/method or const/static
     /// to its MIR. Mutation is done at an item granularity to
@@ -730,7 +730,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
-                                  hir: ast_map::Map<'tcx>,
+                                  hir: hir_map::Map<'tcx>,
                                   region_maps: RegionMaps,
                                   lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,

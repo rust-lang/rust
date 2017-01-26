@@ -454,7 +454,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
-                                                     state.ast_map.unwrap(),
+                                                     state.hir_map.unwrap(),
                                                      state.analysis.unwrap(),
                                                      state.resolutions.unwrap(),
                                                      state.input,

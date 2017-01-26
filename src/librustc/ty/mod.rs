@@ -17,7 +17,7 @@ pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
-use hir::{map as ast_map, FreevarMap, TraitMap};
+use hir::{map as hir_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -1199,7 +1199,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     pub fn for_item(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId)
                     -> ParameterEnvironment<'tcx> {
         match tcx.hir.find(id) {
-            Some(ast_map::NodeImplItem(ref impl_item)) => {
+            Some(hir_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Type(_) | hir::ImplItemKind::Const(..) => {
                         // associated types don't have their own entry (for some reason),
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     }
                 }
             }
-            Some(ast_map::NodeTraitItem(trait_item)) => {
+            Some(hir_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
                     hir::TraitItemKind::Type(..) | hir::TraitItemKind::Const(..) => {
                         // associated types don't have their own entry (for some reason),
@@ -1247,7 +1247,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     }
                 }
             }
-            Some(ast_map::NodeItem(item)) => {
+            Some(hir_map::NodeItem(item)) => {
                 match item.node {
                     hir::ItemFn(.., body_id) => {
                         // We assume this is a function.
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     }
                 }
             }
-            Some(ast_map::NodeExpr(expr)) => {
+            Some(hir_map::NodeExpr(expr)) => {
                 // This is a convenience to allow closures to work.
                 if let hir::ExprClosure(.., body, _) = expr.node {
                     let def_id = tcx.hir.local_def_id(id);
@@ -1297,7 +1297,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     tcx.empty_parameter_environment()
                 }
             }
-            Some(ast_map::NodeForeignItem(item)) => {
+            Some(hir_map::NodeForeignItem(item)) => {
                 let def_id = tcx.hir.local_def_id(id);
                 tcx.construct_parameter_environment(item.span,
                                                     def_id,
@@ -1945,7 +1945,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.hir.find(id) {
-            Some(ast_map::NodeExpr(e)) => {
+            Some(hir_map::NodeExpr(e)) => {
                 e.span
             }
             Some(f) => {
@@ -1959,7 +1959,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn local_var_name_str(self, id: NodeId) -> InternedString {
         match self.hir.find(id) {
-            Some(ast_map::NodeLocal(pat)) => {
+            Some(hir_map::NodeLocal(pat)) => {
                 match pat.node {
                     hir::PatKind::Binding(_, _, ref path1, _) => path1.node.as_str(),
                     _ => {
@@ -2225,7 +2225,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn def_key(self, id: DefId) -> ast_map::DefKey {
+    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
         if id.is_local() {
             self.hir.def_key(id)
         } else {
@@ -2238,7 +2238,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Note that if `id` is not local to this crate, the result will
     //  be a non-local `DefPath`.
-    pub fn def_path(self, id: DefId) -> ast_map::DefPath {
+    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
         if id.is_local() {
             self.hir.def_path(id)
         } else {
@@ -2266,7 +2266,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             let def_key = self.sess.cstore.def_key(id);
             // The name of a StructCtor is that of its struct parent.
-            if let ast_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
+            if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
                     krate: id.krate,
                     index: def_key.parent.unwrap()

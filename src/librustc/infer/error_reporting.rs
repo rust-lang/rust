@@ -73,7 +73,7 @@ use super::region_inference::SameRegions;
 
 use std::collections::HashSet;
 
-use hir::map as ast_map;
+use hir::map as hir_map;
 use hir;
 
 use lint;
@@ -152,8 +152,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
                 let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
-                    Some(ast_map::NodeBlock(_)) => "block",
-                    Some(ast_map::NodeExpr(expr)) => match expr.node {
+                    Some(hir_map::NodeBlock(_)) => "block",
+                    Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
                         hir::ExprMethodCall(..) => "method call",
                         hir::ExprMatch(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
@@ -162,10 +162,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         hir::ExprMatch(..) => "match",
                         _ => "expression",
                     },
-                    Some(ast_map::NodeStmt(_)) => "statement",
-                    Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
-                    Some(ast_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
-                    Some(ast_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
+                    Some(hir_map::NodeStmt(_)) => "statement",
+                    Some(hir_map::NodeItem(it)) => item_scope_tag(&it),
+                    Some(hir_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
+                    Some(hir_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -207,11 +207,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let node = fr.scope.node_id(&self.region_maps);
                 let unknown;
                 let tag = match self.hir.find(node) {
-                    Some(ast_map::NodeBlock(_)) |
-                    Some(ast_map::NodeExpr(_)) => "body",
-                    Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
-                    Some(ast_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
-                    Some(ast_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
+                    Some(hir_map::NodeBlock(_)) |
+                    Some(hir_map::NodeExpr(_)) => "body",
+                    Some(hir_map::NodeItem(it)) => item_scope_tag(&it),
+                    Some(hir_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
+                    Some(hir_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
 
                     // this really should not happen, but it does:
                     // FIXME(#27942)
@@ -471,14 +471,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let parent_node = tcx.hir.find(parent);
             match parent_node {
                 Some(node) => match node {
-                    ast_map::NodeItem(item) => match item.node {
+                    hir_map::NodeItem(item) => match item.node {
                         hir::ItemFn(..) => {
                             Some(FreeRegionsFromSameFn::new(fr1, fr2, scope_id))
                         },
                         _ => None
                     },
-                    ast_map::NodeImplItem(..) |
-                    ast_map::NodeTraitItem(..) => {
+                    hir_map::NodeImplItem(..) |
+                    hir_map::NodeTraitItem(..) => {
                         Some(FreeRegionsFromSameFn::new(fr1, fr2, scope_id))
                     },
                     _ => None
@@ -1074,7 +1074,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let life_giver = LifeGiver::with_taken(&taken[..]);
         let node_inner = match parent_node {
             Some(ref node) => match *node {
-                ast_map::NodeItem(ref item) => {
+                hir_map::NodeItem(ref item) => {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, body) => {
                             Some((fn_decl, gen, unsafety, constness, item.name, item.span, body))
@@ -1082,9 +1082,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         _ => None,
                     }
                 }
-                ast_map::NodeImplItem(item) => {
+                hir_map::NodeImplItem(item) => {
                     let id = self.tcx.hir.get_parent(item.id);
-                    if let Some(ast_map::NodeItem(parent_scope)) = self.tcx.hir.find(id) {
+                    if let Some(hir_map::NodeItem(parent_scope)) = self.tcx.hir.find(id) {
                         if let hir::ItemImpl(_, _, _, None, _, _) = parent_scope.node {
                             // this impl scope implements a trait, do not recomend
                             // using explicit lifetimes (#37363)
@@ -1103,7 +1103,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         None
                     }
                 },
-                ast_map::NodeTraitItem(item) => {
+                hir_map::NodeTraitItem(item) => {
                     match item.node {
                         hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                             Some((&sig.decl,
@@ -1894,14 +1894,14 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let parent = tcx.hir.get_parent(scope_id);
     let method_id_opt = match tcx.hir.find(parent) {
         Some(node) => match node {
-            ast_map::NodeItem(item) => match item.node {
+            hir_map::NodeItem(item) => match item.node {
                 hir::ItemFn(.., ref gen, _) => {
                     taken.extend_from_slice(&gen.lifetimes);
                     None
                 },
                 _ => None
             },
-            ast_map::NodeImplItem(ii) => {
+            hir_map::NodeImplItem(ii) => {
                 match ii.node {
                     hir::ImplItemKind::Method(ref sig, _) => {
                         taken.extend_from_slice(&sig.generics.lifetimes);
@@ -1918,7 +1918,7 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         let parent = tcx.hir.get_parent(method_id);
         if let Some(node) = tcx.hir.find(parent) {
             match node {
-                ast_map::NodeItem(item) => match item.node {
+                hir_map::NodeItem(item) => match item.node {
                     hir::ItemImpl(_, _, ref gen, ..) => {
                         taken.extend_from_slice(&gen.lifetimes);
                     }

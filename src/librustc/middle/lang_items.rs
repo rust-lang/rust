@@ -117,7 +117,7 @@ impl LanguageItems {
 struct LanguageItemCollector<'a, 'tcx: 'a> {
     items: LanguageItems,
 
-    ast_map: &'a hir_map::Map<'tcx>,
+    hir_map: &'a hir_map::Map<'tcx>,
 
     session: &'a Session,
 
@@ -130,9 +130,9 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
             let item_index = self.item_refs.get(&*value.as_str()).cloned();
 
             if let Some(item_index) = item_index {
-                self.collect_item(item_index, self.ast_map.local_def_id(item.id))
+                self.collect_item(item_index, self.hir_map.local_def_id(item.id))
             } else {
-                let span = self.ast_map.span(item.id);
+                let span = self.hir_map.span(item.id);
                 span_err!(self.session, span, E0522,
                           "definition of an unknown language item: `{}`.",
                           value);
@@ -150,7 +150,7 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
-    pub fn new(session: &'a Session, ast_map: &'a hir_map::Map<'tcx>)
+    pub fn new(session: &'a Session, hir_map: &'a hir_map::Map<'tcx>)
                -> LanguageItemCollector<'a, 'tcx> {
         let mut item_refs = FxHashMap();
 
@@ -158,7 +158,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
         LanguageItemCollector {
             session: session,
-            ast_map: ast_map,
+            hir_map: hir_map,
             items: LanguageItems::new(),
             item_refs: item_refs,
         }
@@ -171,7 +171,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
             Some(original_def_id) if original_def_id != item_def_id => {
                 let cstore = &self.session.cstore;
                 let name = LanguageItems::item_name(item_index);
-                let mut err = match self.ast_map.span_if_local(item_def_id) {
+                let mut err = match self.hir_map.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.session,
                         span,
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                             cstore.crate_name(item_def_id.krate),
                             name)),
                 };
-                if let Some(span) = self.ast_map.span_if_local(original_def_id) {
+                if let Some(span) = self.hir_map.span_if_local(original_def_id) {
                     span_note!(&mut err, span,
                                "first defined here.");
                 } else {
