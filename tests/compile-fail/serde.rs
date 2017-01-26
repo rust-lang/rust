@@ -9,14 +9,19 @@ struct A;
 
 impl serde::de::Visitor for A {
     type Value = ();
-    fn visit_str<E>(&mut self, _v: &str) -> Result<Self::Value, E>
-        where E: serde::Error,
+
+    fn expecting(&self, _: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        unimplemented!()
+    }
+
+    fn visit_str<E>(self, _v: &str) -> Result<Self::Value, E>
+        where E: serde::de::Error,
     {
         unimplemented!()
     }
 
-    fn visit_string<E>(&mut self, _v: String) -> Result<Self::Value, E>
-        where E: serde::Error,
+    fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
+        where E: serde::de::Error,
     {
         unimplemented!()
     }
@@ -27,9 +32,13 @@ struct B;
 impl serde::de::Visitor for B {
     type Value = ();
 
-    fn visit_string<E>(&mut self, _v: String) -> Result<Self::Value, E>
+    fn expecting(&self, _: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        unimplemented!()
+    }
+
+    fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
     //~^ ERROR you should not implement `visit_string` without also implementing `visit_str`
-        where E: serde::Error,
+        where E: serde::de::Error,
     {
         unimplemented!()
     }

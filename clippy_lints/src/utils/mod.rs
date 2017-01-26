@@ -21,7 +21,6 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 
-pub mod cargo;
 pub mod comparisons;
 pub mod conf;
 pub mod constants;
