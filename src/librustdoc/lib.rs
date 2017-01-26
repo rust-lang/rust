@@ -193,7 +193,7 @@ pub fn main_args(args: &[String]) -> isize {
     nightly_options::check_nightly_options(&matches, &opts());
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(&args[0]);
+        usage("rustdoc");
         return 0;
     } else if matches.opt_present("version") {
         rustc_driver::version("rustdoc", &matches);
