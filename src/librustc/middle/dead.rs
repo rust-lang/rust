@@ -35,7 +35,7 @@ use syntax_pos;
 // may need to be marked as live.
 fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             node_id: ast::NodeId) -> bool {
-    match tcx.map.find(node_id) {
+    match tcx.hir.find(node_id) {
         Some(ast_map::NodeItem(..)) |
         Some(ast_map::NodeImplItem(..)) |
         Some(ast_map::NodeForeignItem(..)) |
@@ -59,7 +59,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId) {
-        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+        if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
             if should_explore(self.tcx, node_id) {
                 self.worklist.push(node_id);
             }
@@ -68,7 +68,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn insert_def_id(&mut self, def_id: DefId) {
-        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+        if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
             debug_assert!(!should_explore(self.tcx, node_id));
             self.live_symbols.insert(node_id);
         }
@@ -143,7 +143,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
             scanned.insert(id);
 
-            if let Some(ref node) = self.tcx.map.find(id) {
+            if let Some(ref node) = self.tcx.hir.find(id) {
                 self.live_symbols.insert(id);
                 self.visit_node(node);
             }
@@ -203,7 +203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
-        let body = self.tcx.map.body(body);
+        let body = self.tcx.hir.body(body);
         self.visit_body(body);
         self.tables = old_tables;
     }
@@ -434,7 +434,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.item_type(self.tcx.map.local_def_id(field.id));
+        let field_type = self.tcx.item_type(self.tcx.hir.local_def_id(field.id));
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
@@ -478,10 +478,10 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         if let Some(impl_list) =
-                self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
+                self.tcx.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
             for &impl_did in impl_list.iter() {
                 for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
-                    if let Some(item_node_id) = self.tcx.map.as_local_node_id(item_did) {
+                    if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {
                         if self.live_symbols.contains(&item_node_id) {
                             return true;
                         }
@@ -514,7 +514,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.tcx.map)
+        NestedVisitorMap::All(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -596,7 +596,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              access_levels: &privacy::AccessLevels) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
-    let krate = tcx.map.krate();
+    let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
     intravisit::walk_crate(&mut visitor, krate);

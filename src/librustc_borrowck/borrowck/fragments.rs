@@ -132,7 +132,7 @@ pub fn build_unfragmented_map(this: &mut borrowck::BorrowckCtxt,
     }
 
     let mut fraginfo_map = this.tcx.fragment_infos.borrow_mut();
-    let fn_did = this.tcx.map.local_def_id(id);
+    let fn_did = this.tcx.hir.local_def_id(id);
     let prev = fraginfo_map.insert(fn_did, fragment_infos);
     assert!(prev.is_none());
 }
@@ -202,7 +202,7 @@ pub fn instrument_move_fragments<'a, 'tcx>(this: &MoveData<'tcx>,
                                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            sp: Span,
                                            id: ast::NodeId) {
-    let span_err = tcx.map.attrs(id).iter()
+    let span_err = tcx.hir.attrs(id).iter()
                           .any(|a| a.check_name("rustc_move_fragments"));
     let print = tcx.sess.opts.debugging_opts.print_move_fragments;
 
@@ -496,7 +496,7 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
         },
 
         ref ty => {
-            let span = origin_id.map_or(DUMMY_SP, |id| tcx.map.span(id));
+            let span = origin_id.map_or(DUMMY_SP, |id| tcx.hir.span(id));
             span_bug!(span,
                       "type {:?} ({:?}) is not fragmentable",
                       parent_ty, ty);

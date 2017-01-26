@@ -44,7 +44,7 @@ use super::intravisit::Visitor;
 ///    - How: Implement `intravisit::Visitor` and override the
 ///      `visit_nested_map()` methods to return
 ///      `NestedVisitorMap::All`. Walk your crate with
-///      `intravisit::walk_crate()` invoked on `tcx.map.krate()`.
+///      `intravisit::walk_crate()` invoked on `tcx.hir.krate()`.
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 ///    - Pro: Preserves nesting information
 ///    - Con: Does not integrate well into dependency tracking.

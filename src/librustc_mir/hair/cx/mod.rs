@@ -45,13 +45,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             MirSource::Const(_) |
             MirSource::Static(..) => hir::Constness::Const,
             MirSource::Fn(id) => {
-                let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
+                let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(id));
                 fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
             }
             MirSource::Promoted(..) => bug!(),
         };
 
-        let attrs = infcx.tcx.map.attrs(src.item_id());
+        let attrs = infcx.tcx.hir.attrs(src.item_id());
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on

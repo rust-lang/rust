@@ -561,7 +561,7 @@ macro_rules! hash_span {
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> visit::NestedVisitorMap<'this, 'tcx> {
         if self.hash_bodies {
-            visit::NestedVisitorMap::OnlyBodies(&self.tcx.map)
+            visit::NestedVisitorMap::OnlyBodies(&self.tcx.hir)
         } else {
             visit::NestedVisitorMap::None
         }

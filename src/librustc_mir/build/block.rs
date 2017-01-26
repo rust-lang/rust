@@ -58,7 +58,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         let_extent_stack.push(remainder_scope);
 
                         // Declare the bindings, which may create a visibility scope.
-                        let remainder_span = remainder_scope.span(&tcx.region_maps, &tcx.map);
+                        let remainder_span = remainder_scope.span(&tcx.region_maps, &tcx.hir);
                         let remainder_span = remainder_span.unwrap_or(span);
                         let scope = this.declare_bindings(None, remainder_span, &pattern);
 

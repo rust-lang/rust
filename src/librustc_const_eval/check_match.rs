@@ -42,7 +42,7 @@ struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
@@ -53,7 +53,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
-        }.visit_body(self.tcx.map.body(b));
+        }.visit_body(self.tcx.hir.body(b));
     }
 }
 
@@ -152,7 +152,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.map.local_def_id(self.tcx.map.get_module_parent(scrut.id));
+        let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -195,7 +195,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             "local binding"
         };
 
-        let module = self.tcx.map.local_def_id(self.tcx.map.get_module_parent(pat.id));
+        let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(pat.id));
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx, self.tables);
             let pattern = patcx.lower_pattern(pat);

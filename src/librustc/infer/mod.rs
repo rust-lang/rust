@@ -453,8 +453,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
-        let item_id = tcx.map.body_owner(self);
-        (Some(tcx.item_tables(tcx.map.local_def_id(item_id))),
+        let item_id = tcx.hir.body_owner(self);
+        (Some(tcx.item_tables(tcx.hir.local_def_id(item_id))),
          None,
          Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
     }
@@ -1269,7 +1269,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.types.err,
             None => {
                 bug!("no type for node {}: {} in fcx",
-                     id, self.tcx.map.node_to_string(id));
+                     id, self.tcx.hir.node_to_string(id));
             }
         }
     }
@@ -1639,7 +1639,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         -> Option<ty::ClosureKind>
     {
         if let InferTables::InProgress(tables) = self.tables {
-            if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+            if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 return tables.borrow().closure_kinds.get(&id).cloned();
             }
         }
@@ -1657,7 +1657,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         -> ty::ClosureTy<'tcx>
     {
         if let InferTables::InProgress(tables) = self.tables {
-            if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+            if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 if let Some(ty) = tables.borrow().closure_tys.get(&id) {
                     return ty.subst(self.tcx, substs.substs);
                 }

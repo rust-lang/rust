@@ -502,7 +502,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     }
 
     fn ast_map<'a>(&'a self) -> Option<&'a hir_map::Map<'tcx>> {
-        Some(&self.tcx.map)
+        Some(&self.tcx.hir)
     }
 
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
@@ -521,7 +521,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(&self.tcx.map, state, nested)?;
+        pprust_hir::PpAnn::nested(&self.tcx.hir, state, nested)?;
         self.tables.set(old_tables);
         Ok(())
     }
@@ -739,13 +739,13 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let cfg = match code {
         blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
         blocks::Code::FnLike(fn_like) => {
-            let body = tcx.map.body(fn_like.body());
+            let body = tcx.hir.body(fn_like.body());
             cfg::CFG::new(tcx, &body.value)
         },
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
-        ast_map: &tcx.map,
+        ast_map: &tcx.hir,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
         labelled_edges: labelled_edges,
@@ -1005,7 +1005,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {
-                    let def_id = tcx.map.local_def_id(nodeid);
+                    let def_id = tcx.hir.local_def_id(nodeid);
                     match ppm {
                         PpmMir => write_mir_pretty(tcx, iter::once(def_id), &mut out),
                         PpmMirCFG => write_mir_graphviz(tcx, iter::once(def_id), &mut out),
@@ -1030,11 +1030,11 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 let nodeid =
                     nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or unique path \
                                    suffix (b::c::d)");
-                let node = tcx.map.find(nodeid).unwrap_or_else(|| {
+                let node = tcx.hir.find(nodeid).unwrap_or_else(|| {
                     tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
                 });
 
-                match blocks::Code::from_node(&tcx.map, nodeid) {
+                match blocks::Code::from_node(&tcx.hir, nodeid) {
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 
@@ -1047,7 +1047,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                got {:?}",
                                               node);
 
-                        tcx.sess.span_fatal(tcx.map.span(nodeid), &message)
+                        tcx.sess.span_fatal(tcx.hir.span(nodeid), &message)
                     }
                 }
             }

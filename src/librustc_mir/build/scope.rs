@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope.needs_cleanup = true;
                 }
                 let tcx = self.hir.tcx();
-                let extent_span = extent.span(&tcx.region_maps, &tcx.map).unwrap();
+                let extent_span = extent.span(&tcx.region_maps, &tcx.hir).unwrap();
                 // Attribute scope exit drops to scope's closing brace
                 let scope_end = Span { lo: extent_span.hi, .. extent_span};
                 scope.drops.push(DropData {

@@ -34,7 +34,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    inputs: Vec<Ty<'tcx>>,
                                    output: Ty<'tcx>) {
     let tcx = ccx.tcx;
-    let def_id = tcx.map.local_def_id(it.id);
+    let def_id = tcx.hir.local_def_id(it.id);
 
     let substs = Substs::for_item(tcx, def_id,
                                   |_, _| tcx.mk_region(ty::ReErased),
@@ -324,7 +324,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     };
 
     let tcx = ccx.tcx;
-    let def_id = tcx.map.local_def_id(it.id);
+    let def_id = tcx.hir.local_def_id(it.id);
     let i_n_tps = tcx.item_generics(def_id).types.len();
     let name = it.name.as_str();
 

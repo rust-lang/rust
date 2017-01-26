@@ -309,7 +309,7 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             output: &mut roots,
         };
 
-        scx.tcx().map.krate().visit_all_item_likes(&mut visitor);
+        scx.tcx().hir.krate().visit_all_item_likes(&mut visitor);
     }
 
     roots
@@ -336,7 +336,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             recursion_depth_reset = None;
         }
         TransItem::Static(node_id) => {
-            let def_id = scx.tcx().map.local_def_id(node_id);
+            let def_id = scx.tcx().hir.local_def_id(node_id);
 
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(should_trans_locally(scx.tcx(), def_id));
@@ -406,8 +406,8 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if recursion_depth > tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
-        if let Some(node_id) = tcx.map.as_local_node_id(instance.def) {
-            tcx.sess.span_fatal(tcx.map.span(node_id), &error);
+        if let Some(node_id) = tcx.hir.as_local_node_id(instance.def) {
+            tcx.sess.span_fatal(tcx.hir.span(node_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }
@@ -438,8 +438,8 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let instance_name = instance.to_string();
         let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
                           instance_name);
-        let mut diag = if let Some(node_id) = tcx.map.as_local_node_id(instance.def) {
-            tcx.sess.struct_span_fatal(tcx.map.span(node_id), &msg)
+        let mut diag = if let Some(node_id) = tcx.hir.as_local_node_id(instance.def) {
+            tcx.sess.struct_span_fatal(tcx.hir.span(node_id), &msg)
         } else {
             tcx.sess.struct_fatal(&msg)
         };
@@ -619,7 +619,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in a
                     // translation item. Same for FFI functions.
-                    if let Some(hir_map::NodeForeignItem(_)) = tcx.map.get_if_local(def_id) {
+                    if let Some(hir_map::NodeForeignItem(_)) = tcx.hir.get_if_local(def_id) {
                         return false;
                     }
 
@@ -1152,7 +1152,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemUnion(_, ref generics) => {
                 if !generics.is_parameterized() {
                     if self.mode == TransItemCollectionMode::Eager {
-                        let def_id = self.scx.tcx().map.local_def_id(item.id);
+                        let def_id = self.scx.tcx().hir.local_def_id(item.id);
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.scx.tcx(), def_id));
 
@@ -1165,7 +1165,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemStatic(..) => {
                 debug!("RootCollector: ItemStatic({})",
                        def_id_to_string(self.scx.tcx(),
-                                        self.scx.tcx().map.local_def_id(item.id)));
+                                        self.scx.tcx().hir.local_def_id(item.id)));
                 self.output.push(TransItem::Static(item.id));
             }
             hir::ItemConst(..) => {
@@ -1174,7 +1174,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             }
             hir::ItemFn(.., ref generics, _) => {
                 if !generics.is_type_parameterized() {
-                    let def_id = self.scx.tcx().map.local_def_id(item.id);
+                    let def_id = self.scx.tcx().hir.local_def_id(item.id);
 
                     debug!("RootCollector: ItemFn({})",
                            def_id_to_string(self.scx.tcx(), def_id));
@@ -1197,7 +1197,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 ref generics,
                 ..
             }, _) => {
-                let hir_map = &self.scx.tcx().map;
+                let hir_map = &self.scx.tcx().hir;
                 let parent_node_id = hir_map.get_parent_node(ii.id);
                 let is_impl_generic = match hir_map.expect_item(parent_node_id) {
                     &hir::Item {
@@ -1212,7 +1212,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 };
 
                 if !generics.is_type_parameterized() && !is_impl_generic {
-                    let def_id = self.scx.tcx().map.local_def_id(ii.id);
+                    let def_id = self.scx.tcx().hir.local_def_id(ii.id);
 
                     debug!("RootCollector: MethodImplItem({})",
                            def_id_to_string(self.scx.tcx(), def_id));
@@ -1240,7 +1240,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                 return
             }
 
-            let impl_def_id = tcx.map.local_def_id(item.id);
+            let impl_def_id = tcx.hir.local_def_id(item.id);
 
             debug!("create_trans_items_for_default_impls(item={})",
                    def_id_to_string(tcx, impl_def_id));

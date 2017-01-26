@@ -57,7 +57,7 @@ pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
                     id: ast::NodeId,
                     attributes: &[ast::Attribute]) {
     let tcx = bcx.tcx;
-    let def_id = tcx.map.local_def_id(id);
+    let def_id = tcx.hir.local_def_id(id);
     debug!("borrowck_mir({}) UNIMPLEMENTED", tcx.item_path_str(def_id));
 
     let mir = &tcx.item_mir(def_id);

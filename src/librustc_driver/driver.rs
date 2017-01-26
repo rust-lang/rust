@@ -181,7 +181,7 @@ pub fn compile_input(sess: &Session,
                                                                    outdir,
                                                                    output,
                                                                    opt_crate,
-                                                                   tcx.map.krate(),
+                                                                   tcx.hir.krate(),
                                                                    &analysis,
                                                                    tcx,
                                                                    &crate_name);

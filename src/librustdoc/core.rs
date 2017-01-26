@@ -189,7 +189,7 @@ pub fn run_core(search_paths: SearchPaths,
         // to the map from defid -> nodeid
         let access_levels = AccessLevels {
             map: access_levels.map.into_iter()
-                                  .map(|(k, v)| (tcx.map.local_def_id(k), v))
+                                  .map(|(k, v)| (tcx.hir.local_def_id(k), v))
                                   .collect()
         };
 
@@ -204,11 +204,11 @@ pub fn run_core(search_paths: SearchPaths,
             export_map: export_map,
             hir_ty_to_ty: hir_ty_to_ty,
         };
-        debug!("crate: {:?}", tcx.map.krate());
+        debug!("crate: {:?}", tcx.hir.krate());
 
         let krate = {
             let mut v = RustdocVisitor::new(&ctxt);
-            v.visit(tcx.map.krate());
+            v.visit(tcx.hir.krate());
             v.clean(&ctxt)
         };
 

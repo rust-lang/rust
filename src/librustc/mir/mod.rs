@@ -1163,14 +1163,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-                            let name = format!("[closure@{:?}]", tcx.map.span(node_id));
+                        if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+                            let name = format!("[closure@{:?}]", tcx.hir.span(node_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
                                     let def_id = freevar.def.def_id();
-                                    let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
                                     let var_name = tcx.local_var_name_str(var_id);
                                     struct_fmt.field(&var_name, lv);
                                 }

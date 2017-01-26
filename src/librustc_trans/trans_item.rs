@@ -77,9 +77,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         match *self {
             TransItem::Static(node_id) => {
-                let def_id = ccx.tcx().map.local_def_id(node_id);
+                let def_id = ccx.tcx().hir.local_def_id(node_id);
                 let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
-                let item = ccx.tcx().map.expect_item(node_id);
+                let item = ccx.tcx().hir.expect_item(node_id);
                 if let hir::ItemStatic(_, m, _) = item.node {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
@@ -145,12 +145,12 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         node_id: ast::NodeId,
                         linkage: llvm::Linkage,
                         symbol_name: &str) {
-        let def_id = ccx.tcx().map.local_def_id(node_id);
+        let def_id = ccx.tcx().hir.local_def_id(node_id);
         let ty = ccx.tcx().item_type(def_id);
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
-            ccx.sess().span_fatal(ccx.tcx().map.span(node_id),
+            ccx.sess().span_fatal(ccx.tcx().hir.span(node_id),
                 &format!("symbol `{}` is already defined", symbol_name))
         });
 
@@ -222,7 +222,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         match *self {
             TransItem::Fn(instance) => instance.symbol_name(scx),
             TransItem::Static(node_id) => {
-                let def_id = scx.tcx().map.local_def_id(node_id);
+                let def_id = scx.tcx().hir.local_def_id(node_id);
                 Instance::mono(scx, def_id).symbol_name(scx)
             }
             TransItem::DropGlue(dg) => {
@@ -274,7 +274,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def,
-            TransItem::Static(node_id) => tcx.map.local_def_id(node_id),
+            TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
             TransItem::DropGlue(..) => return None,
         };
 
@@ -283,7 +283,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             if let Some(linkage) = base::llvm_linkage_by_name(&name.as_str()) {
                 Some(linkage)
             } else {
-                let span = tcx.map.span_if_local(def_id);
+                let span = tcx.hir.span_if_local(def_id);
                 if let Some(span) = span {
                     tcx.sess.span_fatal(span, "invalid linkage specified")
                 } else {
@@ -296,7 +296,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     }
 
     pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
-        let hir_map = &tcx.map;
+        let hir_map = &tcx.hir;
 
         return match *self {
             TransItem::DropGlue(dg) => {

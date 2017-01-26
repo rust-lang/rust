@@ -360,7 +360,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Binding(bm, def_id, ref ident, ref sub) => {
-                let id = self.tcx.map.as_local_node_id(def_id).unwrap();
+                let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                 let var_ty = self.tables.node_id_to_type(pat.id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),

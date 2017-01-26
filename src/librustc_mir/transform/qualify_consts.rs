@@ -115,8 +115,8 @@ impl fmt::Display for Mode {
 }
 
 pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        if let Some(fn_like) = FnLikeNode::from_node(tcx.map.get(node_id)) {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
             fn_like.constness() == hir::Constness::Const
         } else {
             false
@@ -267,15 +267,15 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 self.tcx
                     .lookup_trait_def(drop_trait_id)
                     .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
-                        self.tcx.map
+                        self.tcx.hir
                             .as_local_node_id(impl_did)
-                            .and_then(|impl_node_id| self.tcx.map.find(impl_node_id))
+                            .and_then(|impl_node_id| self.tcx.hir.find(impl_node_id))
                             .map(|node| {
                                 if let hir_map::NodeItem(item) = node {
                                     if let hir::ItemImpl(.., ref impl_item_refs) = item.node {
                                         span = impl_item_refs.first()
                                                              .map(|iiref| {
-                                                                 self.tcx.map.impl_item(iiref.id)
+                                                                 self.tcx.hir.impl_item(iiref.id)
                                                                              .span
                                                              });
                                     }
@@ -953,7 +953,7 @@ fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let param_env = if def_id.is_local() {
-        let node_id = tcx.map.as_local_node_id(def_id).unwrap();
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
         ty::ParameterEnvironment::for_item(tcx, node_id)
     } else {
         // These should only be monomorphic constants.
@@ -978,7 +978,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>) {
         let id = src.item_id();
-        let def_id = tcx.map.local_def_id(id);
+        let def_id = tcx.hir.local_def_id(id);
         let mode = match src {
             MirSource::Fn(_) => {
                 if is_const_fn(tcx, def_id) {

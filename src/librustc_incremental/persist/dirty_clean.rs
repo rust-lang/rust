@@ -72,7 +72,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    .collect();
     let query = tcx.dep_graph.query();
     debug!("query-nodes: {:?}", query.nodes());
-    let krate = tcx.map.krate();
+    let krate = tcx.hir.krate();
     krate.visit_all_item_likes(&mut DirtyCleanVisitor {
         tcx: tcx,
         query: &query,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let def_id = self.tcx.map.local_def_id(item.id);
+        let def_id = self.tcx.hir.local_def_id(item.id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             if attr.check_name(ATTR_DIRTY) {
                 if check_config(self.tcx, attr) {
@@ -200,7 +200,7 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     tcx.dep_graph.with_ignore(||{
-        let krate = tcx.map.krate();
+        let krate = tcx.hir.krate();
         krate.visit_all_item_likes(&mut DirtyCleanMetadataVisitor {
             tcx: tcx,
             prev_metadata_hashes: prev_metadata_hashes,
@@ -217,7 +217,7 @@ pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
 
 impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let def_id = self.tcx.map.local_def_id(item.id);
+        let def_id = self.tcx.hir.local_def_id(item.id);
 
         for attr in self.tcx.get_attrs(def_id).iter() {
             if attr.check_name(ATTR_DIRTY_METADATA) {

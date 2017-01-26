@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
     pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
-        return match search_mod(self, &self.infcx.tcx.map.krate().module, 0, names) {
+        return match search_mod(self, &self.infcx.tcx.hir.krate().module, 0, names) {
             Some(id) => id,
             None => {
                 panic!("no item found: `{}`", names.join("::"));
@@ -211,7 +211,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
-                let item = this.infcx.tcx.map.expect_item(item.id);
+                let item = this.infcx.tcx.hir.expect_item(item.id);
                 if item.name.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }
