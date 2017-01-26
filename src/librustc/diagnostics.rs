@@ -1694,12 +1694,12 @@ To understand better how closures work in Rust, read:
 https://doc.rust-lang.org/book/closures.html
 "##,
 
-E0579: r##"
+E0580: r##"
 The `main` function was incorrectly declared.
 
 Erroneous code example:
 
-```compile_fail,E0579
+```compile_fail,E0580
 fn main() -> i32 { // error: main function has wrong type
     0
 }
