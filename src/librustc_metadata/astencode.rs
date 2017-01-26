@@ -28,7 +28,7 @@ pub struct Ast<'tcx> {
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         let lazy_body = self.lazy(body);
 
         let tables = self.tcx.body_tables(body_id);
@@ -67,7 +67,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedBodyEncodingVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let body = self.ecx.tcx.map.body(body);
+        let body = self.ecx.tcx.hir.body(body);
         body.encode(self.ecx).unwrap();
         self.count += 1;
 

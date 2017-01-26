@@ -105,13 +105,13 @@ impl Lower for data::EnumData {
 
     fn lower(self, tcx: TyCtxt) -> EnumData {
         EnumData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             value: self.value,
             qualname: self.qualname,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
-            variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            scope: make_def_id(self.scope, &tcx.hir),
+            variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -135,12 +135,12 @@ impl Lower for data::ExternCrateData {
 
     fn lower(self, tcx: TyCtxt) -> ExternCrateData {
         ExternCrateData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             crate_num: self.crate_num,
             location: self.location,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
         }
     }
 }
@@ -159,7 +159,7 @@ impl Lower for data::FunctionCallData {
     fn lower(self, tcx: TyCtxt) -> FunctionCallData {
         FunctionCallData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }
@@ -186,12 +186,12 @@ impl Lower for data::FunctionData {
 
     fn lower(self, tcx: TyCtxt) -> FunctionData {
         FunctionData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
             declaration: self.declaration,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
             visibility: self.visibility,
             parent: self.parent,
@@ -215,7 +215,7 @@ impl Lower for data::FunctionRefData {
     fn lower(self, tcx: TyCtxt) -> FunctionRefData {
         FunctionRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }
@@ -234,9 +234,9 @@ impl Lower for data::ImplData {
 
     fn lower(self, tcx: TyCtxt) -> ImplData {
         ImplData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             trait_ref: self.trait_ref,
             self_ref: self.self_ref,
         }
@@ -257,7 +257,7 @@ impl Lower for data::InheritanceData {
         InheritanceData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             base_id: self.base_id,
-            deriv_id: make_def_id(self.deriv_id, &tcx.map)
+            deriv_id: make_def_id(self.deriv_id, &tcx.hir)
         }
     }
 }
@@ -305,7 +305,7 @@ impl Lower for data::MacroUseData {
             name: self.name,
             qualname: self.qualname,
             callee_span: SpanData::from_span(self.callee_span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
         }
     }
 }
@@ -325,7 +325,7 @@ impl Lower for data::MethodCallData {
     fn lower(self, tcx: TyCtxt) -> MethodCallData {
         MethodCallData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             decl_id: self.decl_id,
         }
@@ -355,8 +355,8 @@ impl Lower for data::MethodData {
         MethodData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            scope: make_def_id(self.scope, &tcx.map),
-            id: make_def_id(self.id, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
             value: self.value,
             decl_id: self.decl_id,
@@ -388,13 +388,13 @@ impl Lower for data::ModData {
 
     fn lower(self, tcx: TyCtxt) -> ModData {
         ModData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             filename: self.filename,
-            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -417,7 +417,7 @@ impl Lower for data::ModRefData {
     fn lower(self, tcx: TyCtxt) -> ModRefData {
         ModRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             qualname: self.qualname,
         }
@@ -446,12 +446,12 @@ impl Lower for data::StructData {
         StructData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
-            ctor_id: make_def_id(self.ctor_id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
+            ctor_id: make_def_id(self.ctor_id, &tcx.hir),
             qualname: self.qualname,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
-            fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -480,11 +480,11 @@ impl Lower for data::StructVariantData {
         StructVariantData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
             type_value: self.type_value,
             value: self.value,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -513,11 +513,11 @@ impl Lower for data::TraitData {
         TraitData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
-            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -545,12 +545,12 @@ impl Lower for data::TupleVariantData {
     fn lower(self, tcx: TyCtxt) -> TupleVariantData {
         TupleVariantData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
             type_value: self.type_value,
             value: self.value,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
@@ -577,7 +577,7 @@ impl Lower for data::TypeDefData {
 
     fn lower(self, tcx: TyCtxt) -> TypeDefData {
         TypeDefData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             qualname: self.qualname,
@@ -605,7 +605,7 @@ impl Lower for data::TypeRefData {
     fn lower(self, tcx: TyCtxt) -> TypeRefData {
         TypeRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             qualname: self.qualname,
         }
@@ -627,11 +627,11 @@ impl Lower for data::UseData {
 
     fn lower(self, tcx: TyCtxt) -> UseData {
         UseData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
             mod_id: self.mod_id,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             visibility: self.visibility,
         }
     }
@@ -651,10 +651,10 @@ impl Lower for data::UseGlobData {
 
     fn lower(self, tcx: TyCtxt) -> UseGlobData {
         UseGlobData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             names: self.names,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             visibility: self.visibility,
         }
     }
@@ -682,12 +682,12 @@ impl Lower for data::VariableData {
 
     fn lower(self, tcx: TyCtxt) -> VariableData {
         VariableData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             kind: self.kind,
             name: self.name,
             qualname: self.qualname,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
             type_value: self.type_value,
             parent: self.parent,
@@ -715,7 +715,7 @@ impl Lower for data::VariableRefData {
         VariableRefData {
             name: self.name,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }

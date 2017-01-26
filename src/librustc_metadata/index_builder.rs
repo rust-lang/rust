@@ -90,7 +90,7 @@ impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
-            items: Index::new(ecx.tcx.map.num_local_def_ids()),
+            items: Index::new(ecx.tcx.hir.num_local_def_ids()),
             ecx: ecx,
         }
     }
@@ -186,7 +186,7 @@ macro_rules! read_hir {
     ($t:ty) => {
         impl<'tcx> DepGraphRead for &'tcx $t {
             fn read(&self, tcx: TyCtxt) {
-                tcx.map.read(self.id);
+                tcx.hir.read(self.id);
             }
         }
     }
@@ -220,6 +220,6 @@ pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt) {
-        tcx.map.read(self.0);
+        tcx.hir.read(self.0);
     }
 }

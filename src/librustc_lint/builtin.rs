@@ -117,7 +117,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
-                let def_id = cx.tcx.map.local_def_id(it.id);
+                let def_id = cx.tcx.hir.local_def_id(it.id);
                 self.check_heap_type(cx, it.span, cx.tcx.item_type(def_id))
             }
             _ => ()
@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemStruct(ref struct_def, _) |
             hir::ItemUnion(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.map.local_def_id(struct_field.id);
+                    let def_id = cx.tcx.hir.local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.item_type(def_id));
                 }
@@ -390,8 +390,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
-                if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
-                    match cx.tcx.map.find(node_id) {
+                if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
+                    match cx.tcx.hir.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
                             if item.vis == hir::Visibility::Inherited {
                                 for impl_item_ref in impl_item_refs {
@@ -504,21 +504,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemUnion(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -586,7 +586,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
                 if let Some(ty_def) = cx.tcx.item_type(d).ty_to_def_id() {
-                    if let Some(node_id) = cx.tcx.map.as_local_node_id(ty_def) {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def) {
                         impls.insert(node_id);
                     }
                 }
@@ -680,7 +680,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         let method = match fn_kind {
             FnKind::ItemFn(..) => None,
             FnKind::Method(..) => {
-                Some(cx.tcx.associated_item(cx.tcx.map.local_def_id(id)))
+                Some(cx.tcx.associated_item(cx.tcx.hir.local_def_id(id)))
             }
             // closures can't recur, so they don't matter.
             FnKind::Closure(_) => return,
@@ -745,7 +745,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 false
             };
             if self_recursive {
-                self_call_spans.push(cx.tcx.map.span(node_id));
+                self_call_spans.push(cx.tcx.hir.span(node_id));
                 // this is a self call, so we shouldn't explore past
                 // this node in the CFG.
                 continue;
@@ -788,14 +788,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // represents a call to the function `fn_id`/method `method`.
 
         fn expr_refers_to_this_fn(cx: &LateContext, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
-            match cx.tcx.map.get(id) {
+            match cx.tcx.hir.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.id)
                     } else {
                         return false;
                     };
-                    def.def_id() == cx.tcx.map.local_def_id(fn_id)
+                    def.def_id() == cx.tcx.hir.local_def_id(fn_id)
                 }
                 _ => false,
             }
@@ -830,7 +830,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             }
 
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
-            match cx.tcx.map.get(id) {
+            match cx.tcx.hir.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.id)
@@ -871,7 +871,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 ty::TraitContainer(trait_def_id) => {
                     let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, callee_substs);
                     let trait_ref = ty::Binder(trait_ref);
-                    let span = tcx.map.span(expr_id);
+                    let span = tcx.hir.span(expr_id);
                     let obligation =
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
@@ -879,7 +879,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     // unwrap() is ok here b/c `method` is the method
                     // defined in this crate whose body we are
                     // checking, so it's always local
-                    let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
+                    let node_id = tcx.hir.as_local_node_id(method.def_id).unwrap();
 
                     let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
                     tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.item_type(ctx.tcx.map.local_def_id(field.id));
+                let field_ty = ctx.tcx.item_type(ctx.tcx.hir.local_def_id(field.id));
                 if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,

@@ -36,8 +36,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) {
         assert_eq!(self.writeback_errors.get(), false);
 
-        let item_id = self.tcx.map.body_owner(body.id());
-        let item_def_id = self.tcx.map.local_def_id(item_id);
+        let item_id = self.tcx.hir.body_owner(body.id());
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
 
         let mut wbcx = WritebackCx::new(self);
         for arg in &body.arguments {
@@ -209,7 +209,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
                                     MethodCall::expr(e.id));
 
         if let hir::ExprClosure(_, _, body, _) = e.node {
-            let body = self.fcx.tcx.map.body(body);
+            let body = self.fcx.tcx.hir.body(body);
             for arg in &body.arguments {
                 self.visit_node_id(ResolvingExpr(e.span), arg.id);
             }
@@ -281,12 +281,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
-            let def_id = self.tcx().map.local_def_id(id);
+            let def_id = self.tcx().hir.local_def_id(id);
             self.tcx().closure_tys.borrow_mut().insert(def_id, closure_ty);
         }
 
         for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
-            let def_id = self.tcx().map.local_def_id(id);
+            let def_id = self.tcx().hir.local_def_id(id);
             self.tcx().closure_kinds.borrow_mut().insert(def_id, closure_kind);
         }
     }
@@ -517,7 +517,7 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingFnSig(id) |
             ResolvingFieldTypes(id) |
             ResolvingTyNode(id) => {
-                tcx.map.span(id)
+                tcx.hir.span(id)
             }
             ResolvingAnonTy(did) => {
                 tcx.def_span(did)

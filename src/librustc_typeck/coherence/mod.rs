@@ -86,7 +86,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
     fn check_implementation(&self, item: &Item) {
         let tcx = self.tcx;
-        let impl_did = tcx.map.local_def_id(item.id);
+        let impl_did = tcx.hir.local_def_id(item.id);
         let self_type = tcx.item_type(impl_did);
 
         // If there are no traits, then this implementation must have a

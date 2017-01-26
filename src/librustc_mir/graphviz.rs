@@ -26,7 +26,7 @@ pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
     where W: Write, I: Iterator<Item=DefId>
 {
     for def_id in iter {
-        let nodeid = tcx.map.as_local_node_id(def_id).unwrap();
+        let nodeid = tcx.hir.as_local_node_id(def_id).unwrap();
         let mir = &tcx.item_mir(def_id);
 
         writeln!(w, "digraph Mir_{} {{", nodeid)?;

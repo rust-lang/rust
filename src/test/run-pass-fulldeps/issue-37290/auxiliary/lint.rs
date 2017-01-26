@@ -53,8 +53,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let Some(other) = self.map.insert(extent, node) {
             cx.span_lint(REGION_HIERARCHY, span, &format!(
                 "different fns {:?}, {:?} with the same root extent {:?}",
-                cx.tcx.map.local_def_id(other),
-                cx.tcx.map.local_def_id(node),
+                cx.tcx.hir.local_def_id(other),
+                cx.tcx.hir.local_def_id(node),
                 extent));
         }
     }

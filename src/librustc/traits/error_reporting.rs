@@ -441,7 +441,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                              E0276,
                              "impl has stricter requirements than trait");
 
-        if let Some(trait_item_span) = self.tcx.map.span_if_local(trait_item_def_id) {
+        if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             err.span_label(trait_item_span,
                            &format!("definition of `{}` from trait", item_name));
         }
@@ -594,7 +594,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         ty::Predicate::ClosureKind(closure_def_id, kind) => {
                             let found_kind = self.closure_kind(closure_def_id).unwrap();
-                            let closure_span = self.tcx.map.span_if_local(closure_def_id).unwrap();
+                            let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
                             let mut err = struct_span_err!(
                                 self.tcx.sess, closure_span, E0525,
                                 "expected a closure that implements the `{}` trait, \
@@ -653,7 +653,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                    -> DiagnosticBuilder<'tcx>
     {
         assert!(type_def_id.is_local());
-        let span = self.map.span_if_local(type_def_id).unwrap();
+        let span = self.hir.span_if_local(type_def_id).unwrap();
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
                                        self.item_path_str(type_def_id));

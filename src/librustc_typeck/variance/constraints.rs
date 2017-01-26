@@ -74,9 +74,9 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let tcx = self.terms_cx.tcx;
-        let did = tcx.map.local_def_id(item.id);
+        let did = tcx.hir.local_def_id(item.id);
 
-        debug!("visit_item item={}", tcx.map.node_to_string(item.id));
+        debug!("visit_item item={}", tcx.hir.node_to_string(item.id));
 
         match item.node {
             hir::ItemEnum(..) |
@@ -145,14 +145,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             Some(&index) => index,
             None => {
                 bug!("no inferred index entry for {}",
-                     self.tcx().map.node_to_string(param_id));
+                     self.tcx().hir.node_to_string(param_id));
             }
         }
     }
 
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
         let tcx = self.terms_cx.tcx;
-        assert!(is_lifetime(&tcx.map, param_id));
+        assert!(is_lifetime(&tcx.hir, param_id));
         match tcx.named_region_map.defs.get(&param_id) {
             Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id)) => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),
@@ -177,17 +177,17 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             let tcx = this.terms_cx.tcx;
             let decl_id = this.find_binding_for_lifetime(param_id);
             // Currently only called on lifetimes; double-checking that.
-            assert!(is_lifetime(&tcx.map, param_id));
-            let parent_id = tcx.map.get_parent(decl_id);
-            let parent = tcx.map
+            assert!(is_lifetime(&tcx.hir, param_id));
+            let parent_id = tcx.hir.get_parent(decl_id);
+            let parent = tcx.hir
                 .find(parent_id)
-                .unwrap_or_else(|| bug!("tcx.map missing entry for id: {}", parent_id));
+                .unwrap_or_else(|| bug!("tcx.hir missing entry for id: {}", parent_id));
 
             let is_inferred;
             macro_rules! cannot_happen { () => { {
                 bug!("invalid parent: {} for {}",
-                     tcx.map.node_to_string(parent_id),
-                     tcx.map.node_to_string(param_id));
+                     tcx.hir.node_to_string(parent_id),
+                     tcx.hir.node_to_string(param_id));
             } } }
 
             match parent {
@@ -224,7 +224,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
-        if let Some(param_node_id) = self.tcx().map.as_local_node_id(param_def_id) {
+        if let Some(param_node_id) = self.tcx().hir.as_local_node_id(param_def_id) {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
@@ -400,7 +400,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     i -= generics.regions.len();
                 }
                 let def_id = generics.types[i].def_id;
-                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+                let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 match self.terms_cx.inferred_map.get(&node_id) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
@@ -487,7 +487,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 assert_eq!(generics.parent, None);
                 let i = data.index as usize - generics.has_self as usize;
                 let def_id = generics.regions[i].def_id;
-                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+                let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);
                     self.add_constraint(index, variance);

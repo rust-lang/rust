@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ty) => self.deduce_expectations_from_expected_type(ty),
             None => (None, None),
         };
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         self.check_closure(expr, expected_kind, decl, body, expected_sig)
     }
 
@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                opt_kind,
                expected_sig);
 
-        let expr_def_id = self.tcx.map.local_def_id(expr.id);
+        let expr_def_id = self.tcx.hir.local_def_id(expr.id);
         let mut fn_ty = AstConv::ty_of_closure(self,
                                                hir::Unsafety::Normal,
                                                decl,

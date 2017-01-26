@@ -144,14 +144,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.region_maps, &self.map) {
+                let span = match scope.span(&self.region_maps, &self.hir) {
                     Some(s) => s,
                     None => {
                         err.note(&unknown_scope());
                         return;
                     }
                 };
-                let tag = match self.map.find(scope.node_id(&self.region_maps)) {
+                let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
                     Some(ast_map::NodeBlock(_)) => "block",
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 let node = fr.scope.node_id(&self.region_maps);
                 let unknown;
-                let tag = match self.map.find(node) {
+                let tag = match self.hir.find(node) {
                     Some(ast_map::NodeBlock(_)) |
                     Some(ast_map::NodeExpr(_)) => "body",
                     Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(_) => {
                         unknown = format!("unexpected node ({}) for scope {:?}.  \
                                            Please report a bug.",
-                                          self.map.node_to_string(node), fr.scope);
+                                          self.hir.node_to_string(node), fr.scope);
                         &unknown
                     }
                     None => {
@@ -227,7 +227,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         &unknown
                     }
                 };
-                let (msg, opt_span) = explain_span(self, tag, self.map.span(node));
+                let (msg, opt_span) = explain_span(self, tag, self.hir.span(node));
                 (format!("{} {}", prefix, msg), opt_span)
             }
 
@@ -467,8 +467,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 _ => return None
             };
-            let parent = tcx.map.get_parent(scope_id);
-            let parent_node = tcx.map.find(parent);
+            let parent = tcx.hir.get_parent(scope_id);
+            let parent_node = tcx.hir.find(parent);
             match parent_node {
                 Some(node) => match node {
                     ast_map::NodeItem(item) => match item.node {
@@ -1068,8 +1068,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn give_suggestion(&self, err: &mut DiagnosticBuilder, same_regions: &[SameRegions]) {
         let scope_id = same_regions[0].scope_id;
-        let parent = self.tcx.map.get_parent(scope_id);
-        let parent_node = self.tcx.map.find(parent);
+        let parent = self.tcx.hir.get_parent(scope_id);
+        let parent_node = self.tcx.hir.find(parent);
         let taken = lifetimes_in_scope(self.tcx, scope_id);
         let life_giver = LifeGiver::with_taken(&taken[..]);
         let node_inner = match parent_node {
@@ -1083,8 +1083,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 ast_map::NodeImplItem(item) => {
-                    let id = self.tcx.map.get_parent(item.id);
-                    if let Some(ast_map::NodeItem(parent_scope)) = self.tcx.map.find(id) {
+                    let id = self.tcx.hir.get_parent(item.id);
+                    if let Some(ast_map::NodeItem(parent_scope)) = self.tcx.hir.find(id) {
                         if let hir::ItemImpl(_, _, _, None, _, _) = parent_scope.node {
                             // this impl scope implements a trait, do not recomend
                             // using explicit lifetimes (#37363)
@@ -1654,7 +1654,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 generics: &hir::Generics,
                                 span: Span,
                                 body: hir::BodyId) {
-        let s = hir::print::to_string(&self.tcx.map, |s| {
+        let s = hir::print::to_string(&self.tcx.hir, |s| {
             use syntax::abi::Abi;
             use syntax::print::pprust::PrintState;
 
@@ -1891,8 +1891,8 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                       scope_id: ast::NodeId)
                                       -> Vec<hir::LifetimeDef> {
     let mut taken = Vec::new();
-    let parent = tcx.map.get_parent(scope_id);
-    let method_id_opt = match tcx.map.find(parent) {
+    let parent = tcx.hir.get_parent(scope_id);
+    let method_id_opt = match tcx.hir.find(parent) {
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
                 hir::ItemFn(.., ref gen, _) => {
@@ -1915,8 +1915,8 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         None => None
     };
     if let Some(method_id) = method_id_opt {
-        let parent = tcx.map.get_parent(method_id);
-        if let Some(node) = tcx.map.find(parent) {
+        let parent = tcx.hir.get_parent(method_id);
+        if let Some(node) = tcx.hir.find(parent) {
             match node {
                 ast_map::NodeItem(item) => match item.node {
                     hir::ItemImpl(_, _, ref gen, ..) => {

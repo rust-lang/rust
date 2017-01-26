@@ -631,7 +631,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_foreign_fn(&mut self, id: ast::NodeId, decl: &hir::FnDecl) {
-        let def_id = self.cx.tcx.map.local_def_id(id);
+        let def_id = self.cx.tcx.hir.local_def_id(id);
         let sig = self.cx.tcx.item_type(def_id).fn_sig();
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
@@ -648,7 +648,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_foreign_static(&mut self, id: ast::NodeId, span: Span) {
-        let def_id = self.cx.tcx.map.local_def_id(id);
+        let def_id = self.cx.tcx.hir.local_def_id(id);
         let ty = self.cx.tcx.item_type(def_id);
         self.check_type_for_ffi_and_report_errors(span, ty);
     }
@@ -696,7 +696,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
-                let t = cx.tcx.item_type(cx.tcx.map.local_def_id(it.id));
+                let t = cx.tcx.item_type(cx.tcx.hir.local_def_id(it.id));
                 let layout = cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {

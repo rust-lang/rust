@@ -803,7 +803,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         for step in steps.iter() {
             let closure_id = match step.self_ty.sty {
                 ty::TyClosure(def_id, _) => {
-                    if let Some(id) = self.tcx.map.as_local_node_id(def_id) {
+                    if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                         id
                     } else {
                         continue;

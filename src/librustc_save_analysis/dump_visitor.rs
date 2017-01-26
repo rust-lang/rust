@@ -112,7 +112,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let old_tables = self.save_ctxt.tables;
-        let item_def_id = self.tcx.map.local_def_id(item_id);
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
         self.save_ctxt.tables = self.tcx.item_tables(item_def_id);
         f(self);
         self.save_ctxt.tables = old_tables;
@@ -399,7 +399,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             // with the right name.
             if !self.span.filter_generated(Some(method_data.span), span) {
                 let container =
-                    self.tcx.associated_item(self.tcx.map.local_def_id(id)).container;
+                    self.tcx.associated_item(self.tcx.hir.local_def_id(id)).container;
                 let mut trait_id;
                 let mut decl_id = None;
                 match container {
@@ -418,7 +418,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                 }
                             }
                             None => {
-                                if let Some(NodeItem(item)) = self.tcx.map.get_if_local(id) {
+                                if let Some(NodeItem(item)) = self.tcx.hir.get_if_local(id) {
                                     if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
                                         trait_id = self.lookup_def_id(ty.id);
                                     }
@@ -693,7 +693,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope,
-                            parent: Some(make_def_id(item.id, &self.tcx.map)),
+                            parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
                         }.lower(self.tcx));
@@ -719,7 +719,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope,
-                            parent: Some(make_def_id(item.id, &self.tcx.map)),
+                            parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
                         }.lower(self.tcx));
@@ -775,7 +775,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
-            let map = &self.tcx.map;
+            let map = &self.tcx.hir;
             self.process_impl_item(impl_item, make_def_id(item.id, map));
         }
     }
@@ -848,7 +848,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         // walk generics and methods
         self.process_generic_params(generics, item.span, &qualname, item.id);
         for method in methods {
-            let map = &self.tcx.map;
+            let map = &self.tcx.hir;
             self.process_trait_item(method, make_def_id(item.id, map))
         }
     }
@@ -1383,7 +1383,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 visit::walk_expr(self, ex);
             }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-                let hir_expr = self.save_ctxt.tcx.map.expect_expr(ex.id);
+                let hir_expr = self.save_ctxt.tcx.hir.expect_expr(ex.id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
@@ -1408,7 +1408,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             ast::ExprKind::TupField(ref sub_ex, idx) => {
                 self.visit_expr(&sub_ex);
 
-                let hir_node = match self.save_ctxt.tcx.map.find(sub_ex.id) {
+                let hir_node = match self.save_ctxt.tcx.hir.find(sub_ex.id) {
                     Some(Node::NodeExpr(expr)) => expr,
                     _ => {
                         debug!("Missing or weird node for sub-expression {} in {:?}",
@@ -1510,7 +1510,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             match self.save_ctxt.get_path_def(id) {
                 Def::Local(def_id) => {
-                    let id = self.tcx.map.as_local_node_id(def_id).unwrap();
+                    let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {

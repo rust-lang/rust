@@ -428,7 +428,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                                def_id: DefId)
                                -> Option<&'tcx hir::Body>
     {
-        if let Some(cached) = tcx.map.get_inlined_body(def_id) {
+        if let Some(cached) = tcx.hir.get_inlined_body(def_id) {
             return Some(cached);
         }
 

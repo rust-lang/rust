@@ -285,7 +285,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = Symbol::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(tcx.map.local_def_id(CRATE_NODE_ID),
+                ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID),
                             name,
                             ty::Issue32330::WontChange)
             }
@@ -833,13 +833,13 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 let upvar_tys = substs.upvar_tys(did, tcx);
                 write!(f, "[closure")?;
 
-                if let Some(node_id) = tcx.map.as_local_node_id(did) {
-                    write!(f, "@{:?}", tcx.map.span(node_id))?;
+                if let Some(node_id) = tcx.hir.as_local_node_id(did) {
+                    write!(f, "@{:?}", tcx.hir.span(node_id))?;
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                             let def_id = freevar.def.def_id();
-                            let node_id = tcx.map.as_local_node_id(def_id).unwrap();
+                            let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                             write!(f,
                                         "{}{}:{}",
                                         sep,

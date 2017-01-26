@@ -102,7 +102,7 @@ impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
 pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                                     -> IncrementalHashesMap {
     let _ignore = tcx.dep_graph.in_ignore();
-    let krate = tcx.map.krate();
+    let krate = tcx.hir.krate();
     let hash_spans = tcx.sess.opts.debuginfo != NoDebugInfo;
     let mut visitor = HashItemsVisitor {
         tcx: tcx,
@@ -141,7 +141,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     fn calculate_node_id<W>(&mut self, id: ast::NodeId, walk_op: W)
         where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
     {
-        let def_id = self.tcx.map.local_def_id(id);
+        let def_id = self.tcx.hir.local_def_id(id);
         self.calculate_def_id(def_id, walk_op)
     }
 
@@ -178,7 +178,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     }
 
     fn compute_crate_hash(&mut self) {
-        let krate = self.tcx.map.krate();
+        let krate = self.tcx.hir.krate();
 
         let mut crate_state = IchHasher::new();
 
