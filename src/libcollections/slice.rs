@@ -509,7 +509,7 @@ impl<T> [T] {
         core_slice::SliceExt::swap(self, a, b)
     }
 
-    /// Reverse the order of elements in a slice, in place.
+    /// Reverses the order of elements in a slice, in place.
     ///
     /// # Example
     ///
@@ -1062,7 +1062,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by_key(self, b, f)
     }
 
-    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
+    /// Sorts the slice.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
