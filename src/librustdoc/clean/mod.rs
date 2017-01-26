@@ -223,17 +223,17 @@ impl Clean<ExternalCrate> for CrateNum {
             None
         };
         let primitives = if root.is_local() {
-            cx.tcx.map.krate().module.item_ids.iter().filter_map(|&id| {
-                let item = cx.tcx.map.expect_item(id.id);
+            cx.tcx.hir.krate().module.item_ids.iter().filter_map(|&id| {
+                let item = cx.tcx.hir.expect_item(id.id);
                 match item.node {
                     hir::ItemMod(_) => {
-                        as_primitive(Def::Mod(cx.tcx.map.local_def_id(id.id)))
+                        as_primitive(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
                     }
                     hir::ItemUse(ref path, hir::UseKind::Single)
                     if item.vis == hir::Visibility::Public => {
                         as_primitive(path.def).map(|(_, prim, attrs)| {
                             // Pretend the primitive is local.
-                            (cx.tcx.map.local_def_id(id.id), prim, attrs)
+                            (cx.tcx.hir.local_def_id(id.id), prim, attrs)
                         })
                     }
                     _ => None
@@ -454,7 +454,7 @@ impl Clean<Item> for doctree::Module {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items: items
@@ -576,7 +576,7 @@ impl Clean<TyParam> for hir::TyParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
         TyParam {
             name: self.name.clean(cx),
-            did: cx.tcx.map.local_def_id(self.id),
+            did: cx.tcx.hir.local_def_id(self.id),
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
         }
@@ -1067,7 +1067,7 @@ impl Clean<Item> for doctree::Function {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             inner: FunctionItem(Function {
                 decl: (&self.decl, self.body).clean(cx),
                 generics: self.generics.clean(cx),
@@ -1122,7 +1122,7 @@ impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], &'a [Spanned<ast::Name>]) {
 
 impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Arguments {
-        let body = cx.tcx.map.body(self.1);
+        let body = cx.tcx.hir.body(self.1);
 
         Arguments {
             values: self.0.iter().enumerate().map(|(i, ty)| {
@@ -1151,7 +1151,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if cx.tcx.map.as_local_node_id(did).is_some() {
+        let mut names = if cx.tcx.hir.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
             cx.tcx.sess.cstore.fn_arg_names(did).into_iter()
@@ -1231,7 +1231,7 @@ impl Clean<Item> for doctree::Trait {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -1286,10 +1286,10 @@ impl Clean<Item> for hir::TraitItem {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: None,
-            stability: get_stability(cx, cx.tcx.map.local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.map.local_def_id(self.id)),
+            stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
             inner: inner
         }
     }
@@ -1318,10 +1318,10 @@ impl Clean<Item> for hir::ImplItem {
             name: Some(self.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, cx.tcx.map.local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.map.local_def_id(self.id)),
+            stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
             inner: inner
         }
     }
@@ -1703,9 +1703,9 @@ impl Clean<Type> for hir::Ty {
                 let mut alias = None;
                 if let Def::TyAlias(def_id) = path.def {
                     // Substitute private type aliases
-                    if let Some(node_id) = cx.tcx.map.as_local_node_id(def_id) {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
                         if !cx.access_levels.borrow().is_exported(def_id) {
-                            alias = Some(&cx.tcx.map.expect_item(node_id).node);
+                            alias = Some(&cx.tcx.hir.expect_item(node_id).node);
                         }
                     }
                 };
@@ -1715,7 +1715,7 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                        let ty_param_def = Def::TyParam(cx.tcx.map.local_def_id(ty_param.id));
+                        let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
                         if let Some(ty) = provided_params.types().get(i).cloned()
                                                                         .cloned() {
                             ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
@@ -1823,7 +1823,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (cx.tcx.map.local_def_id(ast::CRATE_NODE_ID), &fty.sig).clean(cx),
+                decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), &fty.sig).clean(cx),
                 abi: fty.abi,
             }),
             ty::TyAdt(def, substs) => {
@@ -1919,9 +1919,9 @@ impl Clean<Item> for hir::StructField {
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, cx.tcx.map.local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.map.local_def_id(self.id)),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             inner: StructFieldItem(self.ty.clean(cx)),
         }
     }
@@ -1982,7 +1982,7 @@ impl Clean<Item> for doctree::Struct {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2002,7 +2002,7 @@ impl Clean<Item> for doctree::Union {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2049,7 +2049,7 @@ impl Clean<Item> for doctree::Enum {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2076,7 +2076,7 @@ impl Clean<Item> for doctree::Variant {
             visibility: None,
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.def.id()),
+            def_id: cx.tcx.hir.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
                 kind: self.def.clean(cx),
             }),
@@ -2306,7 +2306,7 @@ impl Clean<Item> for doctree::Typedef {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id.clone()),
+            def_id: cx.tcx.hir.local_def_id(self.id.clone()),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2358,7 +2358,7 @@ impl Clean<Item> for doctree::Static {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2383,7 +2383,7 @@ impl Clean<Item> for doctree::Constant {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2459,7 +2459,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
@@ -2542,7 +2542,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: Some(Public),
             stability: None,
             deprecation: None,
@@ -2598,7 +2598,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.map.local_def_id(ast::CRATE_NODE_ID),
+            def_id: cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
@@ -2657,10 +2657,10 @@ impl Clean<Item> for hir::ForeignItem {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: cx.tcx.map.local_def_id(self.id),
+            def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, cx.tcx.map.local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.map.local_def_id(self.id)),
+            stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
             inner: inner,
         }
     }
@@ -2721,7 +2721,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 }
 
 fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
-    cx.tcx.map.node_to_pretty_string(body.node_id)
+    cx.tcx.hir.node_to_pretty_string(body.node_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

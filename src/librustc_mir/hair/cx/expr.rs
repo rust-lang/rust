@@ -574,7 +574,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         // Now comes the rote stuff:
         hir::ExprRepeat(ref v, count) => {
             let tcx = cx.tcx.global_tcx();
-            let c = &cx.tcx.map.body(count).value;
+            let c = &cx.tcx.hir.body(count).value;
             let count = match ConstContext::new(tcx, count).eval(c, EvalHint::ExprTypeChecked) {
                 Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
@@ -765,19 +765,19 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     match def {
         Def::Local(def_id) => {
-            let node_id = cx.tcx.map.as_local_node_id(def_id).unwrap();
+            let node_id = cx.tcx.hir.as_local_node_id(def_id).unwrap();
             ExprKind::VarRef { id: node_id }
         }
 
         Def::Upvar(def_id, index, closure_expr_id) => {
-            let id_var = cx.tcx.map.as_local_node_id(def_id).unwrap();
+            let id_var = cx.tcx.hir.as_local_node_id(def_id).unwrap();
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",
                    id_var,
                    index,
                    closure_expr_id);
             let var_ty = cx.tables().node_id_to_type(id_var);
 
-            let body_id = match cx.tcx.map.find(closure_expr_id) {
+            let body_id = match cx.tcx.hir.find(closure_expr_id) {
                 Some(map::NodeExpr(expr)) => {
                     match expr.node {
                         hir::ExprClosure(.., body, _) => body.node_id,
@@ -803,7 +803,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = match cx.tcx.closure_kind(cx.tcx.map.local_def_id(closure_expr_id)) {
+            let self_expr = match cx.tcx.closure_kind(cx.tcx.hir.local_def_id(closure_expr_id)) {
                 ty::ClosureKind::Fn => {
                     let ref_closure_ty = cx.tcx.mk_ref(region,
                                                        ty::TypeAndMut {
@@ -1013,7 +1013,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let id_var = cx.tcx.map.as_local_node_id(freevar.def.def_id()).unwrap();
+    let id_var = cx.tcx.hir.as_local_node_id(freevar.def.def_id()).unwrap();
     let upvar_id = ty::UpvarId {
         var_id: id_var,
         closure_expr_id: closure_expr.id,

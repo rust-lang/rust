@@ -76,7 +76,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     // compiler-rt, then we want to implicitly compile everything with hidden
     // visibility as we're going to link this object all over the place but
     // don't want the symbols to get exported.
-    if attr::contains_name(ccx.tcx().map.krate_attrs(), "compiler_builtins") {
+    if attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
         unsafe {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }

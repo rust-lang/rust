@@ -15,7 +15,7 @@ use rustc::middle::const_val::ConstVal;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
-use rustc::hir::map as ast_map;
+use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits;
 use rustc::hir::def::Def;
@@ -53,15 +53,15 @@ macro_rules! math {
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   variant_def: DefId)
                                   -> Option<(&'tcx Expr, Option<&'a ty::TypeckTables<'tcx>>)> {
-    if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
-        let enum_node_id = tcx.map.get_parent(variant_node_id);
-        if let Some(ast_map::NodeItem(it)) = tcx.map.find(enum_node_id) {
+    if let Some(variant_node_id) = tcx.hir.as_local_node_id(variant_def) {
+        let enum_node_id = tcx.hir.get_parent(variant_node_id);
+        if let Some(hir_map::NodeItem(it)) = tcx.hir.find(enum_node_id) {
             if let hir::ItemEnum(ref edef, _) = it.node {
                 for variant in &edef.variants {
                     if variant.node.data.id() == variant_node_id {
                         return variant.node.disr_expr.map(|e| {
-                            let def_id = tcx.map.body_owner_def_id(e);
-                            (&tcx.map.body(e).value,
+                            let def_id = tcx.hir.body_owner_def_id(e);
+                            (&tcx.hir.body(e).value,
                              tcx.tables.borrow().get(&def_id).cloned())
                         });
                     }
@@ -83,29 +83,29 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         -> Option<(&'tcx Expr,
                                                    Option<&'a ty::TypeckTables<'tcx>>,
                                                    Option<ty::Ty<'tcx>>)> {
-    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        match tcx.map.find(node_id) {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        match tcx.hir.find(node_id) {
             None => None,
-            Some(ast_map::NodeItem(&hir::Item {
+            Some(hir_map::NodeItem(&hir::Item {
                 node: hir::ItemConst(ref ty, body), ..
             })) |
-            Some(ast_map::NodeImplItem(&hir::ImplItem {
+            Some(hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Const(ref ty, body), ..
             })) => {
-                Some((&tcx.map.body(body).value,
+                Some((&tcx.hir.body(body).value,
                       tcx.tables.borrow().get(&def_id).cloned(),
                       tcx.ast_ty_to_prim_ty(ty)))
             }
-            Some(ast_map::NodeTraitItem(ti)) => match ti.node {
+            Some(hir_map::NodeTraitItem(ti)) => match ti.node {
                 hir::TraitItemKind::Const(ref ty, default) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
-                        let trait_id = tcx.map.get_parent(node_id);
-                        let trait_id = tcx.map.local_def_id(trait_id);
+                        let trait_id = tcx.hir.get_parent(node_id);
+                        let trait_id = tcx.hir.local_def_id(trait_id);
                         let default_value = default.map(|body| {
-                            (&tcx.map.body(body).value,
+                            (&tcx.hir.body(body).value,
                              tcx.tables.borrow().get(&def_id).cloned(),
                              tcx.ast_ty_to_prim_ty(ty))
                         });
@@ -156,10 +156,10 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                                    -> Option<(&'tcx hir::Body, Option<&'a ty::TypeckTables<'tcx>>)>
 {
-    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        FnLikeNode::from_node(tcx.map.get(node_id)).and_then(|fn_like| {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        FnLikeNode::from_node(tcx.hir.get(node_id)).and_then(|fn_like| {
             if fn_like.constness() == hir::Constness::Const {
-                Some((tcx.map.body(fn_like.body()),
+                Some((tcx.hir.body(fn_like.body()),
                       tcx.tables.borrow().get(&def_id).cloned()))
             } else {
                 None
@@ -232,7 +232,7 @@ pub struct ConstContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: hir::BodyId) -> Self {
-        let def_id = tcx.map.body_owner_def_id(body);
+        let def_id = tcx.hir.body_owner_def_id(body);
         ConstContext {
             tcx: tcx,
             tables: tcx.tables.borrow().get(&def_id).cloned(),
@@ -808,7 +808,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 _ => bug!()
             }
           } else {
-            let n = &tcx.map.body(count).value;
+            let n = &tcx.hir.body(count).value;
             match ConstContext::new(tcx, count).eval(n, len_hint)? {
                 Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
                 Integral(_) => signal!(e, RepeatCountNotNatural),
@@ -1203,7 +1203,7 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Result<usize, ErrorReported>
 {
     let hint = UncheckedExprHint(tcx.types.usize);
-    let count_expr = &tcx.map.body(count).value;
+    let count_expr = &tcx.hir.body(count).value;
     match ConstContext::new(tcx, count).eval(count_expr, hint) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
@@ -1227,7 +1227,7 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
                 if let Def::Local(..) = path.def {
                     diag.note(&format!("`{}` is a variable",
-                                       tcx.map.node_to_pretty_string(count_expr.id)));
+                                       tcx.hir.node_to_pretty_string(count_expr.id)));
                 }
             }
 

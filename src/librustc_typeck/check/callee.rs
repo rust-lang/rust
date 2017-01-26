@@ -194,7 +194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let (fn_sig, def_span) = match callee_ty.sty {
             ty::TyFnDef(def_id, .., &ty::BareFnTy {ref sig, ..}) => {
-                (sig, self.tcx.map.span_if_local(def_id))
+                (sig, self.tcx.hir.span_if_local(def_id))
             }
             ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => (sig, None),
             ref t => {
@@ -202,7 +202,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::TyAdt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprCall(ref expr, _) = call_expr.node {
-                            unit_variant = Some(self.tcx.map.node_to_pretty_string(expr.id))
+                            unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
                         }
                     }
                 }
@@ -225,7 +225,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         Def::Err
                     };
                     if def != Def::Err {
-                        if let Some(span) = self.tcx.map.span_if_local(def.def_id()) {
+                        if let Some(span) = self.tcx.hir.span_if_local(def.def_id()) {
                             err.span_note(span, "defined here");
                         }
                     }

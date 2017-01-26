@@ -84,7 +84,7 @@ fn build<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                          -> (Mir<'tcx>, MirSource) {
     let tcx = infcx.tcx.global_tcx();
 
-    let item_id = tcx.map.body_owner(body_id);
+    let item_id = tcx.hir.body_owner(body_id);
     let src = MirSource::from_node(tcx, item_id);
     let cx = Cx::new(infcx, src);
     if let MirSource::Fn(id) = src {
@@ -92,14 +92,14 @@ fn build<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         // types/lifetimes replaced)
         let fn_sig = cx.tables().liberated_fn_sigs[&id].clone();
 
-        let ty = tcx.item_type(tcx.map.local_def_id(id));
+        let ty = tcx.item_type(tcx.hir.local_def_id(id));
         let (abi, implicit_argument) = if let ty::TyClosure(..) = ty.sty {
             (Abi::Rust, Some((closure_self_ty(tcx, id, body_id), None)))
         } else {
             (ty.fn_abi(), None)
         };
 
-        let body = tcx.map.body(body_id);
+        let body = tcx.hir.body(body_id);
         let explicit_arguments =
             body.arguments
                 .iter()
@@ -138,11 +138,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
             pretty::dump_mir(tcx, "mir_map", &0, src, &mir);
 
             let mir = tcx.alloc_mir(mir);
-            let def_id = tcx.map.local_def_id(src.item_id());
+            let def_id = tcx.hir.local_def_id(src.item_id());
             assert!(tcx.mir_map.borrow_mut().insert(def_id, mir).is_none());
         });
 
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         self.visit_body(body);
     }
 }
@@ -162,7 +162,7 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let region = tcx.mk_region(region);
 
-    match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
+    match tcx.closure_kind(tcx.hir.local_def_id(closure_expr_id)) {
         ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,

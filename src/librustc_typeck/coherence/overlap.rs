@@ -66,7 +66,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
-                    let node_id = self.tcx.map.as_local_node_id(item1).unwrap();
+                    let node_id = self.tcx.hir.as_local_node_id(item1).unwrap();
                     self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
                                            node_id,
                                            self.tcx.span_of_impl(item1).unwrap(),
@@ -104,7 +104,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
             hir::ItemStruct(..) |
             hir::ItemTrait(..) |
             hir::ItemUnion(..) => {
-                let type_def_id = self.tcx.map.local_def_id(item.id);
+                let type_def_id = self.tcx.hir.local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }
 
@@ -112,7 +112,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
                 // look for another default impl; note that due to the
                 // general orphan/coherence rules, it must always be
                 // in this crate.
-                let impl_def_id = self.tcx.map.local_def_id(item.id);
+                let impl_def_id = self.tcx.hir.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
 
                 let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
@@ -124,14 +124,14 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
                                                     `{}`:",
                                                    trait_ref);
                     err.span_note(self.tcx
-                                      .span_of_impl(self.tcx.map.local_def_id(prev_id))
+                                      .span_of_impl(self.tcx.hir.local_def_id(prev_id))
                                       .unwrap(),
                                   "redundant implementation is here:");
                     err.emit();
                 }
             }
             hir::ItemImpl(.., Some(_), _, _) => {
-                let impl_def_id = self.tcx.map.local_def_id(item.id);
+                let impl_def_id = self.tcx.hir.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
 

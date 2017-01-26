@@ -178,7 +178,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     }
                 }
 
-                let def_id = self.tcx.map.local_def_id(id);
+                let def_id = self.tcx.hir.local_def_id(id);
                 self.index.stab_map.insert(def_id, Some(stab));
 
                 let orig_parent_stab = replace(&mut self.parent_stab, Some(stab));
@@ -188,7 +188,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 debug!("annotate: not found, parent = {:?}", self.parent_stab);
                 if let Some(stab) = self.parent_stab {
                     if stab.level.is_unstable() {
-                        let def_id = self.tcx.map.local_def_id(id);
+                        let def_id = self.tcx.hir.local_def_id(id);
                         self.index.stab_map.insert(def_id, Some(stab));
                     }
                 }
@@ -211,7 +211,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 }
 
                 // `Deprecation` is just two pointers, no need to intern it
-                let def_id = self.tcx.map.local_def_id(id);
+                let def_id = self.tcx.hir.local_def_id(id);
                 let depr_entry = Some(DeprecationEntry::local(depr, def_id));
                 self.index.depr_map.insert(def_id, depr_entry.clone());
 
@@ -219,7 +219,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 visit_children(self);
                 self.parent_depr = orig_parent_depr;
             } else if let parent_depr @ Some(_) = self.parent_depr.clone() {
-                let def_id = self.tcx.map.local_def_id(id);
+                let def_id = self.tcx.hir.local_def_id(id);
                 self.index.depr_map.insert(def_id, parent_depr);
                 visit_children(self);
             } else {
@@ -234,7 +234,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.tcx.map)
+        NestedVisitorMap::All(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
@@ -313,7 +313,7 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, id: NodeId, span: Span) {
-        let def_id = self.tcx.map.local_def_id(id);
+        let def_id = self.tcx.hir.local_def_id(id);
         let is_error = !self.tcx.sess.opts.test &&
                         !self.tcx.stability.borrow().stab_map.contains_key(&def_id) &&
                         self.access_levels.is_reachable(id);
@@ -325,7 +325,7 @@ impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
@@ -348,7 +348,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        let impl_def_id = self.tcx.map.local_def_id(self.tcx.map.get_parent(ii.id));
+        let impl_def_id = self.tcx.hir.local_def_id(self.tcx.hir.get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.id, ii.span);
         }
@@ -384,7 +384,7 @@ impl<'a, 'tcx> Index<'tcx> {
         self.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
 
         let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
-        let krate = tcx.map.krate();
+        let krate = tcx.hir.krate();
         let mut annotator = Annotator {
             tcx: tcx,
             index: self,
@@ -484,7 +484,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let skip = if id == ast::DUMMY_NODE_ID {
                 true
             } else {
-                let parent_def_id = self.map.local_def_id(self.map.get_parent(id));
+                let parent_def_id = self.hir.local_def_id(self.hir.get_parent(id));
                 self.lookup_deprecation_entry(parent_def_id).map_or(false, |parent_depr| {
                     parent_depr.same_origin(&depr_entry)
                 })
@@ -555,7 +555,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -578,7 +578,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
                 if let Def::Trait(trait_did) = t.path.def {
                     for impl_item_ref in impl_item_refs {
-                        let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
+                        let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
                             .find(|item| item.name == impl_item.name).map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
@@ -658,7 +658,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if tcx.stability.borrow().staged_api[&LOCAL_CRATE] && tcx.sess.features.borrow().staged_api {
         let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
-        let krate = tcx.map.krate();
+        let krate = tcx.hir.krate();
         let mut missing = MissingStabilityAnnotations {
             tcx: tcx,
             access_levels: access_levels,

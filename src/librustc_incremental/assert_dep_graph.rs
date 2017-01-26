@@ -79,8 +79,8 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let mut visitor = IfThisChanged { tcx: tcx,
                                           if_this_changed: vec![],
                                           then_this_would_need: vec![] };
-        visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.map.krate().attrs);
-        tcx.map.krate().visit_all_item_likes(&mut visitor);
+        visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir.krate().attrs);
+        tcx.hir.krate().visit_all_item_likes(&mut visitor);
         (visitor.if_this_changed, visitor.then_this_would_need)
     };
 
@@ -120,7 +120,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.map.local_def_id(node_id);
+        let def_id = self.tcx.hir.local_def_id(node_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
                 let dep_node_interned = self.argument(attr);

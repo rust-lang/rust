@@ -251,7 +251,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let scope_line = span_start(cx, span).line;
 
-    let local_id = cx.tcx().map.as_local_node_id(instance.def);
+    let local_id = cx.tcx().hir.as_local_node_id(instance.def);
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
     let function_name = CString::new(name).unwrap();

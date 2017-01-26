@@ -17,14 +17,14 @@ use graphviz::IntoCow;
 
 use syntax::ast;
 
-use hir::map as ast_map;
+use hir::map as hir_map;
 use cfg;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
 pub type Edge<'a> = &'a cfg::CFGEdge;
 
-pub struct LabelledCFG<'a, 'ast: 'a> {
-    pub ast_map: &'a ast_map::Map<'ast>,
+pub struct LabelledCFG<'a, 'hir: 'a> {
+    pub hir_map: &'a hir_map::Map<'hir>,
     pub cfg: &'a cfg::CFG,
     pub name: String,
     /// `labelled_edges` controls whether we emit labels on the edges
@@ -52,7 +52,7 @@ fn replace_newline_with_backslash_l(s: String) -> String {
     }
 }
 
-impl<'a, 'ast> dot::Labeller<'a> for LabelledCFG<'a, 'ast> {
+impl<'a, 'hir> dot::Labeller<'a> for LabelledCFG<'a, 'hir> {
     type Node = Node<'a>;
     type Edge = Edge<'a>;
     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(&self.name[..]).unwrap() }
@@ -69,7 +69,7 @@ impl<'a, 'ast> dot::Labeller<'a> for LabelledCFG<'a, 'ast> {
         } else if n.data.id() == ast::DUMMY_NODE_ID {
             dot::LabelText::LabelStr("(dummy_node)".into_cow())
         } else {
-            let s = self.ast_map.node_to_string(n.data.id());
+            let s = self.hir_map.node_to_string(n.data.id());
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
             dot::LabelText::EscStr(s.into_cow())
@@ -88,7 +88,7 @@ impl<'a, 'ast> dot::Labeller<'a> for LabelledCFG<'a, 'ast> {
             } else {
                 put_one = true;
             }
-            let s = self.ast_map.node_to_string(node_id);
+            let s = self.hir_map.node_to_string(node_id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
             label.push_str(&format!("exiting scope_{} {}",
@@ -120,7 +120,7 @@ impl<'a> dot::GraphWalk<'a> for &'a cfg::CFG {
     }
 }
 
-impl<'a, 'ast> dot::GraphWalk<'a> for LabelledCFG<'a, 'ast>
+impl<'a, 'hir> dot::GraphWalk<'a> for LabelledCFG<'a, 'hir>
 {
     type Node = Node<'a>;
     type Edge = Edge<'a>;

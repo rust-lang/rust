@@ -101,7 +101,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
-        let body = self.tcx.map.body(body);
+        let body = self.tcx.hir.body(body);
         self.visit_body(body);
         self.tables = old_tables;
     }
@@ -203,7 +203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                 if let Def::Static(def_id, mutbl) = path.def {
                     if mutbl {
                         self.require_unsafe(expr.span, "use of mutable static");
-                    } else if match self.tcx.map.get_if_local(def_id) {
+                    } else if match self.tcx.hir.get_if_local(def_id) {
                         Some(hir::map::NodeForeignItem(..)) => true,
                         Some(..) => false,
                         None => self.tcx.sess.cstore.is_foreign_item(def_id),
@@ -249,5 +249,5 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         unsafe_context: UnsafeContext::new(SafeContext),
     };
 
-    tcx.map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }

@@ -186,7 +186,7 @@ pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                  .get(&id)
                                  .cloned()
                                  .unwrap_or(ty::Issue32330::WontChange);
-            ty::ReLateBound(debruijn, ty::BrNamed(tcx.map.local_def_id(id),
+            ty::ReLateBound(debruijn, ty::BrNamed(tcx.hir.local_def_id(id),
                                                   lifetime.name,
                                                   issue_32330))
         }
@@ -208,7 +208,7 @@ pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                  .unwrap_or(ty::Issue32330::WontChange);
             ty::ReFree(ty::FreeRegion {
                     scope: scope.to_code_extent(&tcx.region_maps),
-                    bound_region: ty::BrNamed(tcx.map.local_def_id(id),
+                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id),
                                               lifetime.name,
                                               issue_32330)
             })
@@ -245,8 +245,8 @@ fn report_elision_failure(
         } = info;
 
         let help_name = if let Some(body) = parent {
-            let arg = &tcx.map.body(body).arguments[index];
-            format!("`{}`", tcx.map.node_to_pretty_string(arg.pat.id))
+            let arg = &tcx.hir.body(body).arguments[index];
+            format!("`{}`", tcx.hir.node_to_pretty_string(arg.pat.id))
         } else {
             format!("argument {}", index + 1)
         };
@@ -684,7 +684,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             _ => {
                 span_fatal!(self.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                            self.tcx().map.node_to_pretty_string(trait_ref.ref_id));
+                            self.tcx().hir.node_to_pretty_string(trait_ref.ref_id));
             }
         }
     }
@@ -1152,7 +1152,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let bound_span = self.tcx().associated_items(bound.def_id()).find(|item| {
                     item.kind == ty::AssociatedKind::Type && item.name == assoc_name
                 })
-                .and_then(|item| self.tcx().map.span_if_local(item.def_id));
+                .and_then(|item| self.tcx().hir.span_if_local(item.def_id));
 
                 if let Some(span) = bound_span {
                     err.span_label(span, &format!("ambiguous `{}` from `{}`",
@@ -1223,7 +1223,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             (&ty::TyParam(_), Def::SelfTy(Some(trait_did), None)) => {
-                let trait_node_id = tcx.map.as_local_node_id(trait_did).unwrap();
+                let trait_node_id = tcx.hir.as_local_node_id(trait_did).unwrap();
                 match self.find_bound_for_assoc_item(trait_node_id,
                                                      keywords::SelfType.name(),
                                                      assoc_name,
@@ -1233,7 +1233,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             (&ty::TyParam(_), Def::TyParam(param_did)) => {
-                let param_node_id = tcx.map.as_local_node_id(param_did).unwrap();
+                let param_node_id = tcx.hir.as_local_node_id(param_did).unwrap();
                 let param_name = tcx.type_parameter_def(param_node_id).name;
                 match self.find_bound_for_assoc_item(param_node_id,
                                                      param_name,
@@ -1379,7 +1379,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(&path.segments);
 
-                let node_id = tcx.map.as_local_node_id(did).unwrap();
+                let node_id = tcx.hir.as_local_node_id(did).unwrap();
                 let param = tcx.ty_param_defs.borrow().get(&node_id)
                                .map(ty::ParamTy::for_def);
                 if let Some(p) = param {
@@ -1544,10 +1544,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 use collect::{compute_bounds, SizedByDefault};
 
                 // Create the anonymized type.
-                let def_id = tcx.map.local_def_id(ast_ty.id);
+                let def_id = tcx.hir.local_def_id(ast_ty.id);
                 if let Some(anon_scope) = rscope.anon_type_scope() {
                     let substs = anon_scope.fresh_substs(self, ast_ty.span);
-                    let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
+                    let ty = tcx.mk_anon(tcx.hir.local_def_id(ast_ty.id), substs);
 
                     // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
                     let bounds = compute_bounds(self, ty, bounds,

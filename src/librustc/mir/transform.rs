@@ -40,13 +40,13 @@ impl<'a, 'tcx> MirSource {
         use hir::*;
 
         // Handle constants in enum discriminants, types, and repeat expressions.
-        let def_id = tcx.map.local_def_id(id);
+        let def_id = tcx.hir.local_def_id(id);
         let def_key = tcx.def_key(def_id);
         if def_key.disambiguated_data.data == DefPathData::Initializer {
             return MirSource::Const(id);
         }
 
-        match tcx.map.get(id) {
+        match tcx.hir.get(id) {
             map::NodeItem(&Item { node: ItemConst(..), .. }) |
             map::NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             map::NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
@@ -124,7 +124,7 @@ impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
             let mir = &mut tcx.mir_map.borrow()[&def_id].borrow_mut();
             tcx.dep_graph.write(DepNode::Mir(def_id));
 
-            let id = tcx.map.as_local_node_id(def_id).unwrap();
+            let id = tcx.hir.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
 
             for hook in &mut *hooks {

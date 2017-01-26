@@ -64,7 +64,7 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
@@ -167,7 +167,7 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                          attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
 
-    let body = this.tcx.map.body(body_id);
+    let body = this.tcx.hir.body(body_id);
 
     if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
         this.with_temp_region_map(id, |this| {
@@ -201,9 +201,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let body = tcx.map.body(body_id);
+    let body = tcx.hir.body(body_id);
     let id_range = {
-        let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.map);
+        let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.hir);
         visitor.visit_body(body);
         visitor.result()
     };
@@ -398,7 +398,7 @@ pub enum LoanPathElem<'tcx> {
 
 pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: TyCtxt) -> ast::NodeId {
-    match tcx.map.get(closure_id) {
+    match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _) => {
                 body_id.node_id
@@ -685,10 +685,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             move_data::MoveExpr |
             move_data::MovePat =>
-                (self.tcx.map.span(the_move.id), ""),
+                (self.tcx.hir.span(the_move.id), ""),
 
             move_data::Captured =>
-                (match self.tcx.map.expect_expr(the_move.id).node {
+                (match self.tcx.hir.expect_expr(the_move.id).node {
                     hir::ExprClosure(.., fn_decl_span) => fn_decl_span,
                     ref r => bug!("Captured({}) maps to non-closure: {:?}",
                                   the_move.id, r),
@@ -882,10 +882,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     // happen for nested closures, so we know the enclosing
                     // closure incorrectly accepts an `Fn` while it needs to
                     // be `FnMut`.
-                    span_help!(&mut err, self.tcx.map.span(id),
+                    span_help!(&mut err, self.tcx.hir.span(id),
                            "consider changing this to accept closures that implement `FnMut`");
                 } else {
-                    span_help!(&mut err, self.tcx.map.span(id),
+                    span_help!(&mut err, self.tcx.hir.span(id),
                            "consider changing this closure to take self by mutable reference");
                 }
                 err
@@ -948,7 +948,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: &'tcx ty::Region) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                match scope.span(&self.tcx.region_maps, &self.tcx.map) {
+                match scope.span(&self.tcx.region_maps, &self.tcx.hir) {
                     Some(s) => {
                         Some(s.end_point())
                     }
@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     _ => bug!()
                 };
                 if kind == ty::ClosureKind::Fn {
-                    db.span_help(self.tcx.map.span(upvar_id.closure_expr_id),
+                    db.span_help(self.tcx.hir.span(upvar_id.closure_expr_id),
                                  "consider changing this closure to take \
                                  self by mutable reference");
                 }
@@ -1105,10 +1105,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             _ => {
                 if let Categorization::Deref(ref inner_cmt, ..) = err.cmt.cat {
                     if let Categorization::Local(local_id) = inner_cmt.cat {
-                        let parent = self.tcx.map.get_parent_node(local_id);
+                        let parent = self.tcx.hir.get_parent_node(local_id);
 
-                        if let Some(fn_like) = FnLikeNode::from_node(self.tcx.map.get(parent)) {
-                            if let Some(i) = self.tcx.map.body(fn_like.body()).arguments.iter()
+                        if let Some(fn_like) = FnLikeNode::from_node(self.tcx.hir.get(parent)) {
+                            if let Some(i) = self.tcx.hir.body(fn_like.body()).arguments.iter()
                                                      .position(|arg| arg.pat.id == local_id) {
                                 let arg_ty = &fn_like.decl().inputs[i];
                                 if let hir::TyRptr(
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                     }
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
-                    let span = self.tcx.map.span(local_id);
+                    let span = self.tcx.hir.span(local_id);
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
                             db.span_label(*error_span, &format!("cannot reborrow mutably"));
@@ -1253,7 +1253,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 fn statement_scope_span(tcx: TyCtxt, region: &ty::Region) -> Option<Span> {
     match *region {
         ty::ReScope(scope) => {
-            match tcx.map.find(scope.node_id(&tcx.region_maps)) {
+            match tcx.hir.find(scope.node_id(&tcx.region_maps)) {
                 Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }
@@ -1302,11 +1302,11 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                write!(f, "$({})", ty::tls::with(|tcx| tcx.map.node_to_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir.node_to_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
-                let s = ty::tls::with(|tcx| tcx.map.node_to_string(var_id));
+                let s = ty::tls::with(|tcx| tcx.hir.node_to_string(var_id));
                 write!(f, "$({} captured by id={})", s, closure_expr_id)
             }
 
@@ -1334,11 +1334,11 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                write!(f, "$({})", ty::tls::with(|tcx| tcx.map.node_to_user_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir.node_to_user_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                let s = ty::tls::with(|tcx| tcx.map.node_to_user_string(var_id));
+                let s = ty::tls::with(|tcx| tcx.hir.node_to_user_string(var_id));
                 write!(f, "$({} captured by closure)", s)
             }
 

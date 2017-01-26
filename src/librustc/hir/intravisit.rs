@@ -1085,13 +1085,13 @@ impl IdRange {
 }
 
 
-pub struct IdRangeComputingVisitor<'a, 'ast: 'a> {
+pub struct IdRangeComputingVisitor<'a, 'hir: 'a> {
     result: IdRange,
-    map: &'a map::Map<'ast>,
+    map: &'a map::Map<'hir>,
 }
 
-impl<'a, 'ast> IdRangeComputingVisitor<'a, 'ast> {
-    pub fn new(map: &'a map::Map<'ast>) -> IdRangeComputingVisitor<'a, 'ast> {
+impl<'a, 'hir> IdRangeComputingVisitor<'a, 'hir> {
+    pub fn new(map: &'a map::Map<'hir>) -> IdRangeComputingVisitor<'a, 'hir> {
         IdRangeComputingVisitor { result: IdRange::max(), map: map }
     }
 
@@ -1100,8 +1100,8 @@ impl<'a, 'ast> IdRangeComputingVisitor<'a, 'ast> {
     }
 }
 
-impl<'a, 'ast> Visitor<'ast> for IdRangeComputingVisitor<'a, 'ast> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+impl<'a, 'hir> Visitor<'hir> for IdRangeComputingVisitor<'a, 'hir> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
         NestedVisitorMap::OnlyBodies(&self.map)
     }
 

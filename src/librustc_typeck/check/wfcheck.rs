@@ -90,7 +90,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let ccx = self.ccx;
         debug!("check_item_well_formed(it.id={}, it.name={})",
                item.id,
-               ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(item.id)));
+               ccx.tcx.item_path_str(ccx.tcx.hir.local_def_id(item.id)));
 
         match item.node {
             /// Right now we check that every default trait implementation
@@ -117,7 +117,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), ..) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
-                let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
+                let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.hir.local_def_id(item.id)).unwrap();
                 if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
                     error_192(ccx, item.span);
                 }
@@ -168,7 +168,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let free_substs = &fcx.parameter_environment.free_substs;
             let free_id_outlive = fcx.parameter_environment.free_id_outlive;
 
-            let item = fcx.tcx.associated_item(fcx.tcx.map.local_def_id(item_id));
+            let item = fcx.tcx.associated_item(fcx.tcx.hir.local_def_id(item_id));
 
             let (mut implied_bounds, self_ty) = match item.container {
                 ty::TraitContainer(_) => (vec![], fcx.tcx.mk_self_type()),
@@ -251,7 +251,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             }
 
             let free_substs = &fcx.parameter_environment.free_substs;
-            let def_id = fcx.tcx.map.local_def_id(item.id);
+            let def_id = fcx.tcx.hir.local_def_id(item.id);
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
             this.check_where_clauses(fcx, item.span, &predicates);
 
@@ -321,7 +321,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     }
 
     fn check_trait(&mut self, item: &hir::Item) {
-        let trait_def_id = self.tcx().map.local_def_id(item.id);
+        let trait_def_id = self.tcx().hir.local_def_id(item.id);
 
         if self.tcx().trait_has_default_impl(trait_def_id) {
             self.check_auto_trait(trait_def_id, item.span);
@@ -341,7 +341,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
-            let def_id = fcx.tcx.map.local_def_id(item.id);
+            let def_id = fcx.tcx.hir.local_def_id(item.id);
             let ty = fcx.tcx.item_type(def_id);
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &ty);
             let bare_fn_ty = match item_ty.sty {
@@ -367,7 +367,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         debug!("check_item_type: {:?}", item);
 
         self.for_item(item).with_fcx(|fcx, this| {
-            let ty = fcx.tcx.item_type(fcx.tcx.map.local_def_id(item.id));
+            let ty = fcx.tcx.item_type(fcx.tcx.hir.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.parameter_environment
                                                           .free_substs,
@@ -388,7 +388,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
-            let item_def_id = fcx.tcx.map.local_def_id(item.id);
+            let item_def_id = fcx.tcx.hir.local_def_id(item.id);
 
             match *ast_trait_ref {
                 Some(ref ast_trait_ref) => {
@@ -514,7 +514,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                      item: &hir::Item,
                                      ast_generics: &hir::Generics)
     {
-        let item_def_id = self.tcx().map.local_def_id(item.id);
+        let item_def_id = self.tcx().hir.local_def_id(item.id);
         let ty = self.tcx().item_type(item_def_id);
         if self.tcx().has_error_field(ty) {
             return;
@@ -644,7 +644,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let fields =
             struct_def.fields().iter()
             .map(|field| {
-                let field_ty = self.tcx.item_type(self.tcx.map.local_def_id(field.id));
+                let field_ty = self.tcx.item_type(self.tcx.hir.local_def_id(field.id));
                 let field_ty = self.instantiate_type_scheme(field.span,
                                                             &self.parameter_environment
                                                                  .free_substs,

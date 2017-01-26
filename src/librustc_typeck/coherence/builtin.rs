@@ -69,8 +69,8 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         _ => {
             // Destructors only work on nominal types.
-            if let Some(impl_node_id) = tcx.map.as_local_node_id(impl_did) {
-                match tcx.map.find(impl_node_id) {
+            if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
+                match tcx.hir.find(impl_node_id) {
                     Some(hir_map::NodeItem(item)) => {
                         let span = match item.node {
                             ItemImpl(.., ref ty, _) => ty.span,
@@ -101,7 +101,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
+    let impl_node_id = if let Some(n) = tcx.hir.as_local_node_id(impl_did) {
         n
     } else {
         debug!("visit_implementation_of_copy(): impl not in this \
@@ -113,7 +113,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
-    let span = tcx.map.span(impl_node_id);
+    let span = tcx.hir.span(impl_node_id);
     let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
     let self_type = self_type.subst(tcx, &param_env.free_substs);
     assert!(!self_type.has_escaping_regions());
@@ -124,7 +124,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match param_env.can_type_implement_copy(tcx, self_type, span) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingField(field)) => {
-            let item = tcx.map.expect_item(impl_node_id);
+            let item = tcx.hir.expect_item(impl_node_id);
             let span = if let ItemImpl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
             } else {
@@ -141,7 +141,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 .emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let item = tcx.map.expect_item(impl_node_id);
+            let item = tcx.hir.expect_item(impl_node_id);
             let span = if let ItemImpl(.., ref ty, _) = item.node {
                 ty.span
             } else {
@@ -180,7 +180,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    let impl_node_id = if let Some(n) = tcx.map.as_local_node_id(impl_did) {
+    let impl_node_id = if let Some(n) = tcx.hir.as_local_node_id(impl_did) {
         n
     } else {
         debug!("visit_implementation_of_coerce_unsized(): impl not \
@@ -195,7 +195,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            source,
            target);
 
-    let span = tcx.map.span(impl_node_id);
+    let span = tcx.hir.span(impl_node_id);
     let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
     let source = source.subst(tcx, &param_env.free_substs);
     let target = target.subst(tcx, &param_env.free_substs);
@@ -281,11 +281,11 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                being coerced, none found");
                     return;
                 } else if diff_fields.len() > 1 {
-                    let item = tcx.map.expect_item(impl_node_id);
+                    let item = tcx.hir.expect_item(impl_node_id);
                     let span = if let ItemImpl(.., Some(ref t), _, _) = item.node {
                         t.path.span
                     } else {
-                        tcx.map.span(impl_node_id)
+                        tcx.hir.span(impl_node_id)
                     };
 
                     let mut err = struct_span_err!(tcx.sess,

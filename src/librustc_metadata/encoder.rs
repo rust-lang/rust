@@ -267,8 +267,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             struct_ctor: None,
         };
 
-        let enum_id = tcx.map.as_local_node_id(enum_did).unwrap();
-        let enum_vis = &tcx.map.expect_item(enum_id).vis;
+        let enum_id = tcx.hir.as_local_node_id(enum_did).unwrap();
+        let enum_vis = &tcx.hir.expect_item(enum_id).vis;
 
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
@@ -299,7 +299,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                                                  &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
-        let def_id = tcx.map.local_def_id(id);
+        let def_id = tcx.hir.local_def_id(id);
 
         let data = ModData {
             reexports: match self.reexports.get(&id) {
@@ -314,7 +314,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             span: self.lazy(&md.inner),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
-                tcx.map.local_def_id(item_id.id).index
+                tcx.hir.local_def_id(item_id.id).index
             })),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
@@ -361,8 +361,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let field = &variant.fields[field_index];
 
         let def_id = field.did;
-        let variant_id = tcx.map.as_local_node_id(variant.did).unwrap();
-        let variant_data = tcx.map.expect_variant_data(variant_id);
+        let variant_id = tcx.hir.as_local_node_id(variant.did).unwrap();
+        let variant_data = tcx.hir.expect_variant_data(variant_id);
 
         Entry {
             kind: EntryKind::Field,
@@ -394,8 +394,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             struct_ctor: Some(def_id.index),
         };
 
-        let struct_id = tcx.map.as_local_node_id(adt_def_id).unwrap();
-        let struct_vis = &tcx.map.expect_item(struct_id).vis;
+        let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
+        let struct_vis = &tcx.hir.expect_item(struct_id).vis;
 
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
@@ -430,8 +430,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_trait_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         let tcx = self.tcx;
 
-        let node_id = tcx.map.as_local_node_id(def_id).unwrap();
-        let ast_item = tcx.map.expect_trait_item(node_id);
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let ast_item = tcx.hir.expect_trait_item(node_id);
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
@@ -508,8 +508,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
-        let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
-        let ast_item = self.tcx.map.expect_impl_item(node_id);
+        let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+        let ast_item = self.tcx.hir.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {
@@ -576,7 +576,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
                                     -> LazySeq<ast::Name> {
         let _ignore = self.tcx.dep_graph.in_ignore();
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         self.lazy_seq(body.arguments.iter().map(|arg| {
             match arg.pat.node {
                 PatKind::Binding(_, _, name, _) => name.node,
@@ -646,7 +646,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // for methods, write all the stuff get_trait_method
                 // needs to know
                 let struct_ctor = if !struct_def.is_struct() {
-                    Some(tcx.map.local_def_id(struct_def.id()).index)
+                    Some(tcx.hir.local_def_id(struct_def.id()).index)
                 } else {
                     None
                 };
@@ -725,7 +725,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemForeignMod(ref fm) => {
                     self.lazy_seq(fm.items
                         .iter()
-                        .map(|foreign_item| tcx.map.local_def_id(foreign_item.id).index))
+                        .map(|foreign_item| tcx.hir.local_def_id(foreign_item.id).index))
                 }
                 hir::ItemEnum(..) => {
                     let def = self.tcx.lookup_adt_def(def_id);
@@ -855,7 +855,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
     fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
-        let def_id = self.tcx.map.local_def_id(item.id);
+        let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
             hir::ItemStatic(..) |
             hir::ItemConst(..) |
@@ -883,7 +883,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
                 // If the struct has a constructor, encode it.
                 if !struct_def.is_struct() {
-                    let ctor_def_id = self.tcx.map.local_def_id(struct_def.id());
+                    let ctor_def_id = self.tcx.hir.local_def_id(struct_def.id());
                     self.record(ctor_def_id,
                                 EncodeContext::encode_struct_ctor,
                                 (def_id, ctor_def_id));
@@ -957,7 +957,7 @@ struct EncodeVisitor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.index.tcx.map)
+        NestedVisitorMap::OnlyBodies(&self.index.tcx.hir)
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
@@ -965,7 +965,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     }
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
-        let def_id = self.index.tcx.map.local_def_id(item.id);
+        let def_id = self.index.tcx.hir.local_def_id(item.id);
         match item.node {
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) => (), // ignore these
@@ -975,7 +975,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
-        let def_id = self.index.tcx.map.local_def_id(ni.id);
+        let def_id = self.index.tcx.hir.local_def_id(ni.id);
         self.index.record(def_id,
                           EncodeContext::encode_info_for_foreign_item,
                           (def_id, ni));
@@ -985,7 +985,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         self.index.encode_info_for_ty(ty);
     }
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
-        let def_id = self.index.tcx.map.local_def_id(macro_def.id);
+        let def_id = self.index.tcx.hir.local_def_id(macro_def.id);
         self.index.record(def_id, EncodeContext::encode_info_for_macro_def, macro_def);
     }
 }
@@ -993,7 +993,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         if let hir::TyImplTrait(_) = ty.node {
-            let def_id = self.tcx.map.local_def_id(ty.id);
+            let def_id = self.tcx.hir.local_def_id(ty.id);
             self.record(def_id, EncodeContext::encode_info_for_anon_ty, def_id);
         }
     }
@@ -1001,7 +1001,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprClosure(..) => {
-                let def_id = self.tcx.map.local_def_id(expr.id);
+                let def_id = self.tcx.hir.local_def_id(expr.id);
                 self.record(def_id, EncodeContext::encode_info_for_closure, def_id);
             }
             _ => {}
@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_items(&mut self) -> Index {
-        let krate = self.tcx.map.krate();
+        let krate = self.tcx.hir.krate();
         let mut index = IndexBuilder::new(self);
         index.record(DefId::local(CRATE_DEF_INDEX),
                      EncodeContext::encode_info_for_mod,
@@ -1145,7 +1145,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) -> Lazy<DefPathTable> {
-        let definitions = self.tcx.map.definitions();
+        let definitions = self.tcx.hir.definitions();
         self.lazy(definitions.def_path_table())
     }
 }
@@ -1158,7 +1158,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemImpl(..) = item.node {
-            let impl_id = self.tcx.map.local_def_id(item.id);
+            let impl_id = self.tcx.hir.local_def_id(item.id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
                 self.impls
                     .entry(trait_ref.def_id)
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tcx: self.tcx,
             impls: FxHashMap(),
         };
-        self.tcx.map.krate().visit_all_item_likes(&mut visitor);
+        self.tcx.hir.krate().visit_all_item_likes(&mut visitor);
 
         let all_impls: Vec<_> = visitor.impls
             .into_iter()
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_exported_symbols(&mut self) -> LazySeq<DefIndex> {
         let exported_symbols = self.exported_symbols;
         let tcx = self.tcx;
-        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.map.local_def_id(id).index))
+        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.hir.local_def_id(id).index))
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazySeq<Option<LinkagePreference>> {
@@ -1283,10 +1283,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()
-                .map(|id| tcx.map.local_def_id(id).index),
+                .map(|id| tcx.hir.local_def_id(id).index),
             macro_derive_registrar: if is_proc_macro {
                 let id = tcx.sess.derive_registrar_fn.get().unwrap();
-                Some(tcx.map.local_def_id(id).index)
+                Some(tcx.hir.local_def_id(id).index)
             } else {
                 None
             },

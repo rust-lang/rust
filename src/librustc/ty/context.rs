@@ -16,7 +16,7 @@ use middle;
 use hir::TraitMap;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use hir::map as ast_map;
+use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
@@ -265,7 +265,7 @@ impl<'tcx> TypeckTables<'tcx> {
             Some(ty) => ty,
             None => {
                 bug!("node_id_to_type: no type for node `{}`",
-                     tls::with(|tcx| tcx.map.node_to_string(id)))
+                     tls::with(|tcx| tcx.hir.node_to_string(id)))
             }
         }
     }
@@ -428,7 +428,7 @@ pub struct GlobalCtxt<'tcx> {
     /// additional acyclicity requirements).
     pub super_predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
-    pub map: ast_map::Map<'tcx>,
+    pub hir: hir_map::Map<'tcx>,
 
     /// Maps from the def-id of a function/method or const/static
     /// to its MIR. Mutation is done at an item granularity to
@@ -628,7 +628,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("retrace_path(path={:?}, krate={:?})", path_data, self.crate_name(krate));
 
         if krate == LOCAL_CRATE {
-            self.map
+            self.hir
                 .definitions()
                 .def_path_table()
                 .retrace_path(path_data)
@@ -730,7 +730,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
-                                  map: ast_map::Map<'tcx>,
+                                  hir: hir_map::Map<'tcx>,
                                   region_maps: RegionMaps,
                                   lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,
@@ -741,7 +741,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let data_layout = TargetDataLayout::parse(s);
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
-        let dep_graph = map.dep_graph.clone();
+        let dep_graph = hir.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter_global(GlobalCtxt {
             specializes_cache: RefCell::new(traits::SpecializesCache::new()),
@@ -765,7 +765,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
-            map: map,
+            hir: hir,
             mir_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,

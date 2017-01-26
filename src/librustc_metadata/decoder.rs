@@ -776,7 +776,7 @@ impl<'a, 'tcx> CrateMetadata {
             tcx.tables.borrow_mut().insert(def_id, tcx.alloc_tables(tables));
 
             let body = ast.body.decode((self, tcx));
-            tcx.map.intern_inlined_body(def_id, body)
+            tcx.hir.intern_inlined_body(def_id, body)
         })
     }
 

@@ -29,10 +29,10 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
-    // `tcx.map.krate()`), we will have to assume that any change
+    // `tcx.hir.krate()`), we will have to assume that any change
     // means that you need to be recompiled. This is because the
     // `Krate` value gives you access to all other items. To avoid
-    // this fate, do not call `tcx.map.krate()`; instead, prefer
+    // this fate, do not call `tcx.hir.krate()`; instead, prefer
     // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
     // access to the krate, but you must remember to add suitable

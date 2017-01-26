@@ -139,7 +139,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
                 if var_id != pat.id {
                     let vt = self.local_ty(pat.span, var_id);
                     self.demand_eqtype(pat.span, vt, typ);
@@ -561,7 +561,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             span_err!(tcx.sess, pat.span, E0533,
                       "expected unit struct/variant or constant, found {} `{}`",
                       def.kind_name(),
-                      hir::print::to_string(&tcx.map, |s| s.print_qpath(qpath, false)));
+                      hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
         };
 
         // Resolve the path and check the definition for errors.
@@ -603,7 +603,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let report_unexpected_def = |def: Def| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
                               def.kind_name(),
-                              hir::print::to_string(&tcx.map, |s| s.print_qpath(qpath, false)));
+                              hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
             on_error();

@@ -36,7 +36,7 @@ pub fn report_symbol_names(scx: &SharedCrateContext) {
     let _ignore = tcx.dep_graph.in_ignore();
     let mut visitor = SymbolNamesTest { scx: scx };
     // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
-    tcx.map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 struct SymbolNamesTest<'a, 'tcx:'a> {
@@ -47,7 +47,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     fn process_attrs(&mut self,
                      node_id: ast::NodeId) {
         let tcx = self.scx.tcx();
-        let def_id = tcx.map.local_def_id(node_id);
+        let def_id = tcx.hir.local_def_id(node_id);
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
