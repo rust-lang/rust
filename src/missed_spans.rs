@@ -84,6 +84,8 @@ impl<'a> FmtVisitor<'a> {
         let big_diff = (span.lo - big_span_lo).to_usize();
         let snippet = self.snippet(span);
 
+        debug!("write_snippet `{}`", snippet);
+
         self.write_snippet_inner(big_snippet, big_diff, &snippet, process_last_snippet);
     }
 
@@ -114,6 +116,8 @@ impl<'a> FmtVisitor<'a> {
         let snippet = &*replaced;
 
         for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
+            debug!("{:?}: {:?}", kind, subslice);
+
             if let CodeCharKind::Comment = kind {
                 let last_char = big_snippet[..(offset + big_diff)]
                     .chars()
@@ -198,6 +202,13 @@ impl<'a> FmtVisitor<'a> {
                     rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
                     last_wspace = None;
                 }
+            }
+
+            let remaining = snippet[line_start..subslice.len() + offset].trim();
+            if !remaining.is_empty() {
+                self.buffer.push_str(remaining);
+                line_start = subslice.len() + offset;
+                rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
             }
         }
 

@@ -1,3 +1,5 @@
+#![allow(dead_code)] // bar
+
 //! Doc comment
 fn test() {
 // comment
@@ -44,3 +46,8 @@ fn debug_function() {
     println!("hello");
 }
 // */
+
+#[link_section=".vectors"]
+#[no_mangle] // Test this attribute is preserved.
+#[cfg_attr(rustfmt, rustfmt_skip)]
+pub static ISSUE_1284: [i32; 16] = [];

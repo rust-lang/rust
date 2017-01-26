@@ -86,7 +86,7 @@ fn ______________________baz(a: i32)
         *mut ::std::option::Option<extern "C" fn(arg1: i32,
                                                 _____________________a: i32,
                                                 arg3: i32)
-                                    -> ()> {
+-> ()>{
 }
 
 pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
