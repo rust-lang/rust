@@ -151,43 +151,34 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
 /// EFFECT: advances the reader's token field
 fn tt_next_token(r: &mut TtReader, prev_span: Span) -> Option<TokenTree> {
     loop {
-        let should_pop = if let Some(frame) = r.stack.last() {
-            if frame.idx < frame.forest.len() {
-                break;
-            }
-            !frame.dotdotdoted || *r.repeat_idx.last().unwrap() == *r.repeat_len.last().unwrap() - 1
-        } else {
-            return None;
+        let frame = match r.stack.last() {
+            Some(frame) => frame.clone(),
+            None => return None,
         };
 
-        /* done with this set; pop or repeat? */
-        if should_pop {
-            let prev = r.stack.pop().unwrap();
-            if let Some(frame) = r.stack.last_mut() {
-                frame.idx += 1;
+        if frame.idx == frame.forest.len() {
+            if frame.dotdotdoted &&
+               *r.repeat_idx.last().unwrap() == *r.repeat_len.last().unwrap() - 1 {
+                *r.repeat_idx.last_mut().unwrap() += 1;
+                r.stack.last_mut().unwrap().idx = 0;
+                if let Some(tk) = r.stack.last().unwrap().sep.clone() {
+                    return Some(TokenTree::Token(prev_span, tk)); // repeat same span, I guess
+                }
             } else {
-                return None;
+                r.stack.pop();
+                match r.stack.last_mut() {
+                    Some(frame) => frame.idx += 1,
+                    None => return None,
+                }
+                if frame.dotdotdoted {
+                    r.repeat_idx.pop();
+                    r.repeat_len.pop();
+                }
             }
-            if prev.dotdotdoted {
-                r.repeat_idx.pop();
-                r.repeat_len.pop();
-            }
-        } else { /* repeat */
-            *r.repeat_idx.last_mut().unwrap() += 1;
-            r.stack.last_mut().unwrap().idx = 0;
-            if let Some(tk) = r.stack.last().unwrap().sep.clone() {
-                return Some(TokenTree::Token(prev_span, tk)); // repeat same span, I guess
-            }
+            continue
         }
-    }
-    loop { /* because it's easiest, this handles `TokenTree::Delimited` not starting
-              with a `TokenTree::Token`, even though it won't happen */
-        let t = {
-            let frame = r.stack.last().unwrap();
-            // FIXME(pcwalton): Bad copy.
-            frame.forest.get_tt(frame.idx)
-        };
-        match t {
+
+        match frame.forest.get_tt(frame.idx) {
             TokenTree::Sequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
                 match lockstep_iter_size(&TokenTree::Sequence(sp, seq.clone()),
