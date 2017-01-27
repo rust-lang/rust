@@ -361,7 +361,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 }
                 .filter_map(|pat| {
                     if_let_chain! {[
-                    let PatKind::Range(ref lhs, ref rhs) = pat.node,
+                    let PatKind::Range(ref lhs, ref rhs, _) = pat.node,
                     let Ok(lhs) = constcx.eval(lhs, ExprTypeChecked),
                     let Ok(rhs) = constcx.eval(rhs, ExprTypeChecked)
                 ], {

@@ -475,10 +475,14 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
             println!("{}Lit", ind);
             print_expr(cx, e, indent + 1);
         },
-        hir::PatKind::Range(ref l, ref r) => {
+        hir::PatKind::Range(ref l, ref r, ref range_end) => {
             println!("{}Range", ind);
             print_expr(cx, l, indent + 1);
             print_expr(cx, r, indent + 1);
+            match *range_end {
+                hir::RangeEnd::Included => println!("{} end included", ind),
+                hir::RangeEnd::Excluded => println!("{} end excluded", ind),
+            }
         },
         hir::PatKind::Slice(ref first_pats, ref range, ref last_pats) => {
             println!("{}Slice [a, b, ..i, y, z]", ind);
