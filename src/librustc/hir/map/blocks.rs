@@ -38,7 +38,7 @@ use syntax_pos::Span;
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct FnLikeNode<'a> { node: map::Node<'a> }
 
 /// MaybeFnLike wraps a method that indicates if an object
