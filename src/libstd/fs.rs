@@ -404,7 +404,6 @@ impl File {
     /// # Examples
     ///
     /// ```
-    /// #![feature(set_permissions_atomic)]
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs::File;
     ///
@@ -415,7 +414,7 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "set_permissions_atomic", issue="37916")]
+    #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
     }
