@@ -3306,16 +3306,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
             Def::AssociatedTy(..) | Def::SelfTy(..) => {
-                match def {
-                    Def::AssociatedTy(..) | Def::SelfTy(..)
-                            if !self.tcx.sess.features.borrow().more_struct_aliases => {
-                        emit_feature_err(&self.tcx.sess.parse_sess,
-                                         "more_struct_aliases", path_span, GateIssue::Language,
-                                         "`Self` and associated types in struct \
-                                          expressions and patterns are unstable");
-                    }
-                    _ => {}
-                }
                 match ty.sty {
                     ty::TyAdt(adt, substs) if !adt.is_enum() => {
                         Some((adt.struct_variant(), adt.did, substs))
