@@ -86,7 +86,7 @@ macro_rules! srem {
 }
 
 #[cfg(test)]
-#[macro_use]
+#[cfg_attr(target_arch = "arm", macro_use)]
 extern crate quickcheck;
 
 #[cfg(test)]
