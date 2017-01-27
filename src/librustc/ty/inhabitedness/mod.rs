@@ -191,11 +191,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }
             }
             TyRef(_, ref tm) => {
-                if tcx.sess.features.borrow().never_type {
-                    tm.ty.uninhabited_from(visited, tcx)
-                } else {
-                    DefIdForest::empty()
-                }
+                tm.ty.uninhabited_from(visited, tcx)
             }
 
             _ => DefIdForest::empty(),
