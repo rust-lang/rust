@@ -10,6 +10,7 @@
 
 use io;
 use sys::c;
+use libc::c_char;
 use path::PathBuf;
 use fs::{OpenOptions, File};
 use sys::ext::fs::OpenOptionsExt;
@@ -53,7 +54,7 @@ fn lock_and_get_executable_filename() -> io::Result<(PathBuf, File)> {
 // Get the executable filename for libbacktrace
 // This returns the path in the ANSI code page and a File which should remain open
 // for as long as the path should remain valid
-pub fn get_executable_filename() -> io::Result<(Vec<i8>, File)> {
+pub fn get_executable_filename() -> io::Result<(Vec<c_char>, File)> {
     let (executable, file) = lock_and_get_executable_filename()?;
     let u16_executable = to_u16s(executable.into_os_string())?;
     Ok((wide_char_to_multi_byte(c::CP_ACP, c::WC_NO_BEST_FIT_CHARS,

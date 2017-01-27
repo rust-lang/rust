@@ -94,8 +94,9 @@ mod printing;
 pub mod gnu {
     use io;
     use fs;
+    use libc::c_char;
 
-    pub fn get_executable_filename() -> io::Result<(Vec<i8>, fs::File)> {
+    pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
         Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
     }
 }
