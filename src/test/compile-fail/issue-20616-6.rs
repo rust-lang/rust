@@ -34,7 +34,8 @@ type Type_5_<'a> = Type_1_<'a, ()>;
 //type Type_5<'a> = Type_1_<'a, (),,>; // error: expected type, found `,`
 
 
-type Type_6 = Type_5_<'a,,>; //~ error: expected type, found `,`
+type Type_6 = Type_5_<'a,,>;
+//~^ error: expected one of `>`, identifier, lifetime, or type, found `,`
 
 
 //type Type_7 = Box<(),,>; // error: expected type, found `,`

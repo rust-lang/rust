@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+#![feature(conservative_impl_trait)]
 
-pub fn test<W, I: Iterator<Item=(), W> >() {}
-//~^ ERROR type parameters must be declared prior to associated type bindings
+fn f() -> impl 'static {} //~ ERROR at least one trait must be specified
 
-fn main() { }
+fn main() {}
