@@ -27,10 +27,7 @@ impl Command {
 
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
-        if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput,
-                                      "nul byte found in provided data"));
-        }
+        self.check_malformed()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let (input, output) = sys::pipe::anon_pipe()?;
@@ -100,9 +97,9 @@ impl Command {
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
-        if self.saw_nul() {
-            return io::Error::new(ErrorKind::InvalidInput,
-                                  "nul byte found in provided data")
+        match self.check_malformed() {
+            Ok(()) => {},
+            Err(e) => return e,
         }
 
         match self.setup_io(default, true) {
