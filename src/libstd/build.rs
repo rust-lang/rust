@@ -87,8 +87,9 @@ fn build_libbacktrace(host: &str, target: &str) {
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
-    let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
-                         .collect::<Vec<_>>().join(" ");
+    let mut cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
+                             .collect::<Vec<_>>().join(" ");
+    cflags.push_str(" -fvisibility=hidden");
     run(Command::new("sh")
                 .current_dir(&build_dir)
                 .arg(src_dir.join("configure").to_str().unwrap()

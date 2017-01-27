@@ -181,4 +181,15 @@ fn main() {
     } else if !target.contains("windows") && !target.contains("musl") {
         println!("cargo:rustc-link-lib=pthread");
     }
+
+    // The pthread_atfork symbols is used by jemalloc on android but the really
+    // old android we're building on doesn't have them defined, so just make
+    // sure the symbols are available.
+    if target.contains("androideabi") {
+        println!("cargo:rerun-if-changed=pthread_atfork_dummy.c");
+        gcc::Config::new()
+            .flag("-fvisibility=hidden")
+            .file("pthread_atfork_dummy.c")
+            .compile("libpthread_atfork_dummy.a");
+    }
 }
