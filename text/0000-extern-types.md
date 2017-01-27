@@ -116,6 +116,10 @@ Very slight addition of complexity to the language.
 
 Not do this.
 
+Alternatively, rather than provide a way to create opaque types, we could just offer one distinguished type (`std::mem::OpaqueData` or something like that).
+Then, to create new opaque types, users just declare a struct with a member of type `OpaqueData`.
+This has the advantage of introducing no new syntax, and issues like FFI-compatibility would fall out of existing rules.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
