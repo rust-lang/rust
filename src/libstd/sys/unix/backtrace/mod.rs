@@ -83,9 +83,6 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
-use io;
-use fs;
-
 pub use self::tracing::write;
 
 // tracing impls:
@@ -93,6 +90,12 @@ mod tracing;
 // symbol resolvers:
 mod printing;
 
-pub fn get_executable_filename() -> io::Result<(Vec<i8>, fs::File)> {
-    Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "emscripten")))]
+pub mod gnu {
+    use io;
+    use fs;
+
+    pub fn get_executable_filename() -> io::Result<(Vec<i8>, fs::File)> {
+        Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
+    }
 }
