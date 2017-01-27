@@ -94,8 +94,6 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
         ItemFn(..) => {
             if attr::contains_name(&item.attrs, "start") {
                 EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, "main") {
-                EntryPointType::MainAttr
             } else if item.name == "main" {
                 if at_root {
                     // This is a top-level function so can be 'main'

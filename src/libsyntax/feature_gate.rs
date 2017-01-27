@@ -129,7 +129,6 @@ declare_features! (
 
     (active, allocator, "1.0.0", Some(27389)),
     (active, fundamental, "1.0.0", Some(29635)),
-    (active, main, "1.0.0", Some(29634)),
     (active, needs_allocator, "1.4.0", Some(27389)),
     (active, on_unimplemented, "1.0.0", Some(29628)),
     (active, plugin, "1.0.0", Some(29597)),
@@ -334,6 +333,7 @@ declare_features! (
 
 declare_features! (
     (removed, import_shadowing, "1.0.0", None),
+    (removed, main, "1.0.0", Some(29634)),
     (removed, managed_boxes, "1.0.0", None),
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
     (removed, negate_unsigned, "1.0.0", Some(29645)),
@@ -468,7 +468,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 
     ("cfg", Normal, Ungated),
     ("cfg_attr", Normal, Ungated),
-    ("main", Normal, Ungated),
     ("start", Normal, Ungated),
     ("test", Normal, Ungated),
     ("bench", Normal, Ungated),
@@ -1105,12 +1104,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                       "a #[start] function is an experimental \
                                        feature whose signature may change \
                                        over time");
-                }
-                if attr::contains_name(&i.attrs[..], "main") {
-                    gate_feature_post!(&self, main, i.span,
-                                       "declaration of a nonstandard #[main] \
-                                        function may change over time, for now \
-                                        a top-level `fn main()` is required");
                 }
             }
 

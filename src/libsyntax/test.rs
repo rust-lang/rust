@@ -202,9 +202,7 @@ impl fold::Folder for EntryPointCleaner {
                         id: id,
                         ident: ident,
                         attrs: attrs.into_iter()
-                            .filter(|attr| {
-                                !attr.check_name("main") && !attr.check_name("start")
-                            })
+                            .filter(|attr| !attr.check_name("start"))
                             .chain(iter::once(allow_dead_code))
                             .collect(),
                         node: node,

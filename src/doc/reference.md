@@ -1982,8 +1982,6 @@ type int8_t = i8;
 
 ### Function-only attributes
 
-- `main` - indicates that this function should be passed to the entry point,
-  rather than the function in the crate root named `main`.
 - `plugin_registrar` - mark this function as the registration point for
   [compiler plugins][plugin], such as loadable syntax extensions.
 - `start` - indicates that this function should be used as the entry point,
