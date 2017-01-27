@@ -643,8 +643,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -655,9 +653,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf.len(), 1);
     /// assert_eq!(Some(&5), buf.get(0));
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics",
-               issue = "27788")]
+    #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
         for _ in len..self.len() {
             self.pop_back();
@@ -1779,8 +1775,6 @@ impl<T: Clone> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1793,9 +1787,7 @@ impl<T: Clone> VecDeque<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics",
-               issue = "27788")]
+    #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 

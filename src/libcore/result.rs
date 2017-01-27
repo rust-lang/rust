@@ -840,8 +840,6 @@ impl<T: Default, E> Result<T, E> {
     /// `Err` on error.
     ///
     /// ```
-    /// #![feature(result_unwrap_or_default)]
-    ///
     /// let good_year_from_input = "1909";
     /// let bad_year_from_input = "190blarg";
     /// let good_year = good_year_from_input.parse().unwrap_or_default();
@@ -854,7 +852,7 @@ impl<T: Default, E> Result<T, E> {
     /// [`FromStr`]: ../../std/str/trait.FromStr.html
     /// ```
     #[inline]
-    #[unstable(feature = "result_unwrap_or_default", issue = "37516")]
+    #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
     pub fn unwrap_or_default(self) -> T {
         match self {
             Ok(x) => x,
