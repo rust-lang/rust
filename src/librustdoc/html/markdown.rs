@@ -237,8 +237,9 @@ pub fn render(w: &mut fmt::Formatter,
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
             let text = (*orig_text).as_bytes();
             let origtext = str::from_utf8(text).unwrap();
+            let origtext = origtext.trim_left();
             debug!("docblock: ==============\n{:?}\n=======", text);
-            let rendered = if lang.is_null() {
+            let rendered = if lang.is_null() || origtext.is_empty() {
                 false
             } else {
                 let rlang = (*lang).as_bytes();
