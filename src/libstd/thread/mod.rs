@@ -391,7 +391,7 @@ impl Builder {
 /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
 /// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
 /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-/// [`panic!`]: ../../std/macro.panic.html
+/// [`panic`]: ../../std/macro.panic.html
 /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
 ///
 /// # Examples
@@ -974,7 +974,7 @@ impl<T> JoinHandle<T> {
     /// to [`panic`].
     ///
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`panic!`]: ../../std/macro.panic.html
+    /// [`panic`]: ../../std/macro.panic.html
     ///
     /// # Examples
     ///
