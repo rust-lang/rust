@@ -6,14 +6,12 @@
 # Summary
 [summary]: #summary
 
-Remove the `'static` bound from the `type_id` intrinsic so users can experiment with reflection over non-static types.
+Remove the `'static` bound from the `type_id` intrinsic so users can experiment with usecases where lifetimes either soundly irrelevant to type checking or where lifetime correctness is enforced elsewhere in the program.
 
 # Motivation
 [motivation]: #motivation
 
-A common method for storing a map of arbitrary data is to use a `HashMap<TypeId, Box<Any>>` and store data of type `T` using `TypeId::of::<T>()`. The problem is that a `TypeId` can only be constructed for a static type. It's not possible to generalise the type map to a `HashMap<TypeId, Box<Any + 'a>>`. This is a reasonable constraint for the stable API, because lifetimes may need to play a part in equality checks by type id. 
-
-One workaround is to define a trait with an associated type that's expected to be a `'static` version of the implementor:
+Sometimes it's useful to encode a type so it can be checked at runtime. This can be done using the `type_id` intrinsic, that gives an id value that's guaranteed to be unique across the types available to the program. The drawback is that it's only valid for types that are `'static`, because concrete lifetimes aren't encoded in the id. For most cases this makes sense, otherwise the encoded type could be used to represent data in lifetimes it isn't valid for. There are cases though where lifetimes can be soundly checked outside the type id, so it's not possible to misrepresent the validy of the data. These cases can't make use of type ids right now, they need to rely on workarounds. One such workaround is to define a trait with an associated type that's expected to be a `'static` version of the implementor:
 
 ```rust
 unsafe trait Keyed {
@@ -28,7 +26,7 @@ unsafe impl <'a> Keyed for NonStaticStruct<'a> {
 }
 ```
 
-The `TypeId` for some type `T` can then be taken from `<T as Keyed>::Key`. However this trait needs to be marked as unsafe because it could lead to undefined behaviour if `T::Key` is not unique. It puts the burden on the caller to implement correctly for all types they want to store in the type map.
+This requires additional boilerplate that may lead to undefined behaviour if implemented incorrectly or not kept up to date.
 
 This RFC proposes simply removing the `'static` bound from the `type_id` intrinsic, leaving the stable `TypeId` and `Any` traits unchanged. That way users who opt-in to unstable intrinsics can build the type equality guarantees they need without waiting for stable API support.
 
@@ -39,14 +37,14 @@ This is an important first step in expanding the tools available to users at run
 
 Remove the `'static` bound from the `type_id` intrinsic in `libcore`.
 
-Allowing type ids for non-static types exposes the fact that concrete lifetimes aren't taken into account. This means a type id for `SomeStruct<'a, 'b>` will be the same as `SomeStruct<'static, 'static>`, even though they may be different types.
+Allowing type ids for non-static types exposes the fact that concrete lifetimes aren't taken into account. This means a type id for `SomeStruct<'a, 'b>` will be the same as `SomeStruct<'b, 'a>`, even though they're different types.
 
-We can work around this issue by documenting that the `type_id` intrinsic doesn't consider lifetimes. When requesting a type id for `SomeStruct<'a, 'b>`, a caller recieves an id for `SomeStruct<'_, '_>`.
+Users need to be very careful using `type_id` directly, because it can easily lead to undefined behaviour if lifetimes aren't verified properly.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-This changes an unstable compiler intrinsic so we don't need to teach it.
+This changes an unstable compiler intrinsic so we don't need to teach it. The change does need to come with plenty of warning that it's unsound for type-checking and can't be used to produce something like a lifetime parameterised `Any` trait.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -56,7 +54,8 @@ Removing the `'static` bound means callers may now depend on the fact that `type
 # Alternatives
 [alternatives]: #alternatives
 
-Create a new intrinsic called `runtime_type_id` that's specifically designed ignore concrete lifetimes, like `type_id` does now. Having a totally separate intrinsic means `type_id` could be changed in the future to account for lifetimes without impacting the usecases that specifically ignore them.
+- Create a new intrinsic called `runtime_type_id` that's specifically designed ignore concrete lifetimes, like `type_id` does now. Having a totally separate intrinsic means `type_id` could be changed in the future to account for lifetimes without impacting the usecases that specifically ignore them.
+- Don't do this. Stick with existing workarounds for getting a `TypeId` for non-static types.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
