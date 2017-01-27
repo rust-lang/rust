@@ -539,7 +539,8 @@ use string;
 /// [format!]: ../macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
-    let mut output = string::String::new();
+    let capacity = args.estimated_capacity();
+    let mut output = string::String::with_capacity(capacity);
     let _ = output.write_fmt(args);
     output
 }
