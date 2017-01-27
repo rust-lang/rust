@@ -348,12 +348,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         } else if self.try_coercion_cast(fcx) {
             self.trivial_cast_lint(fcx);
             debug!(" -> CoercionCast");
-            fcx.tcx.cast_kinds.borrow_mut().insert(self.expr.id, CastKind::CoercionCast);
+            fcx.tables.borrow_mut().cast_kinds.insert(self.expr.id, CastKind::CoercionCast);
         } else {
             match self.do_check(fcx) {
                 Ok(k) => {
                     debug!(" -> {:?}", k);
-                    fcx.tcx.cast_kinds.borrow_mut().insert(self.expr.id, k);
+                    fcx.tables.borrow_mut().cast_kinds.insert(self.expr.id, k);
                 }
                 Err(e) => self.report_cast_error(fcx, e),
             };
