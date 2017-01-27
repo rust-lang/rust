@@ -381,13 +381,11 @@ pub fn rust_src(build: &Build) {
         "README.md",
         "RELEASES.md",
         "configure",
-        "Makefile.in",
         "x.py",
     ];
     let src_dirs = [
         "man",
         "src",
-        "mk"
     ];
 
     let filter_fn = move |path: &Path| {
