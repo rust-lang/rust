@@ -307,6 +307,7 @@ pub trait BuildHasher {
 /// [`BuildHasher`]: trait.BuildHasher.html
 /// [`Default`]: ../default/trait.Default.html
 /// [`Hasher`]: trait.Hasher.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 

@@ -59,7 +59,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// as long as `T` implements [`Send`] and [`Sync`][sync]. The disadvantage is
 /// that atomic operations are more expensive than ordinary memory accesses.
 /// If you are not sharing reference-counted values between threads, consider
-/// using [`rc::Rc`] for lower overhead. [`Rc`] is a safe default, because
+/// using [`rc::Rc`][`Rc`] for lower overhead. [`Rc`] is a safe default, because
 /// the compiler will catch any attempt to send an [`Rc`] between threads.
 /// However, a library might choose `Arc` in order to give library consumers
 /// more flexibility.
