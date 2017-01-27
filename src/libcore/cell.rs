@@ -15,10 +15,18 @@
 //! references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
 //! with typical Rust types that exhibit 'inherited mutability'.
 //!
-//! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` provides `get` and `set`
-//! methods that change the interior value with a single method call. `Cell<T>` though is only
-//! compatible with types that implement `Copy`. For other types, one must use the `RefCell<T>`
-//! type, acquiring a write lock before mutating.
+//! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` implements interior
+//! mutability by moving values in and out of the `Cell<T>`. To use references instead of values,
+//! one must use the `RefCell<T>` type, acquiring a write lock before mutating. `Cell<T>` provides
+//! methods to retrieve and change the current interior value:
+//!
+//!  - For types that implement `Copy`, the `get` method retrieves the current interior value.
+//!  - For types that implement `Default`, the `take` method replaces the current interior value
+//!    with `Default::default()` and returns the replaced value.
+//!  - For all types, the `replace` method replaces the current interior value and returns the
+//!    replaced value and the `into_inner` method consumes the `Cell<T>` and returns the interior
+//!    value. Additionally, the `set` method replaces the interior value, dropping the replaced
+//!    value.
 //!
 //! `RefCell<T>` uses Rust's lifetimes to implement 'dynamic borrowing', a process whereby one can
 //! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
@@ -179,7 +187,7 @@ use marker::Unsize;
 use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
 
-/// A mutable memory location that admits only `Copy` data.
+/// A mutable memory location.
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
