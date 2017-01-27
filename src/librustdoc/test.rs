@@ -429,8 +429,12 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
             },
             testfn: testing::DynTestFn(box move |()| {
+                let panic = io::set_panic(None);
+                let print = io::set_print(None);
                 match {
                     rustc_driver::in_rustc_thread(move || {
+                        io::set_panic(panic);
+                        io::set_print(print);
                         runtest(&test,
                                 &cratename,
                                 cfgs,
