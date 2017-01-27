@@ -195,7 +195,8 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             bccx.report_aliasability_violation(
                         borrow_span,
                         loan_cause,
-                        mc::AliasableReason::UnaliasableImmutable);
+                        mc::AliasableReason::UnaliasableImmutable,
+                        cmt);
             Err(())
         }
         (mc::Aliasability::FreelyAliasable(alias_cause), ty::UniqueImmBorrow) |
@@ -203,7 +204,8 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             bccx.report_aliasability_violation(
                         borrow_span,
                         loan_cause,
-                        alias_cause);
+                        alias_cause,
+                        cmt);
             Err(())
         }
         (..) => {

@@ -194,6 +194,63 @@ pub struct cmt_<'tcx> {
 
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
+impl<'tcx> cmt_<'tcx> {
+    pub fn get_field(&self, name: ast::Name) -> Option<DefId> {
+        match self.cat {
+            Categorization::Deref(ref cmt, ..) |
+            Categorization::Interior(ref cmt, _) |
+            Categorization::Downcast(ref cmt, _) => {
+                if let Categorization::Local(_) = cmt.cat {
+                    if let ty::TyAdt(def, _) = self.ty.sty {
+                        return def.struct_variant().find_field_named(name).map(|x| x.did);
+                    }
+                    None
+                } else {
+                    cmt.get_field(name)
+                }
+            }
+            _ => None
+        }
+    }
+
+    pub fn get_field_name(&self) -> Option<ast::Name> {
+        match self.cat {
+            Categorization::Interior(_, ref ik) => {
+                if let InteriorKind::InteriorField(FieldName::NamedField(name)) = *ik {
+                    Some(name)
+                } else {
+                    None
+                }
+            }
+            Categorization::Deref(ref cmt, ..) |
+            Categorization::Downcast(ref cmt, _) => {
+                cmt.get_field_name()
+            }
+            _ => None,
+        }
+    }
+
+    pub fn get_arg_if_immutable(&self, map: &hir_map::Map) -> Option<ast::NodeId> {
+        match self.cat {
+            Categorization::Deref(ref cmt, ..) |
+            Categorization::Interior(ref cmt, _) |
+            Categorization::Downcast(ref cmt, _) => {
+                if let Categorization::Local(nid) = cmt.cat {
+                    if let ty::TyAdt(_, _) = self.ty.sty {
+                        if let ty::TyRef(_, ty::TypeAndMut{mutbl: MutImmutable, ..}) = cmt.ty.sty {
+                            return Some(nid);
+                        }
+                    }
+                    None
+                } else {
+                    cmt.get_arg_if_immutable(map)
+                }
+            }
+            _ => None
+        }
+    }
+}
+
 pub trait ast_node {
     fn id(&self) -> ast::NodeId;
     fn span(&self) -> Span;
