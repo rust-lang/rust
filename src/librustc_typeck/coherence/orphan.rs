@@ -263,6 +263,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                             .span_label(item.span, &format!("impl doesn't use types inside crate"))
                             .note(&format!("the impl does not reference any types defined in \
                                             this crate"))
+                            .note("define and implement a trait or new type instead")
                             .emit();
                         return;
                     }
