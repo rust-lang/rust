@@ -17,7 +17,7 @@ exposed the fact that the current, but unspecified behaviour is relied onto for 
 that there’s at least a few instances of such code in the wild.
 
 While a move to stabilise and document the order of destructor evaluation would technically fix the
-problem describe above, there’s another important aspect to consider here – implicitness. Consider
+problem described above, there’s another important aspect to consider here – implicitness. Consider
 such code:
 
 ```rust
@@ -47,7 +47,7 @@ annotate the dependencies somehow.
 [design]: #detailed-design
 
 This RFC proposes adding following `union` to the `core::mem` (and by extension the `std::mem`)
-module. `mem` module is a most suitable place for such `struct`, as the module already a place for
+module. `mem` module is a most suitable place for such type, as the module already a place for
 functions very similar in purpose: `drop` and `forget`.
 
 ```rust
@@ -130,7 +130,7 @@ impl Drop for FruitBox {
 }
 ```
 
-It is proposed that such pattern would become idiomatic for structures where fields must be dropped
+It is proposed that this pattern would become idiomatic for structures where fields must be dropped
 in a particular order.
 
 # How We Teach This
