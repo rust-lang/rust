@@ -172,6 +172,7 @@ fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
 
+#[allow(dead_code)] // Only used in backtrace::gnu::get_executable_filename()
 fn wide_char_to_multi_byte(code_page: u32,
                            flags: u32,
                            s: &[u16],

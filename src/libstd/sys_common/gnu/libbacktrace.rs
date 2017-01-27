@@ -126,7 +126,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
         static mut STATE: *mut backtrace_state = ptr::null_mut();
         if !STATE.is_null() { return STATE }
 
-        let filename = match ::sys::backtrace::get_executable_filename() {
+        let filename = match ::sys::backtrace::gnu::get_executable_filename() {
             Ok((filename, file)) => {
                 // filename is purposely leaked here since libbacktrace requires
                 // it to stay allocated permanently, file is also leaked so that
