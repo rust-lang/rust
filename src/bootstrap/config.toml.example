@@ -242,3 +242,33 @@
 # that this option only makes sense for MUSL targets that produce statically
 # linked binaries
 #musl-root = "..."
+
+# =============================================================================
+# Distribution options
+#
+# These options are related to distribution, mostly for the Rust project itself.
+# You probably won't need to concern yourself with any of these options
+# =============================================================================
+[dist]
+
+# This is the folder of artifacts that the build system will sign. All files in
+# this directory will be signed with the default gpg key using the system `gpg`
+# binary. The `asc` and `sha256` files will all be output into the standard dist
+# output folder (currently `build/dist`)
+#
+# This folder should be populated ahead of time before the build system is
+# invoked.
+#sign-folder = "path/to/folder/to/sign"
+
+# This is a file which contains the password of the default gpg key. This will
+# be passed to `gpg` down the road when signing all files in `sign-folder`
+# above. This should be stored in plaintext.
+#gpg-password-file = "path/to/gpg/password"
+
+# The remote address that all artifacts will eventually be uploaded to. The
+# build system generates manifests which will point to these urls, and for the
+# manifests to be correct they'll have to have the right URLs encoded.
+#
+# Note that this address should not contain a trailing slash as file names will
+# be appended to it.
+#upload-addr = "https://example.com/folder"
