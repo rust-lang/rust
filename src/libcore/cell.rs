@@ -343,7 +343,6 @@ impl<T: Copy> From<T> for Cell<T> {
     }
 }
 
-#[unstable(feature = "move_cell", issue = "39264")]
 impl<T> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     ///
@@ -393,6 +392,7 @@ impl<T> Cell<T> {
     ///
     /// assert_eq!(5, old);
     /// ```
+    #[unstable(feature = "move_cell", issue = "39264")]
     pub fn replace(&self, val: T) -> T {
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
@@ -410,12 +410,12 @@ impl<T> Cell<T> {
     ///
     /// assert_eq!(five, 5);
     /// ```
+    #[unstable(feature = "move_cell", issue = "39264")]
     pub fn into_inner(self) -> T {
         unsafe { self.value.into_inner() }
     }
 }
 
-#[unstable(feature = "move_cell", issue = "39264")]
 impl<T: Default> Cell<T> {
     /// Takes the value of the cell, leaving `Default::default()` in its place.
     ///
@@ -431,6 +431,7 @@ impl<T: Default> Cell<T> {
     /// assert_eq!(five, 5);
     /// assert_eq!(c.into_inner(), 0);
     /// ```
+    #[unstable(feature = "move_cell", issue = "39264")]
     pub fn take(&self) -> T {
         self.replace(Default::default())
     }
