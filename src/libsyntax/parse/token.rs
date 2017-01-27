@@ -50,8 +50,8 @@ pub enum DelimToken {
 }
 
 impl DelimToken {
-    pub fn len(&self) -> u32 {
-        if *self == NoDelim { 0 } else { 1 }
+    pub fn len(self) -> usize {
+        if self == NoDelim { 0 } else { 1 }
     }
 }
 

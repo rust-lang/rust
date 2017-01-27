@@ -14,27 +14,71 @@ use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{self, MatchNt, SubstNt, Token, NtIdent, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{self, TokenTree};
+use tokenstream::{self, TokenTree, Delimited, SequenceRepetition};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
 use std::ops::Add;
 use std::collections::HashMap;
 
-///an unzipping of `TokenTree`s
-#[derive(Clone)]
-struct TtFrame {
-    forest: TokenTree,
-    idx: usize,
-    dotdotdoted: bool,
-    sep: Option<Token>,
+// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
+enum Frame {
+    Delimited {
+        forest: Rc<Delimited>,
+        idx: usize,
+        span: Span,
+    },
+    MatchNt {
+        name: Ident,
+        kind: Ident,
+        idx: usize,
+        span: Span,
+    },
+    Sequence {
+        forest: Rc<SequenceRepetition>,
+        idx: usize,
+        sep: Option<Token>,
+    },
 }
 
-#[derive(Clone)]
+impl Iterator for Frame {
+    type Item = TokenTree;
+
+    fn next(&mut self) -> Option<TokenTree> {
+        match *self {
+            Frame::Delimited { ref forest, ref mut idx, span } => {
+                *idx += 1;
+                if *idx == forest.delim.len() {
+                    Some(forest.open_tt(span))
+                } else if let Some(tree) = forest.tts.get(*idx - forest.delim.len() - 1) {
+                    Some(tree.clone())
+                } else if *idx == forest.tts.len() + 2 * forest.delim.len() {
+                    Some(forest.close_tt(span))
+                } else {
+                    None
+                }
+            }
+            Frame::Sequence { ref forest, ref mut idx, .. } => {
+                *idx += 1;
+                forest.tts.get(*idx - 1).cloned()
+            }
+            Frame::MatchNt { ref mut idx, name, kind, span } => {
+                *idx += 1;
+                match *idx {
+                    1 => Some(TokenTree::Token(span, token::SubstNt(name))),
+                    2 => Some(TokenTree::Token(span, token::Colon)),
+                    3 => Some(TokenTree::Token(span, token::Ident(kind))),
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
 struct TtReader<'a> {
     sp_diag: &'a Handler,
     /// the unzipped tree:
-    stack: SmallVector<TtFrame>,
+    stack: SmallVector<Frame>,
     /* for MBE-style macro transcription */
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
 
@@ -51,15 +95,10 @@ pub fn transcribe(sp_diag: &Handler,
                   -> Vec<TokenTree> {
     let mut r = TtReader {
         sp_diag: sp_diag,
-        stack: SmallVector::one(TtFrame {
-            forest: TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
-                tts: src,
-                // doesn't matter. This merely holds the root unzipping.
-                separator: None, op: tokenstream::KleeneOp::ZeroOrMore, num_captures: 0
-            })),
+        stack: SmallVector::one(Frame::Delimited {
+            forest: Rc::new(tokenstream::Delimited { delim: token::NoDelim, tts: src }),
             idx: 0,
-            dotdotdoted: false,
-            sep: None,
+            span: DUMMY_SP,
         }),
         interpolations: match interp { /* just a convenience */
             None => HashMap::new(),
@@ -151,34 +190,33 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
 /// EFFECT: advances the reader's token field
 fn tt_next_token(r: &mut TtReader, prev_span: Span) -> Option<TokenTree> {
     loop {
-        let frame = match r.stack.last() {
-            Some(frame) => frame.clone(),
+        let tree = match r.stack.last_mut() {
+            Some(frame) => frame.next(),
             None => return None,
         };
 
-        if frame.idx == frame.forest.len() {
-            if frame.dotdotdoted &&
-               *r.repeat_idx.last().unwrap() == *r.repeat_len.last().unwrap() - 1 {
-                *r.repeat_idx.last_mut().unwrap() += 1;
-                r.stack.last_mut().unwrap().idx = 0;
-                if let Some(tk) = r.stack.last().unwrap().sep.clone() {
-                    return Some(TokenTree::Token(prev_span, tk)); // repeat same span, I guess
-                }
-            } else {
-                r.stack.pop();
-                match r.stack.last_mut() {
-                    Some(frame) => frame.idx += 1,
-                    None => return None,
-                }
-                if frame.dotdotdoted {
-                    r.repeat_idx.pop();
-                    r.repeat_len.pop();
+        let tree = if let Some(tree) = tree {
+            tree
+        } else {
+            if let Frame::Sequence { ref mut idx, ref sep, .. } = *r.stack.last_mut().unwrap() {
+                if *r.repeat_idx.last().unwrap() < *r.repeat_len.last().unwrap() - 1 {
+                    *r.repeat_idx.last_mut().unwrap() += 1;
+                    *idx = 0;
+                    if let Some(sep) = sep.clone() {
+                        return Some(TokenTree::Token(prev_span, sep)); // repeat same span, I guess
+                    }
+                    continue
                 }
             }
-            continue
-        }
 
-        match frame.forest.get_tt(frame.idx) {
+            if let Frame::Sequence { .. } = r.stack.pop().unwrap() {
+                r.repeat_idx.pop();
+                r.repeat_len.pop();
+            }
+            continue
+        };
+
+        match tree {
             TokenTree::Sequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
                 match lockstep_iter_size(&TokenTree::Sequence(sp, seq.clone()),
@@ -202,23 +240,20 @@ fn tt_next_token(r: &mut TtReader, prev_span: Span) -> Option<TokenTree> {
                                                      "this must repeat at least once"));
                             }
 
-                            r.stack.last_mut().unwrap().idx += 1;
                             return tt_next_token(r, prev_span);
                         }
                         r.repeat_len.push(len);
                         r.repeat_idx.push(0);
-                        r.stack.push(TtFrame {
+                        r.stack.push(Frame::Sequence {
                             idx: 0,
-                            dotdotdoted: true,
                             sep: seq.separator.clone(),
-                            forest: TokenTree::Sequence(sp, seq),
+                            forest: seq,
                         });
                     }
                 }
             }
             // FIXME #2887: think about span stuff here
             TokenTree::Token(sp, SubstNt(ident)) => {
-                r.stack.last_mut().unwrap().idx += 1;
                 match lookup_cur_matched(r, ident) {
                     None => {
                         return Some(TokenTree::Token(sp, SubstNt(ident)));
@@ -245,21 +280,13 @@ fn tt_next_token(r: &mut TtReader, prev_span: Span) -> Option<TokenTree> {
                     }
                 }
             }
-            // TokenTree::Delimited or any token that can be unzipped
-            seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, MatchNt(..)) => {
-                // do not advance the idx yet
-                r.stack.push(TtFrame {
-                   forest: seq,
-                   idx: 0,
-                   dotdotdoted: false,
-                   sep: None
-                });
-                // if this could be 0-length, we'd need to potentially recur here
+            TokenTree::Delimited(span, delimited) => {
+                r.stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
             }
-            tt @ TokenTree::Token(..) => {
-                r.stack.last_mut().unwrap().idx += 1;
-                return Some(tt);
+            TokenTree::Token(span, MatchNt(name, kind)) => {
+                r.stack.push(Frame::MatchNt { name: name, kind: kind, idx: 0, span: span });
             }
+            tt @ TokenTree::Token(..) => return Some(tt),
         }
     }
 }
