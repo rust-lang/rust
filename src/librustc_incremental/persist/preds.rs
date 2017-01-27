@@ -33,8 +33,12 @@ pub struct Predecessors<'query> {
 
 impl<'q> Predecessors<'q> {
     pub fn new(query: &'q DepGraphQuery<DefId>, hcx: &mut HashContext) -> Self {
-        // Find nodes for which we want to know the full set of preds
         let tcx = hcx.tcx;
+
+        let collect_for_metadata = tcx.sess.opts.debugging_opts.incremental_cc ||
+                                   tcx.sess.opts.debugging_opts.query_dep_graph;
+
+        // Find nodes for which we want to know the full set of preds
         let node_count = query.graph.len_nodes();
 
         // Set up some data structures the cache predecessor search needs:
@@ -52,7 +56,7 @@ impl<'q> Predecessors<'q> {
             .enumerate()
             .filter(|&(_, node)| match node.data {
                 DepNode::WorkProduct(_) => true,
-                DepNode::MetaData(ref def_id) => def_id.is_local(),
+                DepNode::MetaData(ref def_id) => collect_for_metadata && def_id.is_local(),
 
                 // if -Z query-dep-graph is passed, save more extended data
                 // to enable better unit testing

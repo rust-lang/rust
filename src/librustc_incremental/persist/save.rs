@@ -55,17 +55,21 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
 
-    // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
-    //            since metadata-encoding might add new entries to the
-    //            DefIdDirectory (which is saved in the dep-graph file).
-    save_in(sess,
-            metadata_hash_export_path(sess),
-            |e| encode_metadata_hashes(tcx,
-                                       svh,
-                                       &preds,
-                                       &mut builder,
-                                       &mut current_metadata_hashes,
-                                       e));
+    if sess.opts.debugging_opts.incremental_cc ||
+       sess.opts.debugging_opts.query_dep_graph {
+        // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
+        //            since metadata-encoding might add new entries to the
+        //            DefIdDirectory (which is saved in the dep-graph file).
+        save_in(sess,
+                metadata_hash_export_path(sess),
+                |e| encode_metadata_hashes(tcx,
+                                           svh,
+                                           &preds,
+                                           &mut builder,
+                                           &mut current_metadata_hashes,
+                                           e));
+    }
+
     save_in(sess,
             dep_graph_path(sess),
             |e| encode_dep_graph(&preds, &mut builder, e));
