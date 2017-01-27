@@ -710,7 +710,7 @@ Please note that [`catch_unwind()`] will only catch unwinding panics, not
 those who abort the process. See the documentation of [`catch_unwind()`]
 for more information.
 
-[`catch_unwind()`]: https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
+[`catch_unwind()`]: ../std/panic/fn.catch_unwind.html
 
 # Representing opaque structs
 
