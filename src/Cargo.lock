@@ -51,6 +51,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "build-manifest"
+version = "0.1.0"
+dependencies = [
+ "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "build_helper"
 version = "0.1.0"
 
