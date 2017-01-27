@@ -51,6 +51,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_anon_types();
         wbcx.visit_deferred_obligations(item_id);
         wbcx.visit_type_nodes();
+        wbcx.visit_cast_types();
 
         let tables = self.tcx.alloc_tables(wbcx.tables);
         self.tcx.tables.borrow_mut().insert(item_def_id, tables);
@@ -289,6 +290,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let def_id = self.tcx().hir.local_def_id(id);
             self.tcx().closure_kinds.borrow_mut().insert(def_id, closure_kind);
         }
+    }
+
+    fn visit_cast_types(&mut self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        self.tables.cast_kinds.extend(
+            self.fcx.tables.borrow().cast_kinds.iter().map(|(&key, &value)| (key, value)));
     }
 
     fn visit_anon_types(&self) {
