@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,9 +10,15 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
-struct Baz<U> where U: Eq(U); //This is parsed as the new Fn* style parenthesis syntax.
-struct Baz<U> where U: Eq(U) -> R; // Notice this parses as well.
-struct Baz<U>(U) where U: Eq; // This rightfully signals no error as well.
-struct Foo<T> where T: Copy, (T); //~ ERROR expected one of `+`, `:`, `==`, or `=`, found `;`
+type A = for<'a: 'b + 'c> fn(); // OK
+type A = for<'a: 'b,> fn(); // OK
+type A = for<'a:> fn(); // OK
+type A = for<'a:,> fn(); // OK
+type A = for<'a> fn(); // OK
+type A = for<> fn(); // OK
+type A = for<'a: 'b +> fn(); // OK
+
+type A = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
+type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
 
 fn main() {}

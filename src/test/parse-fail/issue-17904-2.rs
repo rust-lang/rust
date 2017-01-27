@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,6 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
-pub fn test<W, I: Iterator<Item=(), W> >() {}
-//~^ ERROR type parameters must be declared prior to associated type bindings
+struct Bar<T> { x: T } where T: Copy //~ ERROR expected item, found `where`
 
-fn main() { }
+fn main() {}

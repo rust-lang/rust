@@ -22,7 +22,7 @@ use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::{Ident, ImplItem, Item, ItemKind};
-use ast::{Lit, LitKind, UintTy};
+use ast::{Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
@@ -193,14 +193,22 @@ pub enum TokenType {
     Token(token::Token),
     Keyword(keywords::Keyword),
     Operator,
+    Lifetime,
+    Ident,
+    Path,
+    Type,
 }
 
 impl TokenType {
     fn to_string(&self) -> String {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", Parser::token_to_string(t)),
-            TokenType::Operator => "an operator".to_string(),
             TokenType::Keyword(kw) => format!("`{}`", kw.name()),
+            TokenType::Operator => "an operator".to_string(),
+            TokenType::Lifetime => "lifetime".to_string(),
+            TokenType::Ident => "identifier".to_string(),
+            TokenType::Path => "path".to_string(),
+            TokenType::Type => "type".to_string(),
         }
     }
 }
@@ -553,6 +561,33 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn check_ident(&mut self) -> bool {
+        if self.token.is_ident() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Ident);
+            false
+        }
+    }
+
+    fn check_path(&mut self) -> bool {
+        if self.token.is_path_start() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Path);
+            false
+        }
+    }
+
+    fn check_type(&mut self) -> bool {
+        if self.token.can_begin_type() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Type);
+            false
+        }
+    }
+
     /// Expect and consume an `&`. If `&&` is seen, replace it with a single
     /// `&` and continue. If an `&` is not seen, signal an error.
     fn expect_and(&mut self) -> PResult<'a, ()> {
@@ -639,13 +674,7 @@ impl<'a> Parser<'a> {
                 let lo = span.lo + BytePos(1);
                 Ok(self.bump_with(token::Eq, lo, span.hi))
             }
-            _ => {
-                let gt_str = Parser::token_to_string(&token::Gt);
-                let this_token_str = self.this_token_to_string();
-                Err(self.fatal(&format!("expected `{}`, found `{}`",
-                                        gt_str,
-                                        this_token_str)))
-            }
+            _ => self.unexpected()
         }
     }
 
@@ -972,20 +1001,11 @@ impl<'a> Parser<'a> {
         Parses whatever can come after a `for` keyword in a type.
         The `for` hasn't been consumed.
 
-        Deprecated:
-
-        - for <'lt> |S| -> T
-
-        Eventually:
-
         - for <'lt> [unsafe] [extern "ABI"] fn (S) -> T
-        - for <'lt> path::foo(a, b)
-
+        - for <'lt> path::foo(a, b) + Trait + 'a
         */
 
-        // parse <'lt>
         let lo = self.span.lo;
-
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
 
         // examine next token to decide to do
@@ -994,9 +1014,9 @@ impl<'a> Parser<'a> {
         } else {
             let hi = self.span.hi;
             let trait_ref = self.parse_trait_ref()?;
-            let poly_trait_ref = ast::PolyTraitRef { bound_lifetimes: lifetime_defs,
-                                                     trait_ref: trait_ref,
-                                                     span: mk_sp(lo, hi)};
+            let poly_trait_ref = PolyTraitRef { bound_lifetimes: lifetime_defs,
+                                                trait_ref: trait_ref,
+                                                span: mk_sp(lo, hi)};
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
                 self.parse_ty_param_bounds()?
             } else {
@@ -1011,18 +1031,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_impl_trait_type(&mut self) -> PResult<'a, TyKind> {
-        /*
-        Parses whatever can come after a `impl` keyword in a type.
-        The `impl` has already been consumed.
-        */
-
-        let bounds = self.parse_ty_param_bounds()?;
-
-        if !bounds.iter().any(|b| if let TraitTyParamBound(..) = *b { true } else { false }) {
-            self.span_err(self.prev_span, "at least one trait must be specified");
-        }
-
-        Ok(ast::TyKind::ImplTrait(bounds))
+        // Parses whatever can come after a `impl` keyword in a type.
+        // The `impl` has already been consumed.
+        Ok(ast::TyKind::ImplTrait(self.parse_ty_param_bounds()?))
     }
 
     pub fn parse_ty_path(&mut self) -> PResult<'a, TyKind> {
@@ -1030,7 +1041,7 @@ impl<'a> Parser<'a> {
     }
 
     /// parse a TyKind::BareFn type:
-    pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<ast::LifetimeDef>)
+    pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<LifetimeDef>)
                             -> PResult<'a, TyKind> {
         /*
 
@@ -1202,13 +1213,6 @@ impl<'a> Parser<'a> {
             })
     }
 
-    /// Parse a possibly mutable type
-    pub fn parse_mt(&mut self) -> PResult<'a, MutTy> {
-        let mutbl = self.parse_mutability()?;
-        let t = self.parse_ty_no_plus()?;
-        Ok(MutTy { ty: t, mutbl: mutbl })
-    }
-
     /// Parse optional return type [ -> TY ] in function decl
     pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
@@ -1260,8 +1264,8 @@ impl<'a> Parser<'a> {
                                             pprust::ty_to_string(&lhs));
             err.span_label(lhs.span, &format!("expected a path"));
             let hi = bounds.iter().map(|x| match *x {
-                ast::TraitTyParamBound(ref tr, _) => tr.span.hi,
-                ast::RegionTyParamBound(ref r) => r.span.hi,
+                TraitTyParamBound(ref tr, _) => tr.span.hi,
+                RegionTyParamBound(ref r) => r.span.hi,
             }).max_by_key(|x| x.to_usize());
             let full_span = hi.map(|hi| Span {
                 lo: lhs.span.lo,
@@ -1309,9 +1313,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let t = if self.check(&token::OpenDelim(token::Paren)) {
-            self.bump();
-
+        let t = if self.eat(&token::OpenDelim(token::Paren)) {
             // (t) is a parenthesized ty
             // (t,) is the type of a tuple with only one field,
             // of type t
@@ -1319,9 +1321,8 @@ impl<'a> Parser<'a> {
             let mut last_comma = false;
             while self.token != token::CloseDelim(token::Paren) {
                 ts.push(self.parse_ty()?);
-                if self.check(&token::Comma) {
+                if self.eat(&token::Comma) {
                     last_comma = true;
-                    self.bump();
                 } else {
                     last_comma = false;
                     break;
@@ -1336,13 +1337,11 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat(&token::Not) {
             TyKind::Never
-        } else if self.check(&token::BinOp(token::Star)) {
+        } else if self.eat(&token::BinOp(token::Star)) {
             // STAR POINTER (bare pointer?)
-            self.bump();
             TyKind::Ptr(self.parse_ptr()?)
-        } else if self.check(&token::OpenDelim(token::Bracket)) {
+        } else if self.eat(&token::OpenDelim(token::Bracket)) {
             // VECTOR
-            self.expect(&token::OpenDelim(token::Bracket))?;
             let t = self.parse_ty()?;
 
             // Parse the `; e` in `[ i32; e ]`
@@ -1354,13 +1353,15 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Bracket))?;
             t
         } else if self.check(&token::BinOp(token::And)) ||
-                  self.token == token::AndAnd {
+                  self.check(&token::AndAnd) {
             // BORROWED POINTER
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.check_keyword(keywords::For) {
+            // FIXME `+` has incorrect priority in trait object types starting with `for` (#39317).
             self.parse_for_in_type()?
         } else if self.eat_keyword(keywords::Impl) {
+            // FIXME figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
             self.parse_impl_trait_type()?
         } else if self.token_is_bare_fn_keyword() {
             // BARE FUNCTION
@@ -1373,10 +1374,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren))?;
             TyKind::Typeof(e)
         } else if self.eat_lt() {
-
-            let (qself, path) =
-                 self.parse_qualified_path(PathStyle::Type)?;
-
+            let (qself, path) = self.parse_qualified_path(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
         } else if self.token.is_path_start() {
             let path = self.parse_path(PathStyle::Type)?;
@@ -1406,10 +1404,10 @@ impl<'a> Parser<'a> {
 
     pub fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
-        let opt_lifetime = self.parse_opt_lifetime()?;
-
-        let mt = self.parse_mt()?;
-        return Ok(TyKind::Rptr(opt_lifetime, mt));
+        let opt_lifetime = self.eat_lifetime();
+        let mutbl = self.parse_mutability()?;
+        let ty = self.parse_ty_no_plus()?;
+        return Ok(TyKind::Rptr(opt_lifetime, MutTy { ty: ty, mutbl: mutbl }));
     }
 
     pub fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
@@ -1505,8 +1503,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_parse_fixed_length_of_vec(&mut self) -> PResult<'a, Option<P<ast::Expr>>> {
-        if self.check(&token::Semi) {
-            self.bump();
+        if self.eat(&token::Semi) {
             Ok(Some(self.parse_expr()?))
         } else {
             Ok(None)
@@ -1728,7 +1725,8 @@ impl<'a> Parser<'a> {
 
             // Parse types, optionally.
             let parameters = if self.eat_lt() {
-                let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
+                let (lifetimes, types, bindings) = self.parse_generic_args()?;
+                self.expect_gt()?;
                 ast::AngleBracketedParameterData {
                     lifetimes: lifetimes,
                     types: types,
@@ -1786,7 +1784,8 @@ impl<'a> Parser<'a> {
             // Check for a type segment.
             if self.eat_lt() {
                 // Consumed `a::b::<`, go look for types
-                let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
+                let (lifetimes, types, bindings) = self.parse_generic_args()?;
+                self.expect_gt()?;
                 segments.push(ast::PathSegment {
                     identifier: identifier,
                     parameters: ast::AngleBracketedParameterData {
@@ -1828,121 +1827,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// parses 0 or 1 lifetime
-    pub fn parse_opt_lifetime(&mut self) -> PResult<'a, Option<ast::Lifetime>> {
+    /// Parse single lifetime 'a or nothing.
+    pub fn eat_lifetime(&mut self) -> Option<Lifetime> {
         match self.token {
-            token::Lifetime(..) => {
-                Ok(Some(self.parse_lifetime()?))
-            }
-            _ => {
-                Ok(None)
-            }
-        }
-    }
-
-    /// Parses a single lifetime
-    /// Matches lifetime = LIFETIME
-    pub fn parse_lifetime(&mut self) -> PResult<'a, ast::Lifetime> {
-        match self.token {
-            token::Lifetime(i) => {
-                let span = self.span;
+            token::Lifetime(ident) => {
                 self.bump();
-                return Ok(ast::Lifetime {
+                Some(Lifetime {
                     id: ast::DUMMY_NODE_ID,
-                    span: span,
-                    name: i.name
-                });
+                    span: self.prev_span,
+                    name: ident.name
+                })
             }
             _ => {
-                return Err(self.fatal("expected a lifetime name"));
+                self.expected_tokens.push(TokenType::Lifetime);
+                None
             }
-        }
-    }
-
-    /// Parses `lifetime_defs = [ lifetime_defs { ',' lifetime_defs } ]` where `lifetime_def  =
-    /// lifetime [':' lifetimes]`
-    ///
-    /// If `followed_by_ty_params` is None, then we are in a context
-    /// where only lifetime parameters are allowed, and thus we should
-    /// error if we encounter attributes after the bound lifetimes.
-    ///
-    /// If `followed_by_ty_params` is Some(r), then there may be type
-    /// parameter bindings after the lifetimes, so we should pass
-    /// along the parsed attributes to be attached to the first such
-    /// type parmeter.
-    pub fn parse_lifetime_defs(&mut self,
-                               followed_by_ty_params: Option<&mut Vec<ast::Attribute>>)
-                               -> PResult<'a, Vec<ast::LifetimeDef>>
-    {
-        let mut res = Vec::new();
-        loop {
-            let attrs = self.parse_outer_attributes()?;
-            match self.token {
-                token::Lifetime(_) => {
-                    let lifetime = self.parse_lifetime()?;
-                    let bounds =
-                        if self.eat(&token::Colon) {
-                            self.parse_lifetimes(token::BinOp(token::Plus))?
-                        } else {
-                            Vec::new()
-                        };
-                    res.push(ast::LifetimeDef { attrs: attrs.into(),
-                                                lifetime: lifetime,
-                                                bounds: bounds });
-                }
-
-                _ => {
-                    if let Some(recv) = followed_by_ty_params {
-                        assert!(recv.is_empty());
-                        *recv = attrs;
-                        debug!("parse_lifetime_defs ret {:?}", res);
-                        return Ok(res);
-                    } else if !attrs.is_empty() {
-                        let msg = "trailing attribute after lifetime parameters";
-                        return Err(self.fatal(msg));
-                    }
-                }
-            }
-
-            match self.token {
-                token::Comma => { self.bump();}
-                token::Gt => { return Ok(res); }
-                token::BinOp(token::Shr) => { return Ok(res); }
-                _ => {
-                    let this_token_str = self.this_token_to_string();
-                    let msg = format!("expected `,` or `>` after lifetime \
-                                      name, found `{}`",
-                                      this_token_str);
-                    return Err(self.fatal(&msg[..]));
-                }
-            }
-        }
-    }
-
-    /// matches lifetimes = ( lifetime ) | ( lifetime , lifetimes ) actually, it matches the empty
-    /// one too, but putting that in there messes up the grammar....
-    ///
-    /// Parses zero or more comma separated lifetimes. Expects each lifetime to be followed by
-    /// either a comma or `>`.  Used when parsing type parameter lists, where we expect something
-    /// like `<'a, 'b, T>`.
-    pub fn parse_lifetimes(&mut self, sep: token::Token) -> PResult<'a, Vec<ast::Lifetime>> {
-
-        let mut res = Vec::new();
-        loop {
-            match self.token {
-                token::Lifetime(_) => {
-                    res.push(self.parse_lifetime()?);
-                }
-                _ => {
-                    return Ok(res);
-                }
-            }
-
-            if self.token != sep {
-                return Ok(res);
-            }
-
-            self.bump();
         }
     }
 
@@ -2459,7 +2358,9 @@ impl<'a> Parser<'a> {
                         -> PResult<'a, P<Expr>> {
         let (_, tys, bindings) = if self.eat(&token::ModSep) {
             self.expect_lt()?;
-            self.parse_generic_values_after_lt()?
+            let args = self.parse_generic_args()?;
+            self.expect_gt()?;
+            args
         } else {
             (Vec::new(), Vec::new(), Vec::new())
         };
@@ -4094,69 +3995,68 @@ impl<'a> Parser<'a> {
         }).emit();
     }
 
-    // Parses a sequence of bounds if a `:` is found,
-    // otherwise returns empty list.
-    fn parse_colon_then_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds>
-    {
-        if !self.eat(&token::Colon) {
-            Ok(Vec::new())
-        } else {
-            self.parse_ty_param_bounds()
-        }
-    }
-
-    // matches bounds    = ( boundseq )?
-    // where   boundseq  = ( polybound + boundseq ) | polybound
-    // and     polybound = ( 'for' '<' 'region '>' )? bound
-    // and     bound     = 'region | trait_ref
+    // Parse bounds of a type parameter `BOUND + BOUND + BOUND` without trailing `+`.
+    // BOUND = TY_BOUND | LT_BOUND
+    // LT_BOUND = LIFETIME (e.g. `'a`)
+    // TY_BOUND = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
     fn parse_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds>
     {
-        let mut result = vec![];
+        let mut bounds = Vec::new();
         loop {
-            let question_span = self.span;
-            let ate_question = self.eat(&token::Question);
-            match self.token {
-                token::Lifetime(lifetime) => {
-                    if ate_question {
-                        self.span_err(question_span,
-                                      "`?` may only modify trait bounds, not lifetime bounds");
-                    }
-                    result.push(RegionTyParamBound(ast::Lifetime {
-                        id: ast::DUMMY_NODE_ID,
-                        span: self.span,
-                        name: lifetime.name
-                    }));
-                    self.bump();
+            let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
+            if let Some(lifetime) = self.eat_lifetime() {
+                if let Some(question_span) = question {
+                    self.span_err(question_span,
+                                  "`?` may only modify trait bounds, not lifetime bounds");
                 }
-                _ if self.token.is_path_start() || self.token.is_keyword(keywords::For) => {
-                    let poly_trait_ref = self.parse_poly_trait_ref()?;
-                    let modifier = if ate_question {
-                        TraitBoundModifier::Maybe
-                    } else {
-                        TraitBoundModifier::None
-                    };
-                    result.push(TraitTyParamBound(poly_trait_ref, modifier))
-                }
-                _ => break,
-            }
+                bounds.push(RegionTyParamBound(lifetime));
+            } else {if self.check_keyword(keywords::For) || self.check_path() {
+                let poly_trait_ref = self.parse_poly_trait_ref()?;
+                let modifier = if question.is_some() {
+                    TraitBoundModifier::Maybe
+                } else {
+                    TraitBoundModifier::None
+                };
+                bounds.push(TraitTyParamBound(poly_trait_ref, modifier));
+            } else {
+                break
+            }}
 
             if !self.eat(&token::BinOp(token::Plus)) {
-                break;
+                break
             }
         }
 
-        return Ok(result);
+        return Ok(bounds);
+    }
+
+    // Parse bounds of a type parameter `BOUND + BOUND + BOUND` without trailing `+`.
+    // BOUND = LT_BOUND (e.g. `'a`)
+    fn parse_lt_param_bounds(&mut self) -> Vec<Lifetime> {
+        let mut lifetimes = Vec::new();
+        while let Some(lifetime) = self.eat_lifetime() {
+            lifetimes.push(lifetime);
+
+            if !self.eat(&token::BinOp(token::Plus)) {
+                break
+            }
+        }
+        lifetimes
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<ast::Attribute>) -> PResult<'a, TyParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, TyParam> {
         let span = self.span;
         let ident = self.parse_ident()?;
 
-        let bounds = self.parse_colon_then_ty_param_bounds()?;
+        // Parse optional colon and param bounds.
+        let bounds = if self.eat(&token::Colon) {
+            self.parse_ty_param_bounds()?
+        } else {
+            Vec::new()
+        };
 
-        let default = if self.check(&token::Eq) {
-            self.bump();
+        let default = if self.eat(&token::Eq) {
             Some(self.parse_ty()?)
         } else {
             None
@@ -4172,6 +4072,51 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses (possibly empty) list of lifetime and type parameters, possibly including
+    /// trailing comma and erroneous trailing attributes.
+    pub fn parse_generic_params(&mut self) -> PResult<'a, (Vec<LifetimeDef>, Vec<TyParam>)> {
+        let mut lifetime_defs = Vec::new();
+        let mut ty_params = Vec::new();
+        let mut seen_ty_param = false;
+        loop {
+            let attrs = self.parse_outer_attributes()?;
+            if let Some(lifetime) = self.eat_lifetime() {
+                // Parse lifetime parameter.
+                let bounds = if self.eat(&token::Colon) {
+                    self.parse_lt_param_bounds()
+                } else {
+                    Vec::new()
+                };
+                lifetime_defs.push(LifetimeDef {
+                    attrs: attrs.into(),
+                    lifetime: lifetime,
+                    bounds: bounds,
+                });
+                if seen_ty_param {
+                    self.span_err(self.prev_span,
+                        "lifetime parameters must be declared prior to type parameters");
+                }
+            } else {if self.check_ident() {
+                // Parse type parameter.
+                ty_params.push(self.parse_ty_param(attrs)?);
+                seen_ty_param = true;
+            } else {
+                // Check for trailing attributes and stop parsing.
+                if !attrs.is_empty() {
+                    let param_kind = if seen_ty_param { "type" } else { "lifetime" };
+                    self.span_err(attrs[0].span,
+                        &format!("trailing attribute after {} parameters", param_kind));
+                }
+                break
+            }}
+
+            if !self.eat(&token::Comma) {
+                break
+            }
+        }
+        Ok((lifetime_defs, ty_params))
+    }
+
     /// Parse a set of optional generic type parameter declarations. Where
     /// clauses are not parsed here, and must be added later via
     /// `parse_where_clause()`.
@@ -4181,45 +4126,11 @@ impl<'a> Parser<'a> {
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
         maybe_whole!(self, NtGenerics, |x| x);
-        let span_lo = self.span.lo;
 
-        if self.eat(&token::Lt) {
-            // Upon encountering attribute in generics list, we do not
-            // know if it is attached to lifetime or to type param.
-            //
-            // Solution: 1. eagerly parse attributes in tandem with
-            // lifetime defs, 2. store last set of parsed (and unused)
-            // attributes in `attrs`, and 3. pass in those attributes
-            // when parsing formal type param after lifetime defs.
-            let mut attrs = vec![];
-            let lifetime_defs = self.parse_lifetime_defs(Some(&mut attrs))?;
-            let mut seen_default = false;
-            let mut post_lifetime_attrs = Some(attrs);
-            let ty_params = self.parse_seq_to_gt(Some(token::Comma), |p| {
-                p.forbid_lifetime()?;
-                // Move out of `post_lifetime_attrs` if present. O/w
-                // not first type param: parse attributes anew.
-                let attrs = match post_lifetime_attrs.as_mut() {
-                    None => p.parse_outer_attributes()?,
-                    Some(attrs) => mem::replace(attrs, vec![]),
-                };
-                post_lifetime_attrs = None;
-                let ty_param = p.parse_ty_param(attrs)?;
-                if ty_param.default.is_some() {
-                    seen_default = true;
-                } else if seen_default {
-                    let prev_span = p.prev_span;
-                    p.span_err(prev_span,
-                               "type parameters with a default must be trailing");
-                }
-                Ok(ty_param)
-            })?;
-            if let Some(attrs) = post_lifetime_attrs {
-                if !attrs.is_empty() {
-                    self.span_err(attrs[0].span,
-                                  "trailing attribute after lifetime parameters");
-                }
-            }
+        let span_lo = self.span.lo;
+        if self.eat_lt() {
+            let (lifetime_defs, ty_params) = self.parse_generic_params()?;
+            self.expect_gt()?;
             Ok(ast::Generics {
                 lifetimes: lifetime_defs,
                 ty_params: ty_params,
@@ -4234,85 +4145,52 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_generic_values_after_lt(&mut self) -> PResult<'a, (Vec<ast::Lifetime>,
-                                                            Vec<P<Ty>>,
-                                                            Vec<TypeBinding>)> {
-        let span_lo = self.span.lo;
-        let lifetimes = self.parse_lifetimes(token::Comma)?;
-
-        let missing_comma = !lifetimes.is_empty() &&
-                            !self.token.is_like_gt() &&
-                            self.prev_token_kind != PrevTokenKind::Comma;
-
-        if missing_comma {
-
-            let msg = format!("expected `,` or `>` after lifetime \
-                              name, found `{}`",
-                              self.this_token_to_string());
-            let mut err = self.diagnostic().struct_span_err(self.span, &msg);
-
-            let span_hi = self.span.hi;
-            let span_hi = match self.parse_ty_no_plus() {
-                Ok(..) => self.span.hi,
-                Err(ref mut err) => {
-                    self.cancel(err);
-                    span_hi
+    /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
+    /// possibly including trailing comma.
+    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<Lifetime>, Vec<P<Ty>>, Vec<TypeBinding>)> {
+        let mut lifetimes = Vec::new();
+        let mut types = Vec::new();
+        let mut bindings = Vec::new();
+        let mut seen_type = false;
+        let mut seen_binding = false;
+        loop {
+            if let Some(lifetime) = self.eat_lifetime() {
+                // Parse lifetime argument.
+                lifetimes.push(lifetime);
+                if seen_type || seen_binding {
+                    self.span_err(self.prev_span,
+                        "lifetime parameters must be declared prior to type parameters");
                 }
-            };
-
-            let msg = format!("did you mean a single argument type &'a Type, \
-                              or did you mean the comma-separated arguments \
-                              'a, Type?");
-            err.span_note(mk_sp(span_lo, span_hi), &msg);
-            return Err(err);
-        }
-
-        // First parse types.
-        let (types, returned) = self.parse_seq_to_gt_or_return(
-            Some(token::Comma),
-            |p| {
-                p.forbid_lifetime()?;
-                if p.look_ahead(1, |t| t == &token::Eq) {
-                    Ok(None)
-                } else {
-                    Ok(Some(p.parse_ty()?))
-                }
-            }
-        )?;
-
-        // If we found the `>`, don't continue.
-        if !returned {
-            return Ok((lifetimes, types, Vec::new()));
-        }
-
-        // Then parse type bindings.
-        let bindings = self.parse_seq_to_gt(
-            Some(token::Comma),
-            |p| {
-                p.forbid_lifetime()?;
-                let lo = p.span.lo;
-                let ident = p.parse_ident()?;
-                p.expect(&token::Eq)?;
-                let ty = p.parse_ty_no_plus()?;
-                let hi = ty.span.hi;
-                let span = mk_sp(lo, hi);
-                return Ok(TypeBinding{id: ast::DUMMY_NODE_ID,
+            } else {if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
+                // Parse associated type binding.
+                let lo = self.span.lo;
+                let ident = self.parse_ident()?;
+                self.bump();
+                let ty = self.parse_ty()?;
+                bindings.push(TypeBinding {
+                    id: ast::DUMMY_NODE_ID,
                     ident: ident,
                     ty: ty,
-                    span: span,
+                    span: mk_sp(lo, self.prev_span.hi),
                 });
-            }
-        )?;
-        Ok((lifetimes, types, bindings))
-    }
+                seen_binding = true;
+            } else if self.check_type() {
+                // Parse type argument.
+                types.push(self.parse_ty()?);
+                if seen_binding {
+                    self.span_err(types[types.len() - 1].span,
+                        "type parameters must be declared prior to associated type bindings");
+                }
+                seen_type = true;
+            } else {
+                break
+            }}
 
-    fn forbid_lifetime(&mut self) -> PResult<'a, ()> {
-        if self.token.is_lifetime() {
-            let span = self.span;
-            return Err(self.diagnostic().struct_span_err(span, "lifetime parameters must be \
-                                                                declared prior to type parameters"))
+            if !self.eat(&token::Comma) {
+                break
+            }
         }
-        Ok(())
+        Ok((lifetimes, types, bindings))
     }
 
     /// Parses an optional `where` clause and places it in `generics`.
@@ -4320,7 +4198,7 @@ impl<'a> Parser<'a> {
     /// ```ignore
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
-    pub fn parse_where_clause(&mut self) -> PResult<'a, ast::WhereClause> {
+    pub fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         maybe_whole!(self, NtWhereClause, |x| x);
 
         let mut where_clause = WhereClause {
@@ -4332,7 +4210,7 @@ impl<'a> Parser<'a> {
             return Ok(where_clause);
         }
 
-        // This is a temporary hack.
+        // This is a temporary future proofing.
         //
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
@@ -4349,104 +4227,62 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let mut parsed_something = false;
         loop {
             let lo = self.span.lo;
-            match self.token {
-                token::OpenDelim(token::Brace) => {
-                    break
-                }
+            if let Some(lifetime) = self.eat_lifetime() {
+                // Bounds starting with a colon are mandatory, but possibly empty.
+                self.expect(&token::Colon)?;
+                let bounds = self.parse_lt_param_bounds();
+                where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
+                    ast::WhereRegionPredicate {
+                        span: mk_sp(lo, self.prev_span.hi),
+                        lifetime: lifetime,
+                        bounds: bounds,
+                    }
+                ));
+            } else {if self.check_type() {
+                // Parse optional `for<'a, 'b>`.
+                // This `for` is parsed greedily and applies to the whole predicate,
+                // the bounded type can have its own `for` applying only to it.
+                // Example 1: for<'a> Trait1<'a>: Trait2<'a /*ok*/>
+                // Example 2: (for<'a> Trait1<'a>): Trait2<'a /*not ok*/>
+                // Example 3: for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /*ok*/, 'b /*not ok*/>
+                let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
 
-                token::Lifetime(..) => {
-                    let bounded_lifetime =
-                        self.parse_lifetime()?;
-
-                    self.expect(&token::Colon)?;
-
-                    let bounds =
-                        self.parse_lifetimes(token::BinOp(token::Plus))?;
-
-                    let hi = self.prev_span.hi;
-                    let span = mk_sp(lo, hi);
-
-                    where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
-                        ast::WhereRegionPredicate {
-                            span: span,
-                            lifetime: bounded_lifetime,
-                            bounds: bounds
+                // Parse type with mandatory colon and (possibly empty) bounds,
+                // or with mandatory equality sign and the second type.
+                let ty = self.parse_ty()?;
+                if self.eat(&token::Colon) {
+                    let bounds = self.parse_ty_param_bounds()?;
+                    where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
+                        ast::WhereBoundPredicate {
+                            span: mk_sp(lo, self.prev_span.hi),
+                            bound_lifetimes: lifetime_defs,
+                            bounded_ty: ty,
+                            bounds: bounds,
                         }
                     ));
-
-                    parsed_something = true;
-                }
-
-                _ => {
-                    let bound_lifetimes = if self.eat_keyword(keywords::For) {
-                        // Higher ranked constraint.
-                        self.expect(&token::Lt)?;
-                        let lifetime_defs = self.parse_lifetime_defs(None)?;
-                        self.expect_gt()?;
-                        lifetime_defs
-                    } else {
-                        vec![]
-                    };
-
-                    let bounded_ty = self.parse_ty_no_plus()?;
-
-                    if self.eat(&token::Colon) {
-                        let bounds = self.parse_ty_param_bounds()?;
-                        let hi = self.prev_span.hi;
-                        let span = mk_sp(lo, hi);
-
-                        if bounds.is_empty() {
-                            self.span_err(span,
-                                          "each predicate in a `where` clause must have \
-                                           at least one bound in it");
+                // FIXME: Decide what should be used here, `=` or `==`.
+                } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
+                    let rhs_ty = self.parse_ty()?;
+                    where_clause.predicates.push(ast::WherePredicate::EqPredicate(
+                        ast::WhereEqPredicate {
+                            span: mk_sp(lo, self.prev_span.hi),
+                            lhs_ty: ty,
+                            rhs_ty: rhs_ty,
+                            id: ast::DUMMY_NODE_ID,
                         }
-
-                        where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
-                                ast::WhereBoundPredicate {
-                                    span: span,
-                                    bound_lifetimes: bound_lifetimes,
-                                    bounded_ty: bounded_ty,
-                                    bounds: bounds,
-                        }));
-
-                        parsed_something = true;
-                    } else if self.eat(&token::Eq) {
-                        // let ty = try!(self.parse_ty_no_plus());
-                        let hi = self.prev_span.hi;
-                        let span = mk_sp(lo, hi);
-                        // where_clause.predicates.push(
-                        //     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                        //         id: ast::DUMMY_NODE_ID,
-                        //         span: span,
-                        //         path: panic!("NYI"), //bounded_ty,
-                        //         ty: ty,
-                        // }));
-                        // parsed_something = true;
-                        // // FIXME(#18433)
-                        self.span_err(span,
-                                     "equality constraints are not yet supported \
-                                     in where clauses (#20041)");
-                    } else {
-                        let prev_span = self.prev_span;
-                        self.span_err(prev_span,
-                              "unexpected token in `where` clause");
-                    }
+                    ));
+                } else {
+                    return self.unexpected();
                 }
-            };
+            } else {
+                break
+            }}
 
             if !self.eat(&token::Comma) {
                 break
             }
-        }
-
-        if !parsed_something {
-            let prev_span = self.prev_span;
-            self.span_err(prev_span,
-                          "a `where` clause must have at least one predicate \
-                           in it");
         }
 
         Ok(where_clause)
@@ -4547,13 +4383,13 @@ impl<'a> Parser<'a> {
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
                           isolated_self(self, 2) {
                     self.bump();
-                    let lt = self.parse_lifetime()?;
+                    let lt = self.eat_lifetime().expect("not a lifetime");
                     (SelfKind::Region(Some(lt), Mutability::Immutable), expect_ident(self))
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
                           self.look_ahead(2, |t| t.is_keyword(keywords::Mut)) &&
                           isolated_self(self, 3) {
                     self.bump();
-                    let lt = self.parse_lifetime()?;
+                    let lt = self.eat_lifetime().expect("not a lifetime");
                     self.bump();
                     (SelfKind::Region(Some(lt), Mutability::Mutable), expect_ident(self))
                 } else {
@@ -4855,8 +4691,12 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
 
-        // Parse supertrait bounds.
-        let bounds = self.parse_colon_then_ty_param_bounds()?;
+        // Parse optional colon and supertrait bounds.
+        let bounds = if self.eat(&token::Colon) {
+            self.parse_ty_param_bounds()?
+        } else {
+            Vec::new()
+        };
 
         tps.where_clause = self.parse_where_clause()?;
 
@@ -4947,17 +4787,21 @@ impl<'a> Parser<'a> {
 
     /// Parse a::B<String,i32>
     fn parse_trait_ref(&mut self) -> PResult<'a, TraitRef> {
-        Ok(ast::TraitRef {
+        Ok(TraitRef {
             path: self.parse_path(PathStyle::Type)?,
             ref_id: ast::DUMMY_NODE_ID,
         })
     }
 
-    fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<ast::LifetimeDef>> {
+    fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<LifetimeDef>> {
         if self.eat_keyword(keywords::For) {
-            self.expect(&token::Lt)?;
-            let lifetime_defs = self.parse_lifetime_defs(None)?;
+            self.expect_lt()?;
+            let (lifetime_defs, ty_params) = self.parse_generic_params()?;
             self.expect_gt()?;
+            if !ty_params.is_empty() {
+                self.span_err(ty_params[0].span,
+                              "only lifetime parameters can be used in this context");
+            }
             Ok(lifetime_defs)
         } else {
             Ok(Vec::new())
@@ -4969,7 +4813,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
 
-        Ok(ast::PolyTraitRef {
+        Ok(PolyTraitRef {
             bound_lifetimes: lifetime_defs,
             trait_ref: self.parse_trait_ref()?,
             span: mk_sp(lo, self.prev_span.hi),

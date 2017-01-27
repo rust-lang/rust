@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z parse-only
 
-struct Heap;
-
-struct Vec<A = Heap, T>; //~ ERROR type parameters with a default must be trailing
-
-struct Foo<A, B = Vec<C>, C>; //~ ERROR type parameters with a default must be trailing
+type A where 'a: 'b + 'c = u8; // OK
+type A where 'a: 'b, = u8; // OK
+type A where 'a: = u8; // OK
+type A where 'a:, = u8; // OK
+type A where 'a: 'b + 'c = u8; // OK
+type A where = u8; // OK
+type A where 'a: 'b + = u8; // OK
+type A where , = u8; //~ ERROR expected one of `=`, lifetime, or type, found `,`
 
 fn main() {}
