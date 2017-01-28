@@ -2114,10 +2114,15 @@ Sometimes one wants to have different compiler outputs from the same code,
 depending on build target, such as targeted operating system, or to enable
 release builds.
 
-There are two kinds of configuration options, one that is either defined or not
-(`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
-options can have the latter form.
+Configuration options are boolean (on or off) and are named either with a
+single identifier (e.g. `foo`) or an identifier and a string (e.g. `foo = "bar"`;
+the quotes are required and spaces around the `=` are unimportant). Note that
+similarly-named options, such as `foo`, `foo="bar"` and `foo="baz"` may each be set
+or unset independently.
+
+Configuration options are either provided by the compiler or passed in on the
+command line using `--cfg` (e.g. `rustc main.rs --cfg foo --cfg 'bar="baz"'`).
+Rust code then checks for their presence using the `#[cfg(...)]` attribute:
 
 ```
 // The function is only included in the build when compiling for OSX
@@ -2196,7 +2201,10 @@ You can also set another attribute based on a `cfg` variable with `cfg_attr`:
 #[cfg_attr(a, b)]
 ```
 
-Will be the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+This is the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+
+Lastly, configuration options can be used in expressions by invoking the `cfg!`
+macro: `cfg!(a)` evaluates to `true` if `a` is set, and `false` otherwise.
 
 ### Lint check attributes
 
