@@ -28,7 +28,7 @@ use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc::middle::privacy::AccessLevels;
-use rustc::middle::resolve_lifetime::DefRegion::*;
+use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -765,9 +765,9 @@ impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext) -> Lifetime {
         let def = cx.tcx.named_region_map.defs.get(&self.id).cloned();
         match def {
-            Some(DefEarlyBoundRegion(_, node_id)) |
-            Some(DefLateBoundRegion(_, node_id)) |
-            Some(DefFreeRegion(_, node_id)) => {
+            Some(rl::Region::EarlyBound(_, node_id)) |
+            Some(rl::Region::LateBound(_, node_id)) |
+            Some(rl::Region::Free(_, node_id)) => {
                 if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
                     return lt;
                 }
@@ -794,7 +794,7 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     }
 }
 
-impl<'tcx> Clean<Lifetime> for ty::RegionParameterDef<'tcx> {
+impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
         Lifetime(self.name.to_string())
     }
@@ -970,11 +970,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                 Some(tp.clean(cx))
             }
         }).collect::<Vec<_>>();
-        let stripped_lifetimes = gens.regions.iter().map(|rp| {
-            let mut srp = rp.clone();
-            srp.bounds = Vec::new();
-            srp.clean(cx)
-        }).collect::<Vec<_>>();
 
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
@@ -1017,7 +1012,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
 
         Generics {
             type_params: simplify::ty_params(stripped_typarams),
-            lifetimes: stripped_lifetimes,
+            lifetimes: gens.regions.clean(cx),
             where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }
@@ -1688,9 +1683,15 @@ impl Clean<Type> for hir::Ty {
         match self.node {
             TyNever => Never,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
-            TyRptr(ref l, ref m) =>
-                BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
-                             type_: box m.ty.clean(cx)},
+            TyRptr(ref l, ref m) => {
+                let lifetime = if l.is_elided() {
+                    None
+                } else {
+                    Some(l.clean(cx))
+                };
+                BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
+                             type_: box m.ty.clean(cx)}
+            }
             TySlice(ref ty) => Vector(box ty.clean(cx)),
             TyArray(ref ty, length) => {
                 use rustc_const_eval::eval_length;
@@ -1729,7 +1730,9 @@ impl Clean<Type> for hir::Ty {
                     for (i, lt_param) in generics.lifetimes.iter().enumerate() {
                         if let Some(lt) = provided_params.lifetimes().get(i).cloned()
                                                                             .cloned() {
-                            lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                            if !lt.is_elided() {
+                                lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                            }
                         }
                     }
                     return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
@@ -1768,20 +1771,20 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyTraitObject(ref bounds) => {
-                let lhs_ty = bounds[0].clean(cx);
-                match lhs_ty {
-                    TraitBound(poly_trait, ..) => {
-                        match poly_trait.trait_ {
-                            ResolvedPath { path, typarams: None, did, is_generic } => {
-                                ResolvedPath {
-                                    path: path,
-                                    typarams: Some(bounds[1..].clean(cx)),
-                                    did: did,
-                                    is_generic: is_generic,
-                                }
-                            }
-                            _ => Infer // shouldn't happen
+            TyTraitObject(ref bounds, ref lifetime) => {
+                match bounds[0].clean(cx).trait_ {
+                    ResolvedPath { path, typarams: None, did, is_generic } => {
+                        let mut bounds: Vec<_> = bounds[1..].iter().map(|bound| {
+                            TraitBound(bound.clean(cx), hir::TraitBoundModifier::None)
+                        }).collect();
+                        if !lifetime.is_elided() {
+                            bounds.push(RegionBound(lifetime.clean(cx)));
+                        }
+                        ResolvedPath {
+                            path: path,
+                            typarams: Some(bounds),
+                            did: did,
+                            is_generic: is_generic,
                         }
                     }
                     _ => Infer // shouldn't happen
@@ -2242,7 +2245,11 @@ impl Clean<PathParameters> for hir::PathParameters {
         match *self {
             hir::AngleBracketedParameters(ref data) => {
                 PathParameters::AngleBracketed {
-                    lifetimes: data.lifetimes.clean(cx),
+                    lifetimes: if data.lifetimes.iter().all(|lt| lt.is_elided()) {
+                        vec![]
+                    } else {
+                        data.lifetimes.clean(cx)
+                    },
                     types: data.types.clean(cx),
                     bindings: data.bindings.clean(cx)
                 }

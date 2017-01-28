@@ -41,12 +41,12 @@
 // in the HIR, especially for multiple identifiers.
 
 use hir;
-use hir::map::Definitions;
+use hir::map::{Definitions, DefKey};
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
-use util::nodemap::{NodeMap, FxHashMap};
+use util::nodemap::{DefIdMap, NodeMap, FxHashMap};
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -78,6 +78,8 @@ pub struct LoweringContext<'a> {
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: FxHashMap<hir::BodyId, hir::Body>,
+
+    type_def_lifetime_params: DefIdMap<usize>,
 }
 
 pub trait Resolver {
@@ -110,6 +112,7 @@ pub fn lower_crate(sess: &Session,
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
         bodies: FxHashMap(),
+        type_def_lifetime_params: DefIdMap(),
     }.lower_crate(krate)
 }
 
@@ -123,24 +126,33 @@ enum ParamMode {
 
 impl<'a> LoweringContext<'a> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate {
-        self.lower_items(c);
-        let module = self.lower_mod(&c.module);
-        let attrs = self.lower_attrs(&c.attrs);
-        let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
-
-        hir::Crate {
-            module: module,
-            attrs: attrs,
-            span: c.span,
-            exported_macros: exported_macros,
-            items: self.items,
-            trait_items: self.trait_items,
-            impl_items: self.impl_items,
-            bodies: self.bodies,
+        /// Full-crate AST visitor that inserts into a fresh
+        /// `LoweringContext` any information that may be
+        /// needed from arbitrary locations in the crate.
+        /// E.g. The number of lifetime generic parameters
+        /// declared for every type and trait definition.
+        struct MiscCollector<'lcx, 'interner: 'lcx> {
+            lctx: &'lcx mut LoweringContext<'interner>,
         }
-    }
 
-    fn lower_items(&mut self, c: &Crate) {
+        impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
+            fn visit_item(&mut self, item: &'lcx Item) {
+                match item.node {
+                    ItemKind::Struct(_, ref generics) |
+                    ItemKind::Union(_, ref generics) |
+                    ItemKind::Enum(_, ref generics) |
+                    ItemKind::Ty(_, ref generics) |
+                    ItemKind::Trait(_, ref generics, ..) => {
+                        let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
+                        let count = generics.lifetimes.len();
+                        self.lctx.type_def_lifetime_params.insert(def_id, count);
+                    }
+                    _ => {}
+                }
+                visit::walk_item(self, item);
+            }
+        }
+
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             lctx: &'lcx mut LoweringContext<'interner>,
         }
@@ -167,8 +179,23 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        let mut item_lowerer = ItemLowerer { lctx: self };
-        visit::walk_crate(&mut item_lowerer, c);
+        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
+        visit::walk_crate(&mut ItemLowerer { lctx: &mut self }, c);
+
+        let module = self.lower_mod(&c.module);
+        let attrs = self.lower_attrs(&c.attrs);
+        let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
+
+        hir::Crate {
+            module: module,
+            attrs: attrs,
+            span: c.span,
+            exported_macros: exported_macros,
+            items: self.items,
+            trait_items: self.trait_items,
+            impl_items: self.impl_items,
+            bodies: self.bodies,
+        }
     }
 
     fn record_body(&mut self, value: hir::Expr, decl: Option<&FnDecl>)
@@ -232,6 +259,14 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
+    fn def_key(&mut self, id: DefId) -> DefKey {
+        if id.is_local() {
+            self.resolver.definitions().def_key(id.index)
+        } else {
+            self.sess.cstore.def_key(id)
+        }
+    }
+
     fn lower_opt_sp_ident(&mut self, o_id: Option<Spanned<Ident>>) -> Option<Spanned<Name>> {
         o_id.map(|sp_ident| respan(sp_ident.span, sp_ident.node.name))
     }
@@ -279,7 +314,12 @@ impl<'a> LoweringContext<'a> {
                 TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
                 TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
                 TyKind::Rptr(ref region, ref mt) => {
-                    hir::TyRptr(self.lower_opt_lifetime(region), self.lower_mt(mt))
+                    let span = Span { hi: t.span.lo, ..t.span };
+                    let lifetime = match *region {
+                        Some(ref lt) => self.lower_lifetime(lt),
+                        None => self.elided_lifetime(span)
+                    };
+                    hir::TyRptr(lifetime, self.lower_mt(mt))
                 }
                 TyKind::BareFn(ref f) => {
                     hir::TyBareFn(P(hir::BareFnTy {
@@ -297,7 +337,8 @@ impl<'a> LoweringContext<'a> {
                     return self.lower_ty(ty);
                 }
                 TyKind::Path(ref qself, ref path) => {
-                    hir::TyPath(self.lower_qpath(t.id, qself, path, ParamMode::Explicit))
+                    let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit);
+                    return self.ty_path(t.id, t.span, qpath);
                 }
                 TyKind::ImplicitSelf => {
                     hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
@@ -319,7 +360,23 @@ impl<'a> LoweringContext<'a> {
                     hir::TyTypeof(self.record_body(expr, None))
                 }
                 TyKind::TraitObject(ref bounds) => {
-                    hir::TyTraitObject(self.lower_bounds(bounds))
+                    let mut lifetime_bound = None;
+                    let bounds = bounds.iter().filter_map(|bound| {
+                        match *bound {
+                            TraitTyParamBound(ref ty, TraitBoundModifier::None) => {
+                                Some(self.lower_poly_trait_ref(ty))
+                            }
+                            TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                            RegionTyParamBound(ref lifetime) => {
+                                lifetime_bound = Some(self.lower_lifetime(lifetime));
+                                None
+                            }
+                        }
+                    }).collect();
+                    let lifetime_bound = lifetime_bound.unwrap_or_else(|| {
+                        self.elided_lifetime(t.span)
+                    });
+                    hir::TyTraitObject(bounds, lifetime_bound)
                 }
                 TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))
@@ -377,7 +434,40 @@ impl<'a> LoweringContext<'a> {
                     }
                     _ => param_mode
                 };
-                self.lower_path_segment(segment, param_mode)
+
+                // Figure out if this is a type/trait segment,
+                // which may need lifetime elision performed.
+                let parent_def_id = |this: &mut Self, def_id: DefId| {
+                    DefId {
+                        krate: def_id.krate,
+                        index: this.def_key(def_id).parent.expect("missing parent")
+                    }
+                };
+                let type_def_id = match resolution.base_def {
+                    Def::AssociatedTy(def_id) if i + 2 == proj_start => {
+                        Some(parent_def_id(self, def_id))
+                    }
+                    Def::Variant(def_id) if i + 1 == proj_start => {
+                        Some(parent_def_id(self, def_id))
+                    }
+                    Def::Struct(def_id) |
+                    Def::Union(def_id) |
+                    Def::Enum(def_id) |
+                    Def::TyAlias(def_id) |
+                    Def::Trait(def_id) if i + 1 == proj_start => Some(def_id),
+                    _ => None
+                };
+
+                let num_lifetimes = type_def_id.map_or(0, |def_id| {
+                    if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
+                        return n;
+                    }
+                    assert!(!def_id.is_local());
+                    let (n, _) = self.sess.cstore.item_generics_own_param_counts(def_id);
+                    self.type_def_lifetime_params.insert(def_id, n);
+                    n
+                });
+                self.lower_path_segment(p.span, segment, param_mode, num_lifetimes)
             }).collect(),
             span: p.span,
         });
@@ -397,7 +487,8 @@ impl<'a> LoweringContext<'a> {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g. `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
-            self.ty(p.span, hir::TyPath(hir::QPath::Resolved(qself, path)))
+            let new_id = self.next_id();
+            self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path))
         };
 
         // Anything after the base path are associated "extensions",
@@ -411,7 +502,7 @@ impl<'a> LoweringContext<'a> {
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
         for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
-            let segment = P(self.lower_path_segment(segment, param_mode));
+            let segment = P(self.lower_path_segment(p.span, segment, param_mode, 0));
             let qpath = hir::QPath::TypeRelative(ty, segment);
 
             // It's finished, return the extension of the right node type.
@@ -420,7 +511,8 @@ impl<'a> LoweringContext<'a> {
             }
 
             // Wrap the associated extension in another type node.
-            ty = self.ty(p.span, hir::TyPath(qpath));
+            let new_id = self.next_id();
+            ty = self.ty_path(new_id, p.span, qpath);
         }
 
         // Should've returned in the for loop above.
@@ -443,7 +535,7 @@ impl<'a> LoweringContext<'a> {
         hir::Path {
             def: self.expect_full_def(id),
             segments: segments.map(|segment| {
-                self.lower_path_segment(segment, param_mode)
+                self.lower_path_segment(p.span, segment, param_mode, 0)
             }).chain(name.map(|name| {
                 hir::PathSegment {
                     name: name,
@@ -464,10 +556,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_path_segment(&mut self,
+                          path_span: Span,
                           segment: &PathSegment,
-                          param_mode: ParamMode)
+                          param_mode: ParamMode,
+                          expected_lifetimes: usize)
                           -> hir::PathSegment {
-        let parameters = if let Some(ref parameters) = segment.parameters {
+        let mut parameters = if let Some(ref parameters) = segment.parameters {
             match **parameters {
                 PathParameters::AngleBracketed(ref data) => {
                     let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
@@ -481,6 +575,14 @@ impl<'a> LoweringContext<'a> {
             let data = self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode);
             hir::AngleBracketedParameters(data)
         };
+
+        if let hir::AngleBracketedParameters(ref mut data) = parameters {
+            if data.lifetimes.is_empty() {
+                data.lifetimes = (0..expected_lifetimes).map(|_| {
+                    self.elided_lifetime(path_span)
+                }).collect();
+            }
+        }
 
         hir::PathSegment {
             name: segment.identifier.name,
@@ -628,10 +730,6 @@ impl<'a> LoweringContext<'a> {
         lts.iter().map(|l| self.lower_lifetime_def(l)).collect()
     }
 
-    fn lower_opt_lifetime(&mut self, o_lt: &Option<Lifetime>) -> Option<hir::Lifetime> {
-        o_lt.as_ref().map(|lt| self.lower_lifetime(lt))
-    }
-
     fn lower_generics(&mut self, g: &Generics) -> hir::Generics {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
         let mut add_bounds = NodeMap();
@@ -751,8 +849,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_trait_ref(&mut self, p: &TraitRef) -> hir::TraitRef {
+        let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit) {
+            hir::QPath::Resolved(None, path) => path.and_then(|path| path),
+            qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath)
+        };
         hir::TraitRef {
-            path: self.lower_path(p.ref_id, &p.path, ParamMode::Explicit, false),
+            path: path,
             ref_id: p.ref_id,
         }
     }
@@ -2269,11 +2371,40 @@ impl<'a> LoweringContext<'a> {
         self.expr_block(block, attrs)
     }
 
-    fn ty(&mut self, span: Span, node: hir::Ty_) -> P<hir::Ty> {
-        P(hir::Ty {
+    fn ty_path(&mut self, id: NodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
+        let mut id = id;
+        let node = match qpath {
+            hir::QPath::Resolved(None, path) => {
+                // Turn trait object paths into `TyTraitObject` instead.
+                if let Def::Trait(_) = path.def {
+                    let principal = hir::PolyTraitRef {
+                        bound_lifetimes: hir_vec![],
+                        trait_ref: hir::TraitRef {
+                            path: path.and_then(|path| path),
+                            ref_id: id,
+                        },
+                        span,
+                    };
+
+                    // The original ID is taken by the `PolyTraitRef`,
+                    // so the `Ty` itself needs a different one.
+                    id = self.next_id();
+
+                    hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
+                } else {
+                    hir::TyPath(hir::QPath::Resolved(None, path))
+                }
+            }
+            _ => hir::TyPath(qpath)
+        };
+        P(hir::Ty { id, node, span })
+    }
+
+    fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {
+        hir::Lifetime {
             id: self.next_id(),
-            node: node,
             span: span,
-        })
+            name: keywords::Invalid.name()
+        }
     }
 }
