@@ -223,7 +223,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        let substituted = ty.subst(self.tcx, substs);
+        // miri doesn't care about lifetimes, and will choke on some crazy ones
+        // let's simply get rid of them
+        let without_lifetimes = self.tcx.erase_regions(&ty);
+        let substituted = without_lifetimes.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
     }
 
