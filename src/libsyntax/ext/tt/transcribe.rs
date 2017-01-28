@@ -17,6 +17,7 @@ use tokenstream::{self, TokenTree, Delimited, SequenceRepetition};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
+use std::mem;
 use std::ops::Add;
 use std::collections::HashMap;
 
@@ -52,17 +53,9 @@ impl Iterator for Frame {
 
     fn next(&mut self) -> Option<TokenTree> {
         match *self {
-            Frame::Delimited { ref forest, ref mut idx, span } => {
+            Frame::Delimited { ref forest, ref mut idx, .. } => {
                 *idx += 1;
-                if *idx == forest.delim.len() {
-                    Some(forest.open_tt(span))
-                } else if let Some(tree) = forest.tts.get(*idx - forest.delim.len() - 1) {
-                    Some(tree.clone())
-                } else if *idx == forest.tts.len() + 2 * forest.delim.len() {
-                    Some(forest.close_tt(span))
-                } else {
-                    None
-                }
+                forest.tts.get(*idx - 1).cloned()
             }
             Frame::Sequence { ref forest, ref mut idx, .. } => {
                 *idx += 1;
@@ -93,6 +86,7 @@ pub fn transcribe(sp_diag: &Handler,
     let mut repeat_idx = Vec::new();
     let mut repeat_len = Vec::new();
     let mut result = Vec::new();
+    let mut result_stack = Vec::new();
 
     loop {
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
@@ -111,12 +105,23 @@ pub fn transcribe(sp_diag: &Handler,
                 }
             }
 
-            if let Frame::Sequence { .. } = stack.pop().unwrap() {
-                repeat_idx.pop();
-                repeat_len.pop();
-            }
-            if stack.is_empty() {
-                return result;
+            match stack.pop().unwrap() {
+                Frame::Sequence { .. } => {
+                    repeat_idx.pop();
+                    repeat_len.pop();
+                }
+                Frame::Delimited { forest, span, .. } => {
+                    if result_stack.is_empty() {
+                        return result;
+                    }
+                    let tree = TokenTree::Delimited(span, Rc::new(Delimited {
+                        delim: forest.delim,
+                        tts: result,
+                    }));
+                    result = result_stack.pop().unwrap();
+                    result.push(tree);
+                }
+                _ => {}
             }
             continue
         };
@@ -184,6 +189,7 @@ pub fn transcribe(sp_diag: &Handler,
             }
             TokenTree::Delimited(span, delimited) => {
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
+                result_stack.push(mem::replace(&mut result, Vec::new()));
             }
             TokenTree::Token(span, MatchNt(name, kind)) => {
                 stack.push(Frame::MatchNt { name: name, kind: kind, idx: 0, span: span });
