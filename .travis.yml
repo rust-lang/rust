@@ -108,11 +108,12 @@ cache:
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
+  - rm -rf build/dist/doc
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          cp -r build/dist deploy/$TRAVIS_COMMIT;
+          cp -r build/dist/* deploy/$TRAVIS_COMMIT;
       else
-          cp -r obj/build/dist deploy/$TRAVIS_COMMIT;
+          cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
 
 deploy:
