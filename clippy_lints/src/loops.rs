@@ -616,9 +616,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                             object,
                                             method_name),
                                    |db| {
-                    db.span_suggestion(arg.span,
-                                       "to write this more concisely, try looping over",
-                                       object.to_string());
+                    db.span_suggestion(arg.span, "to write this more concisely, try looping over", object.to_string());
                 });
 
             } else if &*method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
