@@ -47,7 +47,7 @@
 //! that the contained type `T` is shareable. Additionally, `Arc<T>` is itself
 //! sendable while `Rc<T>` is not.
 //!
-//! This types allows for shared access to the contained data, and is often
+//! This type allows for shared access to the contained data, and is often
 //! paired with synchronization primitives such as mutexes to allow mutation of
 //! shared resources.
 //!
