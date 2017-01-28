@@ -71,7 +71,7 @@ fn build_libbacktrace(host: &str, target: &str) {
 
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
-    if !cfg!(stage0) {
+    if !cfg!(stage0) && target == host {
         return
     }
 
