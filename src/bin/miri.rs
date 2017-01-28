@@ -4,21 +4,57 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
 #[macro_use] extern crate log;
 
 use rustc::session::Session;
-use rustc_driver::{Compilation, CompilerCalls};
+use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
-use syntax::ast::{MetaItemKind, NestedMetaItemKind};
+use rustc::session::config::{self, Input, ErrorOutputType};
+use rustc::hir::{self, itemlikevisit};
+use rustc::ty::TyCtxt;
+use syntax::ast::{MetaItemKind, NestedMetaItemKind, self};
+use std::path::PathBuf;
 
-struct MiriCompilerCalls;
+struct MiriCompilerCalls(RustcDefaultCalls);
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a> {
-        let mut control = CompileController::basic();
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType
+    ) -> Compilation {
+        self.0.early_callback(matches, sopts, cfg, descriptions, output)
+    }
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry
+    ) -> Option<(Input, Option<PathBuf>)> {
+        self.0.no_input(matches, sopts, cfg, odir, ofile, descriptions)
+    }
+    fn late_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sess: &Session,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>
+    ) -> Compilation {
+        self.0.late_callback(matches, sess, input, odir, ofile)
+    }
+    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
+        let mut control = self.0.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
         if std::env::var("MIRI_HOST_TARGET") != Ok("yes".to_owned()) {
@@ -34,19 +70,39 @@ fn after_hir_lowering(state: &mut CompileState) {
     state.session.plugin_attributes.borrow_mut().push(attr);
 }
 
-fn after_analysis(state: &mut CompileState) {
+fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
-        let entry_def_id = tcx.map.local_def_id(entry_node_id);
-        let limits = resource_limits_from_attributes(state);
-        miri::run_mir_passes(tcx);
-        miri::eval_main(tcx, entry_def_id, limits);
+    miri::run_mir_passes(tcx);
+    let limits = resource_limits_from_attributes(state);
 
-        state.session.abort_if_errors();
+    if std::env::args().any(|arg| arg == "--test") {
+        struct Visitor<'a, 'tcx: 'a>(miri::ResourceLimits, TyCtxt<'a, 'tcx, 'tcx>, &'a CompileState<'a, 'tcx>);
+        impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
+            fn visit_item(&mut self, i: &'hir hir::Item) {
+                if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
+                    if i.attrs.iter().any(|attr| attr.value.name == "test") {
+                        let did = self.1.map.body_owner_def_id(body_id);
+                        println!("running test: {}", self.1.map.def_path(did).to_string(self.1));
+                        miri::eval_main(self.1, did, self.0);
+                        self.2.session.abort_if_errors();
+                    }
+                }
+            }
+            fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
+            fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
+        }
+        state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(limits, tcx, state));
     } else {
-        println!("no main function found, assuming auxiliary build");
+        if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
+            let entry_def_id = tcx.map.local_def_id(entry_node_id);
+            miri::eval_main(tcx, entry_def_id, limits);
+
+            state.session.abort_if_errors();
+        } else {
+            println!("no main function found, assuming auxiliary build");
+        }
     }
 }
 
@@ -147,5 +203,5 @@ fn main() {
     // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls, None, None);
+    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls(RustcDefaultCalls), None, None);
 }

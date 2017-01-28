@@ -10,8 +10,14 @@ before_script:
 - sh ~/rust-installer/rustup.sh --add-target=i686-pc-windows-msvc --prefix=/home/travis/rust -y --disable-sudo
 script:
 - |
-  env RUST_SYSROOT=$HOME/rust travis-cargo build &&
-  env RUST_SYSROOT=$HOME/rust travis-cargo test
+  export RUST_SYSROOT=$HOME/rust &&
+  travis-cargo build &&
+  travis-cargo test &&
+  travis-cargo install &&
+  cd cargo-miri-test &&
+  cargo miri &&
+  cargo miri test &&
+  cd ..
 notifications:
   email:
     on_success: never

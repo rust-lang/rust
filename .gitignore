@@ -1,4 +1,4 @@
-/target
+target
 /doc
 tex/*/out
 *.dot

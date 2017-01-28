@@ -11,6 +11,11 @@ doc = false
 name = "miri"
 test = false
 
+[[bin]]
+doc = false
+name = "cargo-miri"
+test = false
+
 [lib]
 test = false
 
@@ -20,6 +25,7 @@ byteorder = { git = "https://github.com/quininer/byteorder.git", branch = "i128"
 env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"
+cargo_metadata = "0.1"
 
 [dev-dependencies]
 compiletest_rs = "0.2.5"
