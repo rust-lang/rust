@@ -27,7 +27,9 @@ impl<'a, 'tcx> UnusedTraitImportVisitor<'a, 'tcx> {
         if !self.tcx.maybe_unused_trait_imports.contains(&id) {
             return;
         }
-        if self.tcx.used_trait_imports.borrow().contains(&id) {
+
+        let import_def_id = self.tcx.hir.local_def_id(id);
+        if self.tcx.used_trait_imports.borrow().contains(&import_def_id) {
             return;
         }
 
