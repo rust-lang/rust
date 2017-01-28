@@ -286,11 +286,6 @@ fn main() {
         id_col[i] = 1f64;
     }
 
-    // This is fine.
-    for i in (10..0).map(|x| x * 2) {
-        println!("{}", i);
-    }
-
     for _v in vec.iter() { }
     //~^ ERROR it is more idiomatic to loop over `&vec`
     //~| HELP to write this more concisely, try looping over
