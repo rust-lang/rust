@@ -1356,12 +1356,12 @@ unsafe fn bump_levels_unsafe2() -> u32 {
 Mutable statics have the same restrictions as normal statics, except that the
 type of the value is not required to ascribe to `Sync`.
 
-#### `'static` lifetime elision [unstable]
+#### `'static` lifetime elision
 
-Both constant and static declarations of reference types have *implicit*
-`'static` lifetimes unless an explicit lifetime is specified. As such, the
-constant declarations involving `'static` above may be written without the
-lifetimes. Returning to our previous example:
+[Unstable] Both constant and static declarations of reference types have
+*implicit* `'static` lifetimes unless an explicit lifetime is specified. As
+such, the constant declarations involving `'static` above may be written
+without the lifetimes. Returning to our previous example:
 
 ```rust
 #[feature(static_in_const)]
