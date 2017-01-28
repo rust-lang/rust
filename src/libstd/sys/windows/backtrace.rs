@@ -51,6 +51,10 @@ mod printing;
 #[path = "printing/gnu.rs"]
 mod printing;
 
+#[cfg(target_env = "gnu")]
+#[path = "backtrace_gnu.rs"]
+pub mod gnu;
+
 type SymInitializeFn =
     unsafe extern "system" fn(c::HANDLE, *mut c_void,
                               c::BOOL) -> c::BOOL;

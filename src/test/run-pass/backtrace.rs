@@ -104,7 +104,7 @@ fn runtest(me: &str) {
 }
 
 fn main() {
-    if cfg!(windows) && cfg!(target_env = "gnu") {
+    if cfg!(windows) && cfg!(target_env = "gnu") && cfg!(target_pointer_width = "32") {
         return
     }
 
