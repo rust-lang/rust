@@ -1,9 +1,20 @@
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use syntax::ast;
 use syntax_pos::MultiSpan;
 use util::nodemap::NodeMap;
 
 use super::{Lint, LintId, EarlyLint, IntoEarlyLint};
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct LintTable {
     map: NodeMap<Vec<EarlyLint>>
 }
@@ -42,6 +53,10 @@ impl LintTable {
 
     pub fn take(&mut self, id: ast::NodeId) -> Vec<EarlyLint> {
         self.map.remove(&id).unwrap_or(vec![])
+    }
+
+    pub fn transfer(&mut self, into: &mut LintTable) {
+        into.map.extend(self.map.drain());
     }
 
     /// Returns the first (id, lint) pair that is non-empty. Used to
