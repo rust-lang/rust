@@ -238,27 +238,46 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
                         let dest_layout = self.type_layout(dest_ty)?;
-                        let disr = v.disr_val.to_u128_unchecked();
+                        trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
                         match *dest_layout {
                             Layout::Univariant { ref variant, .. } => {
-                                assert_eq!(disr, 0);
+                                let disr_val = v.disr_val.to_u128_unchecked();
+                                assert_eq!(disr_val, 0);
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
 
                                 self.assign_fields(lvalue, offsets, args)?;
                             },
                             Layout::General { discr, ref variants, .. } => {
-                                // FIXME: report a proper error for invalid discriminants
-                                // right now we simply go into index out of bounds
+                                let disr_val = v.disr_val.to_u128_unchecked();
                                 let discr_size = discr.size().bytes();
                                 self.assign_discr_and_fields(
                                     lvalue,
-                                    variants[disr as usize].offsets.iter().cloned().map(Size::bytes),
+                                    variants[disr_val as usize].offsets.iter().cloned().map(Size::bytes),
                                     args,
-                                    disr,
+                                    disr_val,
                                     discr_size,
                                 )?;
                             },
-                            Layout::StructWrappedNullablePointer { .. } |
+                            Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
+                                let disr_val = v.disr_val.to_u128_unchecked();
+                                if nndiscr as u128 == disr_val {
+                                    let offsets = nonnull.offsets.iter().map(|s| s.bytes());
+                                    self.assign_fields(lvalue, offsets, args)?;
+                                } else {
+                                    for (_, ty) in args {
+                                        assert_eq!(self.type_size(ty)?, Some(0));
+                                    }
+                                    let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+
+                                    // FIXME(solson)
+                                    let dest = self.force_allocation(lvalue)?.to_ptr();
+
+                                    let dest = dest.offset(offset.bytes());
+                                    let dest_size = self.type_size(ty)?
+                                        .expect("bad StructWrappedNullablePointer discrfield");
+                                    self.memory.write_int(dest, 0, dest_size)?;
+                                }
+                            },
                             Layout::RawNullablePointer { .. } => {
                                 assert_eq!(args.len(), 1);
                                 let (val, ty) = args.pop().unwrap();
@@ -307,7 +326,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
-        trace!("read_discriminant_value {:?}", adt_layout);
+        trace!("read_discriminant_value {:#?}", adt_layout);
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, signed: false, .. } => {
@@ -344,6 +363,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
+        trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,

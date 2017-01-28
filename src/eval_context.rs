@@ -685,22 +685,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
         // Handle the field index for the outer non-null variant.
-        let inner_ty = match ty.sty {
+        let (inner_offset, inner_ty) = match ty.sty {
             ty::TyAdt(adt_def, substs) => {
                 let variant = &adt_def.variants[nndiscr as usize];
                 let index = discrfield[1];
                 let field = &variant.fields[index as usize];
-                field.ty(self.tcx, substs)
+                (self.get_field_offset(ty, index as usize)?, field.ty(self.tcx, substs))
             }
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
 
-        self.field_path_offset_and_ty(inner_ty, path)
+        self.field_path_offset_and_ty(inner_offset, inner_ty, path)
     }
 
-    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
-        let mut offset = Size::from_bytes(0);
-
+    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(
+        &self,
+        mut offset: Size,
+        mut ty: Ty<'tcx>,
+        path: I,
+    ) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         // Skip the initial 0 intended for LLVM GEP.
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
@@ -747,6 +750,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let bytes = field_index as u64 * self.memory.pointer_size();
                 Ok(Size::from_bytes(bytes))
             }
+            StructWrappedNullablePointer { ref nonnull, .. } => {
+                Ok(nonnull.offsets[field_index])
+            }
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
@@ -761,6 +767,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match *layout {
             Univariant { ref variant, .. } => Ok(variant.offsets.len()),
             FatPointer { .. } => Ok(2),
+            StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets.len()),
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
