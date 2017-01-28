@@ -1183,8 +1183,8 @@ impl From<[u8; 16]> for IpAddr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 impl From<[u16; 8]> for IpAddr {
-    fn from(octets: [u16; 8]) -> IpAddr {
-        IpAddr::V6(Ipv6Addr::from(octets))
+    fn from(segments: [u16; 8]) -> IpAddr {
+        IpAddr::V6(Ipv6Addr::from(segments))
     }
 }
 
