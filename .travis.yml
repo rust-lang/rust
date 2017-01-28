@@ -13,6 +13,7 @@ matrix:
   include:
     # Linux builders, all docker images
     - env: IMAGE=android DEPLOY=1
+    - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
     - env: IMAGE=linux-tested-targets DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1

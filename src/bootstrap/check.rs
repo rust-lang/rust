@@ -26,7 +26,7 @@ use build_helper::output;
 
 use {Build, Compiler, Mode};
 use dist;
-use util::{self, dylib_path, dylib_path_var};
+use util::{self, dylib_path, dylib_path_var, exe};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
 
@@ -221,6 +221,12 @@ pub fn compiletest(build: &Build,
            .arg("--llvm-cxxflags").arg("");
     }
 
+    if build.qemu_rootfs(target).is_some() {
+        cmd.arg("--qemu-test-client")
+           .arg(build.tool(&Compiler::new(0, &build.config.build),
+                           "qemu-test-client"));
+    }
+
     // Running a C compiler on MSVC requires a few env vars to be set, to be
     // sure to set them here.
     //
@@ -403,9 +409,9 @@ pub fn krate(build: &Build,
     dylib_path.insert(0, build.sysroot_libdir(&compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if target.contains("android") {
-        cargo.arg("--no-run");
-    } else if target.contains("emscripten") {
+    if target.contains("android") ||
+       target.contains("emscripten") ||
+       build.qemu_rootfs(target).is_some() {
         cargo.arg("--no-run");
     }
 
@@ -423,6 +429,9 @@ pub fn krate(build: &Build,
     } else if target.contains("emscripten") {
         build.run(&mut cargo);
         krate_emscripten(build, &compiler, target, mode);
+    } else if build.qemu_rootfs(target).is_some() {
+        build.run(&mut cargo);
+        krate_qemu(build, &compiler, target, mode);
     } else {
         cargo.args(&build.flags.cmd.test_args());
         build.run(&mut cargo);
@@ -480,23 +489,46 @@ fn krate_emscripten(build: &Build,
                     compiler: &Compiler,
                     target: &str,
                     mode: Mode) {
-     let mut tests = Vec::new();
-     let out_dir = build.cargo_out(compiler, mode, target);
-     find_tests(&out_dir, target, &mut tests);
-     find_tests(&out_dir.join("deps"), target, &mut tests);
+    let mut tests = Vec::new();
+    let out_dir = build.cargo_out(compiler, mode, target);
+    find_tests(&out_dir, target, &mut tests);
+    find_tests(&out_dir.join("deps"), target, &mut tests);
 
-     for test in tests {
-         let test_file_name = test.to_string_lossy().into_owned();
-         println!("running {}", test_file_name);
-         let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
-         let mut cmd = Command::new(nodejs);
-         cmd.arg(&test_file_name);
-         if build.config.quiet_tests {
-             cmd.arg("--quiet");
-         }
-         build.run(&mut cmd);
-     }
- }
+    for test in tests {
+        let test_file_name = test.to_string_lossy().into_owned();
+        println!("running {}", test_file_name);
+        let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
+        let mut cmd = Command::new(nodejs);
+        cmd.arg(&test_file_name);
+        if build.config.quiet_tests {
+            cmd.arg("--quiet");
+        }
+        build.run(&mut cmd);
+    }
+}
+
+fn krate_qemu(build: &Build,
+              compiler: &Compiler,
+              target: &str,
+              mode: Mode) {
+    let mut tests = Vec::new();
+    let out_dir = build.cargo_out(compiler, mode, target);
+    find_tests(&out_dir, target, &mut tests);
+    find_tests(&out_dir.join("deps"), target, &mut tests);
+
+    let tool = build.tool(&Compiler::new(0, &build.config.build),
+                          "qemu-test-client");
+    for test in tests {
+        let mut cmd = Command::new(&tool);
+        cmd.arg("run")
+           .arg(&test);
+        if build.config.quiet_tests {
+            cmd.arg("--quiet");
+        }
+        cmd.args(&build.flags.cmd.test_args());
+        build.run(&mut cmd);
+    }
+}
 
 
 fn find_tests(dir: &Path,
@@ -516,13 +548,15 @@ fn find_tests(dir: &Path,
     }
 }
 
-pub fn android_copy_libs(build: &Build,
-                         compiler: &Compiler,
-                         target: &str) {
-    if !target.contains("android") {
-        return
+pub fn emulator_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
+    if target.contains("android") {
+        android_copy_libs(build, compiler, target)
+    } else if let Some(s) = build.qemu_rootfs(target) {
+        qemu_copy_libs(build, compiler, target, s)
     }
+}
 
+fn android_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
     println!("Android copy libs to emulator ({})", target);
     build.run(Command::new("adb").arg("wait-for-device"));
     build.run(Command::new("adb").arg("remount"));
@@ -544,6 +578,39 @@ pub fn android_copy_libs(build: &Build,
                               .arg("push")
                               .arg(f.path())
                               .arg(&target_dir));
+        }
+    }
+}
+
+fn qemu_copy_libs(build: &Build,
+                  compiler: &Compiler,
+                  target: &str,
+                  rootfs: &Path) {
+    println!("QEMU copy libs to emulator ({})", target);
+    assert!(target.starts_with("arm"), "only works with arm for now");
+    t!(fs::create_dir_all(build.out.join("tmp")));
+
+    // Copy our freshly compiled test server over to the rootfs
+    let server = build.cargo_out(compiler, Mode::Tool, target)
+                      .join(exe("qemu-test-server", target));
+    t!(fs::copy(&server, rootfs.join("testd")));
+
+    // Spawn the emulator and wait for it to come online
+    let tool = build.tool(&Compiler::new(0, &build.config.build),
+                          "qemu-test-client");
+    build.run(Command::new(&tool)
+                      .arg("spawn-emulator")
+                      .arg(rootfs)
+                      .arg(build.out.join("tmp")));
+
+    // Push all our dylibs to the emulator
+    for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
+        let f = t!(f);
+        let name = f.file_name().into_string().unwrap();
+        if util::is_dylib(&name) {
+            build.run(Command::new(&tool)
+                              .arg("push")
+                              .arg(f.path()));
         }
     }
 }
