@@ -2694,7 +2694,7 @@ impl<'a> Parser<'a> {
         // yet.
         match self.token {
             token::OpenDelim(delim) => {
-                if self.quote_depth == 0 && self.tts.last().map(|&(_, i)| i == 1).unwrap_or(false) {
+                if self.quote_depth == 0 {
                     let tt = self.tts.pop().unwrap().0;
                     self.bump();
                     return Ok(tt);
