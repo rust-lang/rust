@@ -222,6 +222,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "qemu-test-client"
+version = "0.1.0"
+
+[[package]]
+name = "qemu-test-server"
+version = "0.1.0"
+
+[[package]]
 name = "rand"
 version = "0.0.0"
 dependencies = [

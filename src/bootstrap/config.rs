@@ -114,6 +114,7 @@ pub struct Target {
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub musl_root: Option<PathBuf>,
+    pub qemu_rootfs: Option<PathBuf>,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.
@@ -222,6 +223,7 @@ struct TomlTarget {
     cxx: Option<String>,
     android_ndk: Option<String>,
     musl_root: Option<String>,
+    qemu_rootfs: Option<String>,
 }
 
 impl Config {
@@ -360,6 +362,7 @@ impl Config {
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
+                target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
                 config.target_config.insert(triple.clone(), target);
             }
@@ -561,6 +564,12 @@ impl Config {
                     self.configure_args = value.split_whitespace()
                                                .map(|s| s.to_string())
                                                .collect();
+                }
+                "CFG_QEMU_ARMHF_ROOTFS" if value.len() > 0 => {
+                    let target = "arm-unknown-linux-gnueabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.qemu_rootfs = Some(parse_configure_path(value));
                 }
                 _ => {}
             }
