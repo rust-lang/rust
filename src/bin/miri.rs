@@ -7,7 +7,7 @@ extern crate rustc_driver;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
-#[macro_use] extern crate log;
+extern crate log;
 
 use rustc::session::Session;
 use rustc_driver::{Compilation, CompilerCalls};
