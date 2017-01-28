@@ -12,7 +12,7 @@
 
 use super::FnCtxt;
 use hir::def_id::DefId;
-use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
+use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue, TypeVariants};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -204,6 +204,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "binary operation `{}` cannot be applied to type `{}`",
                             op.node.as_str(),
                             lhs_ty);
+
+                        if let TypeVariants::TyRef(_, ref ty_mut) = lhs_ty.sty {
+                            if !self.infcx.type_moves_by_default(ty_mut.ty, lhs_expr.span) &&
+                                self.lookup_op_method(expr, ty_mut.ty, vec![rhs_ty_var],
+                                    Symbol::intern(name), trait_def_id,
+                                    lhs_expr).is_ok() {
+                                err.span_note(
+                                    lhs_expr.span,
+                                    &format!(
+                                        "this is a reference of type that `{}` can be applied to, \
+                                        you need to dereference this variable once for this \
+                                        operation to work",
+                                    op.node.as_str()));
+                            }
+                        }
+
                         let missing_trait = match op.node {
                             hir::BiAdd    => Some("std::ops::Add"),
                             hir::BiSub    => Some("std::ops::Sub"),

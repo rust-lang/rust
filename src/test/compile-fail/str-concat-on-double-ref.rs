@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl Drop for u32 {} //~ ERROR E0117
-//~^ NOTE impl doesn't use types inside crate
-//~| NOTE the impl does not reference any types defined in this crate
-//~| NOTE define and implement a trait or new type instead
-
 fn main() {
+    let a: &String = &"1".to_owned();
+    let b: &str = &"2";
+    let c = a + b;
+    //~^ ERROR binary operation `+` cannot be applied to type `&std::string::String`
+    //~| NOTE an implementation of `std::ops::Add` might be missing for `&std::string::String`
+    println!("{:?}", c);
 }

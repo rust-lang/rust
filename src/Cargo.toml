@@ -10,6 +10,7 @@ members = [
   "tools/linkchecker",
   "tools/rustbook",
   "tools/tidy",
+  "tools/build-manifest",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit

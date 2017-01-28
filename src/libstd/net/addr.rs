@@ -148,8 +148,6 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(sockaddr_checker)]
-    ///
     /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     ///
     /// fn main() {
@@ -158,7 +156,7 @@ impl SocketAddr {
     ///     assert_eq!(socket.is_ipv6(), false);
     /// }
     /// ```
-    #[unstable(feature = "sockaddr_checker", issue = "36949")]
+    #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
         match *self {
             SocketAddr::V4(_) => true,
@@ -172,8 +170,6 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(sockaddr_checker)]
-    ///
     /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
     /// fn main() {
@@ -183,7 +179,7 @@ impl SocketAddr {
     ///     assert_eq!(socket.is_ipv6(), true);
     /// }
     /// ```
-    #[unstable(feature = "sockaddr_checker", issue = "36949")]
+    #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
         match *self {
             SocketAddr::V4(_) => false,

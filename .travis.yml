@@ -110,9 +110,9 @@ before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
+          cp -r build/dist deploy/$TRAVIS_COMMIT;
       else
-          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
+          cp -r obj/build/dist deploy/$TRAVIS_COMMIT;
       fi
 
 deploy:

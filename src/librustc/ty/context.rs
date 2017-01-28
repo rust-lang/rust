@@ -231,7 +231,11 @@ pub struct TypeckTables<'tcx> {
     /// of the struct - this is needed because it is non-trivial to
     /// normalize while preserving regions. This table is used only in
     /// MIR construction and hence is not serialized to metadata.
-    pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
+    pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>,
+
+    /// Maps a cast expression to its kind. This is keyed on the
+    /// *from* expression of the cast, not the cast itself.
+    pub cast_kinds: NodeMap<ty::cast::CastKind>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -246,7 +250,8 @@ impl<'tcx> TypeckTables<'tcx> {
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),
             liberated_fn_sigs: NodeMap(),
-            fru_field_types: NodeMap()
+            fru_field_types: NodeMap(),
+            cast_kinds: NodeMap(),
         }
     }
 
@@ -533,10 +538,6 @@ pub struct GlobalCtxt<'tcx> {
     /// expression defining the closure.
     pub closure_kinds: RefCell<DepTrackingMap<maps::ClosureKinds<'tcx>>>,
 
-    /// Maps a cast expression to its kind. This is keyed on the
-    /// *from* expression of the cast, not the cast itself.
-    pub cast_kinds: RefCell<NodeMap<ty::cast::CastKind>>,
-
     /// Maps Fn items to a collection of fragment infos.
     ///
     /// The main goal is to identify data (each of which may be moved
@@ -792,7 +793,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             closure_tys: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             closure_kinds: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
