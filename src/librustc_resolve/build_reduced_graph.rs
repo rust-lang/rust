@@ -345,9 +345,7 @@ impl<'a> Resolver<'a> {
                     let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
                                                    CtorKind::from_ast(struct_def));
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
-                    if !ctor_vis.is_at_least(vis, &*self) {
-                        self.legacy_ctor_visibilities.insert(def.def_id(), (ctor_def, ctor_vis));
-                    }
+                    self.struct_constructors.insert(def.def_id(), (ctor_def, ctor_vis));
                 }
             }
 
@@ -441,9 +439,17 @@ impl<'a> Resolver<'a> {
             Def::Variant(..) | Def::TyAlias(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
             }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
-            Def::VariantCtor(..) | Def::StructCtor(..) => {
+            Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
+            }
+            Def::StructCtor(..) => {
+                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
+
+                if let Some(struct_def_id) =
+                        self.session.cstore.def_key(def_id).parent
+                            .map(|index| DefId { krate: def_id.krate, index: index }) {
+                    self.struct_constructors.insert(struct_def_id, (def, vis));
+                }
             }
             Def::Trait(..) => {
                 let module_kind = ModuleKind::Def(def, ident.name);
