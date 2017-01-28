@@ -19,9 +19,10 @@ use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::infer::{InferCtxt, FixupError};
-use rustc::util::nodemap::DefIdMap;
+use rustc::util::nodemap::{DefIdMap, DefIdSet};
 
 use std::cell::Cell;
+use std::mem;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -56,6 +57,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tables = self.tcx.alloc_tables(wbcx.tables);
         self.tcx.tables.borrow_mut().insert(item_def_id, tables);
+
+        let used_trait_imports = mem::replace(&mut *self.used_trait_imports.borrow_mut(),
+                                              DefIdSet());
+        debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
+        self.tcx.used_trait_imports.borrow_mut().insert(item_def_id, used_trait_imports);
     }
 }
 

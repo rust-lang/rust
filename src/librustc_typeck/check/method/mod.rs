@@ -138,7 +138,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
-            self.tcx.used_trait_imports.borrow_mut().insert(import_def_id);
+            debug!("used_trait_import: {:?}", import_def_id);
+            self.used_trait_imports.borrow_mut().insert(import_def_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
@@ -338,7 +339,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
-            self.tcx.used_trait_imports.borrow_mut().insert(import_def_id);
+            debug!("used_trait_import: {:?}", import_def_id);
+            self.used_trait_imports.borrow_mut().insert(import_def_id);
         }
 
         let def = pick.item.def();
