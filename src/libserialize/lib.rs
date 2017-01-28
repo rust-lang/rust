@@ -30,7 +30,6 @@ Core encoding and decoding interfaces.
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core_intrinsics)]
-#![feature(enumset)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]

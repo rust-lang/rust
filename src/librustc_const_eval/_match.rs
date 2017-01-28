@@ -379,19 +379,24 @@ impl<'tcx> Witness<'tcx> {
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   pcx: PatternContext<'tcx>) -> Vec<Constructor>
 {
+    let check_inhabited = cx.tcx.sess.features.borrow().never_type;
     debug!("all_constructors({:?})", pcx.ty);
     match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(ref sub_ty) => {
-            if sub_ty.is_uninhabited_from(cx.module, cx.tcx) {
+            if sub_ty.is_uninhabited_from(cx.module, cx.tcx)
+                && check_inhabited
+            {
                 vec![Slice(0)]
             } else {
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
         ty::TyArray(ref sub_ty, length) => {
-            if length == 0 || !sub_ty.is_uninhabited_from(cx.module, cx.tcx) {
+            if length == 0 || !(sub_ty.is_uninhabited_from(cx.module, cx.tcx)
+                                && check_inhabited)
+            {
                 vec![Slice(length)]
             } else {
                 vec![]
@@ -403,7 +408,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 let forest = v.uninhabited_from(&mut visited,
                                                 cx.tcx, substs,
                                                 AdtKind::Enum);
-                if forest.contains(cx.tcx, cx.module) {
+                if forest.contains(cx.tcx, cx.module)
+                    && check_inhabited
+                {
                     None
                 } else {
                     Some(Variant(v.did))
@@ -411,7 +418,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect()
         }
         _ => {
-            if pcx.ty.is_uninhabited_from(cx.module, cx.tcx) {
+            if pcx.ty.is_uninhabited_from(cx.module, cx.tcx)
+                    && check_inhabited
+            {
                 vec![]
             } else {
                 vec![Single]

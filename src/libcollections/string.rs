@@ -1166,8 +1166,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(insert_str)]
-    ///
     /// let mut s = String::from("bar");
     ///
     /// s.insert_str(0, "foo");
@@ -1175,9 +1173,7 @@ impl String {
     /// assert_eq!("foobar", s);
     /// ```
     #[inline]
-    #[unstable(feature = "insert_str",
-               reason = "recent addition",
-               issue = "35553")]
+    #[stable(feature = "insert_str", since = "1.16.0")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 
@@ -1270,7 +1266,6 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(string_split_off)]
     /// # fn main() {
     /// let mut hello = String::from("Hello, World!");
     /// let world = hello.split_off(7);
@@ -1279,7 +1274,7 @@ impl String {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "string_split_off", issue = "38080")]
+    #[stable(feature = "string_split_off", since = "1.16.0")]
     pub fn split_off(&mut self, mid: usize) -> String {
         assert!(self.is_char_boundary(mid));
         let other = self.vec.split_off(mid);

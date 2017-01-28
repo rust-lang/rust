@@ -222,7 +222,7 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 
 /// Possible errors from the [`env::var`] function.
 ///
-/// [env::var]: fn.var.html
+/// [`env::var`]: fn.var.html
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
