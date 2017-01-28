@@ -31,6 +31,7 @@ fn main() {
     // targets, which means we have to build the alloc_jemalloc crate
     // for targets like emscripten, even if we don't use it.
     let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
        target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") ||
        target.contains("redox") {
@@ -68,11 +69,10 @@ fn main() {
     } else if !target.contains("windows") && !target.contains("musl") {
         println!("cargo:rustc-link-lib=pthread");
     }
-    if !cfg!(stage0) {
+    if !cfg!(stage0) && target == host {
         return
     }
 
-    let host = env::var("HOST").expect("HOST was not set");
     let src_dir = env::current_dir().unwrap().join("../jemalloc");
     rerun_if_changed_anything_in_dir(&src_dir);
     let compiler = gcc::Config::new().get_compiler();
