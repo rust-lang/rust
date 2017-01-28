@@ -137,6 +137,7 @@ branches:
 before_deploy:
   - ps: |
         New-Item -Path deploy -ItemType directory
+        Remove-Item -Recurse -Force build\dist\doc
         Get-ChildItem -Path build\dist | Move-Item -Destination deploy
         Get-ChildItem -Path deploy | Foreach-Object {
           Push-AppveyorArtifact $_.FullName -FileName ${env:APPVEYOR_REPO_COMMIT}/$_
