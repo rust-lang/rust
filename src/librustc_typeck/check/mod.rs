@@ -1521,9 +1521,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if self.diverges.get() == Diverges::Always {
             self.diverges.set(Diverges::WarnedAlways);
 
-            self.tcx.sess.add_lint(lint::builtin::UNREACHABLE_CODE,
-                                   id, span,
-                                   format!("unreachable {}", kind));
+            self.tables.borrow_mut().lints.add_lint(
+                lint::builtin::UNREACHABLE_CODE,
+                id, span,
+                format!("unreachable {}", kind));
         }
     }
 
