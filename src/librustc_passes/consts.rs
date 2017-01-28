@@ -73,12 +73,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 ErroneousReferencedConstant(_) => {}
                 BadType(_) => {}
                 _ => {
-                    self.tcx.sess.add_lint(CONST_ERR,
-                                           expr.id,
-                                           expr.span,
-                                           format!("constant evaluation error: {}. This will \
-                                                    become a HARD ERROR in the future",
-                                                   err.description().into_oneline()))
+                    span_err!(self.tcx.sess,
+                              expr.span,
+                              E0080,
+                              "constant evaluation error: {}",
+                              err.description().into_oneline());
                 }
             }
         }
