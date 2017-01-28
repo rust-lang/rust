@@ -80,7 +80,7 @@ pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
-use astconv::{AstConv, ast_region_to_region};
+use astconv::AstConv;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
@@ -97,7 +97,6 @@ use rustc::ty::adjustment;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
-use rscope::{ElisionFailureInfo, RegionScope};
 use session::{Session, CompileResult};
 use CrateCtxt;
 use TypeAndSubsts;
@@ -1410,6 +1409,15 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         Ok(r)
     }
 
+    fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
+                -> Option<&'tcx ty::Region> {
+        let v = match def {
+            Some(def) => infer::EarlyBoundRegion(span, def.name),
+            None => infer::MiscVariable(span)
+        };
+        Some(self.next_region_var(v))
+    }
+
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         self.next_ty_var(TypeVariableOrigin::TypeInference(span))
     }
@@ -1447,30 +1455,6 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
 
     fn set_tainted_by_errors(&self) {
         self.infcx.set_tainted_by_errors()
-    }
-}
-
-impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
-        // RFC #599 specifies that object lifetime defaults take
-        // precedence over other defaults. But within a fn body we
-        // don't have a *default* region, rather we use inference to
-        // find the *correct* region, which is strictly more general
-        // (and anyway, within a fn body the right region may not even
-        // be something the user can write explicitly, since it might
-        // be some expression).
-        *self.next_region_var(infer::MiscVariable(span))
-    }
-
-    fn anon_regions(&self, span: Span, count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
-        Ok((0..count).map(|_| {
-            *self.next_region_var(infer::MiscVariable(span))
-        }).collect())
     }
 }
 
@@ -1830,7 +1814,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
-        let t = AstConv::ast_ty_to_ty(self, self, ast_t);
+        let t = AstConv::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
     }
@@ -3974,7 +3958,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match *qpath {
             hir::QPath::Resolved(ref maybe_qself, ref path) => {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::def_to_ty(self, self, opt_self_ty, path, node_id, true);
+                let ty = AstConv::def_to_ty(self, opt_self_ty, path, true);
                 (path.def, ty)
             }
             hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -4406,10 +4390,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => &[]
             };
 
-            if let Some(ast_lifetime) = lifetimes.get(i) {
-                ast_region_to_region(self.tcx, ast_lifetime)
+            if let Some(lifetime) = lifetimes.get(i) {
+                AstConv::ast_region_to_region(self, lifetime, Some(def))
             } else {
-                self.region_var_for_def(span, def)
+                self.re_infer(span, Some(def)).unwrap()
             }
         }, |def, substs| {
             let mut i = def.index as usize;

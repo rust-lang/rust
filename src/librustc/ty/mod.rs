@@ -592,24 +592,6 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-/// Default region to use for the bound of objects that are
-/// supplied as the value for this type parameter. This is derived
-/// from `T:'a` annotations appearing in the type definition.  If
-/// this is `None`, then the default is inherited from the
-/// surrounding context. See RFC #599 for details.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum ObjectLifetimeDefault<'tcx> {
-    /// Require an explicit annotation. Occurs when multiple
-    /// `T:'a` constraints are found.
-    Ambiguous,
-
-    /// Use the base default, typically 'static, but in a fn body it is a fresh variable
-    BaseDefault,
-
-    /// Use the given region as the default.
-    Specific(&'tcx Region),
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef<'tcx> {
     pub name: Name,
@@ -617,7 +599,6 @@ pub struct TypeParameterDef<'tcx> {
     pub index: u32,
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `T`, asserts data behind the parameter
@@ -625,12 +606,11 @@ pub struct TypeParameterDef<'tcx> {
     pub pure_wrt_drop: bool,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct RegionParameterDef<'tcx> {
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
-    pub bounds: Vec<&'tcx ty::Region>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
@@ -638,7 +618,7 @@ pub struct RegionParameterDef<'tcx> {
     pub pure_wrt_drop: bool,
 }
 
-impl<'tcx> RegionParameterDef<'tcx> {
+impl RegionParameterDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
             index: self.index,
@@ -659,7 +639,7 @@ pub struct Generics<'tcx> {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
     pub parent_types: u32,
-    pub regions: Vec<RegionParameterDef<'tcx>>,
+    pub regions: Vec<RegionParameterDef>,
     pub types: Vec<TypeParameterDef<'tcx>>,
     pub has_self: bool,
 }
@@ -677,7 +657,7 @@ impl<'tcx> Generics<'tcx> {
         self.parent_count() + self.own_count()
     }
 
-    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef<'tcx> {
+    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
         &self.regions[param.index as usize - self.has_self as usize]
     }
 
