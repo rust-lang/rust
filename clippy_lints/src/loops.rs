@@ -588,28 +588,36 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
             if &*method_name.as_str() == "iter" || &*method_name.as_str() == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
                     let object = snippet(cx, args[0].span, "_");
-                    span_lint(cx,
-                              EXPLICIT_ITER_LOOP,
-                              expr.span,
-                              &format!("it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
-                                       if &*method_name.as_str() == "iter_mut" {
-                                           "mut "
-                                       } else {
-                                           ""
-                                       },
-                                       object,
-                                       object,
-                                       method_name));
+                    let suggestion = format!("&{}{}",
+                                             if &*method_name.as_str() == "iter_mut" {
+                                                 "mut "
+                                             } else {
+                                                 ""
+                                             },
+                                             object);
+                    span_lint_and_then(cx,
+                                       EXPLICIT_ITER_LOOP,
+                                       arg.span,
+                                       &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
+                                                suggestion,
+                                                object,
+                                                method_name),
+                                       |db| {
+                        db.span_suggestion(arg.span, "to write this more concisely, try looping over", suggestion);
+                    });
                 }
             } else if &*method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let object = snippet(cx, args[0].span, "_");
-                span_lint(cx,
-                          EXPLICIT_INTO_ITER_LOOP,
-                          expr.span,
-                          &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                   object,
-                                   object,
-                                   method_name));
+                span_lint_and_then(cx,
+                                   EXPLICIT_INTO_ITER_LOOP,
+                                   arg.span,
+                                   &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
+                                            object,
+                                            object,
+                                            method_name),
+                                   |db| {
+                    db.span_suggestion(arg.span, "to write this more concisely, try looping over", object.to_string());
+                });
 
             } else if &*method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
