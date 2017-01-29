@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! test { ($a, $b) => (()); } //~ ERROR missing fragment
+macro_rules! test { ($a, //~ ERROR missing fragment
+                     $b) => (()); } //~ ERROR missing fragment
 
 fn main() {
     test!()

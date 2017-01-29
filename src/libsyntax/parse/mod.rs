@@ -139,13 +139,9 @@ pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a Pa
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-// Warning: This parses with quote_depth > 0, which is not the default.
 pub fn parse_tts_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
-                                     -> PResult<'a, Vec<tokenstream::TokenTree>> {
-    let mut p = new_parser_from_source_str(sess, name, source);
-    p.quote_depth += 1;
-    // right now this is re-creating the token trees from ... token trees.
-    p.parse_all_token_trees()
+                                     -> Vec<tokenstream::TokenTree> {
+    filemap_to_tts(sess, sess.codemap().new_filemap(name, None, source))
 }
 
 // Create a new parser from a source string
@@ -986,7 +982,7 @@ mod tests {
             _ => panic!("not a macro"),
         };
 
-        let span = tts.iter().rev().next().unwrap().get_span();
+        let span = tts.iter().rev().next().unwrap().span();
 
         match sess.codemap().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

@@ -287,7 +287,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = toks.parse_all_token_trees().unwrap().into_iter();
         let mut prev = toks.next().unwrap();
 
-        let first_span = prev.get_span();
+        let first_span = prev.span();
         let mut angle_count = 0;
         for tok in toks {
             if let TokenTree::Token(_, ref tok) = prev {
@@ -305,10 +305,10 @@ impl<'a> SpanUtils<'a> {
                 continue;
             }
             if let TokenTree::Token(_, token::Semi) = tok {
-                return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
+                return self.snippet(mk_sp(first_span.lo, prev.span().hi));
             } else if let TokenTree::Delimited(_, ref d) = tok {
                 if d.delim == token::Brace {
-                    return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
+                    return self.snippet(mk_sp(first_span.lo, prev.span().hi));
                 }
             }
             prev = tok;

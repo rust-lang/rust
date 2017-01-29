@@ -211,7 +211,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     };
 
                     // FIXME(jseyfried) merge with `self.visit_macro()`
-                    let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+                    let matchers = def.body.chunks(4).map(|arm| arm[0].span()).collect();
                     om.macros.push(Macro {
                         def_id: def_id,
                         attrs: def.attrs.clone().into(),
@@ -521,7 +521,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     // convert each exported_macro into a doc item
     fn visit_local_macro(&self, def: &hir::MacroDef) -> Macro {
         // Extract the spans of all matchers. They represent the "interface" of the macro.
-        let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+        let matchers = def.body.chunks(4).map(|arm| arm[0].span()).collect();
 
         Macro {
             def_id: self.cx.tcx.hir.local_def_id(def.id),
