@@ -2130,13 +2130,6 @@ impl cmp::Ord for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<Path> for Path {
-    fn as_ref(&self) -> &Path {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for OsStr {
     fn as_ref(&self) -> &Path {
         Path::new(self)
