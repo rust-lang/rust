@@ -52,7 +52,7 @@
 //!   the LLVM artifact produced for A references the LLVM artifact produced
 //!   for B.
 //!
-//! - Translation items and the references between them for a directed graph,
+//! - Translation items and the references between them form a directed graph,
 //!   where the translation items are the nodes and references form the edges.
 //!   Let's call this graph the "translation item graph".
 //!
