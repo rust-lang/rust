@@ -2,7 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, Size};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -238,20 +238,51 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
                         let dest_layout = self.type_layout(dest_ty)?;
+                        trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
                         match *dest_layout {
                             Layout::Univariant { ref variant, .. } => {
-                                assert_eq!(v.disr_val.to_u128_unchecked(), 0);
+                                let disr_val = v.disr_val.to_u128_unchecked();
+                                assert_eq!(disr_val, 0);
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
 
-                                // FIXME: don't allocate for single or dual field structs
-                                let dest = self.force_allocation(lvalue)?.to_ptr();
+                                self.assign_fields(lvalue, offsets, args)?;
+                            },
+                            Layout::General { discr, ref variants, .. } => {
+                                let disr_val = v.disr_val.to_u128_unchecked();
+                                let discr_size = discr.size().bytes();
+                                self.assign_discr_and_fields(
+                                    lvalue,
+                                    variants[disr_val as usize].offsets.iter().cloned().map(Size::bytes),
+                                    args,
+                                    disr_val,
+                                    discr_size,
+                                )?;
+                            },
+                            Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
+                                let disr_val = v.disr_val.to_u128_unchecked();
+                                if nndiscr as u128 == disr_val {
+                                    let offsets = nonnull.offsets.iter().map(|s| s.bytes());
+                                    self.assign_fields(lvalue, offsets, args)?;
+                                } else {
+                                    for (_, ty) in args {
+                                        assert_eq!(self.type_size(ty)?, Some(0));
+                                    }
+                                    let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
 
-                                for (offset, (value, value_ty)) in offsets.into_iter().zip(args) {
-                                    let field_dest = dest.offset(offset);
-                                    self.write_value_to_ptr(value, field_dest, value_ty)?;
+                                    // FIXME(solson)
+                                    let dest = self.force_allocation(lvalue)?.to_ptr();
+
+                                    let dest = dest.offset(offset.bytes());
+                                    let dest_size = self.type_size(ty)?
+                                        .expect("bad StructWrappedNullablePointer discrfield");
+                                    self.memory.write_int(dest, 0, dest_size)?;
                                 }
                             },
-                            // FIXME: enum variant constructors
+                            Layout::RawNullablePointer { .. } => {
+                                assert_eq!(args.len(), 1);
+                                let (val, ty) = args.pop().unwrap();
+                                self.write_value(val, lvalue, ty)?;
+                            },
                             _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
                         }
                         self.goto_block(target);
@@ -295,7 +326,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
-        trace!("read_discriminant_value {:?}", adt_layout);
+        trace!("read_discriminant_value {:#?}", adt_layout);
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, signed: false, .. } => {
@@ -332,6 +363,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
+        trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,

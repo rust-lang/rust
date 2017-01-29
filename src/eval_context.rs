@@ -223,7 +223,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        let substituted = ty.subst(self.tcx, substs);
+        // miri doesn't care about lifetimes, and will choke on some crazy ones
+        // let's simply get rid of them
+        let without_lifetimes = self.tcx.erase_regions(&ty);
+        let substituted = without_lifetimes.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
     }
 
@@ -355,18 +358,44 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn assign_fields<I: IntoIterator<Item = u64>>(
+    pub fn assign_discr_and_fields<
+        I: IntoIterator<Item = u64>,
+        V: IntoValTyPair<'tcx>,
+        J: IntoIterator<Item = V>,
+    >(
         &mut self,
         dest: Lvalue<'tcx>,
         offsets: I,
-        operands: &[mir::Operand<'tcx>],
+        operands: J,
+        discr_val: u128,
+        discr_size: u64,
+    ) -> EvalResult<'tcx, ()> {
+        // FIXME(solson)
+        let dest_ptr = self.force_allocation(dest)?.to_ptr();
+
+        let mut offsets = offsets.into_iter();
+        let discr_offset = offsets.next().unwrap();
+        let discr_dest = dest_ptr.offset(discr_offset);
+        self.memory.write_uint(discr_dest, discr_val, discr_size)?;
+
+        self.assign_fields(dest, offsets, operands)
+    }
+
+    pub fn assign_fields<
+        I: IntoIterator<Item = u64>,
+        V: IntoValTyPair<'tcx>,
+        J: IntoIterator<Item = V>,
+    >(
+        &mut self,
+        dest: Lvalue<'tcx>,
+        offsets: I,
+        operands: J,
     ) -> EvalResult<'tcx, ()> {
         // FIXME(solson)
         let dest = self.force_allocation(dest)?.to_ptr();
 
         for (offset, operand) in offsets.into_iter().zip(operands) {
-            let value = self.eval_operand(operand)?;
-            let value_ty = self.operand_ty(operand);
+            let (value, value_ty) = operand.into_val_ty_pair(self)?;
             let field_dest = dest.offset(offset);
             self.write_value_to_ptr(value, field_dest, value_ty)?;
         }
@@ -431,18 +460,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u128_unchecked();
                             let discr_size = discr.size().bytes();
-                            let discr_offset = variants[variant].offsets[0].bytes();
 
-                            // FIXME(solson)
-                            let dest = self.force_allocation(dest)?;
-                            let discr_dest = (dest.to_ptr()).offset(discr_offset);
-
-                            self.memory.write_uint(discr_dest, discr_val, discr_size)?;
-
-                            // Don't include the first offset; it's for the discriminant.
-                            let field_offsets = variants[variant].offsets.iter().skip(1)
-                                .map(|s| s.bytes());
-                            self.assign_fields(dest, field_offsets, operands)?;
+                            self.assign_discr_and_fields(
+                                dest,
+                                variants[variant].offsets.iter().cloned().map(Size::bytes),
+                                operands,
+                                discr_val,
+                                discr_size,
+                            )?;
                         } else {
                             bug!("tried to assign {:?} to Layout::General", kind);
                         }
@@ -660,22 +685,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
         // Handle the field index for the outer non-null variant.
-        let inner_ty = match ty.sty {
+        let (inner_offset, inner_ty) = match ty.sty {
             ty::TyAdt(adt_def, substs) => {
                 let variant = &adt_def.variants[nndiscr as usize];
                 let index = discrfield[1];
                 let field = &variant.fields[index as usize];
-                field.ty(self.tcx, substs)
+                (self.get_field_offset(ty, index as usize)?, field.ty(self.tcx, substs))
             }
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
 
-        self.field_path_offset_and_ty(inner_ty, path)
+        self.field_path_offset_and_ty(inner_offset, inner_ty, path)
     }
 
-    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
-        let mut offset = Size::from_bytes(0);
-
+    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(
+        &self,
+        mut offset: Size,
+        mut ty: Ty<'tcx>,
+        path: I,
+    ) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         // Skip the initial 0 intended for LLVM GEP.
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
@@ -722,6 +750,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let bytes = field_index as u64 * self.memory.pointer_size();
                 Ok(Size::from_bytes(bytes))
             }
+            StructWrappedNullablePointer { ref nonnull, .. } => {
+                Ok(nonnull.offsets[field_index])
+            }
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
@@ -736,6 +767,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match *layout {
             Univariant { ref variant, .. } => Ok(variant.offsets.len()),
             FatPointer { .. } => Ok(2),
+            StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets.len()),
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
@@ -1463,4 +1495,22 @@ pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::
 
 pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.uninhabited_from(&mut FxHashSet::default(), tcx).is_empty()
+}
+
+pub trait IntoValTyPair<'tcx> {
+    fn into_val_ty_pair<'a>(self, ecx: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a;
+}
+
+impl<'tcx> IntoValTyPair<'tcx> for (Value, Ty<'tcx>) {
+    fn into_val_ty_pair<'a>(self, _: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a {
+        Ok(self)
+    }
+}
+
+impl<'b, 'tcx: 'b> IntoValTyPair<'tcx> for &'b mir::Operand<'tcx> {
+    fn into_val_ty_pair<'a>(self, ecx: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a {
+        let value = ecx.eval_operand(self)?;
+        let value_ty = ecx.operand_ty(self);
+        Ok((value, value_ty))
+    }
 }
