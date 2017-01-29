@@ -25,7 +25,7 @@ use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 
 use array_vec::{self, Array, ArrayVec};
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(Hash, Debug)]
 pub enum AccumulateVec<A: Array> {
     Array(ArrayVec<A>),
     Heap(Vec<A::Element>)
