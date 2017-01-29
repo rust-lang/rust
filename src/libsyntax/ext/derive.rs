@@ -16,14 +16,9 @@ use symbol::Symbol;
 use syntax_pos::Span;
 use codemap;
 
-pub fn is_derive_attr(attr: &ast::Attribute) -> bool {
-    let res = attr.name() == Symbol::intern("derive");
-    res
-}
-
 pub fn derive_attr_trait<'a>(cx: &mut ExtCtxt, attr: &'a ast::Attribute)
                              -> Option<&'a NestedMetaItem> {
-    if !is_derive_attr(attr) {
+    if attr.name() != "derive" {
         return None;
     }
     if attr.value_str().is_some() {
@@ -42,21 +37,19 @@ pub fn derive_attr_trait<'a>(cx: &mut ExtCtxt, attr: &'a ast::Attribute)
 }
 
 pub fn verify_derive_attrs(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
-    for i in 0..attrs.len() {
-        if !is_derive_attr(&attrs[i]) {
+    for attr in attrs {
+        if attr.name() != "derive" {
             continue;
         }
 
-        let span = attrs[i].span;
-
-        if attrs[i].value_str().is_some() {
-            cx.span_err(span, "unexpected value in `derive`");
+        if attr.value_str().is_some() {
+            cx.span_err(attr.span, "unexpected value in `derive`");
         }
 
-        let traits = attrs[i].meta_item_list().unwrap_or(&[]).to_owned();
+        let traits = attr.meta_item_list().unwrap_or(&[]).to_owned();
 
         if traits.is_empty() {
-            cx.span_warn(span, "empty trait list in `derive`");
+            cx.span_warn(attr.span, "empty trait list in `derive`");
             continue;
         }
         for titem in traits {
@@ -67,11 +60,26 @@ pub fn verify_derive_attrs(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
     }
 }
 
+pub enum DeriveType {
+    Legacy,
+    ProcMacro,
+    Builtin
+}
+
+impl DeriveType {
+    pub fn is_derive_type(&self, cx: &mut ExtCtxt, titem: &NestedMetaItem) -> bool {
+        match *self {
+            DeriveType::Legacy => is_legacy_derive(cx, titem),
+            DeriveType::ProcMacro => is_proc_macro_derive(cx, titem),
+            DeriveType::Builtin => is_builtin_derive(cx, titem),
+        }
+    }
+}
+
 pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
-                       is_derive_type: fn(&mut ExtCtxt, &NestedMetaItem) -> bool)
-                       -> Option<ast::Attribute> {
+                       derive_type: DeriveType) -> Option<ast::Attribute> {
     for i in 0..attrs.len() {
-        if !is_derive_attr(&attrs[i]) {
+        if attrs[i].name() != "derive" {
             continue;
         }
 
@@ -90,7 +98,7 @@ pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
 
         // See if we can find a matching trait.
         for j in 0..traits.len() {
-            if is_derive_type(cx, &traits[j]) {
+            if derive_type.is_derive_type(cx, &traits[j]) {
                 titem = Some(traits.remove(j));
                 break;
             }
@@ -115,7 +123,7 @@ pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
 
 pub fn get_legacy_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                          -> Option<ast::Attribute> {
-    get_derive_attr(cx, attrs, is_legacy_derive).and_then(|a| {
+    get_derive_attr(cx, attrs, DeriveType::Legacy).and_then(|a| {
         let titem = derive_attr_trait(cx, &a);
         if let Some(titem) = titem {
             let tword = titem.word().unwrap();
@@ -141,16 +149,20 @@ pub fn get_legacy_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
 
 pub fn get_proc_macro_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                              -> Option<ast::Attribute> {
-    get_derive_attr(cx, attrs, is_proc_macro_derive)
+    get_derive_attr(cx, attrs, DeriveType::ProcMacro)
 }
 
 pub fn get_builtin_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                           -> Option<ast::Attribute> {
-    get_derive_attr(cx, attrs, is_builtin_derive)
+    get_derive_attr(cx, attrs, DeriveType::Builtin)
 }
 
 pub fn is_legacy_derive(cx: &mut ExtCtxt, titem: &NestedMetaItem) -> bool {
-    !is_builtin_derive(cx, titem) && !is_proc_macro_derive(cx, titem)
+    let tname = titem.name().unwrap();
+    let name = Symbol::intern(&format!("derive_{}", tname));
+    let path = ast::Path::from_ident(titem.span, ast::Ident::with_empty_ctxt(name));
+    !is_proc_macro_derive(cx, titem) && !is_builtin_derive(cx, titem) &&
+        cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).is_ok()
 }
 
 pub fn is_builtin_derive(cx: &mut ExtCtxt, titem: &NestedMetaItem) -> bool {
@@ -191,7 +203,7 @@ pub fn add_structural_marker(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) 
     let (mut seen_peq, mut seen_eq) = (false, false);
 
     for i in 0..attrs.len() {
-        if !is_derive_attr(&attrs[i]) {
+        if attrs[i].name() != "derive" {
             continue;
         }
         let traits = attrs[i].meta_item_list().unwrap_or(&[]).to_owned();
@@ -224,7 +236,7 @@ pub fn add_copy_clone_marker(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) 
     let (mut seen_clone, mut seen_copy) = (false, false);
 
     for i in 0..attrs.len() {
-        if !is_derive_attr(&attrs[i]) {
+        if attrs[i].name() != "derive" {
             continue;
         }
         let traits = attrs[i].meta_item_list().unwrap_or(&[]).to_owned();

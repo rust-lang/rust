@@ -14,7 +14,7 @@ use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
-use ext::derive::{is_derive_attr, get_legacy_derive, get_proc_macro_derive, get_builtin_derive,
+use ext::derive::{get_legacy_derive, get_proc_macro_derive, get_builtin_derive,
                   derive_attr_trait, add_structural_marker, add_copy_clone_marker,
                   verify_derive_attrs};
 use ext::hygiene::Mark;
@@ -675,7 +675,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(&mut self, attr: ast::Attribute, item: Annotatable, kind: ExpansionKind)
                     -> Expansion {
-        let invoc_kind = if is_derive_attr(&attr) {
+        let invoc_kind = if attr.name() == "derive" {
             InvocationKind::Derive { attr: attr, item: item }
         } else {
             InvocationKind::Attr { attr: attr, item: item }
@@ -935,7 +935,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            if !is_derive_attr(&attr) {
+            if attr.name() != "derive" {
                 let item =
                     Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
                 return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
@@ -959,7 +959,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            if !is_derive_attr(&attr) {
+            if attr.name() != "derive" {
                 let item =
                     Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
                 return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
