@@ -1,0 +1,26 @@
+From a4f388e111ce05e2ab7912cff3c9070334bb74ae Mon Sep 17 00:00:00 2001
+From: Josh Stone <jistone@redhat.com>
+Date: Fri, 20 Jan 2017 15:41:56 -0800
+Subject: [PATCH] Prevent inlining in PPC64 initfini.s
+
+Ref: https://sourceware.org/ml/libc-alpha/2012-01/msg00195.html
+---
+ sysdeps/powerpc/powerpc64/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sysdeps/powerpc/powerpc64/Makefile b/sysdeps/powerpc/powerpc64/Makefile
+index 78d4f07e575f..fe96aae4d43e 100644
+--- a/sysdeps/powerpc/powerpc64/Makefile
++++ b/sysdeps/powerpc/powerpc64/Makefile
+@@ -28,7 +28,7 @@ elide-routines.os += hp-timing
+ ifneq ($(elf),no)
+ # The initfini generation code doesn't work in the presence of -fPIC, so
+ # we use -fpic instead which is much better.
+-CFLAGS-initfini.s += -fpic -O1
++CFLAGS-initfini.s += -fpic -O1 -fno-inline
+ endif
+ endif
+ 
+-- 
+2.9.3
+
