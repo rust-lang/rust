@@ -11,9 +11,10 @@
 use ast::Ident;
 use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use ext::tt::quoted;
 use parse::token::{self, MatchNt, SubstNt, Token, NtIdent, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{self, TokenTree, Delimited, SequenceRepetition};
+use tokenstream::{TokenTree, Delimited};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
@@ -24,34 +25,28 @@ use std::collections::HashMap;
 // An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
     Delimited {
-        forest: Rc<Delimited>,
-        idx: usize,
-        span: Span,
-    },
-    MatchNt {
-        name: Ident,
-        kind: Ident,
+        forest: Rc<quoted::Delimited>,
         idx: usize,
         span: Span,
     },
     Sequence {
-        forest: Rc<SequenceRepetition>,
+        forest: Rc<quoted::SequenceRepetition>,
         idx: usize,
         sep: Option<Token>,
     },
 }
 
 impl Frame {
-    fn new(tts: Vec<TokenTree>) -> Frame {
-        let forest = Rc::new(tokenstream::Delimited { delim: token::NoDelim, tts: tts });
+    fn new(tts: Vec<quoted::TokenTree>) -> Frame {
+        let forest = Rc::new(quoted::Delimited { delim: token::NoDelim, tts: tts });
         Frame::Delimited { forest: forest, idx: 0, span: DUMMY_SP }
     }
 }
 
 impl Iterator for Frame {
-    type Item = TokenTree;
+    type Item = quoted::TokenTree;
 
-    fn next(&mut self) -> Option<TokenTree> {
+    fn next(&mut self) -> Option<quoted::TokenTree> {
         match *self {
             Frame::Delimited { ref forest, ref mut idx, .. } => {
                 *idx += 1;
@@ -60,15 +55,6 @@ impl Iterator for Frame {
             Frame::Sequence { ref forest, ref mut idx, .. } => {
                 *idx += 1;
                 forest.tts.get(*idx - 1).cloned()
-            }
-            Frame::MatchNt { ref mut idx, name, kind, span } => {
-                *idx += 1;
-                match *idx {
-                    1 => Some(TokenTree::Token(span, token::SubstNt(name))),
-                    2 => Some(TokenTree::Token(span, token::Colon)),
-                    3 => Some(TokenTree::Token(span, token::Ident(kind))),
-                    _ => None,
-                }
             }
         }
     }
@@ -79,7 +65,7 @@ impl Iterator for Frame {
 /// (and should) be None.
 pub fn transcribe(sp_diag: &Handler,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
-                  src: Vec<tokenstream::TokenTree>)
+                  src: Vec<quoted::TokenTree>)
                   -> Vec<TokenTree> {
     let mut stack = SmallVector::one(Frame::new(src));
     let interpolations = interp.unwrap_or_else(HashMap::new); /* just a convenience */
@@ -121,15 +107,14 @@ pub fn transcribe(sp_diag: &Handler,
                     result = result_stack.pop().unwrap();
                     result.push(tree);
                 }
-                _ => {}
             }
             continue
         };
 
         match tree {
-            TokenTree::Sequence(sp, seq) => {
+            quoted::TokenTree::Sequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(&TokenTree::Sequence(sp, seq.clone()),
+                match lockstep_iter_size(&quoted::TokenTree::Sequence(sp, seq.clone()),
                                          &interpolations,
                                          &repeat_idx) {
                     LockstepIterSize::Unconstrained => {
@@ -145,7 +130,7 @@ pub fn transcribe(sp_diag: &Handler,
                     }
                     LockstepIterSize::Constraint(len, _) => {
                         if len == 0 {
-                            if seq.op == tokenstream::KleeneOp::OneOrMore {
+                            if seq.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
                                 panic!(sp_diag.span_fatal(sp.clone(),
                                                           "this must repeat at least once"));
@@ -163,7 +148,7 @@ pub fn transcribe(sp_diag: &Handler,
                 }
             }
             // FIXME #2887: think about span stuff here
-            TokenTree::Token(sp, SubstNt(ident)) => {
+            quoted::TokenTree::Token(sp, SubstNt(ident)) => {
                 match lookup_cur_matched(ident, &interpolations, &repeat_idx) {
                     None => result.push(TokenTree::Token(sp, SubstNt(ident))),
                     Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
@@ -187,14 +172,11 @@ pub fn transcribe(sp_diag: &Handler,
                     }
                 }
             }
-            TokenTree::Delimited(span, delimited) => {
+            quoted::TokenTree::Delimited(span, delimited) => {
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            TokenTree::Token(span, MatchNt(name, kind)) => {
-                stack.push(Frame::MatchNt { name: name, kind: kind, idx: 0, span: span });
-            }
-            tt @ TokenTree::Token(..) => result.push(tt),
+            quoted::TokenTree::Token(span, tok) => result.push(TokenTree::Token(span, tok)),
         }
     }
 }
@@ -245,10 +227,11 @@ impl Add for LockstepIterSize {
     }
 }
 
-fn lockstep_iter_size(tree: &TokenTree,
+fn lockstep_iter_size(tree: &quoted::TokenTree,
                       interpolations: &HashMap<Ident, Rc<NamedMatch>>,
                       repeat_idx: &[usize])
                       -> LockstepIterSize {
+    use self::quoted::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimed) => {
             delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {

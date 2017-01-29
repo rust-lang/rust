@@ -9,7 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    println!("{}", { macro_rules! x { ($()*) => {} } 33 });
-    //~^ ERROR no syntax variables matched as repeating at this depth
+    println!("{}", { macro_rules! x { ($(t:tt)*) => {} } 33 });
 }
 

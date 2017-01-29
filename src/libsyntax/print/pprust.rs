@@ -1475,20 +1475,6 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 word(&mut self.s, &token_to_string(&delimed.close_token()))
             },
-            TokenTree::Sequence(_, ref seq) => {
-                word(&mut self.s, "$(")?;
-                for tt_elt in &seq.tts {
-                    self.print_tt(tt_elt)?;
-                }
-                word(&mut self.s, ")")?;
-                if let Some(ref tk) = seq.separator {
-                    word(&mut self.s, &token_to_string(tk))?;
-                }
-                match seq.op {
-                    tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
-                    tokenstream::KleeneOp::OneOrMore => word(&mut self.s, "+"),
-                }
-            }
         }
     }
 

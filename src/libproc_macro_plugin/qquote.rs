@@ -119,7 +119,6 @@ impl Quote for TokenTree {
                 ::syntax::tokenstream::TokenTree::Delimited(::syntax::ext::quote::rt::DUMMY_SP,
                                                             (quote delimited))
             },
-            _ => panic!("unexpected `TokenTree::Sequence` in `qquote`"),
         }
     }
 }

@@ -16,6 +16,7 @@ use ext::expand::{Expansion, ExpansionKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
+use ext::tt::quoted;
 use ext::tt::transcribe::transcribe;
 use parse::{Directory, ParseSess};
 use parse::parser::Parser;
@@ -23,7 +24,7 @@ use parse::token::{self, NtTT, Token};
 use parse::token::Token::*;
 use print;
 use symbol::Symbol;
-use tokenstream::{self, TokenTree};
+use tokenstream::TokenTree;
 
 use std::collections::{HashMap};
 use std::collections::hash_map::{Entry};
@@ -58,8 +59,8 @@ impl<'a> ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: ast::Ident,
-    lhses: Vec<TokenTree>,
-    rhses: Vec<TokenTree>,
+    lhses: Vec<quoted::TokenTree>,
+    rhses: Vec<quoted::TokenTree>,
     valid: bool,
 }
 
@@ -86,8 +87,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
                           arg: &[TokenTree],
-                          lhses: &[TokenTree],
-                          rhses: &[TokenTree])
+                          lhses: &[quoted::TokenTree],
+                          rhses: &[quoted::TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
         println!("{}! {{ {} }}",
@@ -101,7 +102,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
-            TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+            quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
             _ => cx.span_bug(sp, "malformed macro lhs")
         };
 
@@ -109,7 +110,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
             Success(named_matches) => {
                 let rhs = match rhses[i] {
                     // ignore delimiters
-                    TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
+                    quoted::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
@@ -167,21 +168,21 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     let match_lhs_tok = MatchNt(lhs_nm, ast::Ident::from_str("tt"));
     let match_rhs_tok = MatchNt(rhs_nm, ast::Ident::from_str("tt"));
     let argument_gram = vec![
-        TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
             tts: vec![
-                TokenTree::Token(DUMMY_SP, match_lhs_tok),
-                TokenTree::Token(DUMMY_SP, token::FatArrow),
-                TokenTree::Token(DUMMY_SP, match_rhs_tok),
+                quoted::TokenTree::Token(DUMMY_SP, match_lhs_tok),
+                quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
+                quoted::TokenTree::Token(DUMMY_SP, match_rhs_tok),
             ],
             separator: Some(token::Semi),
-            op: tokenstream::KleeneOp::OneOrMore,
+            op: quoted::KleeneOp::OneOrMore,
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
-        TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
-            tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
+        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+            tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
-            op: tokenstream::KleeneOp::ZeroOrMore,
+            op: quoted::KleeneOp::ZeroOrMore,
             num_captures: 0
         })),
     ];
@@ -206,12 +207,13 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
                     if let NtTT(ref tt) = **nt {
-                        valid &= check_lhs_nt_follows(sess, tt);
-                        return (*tt).clone();
+                        let tt = quoted::parse(&[tt.clone()], true, sess).pop().unwrap();
+                        valid &= check_lhs_nt_follows(sess, &tt);
+                        return tt;
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect::<Vec<TokenTree>>()
+            }).collect::<Vec<quoted::TokenTree>>()
         }
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
     };
@@ -221,11 +223,11 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
                     if let NtTT(ref tt) = **nt {
-                        return (*tt).clone();
+                        return quoted::parse(&[tt.clone()], false, sess).pop().unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect()
+            }).collect::<Vec<quoted::TokenTree>>()
         }
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs")
     };
@@ -249,14 +251,14 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     NormalTT(exp, Some(def.span), attr::contains_name(&def.attrs, "allow_internal_unstable"))
 }
 
-fn check_lhs_nt_follows(sess: &ParseSess, lhs: &TokenTree) -> bool {
+fn check_lhs_nt_follows(sess: &ParseSess, lhs: &quoted::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     match lhs {
-        &TokenTree::Delimited(_, ref tts) => check_matcher(sess, &tts.tts),
+        &quoted::TokenTree::Delimited(_, ref tts) => check_matcher(sess, &tts.tts),
         _ => {
             let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-            sess.span_diagnostic.span_err(lhs.get_span(), msg);
+            sess.span_diagnostic.span_err(lhs.span(), msg);
             false
         }
     }
@@ -266,7 +268,8 @@ fn check_lhs_nt_follows(sess: &ParseSess, lhs: &TokenTree) -> bool {
 
 /// Check that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
-fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[TokenTree]) -> bool {
+fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
+    use self::quoted::TokenTree;
     for tt in tts {
         match *tt {
             TokenTree::Token(_, _) => (),
@@ -278,7 +281,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[TokenTree]) -> bool {
                     if seq.tts.iter().all(|seq_tt| {
                         match *seq_tt {
                             TokenTree::Sequence(_, ref sub_seq) =>
-                                sub_seq.op == tokenstream::KleeneOp::ZeroOrMore,
+                                sub_seq.op == quoted::KleeneOp::ZeroOrMore,
                             _ => false,
                         }
                     }) {
@@ -296,15 +299,15 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[TokenTree]) -> bool {
     true
 }
 
-fn check_rhs(sess: &ParseSess, rhs: &TokenTree) -> bool {
+fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
     match *rhs {
-        TokenTree::Delimited(..) => return true,
-        _ => sess.span_diagnostic.span_err(rhs.get_span(), "macro rhs must be delimited")
+        quoted::TokenTree::Delimited(..) => return true,
+        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited")
     }
     false
 }
 
-fn check_matcher(sess: &ParseSess, matcher: &[TokenTree]) -> bool {
+fn check_matcher(sess: &ParseSess, matcher: &[quoted::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
     let err = sess.span_diagnostic.err_count();
@@ -335,7 +338,9 @@ struct FirstSets {
 }
 
 impl FirstSets {
-    fn new(tts: &[TokenTree]) -> FirstSets {
+    fn new(tts: &[quoted::TokenTree]) -> FirstSets {
+        use self::quoted::TokenTree;
+
         let mut sets = FirstSets { first: HashMap::new() };
         build_recur(&mut sets, tts);
         return sets;
@@ -382,7 +387,7 @@ impl FirstSets {
                         }
 
                         // Reverse scan: Sequence comes before `first`.
-                        if subfirst.maybe_empty || seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
+                        if subfirst.maybe_empty || seq_rep.op == quoted::KleeneOp::ZeroOrMore {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
                             first.add_all(&TokenSet { maybe_empty: true, ..subfirst });
@@ -401,7 +406,9 @@ impl FirstSets {
 
     // walks forward over `tts` until all potential FIRST tokens are
     // identified.
-    fn first(&self, tts: &[TokenTree]) -> TokenSet {
+    fn first(&self, tts: &[quoted::TokenTree]) -> TokenSet {
+        use self::quoted::TokenTree;
+
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
             assert!(first.maybe_empty);
@@ -430,7 +437,7 @@ impl FirstSets {
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
                             if subfirst.maybe_empty ||
-                               seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
+                               seq_rep.op == quoted::KleeneOp::ZeroOrMore {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
                                 // restore empty-tracking state
@@ -549,9 +556,10 @@ impl TokenSet {
 // see `FirstSets::new`.
 fn check_matcher_core(sess: &ParseSess,
                       first_sets: &FirstSets,
-                      matcher: &[TokenTree],
+                      matcher: &[quoted::TokenTree],
                       follow: &TokenSet) -> TokenSet {
     use print::pprust::token_to_string;
+    use self::quoted::TokenTree;
 
     let mut last = TokenSet::empty();
 

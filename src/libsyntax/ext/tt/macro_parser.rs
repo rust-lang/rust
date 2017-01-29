@@ -82,13 +82,14 @@ use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
 use errors::FatalError;
+use ext::tt::quoted;
 use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
-use parse::token::{DocComment, MatchNt, SubstNt};
+use parse::token::{DocComment, MatchNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;
-use tokenstream::{self, TokenTree};
+use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
 
 use std::mem;
@@ -101,8 +102,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(tokenstream::TokenTree),
-    TtSeq(Vec<tokenstream::TokenTree>),
+    Tt(quoted::TokenTree),
+    TtSeq(Vec<quoted::TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -113,7 +114,7 @@ impl TokenTreeOrTokenTreeVec {
         }
     }
 
-    fn get_tt(&self, index: usize) -> TokenTree {
+    fn get_tt(&self, index: usize) -> quoted::TokenTree {
         match *self {
             TtSeq(ref v) => v[index].clone(),
             Tt(ref tt) => tt.get_tt(index),
@@ -144,7 +145,9 @@ struct MatcherPos {
 
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 
-pub fn count_names(ms: &[TokenTree]) -> usize {
+pub fn count_names(ms: &[quoted::TokenTree]) -> usize {
+    use self::quoted::TokenTree;
+
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
             TokenTree::Sequence(_, ref seq) => {
@@ -161,7 +164,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
+fn initial_matcher_pos(ms: Vec<quoted::TokenTree>, lo: BytePos) -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches = create_matches(match_idx_hi);
     Box::new(MatcherPos {
@@ -200,7 +203,10 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[TokenTree], mut res: I) -> NamedParseResult {
+fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[quoted::TokenTree], mut res: I)
+                                             -> NamedParseResult {
+    use self::quoted::TokenTree;
+
     fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(m: &TokenTree, mut res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
@@ -224,9 +230,6 @@ fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[TokenTree], mut res: I) -> Na
                         return Err((sp, format!("duplicated bind name: {}", bind_name)))
                     }
                 }
-            }
-            TokenTree::Token(sp, SubstNt(..)) => {
-                return Err((sp, "missing fragment specifier".to_string()))
             }
             TokenTree::Token(..) => (),
         }
@@ -281,6 +284,8 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                     eof_eis: &mut SmallVector<Box<MatcherPos>>,
                     bb_eis: &mut SmallVector<Box<MatcherPos>>,
                     token: &Token, span: &syntax_pos::Span) -> ParseResult<()> {
+    use self::quoted::TokenTree;
+
     while let Some(mut ei) = cur_eis.pop() {
         // When unzipped trees end, remove them
         while ei.idx >= ei.top_elts.len() {
@@ -346,7 +351,7 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
             match ei.top_elts.get_tt(idx) {
                 /* need to descend into sequence */
                 TokenTree::Sequence(sp, seq) => {
-                    if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+                    if seq.op == quoted::KleeneOp::ZeroOrMore {
                         // Examine the case where there are 0 matches of this sequence
                         let mut new_ei = ei.clone();
                         new_ei.match_cur += seq.num_captures;
@@ -380,9 +385,6 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                         _ => bb_eis.push(ei),
                     }
                 }
-                TokenTree::Token(sp, SubstNt(..)) => {
-                    return Error(sp, "missing fragment specifier".to_string())
-                }
                 seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
                     let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
                     let idx = ei.idx;
@@ -406,8 +408,13 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess, tts: Vec<TokenTree>, ms: &[TokenTree], directory: Option<Directory>)
+pub fn parse(sess: &ParseSess,
+             tts: Vec<TokenTree>,
+             ms: &[quoted::TokenTree],
+             directory: Option<Directory>)
              -> NamedParseResult {
+    use self::quoted::TokenTree;
+
     let mut parser = Parser::new(sess, tts, directory, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally
@@ -479,10 +486,7 @@ pub fn parse(sess: &ParseSess, tts: Vec<TokenTree>, ms: &[TokenTree], directory:
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
-            p.quote_depth += 1; //but in theory, non-quoted tts might be useful
-            let tt = panictry!(p.parse_token_tree());
-            p.quote_depth -= 1;
-            return token::NtTT(tt);
+            return token::NtTT(panictry!(p.parse_token_tree()));
         }
         _ => {}
     }
