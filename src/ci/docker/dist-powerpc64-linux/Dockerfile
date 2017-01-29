@@ -68,7 +68,7 @@ RUN apt-get install -y --no-install-recommends rpm2cpio cpio
 COPY build-powerpc64le-toolchain.sh /tmp/
 RUN ./build-powerpc64le-toolchain.sh
 
-ENV PATH=$PATH:/x-tools/powerpc64-unknown-linux-gnueabihf/bin
+ENV PATH=$PATH:/x-tools/powerpc64-unknown-linux-gnu/bin
 
 ENV \
     AR_powerpc64_unknown_linux_gnu=powerpc64-unknown-linux-gnu-ar \
