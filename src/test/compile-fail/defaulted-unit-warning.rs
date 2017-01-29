@@ -21,9 +21,12 @@ impl Deserialize for () {
 }
 
 fn doit() -> Result<(), String> {
-    let _ = Deserialize::deserialize()?;
-    //~^ ERROR code relies on type
-    //~| WARNING previously accepted
+    let _ = match Deserialize::deserialize() {
+        //~^ ERROR code relies on type
+        //~| WARNING previously accepted
+        Ok(x) => x,
+        Err(e) => return Err(e),
+    };
     Ok(())
 }
 
