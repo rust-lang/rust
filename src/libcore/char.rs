@@ -588,7 +588,7 @@ impl ExactSizeIterator for EscapeUnicode {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeUnicode {}
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
+#[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeUnicode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for c in self.clone() {
@@ -701,7 +701,7 @@ impl ExactSizeIterator for EscapeDefault {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDefault {}
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
+#[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for c in self.clone() {
@@ -735,7 +735,7 @@ impl ExactSizeIterator for EscapeDebug { }
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDebug {}
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
+#[unstable(feature = "char_escape_debug", issue = "35068")]
 impl fmt::Display for EscapeDebug {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)

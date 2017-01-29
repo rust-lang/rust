@@ -55,7 +55,7 @@ struct BarrierState {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BarrierWaitResult(bool);
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Barrier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Barrier { .. }")
@@ -110,7 +110,7 @@ impl Barrier {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for BarrierWaitResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BarrierWaitResult")
