@@ -83,8 +83,8 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
             fn visit_item(&mut self, i: &'hir hir::Item) {
                 if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
                     if i.attrs.iter().any(|attr| attr.value.name == "test") {
-                        let did = self.1.map.body_owner_def_id(body_id);
-                        println!("running test: {}", self.1.map.def_path(did).to_string(self.1));
+                        let did = self.1.hir.body_owner_def_id(body_id);
+                        println!("running test: {}", self.1.hir.def_path(did).to_string(self.1));
                         miri::eval_main(self.1, did, self.0);
                         self.2.session.abort_if_errors();
                     }
@@ -96,7 +96,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
         state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(limits, tcx, state));
     } else {
         if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
-            let entry_def_id = tcx.map.local_def_id(entry_node_id);
+            let entry_def_id = tcx.hir.local_def_id(entry_node_id);
             miri::eval_main(tcx, entry_def_id, limits);
 
             state.session.abort_if_errors();
