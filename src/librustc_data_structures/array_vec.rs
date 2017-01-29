@@ -52,14 +52,6 @@ impl<A> Hash for ArrayVec<A>
     }
 }
 
-impl<A: Array> PartialEq for ArrayVec<A> {
-    fn eq(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-
-impl<A: Array> Eq for ArrayVec<A> {}
-
 impl<A> Clone for ArrayVec<A>
     where A: Array,
           A::Element: Clone {
