@@ -18,25 +18,33 @@
 //! support arguments of multiple types.
 //!
 //! - Impl the `As*` traits for reference-to-reference conversions
-//! - Impl the `Into` trait when you want to consume the value in the conversion
-//! - The `From` trait is the most flexible, useful for value _and_ reference conversions
-//! - The `TryFrom` and `TryInto` traits behave like `From` and `Into`, but allow for the
+//! - Impl the [`Into`] trait when you want to consume the value in the conversion
+//! - The [`From`] trait is the most flexible, useful for value _and_ reference conversions
+//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`], but allow for the
 //!   conversion to fail
 //!
-//! As a library author, you should prefer implementing `From<T>` or `TryFrom<T>` rather than
-//! `Into<U>` or `TryInto<U>`, as `From` and `TryFrom` provide greater flexibility and offer
-//! equivalent `Into` or `TryInto` implementations for free, thanks to a blanket implementation
+//! As a library author, you should prefer implementing [`From<T>`][`From`] or
+//! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
+//! as [`From`] and [`TryFrom`] provide greater flexibility and offer
+//! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a blanket implementation
 //! in the standard library.
 //!
 //! # Generic impl
 //!
-//! - `AsRef` and `AsMut` auto-dereference if the inner type is a reference
-//! - `From<U> for T` implies `Into<T> for U`
-//! - `TryFrom<U> for T` implies `TryInto<T> for U`
-//! - `From` and `Into` are reflexive, which means that all types can `into()`
+//! - [`AsRef`] and [`AsMut`] auto-dereference if the inner type is a reference
+//! - [`From`]`<U> for T` implies [`Into`]`<T> for U`
+//! - [`TryFrom`]`<U> for T` implies [`TryInto`]`<T> for U`
+//! - [`From`] and [`Into`] are reflexive, which means that all types can `into()`
 //!   themselves and `from()` themselves
 //!
 //! See each trait for usage examples.
+//!
+//! [`Into`]: trait.Into.html
+//! [`From`]: trait.From.html
+//! [`TryFrom`]: trait.TryFrom.html
+//! [`TryInto`]: trait.TryInto.html
+//! [`AsRef`]: trait.AsRef.html
+//! [`AsMut`]: trait.AsMut.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
