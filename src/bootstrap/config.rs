@@ -516,7 +516,7 @@ impl Config {
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    target.jemalloc = Some(parse_configure_path(value));
+                    target.jemalloc = Some(parse_configure_path(value).join("libjemalloc_pic.a"));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();
