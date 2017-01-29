@@ -1488,6 +1488,64 @@ pub trait Iterator {
         None
     }
 
+    /// Searches for an element of an iterator from the right that satisfies a predicate.
+    ///
+    /// `rfind()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the iterator, starting at the end, and if any
+    /// of them return `true`, then `rfind()` returns [`Some(element)`]. If they all return
+    /// `false`, it returns [`None`].
+    ///
+    /// `rfind()` is short-circuiting; in other words, it will stop processing
+    /// as soon as the closure returns `true`.
+    ///
+    /// Because `rfind()` takes a reference, and many iterators iterate over
+    /// references, this leads to a possibly confusing situation where the
+    /// argument is a double reference. You can see this effect in the
+    /// examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_rfind)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
+    ///
+    /// assert_eq!(a.iter().rfind(|&&x| x == 5), None);
+    /// ```
+    ///
+    /// Stopping at the first `true`:
+    ///
+    /// ```
+    /// #![feature(iter_rfind)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.rfind(|&&x| x == 2), Some(&2));
+    ///
+    /// // we can still use `iter`, as there are more elements.
+    /// assert_eq!(iter.next_back(), Some(&1));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_rfind", issue = "0")]
+    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+        Self: Sized + DoubleEndedIterator,
+        P: FnMut(&Self::Item) -> bool
+    {
+        for x in self.by_ref().rev() {
+            if predicate(&x) { return Some(x) }
+        }
+        None
+    }
+
     /// Searches for an element in an iterator, returning its index.
     ///
     /// `position()` takes a closure that returns `true` or `false`. It applies
