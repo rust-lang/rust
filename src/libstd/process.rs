@@ -114,7 +114,7 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Child {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Child")
@@ -160,7 +160,7 @@ impl FromInner<AnonPipe> for ChildStdin {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdin { .. }")
@@ -201,7 +201,7 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdout {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdout { .. }")
@@ -242,7 +242,7 @@ impl FromInner<AnonPipe> for ChildStderr {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStderr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStderr { .. }")
@@ -696,7 +696,7 @@ impl FromInner<imp::Stdio> for Stdio {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdio {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Stdio { .. }")
