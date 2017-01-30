@@ -435,6 +435,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) |
+            Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
             Rvalue::InlineAsm { .. } => {}
             Rvalue::Box(..) => {
