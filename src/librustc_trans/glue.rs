@@ -235,7 +235,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             bcx.call(dtor, &[ptr.llval], None);
             bcx
         }
-        ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
+        ty::TyAdt(def, ..) if def.has_dtor() && !skip_dtor => {
             let shallow_drop = def.is_union();
             let tcx = bcx.tcx();
 

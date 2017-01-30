@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Variance::*;
-pub use self::DtorKind::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -118,21 +117,6 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
-}
-
-#[derive(Copy, Clone)]
-pub enum DtorKind {
-    NoDtor,
-    TraitDtor
-}
-
-impl DtorKind {
-    pub fn is_present(&self) -> bool {
-        match *self {
-            TraitDtor => true,
-            _ => false
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1480,7 +1464,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     /// Returns whether this type has a destructor.
     pub fn has_dtor(&self) -> bool {
-        self.dtor_kind().is_present()
+        self.destructor.get().is_some()
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -1541,13 +1525,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn set_destructor(&self, dtor: DefId) {
         self.destructor.set(Some(dtor));
-    }
-
-    pub fn dtor_kind(&self) -> DtorKind {
-        match self.destructor.get() {
-            Some(_) => TraitDtor,
-            None => NoDtor,
-        }
     }
 
     /// Returns a simpler type such that `Self: Sized` if and only
