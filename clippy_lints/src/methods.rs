@@ -996,7 +996,7 @@ fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
                   lint,
                   expr.span,
                   &format!("used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
-                            using expect() to provide a better panic
+                            using expect() to provide a better panic \
                             message",
                            kind,
                            none_value));
