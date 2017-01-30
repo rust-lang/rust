@@ -13,7 +13,6 @@ use io;
 use libc::{self, c_int};
 use mem;
 use ptr;
-use sync::atomic::{AtomicBool, Ordering};
 use sys::{cvt, cvt_r};
 use sys::fd::FileDesc;
 
@@ -30,21 +29,17 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // CLOEXEC flag is to use the `pipe2` syscall on Linux. This was added in
     // 2.6.27, however, and because we support 2.6.18 we must detect this
     // support dynamically.
-    static TRY_PIPE2: AtomicBool = AtomicBool::new(cfg!(target_os = "linux"));
-    if TRY_PIPE2.load(Ordering::Relaxed) {
+    if cfg!(any(target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "linux",
+                target_os = "netbsd",
+                target_os = "openbsd"))
+    {
         weak! { fn pipe2(*mut c_int, c_int) -> c_int }
         if let Some(pipe) = pipe2.get() {
-            match cvt(unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
-                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {
-                    TRY_PIPE2.store(false, Ordering::Relaxed);
-                    // Fall through
-                },
-                res => {
-                    res?;
-                    return Ok((AnonPipe(FileDesc::new(fds[0])),
-                               AnonPipe(FileDesc::new(fds[1]))));
-                }
-            }
+            cvt(unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) })?;
+            return Ok((AnonPipe(FileDesc::new(fds[0])),
+                       AnonPipe(FileDesc::new(fds[1]))));
         }
     }
     cvt(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
