@@ -780,7 +780,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
 
-    // Discard hygiene data, which isn't required past lowering to HIR.
+    // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
         syntax::ext::hygiene::reset_hygiene_data();
     }
