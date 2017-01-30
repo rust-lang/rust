@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Decalrative macros 2.0. A replacement for `macro_rules!`. This is mostly a
+Declarative macros 2.0. A replacement for `macro_rules!`. This is mostly a
 placeholder RFC since many of the issues affecting the new macro system are
 (or will be) addressed in other RFCs. This RFC may be expanded at a later date.
 
