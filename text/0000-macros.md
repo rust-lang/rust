@@ -6,14 +6,14 @@
 # Summary
 [summary]: #summary
 
-Macros by example 2.0. A replacement for `macro_rules!`. This is mostly a
+Decalrative macros 2.0. A replacement for `macro_rules!`. This is mostly a
 placeholder RFC since many of the issues affecting the new macro system are
 (or will be) addressed in other RFCs. This RFC may be expanded at a later date.
 
 Currently in this RFC:
 
-* That we should have a new macro by example system,
-* a new keyword for declaring macros.
+* That we should have a new declarative macro system,
+* a new keyword for declaring macros (`macro`).
 
 In other RFCs:
 
@@ -31,14 +31,14 @@ Note this RFC does not involve procedural macros (aka syntax extensions).
 # Motivation
 [motivation]: #motivation
 
-There are several changes to the macro by example system which are desirable but
-backwards compatible (See [RFC 1561](https://github.com/rust-lang/rfcs/pull/1561)
+There are several changes to the declarative macro system which are desirable but
+not backwards compatible (See [RFC 1561](https://github.com/rust-lang/rfcs/pull/1561)
 for some changes to macro naming and modularisation, I would also like to
 propose improvements to hygiene in macros, and some improved syntax).
 
 In order to maintain Rust's backwards compatibility guarantees, we cannot change
 the existing system (`macro_rules!`) to accommodate these changes. I therefore
-propose a new macro by example system to live alongside `macro_rules!`.
+propose a new declarative macro system to live alongside `macro_rules!`.
 
 Example (possible) improvements:
 
@@ -91,14 +91,24 @@ current hygiene system.
 # Detailed design
 [design]: #detailed-design
 
-There will be a new system of macros by example using similar syntax and
+There will be a new system of declarative macros using similar syntax and
 semantics to the current `macro_rules!` system.
 
-A macro by example is declared using the `macro` keyword. For example, where a
+A declarative macro is declared using the `macro` keyword. For example, where a
 macro `foo` is declared today as `macro_rules! foo { ... }`, it will be declared
 using `macro foo { ... }`. I leave the syntax of the macro body for later
 specification.
 
+## Nomencalture
+
+Throughout this RFC, I use 'declarative macro' to refer to a macro declared
+using declarative (and domain specific) syntax (such as the current
+`macro_rules!` syntax). The 'declarative macros' name is in opposition to
+'procedural macros', which are declared as Rust programs. The specific
+declarative syntax using pattern matching and templating is often referred to as
+'macros by example'.
+
+'Pattern macro' has been suggested as an alterantive for 'declarative macro'.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -123,7 +133,7 @@ breaking backwards compatibility.
 Use `macro!` instead of `macro` (proposed in an earlier version of this RFC).
 
 Don't use a keyword - either make `macro` not a keyword or use a different word
-for the macros by example syntax.
+for declarative macros.
 
 Live with the existing system.
 
