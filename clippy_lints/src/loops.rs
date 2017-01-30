@@ -684,18 +684,13 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     lint_iter_method(cx, args, arg, method_name);
                 } else {
                     let object = snippet(cx, args[0].span, "_");
-                    span_lint_and_then(cx,
+                    span_lint_and_sugg(cx,
                                        EXPLICIT_INTO_ITER_LOOP,
                                        arg.span,
-                                       &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                                object,
-                                                object,
-                                                method_name),
-                                       |db| {
-                        db.span_suggestion(arg.span,
-                                           "to write this more concisely, try looping over",
-                                           object.to_string());
-                    });
+                                       "it is more idiomatic to loop over containers instead of using explicit \
+                                        iteration methods`",
+                                       "to write this more concisely, try looping over",
+                                       object.to_string());
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
