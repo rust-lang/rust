@@ -506,6 +506,10 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                     }
 
+                    Rvalue::Discriminant(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::Inspect, location);
+                    }
+
                     Rvalue::Box(ref $($mutability)* ty) => {
                         self.visit_ty(ty);
                     }

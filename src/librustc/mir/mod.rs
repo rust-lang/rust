@@ -997,6 +997,12 @@ pub enum Rvalue<'tcx> {
 
     UnaryOp(UnOp, Operand<'tcx>),
 
+    /// Read the discriminant of an ADT.
+    ///
+    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
+    /// be defined to return, say, a 0) if ADT is not an enum.
+    Discriminant(Lvalue<'tcx>),
+
     /// Creates an *uninitialized* Box
     Box(Ty<'tcx>),
 
@@ -1111,6 +1117,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
+            Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             Box(ref t) => write!(fmt, "Box({:?})", t),
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)

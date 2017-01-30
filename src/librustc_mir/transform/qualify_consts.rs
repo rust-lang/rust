@@ -739,6 +739,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
+            Rvalue::Discriminant(..) => {
+                // FIXME discriminant
+                self.add(Qualif::NOT_CONST);
+                if self.mode != Mode::Fn {
+                    bug!("implement discriminant const qualify");
+                }
+            }
+
             Rvalue::Box(_) => {
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
