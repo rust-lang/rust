@@ -56,9 +56,9 @@ almost any function that takes a pointer argument isn't valid for all possible
 inputs since the pointer could be dangling, and raw pointers fall outside of
 Rust's safe memory model.
 
-When declaring the argument types to a foreign function, the Rust compiler can
-not check if the declaration is correct, so specifying it correctly is part of
-keeping the binding correct at runtime.
+When declaring the argument types to a foreign function, the Rust compiler
+cannot check if the declaration is correct, so specifying it correctly is part
+of keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
