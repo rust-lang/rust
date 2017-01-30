@@ -1,7 +1,9 @@
 #![feature(rustc_private)]
+#![feature(collections_bound)]
 
 extern crate clippy_lints;
 extern crate syntax;
+use std::collections::Bound;
 
 #[test]
 fn test_overlapping() {
@@ -16,9 +18,12 @@ fn test_overlapping() {
     };
 
     assert_eq!(None, overlapping::<u8>(&[]));
-    assert_eq!(None, overlapping(&[sp(1, 4)]));
-    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6)]));
-    assert_eq!(None, overlapping(&[sp(1, 4), sp(5, 6), sp(10, 11)]));
-    assert_eq!(Some((&sp(1, 4), &sp(3, 6))), overlapping(&[sp(1, 4), sp(3, 6)]));
-    assert_eq!(Some((&sp(5, 6), &sp(6, 11))), overlapping(&[sp(1, 4), sp(5, 6), sp(6, 11)]));
+    assert_eq!(None, overlapping(&[sp(1, Bound::Included(4))]));
+    assert_eq!(None, overlapping(&[sp(1, Bound::Included(4)), sp(5, Bound::Included(6))]));
+    assert_eq!(None,
+               overlapping(&[sp(1, Bound::Included(4)), sp(5, Bound::Included(6)), sp(10, Bound::Included(11))]));
+    assert_eq!(Some((&sp(1, Bound::Included(4)), &sp(3, Bound::Included(6)))),
+               overlapping(&[sp(1, Bound::Included(4)), sp(3, Bound::Included(6))]));
+    assert_eq!(Some((&sp(5, Bound::Included(6)), &sp(6, Bound::Included(11)))),
+               overlapping(&[sp(1, Bound::Included(4)), sp(5, Bound::Included(6)), sp(6, Bound::Included(11))]));
 }
