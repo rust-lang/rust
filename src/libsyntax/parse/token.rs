@@ -152,9 +152,6 @@ pub enum Token {
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
-    // In left-hand-sides of MBE macros:
-    /// Parse a nonterminal (name to bind, name of NT)
-    MatchNt(ast::Ident, ast::Ident),
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
     SubstNt(ast::Ident),

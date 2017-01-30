@@ -12,7 +12,7 @@ use ast::Ident;
 use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use parse::token::{self, MatchNt, SubstNt, Token, NtIdent, NtTT};
+use parse::token::{self, SubstNt, Token, NtIdent, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{TokenTree, Delimited};
 use util::small_vector::SmallVector;
@@ -61,7 +61,7 @@ impl Iterator for Frame {
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
-/// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
+/// `src` contains no `TokenTree::{Sequence, Match}`s, or `SubstNt`s, `interp` can
 /// (and should) be None.
 pub fn transcribe(sp_diag: &Handler,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
@@ -177,6 +177,7 @@ pub fn transcribe(sp_diag: &Handler,
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
             quoted::TokenTree::Token(span, tok) => result.push(TokenTree::Token(span, tok)),
+            quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
     }
 }
@@ -243,7 +244,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 size + lockstep_iter_size(tt, interpolations, repeat_idx)
             })
         },
-        TokenTree::Token(_, SubstNt(name)) | TokenTree::Token(_, MatchNt(name, _)) =>
+        TokenTree::Token(_, SubstNt(name)) | TokenTree::MetaVarDecl(_, name, _) =>
             match lookup_cur_matched(name, interpolations, repeat_idx) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,

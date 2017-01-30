@@ -85,9 +85,7 @@ use errors::FatalError;
 use ext::tt::quoted;
 use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
-use parse::token::{DocComment, MatchNt};
-use parse::token::{Token, Nonterminal};
-use parse::token;
+use parse::token::{self, DocComment, Token, Nonterminal};
 use print::pprust;
 use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
@@ -156,7 +154,7 @@ pub fn count_names(ms: &[quoted::TokenTree]) -> usize {
             TokenTree::Delimited(_, ref delim) => {
                 count_names(&delim.tts)
             }
-            TokenTree::Token(_, MatchNt(..)) => {
+            TokenTree::MetaVarDecl(..) => {
                 1
             }
             TokenTree::Token(..) => 0,
@@ -221,7 +219,7 @@ fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[quoted::TokenTree], mut res: 
                     n_rec(next_m, res.by_ref(), ret_val)?;
                 }
             }
-            TokenTree::Token(sp, MatchNt(bind_name, _)) => {
+            TokenTree::MetaVarDecl(sp, bind_name, _) => {
                 match ret_val.entry(bind_name) {
                     Vacant(spot) => {
                         spot.insert(res.next().unwrap());
@@ -377,7 +375,7 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
                 }
-                TokenTree::Token(_, MatchNt(..)) => {
+                TokenTree::MetaVarDecl(..) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
                     match *token {
@@ -445,7 +443,7 @@ pub fn parse(sess: &ParseSess,
             }
         } else if (!bb_eis.is_empty() && !next_eis.is_empty()) || bb_eis.len() > 1 {
             let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                TokenTree::Token(_, MatchNt(bind, name)) => {
+                TokenTree::MetaVarDecl(_, bind, name) => {
                     format!("{} ('{}')", name, bind)
                 }
                 _ => panic!()
@@ -467,7 +465,7 @@ pub fn parse(sess: &ParseSess,
             parser.bump();
         } else /* bb_eis.len() == 1 */ {
             let mut ei = bb_eis.pop().unwrap();
-            if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
+            if let TokenTree::MetaVarDecl(span, _, ident) = ei.top_elts.get_tt(ei.idx) {
                 let match_cur = ei.match_cur;
                 ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
                             Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
