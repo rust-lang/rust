@@ -83,8 +83,6 @@ pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
             continue;
         }
 
-        let span = attrs[i].span;
-
         if attrs[i].value_str().is_some() {
             continue;
         }
@@ -110,12 +108,12 @@ pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
                 attrs.remove(i);
             } else {
                 let derive = Symbol::intern("derive");
-                let mitem = cx.meta_list(span, derive, traits);
-                attrs[i] = cx.attribute(span, mitem);
+                let mitem = cx.meta_list(titem.span, derive, traits);
+                attrs[i] = cx.attribute(titem.span, mitem);
             }
             let derive = Symbol::intern("derive");
-            let mitem = cx.meta_list(span, derive, vec![titem]);
-            return Some(cx.attribute(span, mitem));
+            let mitem = cx.meta_list(titem.span, derive, vec![titem]);
+            return Some(cx.attribute(mitem.span, mitem));
         }
     }
     return None;
