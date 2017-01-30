@@ -28,6 +28,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+        self.memory.clear_packed();
         self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
             return Ok(false);

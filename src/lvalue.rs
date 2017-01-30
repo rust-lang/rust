@@ -173,13 +173,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let field = field.index();
 
                 use rustc::ty::layout::Layout::*;
-                let offset = match *base_layout {
-                    Univariant { ref variant, .. } => variant.offsets[field],
+                let (offset, packed) = match *base_layout {
+                    Univariant { ref variant, .. } => {
+                        (variant.offsets[field], variant.packed)
+                    },
 
                     General { ref variants, .. } => {
                         if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
                             // +1 for the discriminant, which is field 0
-                            variants[variant_idx].offsets[field + 1]
+                            (variants[variant_idx].offsets[field + 1], variants[variant_idx].packed)
                         } else {
                             bug!("field access on enum had no variant index");
                         }
@@ -191,7 +193,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     StructWrappedNullablePointer { ref nonnull, .. } => {
-                        nonnull.offsets[field]
+                        (nonnull.offsets[field], nonnull.packed)
                     }
 
                     UntaggedUnion { .. } => return Ok(base),
@@ -200,11 +202,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let field = field as u64;
                         assert!(field < count);
                         let elem_size = element.size(&self.tcx.data_layout).bytes();
-                        Size::from_bytes(field * elem_size)
+                        (Size::from_bytes(field * elem_size), false)
                     }
 
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
+
+                if packed {
+                    let size = self.type_size(field_ty)?.expect("packed struct must be sized");
+                    self.memory.mark_packed(base_ptr, size);
+                }
 
                 let ptr = base_ptr.offset(offset.bytes());
                 let extra = if self.type_is_sized(field_ty) {

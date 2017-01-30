@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet};
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::hir::def_id::DefId;
@@ -120,6 +120,8 @@ pub struct Memory<'a, 'tcx> {
     function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
     pub layout: &'a TargetDataLayout,
+    /// List of memory regions containing packed structures
+    packed: BTreeSet<Entry>,
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
@@ -135,6 +137,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             layout,
             memory_size: max_memory,
             memory_usage: 0,
+            packed: BTreeSet::new(),
         }
     }
 
@@ -280,8 +283,16 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx, ()> {
+    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx, ()> {
         let alloc = self.get(ptr.alloc_id)?;
+        // check whether the memory was marked as aligned
+        let start = Entry(ptr.alloc_id, 0, ptr.offset + len);
+        let end = Entry(ptr.alloc_id, ptr.offset + len, 0);
+        for &Entry(_, start, end) in self.packed.range(start..end) {
+            if start <= ptr.offset && (ptr.offset + len) <= end {
+                return Ok(());
+            }
+        }
         if alloc.align < align {
             return Err(EvalError::AlignmentCheckFailed {
                 has: alloc.align,
@@ -297,7 +308,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             })
         }
     }
+
+    pub(crate) fn mark_packed(&mut self, ptr: Pointer, len: u64) {
+        self.packed.insert(Entry(ptr.alloc_id, ptr.offset, ptr.offset + len));
+    }
+
+    pub(crate) fn clear_packed(&mut self) {
+        self.packed.clear();
+    }
 }
+
+#[derive(Eq, PartialEq, Ord, PartialOrd)]
+struct Entry(AllocId, u64, u64);
 
 /// Allocation accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
@@ -451,7 +473,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_align(ptr, align)?;
+        self.check_align(ptr, align, size)?;
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
@@ -463,7 +485,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
-        self.check_align(ptr, align)?;
+        self.check_align(ptr, align, size)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size)
