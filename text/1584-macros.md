@@ -1,7 +1,7 @@
 - Feature Name: macro_2_0
 - Start Date: 2016-04-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [1584](https://github.com/rust-lang/rfcs/pull/1584)
+- Rust Issue: [39412](https://github.com/rust-lang/rust/issues/39412)
 
 # Summary
 [summary]: #summary
