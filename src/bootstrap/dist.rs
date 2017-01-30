@@ -827,7 +827,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         cmd.arg("-nologo")
            .arg("-ext").arg("WixUIExtension")
            .arg("-ext").arg("WixUtilExtension")
-           .arg("-out").arg(distdir(build).join(filename))
+           .arg("-out").arg(exe.join(&filename))
            .arg("rust.wixobj")
            .arg("ui.wixobj")
            .arg("rustwelcomedlg.wixobj")
@@ -844,6 +844,8 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         cmd.arg("-sice:ICE57");
 
         build.run(&mut cmd);
+
+        t!(fs::rename(exe.join(&filename), distdir(build).join(&filename)));
     }
 }
 
