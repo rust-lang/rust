@@ -433,6 +433,24 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 })
             }
 
+            mir::Rvalue::Discriminant(ref lvalue) => {
+                let discr_lvalue = self.trans_lvalue(&bcx, lvalue);
+                let enum_ty = discr_lvalue.ty.to_ty(bcx.tcx());
+                let discr_ty = rvalue.ty(&*self.mir, bcx.tcx()).unwrap();
+                let discr_type = type_of::immediate_type_of(bcx.ccx, discr_ty);
+                // FIXME: inline this
+                let discr = adt::trans_get_discr(&bcx, enum_ty, discr_lvalue.llval, None, true);
+                let discr = if common::val_ty(discr) == Type::i1(bcx.ccx) {
+                    bcx.zext(discr, discr_type)
+                } else {
+                    bcx.trunc(discr, discr_type)
+                };
+                (bcx, OperandRef {
+                    val: OperandValue::Immediate(discr),
+                    ty: discr_ty
+                })
+            }
+
             mir::Rvalue::Box(content_ty) => {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx, content_ty);
@@ -661,6 +679,7 @@ pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
         mir::Rvalue::BinaryOp(..) |
         mir::Rvalue::CheckedBinaryOp(..) |
         mir::Rvalue::UnaryOp(..) |
+        mir::Rvalue::Discriminant(..) |
         mir::Rvalue::Box(..) |
         mir::Rvalue::Use(..) =>
             true,
