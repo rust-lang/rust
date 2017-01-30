@@ -26,7 +26,7 @@ use syntax::parse::tts_to_parser;
 use syntax::symbol;
 use syntax::util::ThinVec;
 
-use Indent;
+use Shape;
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use expr::{rewrite_call, rewrite_array};
@@ -62,13 +62,12 @@ impl MacroStyle {
 pub fn rewrite_macro(mac: &ast::Mac,
                      extra_ident: Option<ast::Ident>,
                      context: &RewriteContext,
-                     width: usize,
-                     offset: Indent,
+                     shape: Shape,
                      position: MacroPosition)
                      -> Option<String> {
     if context.config.use_try_shorthand {
         if let Some(expr) = convert_try_mac(mac, context) {
-            return expr.rewrite(context, width, offset);
+            return expr.rewrite(context, shape);
         }
     }
 
@@ -146,11 +145,12 @@ pub fn rewrite_macro(mac: &ast::Mac,
     match style {
         MacroStyle::Parens => {
             // Format macro invocation as function call.
-            rewrite_call(context, &macro_name, &expr_vec, mac.span, width, offset)
-                .map(|rw| match position {
+            rewrite_call(context, &macro_name, &expr_vec, mac.span, shape).map(|rw| {
+                match position {
                     MacroPosition::Item => format!("{};", rw),
                     _ => rw,
-                })
+                }
+            })
         }
         MacroStyle::Brackets => {
             // Format macro invocation as array literal.
@@ -161,8 +161,9 @@ pub fn rewrite_macro(mac: &ast::Mac,
                                                                        original_style.opener()),
                                                        mac.span.hi - BytePos(1)),
                                                  context,
-                                                 try_opt!(width.checked_sub(extra_offset)),
-                                                 offset + extra_offset));
+                                                 Shape::legacy(try_opt!(shape.width
+                                                                   .checked_sub(extra_offset)),
+                                                               shape.indent + extra_offset)));
 
             Some(format!("{}{}", macro_name, rewrite))
         }

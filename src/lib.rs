@@ -201,6 +201,50 @@ impl Sub<usize> for Indent {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Shape {
+    pub width: usize,
+    pub indent: Indent,
+}
+
+impl Shape {
+    pub fn indented(indent: Indent, config: &Config) -> Shape {
+        Shape {
+            width: config.max_width,
+            indent: indent,
+        }
+    }
+
+    /// `indent` is the indentation of the first line. The next lines
+    /// should begin with at least `indent` spaces (except backwards
+    /// indentation). The first line should not begin with indentation.
+    /// `width` is the maximum number of characters on the last line
+    /// (excluding `indent`). The width of other lines is not limited by
+    /// `width`.
+    /// Note that in reality, we sometimes use width for lines other than the
+    /// last (i.e., we are conservative).
+    // .......*-------*
+    //        |       |
+    //        |     *-*
+    //        *-----|
+    // |<------------>|  max width
+    // |<---->|          indent
+    //        |<--->|    width
+    pub fn legacy(width: usize, indent: Indent) -> Shape {
+        Shape {
+            width: width,
+            indent: indent,
+        }
+    }
+
+    pub fn sub_width(self, width: usize) -> Shape {
+        Shape {
+            width: self.width - width,
+            indent: self.indent,
+        }
+    }
+}
+
 pub enum ErrorKind {
     // Line has exceeded character limit (found, maximum)
     LineOverflow(usize, usize),

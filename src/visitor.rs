@@ -14,7 +14,7 @@ use syntax::parse::ParseSess;
 
 use strings::string_buffer::StringBuffer;
 
-use Indent;
+use {Indent, Shape};
 use utils;
 use codemap::{LineRangeUtils, SpanUtils};
 use config::Config;
@@ -59,8 +59,9 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Expr(..) |
             ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(),
-                                           self.config.max_width - self.block_indent.width(),
-                                           self.block_indent);
+                                           Shape::legacy(self.config.max_width -
+                                                         self.block_indent.width(),
+                                                         self.block_indent));
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac) => {
@@ -425,8 +426,7 @@ impl<'a> FmtVisitor<'a> {
         let rewrite = rewrite_macro(mac,
                                     ident,
                                     &self.get_context(),
-                                    width,
-                                    self.block_indent,
+                                    Shape::legacy(width, self.block_indent),
                                     pos);
         self.push_rewrite(mac.span, rewrite);
     }
@@ -482,8 +482,8 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(source!(self, first.span).lo);
 
         let rewrite = outers.rewrite(&self.get_context(),
-                     self.config.max_width - self.block_indent.width(),
-                     self.block_indent)
+                     Shape::legacy(self.config.max_width - self.block_indent.width(),
+                                   self.block_indent))
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();
@@ -566,12 +566,12 @@ impl<'a> FmtVisitor<'a> {
 }
 
 impl<'a> Rewrite for [ast::Attribute] {
-    fn rewrite(&self, context: &RewriteContext, _: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::new();
         if self.is_empty() {
             return Some(result);
         }
-        let indent = offset.to_string(context.config);
+        let indent = shape.indent.to_string(context.config);
 
         for (i, a) in self.iter().enumerate() {
             let mut a_str = context.snippet(a.span);
@@ -587,9 +587,10 @@ impl<'a> Rewrite for [ast::Attribute] {
                 if !comment.is_empty() {
                     let comment = try_opt!(rewrite_comment(comment,
                                                            false,
-                                                           context.config.ideal_width -
-                                                           offset.width(),
-                                                           offset,
+                                                           Shape::legacy(context.config
+                                                                             .ideal_width -
+                                                                         shape.indent.width(),
+                                                                         shape.indent),
                                                            context.config));
                     result.push_str(&indent);
                     result.push_str(&comment);
@@ -603,8 +604,9 @@ impl<'a> Rewrite for [ast::Attribute] {
             if a_str.starts_with("//") {
                 a_str = try_opt!(rewrite_comment(&a_str,
                                                  false,
-                                                 context.config.ideal_width - offset.width(),
-                                                 offset,
+                                                 Shape::legacy(context.config.ideal_width -
+                                                               shape.indent.width(),
+                                                               shape.indent),
                                                  context.config));
             }
 

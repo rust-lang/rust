@@ -14,7 +14,7 @@ use std::{self, iter};
 
 use syntax::codemap::Span;
 
-use Indent;
+use {Indent, Shape};
 use config::Config;
 use rewrite::RewriteContext;
 use string::{StringFormat, rewrite_string};
@@ -34,8 +34,7 @@ fn is_custom_comment(comment: &str) -> bool {
 
 pub fn rewrite_comment(orig: &str,
                        block_style: bool,
-                       width: usize,
-                       offset: Indent,
+                       shape: Shape,
                        config: &Config)
                        -> Option<String> {
     // If there are lines without a starting sigil, we won't format them correctly
@@ -50,7 +49,7 @@ pub fn rewrite_comment(orig: &str,
     }
 
     if !config.normalize_comments && !config.wrap_comments {
-        return light_rewrite_comment(orig, offset, config);
+        return light_rewrite_comment(orig, shape.indent, config);
     }
 
     let (opener, closer, line_start) =
@@ -85,15 +84,14 @@ pub fn rewrite_comment(orig: &str,
             ("// ", "", "// ")
         };
 
-    let max_chars = width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
-    let indent_str = offset.to_string(config);
+    let max_chars = shape.width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
+    let indent_str = shape.indent.to_string(config);
     let fmt = StringFormat {
         opener: "",
         closer: "",
         line_start: line_start,
         line_end: "",
-        width: max_chars,
-        offset: offset + (opener.len() - line_start.len()),
+        shape: Shape::legacy(max_chars, shape.indent + (opener.len() - line_start.len())),
         trim_end: true,
         config: config,
     };
@@ -574,14 +572,13 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 pub fn recover_comment_removed(new: String,
                                span: Span,
                                context: &RewriteContext,
-                               width: usize,
-                               offset: Indent)
+                               shape: Shape)
                                -> Option<String> {
     let snippet = context.snippet(span);
     if changed_comment_content(&snippet, &new) {
         // We missed some comments
         // Keep previous formatting if it satisfies the constrains
-        wrap_str(snippet, context.config.max_width, width, offset)
+        wrap_str(snippet, context.config.max_width, shape)
     } else {
         Some(new)
     }
@@ -678,7 +675,7 @@ fn remove_comment_header(comment: &str) -> &str {
 mod test {
     use super::{CharClasses, CodeCharKind, FullCodeCharKind, contains_comment, rewrite_comment,
                 FindUncommented, CommentCodeSlices};
-    use Indent;
+    use {Indent, Shape};
 
     #[test]
     fn char_classes() {
@@ -735,33 +732,36 @@ mod test {
         config.wrap_comments = true;
         config.normalize_comments = true;
 
-        let comment = rewrite_comment(" //test", true, 100, Indent::new(0, 100), &config).unwrap();
+        let comment = rewrite_comment(" //test",
+                                      true,
+                                      Shape::legacy(100, Indent::new(0, 100)),
+                                      &config).unwrap();
         assert_eq!("/* test */", comment);
 
         let comment = rewrite_comment("// comment on a",
                                       false,
-                                      10,
-                                      Indent::empty(),
+                                      Shape::legacy(10, Indent::empty()),
                                       &config).unwrap();
         assert_eq!("// comment\n// on a", comment);
 
         let comment = rewrite_comment("//  A multi line comment\n             // between args.",
                                       false,
-                                      60,
-                                      Indent::new(0, 12),
+                                      Shape::legacy(60, Indent::new(0, 12)),
                                       &config).unwrap();
         assert_eq!("//  A multi line comment\n            // between args.", comment);
 
         let input = "// comment";
         let expected =
             "/* comment */";
-        let comment = rewrite_comment(input, true, 9, Indent::new(0, 69), &config).unwrap();
+        let comment = rewrite_comment(input,
+                                      true,
+                                      Shape::legacy(9, Indent::new(0, 69)),
+                                      &config).unwrap();
         assert_eq!(expected, comment);
 
         let comment = rewrite_comment("/*   trimmed    */",
                                       true,
-                                      100,
-                                      Indent::new(0, 100),
+                                      Shape::legacy(100, Indent::new(0, 100)),
                                       &config).unwrap();
         assert_eq!("/* trimmed */", comment);
     }

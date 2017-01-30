@@ -17,7 +17,7 @@ use syntax::codemap::{self, Span, BytePos};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 
-use {Indent, Spanned};
+use {Shape, Spanned};
 use codemap::SpanUtils;
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
@@ -38,8 +38,7 @@ pub fn rewrite_path(context: &RewriteContext,
                     path_context: PathContext,
                     qself: Option<&ast::QSelf>,
                     path: &ast::Path,
-                    width: usize,
-                    offset: Indent)
+                    shape: Shape)
                     -> Option<String> {
     let skip_count = qself.map_or(0, |x| x.position);
 
@@ -58,7 +57,7 @@ pub fn rewrite_path(context: &RewriteContext,
             result.push_str(" ")
         }
 
-        let fmt_ty = try_opt!(qself.ty.rewrite(context, width, offset));
+        let fmt_ty = try_opt!(qself.ty.rewrite(context, shape));
         result.push_str(&fmt_ty);
 
         if skip_count > 0 {
@@ -67,9 +66,9 @@ pub fn rewrite_path(context: &RewriteContext,
                 result.push_str("::");
             }
 
-            let extra_offset = extra_offset(&result, offset);
+            let extra_offset = extra_offset(&result, shape.indent);
             // 3 = ">::".len()
-            let budget = try_opt!(width.checked_sub(extra_offset + 3));
+            let budget = try_opt!(shape.width.checked_sub(extra_offset + 3));
 
             result = try_opt!(rewrite_path_segments(PathContext::Type,
                                                     result,
@@ -77,8 +76,8 @@ pub fn rewrite_path(context: &RewriteContext,
                                                     span_lo,
                                                     path.span.hi,
                                                     context,
-                                                    budget,
-                                                    offset + extra_offset));
+                                                    Shape::legacy(budget,
+                                                                  shape.indent + extra_offset)));
         }
 
         if context.config.spaces_within_angle_brackets {
@@ -89,16 +88,15 @@ pub fn rewrite_path(context: &RewriteContext,
         span_lo = qself.ty.span.hi + BytePos(1);
     }
 
-    let extra_offset = extra_offset(&result, offset);
-    let budget = try_opt!(width.checked_sub(extra_offset));
+    let extra_offset = extra_offset(&result, shape.indent);
+    let budget = try_opt!(shape.width.checked_sub(extra_offset));
     rewrite_path_segments(path_context,
                           result,
                           path.segments.iter().skip(skip_count),
                           span_lo,
                           path.span.hi,
                           context,
-                          budget,
-                          offset + extra_offset)
+                          Shape::legacy(budget, shape.indent + extra_offset))
 }
 
 fn rewrite_path_segments<'a, I>(path_context: PathContext,
@@ -107,8 +105,7 @@ fn rewrite_path_segments<'a, I>(path_context: PathContext,
                                 mut span_lo: BytePos,
                                 span_hi: BytePos,
                                 context: &RewriteContext,
-                                width: usize,
-                                offset: Indent)
+                                shape: Shape)
                                 -> Option<String>
     where I: Iterator<Item = &'a ast::PathSegment>
 {
@@ -125,16 +122,15 @@ fn rewrite_path_segments<'a, I>(path_context: PathContext,
             buffer.push_str("::");
         }
 
-        let extra_offset = extra_offset(&buffer, offset);
-        let remaining_width = try_opt!(width.checked_sub(extra_offset));
-        let new_offset = offset + extra_offset;
+        let extra_offset = extra_offset(&buffer, shape.indent);
+        let remaining_width = try_opt!(shape.width.checked_sub(extra_offset));
+        let new_offset = shape.indent + extra_offset;
         let segment_string = try_opt!(rewrite_segment(path_context,
                                                       segment,
                                                       &mut span_lo,
                                                       span_hi,
                                                       context,
-                                                      remaining_width,
-                                                      new_offset));
+                                                      Shape::legacy(remaining_width, new_offset)));
 
         buffer.push_str(&segment_string);
     }
@@ -160,14 +156,15 @@ impl<'a> SegmentParam<'a> {
 }
 
 impl<'a> Rewrite for SegmentParam<'a> {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match *self {
-            SegmentParam::LifeTime(lt) => lt.rewrite(context, width, offset),
-            SegmentParam::Type(ty) => ty.rewrite(context, width, offset),
+            SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
+            SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(binding) => {
                 let mut result = format!("{} = ", binding.ident);
-                let budget = try_opt!(width.checked_sub(result.len()));
-                let rewrite = try_opt!(binding.ty.rewrite(context, budget, offset + result.len()));
+                let budget = try_opt!(shape.width.checked_sub(result.len()));
+                let rewrite = try_opt!(binding.ty
+                    .rewrite(context, Shape::legacy(budget, shape.indent + result.len())));
                 result.push_str(&rewrite);
                 Some(result)
             }
@@ -190,12 +187,11 @@ fn rewrite_segment(path_context: PathContext,
                    span_lo: &mut BytePos,
                    span_hi: BytePos,
                    context: &RewriteContext,
-                   width: usize,
-                   offset: Indent)
+                   shape: Shape)
                    -> Option<String> {
     let ident_len = segment.identifier.to_string().len();
-    let width = try_opt!(width.checked_sub(ident_len));
-    let offset = offset + ident_len;
+    let width = try_opt!(shape.width.checked_sub(ident_len));
+    let offset = shape.indent + ident_len;
 
     let params = if let Some(ref params) = segment.parameters {
         match **params {
@@ -222,18 +218,21 @@ fn rewrite_segment(path_context: PathContext,
                 // 1 for >
                 let list_width = try_opt!(width.checked_sub(extra_offset + 1));
 
-                let items =
-                    itemize_list(context.codemap,
-                                 param_list.into_iter(),
-                                 ">",
-                                 |param| param.get_span().lo,
-                                 |param| param.get_span().hi,
-                                 |seg| seg.rewrite(context, list_width, offset + extra_offset),
-                                 list_lo,
-                                 span_hi);
+                let items = itemize_list(context.codemap,
+                                         param_list.into_iter(),
+                                         ">",
+                                         |param| param.get_span().lo,
+                                         |param| param.get_span().hi,
+                                         |seg| {
+                                             seg.rewrite(context,
+                                                         Shape::legacy(list_width,
+                                                                       offset + extra_offset))
+                                         },
+                                         list_lo,
+                                         span_hi);
                 let list_str = try_opt!(format_item_list(items,
-                                                         list_width,
-                                                         offset + extra_offset,
+                                                         Shape::legacy(list_width,
+                                                                       offset + extra_offset),
                                                          context.config));
 
                 // Update position of last bracket.
@@ -255,8 +254,7 @@ fn rewrite_segment(path_context: PathContext,
                                               false,
                                               data.span,
                                               context,
-                                              width,
-                                              offset))
+                                              Shape::legacy(width, offset)))
             }
             _ => String::new(),
         }
@@ -272,8 +270,7 @@ fn format_function_type<'a, I>(inputs: I,
                                variadic: bool,
                                span: Span,
                                context: &RewriteContext,
-                               width: usize,
-                               offset: Indent)
+                               shape: Shape)
                                -> Option<String>
     where I: ExactSizeIterator,
           <I as Iterator>::Item: Deref,
@@ -297,44 +294,45 @@ fn format_function_type<'a, I>(inputs: I,
     };
 
     // 2 for ()
-    let budget = try_opt!(width.checked_sub(2));
+    let budget = try_opt!(shape.width.checked_sub(2));
     // 1 for (
-    let offset = offset + 1;
+    let offset = shape.indent + 1;
     let list_lo = context.codemap.span_after(span, "(");
-    let items =
-        itemize_list(context.codemap,
-                     // FIXME Would be nice to avoid this allocation,
-                     // but I couldn't get the types to work out.
-                     inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
-                         .chain(variadic_arg),
-                     ")",
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => ty.span().lo,
-                         ArgumentKind::Variadic(start) => start,
-                     },
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => ty.span().hi,
-                         ArgumentKind::Variadic(start) => start + BytePos(3),
-                     },
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => ty.rewrite(context, budget, offset),
-                         ArgumentKind::Variadic(_) => Some("...".to_owned()),
-                     },
-                     list_lo,
-                     span.hi);
+    let items = itemize_list(context.codemap,
+                             // FIXME Would be nice to avoid this allocation,
+                             // but I couldn't get the types to work out.
+                             inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
+                                 .chain(variadic_arg),
+                             ")",
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => ty.span().lo,
+                                 ArgumentKind::Variadic(start) => start,
+                             },
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => ty.span().hi,
+                                 ArgumentKind::Variadic(start) => start + BytePos(3),
+                             },
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => {
+                                     ty.rewrite(context, Shape::legacy(budget, offset))
+                                 }
+                                 ArgumentKind::Variadic(_) => Some("...".to_owned()),
+                             },
+                             list_lo,
+                             span.hi);
 
-    let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
+    let list_str = try_opt!(format_fn_args(items, Shape::legacy(budget, offset), context.config));
 
     let output = match *output {
         FunctionRetTy::Ty(ref ty) => {
-            let budget = try_opt!(width.checked_sub(4));
-            let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
+            let budget = try_opt!(shape.width.checked_sub(4));
+            let type_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, offset + 4)));
             format!(" -> {}", type_str)
         }
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let infix = if !output.is_empty() && output.len() + list_str.len() > width {
+    let infix = if !output.is_empty() && output.len() + list_str.len() > shape.width {
         format!("\n{}", (offset - 1).to_string(context.config))
     } else {
         String::new()
@@ -357,35 +355,33 @@ fn type_bound_colon(context: &RewriteContext) -> &'static str {
 }
 
 impl Rewrite for ast::WherePredicate {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         // TODO: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate { ref bound_lifetimes,
                                                                            ref bounded_ty,
                                                                            ref bounds,
                                                                            .. }) => {
-                let type_str = try_opt!(bounded_ty.rewrite(context, width, offset));
+                let type_str = try_opt!(bounded_ty.rewrite(context, shape));
 
                 let colon = type_bound_colon(context);
 
                 if !bound_lifetimes.is_empty() {
                     let lifetime_str: String = try_opt!(bound_lifetimes.iter()
                                                                .map(|lt| {
-                                                                   lt.rewrite(context,
-                                                                              width,
-                                                                              offset)
+                                                                   lt.rewrite(context, shape)
                                                                })
                                                                .intersperse(Some(", ".to_string()))
                                                                .collect());
 
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
-                    let budget = try_opt!(width.checked_sub(used_width));
+                    let budget = try_opt!(shape.width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds.iter()
                                                     .map(|ty_bound| {
                                                         ty_bound.rewrite(context,
-                                                                         budget,
-                                                                         offset + used_width)
+                                                                         Shape::legacy(budget,
+                                                                         shape.indent + used_width))
                                                     })
                                                     .intersperse(Some(" + ".to_string()))
                                                     .collect());
@@ -397,12 +393,12 @@ impl Rewrite for ast::WherePredicate {
                     }
                 } else {
                     let used_width = type_str.len() + colon.len();
-                    let budget = try_opt!(width.checked_sub(used_width));
+                    let budget = try_opt!(shape.width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds.iter()
                                                     .map(|ty_bound| {
                                                         ty_bound.rewrite(context,
-                                                                         budget,
-                                                                         offset + used_width)
+                                                                         Shape::legacy(budget,
+                                                                         shape.indent + used_width))
                                                     })
                                                     .intersperse(Some(" + ".to_string()))
                                                     .collect());
@@ -413,91 +409,92 @@ impl Rewrite for ast::WherePredicate {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate { ref lifetime,
                                                                              ref bounds,
                                                                              .. }) => {
-                try_opt!(rewrite_bounded_lifetime(lifetime, bounds.iter(), context, width, offset))
+                try_opt!(rewrite_bounded_lifetime(lifetime, bounds.iter(), context, shape))
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref lhs_ty,
                                                                      ref rhs_ty,
                                                                      .. }) => {
-                let lhs_ty_str = try_opt!(lhs_ty.rewrite(context, width, offset));
+                let lhs_ty_str = try_opt!(lhs_ty.rewrite(context, shape));
                 // 3 = " = ".len()
                 let used_width = 3 + lhs_ty_str.len();
-                let budget = try_opt!(width.checked_sub(used_width));
-                let rhs_ty_str = try_opt!(rhs_ty.rewrite(context, budget, offset + used_width));
+                let budget = try_opt!(shape.width.checked_sub(used_width));
+                let rhs_ty_str = try_opt!(rhs_ty.rewrite(context,
+                                            Shape::legacy(budget, shape.indent + used_width)));
                 format!("{} = {}", lhs_ty_str, rhs_ty_str)
             }
         };
 
-        wrap_str(result, context.config.max_width, width, offset)
+        wrap_str(result, context.config.max_width, shape)
     }
 }
 
 impl Rewrite for ast::LifetimeDef {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        rewrite_bounded_lifetime(&self.lifetime, self.bounds.iter(), context, width, offset)
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        rewrite_bounded_lifetime(&self.lifetime, self.bounds.iter(), context, shape)
     }
 }
 
 fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
                                    bounds: I,
                                    context: &RewriteContext,
-                                   width: usize,
-                                   offset: Indent)
+                                   shape: Shape)
                                    -> Option<String>
     where I: ExactSizeIterator<Item = &'b ast::Lifetime>
 {
-    let result = try_opt!(lt.rewrite(context, width, offset));
+    let result = try_opt!(lt.rewrite(context, shape));
 
     if bounds.len() == 0 {
         Some(result)
     } else {
         let appendix: Vec<_> = try_opt!(bounds.into_iter()
-            .map(|b| b.rewrite(context, width, offset))
+            .map(|b| b.rewrite(context, shape))
             .collect());
         let colon = type_bound_colon(context);
         let result = format!("{}{}{}", result, colon, appendix.join(" + "));
-        wrap_str(result, context.config.max_width, width, offset)
+        wrap_str(result, context.config.max_width, shape)
     }
 }
 
 impl Rewrite for ast::TyParamBound {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match *self {
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::None) => {
-                tref.rewrite(context, width, offset)
+                tref.rewrite(context, shape)
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
-                let budget = try_opt!(width.checked_sub(1));
-                Some(format!("?{}", try_opt!(tref.rewrite(context, budget, offset + 1))))
+                let budget = try_opt!(shape.width.checked_sub(1));
+                Some(format!("?{}",
+                             try_opt!(tref.rewrite(context,
+                                                   Shape::legacy(budget, shape.indent + 1)))))
             }
-            ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, width, offset),
+            ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, shape),
         }
     }
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         wrap_str(pprust::lifetime_to_string(self),
                  context.config.max_width,
-                 width,
-                 offset)
+                 shape)
     }
 }
 
 impl Rewrite for ast::TyParamBounds {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let joiner = match context.config.type_punctuation_density {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
         let strs: Vec<_> = try_opt!(self.iter()
-            .map(|b| b.rewrite(context, width, offset))
+            .map(|b| b.rewrite(context, shape))
             .collect());
-        wrap_str(strs.join(joiner), context.config.max_width, width, offset)
+        wrap_str(strs.join(joiner), context.config.max_width, shape)
     }
 }
 
 impl Rewrite for ast::TyParam {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(128);
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
@@ -511,7 +508,7 @@ impl Rewrite for ast::TyParam {
 
             let bounds: String = try_opt!(self.bounds
                 .iter()
-                .map(|ty_bound| ty_bound.rewrite(context, width, offset))
+                .map(|ty_bound| ty_bound.rewrite(context, shape))
                 .intersperse(Some(" + ".to_string()))
                 .collect());
 
@@ -524,29 +521,31 @@ impl Rewrite for ast::TyParam {
                 TypeDensity::Wide => " = ",
             };
             result.push_str(eq_str);
-            let budget = try_opt!(width.checked_sub(result.len()));
-            let rewrite = try_opt!(def.rewrite(context, budget, offset + result.len()));
+            let budget = try_opt!(shape.width.checked_sub(result.len()));
+            let rewrite =
+                try_opt!(def.rewrite(context, Shape::legacy(budget, shape.indent + result.len())));
             result.push_str(&rewrite);
         }
 
-        wrap_str(result, context.config.max_width, width, offset)
+        wrap_str(result, context.config.max_width, shape)
     }
 }
 
 impl Rewrite for ast::PolyTraitRef {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if !self.bound_lifetimes.is_empty() {
             let lifetime_str: String = try_opt!(self.bound_lifetimes
                 .iter()
-                .map(|lt| lt.rewrite(context, width, offset))
+                .map(|lt| lt.rewrite(context, shape))
                 .intersperse(Some(", ".to_string()))
                 .collect());
 
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let max_path_width = try_opt!(width.checked_sub(extra_offset));
+            let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
             let path_str = try_opt!(self.trait_ref
-                .rewrite(context, max_path_width, offset + extra_offset));
+                .rewrite(context,
+                         Shape::legacy(max_path_width, shape.indent + extra_offset)));
 
             Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
                 format!("for< {} > {}", lifetime_str, path_str)
@@ -554,58 +553,64 @@ impl Rewrite for ast::PolyTraitRef {
                 format!("for<{}> {}", lifetime_str, path_str)
             })
         } else {
-            self.trait_ref.rewrite(context, width, offset)
+            self.trait_ref.rewrite(context, shape)
         }
     }
 }
 
 impl Rewrite for ast::TraitRef {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        rewrite_path(context, PathContext::Type, None, &self.path, width, offset)
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        rewrite_path(context, PathContext::Type, None, &self.path, shape)
     }
 }
 
 impl Rewrite for ast::Ty {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            ast::TyKind::TraitObject(ref bounds) => bounds.rewrite(context, width, offset),
+            ast::TyKind::TraitObject(ref bounds) => bounds.rewrite(context, shape),
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
                     Mutability::Mutable => "*mut ",
                     Mutability::Immutable => "*const ",
                 };
 
-                rewrite_unary_prefix(context, prefix, &*mt.ty, width, offset)
+                rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
             ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 Some(match *lifetime {
                     Some(ref lifetime) => {
-                        let lt_budget = try_opt!(width.checked_sub(2 + mut_len));
-                        let lt_str =
-                            try_opt!(lifetime.rewrite(context, lt_budget, offset + 2 + mut_len));
+                        let lt_budget = try_opt!(shape.width.checked_sub(2 + mut_len));
+                        let lt_str = try_opt!(lifetime.rewrite(context,
+                                                               Shape::legacy(lt_budget,
+                                                                             shape.indent + 2 +
+                                                                             mut_len)));
                         let lt_len = lt_str.len();
-                        let budget = try_opt!(width.checked_sub(2 + mut_len + lt_len));
+                        let budget = try_opt!(shape.width.checked_sub(2 + mut_len + lt_len));
                         format!("&{} {}{}",
                                 lt_str,
                                 mut_str,
                                 try_opt!(mt.ty
-                                    .rewrite(context, budget, offset + 2 + mut_len + lt_len)))
+                                    .rewrite(context,
+                                             Shape::legacy(budget,
+                                                           shape.indent + 2 + mut_len + lt_len))))
                     }
                     None => {
-                        let budget = try_opt!(width.checked_sub(1 + mut_len));
+                        let budget = try_opt!(shape.width.checked_sub(1 + mut_len));
                         format!("&{}{}",
                                 mut_str,
-                                try_opt!(mt.ty.rewrite(context, budget, offset + 1 + mut_len)))
+                                try_opt!(mt.ty.rewrite(context,
+                                                       Shape::legacy(budget,
+                                                                     shape.indent + 1 + mut_len))))
                     }
                 })
             }
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
             ast::TyKind::Paren(ref ty) => {
-                let budget = try_opt!(width.checked_sub(2));
-                ty.rewrite(context, budget, offset + 1)
+                let budget = try_opt!(shape.width.checked_sub(2));
+                ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
                     .map(|ty_str| if context.config.spaces_within_parens {
                         format!("( {} )", ty_str)
                     } else {
@@ -614,11 +619,11 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Slice(ref ty) => {
                 let budget = if context.config.spaces_within_square_brackets {
-                    try_opt!(width.checked_sub(4))
+                    try_opt!(shape.width.checked_sub(4))
                 } else {
-                    try_opt!(width.checked_sub(2))
+                    try_opt!(shape.width.checked_sub(2))
                 };
-                ty.rewrite(context, budget, offset + 1)
+                ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
                     .map(|ty_str| if context.config.spaces_within_square_brackets {
                         format!("[ {} ]", ty_str)
                     } else {
@@ -626,41 +631,30 @@ impl Rewrite for ast::Ty {
                     })
             }
             ast::TyKind::Tup(ref items) => {
-                rewrite_tuple(context,
-                              items.iter().map(|x| &**x),
-                              self.span,
-                              width,
-                              offset)
+                rewrite_tuple(context, items.iter().map(|x| &**x), self.span, shape)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context,
-                             PathContext::Type,
-                             q_self.as_ref(),
-                             path,
-                             width,
-                             offset)
+                rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => {
                 let use_spaces = context.config.spaces_within_square_brackets;
                 let lbr = if use_spaces { "[ " } else { "[" };
                 let rbr = if use_spaces { " ]" } else { "]" };
-                rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, width, offset)
+                rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, shape)
             }
             ast::TyKind::Infer => {
-                if width >= 1 {
+                if shape.width >= 1 {
                     Some("_".to_owned())
                 } else {
                     None
                 }
             }
-            ast::TyKind::BareFn(ref bare_fn) => {
-                rewrite_bare_fn(bare_fn, self.span, context, width, offset)
-            }
+            ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Some(String::from("!")),
             ast::TyKind::Mac(..) => None,
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(ref it) => {
-                it.rewrite(context, width, offset).map(|it_str| format!("impl {}", it_str))
+                it.rewrite(context, shape).map(|it_str| format!("impl {}", it_str))
             }
             ast::TyKind::Typeof(..) => unreachable!(),
         }
@@ -670,8 +664,7 @@ impl Rewrite for ast::Ty {
 fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
                    span: Span,
                    context: &RewriteContext,
-                   width: usize,
-                   offset: Indent)
+                   shape: Shape)
                    -> Option<String> {
     let mut result = String::with_capacity(128);
 
@@ -682,7 +675,10 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
         // rightward drift. If that is a problem, we could use the list stuff.
         result.push_str(&try_opt!(bare_fn.lifetimes
             .iter()
-            .map(|l| l.rewrite(context, try_opt!(width.checked_sub(6)), offset + 4))
+            .map(|l| {
+                l.rewrite(context,
+                          Shape::legacy(try_opt!(shape.width.checked_sub(6)), shape.indent + 4))
+            })
             .intersperse(Some(", ".to_string()))
             .collect::<Option<String>>()));
         result.push_str("> ");
@@ -696,16 +692,15 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
 
     result.push_str("fn");
 
-    let budget = try_opt!(width.checked_sub(result.len()));
-    let indent = offset + result.len();
+    let budget = try_opt!(shape.width.checked_sub(result.len()));
+    let indent = shape.indent + result.len();
 
     let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter(),
                                                 &bare_fn.decl.output,
                                                 bare_fn.decl.variadic,
                                                 span,
                                                 context,
-                                                budget,
-                                                indent));
+                                                Shape::legacy(budget, indent)));
 
     result.push_str(&rewrite);
 

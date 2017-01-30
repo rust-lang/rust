@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Indent;
+use Shape;
 use utils;
 use syntax::codemap::{self, BytePos, Span};
 use codemap::SpanUtils;
@@ -125,19 +125,19 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
 
 impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
             ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => {
                 Some(String::new())
             }
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
-                rewrite_use_list(width, offset, path, path_list, self.span, context)
+                rewrite_use_list(shape, path, path_list, self.span, context)
             }
             ast::ViewPath_::ViewPathGlob(_) => None,
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
-                let budget = try_opt!(width.checked_sub(ident_str.len() + 4));
+                let budget = try_opt!(shape.width.checked_sub(ident_str.len() + 4));
 
                 let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
                                   path.segments.len() > 1 {
@@ -149,10 +149,13 @@ impl Rewrite for ast::ViewPath {
                                           PathContext::Import,
                                           None,
                                           &path,
-                                          budget,
-                                          offset))
+                                          Shape::legacy(budget, shape.indent)))
                 } else {
-                    try_opt!(rewrite_path(context, PathContext::Import, None, path, budget, offset))
+                    try_opt!(rewrite_path(context,
+                                          PathContext::Import,
+                                          None,
+                                          path,
+                                          Shape::legacy(budget, shape.indent)))
                 };
 
                 Some(if path.segments.last().unwrap().identifier == ident {
@@ -225,8 +228,7 @@ impl<'a> FmtVisitor<'a> {
         offset.alignment += vis.len() + "use ".len();
         // 1 = ";"
         match vp.rewrite(&self.get_context(),
-                         self.config.max_width - offset.width() - 1,
-                         offset) {
+                         Shape::legacy(self.config.max_width - offset.width() - 1, offset)) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = codemap::mk_sp(self.last_pos, source!(self, span).lo);
@@ -283,15 +285,14 @@ fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
 
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
-pub fn rewrite_use_list(width: usize,
-                        offset: Indent,
+pub fn rewrite_use_list(shape: Shape,
                         path: &ast::Path,
                         path_list: &[ast::PathListItem],
                         span: Span,
                         context: &RewriteContext)
                         -> Option<String> {
     // Returns a different option to distinguish `::foo` and `foo`
-    let path_str = try_opt!(rewrite_path(context, PathContext::Import, None, path, width, offset));
+    let path_str = try_opt!(rewrite_path(context, PathContext::Import, None, path, shape));
 
     match path_list.len() {
         0 => unreachable!(),
@@ -300,7 +301,7 @@ pub fn rewrite_use_list(width: usize,
     }
 
     // 2 = {}
-    let remaining_width = width.checked_sub(path_str.len() + 2).unwrap_or(0);
+    let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -336,11 +337,11 @@ pub fn rewrite_use_list(width: usize,
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        indent: offset + path_str.len() + 1 + colons_offset,
         // FIXME This is too conservative, and will not use all width
         // available
         // (loose 1 column (";"))
-        width: remaining_width,
+        shape: Shape::legacy(remaining_width,
+                             shape.indent + path_str.len() + 1 + colons_offset),
         ends_with_newline: false,
         config: context.config,
     };

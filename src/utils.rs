@@ -18,7 +18,7 @@ use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMet
 use syntax::codemap::BytePos;
 use syntax::abi;
 
-use Indent;
+use {Indent, Shape};
 use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
@@ -253,18 +253,18 @@ macro_rules! source {
 
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
-pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Indent) -> Option<S> {
+pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S> {
     {
         let snippet = s.as_ref();
 
-        if !snippet.contains('\n') && snippet.len() > width {
+        if !snippet.contains('\n') && snippet.len() > shape.width {
             return None;
         } else {
             let mut lines = snippet.lines();
 
-            // The caller of this function has already placed `offset`
+            // The caller of this function has already placed `shape.offset`
             // characters on the first line.
-            let first_line_max_len = try_opt!(max_width.checked_sub(offset.width()));
+            let first_line_max_len = try_opt!(max_width.checked_sub(shape.indent.width()));
             if lines.next().unwrap().len() > first_line_max_len {
                 return None;
             }
@@ -278,7 +278,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Ind
             // indentation.
             // A special check for the last line, since the caller may
             // place trailing characters on this line.
-            if snippet.lines().rev().next().unwrap().len() > offset.width() + width {
+            if snippet.lines().rev().next().unwrap().len() > shape.indent.width() + shape.width {
                 return None;
             }
         }
@@ -288,8 +288,8 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Ind
 }
 
 impl Rewrite for String {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        wrap_str(self, context.config.max_width, width, offset).map(ToOwned::to_owned)
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        wrap_str(self, context.config.max_width, shape).map(ToOwned::to_owned)
     }
 }
 

@@ -13,7 +13,7 @@ use std::iter::Peekable;
 
 use syntax::codemap::{self, CodeMap, BytePos};
 
-use Indent;
+use {Indent, Shape};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
 use config::Config;
 
@@ -59,50 +59,38 @@ pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
     pub separator: &'a str,
     pub trailing_separator: SeparatorTactic,
-    pub indent: Indent,
-    pub width: usize,
+    pub shape: Shape,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
     pub ends_with_newline: bool,
     pub config: &'a Config,
 }
 
-pub fn format_fn_args<I>(items: I, width: usize, offset: Indent, config: &Config) -> Option<String>
+pub fn format_fn_args<I>(items: I, shape: Shape, config: &Config) -> Option<String>
     where I: Iterator<Item = ListItem>
 {
     list_helper(items,
-                width,
-                offset,
+                shape,
                 config,
                 ListTactic::LimitedHorizontalVertical(config.fn_call_width))
 }
 
-pub fn format_item_list<I>(items: I,
-                           width: usize,
-                           offset: Indent,
-                           config: &Config)
-                           -> Option<String>
+pub fn format_item_list<I>(items: I, shape: Shape, config: &Config) -> Option<String>
     where I: Iterator<Item = ListItem>
 {
-    list_helper(items, width, offset, config, ListTactic::HorizontalVertical)
+    list_helper(items, shape, config, ListTactic::HorizontalVertical)
 }
 
-pub fn list_helper<I>(items: I,
-                      width: usize,
-                      offset: Indent,
-                      config: &Config,
-                      tactic: ListTactic)
-                      -> Option<String>
+pub fn list_helper<I>(items: I, shape: Shape, config: &Config, tactic: ListTactic) -> Option<String>
     where I: Iterator<Item = ListItem>
 {
     let item_vec: Vec<_> = items.collect();
-    let tactic = definitive_tactic(&item_vec, tactic, width);
+    let tactic = definitive_tactic(&item_vec, tactic, shape.width);
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        indent: offset,
-        width: width,
+        shape: shape,
         ends_with_newline: false,
         config: config,
     };
@@ -201,7 +189,7 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
     let mut iter = items.into_iter().enumerate().peekable();
 
     let mut line_len = 0;
-    let indent_str = &formatting.indent.to_string(formatting.config);
+    let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
         let inner_item = try_opt!(item.item.as_ref());
@@ -234,7 +222,7 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
                 let total_width = total_item_width(item) + item_sep_len;
 
                 // 1 is space between separator and item.
-                if line_len > 0 && line_len + 1 + total_width > formatting.width {
+                if line_len > 0 && line_len + 1 + total_width > formatting.shape.width {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
@@ -255,12 +243,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
             // Block style in non-vertical mode.
             let block_mode = tactic != DefinitiveListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
-            let max_width = formatting.width;
-            let comment = try_opt!(rewrite_comment(comment,
-                                                   block_mode,
-                                                   max_width,
-                                                   formatting.indent,
-                                                   formatting.config));
+            let comment =
+                try_opt!(rewrite_comment(comment, block_mode, formatting.shape, formatting.config));
             result.push_str(&comment);
 
             if tactic == DefinitiveListTactic::Vertical {
@@ -276,11 +260,11 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment = try_opt!(rewrite_comment(comment,
-                                                             true,
-                                                             formatting.width,
-                                                             Indent::empty(),
-                                                             formatting.config));
+            let formatted_comment =
+                try_opt!(rewrite_comment(comment,
+                                         true,
+                                         Shape::legacy(formatting.shape.width, Indent::empty()),
+                                         formatting.config));
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -292,8 +276,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
-            let width = formatting.width.checked_sub(item_last_line_width + 1).unwrap_or(1);
-            let mut offset = formatting.indent;
+            let width = formatting.shape.width.checked_sub(item_last_line_width + 1).unwrap_or(1);
+            let mut offset = formatting.shape.indent;
             offset.alignment += item_last_line_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
 
@@ -303,8 +287,10 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
 
-            let formatted_comment =
-                try_opt!(rewrite_comment(comment, block_style, width, offset, formatting.config));
+            let formatted_comment = try_opt!(rewrite_comment(comment,
+                                                             block_style,
+                                                             Shape::legacy(width, offset),
+                                                             formatting.config));
 
             result.push(' ');
             result.push_str(&formatted_comment);

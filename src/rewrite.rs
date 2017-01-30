@@ -13,18 +13,12 @@
 use syntax::codemap::{CodeMap, Span};
 use syntax::parse::ParseSess;
 
-use Indent;
+use {Indent, Shape};
 use config::Config;
 
 pub trait Rewrite {
-    /// Rewrite self into offset and width.
-    /// `offset` is the indentation of the first line. The next lines
-    /// should begin with a least `offset` spaces (except backwards
-    /// indentation). The first line should not begin with indentation.
-    /// `width` is the maximum number of characters on the last line
-    /// (excluding offset). The width of other lines is not limited by
-    /// `width`.
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String>;
+    /// Rewrite self into shape.
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String>;
 }
 
 #[derive(Clone)]

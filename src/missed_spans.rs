@@ -12,6 +12,7 @@ use config::WriteMode;
 use visitor::FmtVisitor;
 use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
+use Shape;
 
 impl<'a> FmtVisitor<'a> {
     fn output_at_start(&self) -> bool {
@@ -143,8 +144,8 @@ impl<'a> FmtVisitor<'a> {
 
                     self.buffer.push_str(&rewrite_comment(subslice,
                                                           false,
-                                                          comment_width,
-                                                          self.block_indent,
+                                                          Shape::legacy(comment_width,
+                                                                        self.block_indent),
                                                           self.config)
                         .unwrap());
 
