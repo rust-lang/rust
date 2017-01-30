@@ -15,8 +15,7 @@ use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
 use ext::derive::{get_legacy_derive, get_proc_macro_derive, get_builtin_derive,
-                  derive_attr_trait, add_structural_marker, add_copy_clone_marker,
-                  verify_derive_attrs};
+                  derive_attr_trait, add_derived_markers, verify_derive_attrs};
 use ext::hygiene::Mark;
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features};
@@ -700,8 +699,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 }).or_else(|| {
                     get_proc_macro_derive(self.cx, &mut attrs)
                 }).or_else(|| {
-                    add_structural_marker(self.cx, &mut attrs);
-                    add_copy_clone_marker(self.cx, &mut attrs);
+                    add_derived_markers(self.cx, &mut attrs);
                     get_builtin_derive(self.cx, &mut attrs)
                 });
 

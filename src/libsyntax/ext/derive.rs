@@ -193,68 +193,34 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
     }
 }
 
-pub fn add_structural_marker(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
-    if attrs.iter().any(|a| a.name() == "structural_match") {
+pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
+    if attrs.is_empty() {
         return;
     }
 
-    let (mut seen_peq, mut seen_eq) = (false, false);
+    let titems = attrs.iter().filter(|a| {
+        a.name() == "derive"
+    }).flat_map(|a| {
+        a.meta_item_list().unwrap().iter()
+    }).filter_map(|titem| {
+        titem.name()
+    }).collect::<Vec<_>>();
 
-    for i in 0..attrs.len() {
-        if attrs[i].name() != "derive" {
-            continue;
-        }
-        let traits = attrs[i].meta_item_list().unwrap_or(&[]).to_owned();
-        let span = attrs[i].span;
+    let span = attrs[0].span;
 
-        let (partial_eq, eq) = (Symbol::intern("PartialEq"), Symbol::intern("Eq"));
-        if !seen_peq && traits.iter().any(|t| t.name() == Some(partial_eq)) {
-            seen_peq = true;
-        }
-
-        if !seen_eq && traits.iter().any(|t| t.name() == Some(eq)) {
-            seen_eq = true;
-        }
-
-        if seen_peq && seen_eq {
-            let structural_match = Symbol::intern("structural_match");
-            let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
-            let meta = cx.meta_word(span, structural_match);
-            attrs.push(cx.attribute(span, meta));
-            return;
-        }
-    }
-}
-
-pub fn add_copy_clone_marker(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
-    if attrs.iter().any(|a| a.name() == "rustc_copy_clone_marker") {
-        return;
+    if !attrs.iter().any(|a| a.name() == "structural_match") &&
+       titems.iter().any(|t| *t == "PartialEq") && titems.iter().any(|t| *t == "Eq") {
+       let structural_match = Symbol::intern("structural_match");
+       let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
+       let meta = cx.meta_word(span, structural_match);
+       attrs.push(cx.attribute(span, meta));
     }
 
-    let (mut seen_clone, mut seen_copy) = (false, false);
-
-    for i in 0..attrs.len() {
-        if attrs[i].name() != "derive" {
-            continue;
-        }
-        let traits = attrs[i].meta_item_list().unwrap_or(&[]).to_owned();
-        let span = attrs[i].span;
-
-        let (copy, clone) = (Symbol::intern("Copy"), Symbol::intern("Clone"));
-        if !seen_clone && traits.iter().any(|t| t.name() == Some(clone)) {
-            seen_clone = true;
-        }
-
-        if !seen_copy && traits.iter().any(|t| t.name() == Some(copy)) {
-            seen_copy = true;
-        }
-
-        if seen_clone && seen_copy {
-            let marker = Symbol::intern("rustc_copy_clone_marker");
-            let span = allow_unstable(cx, span, "derive(Copy, Clone)");
-            let meta = cx.meta_word(span, marker);
-            attrs.push(cx.attribute(span, meta));
-            return;
-        }
+    if !attrs.iter().any(|a| a.name() == "rustc_copy_clone_marker") &&
+       titems.iter().any(|t| *t == "Copy") && titems.iter().any(|t| *t == "Clone") {
+       let structural_match = Symbol::intern("structural_match");
+       let span = allow_unstable(cx, span, "derive(Copy, Clone)");
+       let meta = cx.meta_word(span, structural_match);
+       attrs.push(cx.attribute(span, meta));
     }
 }
