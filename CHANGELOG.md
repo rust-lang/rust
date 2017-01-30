@@ -337,6 +337,7 @@ All notable changes to this project will be documented in this file.
 [`iter_next_loop`]: https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop
 [`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`iter_skip_next`]: https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next
+[`large_enum_variant`]: https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant
 [`len_without_is_empty`]: https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty
 [`len_zero`]: https://github.com/Manishearth/rust-clippy/wiki#len_zero
 [`let_and_return`]: https://github.com/Manishearth/rust-clippy/wiki#let_and_return

@@ -87,6 +87,7 @@ pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod items_after_statements;
+pub mod large_enum_variant;
 pub mod len_zero;
 pub mod let_if_seq;
 pub mod lifetimes;
@@ -292,6 +293,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box reference::Pass);
     reg.register_early_lint_pass(box double_parens::DoubleParens);
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
+    reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -383,6 +385,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         let_if_seq::USELESS_LET_IF_SEQ,
