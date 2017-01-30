@@ -58,7 +58,7 @@ pub struct SequenceRepetition {
     pub separator: Option<token::Token>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
     pub op: KleeneOp,
-    /// The number of `MatchNt`s that appear in the sequence (and subsequences)
+    /// The number of `Match`s that appear in the sequence (and subsequences)
     pub num_captures: usize,
 }
 
@@ -78,6 +78,8 @@ pub enum TokenTree {
     Delimited(Span, Rc<Delimited>),
     /// A kleene-style repetition sequence with a span
     Sequence(Span, Rc<SequenceRepetition>),
+    /// Matches a nonterminal. This is only used in the left hand side of MBE macros.
+    MetaVarDecl(Span, ast::Ident /* name to bind */, ast::Ident /* kind of nonterminal */),
 }
 
 impl TokenTree {
@@ -88,7 +90,7 @@ impl TokenTree {
                 _ => delimed.tts.len() + 2,
             },
             TokenTree::Sequence(_, ref seq) => seq.tts.len(),
-            TokenTree::Token(..) => 0,
+            _ => 0,
         }
     }
 
@@ -115,6 +117,7 @@ impl TokenTree {
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) |
+            TokenTree::MetaVarDecl(sp, _, _) |
             TokenTree::Delimited(sp, _) |
             TokenTree::Sequence(sp, _) => sp,
         }
@@ -133,7 +136,7 @@ pub fn parse(input: &[tokenstream::TokenTree], expect_matchers: bool, sess: &Par
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
                         Some(tokenstream::TokenTree::Token(end_sp, token::Ident(kind))) => {
                             let span = Span { lo: start_sp.lo, ..end_sp };
-                            result.push(TokenTree::Token(span, token::MatchNt(ident, kind)));
+                            result.push(TokenTree::MetaVarDecl(span, ident, kind));
                             continue
                         }
                         tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),

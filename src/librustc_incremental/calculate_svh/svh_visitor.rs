@@ -1109,10 +1109,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             token::Token::Ident(ident) |
             token::Token::Lifetime(ident) |
             token::Token::SubstNt(ident) => ident.name.as_str().hash(self.st),
-            token::Token::MatchNt(ident1, ident2) => {
-                ident1.name.as_str().hash(self.st);
-                ident2.name.as_str().hash(self.st);
-            }
 
             token::Token::Interpolated(ref non_terminal) => {
                 // FIXME(mw): This could be implemented properly. It's just a
