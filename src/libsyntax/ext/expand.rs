@@ -676,6 +676,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect_attr(&mut self, attr: ast::Attribute, item: Annotatable, kind: ExpansionKind)
                     -> Expansion {
         let invoc_kind = if attr.name() == "derive" {
+            if kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems {
+                self.cx.span_err(attr.span, "`derive` can be only be applied to items");
+                return kind.expect_from_annotatables(::std::iter::once(item));
+            }
             InvocationKind::Derive { attr: attr, item: item }
         } else {
             InvocationKind::Attr { attr: attr, item: item }
@@ -935,13 +939,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            if attr.name() != "derive" {
-                let item =
-                    Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
-                return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
-            } else {
-                self.cx.span_err(attr.span, "`derive` can't be only be applied to items");
-            }
+            let item =
+                Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
+            return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
         }
 
         match item.node {
@@ -959,13 +959,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            if attr.name() != "derive" {
-                let item =
-                    Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
-                return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
-            } else {
-                self.cx.span_err(attr.span, "`derive` can't be applied to impl items");
-            }
+            let item =
+                Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
+            return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
         }
 
         match item.node {
