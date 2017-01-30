@@ -16,7 +16,7 @@ use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
             is_refutable, span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
-            last_path_segment};
+            last_path_segment, span_lint_and_sugg};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -644,23 +644,20 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     }
 }
 
-fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, expr: &Expr, method_name: &str) {
+fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, method_name: &str) {
     let object = snippet(cx, args[0].span, "_");
-    let suggestion = format!("&{}{}",
-                             if method_name == "iter_mut" {
-                                 "mut "
-                             } else {
-                                 ""
-                             },
-                             object);
-    span_lint_and_then(cx,
+    let muta = if method_name == "iter_mut" {
+        "mut "
+    } else {
+        ""
+    };
+    span_lint_and_sugg(cx,
                        EXPLICIT_ITER_LOOP,
-                       expr.span,
-                       &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                suggestion,
-                                object,
-                                method_name),
-                       |db| db.span_suggestion(arg.span, "to write this more concisely, try looping over", suggestion));
+                       arg.span,
+                       "it is more idiomatic to loop over references to containers instead of using explicit \
+                        iteration methods",
+                       "to write this more concisely, try looping over",
+                       format!("&{}{}", muta, object))
 }
 
 fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
@@ -672,7 +669,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
             if method_name == "iter" || method_name == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
-                    lint_iter_method(cx, args, arg, expr, method_name);
+                    lint_iter_method(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let method_call = ty::MethodCall::expr(arg.id);
@@ -684,7 +681,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                 let fn_arg_tys = fn_ty.fn_args();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
-                    lint_iter_method(cx, args, arg, expr, method_name);
+                    lint_iter_method(cx, args, arg, method_name);
                 } else {
                     let object = snippet(cx, args[0].span, "_");
                     span_lint_and_then(cx,

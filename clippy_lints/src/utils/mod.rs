@@ -569,6 +569,17 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     }
 }
 
+pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+    cx: &'a T,
+    lint: &'static Lint,
+    sp: Span,
+    msg: &str,
+    help: &str,
+    sugg: String,
+) {
+    span_lint_and_then(cx, lint, sp, msg, |db| { db.span_suggestion(sp, help, sugg); });
+}
+
 /// Create a suggestion made from several `span → replacement`.
 ///
 /// Note: in the JSON format (used by `compiletest_rs`), the help message will appear once per
