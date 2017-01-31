@@ -70,7 +70,7 @@ impl DeriveType {
     pub fn is_derive_type(&self, cx: &mut ExtCtxt, titem: &NestedMetaItem) -> bool {
         match *self {
             DeriveType::Legacy => is_legacy_derive(cx, titem),
-            DeriveType::ProcMacro => is_proc_macro_derive(cx, titem),
+            DeriveType::ProcMacro => !is_builtin_derive(cx, titem),
             DeriveType::Builtin => is_builtin_derive(cx, titem),
         }
     }
@@ -145,21 +145,20 @@ pub fn get_legacy_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
     })
 }
 
-pub fn get_proc_macro_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
-                             -> Option<ast::Attribute> {
-    get_derive_attr(cx, attrs, DeriveType::ProcMacro)
-}
-
 pub fn get_builtin_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                           -> Option<ast::Attribute> {
     get_derive_attr(cx, attrs, DeriveType::Builtin)
+}
+
+pub fn get_proc_macro_derive(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
+                             -> Option<ast::Attribute> {
+    get_derive_attr(cx, attrs, DeriveType::ProcMacro)
 }
 
 pub fn is_legacy_derive(cx: &mut ExtCtxt, titem: &NestedMetaItem) -> bool {
     let tname = titem.name().unwrap();
     let name = Symbol::intern(&format!("derive_{}", tname));
     let path = ast::Path::from_ident(titem.span, ast::Ident::with_empty_ctxt(name));
-    !is_proc_macro_derive(cx, titem) && !is_builtin_derive(cx, titem) &&
         cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).is_ok()
 }
 
