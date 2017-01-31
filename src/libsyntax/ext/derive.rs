@@ -177,7 +177,7 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
 
     if !attrs.iter().any(|a| a.name() == "rustc_copy_clone_marker") &&
         titems.iter().any(|t| *t == "Copy") && titems.iter().any(|t| *t == "Clone") {
-        let structural_match = Symbol::intern("structural_match");
+        let structural_match = Symbol::intern("rustc_copy_clone_marker");
         let span = allow_unstable(cx, span, "derive(Copy, Clone)");
         let meta = cx.meta_word(span, structural_match);
         attrs.push(cx.attribute(span, meta));
