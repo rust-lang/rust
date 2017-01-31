@@ -510,7 +510,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_align(ptr, align, size)?;
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
@@ -522,7 +521,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
-        self.check_align(ptr, align, size)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
