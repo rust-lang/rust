@@ -14,7 +14,6 @@ use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty};
 use mir::*;
 use rustc_const_math::ConstUsize;
-use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
@@ -363,14 +362,6 @@ macro_rules! make_mir_visitor {
                         self.visit_branch(block, target);
                     }
 
-                    TerminatorKind::If { ref $($mutability)* cond,
-                                         ref $($mutability)* targets } => {
-                        self.visit_operand(cond, source_location);
-                        for &target in targets.as_slice() {
-                            self.visit_branch(block, target);
-                        }
-                    }
-
                     TerminatorKind::Switch { ref $($mutability)* discr,
                                              adt_def: _,
                                              ref targets } => {
@@ -384,7 +375,7 @@ macro_rules! make_mir_visitor {
                                                 ref $($mutability)* switch_ty,
                                                 ref $($mutability)* values,
                                                 ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
+                        self.visit_operand(discr, source_location);
                         self.visit_ty(switch_ty);
                         for value in values {
                             self.visit_const_val(value, source_location);
