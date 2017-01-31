@@ -14,8 +14,9 @@ use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
-use ext::derive::{get_legacy_derive, get_proc_macro_derive, get_builtin_derive,
-                  derive_attr_trait, add_derived_markers, verify_derive_attrs};
+use ext::build::AstBuilder;
+use ext::derive::{get_derive_attr, derive_attr_trait, add_derived_markers, verify_derive_attrs,
+                  DeriveType};
 use ext::hygiene::Mark;
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features};
@@ -260,8 +261,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 InvocationKind::Derive { ref attr, .. } => {
                     let titem = derive_attr_trait(self.cx, &attr).unwrap();
                     let tname = titem.name().unwrap();
-                    let path = ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(tname));
-                    self.cx.resolver.resolve_macro(scope, &path, force)
+                    self.cx.resolver.resolve_builtin_macro(tname)
                 }
             };
             let ext = match resolution {
@@ -694,13 +694,34 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         item = item.map_attrs(|mut attrs| {
             attr = self.cx.resolver.find_attr_invoc(&mut attrs)
                 .or_else(|| {
-                    verify_derive_attrs(self.cx, &mut attrs);
-                    get_legacy_derive(self.cx, &mut attrs)
-                }).or_else(|| {
-                    get_proc_macro_derive(self.cx, &mut attrs)
+                    verify_derive_attrs(self.cx, &attrs);
+                    get_derive_attr(self.cx, &mut attrs, DeriveType::Legacy).and_then(|a| {
+                        let titem = derive_attr_trait(self.cx, &a);
+                        if let Some(titem) = titem {
+                            let tword = titem.word().unwrap();
+                            let tname = tword.name();
+                            if !self.cx.ecfg.enable_custom_derive() {
+                                feature_gate::emit_feature_err(&self.cx.parse_sess,
+                                                               "custom_derive",
+                                                               titem.span,
+                                                               feature_gate::GateIssue::Language,
+                                                               feature_gate::EXPLAIN_CUSTOM_DERIVE);
+                            } else {
+                                let name = Symbol::intern(&format!("derive_{}", tname));
+                                if !self.cx.resolver.is_whitelisted_legacy_custom_derive(name) {
+                                    self.cx.span_warn(titem.span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
+                                }
+                                let mitem = self.cx.meta_word(titem.span, name);
+                                return Some(self.cx.attribute(mitem.span, mitem));
+                            }
+                        }
+                        None
+                    })
                 }).or_else(|| {
                     add_derived_markers(self.cx, &mut attrs);
-                    get_builtin_derive(self.cx, &mut attrs)
+                    get_derive_attr(self.cx, &mut attrs, DeriveType::Builtin)
+                }).or_else(|| {
+                    get_derive_attr(self.cx, &mut attrs, DeriveType::ProcMacro)
                 });
 
             attrs
@@ -937,8 +958,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            let item =
-                Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
+            let item = Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
             return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
         }
 
@@ -957,8 +977,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            let item =
-                Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
+            let item = Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
             return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
         }
 

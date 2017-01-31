@@ -250,6 +250,14 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         result
     }
+
+    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
+        match self.builtin_macros.get(&tname).cloned() {
+            Some(binding) => Ok(binding.get_macro(self)),
+            None => Err(Determinacy::Undetermined),
+        }
+    }
+
 }
 
 impl<'a> Resolver<'a> {
