@@ -474,10 +474,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Byte accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    fn get_bytes_unchecked(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
+    fn get_bytes_unchecked(&self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         if size == 0 {
             return Ok(&[]);
         }
+        self.check_align(ptr, align, size)?;
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset + size > allocation_size {
@@ -489,10 +490,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(&alloc.bytes[offset..offset + size as usize])
     }
 
-    fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &mut [u8]> {
+    fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
         if size == 0 {
             return Ok(&mut []);
         }
+        self.check_align(ptr, align, size)?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset + size > allocation_size {
@@ -513,7 +515,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::ReadPointerAsBytes);
         }
         self.check_defined(ptr, size)?;
-        self.get_bytes_unchecked(ptr, size)
+        self.get_bytes_unchecked(ptr, size, align)
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
@@ -523,7 +525,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.check_align(ptr, align, size)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
-        self.get_bytes_unchecked_mut(ptr, size)
+        self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
 
@@ -558,7 +560,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
         self.check_relocation_edges(src, size)?;
 
-        let src_bytes = self.get_bytes_unchecked(src, size)?.as_ptr();
+        let src_bytes = self.get_bytes_unchecked(src, size, align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
@@ -615,7 +617,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let size = self.pointer_size();
         self.check_defined(ptr, size)?;
         let endianess = self.endianess();
-        let bytes = self.get_bytes_unchecked(ptr, size)?;
+        let bytes = self.get_bytes_unchecked(ptr, size, size)?;
         let offset = read_target_uint(endianess, bytes).unwrap();
         assert_eq!(offset as u64 as u128, offset);
         let offset = offset as u64;
