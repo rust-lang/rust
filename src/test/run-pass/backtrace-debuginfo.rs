@@ -37,7 +37,6 @@ macro_rules! dump_and_die {
                     target_os = "ios",
                     target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
-                    all(target_os = "windows", target_pointer_width = "32"),
                     target_os = "freebsd",
                     target_os = "dragonfly",
                     target_os = "bitrig",
