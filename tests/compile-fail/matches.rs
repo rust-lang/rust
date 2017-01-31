@@ -271,8 +271,8 @@ fn overlapping() {
     }
 
     match 42 {
-        0 .. 11 => println!("0 ... 10"), //~ERROR: some ranges overlap
-        0 ... 11 => println!("0 ... 10"), //~NOTE overlaps with this
+        0 .. 11 => println!("0 .. 11"), //~ERROR: some ranges overlap
+        0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
         _ => (),
     }
 
