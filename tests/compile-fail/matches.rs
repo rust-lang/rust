@@ -1,4 +1,5 @@
 #![feature(plugin)]
+#![feature(exclusive_range_pattern)]
 
 #![plugin(clippy)]
 #![deny(clippy)]
@@ -228,14 +229,14 @@ fn overlapping() {
 
     match 42 {
         0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
-        0 ... 11 => println!("0 ... 10"), //~NOTE overlaps with this
+        0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
         _ => (),
     }
 
     match 42 {
         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
         6 ... 7 => println!("6 ... 7"),
-        FOO ... 11 => println!("0 ... 10"), //~NOTE overlaps with this
+        FOO ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
         _ => (),
     }
 
@@ -246,8 +247,32 @@ fn overlapping() {
     }
 
     match 42 {
+        2 => println!("2"), //~NOTE overlaps with this
+        0 ... 2 => println!("0 ... 2"), //~ERROR: some ranges overlap
+        _ => (),
+    }
+
+    match 42 {
         0 ... 10 => println!("0 ... 10"),
-        11 ... 50 => println!("0 ... 10"),
+        11 ... 50 => println!("11 ... 50"),
+        _ => (),
+    }
+
+    match 42 {
+        2 => println!("2"),
+        0 .. 2 => println!("0 .. 2"),
+        _ => (),
+    }
+
+    match 42 {
+        0 .. 10 => println!("0 .. 10"),
+        10 .. 50 => println!("10 .. 50"),
+        _ => (),
+    }
+
+    match 42 {
+        0 .. 11 => println!("0 .. 11"), //~ERROR: some ranges overlap
+        0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
         _ => (),
     }
 

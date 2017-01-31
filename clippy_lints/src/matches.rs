@@ -6,6 +6,7 @@ use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
+use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
@@ -361,10 +362,14 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 }
                 .filter_map(|pat| {
                     if_let_chain! {[
-                    let PatKind::Range(ref lhs, ref rhs, _) = pat.node,
+                    let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node,
                     let Ok(lhs) = constcx.eval(lhs, ExprTypeChecked),
                     let Ok(rhs) = constcx.eval(rhs, ExprTypeChecked)
                 ], {
+                    let rhs = match *range_end {
+                        RangeEnd::Included => Bound::Included(rhs),
+                        RangeEnd::Excluded => Bound::Excluded(rhs),
+                    };
                     return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
                 }}
 
@@ -372,7 +377,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                     let PatKind::Lit(ref value) = pat.node,
                     let Ok(value) = constcx.eval(value, ExprTypeChecked)
                 ], {
-                    return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
+                    return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
                 }}
 
                     None
@@ -384,7 +389,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
 #[derive(Debug, Eq, PartialEq)]
 pub struct SpannedRange<T> {
     pub span: Span,
-    pub node: (T, T),
+    pub node: (T, Bound<T>),
 }
 
 type TypedRanges = Vec<SpannedRange<ConstInt>>;
@@ -393,13 +398,26 @@ type TypedRanges = Vec<SpannedRange<ConstInt>>;
 /// `Uint` and `Int` probably don't make sense.
 fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
     ranges.iter()
-        .filter_map(|range| if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
-            Some(SpannedRange {
-                span: range.span,
-                node: (start, end),
-            })
-        } else {
-            None
+        .filter_map(|range| match range.node {
+            (ConstVal::Integral(start), Bound::Included(ConstVal::Integral(end))) => {
+                Some(SpannedRange {
+                    span: range.span,
+                    node: (start, Bound::Included(end)),
+                })
+            },
+            (ConstVal::Integral(start), Bound::Excluded(ConstVal::Integral(end))) => {
+                Some(SpannedRange {
+                    span: range.span,
+                    node: (start, Bound::Excluded(end)),
+                })
+            },
+            (ConstVal::Integral(start), Bound::Unbounded) => {
+                Some(SpannedRange {
+                    span: range.span,
+                    node: (start, Bound::Unbounded),
+                })
+            },
+            _ => None,
         })
         .collect()
 }
@@ -443,7 +461,7 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     enum Kind<'a, T: 'a> {
         Start(T, &'a SpannedRange<T>),
-        End(T, &'a SpannedRange<T>),
+        End(Bound<T>, &'a SpannedRange<T>),
     }
 
     impl<'a, T: Copy> Kind<'a, T> {
@@ -454,9 +472,9 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
             }
         }
 
-        fn value(self) -> T {
+        fn value(self) -> Bound<T> {
             match self {
-                Kind::Start(t, _) |
+                Kind::Start(t, _) => Bound::Included(t),
                 Kind::End(t, _) => t,
             }
         }
@@ -470,7 +488,25 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
 
     impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
         fn cmp(&self, other: &Self) -> Ordering {
-            self.value().cmp(&other.value())
+            match (self.value(), other.value()) {
+                (Bound::Included(a), Bound::Included(b)) |
+                (Bound::Excluded(a), Bound::Excluded(b)) => a.cmp(&b),
+                // Range patterns cannot be unbounded (yet)
+                (Bound::Unbounded, _) |
+                (_, Bound::Unbounded) => unimplemented!(),
+                (Bound::Included(a), Bound::Excluded(b)) => {
+                    match a.cmp(&b) {
+                        Ordering::Equal => Ordering::Greater,
+                        other => other,
+                    }
+                },
+                (Bound::Excluded(a), Bound::Included(b)) => {
+                    match a.cmp(&b) {
+                        Ordering::Equal => Ordering::Less,
+                        other => other,
+                    }
+                },
+            }
         }
     }
 
@@ -490,7 +526,7 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
                     return Some((ra, rb));
                 }
             },
-            (&Kind::End(a, _), &Kind::Start(b, _)) if a != b => (),
+            (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
             _ => return Some((a.range(), b.range())),
         }
     }
