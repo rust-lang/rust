@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
-
 pub fn main() {
     assert!(Some(Box::new(())).is_some());
 

@@ -1,44 +1,44 @@
 error[E0499]: cannot borrow `f` as mutable more than once at a time
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:23:16
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:22:16
    |
-23 |     f(Box::new(|| {
+22 |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
    |     |
    |     first mutable borrow occurs here
-24 |     //~^ ERROR: cannot borrow `f` as mutable more than once
-25 |         f((Box::new(|| {})))
+23 |     //~^ ERROR: cannot borrow `f` as mutable more than once
+24 |         f((Box::new(|| {})))
    |         - borrow occurs due to use of `f` in closure
-26 |     }));
+25 |     }));
    |       - first borrow ends here
 
 error: cannot borrow immutable borrowed content `*f` as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:36:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
    |
-35 | fn test2<F>(f: &F) where F: FnMut() {
+34 | fn test2<F>(f: &F) where F: FnMut() {
    |                -- use `&mut F` here to make mutable
-36 |     (*f)(); //~ ERROR: cannot borrow immutable borrowed content `*f` as mutable
+35 |     (*f)(); //~ ERROR: cannot borrow immutable borrowed content `*f` as mutable
    |     ^^^^ cannot borrow as mutable
 
 error: cannot borrow immutable `Box` content `*f.f` as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:43:5
    |
-43 | fn test4(f: &Test) {
+42 | fn test4(f: &Test) {
    |             ----- use `&mut Test` here to make mutable
-44 |     f.f.call_mut(()) //~ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
+43 |     f.f.call_mut(()) //~ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
    |     ^^^ cannot borrow as mutable
 
 error[E0504]: cannot move `f` into closure because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:61:13
    |
-62 |     f(Box::new(|a| {
+60 |     f(Box::new(|a| {
    |     - borrow of `f` occurs here
-63 |         foo(f);
+61 |         foo(f);
    |             ^ move into closure occurs here
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:61:13
    |
-63 |         foo(f);
+61 |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 5 previous errors

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 fn borrowed_proc<'a>(x: &'a isize) -> Box<FnMut()->(isize) + 'a> {
     // This is legal, because the region bound on `proc`
     // states that it captures `x`.

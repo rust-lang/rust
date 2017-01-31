@@ -19,15 +19,6 @@ use std::rc::Rc;
 // rvalue expressions to be unsized. See #20169 for more information.
 
 pub fn main() {
-    // FIXME #22405: We cannot infer the type `Box<[isize; k]>` for
-    // the r-value expression from the context `Box<[isize]>`, and
-    // therefore the `box EXPR` desugaring breaks down.
-    //
-    // One could reasonably claim that the `box EXPR` desugaring is
-    // effectively regressing half of Issue #20169. Hopefully we will
-    // eventually fix that, at which point the `Box::new` calls below
-    // should be replaced wth uses of `box`.
-
     let _: Box<[isize]> = Box::new({ [1, 2, 3] });
     let _: Box<[isize]> = Box::new(if true { [1, 2, 3] } else { [1, 3, 4] });
     let _: Box<[isize]> = Box::new(match true { true => [1, 2, 3], false => [1, 3, 4] });

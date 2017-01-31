@@ -17,7 +17,6 @@ use std::collections::HashMap;
 fn main() {
     let tmp: Box<_>;
     let mut buggy_map: HashMap<usize, &usize> = HashMap::new();
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not live long enough
 
     // but it is ok if we use a temporary

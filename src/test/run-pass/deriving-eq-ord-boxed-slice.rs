@@ -12,7 +12,6 @@
 struct Foo(Box<[u8]>);
 
 pub fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let a = Foo(Box::new([0, 1, 2]));
     let b = Foo(Box::new([0, 1, 2]));
     assert_eq!(a, b);
