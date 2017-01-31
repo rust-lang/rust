@@ -41,12 +41,11 @@ enum AnotherLargeEnum {
     StructLikeLittle { x: i32, y: i32 },
     StructLikeLarge { x: [i32; 8000], y: i32 }, //~ ERROR large enum variant found
     //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    StructLikeLarge2 {
+    StructLikeLarge2 { //~ ERROR large enum variant found
         x:
         [i32; 8000] //~ SUGGESTION Box<[i32; 8000]>
+        //~^ HELP consider boxing the large fields to reduce the total size of the enum
     },
-    //~^ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
 }
 
 fn main() {
