@@ -186,6 +186,8 @@ define_Conf! {
     ("too-large-for-stack", too_large_for_stack, 200 => u64),
     /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
     ("enum-variant-name-threshold", enum_variant_name_threshold, 3 => u64),
+    /// Lint: LARGE_ENUM_VARIANT. The maximum size of a emum's variant to avoid box suggestion
+    ("enum-variant-size-threshold", enum_variant_size_threshold, 200 => u64),
 }
 
 /// Search for the configuration file.
