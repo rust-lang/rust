@@ -99,7 +99,7 @@ macro `foo` is declared today as `macro_rules! foo { ... }`, it will be declared
 using `macro foo { ... }`. I leave the syntax of the macro body for later
 specification.
 
-## Nomencalture
+## Nomenclature
 
 Throughout this RFC, I use 'declarative macro' to refer to a macro declared
 using declarative (and domain specific) syntax (such as the current
@@ -108,7 +108,7 @@ using declarative (and domain specific) syntax (such as the current
 declarative syntax using pattern matching and templating is often referred to as
 'macros by example'.
 
-'Pattern macro' has been suggested as an alterantive for 'declarative macro'.
+'Pattern macro' has been suggested as an alternative for 'declarative macro'.
 
 # Drawbacks
 [drawbacks]: #drawbacks
