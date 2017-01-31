@@ -16,7 +16,7 @@ use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyProjection, TyAnon};
-use ty::{TyBox, TyDynamic, TyInt, TyUint, TyInfer};
+use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use std::cell::Cell;
@@ -708,7 +708,6 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInt(t) => write!(f, "{}", t.ty_to_string()),
             TyUint(t) => write!(f, "{}", t.ty_to_string()),
             TyFloat(t) => write!(f, "{}", t.ty_to_string()),
-            TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {
                     hir::MutMutable => "mut",

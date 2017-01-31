@@ -154,7 +154,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyStr => Some(2),
                 ty::TyInt(..) | ty::TyUint(..) | ty::TyInfer(ty::IntVar(..)) => Some(3),
                 ty::TyFloat(..) | ty::TyInfer(ty::FloatVar(..)) => Some(4),
-                ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
+                ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
                 ty::TyArray(..) | ty::TySlice(..) => Some(6),
                 ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(7),
                 ty::TyDynamic(..) => Some(8),

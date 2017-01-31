@@ -721,14 +721,13 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     debug!("find_drop_glue_neighbors: {}", type_to_string(scx.tcx(), ty));
 
     // Make sure the BoxFreeFn lang-item gets translated if there is a boxed value.
-    if let ty::TyBox(content_type) = ty.sty {
+    if ty.is_box() {
         let def_id = scx.tcx().require_lang_item(BoxFreeFnLangItem);
-
         if should_trans_locally(scx.tcx(), def_id) {
             let box_free_fn_trans_item =
                 create_fn_trans_item(scx,
                                      def_id,
-                                     scx.tcx().mk_substs(iter::once(Kind::from(content_type))),
+                                     scx.tcx().mk_substs(iter::once(Kind::from(ty.boxed_ty()))),
                                      scx.tcx().intern_substs(&[]));
             output.push(box_free_fn_trans_item);
         }
@@ -741,7 +740,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         _ => None
     };
 
-    if let Some(destructor_did) = destructor_did {
+    if let (Some(destructor_did), false) = (destructor_did, ty.is_box()) {
         use rustc::ty::ToPolyTraitRef;
 
         let drop_trait_def_id = scx.tcx()
@@ -790,8 +789,14 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyDynamic(..)  => {
             /* nothing to do */
         }
-        ty::TyAdt(adt_def, substs) => {
-            for field in adt_def.all_fields() {
+        ty::TyAdt(def, _) if def.is_box() => {
+            let inner_type = glue::get_drop_glue_type(scx, ty.boxed_ty());
+            if scx.type_needs_drop(inner_type) {
+                output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
+            }
+        }
+        ty::TyAdt(def, substs) => {
+            for field in def.all_fields() {
                 let field_type = scx.tcx().item_type(field.did);
                 let field_type = monomorphize::apply_param_substs(scx,
                                                                   substs,
@@ -811,7 +816,6 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyBox(inner_type)      |
         ty::TySlice(inner_type)    |
         ty::TyArray(inner_type, _) => {
             let inner_type = glue::get_drop_glue_type(scx, inner_type);
@@ -1008,21 +1012,24 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                             source_ty: ty::Ty<'tcx>,
                                             target_ty: ty::Ty<'tcx>)
                                             -> (ty::Ty<'tcx>, ty::Ty<'tcx>) {
+    let ptr_vtable = |inner_source: ty::Ty<'tcx>, inner_target: ty::Ty<'tcx>| {
+        if !scx.type_is_sized(inner_source) {
+            (inner_source, inner_target)
+        } else {
+            scx.tcx().struct_lockstep_tails(inner_source, inner_target)
+        }
+    };
     match (&source_ty.sty, &target_ty.sty) {
-        (&ty::TyBox(a), &ty::TyBox(b)) |
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            let (inner_source, inner_target) = (a, b);
-
-            if !scx.type_is_sized(inner_source) {
-                (inner_source, inner_target)
-            } else {
-                scx.tcx().struct_lockstep_tails(inner_source, inner_target)
-            }
+            ptr_vtable(a, b)
+        }
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+            ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
 
         (&ty::TyAdt(source_adt_def, source_substs),

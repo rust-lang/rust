@@ -418,12 +418,6 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
         }
 
-        (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
-        {
-            let typ = relation.relate(&a_inner, &b_inner)?;
-            Ok(tcx.mk_box(typ))
-        }
-
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
         {
             let mt = relation.relate(a_mt, b_mt)?;

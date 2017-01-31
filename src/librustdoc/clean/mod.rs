@@ -1808,10 +1808,6 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
-            ty::TyBox(t) => {
-                let box_did = cx.tcx.lang_items.owned_box();
-                lang_struct(cx, box_did, t, "Box", Unique)
-            }
             ty::TySlice(ty) => Vector(box ty.clean(cx)),
             ty::TyArray(ty, i) => FixedVector(box ty.clean(cx),
                                               format!("{}", i)),
@@ -2885,33 +2881,6 @@ impl Clean<Deprecation> for attr::Deprecation {
             since: self.since.as_ref().map_or("".to_string(), |s| s.to_string()),
             note: self.note.as_ref().map_or("".to_string(), |s| s.to_string()),
         }
-    }
-}
-
-fn lang_struct(cx: &DocContext, did: Option<DefId>,
-               t: ty::Ty, name: &str,
-               fallback: fn(Box<Type>) -> Type) -> Type {
-    let did = match did {
-        Some(did) => did,
-        None => return fallback(box t.clean(cx)),
-    };
-    inline::record_extern_fqn(cx, did, TypeKind::Struct);
-    ResolvedPath {
-        typarams: None,
-        did: did,
-        path: Path {
-            global: false,
-            def: Def::Err,
-            segments: vec![PathSegment {
-                name: name.to_string(),
-                params: PathParameters::AngleBracketed {
-                    lifetimes: vec![],
-                    types: vec![t.clean(cx)],
-                    bindings: vec![]
-                }
-            }],
-        },
-        is_generic: false,
     }
 }
 

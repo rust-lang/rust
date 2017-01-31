@@ -350,7 +350,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 base: Lvalue::Local(index),
                 elem: ProjectionElem::Deref
             }) if self.mir.local_kind(index) == LocalKind::Temp
-               && self.mir.local_decls[index].ty.is_unique()
+               && self.mir.local_decls[index].ty.is_box()
                && self.temp_qualif[index].map_or(false, |qualif| {
                     qualif.intersects(Qualif::NOT_CONST)
                }) => {

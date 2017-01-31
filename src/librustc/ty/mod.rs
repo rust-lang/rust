@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Variance::*;
-pub use self::DtorKind::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -118,21 +117,6 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
-}
-
-#[derive(Copy, Clone)]
-pub enum DtorKind {
-    NoDtor,
-    TraitDtor
-}
-
-impl DtorKind {
-    pub fn is_present(&self) -> bool {
-        match *self {
-            TraitDtor => true,
-            _ => false
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1302,6 +1286,7 @@ bitflags! {
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
         const IS_UNION            = 1 << 6,
+        const IS_BOX              = 1 << 7,
     }
 }
 
@@ -1375,6 +1360,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
+        }
+        if Some(did) == tcx.lang_items.owned_box() {
+            flags = flags | AdtFlags::IS_BOX;
         }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
@@ -1468,9 +1456,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
     }
 
+    /// Returns true if this is Box<T>.
+    #[inline]
+    pub fn is_box(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_BOX)
+    }
+
     /// Returns whether this type has a destructor.
     pub fn has_dtor(&self) -> bool {
-        self.dtor_kind().is_present()
+        self.destructor.get().is_some()
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -1531,13 +1525,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn set_destructor(&self, dtor: DefId) {
         self.destructor.set(Some(dtor));
-    }
-
-    pub fn dtor_kind(&self) -> DtorKind {
-        match self.destructor.get() {
-            Some(_) => TraitDtor,
-            None => NoDtor,
-        }
     }
 
     /// Returns a simpler type such that `Self: Sized` if and only
@@ -1641,7 +1628,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyClosure(..) | TyNever => {
                 vec![]
             }

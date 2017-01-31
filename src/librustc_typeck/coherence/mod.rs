@@ -21,7 +21,7 @@ use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
 use rustc::ty::{TyRef, TyAdt, TyDynamic, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
-use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
+use rustc::ty::{TyUint, TyClosure, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
 use CrateCtxt;
 use syntax_pos::Span;
@@ -60,8 +60,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             TyAdt(def, _) => Some(def.did),
 
             TyDynamic(ref t, ..) => t.principal().map(|p| p.def_id()),
-
-            TyBox(_) => self.tcx.lang_items.owned_box(),
 
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) | TyStr | TyArray(..) |
             TySlice(..) | TyFnDef(..) | TyFnPtr(_) | TyTuple(..) | TyParam(..) | TyError |

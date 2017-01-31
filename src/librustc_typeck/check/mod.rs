@@ -3438,7 +3438,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprBox(ref subexpr) => {
             let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
-                    ty::TyBox(ty) => Expectation::rvalue_hint(self, ty),
+                    ty::TyAdt(def, _) if def.is_box()
+                        => Expectation::rvalue_hint(self, ty.boxed_ty()),
                     _ => NoExpectation
                 }
             });

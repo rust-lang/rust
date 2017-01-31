@@ -115,12 +115,6 @@ pub enum TypeVariants<'tcx> {
     /// definition and not a concrete use of it.
     TyAdt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
-    /// `Box<T>`; this is nominally a struct in the documentation, but is
-    /// special-cased internally. For example, it is possible to implicitly
-    /// move the contents of a box out of that box, and methods of any type
-    /// can have type `Box<Self>`.
-    TyBox(Ty<'tcx>),
-
     /// The pointee of a string slice. Written as `str`.
     TyStr,
 
@@ -1139,10 +1133,17 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_unique(&self) -> bool {
+    pub fn is_box(&self) -> bool {
         match self.sty {
-            TyBox(_) => true,
-            _ => false
+            TyAdt(def, _) => def.is_box(),
+            _ => false,
+        }
+    }
+
+    pub fn boxed_ty(&self) -> Ty<'tcx> {
+        match self.sty {
+            TyAdt(def, substs) if def.is_box() => substs.type_at(0),
+            _ => bug!("`boxed_ty` is called on non-box type {:?}", self),
         }
     }
 
@@ -1247,9 +1248,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         -> Option<TypeAndMut<'tcx>>
     {
         match self.sty {
-            TyBox(ty) => {
+            TyAdt(def, _) if def.is_box() => {
                 Some(TypeAndMut {
-                    ty: ty,
+                    ty: self.boxed_ty(),
                     mutbl: if pref == ty::PreferMutLvalue {
                         hir::MutMutable
                     } else {
@@ -1349,7 +1350,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyInt(_) |
             TyUint(_) |
             TyFloat(_) |
-            TyBox(_) |
             TyStr |
             TyArray(..) |
             TySlice(_) |

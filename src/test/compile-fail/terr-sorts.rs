@@ -20,8 +20,7 @@ fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
     want_foo(b); //~  ERROR mismatched types
                  //~| expected type `foo`
-                 //~| found type `Box<foo>`
-                 //~| expected struct `foo`, found box
+                 //~| found type `std::boxed::Box<foo>`
 }
 
 fn main() {}
