@@ -208,12 +208,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
 
+                let ptr = base_ptr.offset(offset.bytes());
+
                 if packed {
                     let size = self.type_size(field_ty)?.expect("packed struct must be sized");
-                    self.memory.mark_packed(base_ptr, size);
+                    self.memory.mark_packed(ptr, size);
                 }
 
-                let ptr = base_ptr.offset(offset.bytes());
                 let extra = if self.type_is_sized(field_ty) {
                     LvalueExtra::None
                 } else {
