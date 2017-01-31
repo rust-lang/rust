@@ -12,6 +12,7 @@ use ast::{self, NestedMetaItem};
 use ext::base::{ExtCtxt, SyntaxExtension};
 use ext::build::AstBuilder;
 use ast::Name;
+use feature_gate;
 use symbol::Symbol;
 use syntax_pos::Span;
 use codemap;
@@ -180,4 +181,39 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
         let meta = cx.meta_word(span, structural_match);
         attrs.push(cx.attribute(span, meta));
     }
+}
+
+pub fn find_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
+                        -> Option<ast::Attribute> {
+    verify_derive_attrs(cx, attrs);
+    get_derive_attr(cx, attrs, DeriveType::Legacy).and_then(|a| {
+            let titem = derive_attr_trait(cx, &a);
+            if let Some(titem) = titem {
+                let tword = titem.word().unwrap();
+                let tname = tword.name();
+                if !cx.ecfg.enable_custom_derive() {
+                    feature_gate::emit_feature_err(
+                        &cx.parse_sess,
+                         "custom_derive",
+                         titem.span,
+                         feature_gate::GateIssue::Language,
+                         feature_gate::EXPLAIN_CUSTOM_DERIVE
+                    );
+                } else {
+                    let name = Symbol::intern(&format!("derive_{}", tname));
+                    if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
+                        cx.span_warn(titem.span,
+                                          feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
+                    }
+                    let mitem = cx.meta_word(titem.span, name);
+                    return Some(cx.attribute(mitem.span, mitem));
+                }
+            }
+            None
+    }).or_else(|| {
+        add_derived_markers(cx, attrs);
+        get_derive_attr(cx, attrs, DeriveType::Builtin)
+    }).or_else(|| {
+        get_derive_attr(cx, attrs, DeriveType::ProcMacro)
+    })
 }
