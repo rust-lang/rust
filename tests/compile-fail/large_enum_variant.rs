@@ -7,14 +7,19 @@
 
 enum LargeEnum {
     A(i32),
-    B([i32; 8000]), //~ ERROR large enum variant found on variant `B`
+    B([i32; 8000]), //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    //~| SUGGESTION Box<[i32; 8000]>
 }
 
 enum GenericEnum<T> {
     A(i32),
-    B([i32; 8000]), //~ ERROR large enum variant found on variant `B`
+    B([i32; 8000]), //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    //~| SUGGESTION Box<[i32; 8000]>
     C([T; 8000]),
-    D(T, [i32; 8000]), //~ ERROR large enum variant found on variant `D`
+    D(T, [i32; 8000]), //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
 }
 
 trait SomeTrait {
@@ -27,11 +32,21 @@ enum LargeEnumGeneric<A: SomeTrait> {
 
 enum AnotherLargeEnum {
     VariantOk(i32, u32),
-    ContainingLargeEnum(LargeEnum), //~ ERROR large enum variant found on variant `ContainingLargeEnum`
-    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]), //~ ERROR large enum variant found on variant `ContainingMoreThanOneField`
+    ContainingLargeEnum(LargeEnum), //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    //~| SUGGESTION Box<LargeEnum>
+    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]), //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
     VoidVariant,
     StructLikeLittle { x: i32, y: i32 },
-    StructLikeLarge { x: [i32; 8000], y: i32 }, //~ ERROR large enum variant found on variant `StructLikeLarge`
+    StructLikeLarge { x: [i32; 8000], y: i32 }, //~ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    StructLikeLarge2 {
+        x:
+        [i32; 8000] //~ SUGGESTION Box<[i32; 8000]>
+    },
+    //~^ ERROR large enum variant found
+    //~^ HELP consider boxing the large fields to reduce the total size of the enum
 }
 
 fn main() {

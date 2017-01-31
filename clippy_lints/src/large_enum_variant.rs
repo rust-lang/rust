@@ -2,12 +2,12 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::span_help_and_lint;
+use utils::{span_lint_and_then, snippet_opt};
 use rustc::ty::layout::TargetDataLayout;
 use rustc::ty::TypeFoldable;
 use rustc::traits::Reveal;
 
-/// **What it does:** Checks for large variants on enums.
+/// **What it does:** Checks for large variants on `enum`s.
 ///
 /// **Why is this bad?** Enum size is bounded by the largest variant. Having a large variant
 /// can penalize the memory layout of that enum.
@@ -68,11 +68,31 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                         })
                         .sum();
                     if size > self.maximum_variant_size_allowed {
-                        span_help_and_lint(cx,
+                        span_lint_and_then(cx,
                                            LARGE_ENUM_VARIANT,
                                            def.variants[i].span,
-                                           &format!("large enum variant found on variant `{}`", variant.name),
-                                           "consider boxing the large branches to reduce the total size of the enum");
+                                           "large enum variant found",
+                                           |db| {
+                            if variant.fields.len() == 1 {
+                                let span = match def.variants[i].node.data {
+                                    VariantData::Struct(ref fields, _) |
+                                    VariantData::Tuple(ref fields, _) => fields[0].ty.span,
+                                    VariantData::Unit(_) => unreachable!(),
+                                };
+                                if let Some(snip) = snippet_opt(cx, span) {
+                                    db.span_suggestion(
+                                        span,
+                                        "consider boxing the large fields to reduce the total size of the enum",
+                                        format!("Box<{}>", snip),
+                                    );
+                                    return;
+                                }
+                            }
+                            db.span_help(
+                                def.variants[i].span,
+                                "consider boxing the large fields to reduce the total size of the enum",
+                            );
+                        });
                     }
                 });
             }
