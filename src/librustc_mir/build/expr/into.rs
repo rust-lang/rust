@@ -15,6 +15,7 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::ty;
 use rustc::mir::*;
+use rustc::middle::const_val::ConstVal;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -69,9 +70,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let mut then_block = this.cfg.start_new_block();
                 let mut else_block = this.cfg.start_new_block();
-                this.cfg.terminate(block, source_info, TerminatorKind::If {
-                    cond: operand,
-                    targets: (then_block, else_block)
+                this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+                    discr: operand,
+                    switch_ty: this.hir.bool_ty(),
+                    values: vec![ConstVal::Bool(true)],
+                    targets: vec![then_block, else_block],
                 });
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
@@ -111,16 +114,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let lhs = unpack!(block = this.as_operand(block, lhs));
                 let blocks = match op {
-                    LogicalOp::And => (else_block, false_block),
-                    LogicalOp::Or => (true_block, else_block),
+                    LogicalOp::And => vec![else_block, false_block],
+                    LogicalOp::Or => vec![true_block, else_block],
                 };
-                this.cfg.terminate(block, source_info,
-                                   TerminatorKind::If { cond: lhs, targets: blocks });
+                this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+                    discr: lhs,
+                    switch_ty: this.hir.bool_ty(),
+                    values: vec![ConstVal::Bool(true)],
+                    targets: blocks,
+                });
 
                 let rhs = unpack!(else_block = this.as_operand(else_block, rhs));
-                this.cfg.terminate(else_block, source_info, TerminatorKind::If {
-                    cond: rhs,
-                    targets: (true_block, false_block)
+                this.cfg.terminate(else_block, source_info, TerminatorKind::SwitchInt {
+                    discr: rhs,
+                    switch_ty: this.hir.bool_ty(),
+                    values: vec![ConstVal::Bool(true)],
+                    targets: vec![true_block, false_block],
                 });
 
                 this.cfg.push_assign_constant(
@@ -180,9 +189,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 loop_block_end = this.as_operand(loop_block, cond_expr));
                             body_block = this.cfg.start_new_block();
                             this.cfg.terminate(loop_block_end, source_info,
-                                               TerminatorKind::If {
-                                                   cond: cond,
-                                                   targets: (body_block, exit_block)
+                                               TerminatorKind::SwitchInt {
+                                                   discr: cond,
+                                                   switch_ty: this.hir.bool_ty(),
+                                                   values: vec![ConstVal::Bool(true)],
+                                                   targets: vec![body_block, exit_block],
                                                });
 
                             // if the test is false, there's no `break` to assign `destination`, so

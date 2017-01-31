@@ -464,7 +464,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
-            TerminatorKind::If { .. } |
             TerminatorKind::Assert { .. } |
             TerminatorKind::SwitchInt { .. } |
             TerminatorKind::Switch { .. } => {

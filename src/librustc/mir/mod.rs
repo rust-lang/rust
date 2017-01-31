@@ -453,12 +453,6 @@ pub enum TerminatorKind<'tcx> {
         target: BasicBlock,
     },
 
-    /// jump to branch 0 if this lvalue evaluates to true
-    If {
-        cond: Operand<'tcx>,
-        targets: (BasicBlock, BasicBlock),
-    },
-
     /// lvalue evaluates to some enum; jump depending on the branch
     Switch {
         discr: Lvalue<'tcx>,
@@ -470,7 +464,7 @@ pub enum TerminatorKind<'tcx> {
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
         /// discriminant value being tested
-        discr: Lvalue<'tcx>,
+        discr: Operand<'tcx>,
 
         /// type of value being tested
         switch_ty: Ty<'tcx>,
@@ -550,7 +544,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
-            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
             Switch { targets: ref b, .. } => b[..].into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
@@ -580,7 +573,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
-            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
             Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
@@ -659,7 +651,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
             Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
@@ -710,7 +701,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
-            If { .. } => vec!["true".into(), "false".into()],
             Switch { ref adt_def, .. } => {
                 adt_def.variants
                        .iter()
