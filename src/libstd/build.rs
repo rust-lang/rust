@@ -10,13 +10,15 @@
 
 #![deny(warnings)]
 
-extern crate gcc;
+#[macro_use]
 extern crate build_helper;
+extern crate gcc;
 
-use std::{env, fs};
-use std::path::PathBuf;
+use std::env;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use build_helper::{run, rerun_if_changed_anything_in_dir};
+use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
@@ -71,12 +73,13 @@ fn build_libbacktrace(host: &str, target: &str) {
 
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
-    if !cfg!(stage0) && target == host {
+    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
+    rerun_if_changed_anything_in_dir(&src_dir);
+    let timestamp = build_dir.join("rustbuild.timestamp");
+    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
         return
     }
 
-    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
-    rerun_if_changed_anything_in_dir(&src_dir);
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
@@ -103,4 +106,6 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
                 .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
+
+    t!(File::create(&timestamp));
 }

@@ -66,6 +66,7 @@
 
 #![deny(warnings)]
 
+#[macro_use]
 extern crate build_helper;
 extern crate cmake;
 extern crate filetime;
@@ -83,24 +84,9 @@ use std::fs::{self, File};
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, output};
+use build_helper::{run_silent, output, mtime};
 
-use util::{exe, mtime, libdir, add_lib_path};
-
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
-}
+use util::{exe, libdir, add_lib_path};
 
 mod cc;
 mod channel;
