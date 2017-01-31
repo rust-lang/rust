@@ -80,18 +80,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                                     VariantData::Unit(_) => unreachable!(),
                                 };
                                 if let Some(snip) = snippet_opt(cx, span) {
-                                    db.span_suggestion(
-                                        span,
-                                        "consider boxing the large fields to reduce the total size of the enum",
-                                        format!("Box<{}>", snip),
-                                    );
+                                    db.span_suggestion(span,
+                                                       "consider boxing the large fields to reduce the total size of \
+                                                        the enum",
+                                                       format!("Box<{}>", snip));
                                     return;
                                 }
                             }
-                            db.span_help(
-                                def.variants[i].span,
-                                "consider boxing the large fields to reduce the total size of the enum",
-                            );
+                            db.span_help(def.variants[i].span,
+                                         "consider boxing the large fields to reduce the total size of the enum");
                         });
                     }
                 });
