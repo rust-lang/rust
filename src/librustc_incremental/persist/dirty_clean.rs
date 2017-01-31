@@ -67,9 +67,9 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let _ignore = tcx.dep_graph.in_ignore();
     let dirty_inputs: FxHashSet<DepNode<DefId>> =
-        dirty_inputs.iter()
-                   .filter_map(|d| retraced.map(d))
-                   .collect();
+        dirty_inputs.keys()
+                    .filter_map(|d| retraced.map(d))
+                    .collect();
     let query = tcx.dep_graph.query();
     debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.hir.krate();
