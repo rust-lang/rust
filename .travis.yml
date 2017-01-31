@@ -35,6 +35,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
+    - env: IMAGE=x86_64-gnu-incremental
 
     # OSX builders
     - env: >
