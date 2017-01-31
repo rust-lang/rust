@@ -10,13 +10,15 @@
 
 #![deny(warnings)]
 
+#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
-use std::{env, fs};
-use std::path::PathBuf;
+use std::env;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use build_helper::{run, rerun_if_changed_anything_in_dir};
+use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
@@ -69,12 +71,13 @@ fn main() {
     } else if !target.contains("windows") && !target.contains("musl") {
         println!("cargo:rustc-link-lib=pthread");
     }
-    if !cfg!(stage0) && target == host {
+    let src_dir = env::current_dir().unwrap().join("../jemalloc");
+    rerun_if_changed_anything_in_dir(&src_dir);
+    let timestamp = build_dir.join("rustbuild.timestamp");
+    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
         return
     }
 
-    let src_dir = env::current_dir().unwrap().join("../jemalloc");
-    rerun_if_changed_anything_in_dir(&src_dir);
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
@@ -184,4 +187,6 @@ fn main() {
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");
     }
+
+    t!(File::create(&timestamp));
 }
