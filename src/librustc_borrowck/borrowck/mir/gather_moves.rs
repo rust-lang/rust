@@ -289,7 +289,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             // error: can't move out of borrowed content
             ty::TyRef(..) | ty::TyRawPtr(..) => return Err(MovePathError::IllegalMove),
             // error: can't move out of struct with destructor
-            ty::TyAdt(adt, _) if adt.has_dtor() =>
+            ty::TyAdt(adt, _) if adt.has_dtor() && !adt.is_box() =>
                 return Err(MovePathError::IllegalMove),
             // move out of union - always move the entire union
             ty::TyAdt(adt, _) if adt.is_union() =>

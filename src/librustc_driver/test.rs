@@ -805,10 +805,9 @@ fn walk_ty() {
         let uint_ty = tcx.types.usize;
         let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
         let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
-        let uniq_ty = tcx.mk_box(tup2_ty);
-        let walked: Vec<_> = uniq_ty.walk().collect();
+        let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
-                   [uniq_ty, tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
+                   [tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
                     uint_ty, int_ty, uint_ty, uint_ty]);
     })
 }
@@ -821,12 +820,10 @@ fn walk_ty_skip_subtree() {
         let uint_ty = tcx.types.usize;
         let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
         let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
-        let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
-        let mut expected = vec![(uniq_ty, false),
-                                (tup2_ty, false),
+        let mut expected = vec![(tup2_ty, false),
                                 (tup1_ty, false),
                                 (int_ty, false),
                                 (uint_ty, false),
@@ -836,7 +833,7 @@ fn walk_ty_skip_subtree() {
                                 (uint_ty, false)];
         expected.reverse();
 
-        let mut walker = uniq_ty.walk();
+        let mut walker = tup2_ty.walk();
         while let Some(t) = walker.next() {
             debug!("walked to {:?}", t);
             let (expected_ty, skip) = expected.pop().unwrap();

@@ -56,12 +56,8 @@ def_type_content_sets! {
         // InteriorAll                         = 0b00000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
-        OwnsOwned                           = 0b0000_0000__0000_0001__0000,
         OwnsDtor                            = 0b0000_0000__0000_0010__0000,
-        OwnsAll                             = 0b0000_0000__1111_1111__0000,
-
-        // Things that mean drop glue is necessary
-        NeedsDrop                           = 0b0000_0000__0000_0111__0000,
+        // OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
@@ -77,10 +73,6 @@ impl TypeContents {
         (self.bits & tc.bits) != 0
     }
 
-    pub fn owns_owned(&self) -> bool {
-        self.intersects(TC::OwnsOwned)
-    }
-
     pub fn interior_param(&self) -> bool {
         self.intersects(TC::InteriorParam)
     }
@@ -90,12 +82,7 @@ impl TypeContents {
     }
 
     pub fn needs_drop(&self, _: TyCtxt) -> bool {
-        self.intersects(TC::NeedsDrop)
-    }
-
-    /// Includes only those bits that still apply when indirected through a `Box` pointer
-    pub fn owned_pointer(&self) -> TypeContents {
-        TC::OwnsOwned | (*self & TC::OwnsAll)
+        self.intersects(TC::OwnsDtor)
     }
 
     pub fn union<I, T, F>(v: I, mut f: F) -> TypeContents where
@@ -103,10 +90,6 @@ impl TypeContents {
         F: FnMut(T) -> TypeContents,
     {
         v.into_iter().fold(TC::None, |tc, ty| tc | f(ty))
-    }
-
-    pub fn has_dtor(&self) -> bool {
-        self.intersects(TC::OwnsDtor)
     }
 }
 
@@ -191,10 +174,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     TC::None
                 }
 
-                ty::TyBox(typ) => {
-                    tc_ty(tcx, typ, cache).owned_pointer()
-                }
-
                 ty::TyDynamic(..) => {
                     TC::All - TC::InteriorParam
                 }
@@ -237,7 +216,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
                     if def.is_union() {
                         // unions don't have destructors regardless of the child types
-                        res = res - TC::NeedsDrop;
+                        res = res - TC::OwnsDtor;
                     }
 
                     if def.has_dtor() {

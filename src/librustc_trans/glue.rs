@@ -79,16 +79,21 @@ pub fn get_drop_glue_type<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'t
         return scx.tcx().types.i8;
     }
     match t.sty {
-        ty::TyBox(typ) if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) => {
-            scx.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-                let layout = t.layout(&infcx).unwrap();
-                if layout.size(&scx.tcx().data_layout).bytes() == 0 {
-                    // `Box<ZeroSizeType>` does not allocate.
-                    scx.tcx().types.i8
-                } else {
-                    t
-                }
-            })
+        ty::TyAdt(def, _) if def.is_box() => {
+            let typ = t.boxed_ty();
+            if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) {
+                scx.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
+                    let layout = t.layout(&infcx).unwrap();
+                    if layout.size(&scx.tcx().data_layout).bytes() == 0 {
+                        // `Box<ZeroSizeType>` does not allocate.
+                        scx.tcx().types.i8
+                    } else {
+                        t
+                    }
+                })
+            } else {
+                t
+            }
         }
         _ => t
     }
@@ -205,11 +210,11 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
     };
 
     let bcx = match t.sty {
-        ty::TyBox(content_ty) => {
-            // Support for TyBox is built-in and its drop glue is
-            // special. It may move to library and have Drop impl. As
-            // a safe-guard, assert TyBox not used with TyContents.
+        ty::TyAdt(def, _) if def.is_box() => {
+            // Support for Box is built-in as yet and its drop glue is special
+            // despite having a dummy Drop impl in the library.
             assert!(!skip_dtor);
+            let content_ty = t.boxed_ty();
             let ptr = if !bcx.ccx.shared().type_is_sized(content_ty) {
                 let llbox = bcx.load(get_dataptr(&bcx, ptr.llval));
                 let info = bcx.load(get_meta(&bcx, ptr.llval));
@@ -230,7 +235,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             bcx.call(dtor, &[ptr.llval], None);
             bcx
         }
-        ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
+        ty::TyAdt(def, ..) if def.has_dtor() && !skip_dtor => {
             let shallow_drop = def.is_union();
             let tcx = bcx.tcx();
 

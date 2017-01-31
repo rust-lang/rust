@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 24 |     a(x); //~ ERROR mismatched types [E0308]
    |       ^ expected trait `Foo + std::marker::Send`, found trait `Foo`
    |
-   = note: expected type `Box<Foo + std::marker::Send + 'static>`
-              found type `Box<Foo + 'static>`
+   = note: expected type `std::boxed::Box<Foo + std::marker::Send + 'static>`
+              found type `std::boxed::Box<Foo + 'static>`
 
 error: aborting due to previous error
 

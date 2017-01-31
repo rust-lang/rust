@@ -421,11 +421,6 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 }
                 output.push(')');
             },
-            ty::TyBox(inner_type) => {
-                output.push_str("Box<");
-                self.push_type_name(inner_type, output);
-                output.push('>');
-            },
             ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 output.push('*');
                 match mutbl {

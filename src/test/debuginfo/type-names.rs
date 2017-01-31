@@ -70,12 +70,12 @@
 
 // BOX
 // gdb-command:whatis box1
-// gdbg-check:type = struct (Box<f32>, i32)
-// gdbr-check:type = (Box<f32>, i32)
+// gdbg-check:type = struct (alloc::boxed::Box<f32>, i32)
+// gdbr-check:type = (alloc::boxed::Box<f32>, i32)
 
 // gdb-command:whatis box2
-// gdbg-check:type = struct (Box<type_names::mod1::mod2::Enum3<f32>>, i32)
-// gdbr-check:type = (Box<type_names::mod1::mod2::Enum3<f32>>, i32)
+// gdbg-check:type = struct (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>>, i32)
+// gdbr-check:type = (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>>, i32)
 
 
 // REFERENCES
@@ -196,8 +196,8 @@
 // gdbr-check:type = (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
 
 // gdb-command:whatis extern_stdcall_fn_with_return_value
-// gdbg-check:type = struct (extern "stdcall" fn(Box<isize>) -> usize, usize)
-// gdbr-check:type = (extern "stdcall" fn(Box<isize>) -> usize, usize)
+// gdbg-check:type = struct (extern "stdcall" fn(alloc::boxed::Box<isize>) -> usize, usize)
+// gdbr-check:type = (extern "stdcall" fn(alloc::boxed::Box<isize>) -> usize, usize)
 
 // gdb-command:whatis generic_function_int
 // gdbg-check:type = struct (fn(isize) -> isize, usize)

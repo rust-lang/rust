@@ -490,6 +490,35 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     debug!("type_metadata: {:?}", t);
 
     let sty = &t.sty;
+    let ptr_metadata = |ty: Ty<'tcx>| {
+        match ty.sty {
+            ty::TySlice(typ) => {
+                Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span))
+            }
+            ty::TyStr => {
+                Ok(vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span))
+            }
+            ty::TyDynamic(..) => {
+                Ok(MetadataCreationResult::new(
+                    trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
+                    false))
+            }
+            _ => {
+                let pointee_metadata = type_metadata(cx, ty, usage_site_span);
+
+                match debug_context(cx).type_map
+                                        .borrow()
+                                        .find_metadata_for_unique_id(unique_type_id) {
+                    Some(metadata) => return Err(metadata),
+                    None => { /* proceed normally */ }
+                };
+
+                Ok(MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
+                   false))
+            }
+        }
+    };
+
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
         ty::TyNever    |
         ty::TyBool     |
@@ -516,34 +545,17 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyBox(ty) |
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
-            match ty.sty {
-                ty::TySlice(typ) => {
-                    vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
-                }
-                ty::TyStr => {
-                    vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span)
-                }
-                ty::TyDynamic(..) => {
-                    MetadataCreationResult::new(
-                        trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
-                        false)
-                }
-                _ => {
-                    let pointee_metadata = type_metadata(cx, ty, usage_site_span);
-
-                    match debug_context(cx).type_map
-                                           .borrow()
-                                           .find_metadata_for_unique_id(unique_type_id) {
-                        Some(metadata) => return metadata,
-                        None => { /* proceed normally */ }
-                    };
-
-                    MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
-                                                false)
-                }
+            match ptr_metadata(ty) {
+                Ok(res) => res,
+                Err(metadata) => return metadata,
+            }
+        }
+        ty::TyAdt(def, _) if def.is_box() => {
+            match ptr_metadata(t.boxed_ty()) {
+                Ok(res) => res,
+                Err(metadata) => return metadata,
             }
         }
         ty::TyFnDef(.., ref barefnty) | ty::TyFnPtr(ref barefnty) => {

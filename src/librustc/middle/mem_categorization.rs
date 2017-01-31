@@ -961,7 +961,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                     -> cmt<'tcx>
     {
         let ptr = match base_cmt.ty.sty {
-            ty::TyBox(..) => Unique,
+            ty::TyAdt(def, ..) if def.is_box() => Unique,
             ty::TyRawPtr(ref mt) => UnsafePtr(mt.mutbl),
             ty::TyRef(r, mt) => {
                 let bk = ty::BorrowKind::from_mutbl(mt.mutbl);
