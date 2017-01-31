@@ -200,7 +200,7 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
     let titems = attrs.iter().filter(|a| {
         a.name() == "derive"
     }).flat_map(|a| {
-        a.meta_item_list().unwrap().iter()
+        a.value.meta_item_list().unwrap_or(&[]).iter()
     }).filter_map(|titem| {
         titem.name()
     }).collect::<Vec<_>>();
