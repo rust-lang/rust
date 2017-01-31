@@ -221,10 +221,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                         };
 
-                        (targets,
-                         TerminatorKind::If {
-                             cond: Operand::Consume(lvalue.clone()),
-                             targets: (true_bb, else_bb)
+                        (targets, TerminatorKind::SwitchInt {
+                             discr: Operand::Consume(lvalue.clone()),
+                             switch_ty: self.hir.bool_ty(),
+                             values: vec![ConstVal::Bool(true)],
+                             targets: vec![true_bb, else_bb]
                          })
 
                     }
@@ -240,7 +241,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                         (targets.clone(),
                          TerminatorKind::SwitchInt {
-                             discr: lvalue.clone(),
+                             discr: Operand::Consume(lvalue.clone()),
                              switch_ty: switch_ty,
                              values: options.clone(),
                              targets: targets
@@ -314,9 +315,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, source_info, TerminatorKind::If {
-                        cond: Operand::Consume(eq_result),
-                        targets: (block, fail),
+                    self.cfg.terminate(eq_block, source_info, TerminatorKind::SwitchInt {
+                        discr: Operand::Consume(eq_result),
+                        switch_ty: self.hir.bool_ty(),
+                        values: vec![ConstVal::Bool(true)],
+                        targets: vec![block, fail],
                     });
 
                     vec![block, fail]
@@ -362,9 +365,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, source_info, TerminatorKind::If {
-                    cond: Operand::Consume(result),
-                    targets: (target_blocks[0], target_blocks[1])
+                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+                    discr: Operand::Consume(result),
+                    switch_ty: self.hir.bool_ty(),
+                    values: vec![ConstVal::Bool(true)],
+                    targets: target_blocks.clone(),
                 });
 
                 target_blocks
@@ -389,9 +394,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::If {
-            cond: Operand::Consume(result),
-            targets: (target_block, fail_block)
+        self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+            discr: Operand::Consume(result),
+            switch_ty: self.hir.bool_ty(),
+            values: vec![ConstVal::Bool(true)],
+            targets: vec![target_block, fail_block]
         });
 
         target_block

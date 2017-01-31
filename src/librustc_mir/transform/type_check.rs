@@ -423,18 +423,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                  lv_ty, rv_ty, terr);
                 }
             }
-
-            TerminatorKind::If { ref cond, .. } => {
-                let cond_ty = cond.ty(mir, tcx);
-                match cond_ty.sty {
-                    ty::TyBool => {}
-                    _ => {
-                        span_mirbug!(self, term, "bad If ({:?}, not bool", cond_ty);
-                    }
-                }
-            }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
-                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
+                let discr_ty = discr.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
@@ -603,10 +593,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match block.terminator().kind {
             TerminatorKind::Goto { target } =>
                 self.assert_iscleanup(mir, block, target, is_cleanup),
-            TerminatorKind::If { targets: (on_true, on_false), .. } => {
-                self.assert_iscleanup(mir, block, on_true, is_cleanup);
-                self.assert_iscleanup(mir, block, on_false, is_cleanup);
-            }
             TerminatorKind::Switch { ref targets, .. } |
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {

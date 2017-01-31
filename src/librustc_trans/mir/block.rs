@@ -136,14 +136,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 funclet_br(self, bcx, target);
             }
 
-            mir::TerminatorKind::If { ref cond, targets: (true_bb, false_bb) } => {
-                let cond = self.trans_operand(&bcx, cond);
-
-                let lltrue = llblock(self, true_bb);
-                let llfalse = llblock(self, false_bb);
-                bcx.cond_br(cond.immediate(), lltrue, llfalse);
-            }
-
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
@@ -180,10 +172,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
+                // TODO: cond_br if only 1 value
                 let (otherwise, targets) = targets.split_last().unwrap();
-                let lv = self.trans_lvalue(&bcx, discr);
-                let discr = bcx.load(lv.llval, lv.alignment.to_align());
-                let discr = base::to_immediate(&bcx, discr, switch_ty);
+                let discr = self.trans_operand(&bcx, discr).immediate();
                 let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
                     let val = Const::from_constval(bcx.ccx, value.clone(), switch_ty);
