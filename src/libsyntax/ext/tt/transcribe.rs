@@ -69,8 +69,7 @@ pub fn transcribe(sp_diag: &Handler,
                   -> Vec<TokenTree> {
     let mut stack = SmallVector::one(Frame::new(src));
     let interpolations = interp.unwrap_or_else(HashMap::new); /* just a convenience */
-    let mut repeat_idx = Vec::new();
-    let mut repeat_len = Vec::new();
+    let mut repeats = Vec::new();
     let mut result = Vec::new();
     let mut result_stack = Vec::new();
 
@@ -79,8 +78,9 @@ pub fn transcribe(sp_diag: &Handler,
             tree
         } else {
             if let Frame::Sequence { ref mut idx, ref sep, .. } = *stack.last_mut().unwrap() {
-                if *repeat_idx.last().unwrap() < *repeat_len.last().unwrap() - 1 {
-                    *repeat_idx.last_mut().unwrap() += 1;
+                let (ref mut repeat_idx, repeat_len) = *repeats.last_mut().unwrap();
+                *repeat_idx += 1;
+                if *repeat_idx < repeat_len {
                     *idx = 0;
                     if let Some(sep) = sep.clone() {
                         // repeat same span, I guess
@@ -93,8 +93,7 @@ pub fn transcribe(sp_diag: &Handler,
 
             match stack.pop().unwrap() {
                 Frame::Sequence { .. } => {
-                    repeat_idx.pop();
-                    repeat_len.pop();
+                    repeats.pop();
                 }
                 Frame::Delimited { forest, span, .. } => {
                     if result_stack.is_empty() {
@@ -116,7 +115,7 @@ pub fn transcribe(sp_diag: &Handler,
                 // FIXME(pcwalton): Bad copy.
                 match lockstep_iter_size(&quoted::TokenTree::Sequence(sp, seq.clone()),
                                          &interpolations,
-                                         &repeat_idx) {
+                                         &repeats) {
                     LockstepIterSize::Unconstrained => {
                         panic!(sp_diag.span_fatal(
                             sp.clone(), /* blame macro writer */
@@ -136,8 +135,7 @@ pub fn transcribe(sp_diag: &Handler,
                                                           "this must repeat at least once"));
                             }
                         } else {
-                            repeat_len.push(len);
-                            repeat_idx.push(0);
+                            repeats.push((0, len));
                             stack.push(Frame::Sequence {
                                 idx: 0,
                                 sep: seq.separator.clone(),
@@ -149,7 +147,7 @@ pub fn transcribe(sp_diag: &Handler,
             }
             // FIXME #2887: think about span stuff here
             quoted::TokenTree::Token(sp, SubstNt(ident)) => {
-                match lookup_cur_matched(ident, &interpolations, &repeat_idx) {
+                match lookup_cur_matched(ident, &interpolations, &repeats) {
                     None => result.push(TokenTree::Token(sp, SubstNt(ident))),
                     Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
                         match **nt {
@@ -184,16 +182,16 @@ pub fn transcribe(sp_diag: &Handler,
 
 fn lookup_cur_matched(ident: Ident,
                       interpolations: &HashMap<Ident, Rc<NamedMatch>>,
-                      repeat_idx: &[usize])
+                      repeats: &[(usize, usize)])
                       -> Option<Rc<NamedMatch>> {
     interpolations.get(&ident).map(|matched| {
-        repeat_idx.iter().fold(matched.clone(), |ad, idx| {
+        repeats.iter().fold(matched.clone(), |ad, &(idx, _)| {
             match *ad {
                 MatchedNonterminal(_) => {
                     // end of the line; duplicate henceforth
                     ad.clone()
                 }
-                MatchedSeq(ref ads, _) => ads[*idx].clone()
+                MatchedSeq(ref ads, _) => ads[idx].clone()
             }
         })
     })
@@ -230,22 +228,22 @@ impl Add for LockstepIterSize {
 
 fn lockstep_iter_size(tree: &quoted::TokenTree,
                       interpolations: &HashMap<Ident, Rc<NamedMatch>>,
-                      repeat_idx: &[usize])
+                      repeats: &[(usize, usize)])
                       -> LockstepIterSize {
     use self::quoted::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimed) => {
             delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
-                size + lockstep_iter_size(tt, interpolations, repeat_idx)
+                size + lockstep_iter_size(tt, interpolations, repeats)
             })
         },
         TokenTree::Sequence(_, ref seq) => {
             seq.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
-                size + lockstep_iter_size(tt, interpolations, repeat_idx)
+                size + lockstep_iter_size(tt, interpolations, repeats)
             })
         },
         TokenTree::Token(_, SubstNt(name)) | TokenTree::MetaVarDecl(_, name, _) =>
-            match lookup_cur_matched(name, interpolations, repeat_idx) {
+            match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads, _) => LockstepIterSize::Constraint(ads.len(), name),
