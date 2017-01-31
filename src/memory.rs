@@ -121,6 +121,14 @@ pub struct Memory<'a, 'tcx> {
     next_id: AllocId,
     pub layout: &'a TargetDataLayout,
     /// List of memory regions containing packed structures
+    /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking afterwards.
+    /// In the case where no packed structs are present, it's just a single emptyness check of a set
+    /// instead of heavily influencing all memory access code as other solutions would.
+    ///
+    /// One disadvantage of this solution is the fact that you can cast a pointer to a packed struct
+    /// to a pointer to a normal struct and if you access a field of both in the same MIR statement,
+    /// the normal struct access will succeed even though it shouldn't.
+    /// But even with mir optimizations, that situation is hard/impossible to produce.
     packed: BTreeSet<Entry>,
 }
 
@@ -285,11 +293,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx, ()> {
         let alloc = self.get(ptr.alloc_id)?;
-        // check whether the memory was marked as aligned
-        let start = Entry(ptr.alloc_id, 0, ptr.offset + len);
-        let end = Entry(ptr.alloc_id, ptr.offset + len, 0);
-        for &Entry(_, start, end) in self.packed.range(start..end) {
-            if start <= ptr.offset && (ptr.offset + len) <= end {
+        // check whether the memory was marked as packed
+        // we select all elements that have the correct alloc_id and are within
+        // the range given by the offset into the allocation and the length
+        let start = Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: 0,
+            packed_end: ptr.offset + len,
+        };
+        let end = Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: ptr.offset + len,
+            packed_end: 0,
+        };
+        for &Entry { packed_start, packed_end, .. } in self.packed.range(start..end) {
+            // if the region we are checking is covered by a region in `packed`
+            // ignore the actual alignment
+            if packed_start <= ptr.offset && (ptr.offset + len) <= packed_end {
                 return Ok(());
             }
         }
@@ -310,7 +330,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub(crate) fn mark_packed(&mut self, ptr: Pointer, len: u64) {
-        self.packed.insert(Entry(ptr.alloc_id, ptr.offset, ptr.offset + len));
+        self.packed.insert(Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: ptr.offset,
+            packed_end: ptr.offset + len,
+        });
     }
 
     pub(crate) fn clear_packed(&mut self) {
@@ -318,8 +342,19 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 }
 
+// The derived `Ord` impl sorts first by the first field, then, if the fields are the same
+// by the second field, and if those are the same, too, then by the third field.
+// This is exactly what we need for our purposes, since a range within an allocation
+// will give us all `Entry`s that have that `AllocId`, and whose `packed_start` is <= than
+// the one we're looking for, but not > the end of the range we're checking.
+// At the same time the `packed_end` is irrelevant for the sorting and range searching, but used for the check.
+// This kind of search breaks, if `packed_end < packed_start`, so don't do that!
 #[derive(Eq, PartialEq, Ord, PartialOrd)]
-struct Entry(AllocId, u64, u64);
+struct Entry {
+    alloc_id: AllocId,
+    packed_start: u64,
+    packed_end: u64,
+}
 
 /// Allocation accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
