@@ -21,7 +21,6 @@ fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
 fn main() {
     let mut cl_box = {
         let mut i = 3;
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         box_it(Box::new(|| i += 1)) //~ ERROR `i` does not live long enough
     };
     cl_box.cl.call_mut(());

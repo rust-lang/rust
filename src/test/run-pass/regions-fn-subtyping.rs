@@ -16,8 +16,6 @@
 #![allow(unused_variables)]
 #![allow(unknown_features)]
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 // Should pass region checking.
 fn ok(f: Box<FnMut(&usize)>) {
     // Here, g is a function that can accept a usize pointer with
