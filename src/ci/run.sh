@@ -29,7 +29,7 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
 if [ "$DEPLOY" != "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=beta"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
