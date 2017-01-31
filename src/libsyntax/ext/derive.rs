@@ -51,6 +51,7 @@ pub fn verify_derive_attrs(cx: &mut ExtCtxt, attrs: &[ast::Attribute]) {
 
         if traits.is_empty() {
             cx.span_warn(attr.span, "empty trait list in `derive`");
+            attr::mark_used(&attr);
             continue;
         }
         for titem in traits {
