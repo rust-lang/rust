@@ -895,7 +895,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
         } else if context.config.control_brace_style ==
-                                  ControlBraceStyle::AlwaysNextLine {
+                  ControlBraceStyle::AlwaysNextLine {
             alt_block_sep.as_str()
         } else {
             " "
@@ -912,6 +912,15 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                  block_str);
 
         if let Some(else_block) = self.else_block {
+            // Since this is an else block, we should not indent for the assignment preceding
+            // the original if, so set shape.indent.alignment to 0.
+            let shape = Shape {
+                width: shape.width,
+                indent: Indent {
+                    block_indent: shape.indent.block_indent,
+                    alignment: 0,
+                },
+            };
             let mut last_in_chain = false;
             let rewrite = match else_block.node {
                 // If the else expression is another if-else expression, prevent it
