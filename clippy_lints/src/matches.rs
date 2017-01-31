@@ -491,6 +491,7 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
             match (self.value(), other.value()) {
                 (Bound::Included(a), Bound::Included(b)) |
                 (Bound::Excluded(a), Bound::Excluded(b)) => a.cmp(&b),
+                // Range patterns cannot be unbounded (yet)
                 (Bound::Unbounded, _) |
                 (_, Bound::Unbounded) => unimplemented!(),
                 (Bound::Included(a), Bound::Excluded(b)) => {
