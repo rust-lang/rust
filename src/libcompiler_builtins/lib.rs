@@ -20,7 +20,6 @@
 #![feature(staged_api, core_intrinsics, repr_simd,
            i128_type, core_float, abi_unadjusted, associated_consts)]
 #![allow(non_camel_case_types, unused_variables, unused_imports)]
-#![cfg_attr(stage0, allow(dead_code))]
 
 #[cfg(any(target_pointer_width="32", target_pointer_width="16", target_os="windows",
           target_arch="mips64"))]
@@ -31,17 +30,6 @@ pub mod reimpls {
     use core::intrinsics::unchecked_div;
     use core::intrinsics::unchecked_rem;
     use core::ptr;
-
-    // C API is expected to tolerate some amount of size mismatch in ABI. Hopefully the amount of
-    // handling is sufficient for bootstrapping.
-    #[cfg(stage0)]
-    type u128_ = u64;
-    #[cfg(stage0)]
-    type i128_ = i64;
-    #[cfg(not(stage0))]
-    type u128_ = u128;
-    #[cfg(not(stage0))]
-    type i128_ = i128;
 
     macro_rules! ashl {
         ($a:expr, $b:expr, $ty:ty) => {{
@@ -63,8 +51,8 @@ pub mod reimpls {
     }
 
     #[export_name="__ashlti3"]
-    pub extern "C" fn shl(a: u128_, b: u128_) -> u128_ {
-        ashl!(a, b, u128_)
+    pub extern "C" fn shl(a: u128, b: u128) -> u128 {
+        ashl!(a, b, u128)
     }
 
     macro_rules! ashr {
@@ -88,8 +76,8 @@ pub mod reimpls {
     }
 
     #[export_name="__ashrti3"]
-    pub extern "C" fn shr(a: i128_, b: i128_) -> i128_ {
-        ashr!(a, b, i128_)
+    pub extern "C" fn shr(a: i128, b: i128) -> i128 {
+        ashr!(a, b, i128)
     }
 
     macro_rules! lshr {
@@ -111,22 +99,11 @@ pub mod reimpls {
 
 
     #[export_name="__lshrti3"]
-    pub extern "C" fn lshr(a: u128_, b: u128_) -> u128_ {
-        lshr!(a, b, u128_)
+    pub extern "C" fn lshr(a: u128, b: u128) -> u128 {
+        lshr!(a, b, u128)
     }
 
-    #[cfg(stage0)]
-    pub extern "C" fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
-        unsafe {
-        if !rem.is_null() {
-            *rem = unchecked_rem(n, d);
-        }
-        unchecked_div(n, d)
-        }
-    }
-
-    #[cfg(not(stage0))]
-    pub extern "C" fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
+    pub extern "C" fn u128_div_mod(n: u128, d: u128, rem: *mut u128) -> u128 {
         // Translated from Figure 3-40 of The PowerPC Compiler Writer's Guide
         unsafe {
         // special cases, X is unknown, K != 0
@@ -291,34 +268,28 @@ pub mod reimpls {
         }
     }
 
-    fn i128_mod(a: i128_, b: i128_) -> i128_ {
+    fn i128_mod(a: i128, b: i128) -> i128 {
         let b = b.uabs();
         let sa = a.signum();
         let a = a.uabs();
         unsafe {
             let mut r = ::core::mem::zeroed();
             u128_div_mod(a, b, &mut r);
-            if sa == -1 { (r as i128_).unchecked_neg() } else { r as i128_ }
+            if sa == -1 { (r as i128).unchecked_neg() } else { r as i128 }
         }
     }
 
-    fn i128_div(a: i128_, b: i128_) -> i128_ {
+    fn i128_div(a: i128, b: i128) -> i128 {
         let sa = a.signum();
         let sb = b.signum();
         let a = a.uabs();
         let b = b.uabs();
         let sr = sa.wrapping_mul(sb); // sign of quotient
         (if sr == -1 {
-            (u128_div_mod(a, b, ptr::null_mut()) as i128_).unchecked_neg()
+            (u128_div_mod(a, b, ptr::null_mut()) as i128).unchecked_neg()
         } else {
-            u128_div_mod(a, b, ptr::null_mut()) as i128_
+            u128_div_mod(a, b, ptr::null_mut()) as i128
         })
-    }
-
-    #[cfg(stage0)]
-    #[export_name="__udivti3"]
-    pub extern "C" fn u128_div(a: u128_, b: u128_) -> u128_ {
-        (a / b)
     }
 
     macro_rules! mulo {
@@ -367,35 +338,6 @@ pub mod reimpls {
         fn high(self) -> Self::HighHalf;
         fn from_parts(low: Self::LowHalf, high: Self::HighHalf) -> Self;
     }
-    impl LargeInt for u64 {
-        type LowHalf = u32;
-        type HighHalf = u32;
-
-        fn low(self) -> u32 {
-            self as u32
-        }
-        fn high(self) -> u32 {
-            (self.wrapping_shr(32)) as u32
-        }
-        fn from_parts(low: u32, high: u32) -> u64 {
-            low as u64 | (high as u64).wrapping_shl(32)
-        }
-    }
-    impl LargeInt for i64 {
-        type LowHalf = u32;
-        type HighHalf = i32;
-
-        fn low(self) -> u32 {
-            self as u32
-        }
-        fn high(self) -> i32 {
-            self.wrapping_shr(32) as i32
-        }
-        fn from_parts(low: u32, high: i32) -> i64 {
-            u64::from_parts(low, high as u32) as i64
-        }
-    }
-    #[cfg(not(stage0))]
     impl LargeInt for u128 {
         type LowHalf = u64;
         type HighHalf = u64;
@@ -410,7 +352,6 @@ pub mod reimpls {
             (high as u128).wrapping_shl(64) | low as u128
         }
     }
-    #[cfg(not(stage0))]
     impl LargeInt for i128 {
         type LowHalf = u64;
         type HighHalf = i64;
@@ -455,47 +396,31 @@ pub mod reimpls {
         }}
     }
 
-    #[cfg(stage0)]
     #[export_name="__multi3"]
-    pub extern "C" fn u128_mul(a: i128_, b: i128_) -> i128_ {
-        ((a as i64).wrapping_mul(b as i64) as i128_)
-    }
-
-    #[cfg(not(stage0))]
-    #[export_name="__multi3"]
-    pub extern "C" fn u128_mul(a: i128_, b: i128_) -> i128_ {
-        mul!(a, b, i128_, i64)
+    pub extern "C" fn u128_mul(a: i128, b: i128) -> i128 {
+        mul!(a, b, i128, i64)
     }
 
     trait AbsExt: Sized {
-        fn uabs(self) -> u128_ {
-            self.iabs() as u128_
+        fn uabs(self) -> u128 {
+            self.iabs() as u128
         }
-        fn iabs(self) -> i128_;
+        fn iabs(self) -> i128;
     }
 
-    #[cfg(stage0)]
-    impl AbsExt for i128_ {
-        fn iabs(self) -> i128_ {
-            let s = self >> 63;
-            ((self ^ s).wrapping_sub(s))
-        }
-    }
-
-    #[cfg(not(stage0))]
-    impl AbsExt for i128_ {
-        fn iabs(self) -> i128_ {
+    impl AbsExt for i128 {
+        fn iabs(self) -> i128 {
             let s = self >> 127;
             ((self ^ s).wrapping_sub(s))
         }
     }
 
     trait NegExt: Sized {
-        fn unchecked_neg(self) -> i128_;
+        fn unchecked_neg(self) -> i128;
     }
 
-    impl NegExt for i128_ {
-        fn unchecked_neg(self) -> i128_ {
+    impl NegExt for i128 {
+        fn unchecked_neg(self) -> i128 {
             (!self).wrapping_add(1)
         }
     }
@@ -551,9 +476,9 @@ pub mod reimpls {
             let exponent = $from.get_exponent();
             let mantissa_fraction = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
             let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
-            if sign == -1.0 || exponent < 0 { return 0 as u128_; }
+            if sign == -1.0 || exponent < 0 { return 0 as u128; }
             if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
-                return !(0 as u128_);
+                return !(0 as u128);
             }
             (if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
                 (mantissa as $outty)
@@ -576,7 +501,7 @@ pub mod reimpls {
             let mantissa_fraction = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
             let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
 
-            if exponent < 0 { return 0 as i128_; }
+            if exponent < 0 { return 0 as i128; }
             if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
                 let ret = if sign > 0.0 { <$outty>::max_value() } else { <$outty>::min_value() };
                 return ret
@@ -595,7 +520,7 @@ pub mod reimpls {
     }
 
 
-    fn i128_as_f64(a: i128_) -> f64 {
+    fn i128_as_f64(a: i128) -> f64 {
         match a.signum() {
             1 => u128_as_f64(a.uabs()),
             0 => 0.0,
@@ -603,7 +528,7 @@ pub mod reimpls {
         }
     }
 
-    fn i128_as_f32(a: i128_) -> f32 {
+    fn i128_as_f32(a: i128) -> f32 {
         match a.signum() {
             1 => u128_as_f32(a.uabs()),
             0 => 0.0,
@@ -611,7 +536,7 @@ pub mod reimpls {
         }
     }
 
-    fn u128_as_f64(mut a: u128_) -> f64 {
+    fn u128_as_f64(mut a: u128) -> f64 {
         use ::core::f64::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
         let sd = 128u32.wrapping_sub(a.leading_zeros());
@@ -620,7 +545,7 @@ pub mod reimpls {
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
         // SNAP: replace this with !0u128
-        let negn :u128_ = !0;
+        let negn :u128 = !0;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
@@ -628,7 +553,7 @@ pub mod reimpls {
                 MD2 => a,
                 _ => a.wrapping_shr(sd.wrapping_sub(MANTISSA_DIGITS + 2)) |
                      (if (a & (negn.wrapping_shr(128 + MANTISSA_DIGITS + 2)
-                                   .wrapping_sub(sd as u128_))) == 0 { 0 } else { 1 })
+                                   .wrapping_sub(sd as u128))) == 0 { 0 } else { 1 })
             };
             a |= if (a & 4) == 0 { 0 } else { 1 };
             a = a.wrapping_add(1);
@@ -646,7 +571,7 @@ pub mod reimpls {
         }
     }
 
-    fn u128_as_f32(mut a: u128_) -> f32 {
+    fn u128_as_f32(mut a: u128) -> f32 {
         use ::core::f32::MANTISSA_DIGITS;
         if a == 0 { return 0.0; }
         let sd = 128u32.wrapping_sub(a.leading_zeros());
@@ -655,7 +580,7 @@ pub mod reimpls {
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
         // SNAP: replace this with !0u128
-        let negn :u128_ = !0;
+        let negn :u128 = !0;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
@@ -663,7 +588,7 @@ pub mod reimpls {
                 MD2 => a,
                 _ => a.wrapping_shr(sd.wrapping_sub(MANTISSA_DIGITS + 2)) |
                      (if (a & (negn.wrapping_shr(128 + MANTISSA_DIGITS + 2)
-                                   .wrapping_sub(sd as u128_))) == 0 { 0 } else { 1 })
+                                   .wrapping_sub(sd as u128))) == 0 { 0 } else { 1 })
             };
             a |= if (a & 4) == 0 { 0 } else { 1 };
             a = a.wrapping_add(1);
@@ -684,7 +609,7 @@ pub mod reimpls {
 
     macro_rules! why_are_abi_strings_checked_by_parser { ($cret:ty, $conv:expr, $unadj:tt) => {
     mod imp {
-        use super::{i128_, u128_, LargeInt, FloatStuff, NegExt, AbsExt};
+        use super::{LargeInt, FloatStuff, NegExt, AbsExt};
         use super::{i128_as_f64, i128_as_f32, u128_as_f64, u128_as_f32,
                     i128_div, i128_mod, u128_div_mod, unchecked_div, ptr};
         // For x64
@@ -692,8 +617,8 @@ pub mod reimpls {
         // aka.
         // define i128 @__muloti4(i128, i128, i32*)
         #[export_name="__muloti4"]
-        pub unsafe extern $unadj fn i128_mul_oflow(a: i128_, b: i128_, o: *mut i32) -> i128_ {
-            mulo!(a, b, o, i128_)
+        pub unsafe extern $unadj fn i128_mul_oflow(a: i128, b: i128, o: *mut i32) -> i128 {
+            mulo!(a, b, o, i128)
         }
 
         // For x64
@@ -701,19 +626,19 @@ pub mod reimpls {
         // aka.
         // define double @__muloti4(i128)
         #[export_name="__floattidf"]
-        pub extern $unadj fn i128_as_f64_(a: i128_) -> f64 {
+        pub extern $unadj fn i128_as_f64_(a: i128) -> f64 {
             i128_as_f64(a)
         }
         #[export_name="__floattisf"]
-        pub extern $unadj fn i128_as_f32_(a: i128_) -> f32 {
+        pub extern $unadj fn i128_as_f32_(a: i128) -> f32 {
             i128_as_f32(a)
         }
         #[export_name="__floatuntidf"]
-        pub extern $unadj fn u128_as_f64_(a: u128_) -> f64 {
+        pub extern $unadj fn u128_as_f64_(a: u128) -> f64 {
             u128_as_f64(a)
         }
         #[export_name="__floatuntisf"]
-        pub extern $unadj fn u128_as_f32_(a: u128_) -> f32 {
+        pub extern $unadj fn u128_as_f32_(a: u128) -> f32 {
             u128_as_f32(a)
         }
 
@@ -722,23 +647,23 @@ pub mod reimpls {
         // aka.
         // define i128 @stuff(double)
         #[export_name="__fixunsdfti"]
-        pub extern $unadj fn f64_as_u128(a: f64) -> u128_ {
-            float_as_unsigned!(a, f64, u128_)
+        pub extern $unadj fn f64_as_u128(a: f64) -> u128 {
+            float_as_unsigned!(a, f64, u128)
         }
 
         #[export_name="__fixunssfti"]
-        pub extern "unadjusted" fn f32_as_u128(a: f32) -> u128_ {
-            float_as_unsigned!(a, f32, u128_)
+        pub extern "unadjusted" fn f32_as_u128(a: f32) -> u128 {
+            float_as_unsigned!(a, f32, u128)
         }
 
         #[export_name="__fixdfti"]
-        pub extern "unadjusted" fn f64_as_i128(a: f64) -> i128_ {
-            float_as_signed!(a, f64, i128_)
+        pub extern "unadjusted" fn f64_as_i128(a: f64) -> i128 {
+            float_as_signed!(a, f64, i128)
         }
 
         #[export_name="__fixsfti"]
-        pub extern "unadjusted" fn f32_as_i128(a: f32) -> i128_ {
-            float_as_signed!(a, f32, i128_)
+        pub extern "unadjusted" fn f32_as_i128(a: f32) -> i128 {
+            float_as_signed!(a, f32, i128)
         }
 
         #[repr(simd)]
@@ -751,19 +676,19 @@ pub mod reimpls {
         //
         // That almost matches the C ABI, so we simply use the C ABI
         #[export_name="__udivmodti4"]
-        pub extern "C" fn u128_div_mod_(n: u128_, d: u128_, rem: *mut u128_) -> $cret {
+        pub extern "C" fn u128_div_mod_(n: u128, d: u128, rem: *mut u128) -> $cret {
             let x = u128_div_mod(n, d, rem);
             ($conv)(x)
         }
 
         #[export_name="__udivti3"]
-        pub extern "C" fn u128_div_(a: u128_, b: u128_) -> $cret {
+        pub extern "C" fn u128_div_(a: u128, b: u128) -> $cret {
             let x = u128_div_mod(a, b, ptr::null_mut());
             ($conv)(x)
         }
 
         #[export_name="__umodti3"]
-        pub extern "C" fn u128_mod_(a: u128_, b: u128_) -> $cret {
+        pub extern "C" fn u128_mod_(a: u128, b: u128) -> $cret {
             unsafe {
                 let mut r = ::core::mem::zeroed();
                 u128_div_mod(a, b, &mut r);
@@ -772,30 +697,26 @@ pub mod reimpls {
         }
 
         #[export_name="__divti3"]
-        pub extern "C" fn i128_div_(a: i128_, b: i128_) -> $cret {
+        pub extern "C" fn i128_div_(a: i128, b: i128) -> $cret {
             let x = i128_div(a, b);
-            ($conv)(x as u128_)
+            ($conv)(x as u128)
         }
 
         #[export_name="__modti3"]
-        pub extern "C" fn i128_mod_(a: i128_, b: i128_) -> $cret {
+        pub extern "C" fn i128_mod_(a: i128, b: i128) -> $cret {
             let x = i128_mod(a, b);
-            ($conv)(x as u128_)
+            ($conv)(x as u128)
         }
     }
     } }
 
     // LLVM expectations for ABI on windows x64 are pure madness.
-    #[cfg(not(stage0))]
     #[cfg(all(windows, target_pointer_width="64"))]
     why_are_abi_strings_checked_by_parser!(u64x2,
-                                           |i: u128_| u64x2(i.low(), i.high()),
+                                           |i: u128| u64x2(i.low(), i.high()),
                                            "unadjusted");
 
-    #[cfg(not(stage0))]
     #[cfg(not(all(windows, target_pointer_width="64")))]
-    why_are_abi_strings_checked_by_parser!(u128_, |i|{ i }, "C");
-
-    #[cfg(not(stage0))]
+    why_are_abi_strings_checked_by_parser!(u128, |i|{ i }, "C");
     pub use self::imp::*;
 }

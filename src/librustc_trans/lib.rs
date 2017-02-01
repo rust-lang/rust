@@ -29,6 +29,7 @@
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
+#![feature(i128_type)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -53,7 +54,6 @@ extern crate rustc_const_eval;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
-extern crate rustc_i128;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

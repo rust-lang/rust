@@ -211,8 +211,6 @@ use std::string;
 use std::{char, f64, fmt, str};
 use std;
 
-use rustc_i128::{i128, u128};
-
 use Encodable;
 
 /// Represents a json value

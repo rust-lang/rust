@@ -42,7 +42,6 @@ use syntax::attr;
 use syntax::ast;
 use syntax::codemap;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
-use rustc_i128::{u128, i128};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,

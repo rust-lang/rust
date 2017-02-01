@@ -40,8 +40,6 @@ use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
-use rustc_i128::u128;
-
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -399,13 +397,6 @@ fn is_const_integral(v: ValueRef) -> bool {
 }
 
 #[inline]
-#[cfg(stage0)]
-fn hi_lo_to_u128(lo: u64, _: u64) -> u128 {
-    lo as u128
-}
-
-#[inline]
-#[cfg(not(stage0))]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }

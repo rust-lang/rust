@@ -28,8 +28,6 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;
 
-use rustc_i128::u128;
-
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 #[macro_use]
