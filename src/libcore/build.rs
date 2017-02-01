@@ -8,7 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Code generation for bytewise slice comparison
+//! Code generation for bytewise slice comparison. Target is to provide a compile time optimization
+//! within a single macro which looks like:
+//!
+//! ```
+//! macro_rules! slice_compare (
+//!     ($a:expr, $b:expr, $len:expr) => {{
+//!         match $len {
+//!             1 => cmp!($a, $b, u8, 0),
+//!             2 => cmp!($a, $b, u16, 0),
+//!             3 => cmp!($a, $b, u16, 0) && cmp!($a, $b, u8, 2),
+//!             4 => cmp!($a, $b, u32, 0),
+//!             ...
+//! ```
+//!
+//! The supported slice length can be set by changing the `OPT_LEN` variable.
+
+static OPT_LEN: usize = 256;
 
 use std::{env, iter, io};
 use std::fs::File;
@@ -35,7 +51,7 @@ fn run() -> Result<(), Box<Error>> {
     writeln!(f, "{}($a:expr, $b:expr, $len:expr) => {{{{", fill(4))?;
     writeln!(f, "{}match $len {{", fill(8))?;
 
-    for i in 1..257 {
+    for i in 1..OPT_LEN + 1 {
         let mut bits = i * 8 as usize;
         let mut sizes = vec![8, 16, 32, 64];
         let mut offset = 0;
