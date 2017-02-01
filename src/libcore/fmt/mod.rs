@@ -281,17 +281,20 @@ impl<'a> Arguments<'a> {
         let pieces_length: W<usize> = self.pieces.iter()
             .map(|x| W(x.len())).sum();
 
-        // If they are any arguments to format, the string will most likely
-        // double in size. So we're pre-doubling it here.
-        let multiplier = if self.args.is_empty() { W(1) } else { W(2) };
-
-        let capacity = multiplier * pieces_length;
-        if multiplier == W(2) && (W(1)..W(8)).contains(capacity) {
-            // Allocations smaller than 8 don't really make sense for String.
-            8
+        if self.args.is_empty() {
+            pieces_length.0
+        } else if self.pieces[0] == "" && pieces_length < W(16) {
+            // If the format string starts with an argument,
+            // don't preallocate anything, unless length
+            // of pieces is significant.
+            0
         } else {
-            capacity.0
+            // There are some arguments, so any additional push
+            // will reallocate the string. To avoid that,
+            // we're "pre-doubling" the capacity here.
+            (pieces_length * W(2)).0
         }
+
     }
 }
 
