@@ -43,8 +43,6 @@ use std::ptr;
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
 
-use rustc_i128::{u128, i128};
-
 /// A sized constant rvalue.
 /// The LLVM type might not be the same for a single Rust type,
 /// e.g. each enum variant would have its own LLVM struct type.

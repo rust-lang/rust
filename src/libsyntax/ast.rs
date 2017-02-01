@@ -33,8 +33,6 @@ use std::u32;
 
 use serialize::{self, Encodable, Decodable, Encoder, Decoder};
 
-use rustc_i128::{u128, i128};
-
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros That Work Together"

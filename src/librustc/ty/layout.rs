@@ -20,7 +20,6 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
-use rustc_i128::u128;
 use rustc_const_math::ConstInt;
 
 use std::cmp;

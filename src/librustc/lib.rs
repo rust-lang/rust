@@ -30,6 +30,7 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(field_init_shorthand)]
+#![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
 #![feature(nonzero)]
@@ -59,9 +60,6 @@ extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate serialize as rustc_serialize; // used by deriving
-
-// SNAP:
-extern crate rustc_i128;
 
 #[macro_use]
 mod macros;

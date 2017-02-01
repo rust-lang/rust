@@ -43,8 +43,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
-use rustc_i128::{u128, i128};
-
 use super::index_builder::{FromId, IndexBuilder, Untracked};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {

@@ -31,6 +31,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(i128_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -45,8 +46,6 @@ extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
-
-extern crate rustc_i128;
 
 pub use rustc::lint;
 pub use rustc::middle;

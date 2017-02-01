@@ -399,7 +399,6 @@ pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
 #[unstable(feature = "i128", issue = "35118")]
-#[cfg(not(stage0))]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -430,7 +429,6 @@ pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
 #[unstable(feature = "i128", issue = "35118")]
-#[cfg(not(stage0))]
 pub use core::u128;
 
 pub mod f32;
