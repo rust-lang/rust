@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, NestedMetaItem};
-use ext::base::{ExtCtxt, SyntaxExtension};
-use ext::build::AstBuilder;
 use ast::Name;
+use attr;
+use ast::{self, NestedMetaItem}; use ext::base::{ExtCtxt, SyntaxExtension};
+use codemap;
+use ext::build::AstBuilder;
 use feature_gate;
 use symbol::Symbol;
 use syntax_pos::Span;
-use codemap;
 
 pub fn derive_attr_trait<'a>(cx: &mut ExtCtxt, attr: &'a ast::Attribute)
                              -> Option<&'a NestedMetaItem> {
@@ -71,20 +71,19 @@ pub enum DeriveType {
 
 impl DeriveType {
     // Classify a derive trait name by resolving the macro.
-    pub fn classify(cx: &mut ExtCtxt, tname: Name) -> Option<DeriveType> {
+    pub fn classify(cx: &mut ExtCtxt, tname: Name) -> DeriveType {
         let legacy_derive_name = Symbol::intern(&format!("derive_{}", tname));
 
         if let Ok(_) = cx.resolver.resolve_builtin_macro(legacy_derive_name) {
-            return Some(DeriveType::Legacy);
+            return DeriveType::Legacy;
         }
 
         match cx.resolver.resolve_builtin_macro(tname) {
             Ok(ext) => match *ext {
-                SyntaxExtension::BuiltinDerive(..) => Some(DeriveType::Builtin),
-                SyntaxExtension::ProcMacroDerive(..) => Some(DeriveType::ProcMacro),
-                _ => None,
+                SyntaxExtension::BuiltinDerive(..) => DeriveType::Builtin,
+                _ => DeriveType::ProcMacro,
             },
-            Err(_) => Some(DeriveType::ProcMacro),
+            Err(_) => DeriveType::ProcMacro,
         }
     }
 }
@@ -109,13 +108,12 @@ pub fn get_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>,
 
         // See if we can find a matching trait.
         for j in 0..traits.len() {
-            let tname = if let Some(tname) = traits[j].name() {
-                tname
-            } else {
-                continue;
+            let tname = match traits[j].name() {
+                Some(tname) => tname,
+                _ => continue,
             };
 
-            if DeriveType::classify(cx, tname) == Some(derive_type) {
+            if DeriveType::classify(cx, tname) == derive_type {
                 titem = Some(traits.remove(j));
                 break;
             }
@@ -168,7 +166,7 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
     let span = attrs[0].span;
 
     if !attrs.iter().any(|a| a.name() == "structural_match") &&
-        titems.iter().any(|t| *t == "PartialEq") && titems.iter().any(|t| *t == "Eq") {
+       titems.iter().any(|t| *t == "PartialEq") && titems.iter().any(|t| *t == "Eq") {
         let structural_match = Symbol::intern("structural_match");
         let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
         let meta = cx.meta_word(span, structural_match);
@@ -176,7 +174,7 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
     }
 
     if !attrs.iter().any(|a| a.name() == "rustc_copy_clone_marker") &&
-        titems.iter().any(|t| *t == "Copy") && titems.iter().any(|t| *t == "Clone") {
+       titems.iter().any(|t| *t == "Copy") && titems.iter().any(|t| *t == "Clone") {
         let structural_match = Symbol::intern("rustc_copy_clone_marker");
         let span = allow_unstable(cx, span, "derive(Copy, Clone)");
         let meta = cx.meta_word(span, structural_match);
@@ -188,29 +186,29 @@ pub fn find_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                         -> Option<ast::Attribute> {
     verify_derive_attrs(cx, attrs);
     get_derive_attr(cx, attrs, DeriveType::Legacy).and_then(|a| {
-            let titem = derive_attr_trait(cx, &a);
-            if let Some(titem) = titem {
-                let tword = titem.word().unwrap();
-                let tname = tword.name();
-                if !cx.ecfg.enable_custom_derive() {
-                    feature_gate::emit_feature_err(
-                        &cx.parse_sess,
-                         "custom_derive",
-                         titem.span,
-                         feature_gate::GateIssue::Language,
-                         feature_gate::EXPLAIN_CUSTOM_DERIVE
-                    );
-                } else {
-                    let name = Symbol::intern(&format!("derive_{}", tname));
-                    if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
-                        cx.span_warn(titem.span,
-                                          feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
-                    }
-                    let mitem = cx.meta_word(titem.span, name);
-                    return Some(cx.attribute(mitem.span, mitem));
+        let titem = derive_attr_trait(cx, &a);
+        titem.and_then(|titem| {
+            let tword = titem.word().unwrap();
+            let tname = tword.name();
+            if !cx.ecfg.enable_custom_derive() {
+                feature_gate::emit_feature_err(
+                    &cx.parse_sess,
+                    "custom_derive",
+                    titem.span,
+                    feature_gate::GateIssue::Language,
+                    feature_gate::EXPLAIN_CUSTOM_DERIVE
+                );
+                None
+            } else {
+                let name = Symbol::intern(&format!("derive_{}", tname));
+                if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
+                    cx.span_warn(titem.span,
+                                 feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
                 }
+                let mitem = cx.meta_word(titem.span, name);
+                Some(cx.attribute(mitem.span, mitem))
             }
-            None
+        })
     }).or_else(|| {
         add_derived_markers(cx, attrs);
         get_derive_attr(cx, attrs, DeriveType::Builtin)

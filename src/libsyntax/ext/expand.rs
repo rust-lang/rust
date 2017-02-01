@@ -258,8 +258,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 InvocationKind::Derive { ref attr, .. } => {
                     let titem = derive_attr_trait(self.cx, &attr).unwrap();
-                    let tname = titem.name().unwrap();
-                    self.cx.resolver.resolve_builtin_macro(tname)
+                    let tname = titem.name().expect("Expected derive macro name");
+                    let ident = Ident::with_empty_ctxt(tname);
+                    let path = ast::Path::from_ident(attr.span, ident);
+                    self.cx.resolver.resolve_derive_macro(scope, &path, force)
                 }
             };
             let ext = match resolution {
