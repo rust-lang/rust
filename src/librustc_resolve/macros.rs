@@ -261,7 +261,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                             -> Result<Rc<SyntaxExtension>, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        match self.resolve_macro(scope, path, force) {
+        match self.resolve_macro(scope, path, false) {
             Ok(ext) => match *ext {
                 SyntaxExtension::BuiltinDerive(..) |
                 SyntaxExtension::ProcMacroDerive(..) => Ok(ext),
