@@ -308,12 +308,14 @@ primitive expressions like `unix`. Portability `P` is narrower than portability
 `Q` if `P` *implies* `Q` as a logic formula.
 
 In general, comparing two portabilities is equivalent to solving SAT, an
-NP-complete problem -- a frightening prospect for a lint! However, in practice
-these comparisons are going to be relatively small and simple SAT instances,
-given the way that `cfg` is used. We can likely get away with a naive SAT
-implementation, perhaps with a handful of optimiziations specific to our
-use-case. In the limit, there are also many well-known techniques for solving
-SAT efficiently even on very large examples that arise in real-world usage.
+NP-complete problem -- a frightening prospect for a lint! However, note that
+worst-case execution is exponential in *the number of variables* (i.e.,
+primitive `cfg` constraints), not the number/complexity of clauses, and most
+comparisons should involve a very small number of variables. We can likely get
+away with a naive SAT implementation, perhaps with a handful of optimiziations
+specific to our use-case. In the limit, there are also many well-known
+techniques for solving SAT efficiently even on very large examples that arise in
+real-world usage.
 
 #### Known implications
 
