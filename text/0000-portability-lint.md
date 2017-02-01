@@ -265,11 +265,8 @@ fn cross_platform() {
 ```
 
 As with many lints, the portability lint is *best effort*: it is not required to
-provide airtight guarantees about portability. In particular, the proposed
-definition in this RFC ignores trait implementations and dispatch. In practice,
-this hole shouldn't be too significant: it's pretty rare to implement a trait
-conditionally based on platform information, and the goal of this RFC is to
-*guide* code toward mainstream compatibility without imposing a heavy burden.
+provide airtight guarantees about portability. However, the RFC sketches a
+plausible implementation route that should cover the vast majority of cases.
 
 With that overview in mind, let's dig into the details.
 
@@ -342,12 +339,37 @@ fn linux_only() {
 
 ### Determining the portability of referenced items
 
-**How is the portability of a referenced item determined?** The lint will simply
-resolve an item to its definition, and use the portability of that
-definition. In particular, when invoking trait items, the portability will be
-that of the item's *definition*, rather than that of the `impl`. See
-[Unresolved questions][unresolved] for more on this point; it's something that
-could be revised over time.
+**How is the portability of a referenced item determined?** The lint will
+resolve an item to its definition, and use the portability of that definition,
+which will be recorded in metadata. For the case of trait items, however, this
+will involve attempting to resolve the invocation to a particular impl, to look
+up the portability of that impl. We can set up trait selection to yield
+portability information with the selected impl, which will allow us to catch
+cases like the following:
+
+```rust
+trait Foo {
+    fn foo();
+}
+
+struct MyType;
+
+#[cfg(unix)]
+impl Foo for MyType {
+    fn foo() { .. }
+}
+
+fn use_foo<T: Foo>() {
+    T::foo()
+}
+
+fn invoke() {
+    // invokes a `cfg(unix)` item via a generic function, but we can catch it
+    // when checking that `MyType: Foo`, since selection will say that we need
+    // our context to imply `unix`
+    use_foo::<MyType>();
+}
+```
 
 #### `match_cfg`
 
@@ -533,34 +555,6 @@ the scenarios that arise in practice.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
-
-### Trait system
-
-Should we aim for better integration with the trait system? While we could
-probably catch relatively simple cases (where a trait is being used in a
-monomorphic way), generics raise tricky questions:
-
-```rust
-trait Foo {
-    fn foo();
-}
-
-struct MyType;
-
-impl Foo for MyType {
-    #[cfg(unix)]
-    fn foo() { .. }
-}
-
-fn use_foo<T: Foo>() {
-    T::foo()
-}
-
-fn invoke() {
-    // invokes a `cfg(unix)` item via a generic function
-    use_foo::<MyType>();
-}
-```
 
 ### External libraries
 
