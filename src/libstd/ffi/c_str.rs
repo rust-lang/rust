@@ -303,6 +303,12 @@ impl CString {
         &self.inner
     }
 
+    /// Converts this `CString` into a boxed `CStr`.
+    #[unstable(feature = "into_boxed_c_str", issue = "0")]
+    pub fn into_boxed_c_str(self) -> Box<CStr> {
+        unsafe { mem::transmute(self.into_inner()) }
+    }
+
     // Bypass "move out of struct which implements `Drop` trait" restriction.
     fn into_inner(self) -> Box<[u8]> {
         unsafe {
@@ -378,6 +384,22 @@ impl Default for CString {
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
 impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
+}
+
+#[stable(feature = "box_from_c_str", since = "1.17.0")]
+impl<'a> From<&'a CStr> for Box<CStr> {
+    fn from(s: &'a CStr) -> Box<CStr> {
+        let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
+        unsafe { mem::transmute(boxed) }
+    }
+}
+
+#[stable(feature = "default_box_extra", since = "1.17.0")]
+impl Default for Box<CStr> {
+    fn default() -> Box<CStr> {
+        let boxed: Box<[u8]> = Box::from([0]);
+        unsafe { mem::transmute(boxed) }
+    }
 }
 
 impl NulError {
@@ -686,7 +708,7 @@ impl ToOwned for CStr {
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
-        CString { inner: self.to_bytes_with_nul().to_vec().into_boxed_slice() }
+        CString { inner: self.to_bytes_with_nul().into() }
     }
 }
 
@@ -846,5 +868,23 @@ mod tests {
         let data = b"1\023\0";
         let cstr = CStr::from_bytes_with_nul(data);
         assert!(cstr.is_err());
+    }
+
+    #[test]
+    fn into_boxed() {
+        let orig: &[u8] = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
+        let cstring = cstr.to_owned();
+        let box1: Box<CStr> = Box::from(cstr);
+        let box2 = cstring.into_boxed_c_str();
+        assert_eq!(cstr, &*box1);
+        assert_eq!(box1, box2);
+        assert_eq!(&*box2, cstr);
+    }
+
+    #[test]
+    fn boxed_default() {
+        let boxed = <Box<CStr>>::default();
+        assert_eq!(boxed.to_bytes_with_nul(), &[0]);
     }
 }
