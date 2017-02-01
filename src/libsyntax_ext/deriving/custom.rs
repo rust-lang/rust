@@ -54,7 +54,7 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::Item(item) => item,
             Annotatable::ImplItem(_) |
             Annotatable::TraitItem(_) => {
-                ecx.span_err(span, "proc_macro_derive attributes may only be \
+                ecx.span_err(span, "proc-macro derives may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -63,7 +63,7 @@ impl MultiItemModifier for ProcMacroDerive {
             ItemKind::Struct(..) |
             ItemKind::Enum(..) => {},
             _ => {
-                ecx.span_err(span, "proc_macro_derive attributes may only be \
+                ecx.span_err(span, "proc-macro derives may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -81,7 +81,7 @@ impl MultiItemModifier for ProcMacroDerive {
         let stream = match res {
             Ok(stream) => stream,
             Err(e) => {
-                let msg = "proc_macro_derive attribute panicked";
+                let msg = "proc-macro derive panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
                 if let Some(s) = e.downcast_ref::<String>() {
                     err.help(&format!("message: {}", s));
@@ -100,7 +100,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 Ok(new_items) => new_items,
                 Err(_) => {
                     // FIXME: handle this better
-                    let msg = "proc_macro_derive produced unparseable tokens";
+                    let msg = "proc-macro derive produced unparseable tokens";
                     ecx.struct_span_fatal(span, msg).emit();
                     panic!(FatalError);
                 }

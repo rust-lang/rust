@@ -536,6 +536,9 @@ pub trait Resolver {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
+                            -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -560,6 +563,13 @@ impl Resolver for DummyResolver {
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
+        Err(Determinacy::Determined)
+    }
+    fn resolve_builtin_macro(&mut self, _tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
+        Err(Determinacy::Determined)
+    }
+    fn resolve_derive_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
+                            -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
 }
