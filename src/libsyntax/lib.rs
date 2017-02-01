@@ -128,6 +128,7 @@ pub mod print {
 pub mod ext {
     pub mod base;
     pub mod build;
+    pub mod derive;
     pub mod expand;
     pub mod placeholders;
     pub mod hygiene;
