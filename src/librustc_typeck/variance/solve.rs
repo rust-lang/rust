@@ -137,11 +137,9 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                           item_variances);
             }
 
-            let newly_added = tcx.item_variance_map
-                .borrow_mut()
-                .insert(item_def_id, Rc::new(item_variances))
-                .is_none();
-            assert!(newly_added);
+            tcx.item_variance_map
+               .borrow_mut()
+               .insert(item_def_id, Rc::new(item_variances));
         }
     }
 

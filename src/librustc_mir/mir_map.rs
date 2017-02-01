@@ -139,7 +139,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
             let mir = tcx.alloc_mir(mir);
             let def_id = tcx.hir.local_def_id(src.item_id());
-            assert!(tcx.mir_map.borrow_mut().insert(def_id, mir).is_none());
+            tcx.mir_map.borrow_mut().insert(def_id, mir);
         });
 
         let body = self.tcx.hir.body(body_id);
