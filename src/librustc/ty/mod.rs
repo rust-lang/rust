@@ -45,7 +45,6 @@ use syntax::attr;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
-use rustc_const_math::ConstInt;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 
 use hir;
@@ -72,6 +71,8 @@ pub use self::context::{Lift, TypeckTables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 
+use rustc_i128::u128;
+
 pub mod adjustment;
 pub mod cast;
 pub mod error;
@@ -96,7 +97,7 @@ mod flags;
 mod structural_impls;
 mod sty;
 
-pub type Disr = ConstInt;
+pub type Disr = u128;
 
 // Data types
 
@@ -1325,6 +1326,7 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
+    pub discr_ty: attr::IntType, // Type of the discriminant
     pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
@@ -1387,6 +1389,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
+           discr_ty: attr::IntType,
            variants: Vec<VariantDef>,
            repr: ReprOptions) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
@@ -1410,6 +1413,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         AdtDef {
             did: did,
+            discr_ty: discr_ty,
             variants: variants,
             flags: Cell::new(flags),
             destructor: Cell::new(None),
