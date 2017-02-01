@@ -315,6 +315,14 @@ impl<T> Default for Box<[T]> {
     }
 }
 
+#[stable(feature = "default_box_extra", since = "1.17.0")]
+impl Default for Box<str> {
+    fn default() -> Box<str> {
+        let default: Box<[u8]> = Default::default();
+        unsafe { mem::transmute(default) }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for Box<T> {
     /// Returns a new box with a `clone()` of this box's contents.

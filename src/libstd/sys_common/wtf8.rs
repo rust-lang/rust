@@ -340,6 +340,12 @@ impl Wtf8Buf {
             }
         }
     }
+
+    /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
+    #[inline]
+    pub fn into_box(self) -> Box<Wtf8> {
+        unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
+    }
 }
 
 /// Create a new WTF-8 string from an iterator of code points.
@@ -582,6 +588,19 @@ impl Wtf8 {
             &[0xED, b2 @ 0xB0...0xBF, b3] => Some(decode_surrogate(b2, b3)),
             _ => None
         }
+    }
+
+    /// Boxes this `Wtf8`.
+    #[inline]
+    pub fn into_box(&self) -> Box<Wtf8> {
+        let boxed: Box<[u8]> = self.bytes.into();
+        unsafe { mem::transmute(boxed) }
+    }
+
+    /// Creates a boxed, empty `Wtf8`.
+    pub fn empty_box() -> Box<Wtf8> {
+        let boxed: Box<[u8]> = Default::default();
+        unsafe { mem::transmute(boxed) }
     }
 }
 
