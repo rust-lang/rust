@@ -142,7 +142,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                         match_def_path(cx.tcx, did, &paths::VEC),
                     ], {
                         span_help_and_lint(cx,
-                                           BOX_VEC,
+                                           BORROWED_BOX,
                                            ast_ty.span,
                                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
