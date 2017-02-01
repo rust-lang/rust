@@ -1084,10 +1084,9 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         // are going to build an executable
         if sess.opts.output_types.contains_key(&OutputType::Exe) {
             let f = outputs.path(OutputType::Object);
-            fs::copy(&f,
+            fs::rename(&f,
                      f.with_file_name(format!("{}.0.o",
                                               f.file_stem().unwrap().to_string_lossy()))).unwrap();
-            fs::remove_file(f).unwrap();
         }
 
         // Remove assembly source, unless --save-temps was specified
