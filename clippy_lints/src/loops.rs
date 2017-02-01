@@ -656,7 +656,7 @@ fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, method_name: &s
                        arg.span,
                        "it is more idiomatic to loop over references to containers instead of using explicit \
                         iteration methods",
-                       "to write this more concisely, try looping over",
+                       "to write this more concisely, try",
                        format!("&{}{}", muta, object))
 }
 
@@ -689,7 +689,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        arg.span,
                                        "it is more idiomatic to loop over containers instead of using explicit \
                                         iteration methods`",
-                                       "to write this more concisely, try looping over",
+                                       "to write this more concisely, try",
                                        object.to_string());
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
