@@ -98,6 +98,8 @@ extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
+extern crate rustc_i128;
+
 pub use rustc::dep_graph;
 pub use rustc::hir;
 pub use rustc::lint;
