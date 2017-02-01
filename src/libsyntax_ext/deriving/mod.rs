@@ -247,14 +247,11 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             ..mitem.span
         };
 
-        match cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false) {
-            Ok(ext) => match *ext {
-                SyntaxExtension::CustomDerive(ref ext) =>
-                    return ext.expand(cx, span, &mitem, item),
-                _ => {},
-            },
-            _ => {},
-        };
+        if let Ok(ext) = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false) {
+            if let SyntaxExtension::CustomDerive(ref ext) = *ext {
+                return ext.expand(cx, span, &mitem, item),
+            }
+        }
 
         cx.span_err(span, &format!("cannot find derive macro `{}` in this scope", tname));
         return vec![item];
