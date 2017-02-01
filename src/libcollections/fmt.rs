@@ -113,13 +113,8 @@
 //!
 //! If this syntax is used, then the number of characters to print precedes the
 //! actual object being formatted, and the number of characters must have the
-//! type `usize`. Although a `usize` can be printed with `{}`, it is invalid to
-//! reference an argument as such. For example this is another invalid format
-//! string:
-//!
-//! ```text
-//! {:.*} {0}
-//! ```
+//! type `usize`. Additionally, the parameter used for the number of characters
+//! is consumed by `{:.*}` and cannot be used again.
 //!
 //! ## Formatting traits
 //!
@@ -437,8 +432,10 @@
 //!
 //!    `.*` means that this `{...}` is associated with *two* format inputs rather than one: the
 //!    first input holds the `usize` precision, and the second holds the value to print.  Note that
-//!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
-//!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
+//!    in this case, if one uses the format string `{<arg>:<format_spec>.*}`, then the `<arg>` part
+//!    refers to the *value* to print. If `<arg>` is a named parameter the `precision` must come in
+//!    the input preceding `<arg>`. It is not possible to specify a positional or named parameter
+//!    for the precision.
 //!
 //! For example, the following calls all print the same thing `Hello x is 0.01000`:
 //!
