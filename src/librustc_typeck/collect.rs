@@ -66,7 +66,7 @@ use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContainer, ReprOptions};
-use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt, layout};
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
 use util::common::{ErrorReported, MemoizationMap};
@@ -85,6 +85,8 @@ use rustc::hir::{self, map as hir_map};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
+
+use rustc_i128::i128;
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -1022,14 +1024,9 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 -> &'tcx ty::AdtDef
 {
     let did = ccx.tcx.hir.local_def_id(it.id);
-<<<<<<< HEAD
-    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
-
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants, ReprOptions::new(&ccx.tcx, did));
-=======
     let variants = vec![convert_struct_variant(ccx, did, it.name, 0, def)];
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, None, variants);
->>>>>>> b1934037e6... Move type of discriminant to AdtDef
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, None, variants,
+                                    ReprOptions::new(&ccx.tcx, did));
     ccx.tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }
@@ -1097,9 +1094,11 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let repr_type = tcx.enum_repr_type(repr_hints.get(0));
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_disr = None::<ty::Disr>;
+    let (mut min, mut max) = (i128::max_value(), i128::min_value());
     let variants = def.variants.iter().map(|v| {
         let wrapped_disr = prev_disr.map_or(initial, |d| d.wrapping_add(1));
         let disr = if let Some(e) = v.node.disr_expr {
+            // FIXME: i128 discriminants
             evaluate_disr_expr(ccx, repr_type, e)
         } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
             Some(disr)
@@ -1113,16 +1112,14 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             None
         }.unwrap_or(wrapped_disr);
         prev_disr = Some(disr);
-
+        if (disr as i128) < min { min = disr as i128; }
+        if (disr as i128) > max { max = disr as i128; }
         let did = tcx.hir.local_def_id(v.node.data.id());
         convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
     }).collect();
 
-<<<<<<< HEAD
-    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants, ReprOptions::new(&ccx.tcx, did));
-=======
-    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, Some(repr_type), variants);
->>>>>>> b1934037e6... Move type of discriminant to AdtDef
+    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, Some(repr_int.to_attr(signed)), variants,
+                                ReprOptions::new(&ccx.tcx, did));
     tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }

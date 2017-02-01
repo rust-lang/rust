@@ -382,6 +382,23 @@ impl Integer {
         }
     }
 
+    pub fn to_attr(&self, signed: bool) -> attr::IntType {
+        match (*self, signed) {
+            (I1, false) => attr::IntType::UnsignedInt(UintTy::U8),
+            (I8, false) => attr::IntType::UnsignedInt(UintTy::U8),
+            (I16, false) => attr::IntType::UnsignedInt(UintTy::U16),
+            (I32, false) => attr::IntType::UnsignedInt(UintTy::U32),
+            (I64, false) => attr::IntType::UnsignedInt(UintTy::U64),
+            (I128, false) => attr::IntType::UnsignedInt(UintTy::U128),
+            (I1, true) => attr::IntType::SignedInt(IntTy::I8),
+            (I8, true) => attr::IntType::SignedInt(IntTy::I8),
+            (I16, true) => attr::IntType::SignedInt(IntTy::I16),
+            (I32, true) => attr::IntType::SignedInt(IntTy::I32),
+            (I64, true) => attr::IntType::SignedInt(IntTy::I64),
+            (I128, true) => attr::IntType::SignedInt(IntTy::I128),
+        }
+    }
+
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i64) -> Integer {
         match x {
@@ -436,18 +453,24 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
+<<<<<<< HEAD
     fn repr_discr(tcx: TyCtxt, ty: Ty, repr: &ReprOptions, min: i64, max: i64)
                       -> (Integer, bool) {
+=======
+    pub fn repr_discr(tcx: TyCtxt, hints: &[attr::ReprAttr], min: i128, max: i128)
+    -> (Integer, bool) {
+>>>>>>> cade130ae8... AdtDef now contains discr_ty same as layouted
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u64
         // which can fit all i64 values, so the result remains unaffected.
-        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u64, max as u64));
+        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let mut min_from_extern = None;
         let min_default = I8;
 
+<<<<<<< HEAD
         if let Some(ity) = repr.int {
             let discr = Integer::from_attr(&tcx.data_layout, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
@@ -466,11 +489,40 @@ impl Integer {
                 // lower bound.  However, we don't run on those yet...?
                 "arm" => min_from_extern = Some(I32),
                 _ => min_from_extern = Some(I32),
+=======
+        for &r in hints.iter() {
+            match r {
+                attr::ReprInt(ity) => {
+                    let discr = Integer::from_attr(&tcx.data_layout, ity);
+                    let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
+                    if discr < fit {
+                        bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                              discriminant range of enum")
+                    }
+                    return (discr, ity.is_signed());
+                }
+                attr::ReprExtern => {
+                    match &tcx.sess.target.target.arch[..] {
+                        // WARNING: the ARM EABI has two variants; the one corresponding
+                        // to `at_least == I32` appears to be used on Linux and NetBSD,
+                        // but some systems may use the variant corresponding to no
+                        // lower bound.  However, we don't run on those yet...?
+                        "arm" => min_from_extern = Some(I32),
+                        _ => min_from_extern = Some(I32),
+                    }
+                }
+                attr::ReprAny => {},
+                attr::ReprPacked => {
+                    bug!("Integer::repr_discr: found #[repr(packed)] on enum");
+                }
+                attr::ReprSimd => {
+                    bug!("Integer::repr_discr: found #[repr(simd)] on enum");
+                }
+>>>>>>> cade130ae8... AdtDef now contains discr_ty same as layouted
             }
         }
 
         let at_least = min_from_extern.unwrap_or(min_default);
-
         // If there are no negative values, we can use the unsigned fit.
         if min >= 0 {
             (cmp::max(unsigned_fit, at_least), false)
@@ -1196,9 +1248,8 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     // FIXME: should handle i128? signed-value based impl is weird and hard to
                     // grok.
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr,
-                                                              min,
-                                                              max);
+                    let discr = Integer::from_attr(&tcx.data_layout, def.discr_ty);
+                    let signed = def.discr_ty.is_signed();
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1313,10 +1364,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 }
 
                 // The general case.
-                let discr_max = (variants.len() - 1) as i64;
-                assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, ty, &def.repr, 0, discr_max);
-
+                let min_ity = Integer::from_attr(&tcx.data_layout, def.discr_ty);
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
