@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-A non-capturing (that is, does not `Clone` or `move` any local variables) closure
-should be coercable to a function pointer (`fn`).
+A closure that does not move, borrow, or otherwise access (capture) local
+variables should be coercable to a function pointer (`fn`).
 
 # Motivation
 [motivation]: #motivation
