@@ -194,6 +194,7 @@ name                                                                            
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)               | warn    | braces that can be eliminated in conditions, e.g. `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)               | warn    | complex blocks in conditions, e.g. `if { let x = true; x } ...`
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                     | warn    | comparing a variable to a boolean, e.g. `if x == true`
+[borrowed_box](https://github.com/Manishearth/rust-clippy/wiki#borrowed_box)                                           | warn    | a borrow of a boxed type
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                             | warn    | using `Box<T>` where unnecessary
 [builtin_type_shadow](https://github.com/Manishearth/rust-clippy/wiki#builtin_type_shadow)                             | warn    | shadowing a builtin type

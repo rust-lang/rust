@@ -65,9 +65,25 @@ declare_lint! {
      structure like a VecDeque"
 }
 
+/// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
+///
+/// **Why is this bad?** Any `&Box<T>` can also be a `&T`, which is more general.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn foo(bar: &Box<T>) { ... }
+/// ```
+declare_lint! {
+    pub BORROWED_BOX,
+    Warn,
+    "a borrow of a boxed type"
+}
+
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, LINKEDLIST)
+        lint_array!(BOX_VEC, LINKEDLIST, BORROWED_BOX)
     }
 }
 
@@ -161,11 +177,28 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                 },
             }
         },
+        TyRptr(_, MutTy { ref ty, .. }) => {
+            match ty.node {
+                TyPath(ref qpath) => {
+                    let def = cx.tables.qpath_def(qpath, ast_ty.id);
+                    if let Some(def_id) = opt_def_id(def) {
+                        if Some(def_id) == cx.tcx.lang_items.owned_box() {
+                            span_help_and_lint(cx,
+                                               BOX_VEC,
+                                               ast_ty.span,
+                                               "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+                                               "replace `&Box<T>` with simply `&T`");
+                            return; // don't recurse into the type
+                        }
+                    }
+                },
+                _ => check_ty(cx, ty),
+            }
+        },
         // recurse
         TySlice(ref ty) |
         TyArray(ref ty, _) |
-        TyPtr(MutTy { ref ty, .. }) |
-        TyRptr(_, MutTy { ref ty, .. }) => check_ty(cx, ty),
+        TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty),
         TyTup(ref tys) => {
             for ty in tys {
                 check_ty(cx, ty);

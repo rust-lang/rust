@@ -506,6 +506,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
+        types::BORROWED_BOX,
         types::BOX_VEC,
         types::CHAR_LIT_AS_U8,
         types::LET_UNIT_VALUE,
