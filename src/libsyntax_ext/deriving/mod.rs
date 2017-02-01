@@ -249,7 +249,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
 
         if let Ok(ext) = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false) {
             if let SyntaxExtension::CustomDerive(ref ext) = *ext {
-                return ext.expand(cx, span, &mitem, item),
+                return ext.expand(cx, span, &mitem, item);
             }
         }
 
