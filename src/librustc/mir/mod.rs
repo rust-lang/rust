@@ -453,13 +453,6 @@ pub enum TerminatorKind<'tcx> {
         target: BasicBlock,
     },
 
-    /// lvalue evaluates to some enum; jump depending on the branch
-    Switch {
-        discr: Lvalue<'tcx>,
-        adt_def: &'tcx AdtDef,
-        targets: Vec<BasicBlock>,
-    },
-
     /// operand evaluates to an integer; jump depending on its value
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
@@ -471,6 +464,7 @@ pub enum TerminatorKind<'tcx> {
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
+        // FIXME: ConstVal doesn’t quite make any sense here? Its a Switch*Int*.
         values: Vec<ConstVal>,
 
         /// Possible branch sites. The length of this vector should be
@@ -544,7 +538,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
-            Switch { targets: ref b, .. } => b[..].into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
@@ -573,7 +566,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
-            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
@@ -651,7 +643,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
@@ -701,12 +692,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
-            Switch { ref adt_def, .. } => {
-                adt_def.variants
-                       .iter()
-                       .map(|variant| variant.name.to_string().into())
-                       .collect()
-            }
             SwitchInt { ref values, .. } => {
                 values.iter()
                       .map(|const_val| {

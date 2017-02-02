@@ -17,6 +17,7 @@ use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use syntax::attr;
 use hir;
 
 #[derive(Copy, Clone, Debug)]
@@ -170,9 +171,14 @@ impl<'tcx> Rvalue<'tcx> {
                 Some(operand.ty(mir, tcx))
             }
             Rvalue::Discriminant(ref lval) => {
-                if let ty::TyAdt(_, _) = lval.ty(mir, tcx).to_ty(tcx).sty {
-                    // TODO
-                    None
+                if let ty::TyAdt(adt_def, _) = lval.ty(mir, tcx).to_ty(tcx).sty {
+                    // FIXME: Why this does not work?
+                    // Some(adt_def.discr_ty.to_ty(tcx))
+                    let ty = match adt_def.discr_ty {
+                        attr::SignedInt(i) => tcx.mk_mach_int(i),
+                        attr::UnsignedInt(i) => tcx.mk_mach_uint(i),
+                    };
+                    Some(ty)
                 } else {
                     None
                 }

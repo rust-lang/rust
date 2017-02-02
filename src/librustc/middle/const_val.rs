@@ -14,6 +14,7 @@ use std::rc::Rc;
 use hir::def_id::DefId;
 use rustc_const_math::*;
 use self::ConstVal::*;
+pub use rustc_const_math::ConstInt;
 
 use std::collections::BTreeMap;
 
