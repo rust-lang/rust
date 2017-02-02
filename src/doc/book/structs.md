@@ -117,7 +117,9 @@ fn main() {
 }
 ```
 
-We can initializing a data structure (struct, enum, union) with named fields, by writing `fieldname` as a shorthand for `fieldname: fieldname`. This allows a compact syntax for initialization, with less duplication:
+We can initializing a data structure (struct, enum, union) with named fields,
+by writing `fieldname` as a shorthand for `fieldname: fieldname`. This allows a
+compact syntax for initialization, with less duplication:
 
 ```
 #![feature(field_init_shorthand)]
@@ -133,7 +135,7 @@ fn main() {
     let name = "Peter";
     let age = 27;
     let peter = Person { name, age };
-    
+
     // Print debug struct
     println!("{:?}", peter);
 }
