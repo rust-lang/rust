@@ -25,7 +25,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "cargo",
         repo: "https://github.com/rust-lang/cargo",
-        sha: "2324c2bbaf7fc6ea9cbdd77c034ef1af769cb617",
+        sha: "38f52ea846db202f322071f00b083ae8defdda3a",
         lock: None,
     },
     Test {
