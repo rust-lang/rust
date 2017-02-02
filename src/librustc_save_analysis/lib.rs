@@ -430,6 +430,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               -> Option<TypeRefData> {
         self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
             let span = trait_ref.path.span;
+            if generated_code(span) {
+                return None;
+            }
             let sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
             filter!(self.span_utils, sub_span, span, None);
             Some(TypeRefData {
