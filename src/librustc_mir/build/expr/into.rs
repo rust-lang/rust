@@ -72,8 +72,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: operand,
                     switch_ty: this.hir.bool_ty(),
-                    values: BOOL_SWITCH_TRUE.clone(),
-                    targets: vec![then_block, else_block],
+                    values: BOOL_SWITCH_FALSE.clone(),
+                    targets: vec![else_block, then_block],
                 });
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
@@ -113,13 +113,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let lhs = unpack!(block = this.as_operand(block, lhs));
                 let blocks = match op {
-                    LogicalOp::And => vec![else_block, false_block],
-                    LogicalOp::Or => vec![true_block, else_block],
+                    LogicalOp::And => vec![false_block, else_block],
+                    LogicalOp::Or => vec![else_block, true_block],
                 };
                 this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: lhs,
                     switch_ty: this.hir.bool_ty(),
-                    values: BOOL_SWITCH_TRUE.clone(),
+                    values: BOOL_SWITCH_FALSE.clone(),
                     targets: blocks,
                 });
 
@@ -127,8 +127,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(else_block, source_info, TerminatorKind::SwitchInt {
                     discr: rhs,
                     switch_ty: this.hir.bool_ty(),
-                    values: BOOL_SWITCH_TRUE.clone(),
-                    targets: vec![true_block, false_block],
+                    values: BOOL_SWITCH_FALSE.clone(),
+                    targets: vec![false_block, true_block],
                 });
 
                 this.cfg.push_assign_constant(
@@ -191,8 +191,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                TerminatorKind::SwitchInt {
                                                    discr: cond,
                                                    switch_ty: this.hir.bool_ty(),
-                                                   values: BOOL_SWITCH_TRUE.clone(),
-                                                   targets: vec![body_block, exit_block],
+                                                   values: BOOL_SWITCH_FALSE.clone(),
+                                                   targets: vec![exit_block, body_block],
                                                });
 
                             // if the test is false, there's no `break` to assign `destination`, so
