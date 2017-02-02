@@ -23,18 +23,14 @@ fn main() {
 
     match e1 {
         Empty1() => () //~ ERROR expected tuple struct/variant, found struct `Empty1`
-        //~^ GUESS Empty1 { /* fields */ }
     }
     match xe1 {
         XEmpty1() => () //~ ERROR expected tuple struct/variant, found struct `XEmpty1`
-        //~^ GUESS XEmpty1 { /* fields */ }
     }
     match e1 {
         Empty1(..) => () //~ ERROR expected tuple struct/variant, found struct `Empty1`
-        //~^ GUESS Empty1 { /* fields */ }
     }
     match xe1 {
         XEmpty1(..) => () //~ ERROR expected tuple struct/variant, found struct `XEmpty1`
-        //~^ GUESS XEmpty1 { /* fields */ }
     }
 }

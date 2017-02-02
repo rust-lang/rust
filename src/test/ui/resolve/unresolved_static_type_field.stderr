@@ -2,10 +2,10 @@ error[E0425]: cannot find value `cx` in this scope
   --> $DIR/unresolved_static_type_field.rs:19:11
    |
 19 |         f(cx);
-   |           ^^
-   |           |
-   |           did you mean `self.cx`?
-   |           `self` value is only available in methods with `self` parameter
+   |           ^^ `self` value is only available in methods with `self` parameter
+   |
+help: did you intend to access a struct field?
+   |         f(self.cx);
 
 error: aborting due to previous error
 

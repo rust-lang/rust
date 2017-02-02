@@ -23,18 +23,12 @@ enum E {
 
 fn main() {
     let e1 = Empty1; //~ ERROR expected value, found struct `Empty1`
-    //~^ GUESS Empty1 { /* fields */ }
     let e1 = Empty1(); //~ ERROR expected function, found struct `Empty1`
-    //~^ GUESS Empty1 { /* fields */ }
     let e3 = E::Empty3; //~ ERROR expected value, found struct variant `E::Empty3`
-    //~^ GUESS E::Empty3 { /* fields */ }
     let e3 = E::Empty3(); //~ ERROR expected function, found struct variant `E::Empty3`
-    //~^ GUESS E::Empty3 { /* fields */ }
 
     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
-    //~^ GUESS Empty1 { /* fields */ }
     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1`
-    //~^ GUESS Empty1 { /* fields */ }
     let xe3 = XE::Empty3; //~ ERROR no associated item named `Empty3` found for type
     let xe3 = XE::Empty3(); //~ ERROR no associated item named `Empty3` found for type
 }

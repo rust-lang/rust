@@ -2168,7 +2168,7 @@ impl<'a> Resolver<'a> {
                     match candidate {
                         AssocSuggestion::Field => {
                             err.guess(span, "did you intend to access a struct field?",
-                                      format!("self.{}`?", path_str));
+                                      format!("self.{}", path_str));
                             if !self_is_available {
                                 err.span_label(span, &format!("`self` value is only available in \
                                                                methods with `self` parameter"));
@@ -2176,7 +2176,7 @@ impl<'a> Resolver<'a> {
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
                             err.guess(span, "did you intend to call a method of the same name?",
-                                      format!("self.{}()", path_str));
+                                      format!("self.{}", path_str));
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
                             err.guess(span, "did you mean an associated item of the same name?",
@@ -2192,7 +2192,7 @@ impl<'a> Resolver<'a> {
                 match (def, source) {
                     (Def::Macro(..), _) => {
                         err.guess(span, "did you intend to invoke a macro of the same name?",
-                                  format!("{}!(...)", path_str));
+                                  format!("{}!", path_str));
                         return err;
                     }
                     (Def::TyAlias(..), PathSource::Trait) => {
@@ -2201,15 +2201,23 @@ impl<'a> Resolver<'a> {
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match *parent {
                         ExprKind::Field(_, ident) => {
+                            let span = Span {
+                                hi: ident.span.hi,
+                                .. span
+                            };
                             err.guess(span,
                                       "did you mean",
                                       format!("{}::{}", path_str, ident.node));
                             return err;
                         }
                         ExprKind::MethodCall(ident, ..) => {
+                            let span = Span {
+                                hi: ident.span.hi,
+                                .. span
+                            };
                             err.guess(span,
                                       "did you mean",
-                                      format!("{}::{}(...)", path_str, ident.node));
+                                      format!("{}::{}", path_str, ident.node));
                             return err;
                         }
                         _ => {}
@@ -2221,11 +2229,13 @@ impl<'a> Resolver<'a> {
                                 if is_expected(ctor_def) && !this.is_accessible(ctor_vis) {
                                     err.span_label(span, &format!("constructor is not visible \
                                                                    here due to private fields"));
+                                    return err;
                                 }
                             }
                         }
-                        err.guess(span, "did you mean",
-                                  format!("{} {{ /* fields */ }}", path_str));
+                        err.span_label(span,
+                                       &format!("did you mean `{} {{ /* fields */ }}`?",
+                                                path_str));
                         return err;
                     }
                     _ => {}

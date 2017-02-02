@@ -66,7 +66,6 @@ fn main() {
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
     //~^ GUESS Dr::X
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
-    //~^ GUESS Dr::X { /* fields */ }
     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found method `Dr::Z`
     //~^ GUESS Dr::X
     <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found for type `<u8 as Dr>::X`
