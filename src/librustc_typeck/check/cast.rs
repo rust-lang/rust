@@ -156,8 +156,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                         fcx.ty_to_string(self.expr_ty),
                                         cast_ty));
                 if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
-                    err.span_help(self.expr.span,
-                                   &format!("did you mean `*{}`?", snippet));
+                    err.guess(self.expr.span, "did you mean", format!("*{}", snippet));
                 }
                 err.emit();
             }
@@ -277,7 +276,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                                 format!("&{}{}", mtstr, s));
                         }
                         Err(_) => {
-                            span_help!(err, self.cast_span, "did you mean `&{}{}`?", mtstr, tstr)
+                            err.guess(self.cast_span,
+                                      "did you mean",
+                                      format!("&{}{}", mtstr, tstr));
                         }
                     }
                 } else {
@@ -291,9 +292,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             ty::TyAdt(def, ..) if def.is_box() => {
                 match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
                     Ok(s) => {
-                        err.span_suggestion(self.cast_span,
-                                            "try casting to a `Box` instead:",
-                                            format!("Box<{}>", s));
+                        err.guess(self.cast_span,
+                                  "try casting to a `Box` instead:",
+                                  format!("Box<{}>", s));
                     }
                     Err(_) => span_help!(err, self.cast_span, "did you mean `Box<{}>`?", tstr),
                 }

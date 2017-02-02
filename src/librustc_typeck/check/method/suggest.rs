@@ -199,17 +199,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     let field_ty = field.ty(tcx, substs);
 
                                     if self.is_fn_ty(&field_ty, span) {
-                                        err.span_note(span,
-                                                      &format!("use `({0}.{1})(...)` if you \
-                                                                meant to call the function \
-                                                                stored in the `{1}` field",
-                                                               expr_string,
-                                                               item_name));
+                                        if expr.span.expn_id == span.expn_id {
+                                            let span = Span {
+                                                lo: expr.span.lo,
+                                                hi: span.hi,
+                                                expn_id: expr.span.expn_id,
+                                            };
+                                            err.guess(
+                                                span,
+                                                &format!("did you mean to call the function \
+                                                          stored in the `{}` field?", item_name),
+                                                format!("({}.{})", expr_string, item_name),
+                                            );
+                                        } else {
+                                            err.help(&format!("did you mean to call the function \
+                                                     stored in the `{}` field?", item_name));
+                                        }
                                     } else {
-                                        err.span_note(span,
-                                                      &format!("did you mean to write `{0}.{1}`?",
-                                                               expr_string,
-                                                               item_name));
+                                        err.guess(span, "did you mean to write",
+                                                  format!("{}.{}", expr_string, item_name));
                                     }
                                     break;
                                 }

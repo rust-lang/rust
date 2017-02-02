@@ -238,7 +238,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 _ => {
                     let msg = format!("macro undefined: '{}!'", name);
                     let mut err = self.session.struct_span_err(span, &msg);
-                    self.suggest_macro_name(&name.as_str(), &mut err);
+                    self.suggest_macro_name(span, &name.as_str(), &mut err);
                     err.emit();
                     return Err(Determinacy::Determined);
                 },
@@ -401,10 +401,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn suggest_macro_name(&mut self, name: &str, err: &mut DiagnosticBuilder<'a>) {
+    fn suggest_macro_name(&mut self, span: Span, name: &str, err: &mut DiagnosticBuilder<'a>) {
         if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
             if suggestion != name {
-                err.help(&format!("did you mean `{}!`?", suggestion));
+                err.guess(span, "did you mean", format!("{}!", suggestion));
             } else {
                 err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
             }

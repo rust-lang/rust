@@ -2995,18 +2995,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::TyAdt(def, _) if !def.is_enum() => {
                     if let Some(suggested_field_name) =
                         Self::suggest_field_name(def.struct_variant(), field, vec![]) {
-                            err.span_label(field.span,
-                                           &format!("did you mean `{}`?", suggested_field_name));
+                            err.guess(field.span, "did you mean", suggested_field_name.to_string());
                         } else {
                             err.span_label(field.span,
                                            &format!("unknown field"));
                         };
                 }
                 ty::TyRawPtr(..) => {
-                    err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                      `(*{0}).{1}`",
-                                      self.tcx.hir.node_to_pretty_string(base.id),
-                                      field.node));
+                    let pretty = self.tcx.hir.node_to_pretty_string(base.id);
+                    err.guess(expr.span, &format!("`{}` is a raw pointer; \
+                                                   perhaps you need to deref", pretty),
+                              format!("(*{}).{}", pretty, field.node));
                 }
                 _ => {}
             }
@@ -3133,8 +3132,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(field_name) = Self::suggest_field_name(variant,
                                                            &field.name,
                                                            skip_fields.collect()) {
-            err.span_label(field.name.span,
-                           &format!("field does not exist - did you mean `{}`?", field_name));
+            err.guess(field.name.span,
+                      "field does not exist - did you mean",
+                      field_name.to_string());
         } else {
             match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {

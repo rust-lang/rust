@@ -1135,6 +1135,7 @@ actual:\n\
             Some(ErrorKind::Error) => true,
             Some(ErrorKind::Warning) => true,
             Some(ErrorKind::Suggestion) => false,
+            Some(ErrorKind::Guess) => false,
             None => false
         }
     }

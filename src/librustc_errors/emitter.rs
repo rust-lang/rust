@@ -1025,6 +1025,15 @@ impl EmitterWriter {
                                 _ => ()
                             }
                         },
+                        Some(Guesses(ref guesses)) => for cs in guesses {
+                            match self.emit_suggestion_default(cs,
+                                                               &child.level,
+                                                               &child.styled_message(),
+                                                               max_line_num_len) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
+                        },
                         None => {
                             match self.emit_message_default(&child.span,
                                                             &child.styled_message(),

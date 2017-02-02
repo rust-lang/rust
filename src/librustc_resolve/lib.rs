@@ -2167,18 +2167,20 @@ impl<'a> Resolver<'a> {
                     let self_is_available = this.self_value_is_available(path[0].ctxt);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_label(span, &format!("did you mean `self.{}`?", path_str));
+                            err.guess(span, "did you intend to access a struct field?",
+                                      format!("self.{}`?", path_str));
                             if !self_is_available {
                                 err.span_label(span, &format!("`self` value is only available in \
                                                                methods with `self` parameter"));
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_label(span, &format!("did you mean `self.{}(...)`?",
-                                                           path_str));
+                            err.guess(span, "did you intend to call a method of the same name?",
+                                      format!("self.{}()", path_str));
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_label(span, &format!("did you mean `Self::{}`?", path_str));
+                            err.guess(span, "did you mean an associated item of the same name?",
+                                      format!("Self::{}", path_str));
                         }
                     }
                     return err;
@@ -2189,22 +2191,25 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_label(span, &format!("did you mean `{}!(...)`?", path_str));
+                        err.guess(span, "did you intend to invoke a macro of the same name?",
+                                  format!("{}!(...)", path_str));
                         return err;
                     }
                     (Def::TyAlias(..), PathSource::Trait) => {
-                        err.span_label(span, &format!("type aliases cannot be used for traits"));
+                        err.span_label(span, &"type aliases cannot be used for traits");
                         return err;
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match *parent {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(span, &format!("did you mean `{}::{}`?",
-                                                           path_str, ident.node));
+                            err.guess(span,
+                                      "did you mean",
+                                      format!("{}::{}", path_str, ident.node));
                             return err;
                         }
                         ExprKind::MethodCall(ident, ..) => {
-                            err.span_label(span, &format!("did you mean `{}::{}(...)`?",
-                                                           path_str, ident.node));
+                            err.guess(span,
+                                      "did you mean",
+                                      format!("{}::{}(...)", path_str, ident.node));
                             return err;
                         }
                         _ => {}
@@ -2219,8 +2224,8 @@ impl<'a> Resolver<'a> {
                                 }
                             }
                         }
-                        err.span_label(span, &format!("did you mean `{} {{ /* fields */ }}`?",
-                                                       path_str));
+                        err.guess(span, "did you mean",
+                                  format!("{} {{ /* fields */ }}", path_str));
                         return err;
                     }
                     _ => {}
@@ -2229,7 +2234,7 @@ impl<'a> Resolver<'a> {
 
             // Try Levenshtein if nothing else worked.
             if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
-                err.span_label(span, &format!("did you mean `{}`?", candidate));
+                err.guess(span, "did you mean", candidate);
                 return err;
             }
 
