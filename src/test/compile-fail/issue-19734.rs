@@ -11,5 +11,5 @@
 fn main() {}
 
 impl Type {
-    undef!(); //~ ERROR macro undefined: 'undef!'
+    undef!(); //~ ERROR macro undefined: `undef`
 }

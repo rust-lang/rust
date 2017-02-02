@@ -10,9 +10,9 @@
 
 fn main() {
     print!(test!());
-    //~^ ERROR: macro undefined: 'test!'
+    //~^ ERROR: macro undefined: `test`
     //~^^ ERROR: format argument must be a string literal
 
     concat!(test!());
-    //~^ ERROR: macro undefined: 'test!'
+    //~^ ERROR: macro undefined: `test`
 }

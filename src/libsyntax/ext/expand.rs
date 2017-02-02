@@ -14,10 +14,10 @@ use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
-use ext::derive::{find_derive_attr, derive_attr_trait};
+use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::Mark;
 use ext::placeholders::{placeholder, PlaceholderExpander};
-use feature_gate::{self, Features};
+use feature_gate::{self, Features, is_builtin_attr};
 use fold;
 use fold::*;
 use parse::parser::Parser;
@@ -33,6 +33,7 @@ use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
 
+use std::collections::HashMap;
 use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -164,11 +165,13 @@ pub enum InvocationKind {
         span: Span,
     },
     Attr {
-        attr: ast::Attribute,
+        attr: Option<ast::Attribute>,
+        traits: Vec<(Symbol, Span)>,
         item: Annotatable,
     },
     Derive {
-        attr: ast::Attribute,
+        name: Symbol,
+        span: Span,
         item: Annotatable,
     },
 }
@@ -177,8 +180,9 @@ impl Invocation {
     fn span(&self) -> Span {
         match self.kind {
             InvocationKind::Bang { span, .. } => span,
-            InvocationKind::Attr { ref attr, .. } => attr.span,
-            InvocationKind::Derive { ref attr, .. } => attr.span,
+            InvocationKind::Attr { attr: Some(ref attr), .. } => attr.span,
+            InvocationKind::Attr { attr: None, .. } => syntax_pos::DUMMY_SP,
+            InvocationKind::Derive { span, .. } => span,
         }
     }
 }
@@ -227,15 +231,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 
-        let (expansion, mut invocations) = self.collect_invocations(expansion);
+        let (expansion, mut invocations) = self.collect_invocations(expansion, &[]);
         self.resolve_imports();
         invocations.reverse();
 
         let mut expansions = Vec::new();
+        let mut derives = HashMap::new();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let invoc = if let Some(invoc) = invocations.pop() {
+            let mut invoc = if let Some(invoc) = invocations.pop() {
                 invoc
             } else {
                 self.resolve_imports();
@@ -247,24 +252,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let resolution = match invoc.kind {
-                InvocationKind::Bang { ref mac, .. } => {
-                    self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
-                }
-                InvocationKind::Attr { ref attr, .. } => {
-                    let ident = Ident::with_empty_ctxt(attr.name());
-                    let path = ast::Path::from_ident(attr.span, ident);
-                    self.cx.resolver.resolve_macro(scope, &path, force)
-                }
-                InvocationKind::Derive { ref attr, .. } => {
-                    let titem = derive_attr_trait(self.cx, &attr).unwrap();
-                    let tname = titem.name().expect("Expected derive macro name");
-                    let ident = Ident::with_empty_ctxt(tname);
-                    let path = ast::Path::from_ident(attr.span, ident);
-                    self.cx.resolver.resolve_derive_macro(scope, &path, force)
-                }
-            };
-            let ext = match resolution {
+            let ext = match self.resolve_invoc(&mut invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
@@ -278,12 +266,48 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             self.cx.current_expansion.mark = scope;
-            let expansion = match ext {
-                Some(ext) => self.expand_invoc(invoc, ext),
-                None => invoc.expansion_kind.dummy(invoc.span()),
-            };
+            // FIXME(jseyfried): Refactor out the following logic
+            let (expansion, new_invocations) = if let Some(ext) = ext {
+                if let Some(ext) = ext {
+                    let expansion = self.expand_invoc(invoc, ext);
+                    self.collect_invocations(expansion, &[])
+                } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
+                    let item = item
+                        .map_attrs(|mut attrs| { attrs.retain(|a| a.name() != "derive"); attrs });
+                    let item_with_markers =
+                        add_derived_markers(&mut self.cx, &traits, item.clone());
+                    let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
 
-            let (expansion, new_invocations) = self.collect_invocations(expansion);
+                    for &(name, span) in &traits {
+                        let mark = Mark::fresh();
+                        derives.push(mark);
+                        let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
+                        let item = match self.cx.resolver
+                                             .resolve_macro(Mark::root(), &path, false) {
+                            Ok(ext) => match *ext {
+                                SyntaxExtension::BuiltinDerive(..) => item_with_markers.clone(),
+                                _ => item.clone(),
+                            },
+                            _ => item.clone(),
+                        };
+                        invocations.push(Invocation {
+                            kind: InvocationKind::Derive { name: name, span: span, item: item },
+                            expansion_kind: invoc.expansion_kind,
+                            expansion_data: ExpansionData {
+                                mark: mark,
+                                ..invoc.expansion_data.clone()
+                            },
+                        });
+                    }
+                    let expansion = invoc.expansion_kind
+                        .expect_from_annotatables(::std::iter::once(item_with_markers));
+                    self.collect_invocations(expansion, derives)
+                } else {
+                    unreachable!()
+                }
+            } else {
+                self.collect_invocations(invoc.expansion_kind.dummy(invoc.span()), &[])
+            };
 
             if expansions.len() < depth {
                 expansions.push(Vec::new());
@@ -299,7 +323,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
-                placeholder_expander.add(mark.as_placeholder_id(), expansion);
+                let derives = derives.remove(&mark).unwrap_or_else(Vec::new);
+                placeholder_expander.add(mark.as_placeholder_id(), expansion, derives);
             }
         }
 
@@ -314,7 +339,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
+    fn collect_invocations(&mut self, expansion: Expansion, derives: &[Mark])
+                           -> (Expansion, Vec<Invocation>) {
         let result = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
@@ -332,11 +358,67 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.monotonic {
             let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             let mark = self.cx.current_expansion.mark;
-            self.cx.resolver.visit_expansion(mark, &result.0);
+            self.cx.resolver.visit_expansion(mark, &result.0, derives);
             self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
 
         result
+    }
+
+    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+        let (attr, traits, item) = match invoc.kind {
+            InvocationKind::Bang { ref mac, .. } => {
+                return self.cx.resolver.resolve_macro(scope, &mac.node.path, force).map(Some);
+            }
+            InvocationKind::Attr { attr: None, .. } => return Ok(None),
+            InvocationKind::Derive { name, span, .. } => {
+                let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
+                return self.cx.resolver.resolve_derive_macro(scope, &path, force).map(Some);
+            }
+            InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
+        };
+
+        let (attr_name, path) = {
+            let attr = attr.as_ref().unwrap();
+            (attr.name(), ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(attr.name())))
+        };
+
+        let mut determined = true;
+        match self.cx.resolver.resolve_macro(scope, &path, force) {
+            Ok(ext) => return Ok(Some(ext)),
+            Err(Determinacy::Undetermined) => determined = false,
+            Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
+            _ => {}
+        }
+
+        for &(name, span) in traits {
+            let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
+            match self.cx.resolver.resolve_macro(scope, &path, force) {
+                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
+                    if inert_attrs.contains(&attr_name) {
+                        // FIXME(jseyfried) Avoid `mem::replace` here.
+                        let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
+                            .make_items().pop().unwrap();
+                        *item = mem::replace(item, Annotatable::Item(dummy_item))
+                            .map_attrs(|mut attrs| {
+                                let inert_attr = attr.take().unwrap();
+                                attr::mark_known(&inert_attr);
+                                if self.cx.ecfg.proc_macro_enabled() {
+                                    *attr = find_attr_invoc(&mut attrs);
+                                }
+                                attrs.push(inert_attr);
+                                attrs
+                            });
+                    }
+                    return Err(Determinacy::Undetermined);
+                },
+                Err(Determinacy::Undetermined) => determined = false,
+                Err(Determinacy::Determined) => {}
+            }
+        }
+
+        Err(if determined { Determinacy::Determined } else { Determinacy::Undetermined })
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
@@ -350,7 +432,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_attr_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
         let Invocation { expansion_kind: kind, .. } = invoc;
         let (attr, item) = match invoc.kind {
-            InvocationKind::Attr { attr, item } => (attr, item),
+            InvocationKind::Attr { attr, item, .. } => (attr.unwrap(), item),
             _ => unreachable!(),
         };
 
@@ -503,64 +585,60 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// Expand a derive invocation. Returns the result of expansion.
     fn expand_derive_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
         let Invocation { expansion_kind: kind, .. } = invoc;
-        let (attr, item) = match invoc.kind {
-            InvocationKind::Derive { attr, item } => (attr, item),
+        let (name, span, item) = match invoc.kind {
+            InvocationKind::Derive { name, span, item } => (name, span, item),
             _ => unreachable!(),
         };
 
-        attr::mark_used(&attr);
-        let titem = derive_attr_trait(self.cx, &attr).unwrap();
-        let tname = ast::Ident::with_empty_ctxt(titem.name().unwrap());
-        let name = Symbol::intern(&format!("derive({})", tname));
-        let mitem = &attr.value;
+        let mitem = ast::MetaItem { name: name, span: span, node: ast::MetaItemKind::Word };
+        let pretty_name = Symbol::intern(&format!("derive({})", name));
 
         self.cx.bt_push(ExpnInfo {
-            call_site: attr.span,
+            call_site: span,
             callee: NameAndSpan {
-                format: MacroAttribute(attr.name()),
-                span: Some(attr.span),
+                format: MacroAttribute(pretty_name),
+                span: Some(span),
                 allow_internal_unstable: false,
             }
         });
 
         match *ext {
-            SyntaxExtension::ProcMacroDerive(ref ext) => {
+            SyntaxExtension::ProcMacroDerive(ref ext, _) => {
                 let span = Span {
                     expn_id: self.cx.codemap().record_expansion(ExpnInfo {
-                        call_site: mitem.span,
+                        call_site: span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(Symbol::intern(&format!("derive({})", tname))),
+                            format: MacroAttribute(pretty_name),
                             span: None,
                             allow_internal_unstable: false,
                         },
                     }),
-                    ..mitem.span
+                    ..span
                 };
                 return kind.expect_from_annotatables(ext.expand(self.cx, span, &mitem, item));
             }
             SyntaxExtension::BuiltinDerive(func) => {
                 let span = Span {
                     expn_id: self.cx.codemap().record_expansion(ExpnInfo {
-                        call_site: titem.span,
+                        call_site: span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(name),
+                            format: MacroAttribute(pretty_name),
                             span: None,
                             allow_internal_unstable: true,
                         },
                     }),
-                    ..titem.span
+                    ..span
                 };
                 let mut items = Vec::new();
                 func(self.cx, span, &mitem, &item, &mut |a| {
                     items.push(a)
                 });
-                items.insert(0, item);
                 return kind.expect_from_annotatables(items);
             }
             _ => {
                 let msg = &format!("macro `{}` may not be used for derive attributes", name);
-                self.cx.span_err(attr.span, &msg);
-                kind.dummy(attr.span)
+                self.cx.span_err(span, &msg);
+                kind.dummy(span)
             }
         }
     }
@@ -672,34 +750,40 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.collect(kind, InvocationKind::Bang { mac: mac, ident: None, span: span })
     }
 
-    fn collect_attr(&mut self, attr: ast::Attribute, item: Annotatable, kind: ExpansionKind)
+    fn collect_attr(&mut self,
+                    attr: Option<ast::Attribute>,
+                    traits: Vec<(Symbol, Span)>,
+                    item: Annotatable,
+                    kind: ExpansionKind)
                     -> Expansion {
-        let invoc_kind = if attr.name() == "derive" {
-            if kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems {
-                self.cx.span_err(attr.span, "`derive` can be only be applied to items");
-                return kind.expect_from_annotatables(::std::iter::once(item));
-            }
-            InvocationKind::Derive { attr: attr, item: item }
-        } else {
-            InvocationKind::Attr { attr: attr, item: item }
-        };
-
-        self.collect(kind, invoc_kind)
+        if !traits.is_empty() &&
+           (kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems) {
+            self.cx.span_err(traits[0].1, "`derive` can be only be applied to items");
+            return kind.expect_from_annotatables(::std::iter::once(item));
+        }
+        self.collect(kind, InvocationKind::Attr { attr: attr, traits: traits, item: item })
     }
 
     // If `item` is an attr invocation, remove and return the macro attribute.
-    fn classify_item<T: HasAttrs>(&mut self, mut item: T) -> (T, Option<ast::Attribute>) {
-        let mut attr = None;
+    fn classify_item<T>(&mut self, mut item: T) -> (Option<ast::Attribute>, Vec<(Symbol, Span)>, T)
+        where T: HasAttrs,
+    {
+        let (mut attr, mut traits) = (None, Vec::new());
 
         item = item.map_attrs(|mut attrs| {
-            attr = self.cx.resolver.find_attr_invoc(&mut attrs).or_else(|| {
-                find_derive_attr(self.cx, &mut attrs)
-            });
+            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs) {
+                attr = Some(legacy_attr_invoc);
+                return attrs;
+            }
 
+            if self.cx.ecfg.proc_macro_enabled() {
+                attr = find_attr_invoc(&mut attrs);
+            }
+            traits = collect_derives(&mut self.cx, &mut attrs);
             attrs
         });
 
-        (item, attr)
+        (attr, traits, item)
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
@@ -715,6 +799,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             feature_gate::check_attribute(&attr, &self.cx.parse_sess, codemap, features);
         }
     }
+}
+
+fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
+    for i in 0 .. attrs.len() {
+        if !attr::is_known(&attrs[i]) && !is_builtin_attr(&attrs[i]) {
+             return Some(attrs.remove(i));
+        }
+    }
+
+    None
 }
 
 // These are pretty nasty. Ideally, we would keep the tokens around, linked from
@@ -844,10 +938,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let item = configure!(self, item);
 
-        let (mut item, attr) = self.classify_item(item);
-        if let Some(attr) = attr {
+        let (attr, traits, mut item) = self.classify_item(item);
+        if attr.is_some() || !traits.is_empty() {
             let item = Annotatable::Item(fully_configure!(self, item, noop_fold_item));
-            return self.collect_attr(attr, item, ExpansionKind::Items).make_items();
+            return self.collect_attr(attr, traits, item, ExpansionKind::Items).make_items();
         }
 
         match item.node {
@@ -928,11 +1022,12 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
         let item = configure!(self, item);
 
-        let (item, attr) = self.classify_item(item);
-        if let Some(attr) = attr {
+        let (attr, traits, item) = self.classify_item(item);
+        if attr.is_some() || !traits.is_empty() {
             let item =
                 Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
-            return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
+            return self.collect_attr(attr, traits, item, ExpansionKind::TraitItems)
+                .make_trait_items()
         }
 
         match item.node {
@@ -948,10 +1043,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
         let item = configure!(self, item);
 
-        let (item, attr) = self.classify_item(item);
-        if let Some(attr) = attr {
+        let (attr, traits, item) = self.classify_item(item);
+        if attr.is_some() || !traits.is_empty() {
             let item = Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
-            return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
+            return self.collect_attr(attr, traits, item, ExpansionKind::ImplItems)
+                .make_impl_items();
         }
 
         match item.node {
@@ -1038,6 +1134,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
+        fn proc_macro_enabled = proc_macro,
     }
 }
 

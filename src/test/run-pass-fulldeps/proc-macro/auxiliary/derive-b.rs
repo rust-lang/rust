@@ -22,6 +22,5 @@ pub fn derive(input: TokenStream) -> TokenStream {
     assert!(input.contains("#[B]"));
     assert!(input.contains("struct B {"));
     assert!(input.contains("#[C]"));
-    assert!(input.contains("#[derive(Debug, PartialEq, Eq, Copy, Clone)]"));
     "".parse().unwrap()
 }
