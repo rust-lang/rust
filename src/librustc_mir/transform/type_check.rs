@@ -436,19 +436,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Switch { ref discr, adt_def, ref targets } => {
-                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
-                match discr_ty.sty {
-                    ty::TyAdt(def, _) if def.is_enum() &&
-                                         def == adt_def &&
-                                         adt_def.variants.len() == targets.len()
-                      => {},
-                    _ => {
-                        span_mirbug!(self, term, "bad Switch ({:?} on {:?})",
-                                     adt_def, discr_ty);
-                    }
-                }
-            }
             TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
@@ -593,7 +580,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match block.terminator().kind {
             TerminatorKind::Goto { target } =>
                 self.assert_iscleanup(mir, block, target, is_cleanup),
-            TerminatorKind::Switch { ref targets, .. } |
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.assert_iscleanup(mir, block, *target, is_cleanup);

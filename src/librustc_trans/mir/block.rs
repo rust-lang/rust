@@ -14,14 +14,12 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, layout, TypeFoldable};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
-use adt;
 use base::{self, Lifetime};
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use builder::Builder;
 use common::{self, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
-use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
 use type_of::{self, align_of};
@@ -29,7 +27,6 @@ use glue;
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::fx::FxHashMap;
 use syntax::symbol::Symbol;
 
 use std::cmp;
@@ -134,41 +131,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::Goto { target } => {
                 funclet_br(self, bcx, target);
-            }
-
-            mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
-                let discr_lvalue = self.trans_lvalue(&bcx, discr);
-                let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr = adt::trans_get_discr(
-                    &bcx, ty, discr_lvalue.llval, discr_lvalue.alignment,
-                    None, true);
-
-                let mut bb_hist = FxHashMap();
-                for target in targets {
-                    *bb_hist.entry(target).or_insert(0) += 1;
-                }
-                let (default_bb, default_blk) = match bb_hist.iter().max_by_key(|&(_, c)| c) {
-                    // If a single target basic blocks is predominant, promote that to be the
-                    // default case for the switch instruction to reduce the size of the generated
-                    // code. This is especially helpful in cases like an if-let on a huge enum.
-                    // Note: This optimization is only valid for exhaustive matches.
-                    Some((&&bb, &c)) if c > targets.len() / 2 => {
-                        (Some(bb), llblock(self, bb))
-                    }
-                    // We're generating an exhaustive switch, so the else branch
-                    // can't be hit.  Branching to an unreachable instruction
-                    // lets LLVM know this
-                    _ => (None, self.unreachable_block())
-                };
-                let switch = bcx.switch(discr, default_blk, targets.len());
-                assert_eq!(adt_def.variants.len(), targets.len());
-                for (adt_variant, &target) in adt_def.variants.iter().zip(targets) {
-                    if default_bb != Some(target) {
-                        let llbb = llblock(self, target);
-                        let llval = adt::trans_case(&bcx, ty, Disr::from(adt_variant.disr_val));
-                        bcx.add_case(switch, llval, llbb)
-                    }
-                }
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
