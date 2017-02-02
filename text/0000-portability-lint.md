@@ -342,8 +342,13 @@ fn linux_only() {
 }
 ```
 
-The precise details of how these implications are specified---and what
-implications are desired---are left as implementation details.
+Of course, primitive portabilities in practice are key-value pairs (like
+`target_os = "unix"`). This RFC proposes to treat *all* keys as multimaps, that
+is, to not introduce assumptions like `nand(target_os = "unix", target_os =
+"windows")` for simplicity's sake; uses of `cfg` in practice will not produce
+such nonsensical situations. However, the precise details of how these
+implications are specified---and what implications are desired---are left as
+implementation details that need to be worked out with real-world experience.
 
 ### Determining the portability of referenced items
 
