@@ -34,7 +34,6 @@ pub fn foo(arr: &Arr) {
 }
 
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let a = Arr { ptr: Box::new([1, 2, 3]) };
     foo(&a);
 }

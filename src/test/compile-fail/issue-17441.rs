@@ -13,7 +13,6 @@ fn main() {
     //~^ ERROR cast to unsized type: `&[usize; 2]` as `[usize]`
     //~^^ HELP consider using an implicit coercion to `&[usize]` instead
 
-    // FIXME (#22405): Replace `std::boxed::Box::new` with `box` here when/if possible.
     let _bar = Box::new(1_usize) as std::fmt::Debug;
     //~^ ERROR cast to unsized type: `std::boxed::Box<usize>` as `std::fmt::Debug`
     //~^^ HELP try casting to a `Box` instead

@@ -18,7 +18,6 @@ struct Test<'a> {
     f: Box<FnMut() + 'a>
 }
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 fn call<F>(mut f: F) where F: FnMut(Fn) {
     f(Box::new(|| {
     //~^ ERROR: cannot borrow `f` as mutable more than once
@@ -58,7 +57,6 @@ fn test6() {
 fn test7() {
     fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     f(Box::new(|a| {
         foo(f);
         //~^ ERROR cannot move `f` into closure because it is borrowed

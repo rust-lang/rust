@@ -13,7 +13,6 @@
 type Connection = Box<FnMut(Vec<u8>) + 'static>;
 
 fn f() -> Option<Connection> {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let mock_connection: Connection = Box::new(|_| {});
     Some(mock_connection)
 }
