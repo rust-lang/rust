@@ -63,8 +63,8 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     pub fn insert(&mut self, k: M::Key, v: M::Value) {
         self.write(&k);
-        let _old_value = self.map.insert(k, v);
-        // assert!(old_value.is_none());
+        let old_value = self.map.insert(k, v);
+        assert!(old_value.is_none());
     }
 
     pub fn contains_key(&self, k: &M::Key) -> bool {
