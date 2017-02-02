@@ -400,7 +400,7 @@ impl Integer {
     }
 
     /// Find the smallest Integer type which can represent the signed value.
-    pub fn fit_signed(x: i64) -> Integer {
+    pub fn fit_signed(x: i128) -> Integer {
         match x {
             -0x0000_0000_0000_0001...0x0000_0000_0000_0000 => I1,
             -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
@@ -412,7 +412,7 @@ impl Integer {
     }
 
     /// Find the smallest Integer type which can represent the unsigned value.
-    pub fn fit_unsigned(x: u64) -> Integer {
+    pub fn fit_unsigned(x: u128) -> Integer {
         match x {
             0...0x0000_0000_0000_0001 => I1,
             0...0x0000_0000_0000_00ff => I8,
