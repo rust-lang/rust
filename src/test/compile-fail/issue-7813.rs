@@ -10,8 +10,7 @@
 
 fn main() {
     let v = &[];
-    let it = v.iter(); //~ ERROR unable to fully infer type(s) [E0282]
-                       //~| NOTE cannot infer type
-                       //~| NOTE annotating the type for the variable `it` would help
-                       //~| NOTE type annotations or generic parameter binding
+    let it = v.iter(); //~ ERROR type annotations needed [E0282]
+                       //~| NOTE cannot infer type for `T`
+                       //~| NOTE consider giving `it` a type
 }

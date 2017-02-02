@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn main() { format!("{:?}", None); }
-    //~^ ERROR unable to fully infer type(s) [E0282]
+    //~^ ERROR type annotations needed [E0282]

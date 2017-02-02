@@ -34,9 +34,8 @@ where T : Convert<U>
 
 fn a() {
     test(22, std::default::Default::default());
-    //~^ ERROR unable to fully infer type(s) [E0282]
-    //~| NOTE cannot infer type
-    //~| NOTE type annotations or generic parameter binding
+    //~^ ERROR type annotations needed [E0282]
+    //~| NOTE cannot infer type for `U`
 }
 
 fn main() {}
