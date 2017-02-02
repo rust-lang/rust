@@ -10,10 +10,9 @@
 
 use self::Destination::*;
 
-use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
+use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos, SpanLabel};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
-use RenderSpan::*;
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper, DiagnosticCodeHint};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -37,7 +36,8 @@ impl Emitter for EmitterWriter {
                                    &db.styled_message(),
                                    &db.code,
                                    &primary_span,
-                                   &children);
+                                   &children,
+                                   db.code_hints.as_ref());
     }
 }
 
@@ -110,7 +110,10 @@ impl EmitterWriter {
         }
     }
 
-    fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
+    fn preprocess_annotations(&self,
+                              msp: &MultiSpan,
+                              code_hint: &mut Option<&DiagnosticCodeHint>)
+                              -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Rc<FileMap>,
                                   line_index: usize,
@@ -149,11 +152,49 @@ impl EmitterWriter {
         let mut output = vec![];
         let mut multiline_annotations = vec![];
 
+        let hint = code_hint.and_then(|hint| match *hint {
+            DiagnosticCodeHint::Suggestion { ref msg, ref sugg } => Some((msg, sugg)),
+            DiagnosticCodeHint::Guesses { ref msg, ref guesses} => {
+                if guesses.len() == 1 {
+                    Some((msg, &guesses[0]))
+                } else {
+                    None
+                }
+            },
+        });
+        let mut hint = hint.and_then(|(msg, sugg)| {
+            if sugg.substitutes.len() == 1 && !sugg.substitutes[0].is_empty() {
+                let prim = sugg.msp.primary_spans();
+                assert_eq!(prim.len(), 1);
+                Some(SpanLabel {
+                    span: prim[0],
+                    is_primary: true,
+                    label: Some(format!("{} `{}`", msg, sugg.substitutes[0])),
+                })
+            } else {
+                None
+            }
+        });
+
         if let Some(ref cm) = self.cm {
-            for span_label in msp.span_labels() {
+            let mut span_labels = msp.span_labels();
+            // insert the hint into the correct label
+            for mut span_label in &mut span_labels {
+                if let Some(hint_label) = hint.take() {
+                    if span_label.span == hint_label.span {
+                        span_label.label = hint_label.label;
+                        *code_hint = None;
+                    } else {
+                        hint = Some(hint_label);
+                    }
+                }
+            }
+            // if no matching label found, print hint as an extra message
+            for span_label in span_labels.into_iter().chain(hint) {
                 if span_label.span == DUMMY_SP || span_label.span == COMMAND_LINE_SP {
                     continue;
                 }
+
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
                 let mut is_minimized = false;
@@ -728,7 +769,7 @@ impl EmitterWriter {
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
-                     msg: &Vec<(String, Style)>,
+                     msg: &[(String, Style)],
                      padding: usize,
                      label: &str,
                      override_style: Option<Style>) {
@@ -806,7 +847,8 @@ impl EmitterWriter {
                             code: &Option<String>,
                             level: &Level,
                             max_line_num_len: usize,
-                            is_secondary: bool)
+                            is_secondary: bool,
+                            code_hints: &mut Option<&DiagnosticCodeHint>)
                             -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -837,7 +879,7 @@ impl EmitterWriter {
 
         // Preprocess all the annotations so that they are grouped by file and by line number
         // This helps us quickly iterate over the whole message (including secondary file spans)
-        let mut annotated_files = self.preprocess_annotations(msp);
+        let mut annotated_files = self.preprocess_annotations(msp, code_hints);
 
         // Make sure our primary file comes first
         let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
@@ -941,8 +983,8 @@ impl EmitterWriter {
     }
     fn emit_suggestion_default(&mut self,
                                suggestion: &CodeSuggestion,
+                               msg: &str,
                                level: &Level,
-                               msg: &Vec<(String, Style)>,
                                max_line_num_len: usize)
                                -> io::Result<()> {
         use std::borrow::Borrow;
@@ -954,7 +996,7 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
-                               msg,
+                               &[(msg.to_owned(), Style::NoStyle)],
                                max_line_num_len,
                                "suggestion",
                                Some(Style::HeaderMsg));
@@ -989,12 +1031,27 @@ impl EmitterWriter {
                              message: &Vec<(String, Style)>,
                              code: &Option<String>,
                              span: &MultiSpan,
-                             children: &Vec<SubDiagnostic>) {
+                             children: &Vec<SubDiagnostic>,
+                             mut code_hints: Option<&DiagnosticCodeHint>) {
         let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
+        match self.emit_message_default(span, message, code, level,
+                                        max_line_num_len, false, &mut code_hints) {
             Ok(()) => {
+                if let Some(&DiagnosticCodeHint::Guesses { ref msg, ref guesses}) = code_hints {
+                    if guesses.len() > 1 {
+                        for cs in guesses {
+                            match self.emit_suggestion_default(cs,
+                                                            msg,
+                                                            &Level::Note,
+                                                            max_line_num_len) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
+                        }
+                    }
+                }
                 if !children.is_empty() {
                     let mut buffer = StyledBuffer::new();
                     draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
@@ -1004,47 +1061,16 @@ impl EmitterWriter {
                     }
                 }
                 for child in children {
-                    match child.render_span {
-                        Some(FullSpan(ref msp)) => {
-                            match self.emit_message_default(msp,
-                                                            &child.styled_message(),
-                                                            &None,
-                                                            &child.level,
-                                                            max_line_num_len,
-                                                            true) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        Some(Suggestion(ref cs)) => {
-                            match self.emit_suggestion_default(cs,
-                                                               &child.level,
-                                                               &child.styled_message(),
-                                                               max_line_num_len) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        Some(Guesses(ref guesses)) => for cs in guesses {
-                            match self.emit_suggestion_default(cs,
-                                                               &child.level,
-                                                               &child.styled_message(),
-                                                               max_line_num_len) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        None => {
-                            match self.emit_message_default(&child.span,
-                                                            &child.styled_message(),
-                                                            &None,
-                                                            &child.level,
-                                                            max_line_num_len,
-                                                            true) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => (),
-                            }
-                        }
+                    let msp = child.render_span.as_ref().unwrap_or(&child.span);
+                    match self.emit_message_default(msp,
+                                                    &child.styled_message(),
+                                                    &None,
+                                                    &child.level,
+                                                    max_line_num_len,
+                                                    true,
+                                                    &mut None) {
+                        Err(e) => panic!("failed to emit error: {}", e),
+                        _ => ()
                     }
                 }
             }

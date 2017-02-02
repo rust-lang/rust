@@ -10,8 +10,6 @@
 
 use CodeSuggestion;
 use Level;
-use RenderSpan;
-use RenderSpan::{Suggestion, Guesses};
 use std::{fmt, iter};
 use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
@@ -24,6 +22,19 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
+    pub code_hints: Option<DiagnosticCodeHint>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DiagnosticCodeHint {
+    Suggestion {
+        msg: String,
+        sugg: CodeSuggestion,
+    },
+    Guesses {
+        msg: String,
+        guesses: Vec<CodeSuggestion>,
+    },
 }
 
 /// For example a note attached to an error.
@@ -32,7 +43,7 @@ pub struct SubDiagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
     pub span: MultiSpan,
-    pub render_span: Option<RenderSpan>,
+    pub render_span: Option<MultiSpan>,
 }
 
 impl Diagnostic {
@@ -47,6 +58,7 @@ impl Diagnostic {
             code: code,
             span: MultiSpan::new(),
             children: vec![],
+            code_hints: None,
         }
     }
 
@@ -109,12 +121,12 @@ impl Diagnostic {
     }
 
     pub fn note(&mut self, msg: &str) -> &mut Self {
-        self.sub(Level::Note, msg, MultiSpan::new(), None);
+        self.sub(Level::Note, msg, MultiSpan::new());
         self
     }
 
     pub fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
-        self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
+        self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }
 
@@ -122,12 +134,12 @@ impl Diagnostic {
                                          sp: S,
                                          msg: &str)
                                          -> &mut Self {
-        self.sub(Level::Note, msg, sp.into(), None);
+        self.sub(Level::Note, msg, sp.into());
         self
     }
 
     pub fn warn(&mut self, msg: &str) -> &mut Self {
-        self.sub(Level::Warning, msg, MultiSpan::new(), None);
+        self.sub(Level::Warning, msg, MultiSpan::new());
         self
     }
 
@@ -135,12 +147,12 @@ impl Diagnostic {
                                          sp: S,
                                          msg: &str)
                                          -> &mut Self {
-        self.sub(Level::Warning, msg, sp.into(), None);
+        self.sub(Level::Warning, msg, sp.into());
         self
     }
 
     pub fn help(&mut self , msg: &str) -> &mut Self {
-        self.sub(Level::Help, msg, MultiSpan::new(), None);
+        self.sub(Level::Help, msg, MultiSpan::new());
         self
     }
 
@@ -148,7 +160,7 @@ impl Diagnostic {
                                          sp: S,
                                          msg: &str)
                                          -> &mut Self {
-        self.sub(Level::Help, msg, sp.into(), None);
+        self.sub(Level::Help, msg, sp.into());
         self
     }
 
@@ -156,13 +168,15 @@ impl Diagnostic {
     ///
     /// See `diagnostic::RenderSpan::Suggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
-        self.sub(Level::Help,
-                 msg,
-                 MultiSpan::new(),
-                 Some(Suggestion(CodeSuggestion {
-                     msp: sp.into(),
-                     substitutes: vec![suggestion],
-                 })));
+        assert!(self.code_hints.is_none(),
+                "use guesses to assign multiple suggestions to an error");
+        self.code_hints = Some(DiagnosticCodeHint::Suggestion {
+            sugg: CodeSuggestion {
+                msp: sp.into(),
+                substitutes: vec![suggestion],
+            },
+            msg: msg.to_owned(),
+        });
         self
     }
 
@@ -174,13 +188,16 @@ impl Diagnostic {
     pub fn guesses<I>(&mut self, sp: Span, msg: &str, guesses: I) -> &mut Self
         where I: IntoIterator<Item = String>
     {
-        self.sub(Level::Help,
-                 msg,
-                 MultiSpan::new(),
-                 Some(Guesses(guesses.into_iter().map(|guess| CodeSuggestion {
-                     msp: sp.into(),
-                     substitutes: vec![guess],
-                 }).collect())));
+        assert!(self.code_hints.is_none(),
+                "cannot attach multiple guesses to the same error");
+        let guesses = guesses.into_iter().map(|guess| CodeSuggestion {
+            msp: sp.into(),
+            substitutes: vec![guess],
+        }).collect();
+        self.code_hints = Some(DiagnosticCodeHint::Guesses {
+            guesses: guesses,
+            msg: msg.to_owned(),
+        });
         self
     }
 
@@ -223,15 +240,12 @@ impl Diagnostic {
     fn sub(&mut self,
            level: Level,
            message: &str,
-           span: MultiSpan,
-           render_span: Option<RenderSpan>) {
-        let sub = SubDiagnostic {
-            level: level,
-            message: vec![(message.to_owned(), Style::NoStyle)],
-            span: span,
-            render_span: render_span,
-        };
-        self.children.push(sub);
+           span: MultiSpan) {
+        self.sub_with_highlights(
+            level,
+            vec![(message.to_owned(), Style::NoStyle)],
+            span,
+        );
     }
 
     /// Convenience function for internal use, clients should use one of the
@@ -239,13 +253,12 @@ impl Diagnostic {
     fn sub_with_highlights(&mut self,
                            level: Level,
                            message: Vec<(String, Style)>,
-                           span: MultiSpan,
-                           render_span: Option<RenderSpan>) {
+                           span: MultiSpan) {
         let sub = SubDiagnostic {
             level: level,
             message: message,
             span: span,
-            render_span: render_span,
+            render_span: None,
         };
         self.children.push(sub);
     }

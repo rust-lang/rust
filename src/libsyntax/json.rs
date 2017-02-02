@@ -22,7 +22,7 @@
 use codemap::CodeMap;
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, DiagnosticCodeHint, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -95,6 +95,8 @@ struct Diagnostic {
 
 #[derive(RustcEncodable)]
 struct Guess {
+    /// A message explaining the guesses ("did you mean ...?")
+    msg: String,
     /// one or multiple spans to be replaced by this guess
     spans: Vec<DiagnosticSpan>,
 }
@@ -162,6 +164,34 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
+        let (suggestion, guesses) = match db.code_hints {
+            Some(DiagnosticCodeHint::Suggestion{ref msg, ref sugg}) => {
+                use std::borrow::Borrow;
+                let sugg = Diagnostic {
+                    message: msg.clone(),
+                    code: None,
+                    level: "note",
+                    spans: DiagnosticSpan::from_suggestion(sugg, je),
+                    children: Vec::new(),
+                    rendered: Some(sugg.splice_lines(je.cm.borrow())),
+                    guesses: Vec::new(),
+                };
+                (Some(sugg), Vec::new())
+            },
+            Some(DiagnosticCodeHint::Guesses{ref msg, ref guesses}) => {
+                let guesses = guesses.iter()
+                    .map(|guess| {
+                        assert_eq!(guess.msp.span_labels().len(), guess.substitutes.len());
+                        Guess {
+                            msg: msg.clone(),
+                            spans: DiagnosticSpan::from_suggestion(guess, je),
+                        }
+                    })
+                    .collect();
+                (None, guesses)
+            },
+            None => (None, Vec::new())
+        };
         Diagnostic {
             message: db.message(),
             code: DiagnosticCode::map_opt_string(db.code.clone(), je),
@@ -169,33 +199,24 @@ impl Diagnostic {
             spans: DiagnosticSpan::from_multispan(&db.span, je),
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
-            }).collect(),
+            }).chain(suggestion).collect(),
             rendered: None,
-            guesses: Vec::new(),
+            guesses: guesses,
         }
     }
 
     fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
-        let SubDiagnosticParts {
-            spans, rendered, guesses,
-        } = DiagnosticSpan::from_render_span(db.render_span.as_ref(), &db.span, je);
+        let msp = db.render_span.as_ref().unwrap_or(&db.span);
         Diagnostic {
             message: db.message(),
             code: None,
             level: db.level.to_str(),
-            spans,
+            spans: DiagnosticSpan::from_multispan(msp, je),
             children: vec![],
-            rendered,
-            guesses,
+            rendered: None,
+            guesses: Vec::new(),
         }
     }
-}
-
-#[derive(Default)]
-struct SubDiagnosticParts {
-    spans: Vec<DiagnosticSpan>,
-    rendered: Option<String>,
-    guesses: Vec<Guess>,
 }
 
 impl DiagnosticSpan {
@@ -296,43 +317,6 @@ impl DiagnosticSpan {
                                                           je)
                       })
                       .collect()
-    }
-
-    fn from_guesses(guesses: &[CodeSuggestion], je: &JsonEmitter) -> Vec<Guess> {
-        guesses.iter()
-            .map(|guess| {
-                assert_eq!(guess.msp.span_labels().len(), guess.substitutes.len());
-                Guess {
-                    spans: DiagnosticSpan::from_suggestion(guess, je),
-                }
-            })
-            .collect()
-    }
-
-    fn from_render_span(rsp: Option<&RenderSpan>,
-                        alt_span: &MultiSpan,
-                        je: &JsonEmitter,
-                        ) -> SubDiagnosticParts {
-        use std::borrow::Borrow;
-        match rsp {
-            None => SubDiagnosticParts {
-                spans: DiagnosticSpan::from_multispan(alt_span, je),
-                .. Default::default()
-            },
-            Some(&RenderSpan::FullSpan(ref msp)) => SubDiagnosticParts {
-                spans: DiagnosticSpan::from_multispan(msp, je),
-                .. Default::default()
-            },
-            Some(&RenderSpan::Suggestion(ref suggestion)) => SubDiagnosticParts {
-                spans: DiagnosticSpan::from_suggestion(suggestion, je),
-                rendered: Some(suggestion.splice_lines(je.cm.borrow())),
-                .. Default::default()
-            },
-            Some(&RenderSpan::Guesses(ref guesses)) => SubDiagnosticParts {
-                guesses: DiagnosticSpan::from_guesses(guesses, je),
-                .. Default::default()
-            },
-        }
     }
 }
 

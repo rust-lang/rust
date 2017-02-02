@@ -14,19 +14,13 @@ error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:35:9
    |
 35 |         field;
-   |         ^^^^^
-   |
-help: did you intend to access a struct field?
-   |         self.field;
+   |         ^^^^^ did you intend to access a struct field? `self.field`
 
 error[E0425]: cannot find function `method` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:38:9
    |
 38 |         method();
-   |         ^^^^^^
-   |
-help: did you intend to call a method of the same name?
-   |         self.method();
+   |         ^^^^^^ did you intend to call a method of the same name? `self.method`
 
 error: aborting due to 4 previous errors
 
