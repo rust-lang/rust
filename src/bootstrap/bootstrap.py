@@ -439,7 +439,7 @@ def main():
                               'CFG_ENABLE_VENDOR' in rb.config_mk
 
     if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
-        if os.environ['USER'] != os.environ['SUDO_USER']:
+        if os.environ.get('USER') != os.environ['SUDO_USER']:
             rb.use_vendored_sources = True
             print('info: looks like you are running this command under `sudo`')
             print('      and so in order to preserve your $HOME this will now')
