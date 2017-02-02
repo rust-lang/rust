@@ -20,6 +20,6 @@ fn main() {
     };
 
     demo.example(1);    //~ ERROR no method named `example`
-                        //~^ NOTE use `(demo.example)(...)`
+                        //~^ GUESS (demo.example)
     // (demo.example)(1);
 }

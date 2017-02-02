@@ -21,4 +21,5 @@ use rmeta_meta::Foo;
 
 fn main() {
     let _ = Foo { field2: 42 }; //~ ERROR struct `rmeta_meta::Foo` has no field named `field2`
+    //~^ GUESS field
 }

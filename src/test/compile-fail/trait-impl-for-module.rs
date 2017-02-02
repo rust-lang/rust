@@ -15,6 +15,7 @@ trait A {
 }
 
 impl A for a { //~ ERROR expected type, found module
+//~| GUESS A
 }
 
 fn main() {

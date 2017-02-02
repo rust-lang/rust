@@ -19,7 +19,8 @@ mod m {
 
 fn main() {
     k!(); //~ ERROR macro undefined: 'k!'
-          //~^ HELP did you mean `kl!`?
+          //~^ HELP did you mean
+          //~| GUESS kl!
     kl!(); //~ ERROR macro undefined: 'kl!'
            //~^ HELP have you added the `#[macro_use]` on the module/import?
 }

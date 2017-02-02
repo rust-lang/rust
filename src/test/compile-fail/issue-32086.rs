@@ -13,5 +13,7 @@ const C: S = S(10);
 
 fn main() {
     let C(a) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
+    //~^ GUESS S
     let C(..) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
+    //~^ GUESS S
 }

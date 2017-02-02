@@ -20,6 +20,7 @@ fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
         //~| NOTE may outlive borrowed value `v`
         //~| ERROR E0507
         //~| NOTE cannot move out of borrowed content
+        //~| GUESS move ||
 }
 
 fn main() {

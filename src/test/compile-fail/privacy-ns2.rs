@@ -34,6 +34,7 @@ fn test_list1() {
     use foo1::{Bar,Baz};
 
     Bar(); //~ ERROR expected function, found trait `Bar`
+    //~^ GUESS Baz
 }
 
 // private type, public value
@@ -55,6 +56,7 @@ fn test_list2() {
     use foo2::{Bar,Baz};
 
     let _x: Box<Bar>; //~ ERROR expected type, found function `Bar`
+    //~^ GUESS Baz
 }
 
 // neither public

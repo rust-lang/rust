@@ -21,6 +21,7 @@ mod foo {
 
     fn new() -> NoResult<MyEnum, String> {
         //~^ ERROR expected type, found variant `NoResult`
+        //~| GUESS Result
         unimplemented!()
     }
 }
@@ -42,6 +43,7 @@ fn new() -> Result<foo::MyEnum, String> {
 
 fn newer() -> NoResult<foo::MyEnum, String> {
     //~^ ERROR expected type, found variant `NoResult`
+    //~| GUESS Result
     unimplemented!()
 }
 

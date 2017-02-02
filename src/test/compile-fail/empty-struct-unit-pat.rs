@@ -29,15 +29,19 @@ fn main() {
 
     match e2 {
         Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+        //~^ GUESS XEmpty6
     }
     match xe2 {
         XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+        //~^ GUESS XEmpty6
     }
     match e2 {
         Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+        //~^ GUESS XEmpty6
     }
     match xe2 {
         XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+        //~^ GUESS XEmpty6
     }
 
     match e4 {
@@ -46,6 +50,7 @@ fn main() {
     match xe4 {
         XE::XEmpty4() => (),
         //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+        //~| GUESS XE::XEmpty5
         _ => {},
     }
     match e4 {
@@ -54,6 +59,7 @@ fn main() {
     match xe4 {
         XE::XEmpty4(..) => (),
         //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+        //~| GUESS XE::XEmpty5
         _ => {},
     }
 }

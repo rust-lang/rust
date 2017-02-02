@@ -16,5 +16,5 @@ fn main() {
     Box::new(1) as Send;
     //~^ ERROR cast to unsized type
     //~| HELP try casting to a `Box` instead:
-    //~| SUGGESTION Box::new(1) as Box<Send>;
+    //~| GUESS Box<Send>
 }

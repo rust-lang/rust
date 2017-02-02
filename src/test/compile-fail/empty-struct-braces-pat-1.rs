@@ -33,6 +33,7 @@ fn main() {
     match e3 {
         E::Empty3 => ()
         //~^ ERROR expected unit struct/variant or constant, found struct variant `E::Empty3`
+        //~| GUESS E::Empty3 { /* fields */ }
     }
     match xe1 {
         XEmpty1 => () // Not an error, `XEmpty1` is interpreted as a new binding
@@ -40,5 +41,6 @@ fn main() {
     match xe3 {
         XE::XEmpty3 => ()
         //~^ ERROR expected unit struct/variant or constant, found struct variant `XE::XEmpty3`
+        //~| GUESS XE::XEmpty3 { /* fields */ }
     }
 }

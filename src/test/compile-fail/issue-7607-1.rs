@@ -13,6 +13,7 @@ struct Foo {
 }
 
 impl Fo { //~ ERROR cannot find type `Fo` in this scope
+    //~^ GUESS Fn
     fn foo() {}
 }
 

@@ -19,5 +19,6 @@ fn main() {
     match f {
         FooB(a, b) => println!("{} {}", a, b),
         //~^ ERROR expected tuple struct/variant, found struct variant `FooB`
+        //~| GUESS FooB { /* fields */ }
     }
 }

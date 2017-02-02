@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Checks lexical scopes cannot see through normal module boundries
+// Checks lexical scopes cannot see through normal module boundaries
 
 fn f() {
     fn g() {}
     mod foo {
         fn h() {
            g(); //~ ERROR cannot find function `g` in this scope
+           //~^ GUESS h
         }
     }
 }
