@@ -52,16 +52,14 @@ pub trait AstConv<'gcx, 'tcx> {
     fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
     /// Returns the generic type and lifetime parameters for an item.
-    fn get_generics(&self, span: Span, id: DefId)
-                    -> Result<&'tcx ty::Generics, ErrorReported>;
+    fn get_generics(&self, id: DefId) -> &'tcx ty::Generics;
 
     /// Identify the type for an item, like a type alias, fn, or struct.
-    fn get_item_type(&self, span: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>;
+    fn get_item_type(&self, span: Span, id: DefId) -> Ty<'tcx>;
 
     /// Returns the `TraitDef` for a given trait. This allows you to
     /// figure out the set of type parameters defined on the trait.
-    fn get_trait_def(&self, span: Span, id: DefId)
-                     -> Result<&'tcx ty::TraitDef, ErrorReported>;
+    fn get_trait_def(&self, id: DefId) -> &'tcx ty::TraitDef;
 
     /// Ensure that the super-predicates for the trait with the given
     /// id are available and also for the transitive set of
@@ -251,14 +249,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let decl_generics = match self.get_generics(span, def_id) {
-            Ok(generics) => generics,
-            Err(ErrorReported) => {
-                // No convenient way to recover from a cycle here. Just bail. Sorry!
-                self.tcx().sess.abort_if_errors();
-                bug!("ErrorReported returned, but no errors reports?")
-            }
-        };
+        let decl_generics = self.get_generics(def_id);
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
@@ -279,8 +270,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
             if is_object && p.has_default {
-                let default = self.get_item_type(span, p.def_id).ok();
-                if default.has_self_ty() {
+                if self.get_item_type(span, p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -347,10 +337,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    match self.get_item_type(span, def.def_id) {
-                        Ok(ty) => ty.subst_spanned(tcx, substs, Some(span)),
-                        Err(ErrorReported) => tcx.types.err
-                    }
+                    self.get_item_type(span, def.def_id).subst_spanned(tcx, substs, Some(span))
                 }
             } else {
                 // We've already errored above about the mismatch.
@@ -499,14 +486,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
-        let trait_def = match self.get_trait_def(span, trait_def_id) {
-            Ok(trait_def) => trait_def,
-            Err(ErrorReported) => {
-                // No convenient way to recover from a cycle here. Just bail. Sorry!
-                self.tcx().sess.abort_if_errors();
-                bug!("ErrorReported returned, but no errors reports?")
-            }
-        };
+        let trait_def = self.get_trait_def(trait_def_id);
 
         match trait_segment.parameters {
             hir::AngleBracketedParameters(_) => {
@@ -647,16 +627,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         item_segment: &hir::PathSegment)
         -> Ty<'tcx>
     {
-        let tcx = self.tcx();
-        let decl_ty = match self.get_item_type(span, did) {
-            Ok(ty) => ty,
-            Err(ErrorReported) => {
-                return tcx.types.err;
-            }
-        };
-
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        decl_ty.subst(self.tcx(), substs)
+        self.get_item_type(span, did).subst(self.tcx(), substs)
     }
 
     /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
@@ -1058,14 +1030,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.prohibit_type_params(&path.segments);
 
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
-                let item_def_id = tcx.hir.local_def_id(::ty_param_owner(tcx, node_id));
-                let index = match self.get_generics(span, item_def_id) {
-                    Ok(generics) => {
-                        generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index]
-                    }
-                    Err(ErrorReported) => return tcx.types.err
-                };
-                tcx.mk_param(index, ::ty_param_name(tcx, node_id))
+                let item_id = tcx.hir.get_parent_node(node_id);
+                let item_def_id = tcx.hir.local_def_id(item_id);
+                let generics = self.get_generics(item_def_id);
+                let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
+                tcx.mk_param(index, tcx.hir.name(node_id))
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
@@ -1073,22 +1042,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(&path.segments);
 
-                // FIXME: Self type is not always computed when we are here because type parameter
-                // bounds may affect Self type and have to be converted before it.
-                let ty = if def_id.is_local() {
-                    tcx.item_types.borrow().get(&def_id).cloned()
+                let ty = self.get_item_type(span, def_id);
+                if let Some(free_substs) = self.get_free_substs() {
+                    ty.subst(tcx, free_substs)
                 } else {
-                    Some(tcx.item_type(def_id))
-                };
-                if let Some(ty) = ty {
-                    if let Some(free_substs) = self.get_free_substs() {
-                        ty.subst(tcx, free_substs)
-                    } else {
-                        ty
-                    }
-                } else {
-                    tcx.sess.span_err(span, "`Self` type is used before it's determined");
-                    tcx.types.err
+                    ty
                 }
             }
             Def::SelfTy(Some(_), None) => {
@@ -1241,9 +1199,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Create the anonymized type.
                 if allow {
                     let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    if let Err(ErrorReported) = self.get_generics(ast_ty.span, def_id) {
-                        return tcx.types.err;
-                    }
+                    self.get_generics(def_id);
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let ty = tcx.mk_anon(tcx.hir.local_def_id(ast_ty.id), substs);
 

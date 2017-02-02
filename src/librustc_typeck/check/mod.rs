@@ -91,7 +91,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
+use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPolyTraitRef};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
@@ -1359,21 +1359,16 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         &self.ast_ty_to_ty_cache
     }
 
-    fn get_generics(&self, _: Span, id: DefId)
-                    -> Result<&'tcx ty::Generics, ErrorReported>
-    {
-        Ok(self.tcx().item_generics(id))
+    fn get_generics(&self, id: DefId) -> &'tcx ty::Generics {
+        self.tcx().item_generics(id)
     }
 
-    fn get_item_type(&self, _: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>
-    {
-        Ok(self.tcx().item_type(id))
+    fn get_item_type(&self, _: Span, id: DefId) -> Ty<'tcx> {
+        self.tcx().item_type(id)
     }
 
-    fn get_trait_def(&self, _: Span, id: DefId)
-                     -> Result<&'tcx ty::TraitDef, ErrorReported>
-    {
-        Ok(self.tcx().lookup_trait_def(id))
+    fn get_trait_def(&self, id: DefId) -> &'tcx ty::TraitDef {
+        self.tcx().lookup_trait_def(id)
     }
 
     fn ensure_super_predicates(&self, _: Span, _: DefId) -> Result<(), ErrorReported> {
@@ -1391,7 +1386,8 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
         let tcx = self.tcx;
-        let item_def_id = tcx.hir.local_def_id(::ty_param_owner(tcx, node_id));
+        let item_id = ::ty_param_owner(tcx, node_id);
+        let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.item_generics(item_def_id);
         let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
         let r = self.parameter_environment
