@@ -1,4 +1,4 @@
-- Feature Name: N/A
+- Feature Name: nonportable
 - Start Date: 2016-11-15
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -211,8 +211,10 @@ make the warning go away):
   well (which will flag that function as Unix-specific).
 
 - Decide to use the API *in a cross-platform way*, e.g. by providing a Windows
-  version of the same functionality. In that case you can use a new macro,
-  `match_cfg`, to prove to the lint that you are covering all necessary cases.
+  version of the same functionality. In that case you `allow` the lint,
+  explicitly acknowledging that your code may involve platform-specific APIs but
+  claiming that all platforms of the current `cfg` are handled. (See the
+  appendix at the end for a possible extension that does more checking).
 
 In code, we'd have:
 
@@ -232,19 +234,19 @@ fn unlabeled() {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(unix)]
-fn foo_unix() {
+fn foo() {
     // No warning: we're within code that assumes `unix`
     let fd = File::open("foo.txt").unwrap().as_raw_fd();
 }
 
 #[cfg(windows)]
-fn foo_windows() {
+fn foo() {
     // No warning: we're within code that assumes `windows`
     let handle = File::open("foo.txt").unwrap().as_raw_handle();
 }
 
 #[cfg(linux)]
-fn foo_linux() {
+fn linux_only() {
     // No warning: we're within code that assumes `linux`, which implies `unix`
     let fd = File::open("foo.txt").unwrap().as_raw_fd();
 }
@@ -253,14 +255,12 @@ fn foo_linux() {
 // Code that provides a cross-platform abstraction
 ////////////////////////////////////////////////////////////////////////////////
 
-// No `cfg` label here; it's a cross-platform function.
+// No `cfg` label here; it's a cross-platform function, which we claim
+// via the `allow`
+#[allow(nonportable)]
 fn cross_platform() {
-    // No warning emitted, since handling both `unix` and `windows` means
-    // this code works for all mainstream platforms.
-    match_cfg! {
-        unix => foo_unix(),
-        windows => foo_windows(),
-    }
+    // invoke an item with a more restrictive `cfg`
+    foo()
 }
 ```
 
@@ -277,8 +277,7 @@ speaking, items that are labeled with a given `cfg` assumption can only be used
 within code making that same `cfg` assumption.
 
 More precisely, each item has a *portability*, consisting of all the
-lexically-nested uses of `cfg`, including those expressed via `match_cfg`, but
-excluding mentions of Cargo features. If there are multiple uses of `cfg`, the
+lexically-nested uses of `cfg`. If there are multiple uses of `cfg`, the
 portability is taken to be their *conjunction*:
 
 ```rust
@@ -290,6 +289,10 @@ mod foo {
     }
 }
 ```
+
+The portability only considers built-in `cfg` attributes (like `target_os`),
+*not* Cargo features (which are treated as automatically true for the lint
+purposes).
 
 The lint is then straightforward to define at a high level: it walks over item
 definitions and checks that the item's portability is *narrower* than the
@@ -317,16 +320,16 @@ specific to our use-case. In the limit, there are also many well-known
 techniques for solving SAT efficiently even on very large examples that arise in
 real-world usage.
 
-#### Known implications
+#### Axioms
 
 Another aspect of portability comparison is the relationship between things like
-`unix` and `linux`. In logical terms, we want to say that `linux` implies
+`unix` and `linux`. In logical terms, we want to assume that `linux` implies
 `unix`, for example.
 
 The primitive portabilities we'll be comparing are all *built in* (since we are
-not including Cargo features). We can thus build in implications between these
-built-in portabilities, which are fed to the SAT solver when comparing
-portabilities. The end result is that code like the following should pass the lint:
+not including Cargo features). The solver can thus build in a number of
+assumptions about these portabilities. The end result is that code like the
+following should pass the lint:
 
 ```rust
 #[cfg(unix)]
@@ -338,6 +341,9 @@ fn linux_only() {
     unix_only()
 }
 ```
+
+The precise details of how these implications are specified---and what
+implications are desired---are left as implementation details.
 
 ### Determining the portability of referenced items
 
@@ -372,48 +378,6 @@ fn invoke() {
     use_foo::<MyType>();
 }
 ```
-
-#### `match_cfg`
-
-The `match_cfg` macro takes a sequence of `cfg` patterns, followed by `=>` and
-an expression. Its syntax and semantics resembles that of `match`. However,
-there are some special considerations when checking portability:
-
-* When descending into an arm of a `match_cfg`, the arm is checked against
-  portability that includes the pattern for the arm.
-
-* The portability for the `match_cfg` itself is understood as `any(p1, ...,
-  p_n)` where the `match_cfg` patterns are `p1` through `p_n`.
-
-Thus, for example, the following code will pass the lint:
-
-```rust
-#[cfg(windows)]
-fn windows_only() { .. }
-
-#[cfg(unix)]
-fn unix_only() { .. }
-
-#[cfg(any(windows, unix))]
-fn portable() {
-    // the expression here has portability `any(windows, unix)`
-    match_cfg! {
-        windows => {
-            // allowed because we are within a scope with
-            // portability `all(any(windows, unix), windows)`
-            windows_only()
-        }
-        unix => {
-            // allowed because we are within a scope with
-            // portability `all(any(windows, unix), unix)`
-            unix_only()
-        }
-    }
-}
-```
-
-If you have a `match_case` that covers *all* cases (like `windows` and
-`not(windows)`), then it imposes *no* portability constraints on its context.
 
 ## The story for `std`
 
@@ -568,3 +532,59 @@ approach such cases before landing the RFC.
 
 To what extent does this proposal obviate the need for the `std` facade? Might
 it be possible to deprecate `libcore` in favor of the "subsetting `std`" approach?
+
+# Appendix: possible extensions
+
+## `match_cfg`
+
+The original version of this RFC was more expansive, and proposed a `match_cfg`
+macro that provided some additional checking.
+
+The `match_cfg` macro takes a sequence of `cfg` patterns, followed by `=>` and
+an expression. Its syntax and semantics resembles that of `match`. However,
+there are some special considerations when checking portability:
+
+* When descending into an arm of a `match_cfg`, the arm is checked against
+  portability that includes the pattern for the arm.
+
+* The portability for the `match_cfg` itself is understood as `any(p1, ...,
+  p_n)` where the `match_cfg` patterns are `p1` through `p_n`.
+
+Thus, for example, the following code will pass the lint:
+
+```rust
+#[cfg(windows)]
+fn windows_only() { .. }
+
+#[cfg(unix)]
+fn unix_only() { .. }
+
+#[cfg(any(windows, unix))]
+fn portable() {
+    // the expression here has portability `any(windows, unix)`
+    match_cfg! {
+        windows => {
+            // allowed because we are within a scope with
+            // portability `all(any(windows, unix), windows)`
+            windows_only()
+        }
+        unix => {
+            // allowed because we are within a scope with
+            // portability `all(any(windows, unix), unix)`
+            unix_only()
+        }
+    }
+}
+```
+
+If you have a `match_case` that covers *all* cases (like `windows` and
+`not(windows)`), then it imposes *no* portability constraints on its context.
+
+On more reflection, though, this extension doesn't seem so worthwhile: while it
+provides some additional checking, the fact remains that only the
+currently-enabled `cfg` is fully checked, so the additional guarantee you get is
+somewhat mixed. It's also a rare (maybe non-existent) error to explicitly write
+code that's broken down by platforms, but forget one of the platforms you wish
+to cover.
+
+We can, however, add `match_cfg` as a backwards-compatible extension at any time.
