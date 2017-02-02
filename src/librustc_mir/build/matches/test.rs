@@ -20,11 +20,12 @@ use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstVal, ConstInt};
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::hir::RangeEnd;
 use syntax_pos::Span;
+use syntax::attr;
 use std::cmp::Ordering;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -182,24 +183,51 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
+                // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = self.hir.num_variants(adt_def);
+                let used_variants = variants.count();
                 let mut otherwise_block = None;
-                let target_blocks: Vec<_> = (0..num_enum_variants).map(|i| {
-                    if variants.contains(i) {
-                        self.cfg.start_new_block()
+                let mut target_blocks = Vec::with_capacity(num_enum_variants);
+                let mut targets = Vec::with_capacity(used_variants + 1);
+                let mut values = Vec::with_capacity(used_variants);
+                let tcx = self.hir.tcx();
+                for (idx, variant) in adt_def.variants.iter().enumerate() {
+                    target_blocks.place_back() <- if variants.contains(idx) {
+                        let discr = ConstInt::new_inttype(variant.disr_val, adt_def.discr_ty,
+                                                          tcx.sess.target.uint_type,
+                                                          tcx.sess.target.int_type).unwrap();
+                        values.push(ConstVal::Integral(discr));
+                        *(targets.place_back() <- self.cfg.start_new_block())
                     } else {
                         if otherwise_block.is_none() {
                             otherwise_block = Some(self.cfg.start_new_block());
                         }
                         otherwise_block.unwrap()
-                    }
-                }).collect();
-                debug!("num_enum_variants: {}, num tested variants: {}, variants: {:?}",
-                       num_enum_variants, variants.iter().count(), variants);
-                self.cfg.terminate(block, source_info, TerminatorKind::Switch {
-                    discr: lvalue.clone(),
-                    adt_def: adt_def,
-                    targets: target_blocks.clone()
+                    };
+                }
+                if let Some(otherwise_block) = otherwise_block {
+                    targets.push(otherwise_block);
+                } else {
+                    values.pop();
+                }
+                debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
+                       num_enum_variants, values, variants);
+                // FIXME: WHY THIS DOES NOT WORK?!
+                // let discr_ty = adt_def.discr_ty.to_ty(tcx);
+                let discr_ty = match adt_def.discr_ty {
+                    attr::SignedInt(i) => tcx.mk_mach_int(i),
+                    attr::UnsignedInt(i) => tcx.mk_mach_uint(i),
+                };
+
+                let discr = self.temp(discr_ty);
+                self.cfg.push_assign(block, source_info, &discr,
+                                     Rvalue::Discriminant(lvalue.clone()));
+                assert_eq!(values.len() + 1, targets.len());
+                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+                    discr: Operand::Consume(discr),
+                    switch_ty: discr_ty,
+                    values: values,
+                    targets: targets
                 });
                 target_blocks
             }

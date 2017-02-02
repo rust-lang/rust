@@ -362,15 +362,6 @@ macro_rules! make_mir_visitor {
                         self.visit_branch(block, target);
                     }
 
-                    TerminatorKind::Switch { ref $($mutability)* discr,
-                                             adt_def: _,
-                                             ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
-                        for &target in targets {
-                            self.visit_branch(block, target);
-                        }
-                    }
-
                     TerminatorKind::SwitchInt { ref $($mutability)* discr,
                                                 ref $($mutability)* switch_ty,
                                                 ref $($mutability)* values,

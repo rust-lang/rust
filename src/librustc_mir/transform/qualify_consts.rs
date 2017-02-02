@@ -394,7 +394,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     return Qualif::empty();
                 }
 
-                TerminatorKind::Switch {..} |
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume |

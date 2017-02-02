@@ -465,8 +465,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             }
 
             TerminatorKind::Assert { .. } |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::Switch { .. } => {
+            TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
             }
 

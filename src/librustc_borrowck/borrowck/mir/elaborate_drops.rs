@@ -17,9 +17,10 @@ use super::{DropFlagState, MoveDataParamEnv};
 use super::patch::MirPatch;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstVal, ConstInt};
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -672,12 +673,15 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 self.drop_ladder(c, fields)
             }
             _ => {
-                let variant_drops : Vec<BasicBlock> =
-                    (0..adt.variants.len()).map(|i| {
-                        self.open_drop_for_variant(c, &mut drop_block,
-                                                   adt, substs, i)
-                    }).collect();
-
+                let mut values = Vec::with_capacity(adt.variants.len());
+                let mut blocks = Vec::with_capacity(adt.variants.len() + 1);
+                for (idx, variant) in adt.variants.iter().enumerate() {
+                    let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
+                                                      self.tcx.sess.target.uint_type,
+                                                      self.tcx.sess.target.int_type).unwrap();
+                    values.push(ConstVal::Integral(discr));
+                    blocks.push(self.open_drop_for_variant(c, &mut drop_block, adt, substs, idx));
+                }
                 // If there are multiple variants, then if something
                 // is present within the enum the discriminant, tracked
                 // by the rest path, must be initialized.
@@ -685,14 +689,29 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 // Additionally, we do not want to switch on the
                 // discriminant after it is free-ed, because that
                 // way lies only trouble.
-
-                let switch_block = self.new_block(
-                    c, c.is_cleanup, TerminatorKind::Switch {
-                        discr: c.lvalue.clone(),
-                        adt_def: adt,
-                        targets: variant_drops
-                    });
-
+                let discr_ty = adt.discr_ty.to_ty(self.tcx);
+                let discr = Lvalue::Local(self.patch.new_temp(discr_ty));
+                let switch_block = self.patch.new_block(BasicBlockData {
+                    statements: vec![
+                        Statement {
+                            source_info: c.source_info,
+                            kind: StatementKind::Assign(discr.clone(),
+                                                        Rvalue::Discriminant(c.lvalue.clone()))
+                        }
+                    ],
+                    terminator: Some(Terminator {
+                        source_info: c.source_info,
+                        kind: TerminatorKind::SwitchInt {
+                            discr: Operand::Consume(discr),
+                            switch_ty: discr_ty,
+                            values: values,
+                            targets: blocks,
+                            // adt_def: adt,
+                            // targets: variant_drops
+                        }
+                    }),
+                    is_cleanup: c.is_cleanup,
+                });
                 self.drop_flag_test_block(c, switch_block)
             }
         }
