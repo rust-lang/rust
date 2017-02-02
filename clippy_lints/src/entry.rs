@@ -148,6 +148,6 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }

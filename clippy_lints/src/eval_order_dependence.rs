@@ -156,7 +156,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
         // don't continue over blocks, LateLintPass already does that
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -176,7 +176,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 ///
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor) {
-    let map = &vis.cx.tcx.map;
+    let map = &vis.cx.tcx.hir;
     let mut cur_id = vis.write_expr.id;
     loop {
         let parent_id = map.get_parent_node(cur_id);
@@ -342,7 +342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 

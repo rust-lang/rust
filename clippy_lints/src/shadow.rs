@@ -338,7 +338,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
         TySlice(ref sty) => check_ty(cx, sty, bindings),
         TyArray(ref fty, body_id) => {
             check_ty(cx, fty, bindings);
-            check_expr(cx, &cx.tcx.map.body(body_id).value, bindings);
+            check_expr(cx, &cx.tcx.hir.body(body_id).value, bindings);
         },
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
@@ -347,7 +347,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
                 check_ty(cx, t, bindings)
             }
         },
-        TyTypeof(body_id) => check_expr(cx, &cx.tcx.map.body(body_id).value, bindings),
+        TyTypeof(body_id) => check_expr(cx, &cx.tcx.hir.body(body_id).value, bindings),
         _ => (),
     }
 }
@@ -382,7 +382,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ContainsSelf<'a, 'tcx> {
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 

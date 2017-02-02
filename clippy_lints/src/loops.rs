@@ -677,7 +677,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    let map = &cx.tcx.map;
+    let map = &cx.tcx.hir;
     let parent_scope = map.get_enclosing_scope(expr.id).and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
         if let NodeBlock(block) = map.get(parent_id) {
@@ -794,7 +794,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -822,7 +822,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                         match def {
                             Def::Local(..) | Def::Upvar(..) => {
                                 let def_id = def.def_id();
-                                let node_id = self.cx.tcx.map.as_local_node_id(def_id).unwrap();
+                                let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();
 
                                 let extent = self.cx.tcx.region_maps.var_scope(node_id);
                                 self.indexed.insert(seqvar.segments[0].name, Some(extent));
@@ -844,7 +844,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -886,7 +886,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -1029,7 +1029,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -1116,7 +1116,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 
@@ -1124,7 +1124,7 @@ fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let ExprPath(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.id);
         if let Def::Local(def_id) = path_res {
-            let node_id = cx.tcx.map.as_local_node_id(def_id).expect("That DefId should be valid");
+            let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("That DefId should be valid");
             return Some(node_id);
         }
     }

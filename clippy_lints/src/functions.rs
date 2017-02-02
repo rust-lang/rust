@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     ) {
         use rustc::hir::map::Node::*;
 
-        let is_impl = if let Some(NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
+        let is_impl = if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(nodeid)) {
             matches!(item.node, hir::ItemImpl(_, _, _, Some(_), _, _) | hir::ItemDefaultImpl(..))
         } else {
             false
@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
 
             if let hir::TraitMethod::Provided(eid) = *eid {
-                let body = cx.tcx.map.body(eid);
+                let body = cx.tcx.hir.body(eid);
                 self.check_raw_ptr(cx, sig.unsafety, &sig.decl, body, item.id);
             }
         }
@@ -200,7 +200,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
         hir::intravisit::walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.cx.tcx.map)
+        intravisit::NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 

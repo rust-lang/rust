@@ -57,7 +57,7 @@ struct ExVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let ExprClosure(_, _, eid, _) = expr.node {
-            let body = self.cx.tcx.map.body(eid);
+            let body = self.cx.tcx.hir.body(eid);
             let ex = &body.value;
             if matches!(ex.node, ExprBlock(_)) {
                 self.found_block = Some(ex);
@@ -67,7 +67,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
 

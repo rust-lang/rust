@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         for node in v.set {
             span_lint(cx,
                       BOXED_LOCAL,
-                      cx.tcx.map.span(node),
+                      cx.tcx.hir.span(node),
                       "local variable doesn't need to be boxed here");
         }
     }
@@ -108,7 +108,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
-        let map = &self.tcx.map;
+        let map = &self.tcx.hir;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
@@ -180,7 +180,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                         self.tables
                             .adjustments
                             .get(&self.tcx
-                                .map
+                                .hir
                                 .get_parent_node(borrow_id))
                             .map(|a| &a.kind) {
                         if autoderefs <= 1 {

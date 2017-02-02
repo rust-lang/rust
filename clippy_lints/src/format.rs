@@ -78,10 +78,10 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
         block.stmts.len() == 1,
         let StmtDecl(ref decl, _) = block.stmts[0].node,
         let DeclItem(ref decl) = decl.node,
-        let Some(NodeItem(decl)) = cx.tcx.map.find(decl.id),
+        let Some(NodeItem(decl)) = cx.tcx.hir.find(decl.id),
         &*decl.name.as_str() == "__STATIC_FMTSTR",
         let ItemStatic(_, _, ref expr) = decl.node,
-        let ExprAddrOf(_, ref expr) = cx.tcx.map.body(*expr).value.node, // &["…", "…", …]
+        let ExprAddrOf(_, ref expr) = cx.tcx.hir.body(*expr).value.node, // &["…", "…", …]
         let ExprArray(ref exprs) = expr.node,
     ], {
         let mut result = Vec::new();

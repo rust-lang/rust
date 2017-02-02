@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
             }
             if decl.inputs.is_empty() && &*name.as_str() == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
-                    .item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id)));
+                    .item_type(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_let_chain!{[
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     same_tys(cx, self_ty, return_ty(cx, id), id),
@@ -160,7 +160,7 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
                     return None;
                 }
             }
-            cx.tcx.map.span_if_local(adt_def.did)
+            cx.tcx.hir.span_if_local(adt_def.did)
         },
         _ => None,
     }

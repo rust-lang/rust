@@ -614,12 +614,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         let name = implitem.name;
-        let parent = cx.tcx.map.get_parent(implitem.id);
-        let item = cx.tcx.map.expect_item(parent);
+        let parent = cx.tcx.hir.get_parent(implitem.id);
+        let item = cx.tcx.hir.expect_item(parent);
         if_let_chain! {[
             let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
             let Some(first_arg_ty) = sig.decl.inputs.get(0),
-            let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.map.body(id)).next(),
+            let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next(),
             let hir::ItemImpl(_, _, _, None, ref self_ty, _) = item.node,
         ], {
             // check missing trait implementations
@@ -635,7 +635,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             // check conventions w.r.t. conversion method names and predicates
-            let ty = cx.tcx.item_type(cx.tcx.map.local_def_id(item.id));
+            let ty = cx.tcx.item_type(cx.tcx.hir.local_def_id(item.id));
             let is_copy = is_copy(cx, ty, item.id);
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
@@ -798,7 +798,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 /// Checks for the `CLONE_ON_COPY` lint.
 fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: ty::Ty) {
     let ty = cx.tables.expr_ty(expr);
-    let parent = cx.tcx.map.get_parent(expr.id);
+    let parent = cx.tcx.hir.get_parent(expr.id);
     let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
     if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
         if let ty::TyRef(..) = inner.sty {

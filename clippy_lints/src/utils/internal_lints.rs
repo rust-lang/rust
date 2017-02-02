@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                     output: &mut self.registered_lints,
                     cx: cx,
                 };
-                collector.visit_expr(&cx.tcx.map.body(body_id).value);
+                collector.visit_expr(&cx.tcx.hir.body(body_id).value);
             }
         }
     }
@@ -142,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
-    if let TyRptr(Some(_), MutTy { ty: ref inner, mutbl: MutImmutable }) = ty.node {
+    if let TyRptr(_, MutTy { ty: ref inner, mutbl: MutImmutable }) = ty.node {
         if let TyPath(ref path) = inner.node {
             return match_path(path, &paths::LINT);
         }
@@ -175,6 +175,6 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.map)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }
