@@ -27,10 +27,10 @@ use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
 use syntax::ext::expand::{Expansion, mark_tts};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{emit_feature_err, GateIssue, is_builtin_attr};
+use syntax::feature_gate::{self, emit_feature_err, GateIssue, is_builtin_attr};
 use syntax::fold::{self, Folder};
 use syntax::ptr::P;
-use syntax::symbol::keywords;
+use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
 use syntax_pos::{Span, DUMMY_SP};
@@ -188,6 +188,49 @@ impl<'a> base::Resolver for Resolver<'a> {
                 return Some(attrs.remove(i));
             }
         }
+
+        // Check for legacy derives
+        for i in 0..attrs.len() {
+            if attrs[i].name() == "derive" {
+                let mut traits = match attrs[i].meta_item_list() {
+                    Some(traits) if !traits.is_empty() => traits.to_owned(),
+                    _ => continue,
+                };
+
+                for j in 0..traits.len() {
+                    let legacy_name = Symbol::intern(&match traits[j].word() {
+                        Some(..) => format!("derive_{}", traits[j].name().unwrap()),
+                        None => continue,
+                    });
+                    if !self.builtin_macros.contains_key(&legacy_name) {
+                        continue
+                    }
+                    let span = traits.remove(j).span;
+                    self.gate_legacy_custom_derive(legacy_name, span);
+                    if traits.is_empty() {
+                        attrs.remove(i);
+                    } else {
+                        attrs[i].value = ast::MetaItem {
+                            name: attrs[i].name(),
+                            span: span,
+                            node: ast::MetaItemKind::List(traits),
+                        };
+                    }
+                    return Some(ast::Attribute {
+                        value: ast::MetaItem {
+                            name: legacy_name,
+                            span: span,
+                            node: ast::MetaItemKind::Word,
+                        },
+                        id: attr::mk_attr_id(),
+                        style: ast::AttrStyle::Outer,
+                        is_sugared_doc: false,
+                        span: span,
+                    });
+                }
+            }
+        }
+
         None
     }
 
@@ -539,5 +582,15 @@ impl<'a> Resolver<'a> {
             .help(&format!("instead, import the procedural macro like any other item: \
                              `use {}::{};`", crate_name, name))
             .emit();
+    }
+
+    fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {
+        if !self.session.features.borrow().custom_derive {
+            let sess = &self.session.parse_sess;
+            let explain = feature_gate::EXPLAIN_CUSTOM_DERIVE;
+            emit_feature_err(sess, "custom_derive", span, GateIssue::Language, explain);
+        } else if !self.is_whitelisted_legacy_custom_derive(name) {
+            self.session.span_warn(span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
+        }
     }
 }

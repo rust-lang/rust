@@ -13,7 +13,6 @@ use attr;
 use ast::{self, NestedMetaItem}; use ext::base::{ExtCtxt, SyntaxExtension};
 use codemap;
 use ext::build::AstBuilder;
-use feature_gate;
 use symbol::Symbol;
 use syntax_pos::Span;
 
@@ -64,7 +63,6 @@ pub fn verify_derive_attrs(cx: &mut ExtCtxt, attrs: &[ast::Attribute]) {
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum DeriveType {
-    Legacy,
     ProcMacro,
     Builtin
 }
@@ -72,12 +70,6 @@ pub enum DeriveType {
 impl DeriveType {
     // Classify a derive trait name by resolving the macro.
     pub fn classify(cx: &mut ExtCtxt, tname: Name) -> DeriveType {
-        let legacy_derive_name = Symbol::intern(&format!("derive_{}", tname));
-
-        if let Ok(_) = cx.resolver.resolve_builtin_macro(legacy_derive_name) {
-            return DeriveType::Legacy;
-        }
-
         match cx.resolver.resolve_builtin_macro(tname) {
             Ok(ext) => match *ext {
                 SyntaxExtension::BuiltinDerive(..) => DeriveType::Builtin,
@@ -185,33 +177,7 @@ pub fn add_derived_markers(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) {
 pub fn find_derive_attr(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>)
                         -> Option<ast::Attribute> {
     verify_derive_attrs(cx, attrs);
-    get_derive_attr(cx, attrs, DeriveType::Legacy).and_then(|a| {
-        let titem = derive_attr_trait(cx, &a);
-        titem.and_then(|titem| {
-            let tword = titem.word().unwrap();
-            let tname = tword.name();
-            if !cx.ecfg.enable_custom_derive() {
-                feature_gate::emit_feature_err(
-                    &cx.parse_sess,
-                    "custom_derive",
-                    titem.span,
-                    feature_gate::GateIssue::Language,
-                    feature_gate::EXPLAIN_CUSTOM_DERIVE
-                );
-                None
-            } else {
-                let name = Symbol::intern(&format!("derive_{}", tname));
-                if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
-                    cx.span_warn(titem.span,
-                                 feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
-                }
-                let mitem = cx.meta_word(titem.span, name);
-                Some(cx.attribute(mitem.span, mitem))
-            }
-        })
-    }).or_else(|| {
-        get_derive_attr(cx, attrs, DeriveType::ProcMacro)
-    }).or_else(|| {
+    get_derive_attr(cx, attrs, DeriveType::ProcMacro).or_else(|| {
         add_derived_markers(cx, attrs);
         get_derive_attr(cx, attrs, DeriveType::Builtin)
     })
