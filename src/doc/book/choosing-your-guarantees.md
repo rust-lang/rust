@@ -118,7 +118,8 @@ These types are _generally_ found in struct fields, but they may be found elsewh
 
 ## `Cell<T>`
 
-[`Cell<T>`][cell] is a type that provides zero-cost interior mutability, but only for `Copy` types.
+[`Cell<T>`][cell] is a type that provides zero-cost interior mutability by moving data in and
+out of the cell.
 Since the compiler knows that all the data owned by the contained value is on the stack, there's
 no worry of leaking any data behind references (or worse!) by simply replacing the data.
 
@@ -160,7 +161,7 @@ This relaxes the &ldquo;no aliasing with mutability&rdquo; restriction in places
 unnecessary. However, this also relaxes the guarantees that the restriction provides; so if your
 invariants depend on data stored within `Cell`, you should be careful.
 
-This is useful for mutating primitives and other `Copy` types when there is no easy way of
+This is useful for mutating primitives and other types when there is no easy way of
 doing it in line with the static rules of `&` and `&mut`.
 
 `Cell` does not let you obtain interior references to the data, which makes it safe to freely
@@ -168,16 +169,17 @@ mutate.
 
 #### Cost
 
-There is no runtime cost to using `Cell<T>`, however if you are using it to wrap larger (`Copy`)
+There is no runtime cost to using `Cell<T>`, however if you are using it to wrap larger
 structs, it might be worthwhile to instead wrap individual fields in `Cell<T>` since each write is
 otherwise a full copy of the struct.
 
 
 ## `RefCell<T>`
 
-[`RefCell<T>`][refcell] also provides interior mutability, but isn't restricted to `Copy` types.
+[`RefCell<T>`][refcell] also provides interior mutability, but doesn't move data in and out of the
+cell.
 
-Instead, it has a runtime cost. `RefCell<T>` enforces the read-write lock pattern at runtime (it's
+However, it has a runtime cost. `RefCell<T>` enforces the read-write lock pattern at runtime (it's
 like a single-threaded mutex), unlike `&T`/`&mut T` which do so at compile time. This is done by the
 `borrow()` and `borrow_mut()` functions, which modify an internal reference count and return smart
 pointers which can be dereferenced immutably and mutably respectively. The refcount is restored when
