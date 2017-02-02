@@ -714,6 +714,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
     /// range from 4 to 10.
     ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -739,64 +744,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
-        let min = range.start();
-        let max = range.end();
-        let front = match min {
-            Included(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => first_leaf_edge(self.root.as_ref()),
-        };
+        let root1 = self.root.as_ref();
+        let root2 = self.root.as_ref();
+        let (f, b) = range_search(root1, root2, range);
 
-        let back = match max {
-            Included(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => last_leaf_edge(self.root.as_ref()),
-        };
-
-        Range {
-            front: front,
-            back: back,
-        }
+        Range { front: f, back: b}
     }
 
     /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
@@ -805,6 +757,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
     /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
     /// range from 4 to 10.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
     ///
     /// # Examples
     ///
@@ -831,66 +788,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
-        let min = range.start();
-        let max = range.end();
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
-
-        let front = match min {
-            Included(key) => {
-                match search::search_tree(root1, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(root1, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => first_leaf_edge(root1),
-        };
-
-        let back = match max {
-            Included(key) => {
-                match search::search_tree(root2, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(root2, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => last_leaf_edge(root2),
-        };
+        let (f, b) = range_search(root1, root2, range);
 
         RangeMut {
-            front: front,
-            back: back,
+            front: f,
+            back: b,
             _marker: PhantomData,
         }
     }
@@ -1824,6 +1728,80 @@ fn last_leaf_edge<BorrowType, K, V>
                 node = internal.last_edge().descend();
             }
         }
+    }
+}
+
+fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    range: R
+)-> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+     Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
+        where Q: Ord, K: Borrow<Q>
+{
+    match (range.start(), range.end()) {
+        (Excluded(s), Excluded(e)) if s==e =>
+            panic!("range start and end are equal and excluded in BTreeMap"),
+        (Included(s), Included(e)) |
+        (Included(s), Excluded(e)) |
+        (Excluded(s), Included(e)) |
+        (Excluded(s), Excluded(e)) if s>e =>
+            panic!("range start is greater than range end in BTreeMap"),
+        _ => {},
+    };
+
+    let mut min_node = root1;
+    let mut max_node = root2;
+    let mut min_found = false;
+    let mut max_found = false;
+    let mut diverged = false;
+
+    loop {
+        let min_edge = match (min_found, range.start()) {
+            (false, Included(key)) => match search::search_linear(&min_node, key) {
+                (i, true) => { min_found = true; i },
+                (i, false) => i,
+            },
+            (false, Excluded(key)) => match search::search_linear(&min_node, key) {
+                (i, true) => { min_found = true; i+1 },
+                (i, false) => i,
+            },
+            (_, Unbounded) => 0,
+            (true, Included(_)) => min_node.keys().len(),
+            (true, Excluded(_)) => 0,
+        };
+
+        let max_edge = match (max_found, range.end()) {
+            (false, Included(key)) => match search::search_linear(&max_node, key) {
+                (i, true) => { max_found = true; i+1 },
+                (i, false) => i,
+            },
+            (false, Excluded(key)) => match search::search_linear(&max_node, key) {
+                (i, true) => { max_found = true; i },
+                (i, false) => i,
+            },
+            (_, Unbounded) => max_node.keys().len(),
+            (true, Included(_)) => 0,
+            (true, Excluded(_)) => max_node.keys().len(),
+        };
+
+        if !diverged {
+            if max_edge < min_edge { panic!("Ord is ill-defined in BTreeMap range") }
+            if min_edge != max_edge { diverged = true; }
+        }
+
+        let front = Handle::new_edge(min_node, min_edge);
+        let back = Handle::new_edge(max_node, max_edge);
+        match (front.force(), back.force()) {
+            (Leaf(f), Leaf(b)) => {
+                return (f, b);
+            },
+            (Internal(min_int), Internal(max_int)) => {
+                min_node = min_int.descend();
+                max_node = max_int.descend();
+            },
+            _ => unreachable!("BTreeMap has different depths"),
+        };
     }
 }
 
