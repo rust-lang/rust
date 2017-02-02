@@ -11,6 +11,7 @@
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
+use rustc::middle::const_val::ConstInt;
 use rustc::ty::{self, layout, TypeFoldable};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
@@ -134,14 +135,24 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
-                // TODO: cond_br if only 1 value
-                let (otherwise, targets) = targets.split_last().unwrap();
-                let discr = self.trans_operand(&bcx, discr).immediate();
-                let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
-                for (value, target) in values.iter().zip(targets) {
-                    let val = Const::from_constval(bcx.ccx, value.clone(), switch_ty);
-                    let llbb = llblock(self, *target);
-                    bcx.add_case(switch, val.llval, llbb)
+                let discr = self.trans_operand(&bcx, discr);
+                if switch_ty == bcx.tcx().types.bool {
+                    let lltrue = llblock(self, targets[0]);
+                    let llfalse = llblock(self, targets[1]);
+                    if let [ConstInt::Infer(0)] = values[..] {
+                        bcx.cond_br(discr.immediate(), llfalse, lltrue);
+                    } else {
+                        bcx.cond_br(discr.immediate(), lltrue, llfalse);
+                    }
+                } else {
+                    let (otherwise, targets) = targets.split_last().unwrap();
+                    let switch = bcx.switch(discr.immediate(),
+                                            llblock(self, *otherwise), values.len());
+                    for (value, target) in values.iter().zip(targets) {
+                        let val = Const::from_constint(bcx.ccx, value);
+                        let llbb = llblock(self, *target);
+                        bcx.add_case(switch, val.llval, llbb)
+                    }
                 }
             }
 

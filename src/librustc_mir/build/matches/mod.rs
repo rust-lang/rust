@@ -675,7 +675,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                 discr: cond,
                 switch_ty: self.hir.bool_ty(),
-                values: vec![ConstVal::Bool(true)],
+                values: BOOL_SWITCH_TRUE.clone(),
                 targets: vec![arm_block, otherwise],
             });
             Some(otherwise)
