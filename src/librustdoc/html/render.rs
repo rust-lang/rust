@@ -1806,12 +1806,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                     String::new()
                 };
 
-                let mut unsafety_flag = "";
-                if let clean::FunctionItem(ref func) = myitem.inner {
-                    if func.unsafety == hir::Unsafety::Unsafe {
-                        unsafety_flag = "<a title='unsafe function' href='#'><sup>⚠</sup></a>";
+                let unsafety_flag = match myitem.inner {
+                    clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
+                    if func.unsafety == hir::Unsafety::Unsafe => {
+                        "<a title='unsafe function' href='#'><sup>⚠</sup></a>"
                     }
-                }
+                    _ => "",
+                };
 
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(w, "
