@@ -10,7 +10,8 @@
 
 fn main() {
     let Box(a) = loop { };
-    //~^ ERROR field `0` of struct `std::boxed::Box` is private
+    //~^ ERROR expected tuple struct/variant, found struct `Box`
+    //~| ERROR expected tuple struct/variant, found struct `Box`
 
     // (The below is a trick to allow compiler to infer a type for
     // variable `a` without attempting to ascribe a type to the

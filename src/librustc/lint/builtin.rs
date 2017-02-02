@@ -224,6 +224,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub LEGACY_CONSTRUCTOR_VISIBILITY,
+    Deny,
+    "detects use of struct constructors that would be invisible with new visibility rules"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -271,6 +277,7 @@ impl LintPass for HardwiredLints {
             EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,
+            LEGACY_CONSTRUCTOR_VISIBILITY,
             DEPRECATED
         )
     }

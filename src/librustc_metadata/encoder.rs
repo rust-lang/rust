@@ -396,10 +396,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
         let struct_vis = &tcx.hir.expect_item(struct_id).vis;
+        let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
+        for field in &variant.fields {
+            if ctor_vis.is_at_least(field.vis, tcx) {
+                ctor_vis = field.vis;
+            }
+        }
 
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
-            visibility: self.lazy(&ty::Visibility::from_hir(struct_vis, struct_id, tcx)),
+            visibility: self.lazy(&ctor_vis),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),

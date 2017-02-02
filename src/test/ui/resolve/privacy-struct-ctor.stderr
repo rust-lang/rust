@@ -1,0 +1,68 @@
+error[E0423]: expected value, found struct `Z`
+  --> $DIR/privacy-struct-ctor.rs:28:9
+   |
+28 |         Z;
+   |         ^
+   |         |
+   |         did you mean `Z { /* fields */ }`?
+   |         constructor is not visible here due to private fields
+   |
+   = help: possible better candidate is found in another module, you can import it into scope:
+             `use m::n::Z;`
+
+error[E0423]: expected value, found struct `S`
+  --> $DIR/privacy-struct-ctor.rs:38:5
+   |
+38 |     S;
+   |     ^
+   |     |
+   |     did you mean `S { /* fields */ }`?
+   |     constructor is not visible here due to private fields
+   |
+   = help: possible better candidate is found in another module, you can import it into scope:
+             `use m::S;`
+
+error[E0423]: expected value, found struct `xcrate::S`
+  --> $DIR/privacy-struct-ctor.rs:44:5
+   |
+44 |     xcrate::S;
+   |     ^^^^^^^^^
+   |     |
+   |     did you mean `xcrate::S { /* fields */ }`?
+   |     constructor is not visible here due to private fields
+   |
+   = help: possible better candidate is found in another module, you can import it into scope:
+             `use m::S;`
+
+error: tuple struct `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:27:9
+   |
+27 |         n::Z; //~ ERROR tuple struct `Z` is private
+   |         ^^^^
+
+error: tuple struct `S` is private
+  --> $DIR/privacy-struct-ctor.rs:37:5
+   |
+37 |     m::S; //~ ERROR tuple struct `S` is private
+   |     ^^^^
+
+error: tuple struct `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:41:5
+   |
+41 |     m::n::Z; //~ ERROR tuple struct `Z` is private
+   |     ^^^^^^^
+
+error: tuple struct `S` is private
+  --> $DIR/privacy-struct-ctor.rs:43:5
+   |
+43 |     xcrate::m::S; //~ ERROR tuple struct `S` is private
+   |     ^^^^^^^^^^^^
+
+error: tuple struct `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:47:5
+   |
+47 |     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
