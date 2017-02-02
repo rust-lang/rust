@@ -1107,7 +1107,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub fn set_personality_fn(&self, personality: ValueRef) {
         unsafe {
-            llvm::LLVMRustSetPersonalityFn(self.llbuilder, personality);
+            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
     }
 
