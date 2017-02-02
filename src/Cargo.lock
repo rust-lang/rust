@@ -597,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "std_shim"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "core 0.0.0",
  "std 0.0.0",
@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "test_shim"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "test 0.0.0",
 ]
