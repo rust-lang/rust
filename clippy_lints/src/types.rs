@@ -191,6 +191,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                             return; // don't recurse into the type
                         }
                     }
+                    check_ty(cx, ty);
                 },
                 _ => check_ty(cx, ty),
             }
