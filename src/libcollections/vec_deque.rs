@@ -469,9 +469,9 @@ impl<T> VecDeque<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
+    /// assert_eq!(buf, [3, 4, 5]);
     /// buf.swap(0, 2);
-    /// assert_eq!(buf[0], 5);
-    /// assert_eq!(buf[2], 3);
+    /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&mut self, i: usize, j: usize) {
@@ -649,9 +649,9 @@ impl<T> VecDeque<T> {
     /// buf.push_back(5);
     /// buf.push_back(10);
     /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
     /// buf.truncate(1);
-    /// assert_eq!(buf.len(), 1);
-    /// assert_eq!(Some(&5), buf.get(0));
+    /// assert_eq!(buf, [5]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
@@ -826,8 +826,9 @@ impl<T> VecDeque<T> {
     /// use std::collections::VecDeque;
     ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
-    /// assert_eq!(vec![3].into_iter().collect::<VecDeque<_>>(), v.drain(2..).collect());
-    /// assert_eq!(vec![1, 2].into_iter().collect::<VecDeque<_>>(), v);
+    /// let drained = v.drain(2..).collect::<VecDeque<_>>();
+    /// assert_eq!(drained, [3]);
+    /// assert_eq!(v, [1, 2]);
     ///
     /// // A full range clears all contents
     /// v.drain(..);
@@ -1179,11 +1180,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.swap_remove_back(0), Some(1));
-    /// assert_eq!(buf.len(), 2);
-    /// assert_eq!(buf[0], 3);
-    /// assert_eq!(buf[1], 2);
+    /// assert_eq!(buf, [3, 2]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
@@ -1215,11 +1215,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.swap_remove_front(2), Some(3));
-    /// assert_eq!(buf.len(), 2);
-    /// assert_eq!(buf[0], 2);
-    /// assert_eq!(buf[1], 1);
+    /// assert_eq!(buf, [2, 1]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
@@ -1250,11 +1249,10 @@ impl<T> VecDeque<T> {
     /// vec_deque.push_back('a');
     /// vec_deque.push_back('b');
     /// vec_deque.push_back('c');
+    /// assert_eq!(vec_deque, &['a', 'b', 'c']);
     ///
     /// vec_deque.insert(1, 'd');
-    ///
-    /// let vec = vec_deque.into_iter().collect::<Vec<_>>();
-    /// assert_eq!(vec, ['a', 'd', 'b', 'c']);
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
@@ -1478,9 +1476,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.remove(1), Some(2));
-    /// assert_eq!(buf.get(1), Some(&3));
+    /// assert_eq!(buf, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -1659,9 +1658,8 @@ impl<T> VecDeque<T> {
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
     /// let buf2 = buf.split_off(1);
-    /// // buf = [1], buf2 = [2, 3]
-    /// assert_eq!(buf.len(), 1);
-    /// assert_eq!(buf2.len(), 2);
+    /// assert_eq!(buf, [1]);
+    /// assert_eq!(buf2, [2, 3]);
     /// ```
     #[inline]
     #[stable(feature = "split_off", since = "1.4.0")]
@@ -1718,11 +1716,11 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
-    /// let mut buf2: VecDeque<_> = vec![4, 5, 6].into_iter().collect();
+    /// let mut buf: VecDeque<_> = vec![1, 2].into_iter().collect();
+    /// let mut buf2: VecDeque<_> = vec![3, 4].into_iter().collect();
     /// buf.append(&mut buf2);
-    /// assert_eq!(buf.len(), 6);
-    /// assert_eq!(buf2.len(), 0);
+    /// assert_eq!(buf, [1, 2, 3, 4]);
+    /// assert_eq!(buf2, []);
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
@@ -1745,9 +1743,7 @@ impl<T> VecDeque<T> {
     /// let mut buf = VecDeque::new();
     /// buf.extend(1..5);
     /// buf.retain(|&x| x%2 == 0);
-    ///
-    /// let v: Vec<_> = buf.into_iter().collect();
-    /// assert_eq!(&v[..], &[2, 4]);
+    /// assert_eq!(buf, [2, 4]);
     /// ```
     #[stable(feature = "vec_deque_retain", since = "1.4.0")]
     pub fn retain<F>(&mut self, mut f: F)
@@ -1781,11 +1777,13 @@ impl<T: Clone> VecDeque<T> {
     /// buf.push_back(5);
     /// buf.push_back(10);
     /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
+    ///
     /// buf.resize(2, 0);
-    /// buf.resize(6, 20);
-    /// for (a, b) in [5, 10, 20, 20, 20, 20].iter().zip(&buf) {
-    ///     assert_eq!(a, b);
-    /// }
+    /// assert_eq!(buf, [5, 10]);
+    ///
+    /// buf.resize(5, 20);
+    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
@@ -2162,6 +2160,46 @@ impl<A: PartialEq> PartialEq for VecDeque<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Eq> Eq for VecDeque<A> {}
 
+macro_rules! __impl_slice_eq1 {
+    ($Lhs: ty, $Rhs: ty) => {
+        __impl_slice_eq1! { $Lhs, $Rhs, Sized }
+    };
+    ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+        #[stable(feature = "vec-deque-partial-eq-slice", since = "1.16.0")]
+        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+            fn eq(&self, other: &$Rhs) -> bool {
+                if self.len() != other.len() {
+                    return false;
+                }
+                let (sa, sb) = self.as_slices();
+                let (oa, ob) = other[..].split_at(sa.len());
+                sa == oa && sb == ob
+            }
+        }
+    }
+}
+
+__impl_slice_eq1! { VecDeque<A>, Vec<B> }
+__impl_slice_eq1! { VecDeque<A>, &'b [B] }
+__impl_slice_eq1! { VecDeque<A>, &'b mut [B] }
+
+macro_rules! array_impls {
+    ($($N: expr)+) => {
+        $(
+            __impl_slice_eq1! { VecDeque<A>, [B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &'b [B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &'b mut [B; $N] }
+        )+
+    }
+}
+
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for VecDeque<A> {
     fn partial_cmp(&self, other: &VecDeque<A>) -> Option<Ordering> {
@@ -2434,7 +2472,7 @@ mod tests {
             let final_len = usable_cap / 2;
 
             for len in 0..final_len {
-                let expected = if back {
+                let expected: VecDeque<_> = if back {
                     (0..len).collect()
                 } else {
                     (0..len).rev().collect()
@@ -2483,7 +2521,7 @@ mod tests {
         // len is the length *after* insertion
         for len in 1..cap {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
                 for to_insert in 0..len {
                     tester.tail = tail_pos;
@@ -2516,7 +2554,7 @@ mod tests {
         // len is the length *after* removal
         for len in 0..cap - 1 {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
                 for to_remove in 0..len + 1 {
                     tester.tail = tail_pos;
@@ -2591,7 +2629,7 @@ mod tests {
 
         for len in 0..cap + 1 {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..max_cap + 1 {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
@@ -2624,9 +2662,9 @@ mod tests {
             // index to split at
             for at in 0..len + 1 {
                 // 0, 1, 2, .., at - 1 (may be empty)
-                let expected_self = (0..).take(at).collect();
+                let expected_self = (0..).take(at).collect::<VecDeque<_>>();
                 // at, at + 1, .., len - 1 (may be empty)
-                let expected_other = (at..).take(len - at).collect();
+                let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
 
                 for tail_pos in 0..cap {
                     tester.tail = tail_pos;
