@@ -29,6 +29,9 @@ pub type RustBadRet = extern fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
 
+#[repr(C)]
+pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
+
 extern {
     pub fn ptr_type1(size: *const Foo); //~ ERROR: found struct without
     pub fn ptr_type2(size: *const Foo); //~ ERROR: found struct without
@@ -40,6 +43,9 @@ extern {
     pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
     pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
     pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
+    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR found zero-sized type
+    pub fn zero_size_phantom_toplevel()
+        -> ::std::marker::PhantomData<bool>; //~ ERROR: found zero-sized type
     pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
     pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
     pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
