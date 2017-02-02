@@ -846,8 +846,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 self.new_block(c, is_cleanup, TerminatorKind::SwitchInt {
                     discr: Operand::Consume(flag),
                     switch_ty: boolty,
-                    values: BOOL_SWITCH_TRUE.clone(),
-                    targets: vec![on_set, on_unset],
+                    values: BOOL_SWITCH_FALSE.clone(),
+                    targets: vec![on_unset, on_set],
                 })
             }
         }

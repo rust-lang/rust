@@ -447,7 +447,7 @@ pub struct Terminator<'tcx> {
 }
 
 /// For use in SwitchInt, for switching on bools.
-pub static BOOL_SWITCH_TRUE: Cow<'static, [ConstInt]> = Cow::Borrowed(&[ConstInt::Infer(1)]);
+pub static BOOL_SWITCH_FALSE: Cow<'static, [ConstInt]> = Cow::Borrowed(&[ConstInt::Infer(0)]);
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum TerminatorKind<'tcx> {
