@@ -445,7 +445,7 @@ def main():
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo make intall`')
+            print('      before running a command like `sudo make install`')
 
     if rb.use_vendored_sources:
         if not os.path.exists('.cargo'):
