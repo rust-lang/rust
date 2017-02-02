@@ -236,7 +236,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         &ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
-                    (BOOL_SWITCH_TRUE.clone(), vec![true_bb, false_bb], ret)
+                    (BOOL_SWITCH_FALSE.clone(), vec![false_bb, true_bb], ret)
                 } else {
                     // The switch may be inexhaustive so we
                     // add a catch all block
@@ -326,8 +326,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.terminate(eq_block, source_info, TerminatorKind::SwitchInt {
                         discr: Operand::Consume(eq_result),
                         switch_ty: self.hir.bool_ty(),
-                        values: BOOL_SWITCH_TRUE.clone(),
-                        targets: vec![block, fail],
+                        values: BOOL_SWITCH_FALSE.clone(),
+                        targets: vec![fail, block],
                     });
                     vec![block, fail]
                 } else {
@@ -375,8 +375,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: Operand::Consume(result),
                     switch_ty: self.hir.bool_ty(),
-                    values: BOOL_SWITCH_TRUE.clone(),
-                    targets: vec![true_bb, false_bb],
+                    values: BOOL_SWITCH_FALSE.clone(),
+                    targets: vec![false_bb, true_bb],
                 });
                 vec![true_bb, false_bb]
             }
@@ -403,8 +403,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
             discr: Operand::Consume(result),
             switch_ty: self.hir.bool_ty(),
-            values: BOOL_SWITCH_TRUE.clone(),
-            targets: vec![target_block, fail_block]
+            values: BOOL_SWITCH_FALSE.clone(),
+            targets: vec![fail_block, target_block]
         });
         target_block
     }
