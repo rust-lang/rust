@@ -171,10 +171,13 @@ impl<'tcx> Rvalue<'tcx> {
                 Some(operand.ty(mir, tcx))
             }
             Rvalue::Discriminant(ref lval) => {
-                if let ty::TyAdt(adt_def, _) = lval.ty(mir, tcx).to_ty(tcx).sty {
+                let ty = lval.ty(mir, tcx).to_ty(tcx);
+                if let ty::TyAdt(adt_def, _) = ty.sty {
                     Some(adt_def.discr_ty.to_ty(tcx))
                 } else {
-                    None
+                    // Undefined behaviour, bug for now; may want to return something for
+                    // the `discriminant` intrinsic later.
+                    bug!("Rvalue::Discriminant on Lvalue of type {:?}", ty);
                 }
             }
             Rvalue::Box(t) => {

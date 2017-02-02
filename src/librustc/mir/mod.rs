@@ -469,10 +469,17 @@ pub enum TerminatorKind<'tcx> {
         /// are found in the corresponding indices from the `targets` vector.
         values: Cow<'tcx, [ConstInt]>,
 
-        /// Possible branch sites. The length of this vector should be
-        /// equal to the length of the `values` vector plus 1 -- the
-        /// extra item is the block to branch to if none of the values
-        /// fit.
+        /// Possible branch sites. The last element of this vector is used
+        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// should hold.
+        // This invariant is quite non-obvious and also could be improved.
+        // One way to make this invariant is to have something like this instead:
+        //
+        // branches: Vec<(ConstInt, BasicBlock)>,
+        // otherwise: Option<BasicBlock> // exhaustive if None
+        //
+        // However we’ve decided to keep this as-is until we figure a case
+        // where some other approach seems to be strictly better than other.
         targets: Vec<BasicBlock>,
     },
 
