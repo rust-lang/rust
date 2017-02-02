@@ -25,20 +25,13 @@ use pub_and_stability::{Record, Trait, Tuple};
 fn main() {
     // Okay
     let Record { .. } = Record::new();
-    // Okay (for now; see RFC Issue #902)
-    let Tuple(..) = Tuple::new();
 
     // Okay
     let Record { a_stable_pub: _, a_unstable_declared_pub: _, .. } = Record::new();
-    // Okay (for now; see RFC Issue #902)
-    let Tuple(_, _, ..) = Tuple::new(); // analogous to above
 
     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
         Record::new();
     //~^^ ERROR use of unstable library feature 'unstable_undeclared'
-
-    let Tuple(_, _, _, ..) = Tuple::new(); // analogous to previous
-    //~^ ERROR use of unstable library feature 'unstable_undeclared'
 
     let r = Record::new();
     let t = Tuple::new();
