@@ -223,6 +223,12 @@ macro_rules! make_mir_visitor {
                 self.super_const_val(const_val);
             }
 
+            fn visit_const_int(&mut self,
+                               const_int: &ConstInt,
+                               _: Location) {
+                self.super_const_int(const_int);
+            }
+
             fn visit_const_usize(&mut self,
                                  const_usize: & $($mutability)* ConstUsize,
                                  _: Location) {
@@ -364,12 +370,12 @@ macro_rules! make_mir_visitor {
 
                     TerminatorKind::SwitchInt { ref $($mutability)* discr,
                                                 ref $($mutability)* switch_ty,
-                                                ref $($mutability)* values,
+                                                ref values,
                                                 ref targets } => {
                         self.visit_operand(discr, source_location);
                         self.visit_ty(switch_ty);
-                        for value in values {
-                            self.visit_const_val(value, source_location);
+                        for value in &values[..] {
+                            self.visit_const_int(value, source_location);
                         }
                         for &target in targets {
                             self.visit_branch(block, target);
@@ -698,10 +704,13 @@ macro_rules! make_mir_visitor {
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
             }
 
-            fn super_const_val(&mut self, _substs: & $($mutability)* ConstVal) {
+            fn super_const_val(&mut self, _const_val: & $($mutability)* ConstVal) {
             }
 
-            fn super_const_usize(&mut self, _substs: & $($mutability)* ConstUsize) {
+            fn super_const_int(&mut self, _const_int: &ConstInt) {
+            }
+
+            fn super_const_usize(&mut self, _const_usize: & $($mutability)* ConstUsize) {
             }
 
             // Convenience methods

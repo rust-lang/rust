@@ -679,7 +679,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
                                                       self.tcx.sess.target.uint_type,
                                                       self.tcx.sess.target.int_type).unwrap();
-                    values.push(ConstVal::Integral(discr));
+                    values.push(discr);
                     blocks.push(self.open_drop_for_variant(c, &mut drop_block, adt, substs, idx));
                 }
                 // If there are multiple variants, then if something
@@ -704,7 +704,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         kind: TerminatorKind::SwitchInt {
                             discr: Operand::Consume(discr),
                             switch_ty: discr_ty,
-                            values: values,
+                            values: From::from(values),
                             targets: blocks,
                             // adt_def: adt,
                             // targets: variant_drops
@@ -836,7 +836,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 self.new_block(c, is_cleanup, TerminatorKind::SwitchInt {
                     discr: Operand::Consume(flag),
                     switch_ty: boolty,
-                    values: vec![ConstVal::Bool(true)],
+                    values: BOOL_SWITCH_TRUE.clone(),
                     targets: vec![on_set, on_unset],
                 })
             }

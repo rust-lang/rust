@@ -15,7 +15,6 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::ty;
 use rustc::mir::*;
-use rustc::middle::const_val::ConstVal;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -73,7 +72,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: operand,
                     switch_ty: this.hir.bool_ty(),
-                    values: vec![ConstVal::Bool(true)],
+                    values: BOOL_SWITCH_TRUE.clone(),
                     targets: vec![then_block, else_block],
                 });
 
@@ -120,7 +119,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: lhs,
                     switch_ty: this.hir.bool_ty(),
-                    values: vec![ConstVal::Bool(true)],
+                    values: BOOL_SWITCH_TRUE.clone(),
                     targets: blocks,
                 });
 
@@ -128,7 +127,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(else_block, source_info, TerminatorKind::SwitchInt {
                     discr: rhs,
                     switch_ty: this.hir.bool_ty(),
-                    values: vec![ConstVal::Bool(true)],
+                    values: BOOL_SWITCH_TRUE.clone(),
                     targets: vec![true_block, false_block],
                 });
 
@@ -192,7 +191,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                TerminatorKind::SwitchInt {
                                                    discr: cond,
                                                    switch_ty: this.hir.bool_ty(),
-                                                   values: vec![ConstVal::Bool(true)],
+                                                   values: BOOL_SWITCH_TRUE.clone(),
                                                    targets: vec![body_block, exit_block],
                                                });
 

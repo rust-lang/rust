@@ -446,6 +446,9 @@ pub struct Terminator<'tcx> {
     pub kind: TerminatorKind<'tcx>
 }
 
+/// For use in SwitchInt, for switching on bools.
+pub static BOOL_SWITCH_TRUE: Cow<'static, [ConstInt]> = Cow::Borrowed(&[ConstInt::Infer(1)]);
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
@@ -464,8 +467,7 @@ pub enum TerminatorKind<'tcx> {
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        // FIXME: ConstVal doesn’t quite make any sense here? Its a Switch*Int*.
-        values: Vec<ConstVal>,
+        values: Cow<'tcx, [ConstInt]>,
 
         /// Possible branch sites. The length of this vector should be
         /// equal to the length of the `values` vector plus 1 -- the
@@ -696,7 +698,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 values.iter()
                       .map(|const_val| {
                           let mut buf = String::new();
-                          fmt_const_val(&mut buf, const_val).unwrap();
+                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
                           buf.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
