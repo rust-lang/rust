@@ -17,8 +17,8 @@ use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use syntax::attr;
 use hir;
+use ty::util::IntTypeExt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueTy<'tcx> {
@@ -172,13 +172,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Discriminant(ref lval) => {
                 if let ty::TyAdt(adt_def, _) = lval.ty(mir, tcx).to_ty(tcx).sty {
-                    // FIXME: Why this does not work?
-                    // Some(adt_def.discr_ty.to_ty(tcx))
-                    let ty = match adt_def.discr_ty {
-                        attr::SignedInt(i) => tcx.mk_mach_int(i),
-                        attr::UnsignedInt(i) => tcx.mk_mach_uint(i),
-                    };
-                    Some(ty)
+                    Some(adt_def.discr_ty.to_ty(tcx))
                 } else {
                     None
                 }
