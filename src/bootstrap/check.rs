@@ -383,7 +383,7 @@ pub fn krate(build: &Build,
                 // helper crate, not tested. If it leaks through then it ends up
                 // messing with various mtime calculations and such.
                 if !name.contains("jemalloc") && name != "build_helper" {
-                    cargo.arg("-p").arg(name);
+                    cargo.arg("-p").arg(&format!("{}:0.0.0", name));
                 }
                 for dep in build.crates[name].deps.iter() {
                     if visited.insert(dep) {
