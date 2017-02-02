@@ -454,7 +454,7 @@ impl Integer {
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
     pub fn repr_discr(tcx: TyCtxt, hints: &[attr::ReprAttr], min: i128, max: i128)
-    -> (Integer, bool) {
+                      -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u64

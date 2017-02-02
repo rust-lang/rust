@@ -706,8 +706,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             switch_ty: discr_ty,
                             values: From::from(values),
                             targets: blocks,
-                            // adt_def: adt,
-                            // targets: variant_drops
                         }
                     }),
                     is_cleanup: c.is_cleanup,
