@@ -626,7 +626,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                  adt: &'tcx ty::AdtDef,
                                  substs: &'tcx Substs<'tcx>,
                                  variant_index: usize)
-                                 -> BasicBlock
+                                 -> (BasicBlock, bool)
     {
         let subpath = super::move_path_children_matching(
             self.move_data(), c.path, |proj| match proj {
@@ -645,13 +645,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 variant_path,
                 &adt.variants[variant_index],
                 substs);
-            self.drop_ladder(c, fields)
+            (self.drop_ladder(c, fields), true)
         } else {
             // variant not found - drop the entire enum
             if let None = *drop_block {
                 *drop_block = Some(self.complete_drop(c, true));
             }
-            return drop_block.unwrap();
+            (drop_block.unwrap(), false)
         }
     }
 
@@ -674,13 +674,25 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             }
             _ => {
                 let mut values = Vec::with_capacity(adt.variants.len());
-                let mut blocks = Vec::with_capacity(adt.variants.len() + 1);
+                let mut blocks = Vec::with_capacity(adt.variants.len());
+                let mut otherwise = None;
                 for (idx, variant) in adt.variants.iter().enumerate() {
                     let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
                                                       self.tcx.sess.target.uint_type,
                                                       self.tcx.sess.target.int_type).unwrap();
-                    values.push(discr);
-                    blocks.push(self.open_drop_for_variant(c, &mut drop_block, adt, substs, idx));
+                    let (blk, is_ladder) = self.open_drop_for_variant(c, &mut drop_block, adt,
+                                                                      substs, idx);
+                    if is_ladder {
+                        values.push(discr);
+                        blocks.push(blk);
+                    } else {
+                        otherwise = Some(blk)
+                    }
+                }
+                if let Some(block) = otherwise {
+                    blocks.push(block);
+                } else {
+                    values.pop();
                 }
                 // If there are multiple variants, then if something
                 // is present within the enum the discriminant, tracked
