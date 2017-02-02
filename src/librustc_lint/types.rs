@@ -341,6 +341,7 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 
 enum FfiResult {
     FfiSafe,
+    FfiPhantom,
     FfiUnsafe(&'static str),
     FfiBadStruct(DefId, &'static str),
     FfiBadUnion(DefId, &'static str),
@@ -385,8 +386,11 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult {
+    fn check_type_for_ffi(&self,
+                          cache: &mut FxHashSet<Ty<'tcx>>,
+                          ty: Ty<'tcx>) -> FfiResult {
         use self::FfiResult::*;
+
         let cx = self.cx.tcx;
 
         // Protect against infinite recursion, for example
@@ -399,6 +403,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match ty.sty {
             ty::TyAdt(def, substs) => {
+                if def.is_phantom_data() {
+                    return FfiPhantom;
+                }
                 match def.adt_kind() {
                     AdtKind::Struct => {
                         if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
@@ -407,18 +414,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
-                        // We can't completely trust repr(C) markings; make sure the
-                        // fields are actually safe.
                         if def.struct_variant().fields.is_empty() {
                             return FfiUnsafe("found zero-size struct in foreign module, consider \
                                               adding a member to this struct");
                         }
 
+                        // We can't completely trust repr(C) markings; make sure the
+                        // fields are actually safe.
+                        let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
                             let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
-                                FfiSafe => {}
+                                FfiSafe => {
+                                    all_phantom = false;
+                                }
+                                FfiPhantom => {}
                                 FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
                                     return r;
                                 }
@@ -427,7 +438,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 }
                             }
                         }
-                        FfiSafe
+
+                        if all_phantom { FfiPhantom } else { FfiSafe }
                     }
                     AdtKind::Union => {
                         if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
@@ -436,11 +448,20 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
+                        if def.struct_variant().fields.is_empty() {
+                            return FfiUnsafe("found zero-size union in foreign module, consider \
+                                              adding a member to this union");
+                        }
+
+                        let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
                             let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
-                                FfiSafe => {}
+                                FfiSafe => {
+                                    all_phantom = false;
+                                }
+                                FfiPhantom => {}
                                 FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
                                     return r;
                                 }
@@ -449,7 +470,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 }
                             }
                         }
-                        FfiSafe
+
+                        if all_phantom { FfiPhantom } else { FfiSafe }
                     }
                     AdtKind::Enum => {
                         if def.variants.is_empty() {
@@ -499,6 +521,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                     FfiSafe => {}
                                     FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
                                         return r;
+                                    }
+                                    FfiPhantom => {
+                                        return FfiBadEnum(def.did,
+                                                          "Found phantom data in enum variant");
                                     }
                                     FfiUnsafe(s) => {
                                         return FfiBadEnum(def.did, s);
@@ -593,6 +619,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
+            FfiResult::FfiPhantom => {
+                self.cx.span_lint(IMPROPER_CTYPES,
+                                  sp,
+                                  &format!("found zero-sized type composed only \
+                                            of phantom-data in a foreign-function."));
+            }
             FfiResult::FfiUnsafe(s) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp, s);
             }
