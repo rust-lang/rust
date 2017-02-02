@@ -1082,14 +1082,6 @@ extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
 #endif
 }
 
-extern "C" void LLVMRustSetPersonalityFn(LLVMBuilderRef B,
-                                         LLVMValueRef Personality) {
-#if LLVM_VERSION_GE(3, 8)
-  unwrap(B)->GetInsertBlock()->getParent()->setPersonalityFn(
-      cast<Function>(unwrap(Personality)));
-#endif
-}
-
 #if LLVM_VERSION_GE(3, 8)
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,

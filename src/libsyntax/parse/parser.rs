@@ -2456,9 +2456,21 @@ impl<'a> Parser<'a> {
                             Some(f) => f,
                             None => continue,
                         };
-                        err.help(&format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
-                                 float.trunc() as usize,
-                                 format!(".{}", fstr.splitn(2, ".").last().unwrap())));
+                        let sugg = pprust::to_string(|s| {
+                            use print::pprust::PrintState;
+                            use print::pp::word;
+                            s.popen()?;
+                            s.print_expr(&e)?;
+                            word(&mut s.s, ".")?;
+                            s.print_usize(float.trunc() as usize)?;
+                            s.pclose()?;
+                            word(&mut s.s, ".")?;
+                            word(&mut s.s, fstr.splitn(2, ".").last().unwrap())
+                        });
+                        err.span_suggestion(
+                            prev_span,
+                            "try parenthesizing the first index",
+                            sugg);
                     }
                     return Err(err);
 
@@ -3900,7 +3912,14 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Semi) {
                         stmt_span.hi = self.prev_span.hi;
                     }
-                    e.span_help(stmt_span, "try placing this code inside a block");
+                    let sugg = pprust::to_string(|s| {
+                        use print::pprust::{PrintState, INDENT_UNIT};
+                        s.ibox(INDENT_UNIT)?;
+                        s.bopen()?;
+                        s.print_stmt(&stmt)?;
+                        s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
+                    });
+                    e.span_suggestion(stmt_span, "try placing this code inside a block", sugg);
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break);
