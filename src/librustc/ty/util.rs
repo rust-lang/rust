@@ -39,14 +39,14 @@ use rustc_i128::i128;
 use hir;
 
 pub trait IntTypeExt {
-    fn to_ty<'a, 'tcx>(self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
+    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
     fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
                            -> Option<Disr>;
     fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'gcx, 'tcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self {
             SignedInt(i) => tcx.mk_mach_int(i),
             UnsignedInt(i) => tcx.mk_mach_uint(i),

@@ -1047,7 +1047,8 @@ fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId
     let hint = UncheckedExprHint(ty_hint);
     match ConstContext::new(ccx.tcx, body).eval(e, hint) {
         Ok(ConstVal::Integral(i)) => {
-            // FIXME: eval should return an error if the hint is wrong
+            // FIXME: eval should return an error if the hint does not match the type of the body.
+            // i.e. eventually the match below would not exist.
             match (repr_ty, i) {
                 (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
                 (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |

@@ -22,10 +22,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::{ConstVal, ConstInt};
 use rustc::ty::{self, Ty};
+use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
 use rustc::hir::RangeEnd;
 use syntax_pos::Span;
-use syntax::attr;
 use std::cmp::Ordering;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -212,13 +212,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
-                // FIXME: WHY THIS DOES NOT WORK?!
-                // let discr_ty = adt_def.discr_ty.to_ty(tcx);
-                let discr_ty = match adt_def.discr_ty {
-                    attr::SignedInt(i) => tcx.mk_mach_int(i),
-                    attr::UnsignedInt(i) => tcx.mk_mach_uint(i),
-                };
-
+                let discr_ty = adt_def.discr_ty.to_ty(tcx);
                 let discr = self.temp(discr_ty);
                 self.cfg.push_assign(block, source_info, &discr,
                                      Rvalue::Discriminant(lvalue.clone()));

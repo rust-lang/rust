@@ -453,13 +453,8 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-<<<<<<< HEAD
-    fn repr_discr(tcx: TyCtxt, ty: Ty, repr: &ReprOptions, min: i64, max: i64)
+    fn repr_discr(tcx: TyCtxt, ty: Ty, repr: &ReprOptions, min: i128, max: i128)
                       -> (Integer, bool) {
-=======
-    pub fn repr_discr(tcx: TyCtxt, hints: &[attr::ReprAttr], min: i128, max: i128)
-    -> (Integer, bool) {
->>>>>>> cade130ae8... AdtDef now contains discr_ty same as layouted
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u64
@@ -470,7 +465,6 @@ impl Integer {
         let mut min_from_extern = None;
         let min_default = I8;
 
-<<<<<<< HEAD
         if let Some(ity) = repr.int {
             let discr = Integer::from_attr(&tcx.data_layout, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
@@ -489,36 +483,6 @@ impl Integer {
                 // lower bound.  However, we don't run on those yet...?
                 "arm" => min_from_extern = Some(I32),
                 _ => min_from_extern = Some(I32),
-=======
-        for &r in hints.iter() {
-            match r {
-                attr::ReprInt(ity) => {
-                    let discr = Integer::from_attr(&tcx.data_layout, ity);
-                    let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
-                    if discr < fit {
-                        bug!("Integer::repr_discr: `#[repr]` hint too small for \
-                              discriminant range of enum")
-                    }
-                    return (discr, ity.is_signed());
-                }
-                attr::ReprExtern => {
-                    match &tcx.sess.target.target.arch[..] {
-                        // WARNING: the ARM EABI has two variants; the one corresponding
-                        // to `at_least == I32` appears to be used on Linux and NetBSD,
-                        // but some systems may use the variant corresponding to no
-                        // lower bound.  However, we don't run on those yet...?
-                        "arm" => min_from_extern = Some(I32),
-                        _ => min_from_extern = Some(I32),
-                    }
-                }
-                attr::ReprAny => {},
-                attr::ReprPacked => {
-                    bug!("Integer::repr_discr: found #[repr(packed)] on enum");
-                }
-                attr::ReprSimd => {
-                    bug!("Integer::repr_discr: found #[repr(simd)] on enum");
-                }
->>>>>>> cade130ae8... AdtDef now contains discr_ty same as layouted
             }
         }
 
