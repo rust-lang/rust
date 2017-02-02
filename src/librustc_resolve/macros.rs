@@ -27,7 +27,7 @@ use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
 use syntax::ext::expand::{Expansion, mark_tts};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{self, emit_feature_err, GateIssue, is_builtin_attr};
+use syntax::feature_gate::{self, emit_feature_err, GateIssue};
 use syntax::fold::{self, Folder};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -130,12 +130,16 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.whitelisted_legacy_custom_derives.contains(&name)
     }
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
+    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]) {
         let invocation = self.invocations[&mark];
         self.collect_def_ids(invocation, expansion);
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
+        self.current_module.unresolved_invocations.borrow_mut().extend(derives);
+        for &derive in derives {
+            self.invocations.insert(derive, invocation);
+        }
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             legacy_scope: LegacyScope::Invocation(invocation),
@@ -172,7 +176,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         ImportResolver { resolver: self }.resolve_imports()
     }
 
-    fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
+    // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>)
+                              -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             match self.builtin_macros.get(&attrs[i].name()).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
@@ -182,10 +188,6 @@ impl<'a> base::Resolver for Resolver<'a> {
                     _ => {}
                 },
                 None => {}
-            }
-
-            if self.proc_macro_enabled && !is_builtin_attr(&attrs[i]) {
-                return Some(attrs.remove(i));
             }
         }
 
@@ -212,7 +214,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                     } else {
                         attrs[i].value = ast::MetaItem {
                             name: attrs[i].name(),
-                            span: span,
+                            span: attrs[i].span,
                             node: ast::MetaItemKind::List(traits),
                         };
                     }
@@ -279,7 +281,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 Ok(binding) => Ok(binding.get_macro(self)),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 _ => {
-                    let msg = format!("macro undefined: '{}!'", name);
+                    let msg = format!("macro undefined: `{}`", name);
                     let mut err = self.session.struct_span_err(span, &msg);
                     self.suggest_macro_name(&name.as_str(), &mut err);
                     err.emit();
@@ -292,13 +294,6 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.current_module.legacy_macro_resolutions.borrow_mut().push((scope, path[0], span));
         }
         result
-    }
-
-    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
-        match self.builtin_macros.get(&tname).cloned() {
-            Some(binding) => Ok(binding.get_macro(self)),
-            None => Err(Determinacy::Undetermined),
-        }
     }
 
     fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)

@@ -25,7 +25,7 @@ pub fn main() {
         ref mut Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         Self!() => (),
-        //~^ ERROR macro undefined: 'Self!'
+        //~^ ERROR macro undefined: `Self`
         Foo { Self } => (),
         //~^ ERROR expected identifier, found keyword `Self`
     }
