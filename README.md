@@ -47,6 +47,13 @@ environment variable to `trace`. These traces are indented based on call stack
 depth. You can get a much less verbose set of information with other logging
 levels such as `warn`.
 
+## Running miri on your own project('s test suite)
+
+Install miri as a cargo subcommand with `cargo install --debug`.
+Then, inside your own project, use `cargo +nightly miri` to run your project, if it is
+a bin project, or run `cargo +nightly miri test` to run all tests in your project
+through miri.
+
 ## Contributing and getting help
 
 Check out the issues on this GitHub repository for some ideas. There's lots that
