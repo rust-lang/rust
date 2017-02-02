@@ -66,7 +66,6 @@ fn test_writer_hasher() {
     assert_eq!(hash(& s), 97 + 0xFF);
     let cs: &[u8] = &[1, 2, 3];
     assert_eq!(hash(& cs), 9);
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let cs: Box<[u8]> = Box::new([1, 2, 3]);
     assert_eq!(hash(& cs), 9);
 
