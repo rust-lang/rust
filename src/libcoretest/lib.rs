@@ -33,6 +33,7 @@
 #![feature(unique)]
 #![feature(ordering_chaining)]
 #![feature(ptr_unaligned)]
+#![feature(move_cell)]
 
 extern crate core;
 extern crate test;
