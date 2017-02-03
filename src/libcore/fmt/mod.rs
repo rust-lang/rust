@@ -265,6 +265,32 @@ impl<'a> Arguments<'a> {
             args: args
         }
     }
+
+    /// Estimates the length of the formatted text.
+    ///
+    /// This is intended to be used for setting initial `String` capacity
+    /// when using `format!`. Note: this is neither the lower nor upper bound.
+    #[doc(hidden)] #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
+               issue = "0")]
+    pub fn estimated_capacity(&self) -> usize {
+        let pieces_length: usize = self.pieces.iter()
+            .map(|x| x.len()).sum();
+
+        if self.args.is_empty() {
+            pieces_length
+        } else if self.pieces[0] == "" && pieces_length < 16 {
+            // If the format string starts with an argument,
+            // don't preallocate anything, unless length
+            // of pieces is significant.
+            0
+        } else {
+            // There are some arguments, so any additional push
+            // will reallocate the string. To avoid that,
+            // we're "pre-doubling" the capacity here.
+            pieces_length.checked_mul(2).unwrap_or(0)
+        }
+    }
 }
 
 /// This structure represents a safely precompiled version of a format string

@@ -34,6 +34,7 @@
 #![feature(ordering_chaining)]
 #![feature(ptr_unaligned)]
 #![feature(move_cell)]
+#![feature(fmt_internals)]
 
 extern crate core;
 extern crate test;
