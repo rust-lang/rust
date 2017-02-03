@@ -241,9 +241,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let val = self.eval_and_read_lvalue(&proj.base)?;
 
                 let pointee_type = match base_ty.sty {
-                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-                    ty::TyBox(ty) => ty,
+                    ty::TyRawPtr(ref tam) |
+                    ty::TyRef(_, ref tam) => tam.ty,
+                    ty::TyAdt(ref def, _) if def.is_box() => base_ty.boxed_ty(),
                     _ => bug!("can only deref pointer types"),
                 };
 

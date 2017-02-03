@@ -626,7 +626,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match ty.sty {
             // special case `Box` to deallocate the inner allocation
-            ty::TyBox(contents_ty) => {
+            ty::TyAdt(ref def, _) if def.is_box() => {
+                let contents_ty = ty.boxed_ty();
                 let val = self.read_lvalue(lval);
                 // we are going through the read_value path, because that already does all the
                 // checks for the trait object types. We'd only be repeating ourselves here.
