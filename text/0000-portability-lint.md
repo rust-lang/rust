@@ -579,22 +579,6 @@ use the `cfg` system today to talk about upstream features.
 
 # Appendix: possible extensions
 
-## Subsetting `std`
-
-
-cfgs:
-
-- each integer size
-- each float size
-- each atomics size
-- allocation
-- env
-- fs
-- net
-- process
-- thread
-- OS rng
-
 ## `match_cfg`
 
 The original version of this RFC was more expansive, and proposed a `match_cfg`
