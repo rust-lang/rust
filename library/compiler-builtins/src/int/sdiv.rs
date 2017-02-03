@@ -162,3 +162,29 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(all(not(windows), target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::U128;
+
+    check! {
+        fn __divti3(f: extern fn(i128, i128) -> i128, n: U128, d: U128) -> Option<i128> {
+            let (n, d) = (n.0 as i128, d.0 as i128);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+
+        fn __modti3(f: extern fn(i128, i128) -> i128, n: U128, d: U128) -> Option<i128> {
+            let (n, d) = (n.0 as i128, d.0 as i128);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+    }
+}

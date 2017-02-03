@@ -120,3 +120,27 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(all(not(windows), target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::I128;
+
+    check! {
+        fn __multi3(f: extern fn(i128, i128) -> i128, a: I128, b: I128)
+                    -> Option<i128> {
+            Some(f(a.0, b.0))
+        }
+        fn __muloti4(f: extern fn(i128, i128, &mut i32) -> i128,
+                     a: I128,
+                     b: I128) -> Option<(i128, i32)> {
+            let (a, b) = (a.0, b.0);
+            let mut overflow = 2;
+            let r = f(a, b, &mut overflow);
+            if overflow != 0 && overflow != 1 {
+                return None
+            }
+            Some((r, overflow))
+        }
+    }
+}

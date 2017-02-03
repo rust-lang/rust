@@ -60,6 +60,17 @@ fn main() {
         "addsf3.c",
         "powidf2.c",
         "powisf2.c",
+        // 128 bit integers
+        "lshrti3.c",
+        "modti3.c",
+        "muloti4.c",
+        "multi3.c",
+        "udivmodti4.c",
+        "udivti3.c",
+        "umodti3.c",
+        "ashlti3.c",
+        "ashrti3.c",
+        "divti3.c",
     ]);
 
     for src in sources.files.iter() {

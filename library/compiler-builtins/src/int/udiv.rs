@@ -380,3 +380,48 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(all(not(windows), target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::U128;
+
+    check! {
+        fn __udivti3(f: extern fn(u128, u128) -> u128,
+                     n: U128,
+                     d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+
+        fn __umodti3(f: extern fn(u128, u128) -> u128,
+                     n: U128,
+                     d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+
+        fn __udivmodti4(f: extern fn(u128, u128, Option<&mut u128>) -> u128,
+                        n: U128,
+                        d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                // FIXME fix the segfault when the remainder is requested
+                /*let mut r = 0;
+                let q = f(n, d, Some(&mut r));
+                Some((q, r))*/
+                Some(f(n, d, None))
+            }
+        }
+    }
+}

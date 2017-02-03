@@ -58,6 +58,33 @@ declare!(___adddf3, __adddf3);
 declare!(___powisf2, __powisf2);
 declare!(___powidf2, __powidf2);
 
+#[cfg(all(not(windows), target_pointer_width="64"))]
+pub mod int_128 {
+    extern {
+        fn __lshrti3();
+        fn __modti3();
+        fn __muloti4();
+        fn __multi3();
+        fn __udivmodti4();
+        fn __udivti3();
+        fn __umodti3();
+        fn __ashlti3();
+        fn __ashrti3();
+        fn __divti3();
+    }
+
+    declare!(___lshrti3, __lshrti3);
+    declare!(___modti3, __modti3);
+    declare!(___muloti4, __muloti4);
+    declare!(___multi3, __multi3);
+    declare!(___udivmodti4, __udivmodti4);
+    declare!(___udivti3, __udivti3);
+    declare!(___umodti3, __umodti3);
+    declare!(___ashlti3, __ashlti3);
+    declare!(___ashrti3, __ashrti3);
+    declare!(___divti3, __divti3);
+}
+
 #[lang = "eh_personality"]
 fn eh_personality() {}
 #[lang = "panic_fmt"]

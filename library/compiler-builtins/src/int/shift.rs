@@ -103,3 +103,39 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(all(not(windows), target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::{I128, U128};
+
+    // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
+    check! {
+        fn __ashlti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+            let a = a.0;
+            if b >= 64 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+
+        fn __ashrti3(f: extern fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
+            let a = a.0;
+            if b >= 64 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+
+        fn __lshrti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+            let a = a.0;
+            if b >= 128 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+    }
+}
