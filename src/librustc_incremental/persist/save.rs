@@ -178,7 +178,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
 
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
-    let mut edges = vec![];
+    let mut edges = FxHashMap();
     for edge in preds.reduced_graph.all_edges() {
         let source = *preds.reduced_graph.node_data(edge.source());
         let target = *preds.reduced_graph.node_data(edge.target());
@@ -194,7 +194,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
         debug!("serialize edge: {:?} -> {:?}", source, target);
         let source = builder.map(source);
         let target = builder.map(target);
-        edges.push((source, target));
+        edges.entry(source).or_insert(vec![]).push(target);
     }
 
     if tcx.sess.opts.debugging_opts.incremental_dump_hash {
@@ -204,6 +204,9 @@ pub fn encode_dep_graph(preds: &Predecessors,
     }
 
     // Create the serialized dep-graph.
+    let edges = edges.into_iter()
+                     .map(|(k, v)| SerializedEdgeSet { source: k, targets: v })
+                     .collect();
     let graph = SerializedDepGraph {
         edges: edges,
         hashes: preds.hashes
