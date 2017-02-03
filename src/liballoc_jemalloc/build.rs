@@ -42,6 +42,12 @@ fn main() {
         return;
     }
 
+    if target.contains("android") {
+        println!("cargo:rustc-link-lib=gcc");
+    } else if !target.contains("windows") && !target.contains("musl") {
+        println!("cargo:rustc-link-lib=pthread");
+    }
+
     if let Some(jemalloc) = env::var_os("JEMALLOC_OVERRIDE") {
         let jemalloc = PathBuf::from(jemalloc);
         println!("cargo:rustc-link-search=native={}",
@@ -176,11 +182,6 @@ fn main() {
         println!("cargo:rustc-link-lib=static=jemalloc_pic");
     }
     println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
-    if target.contains("android") {
-        println!("cargo:rustc-link-lib=gcc");
-    } else if !target.contains("windows") && !target.contains("musl") {
-        println!("cargo:rustc-link-lib=pthread");
-    }
 
     // The pthread_atfork symbols is used by jemalloc on android but the really
     // old android we're building on doesn't have them defined, so just make
