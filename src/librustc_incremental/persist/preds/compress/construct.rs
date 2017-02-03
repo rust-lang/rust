@@ -78,6 +78,18 @@ pub(super) fn construct_graph<'g, N, I, O>(r: &mut GraphReduce<'g, N, I, O>, dag
     //
     // Now if we were to remove Y, we would have a total of 8 edges: both WP0 and WP1
     // depend on INPUT0...INPUT3. As it is, we have 6 edges.
+    //
+    // NB: The current rules are not optimal. For example, given this
+    // input graph:
+    //
+    //     OUT0 -rf-> X
+    //     OUT1 -rf-> X
+    //     X -rf -> INPUT0
+    //
+    // we will preserve X because it has two "consumers" (OUT0 and
+    // OUT1).  We could as easily skip it, but we'd have to tally up
+    // the number of input nodes that it (transitively) reaches, and I
+    // was too lazy to do so. This is the unit test `suboptimal`.
 
     let mut retain_map = FxHashMap();
     let mut new_graph = Graph::new();

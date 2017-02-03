@@ -151,62 +151,69 @@ fn test3() {
     ]);
 }
 
-//#[test]
-//fn test_cached_dfs_cyclic() {
-//
-//    //    0       1 <---- 2       3
-//    //    ^       |       ^       ^
-//    //    |       v       |       |
-//    //    4 ----> 5 ----> 6 ----> 7
-//    //    ^       ^       ^       ^
-//    //    |       |       |       |
-//    //    8       9      10      11
-//
-//
-//    let mut g: Graph<bool, ()> = Graph::new();
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(false);
-//    g.add_node(true);
-//    g.add_node(true);
-//    g.add_node(true);
-//    g.add_node(true);
-//
-//    g.add_edge(NodeIndex( 4), NodeIndex(0), ());
-//    g.add_edge(NodeIndex( 8), NodeIndex(4), ());
-//    g.add_edge(NodeIndex( 4), NodeIndex(5), ());
-//    g.add_edge(NodeIndex( 1), NodeIndex(5), ());
-//    g.add_edge(NodeIndex( 9), NodeIndex(5), ());
-//    g.add_edge(NodeIndex( 5), NodeIndex(6), ());
-//    g.add_edge(NodeIndex( 6), NodeIndex(2), ());
-//    g.add_edge(NodeIndex( 2), NodeIndex(1), ());
-//    g.add_edge(NodeIndex(10), NodeIndex(6), ());
-//    g.add_edge(NodeIndex( 6), NodeIndex(7), ());
-//    g.add_edge(NodeIndex(11), NodeIndex(7), ());
-//    g.add_edge(NodeIndex( 7), NodeIndex(3), ());
-//
-//    let mut ws1 = DfsWorkspace::new(g.len_nodes());
-//    let mut ws2 = DfsWorkspace::new(g.len_nodes());
-//    let mut visit_counts: Vec<_> = g.all_nodes().iter().map(|_| 0u32).collect();
-//    let mut cache: Vec<Option<Box<[u32]>>> = g.all_nodes().iter().map(|_| None).collect();
-//
-//    fn is_root(x: &bool) -> bool { *x }
-//
-//    for _ in 0 .. CACHING_THRESHOLD + 1 {
-//        find_roots(&g, 2, &mut visit_counts, &mut cache[..], is_root, &mut ws1, Some(&mut ws2));
-//        ws1.output.nodes.sort();
-//        assert_eq!(ws1.output.nodes, vec![8, 9, 10]);
-//
-//        find_roots(&g, 3, &mut visit_counts, &mut cache[..], is_root, &mut ws1, Some(&mut ws2));
-//        ws1.output.nodes.sort();
-//        assert_eq!(ws1.output.nodes, vec![8, 9, 10, 11]);
-//    }
-//}
+#[test]
+fn test_cached_dfs_cyclic() {
+
+    //    0       1 <---- 2       3
+    //    ^       |       ^       ^
+    //    |       v       |       |
+    //    4 ----> 5 ----> 6 ----> 7
+    //    ^       ^       ^       ^
+    //    |       |       |       |
+    //    8       9      10      11
+
+    let (graph, _nodes) = graph! {
+        // edges from above diagram, in columns, top-to-bottom:
+        n4 -> n0,
+        n8 -> n4,
+        n4 -> n5,
+        n1 -> n5,
+        n9 -> n5,
+        n2 -> n1,
+        n5 -> n6,
+        n6 -> n2,
+        n10 -> n6,
+        n6 -> n7,
+        n7 -> n3,
+        n11 -> n7,
+    };
+
+    //    0       1  2            3
+    //    ^       ^ /             ^
+    //    |       |/              |
+    //    4 ----> 5 --------------+
+    //    ^       ^ \             |
+    //    |       |  \            |
+    //    8       9   10         11
+
+    reduce(&graph, &["n8", "n9", "n10", "n11"], &["n0", "n1", "n2", "n3"], &[
+        "n10 -> n5",
+        "n11 -> n3",
+        "n4 -> n0",
+        "n4 -> n5",
+        "n5 -> n1",
+        "n5 -> n2",
+        "n5 -> n3",
+        "n8 -> n4",
+        "n9 -> n5"
+    ]);
+}
+
+/// Demonstrates the case where we don't reduce as much as we could.
+#[test]
+fn suboptimal() {
+    let (graph, _nodes) = graph! {
+        INPUT0 -> X,
+        X -> OUTPUT0,
+        X -> OUTPUT1,
+    };
+
+    reduce(&graph, &["INPUT0"], &["OUTPUT0", "OUTPUT1"], &[
+        "INPUT0 -> X",
+        "X -> OUTPUT0",
+        "X -> OUTPUT1"
+    ]);
+}
 
 #[test]
 fn test_cycle_output() {
@@ -229,7 +236,7 @@ fn test_cycle_output() {
         D -> C1,
     };
 
-    // [A] -> [C0] <-> [D]
+    // [A] -> [C0] --> [D]
     //          +----> [E]
     //                  ^
     // [B] -------------+
@@ -238,6 +245,5 @@ fn test_cycle_output() {
         "B -> E",
         "C0 -> D",
         "C0 -> E",
-        "D -> C0"
     ]);
 }
