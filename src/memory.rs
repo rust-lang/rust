@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet};
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::hir::def_id::DefId;
@@ -120,6 +120,16 @@ pub struct Memory<'a, 'tcx> {
     function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
     pub layout: &'a TargetDataLayout,
+    /// List of memory regions containing packed structures
+    /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking afterwards.
+    /// In the case where no packed structs are present, it's just a single emptyness check of a set
+    /// instead of heavily influencing all memory access code as other solutions would.
+    ///
+    /// One disadvantage of this solution is the fact that you can cast a pointer to a packed struct
+    /// to a pointer to a normal struct and if you access a field of both in the same MIR statement,
+    /// the normal struct access will succeed even though it shouldn't.
+    /// But even with mir optimizations, that situation is hard/impossible to produce.
+    packed: BTreeSet<Entry>,
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
@@ -135,6 +145,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             layout,
             memory_size: max_memory,
             memory_usage: 0,
+            packed: BTreeSet::new(),
         }
     }
 
@@ -280,8 +291,28 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx, ()> {
+    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx, ()> {
         let alloc = self.get(ptr.alloc_id)?;
+        // check whether the memory was marked as packed
+        // we select all elements that have the correct alloc_id and are within
+        // the range given by the offset into the allocation and the length
+        let start = Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: 0,
+            packed_end: ptr.offset + len,
+        };
+        let end = Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: ptr.offset + len,
+            packed_end: 0,
+        };
+        for &Entry { packed_start, packed_end, .. } in self.packed.range(start..end) {
+            // if the region we are checking is covered by a region in `packed`
+            // ignore the actual alignment
+            if packed_start <= ptr.offset && (ptr.offset + len) <= packed_end {
+                return Ok(());
+            }
+        }
         if alloc.align < align {
             return Err(EvalError::AlignmentCheckFailed {
                 has: alloc.align,
@@ -297,6 +328,32 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             })
         }
     }
+
+    pub(crate) fn mark_packed(&mut self, ptr: Pointer, len: u64) {
+        self.packed.insert(Entry {
+            alloc_id: ptr.alloc_id,
+            packed_start: ptr.offset,
+            packed_end: ptr.offset + len,
+        });
+    }
+
+    pub(crate) fn clear_packed(&mut self) {
+        self.packed.clear();
+    }
+}
+
+// The derived `Ord` impl sorts first by the first field, then, if the fields are the same
+// by the second field, and if those are the same, too, then by the third field.
+// This is exactly what we need for our purposes, since a range within an allocation
+// will give us all `Entry`s that have that `AllocId`, and whose `packed_start` is <= than
+// the one we're looking for, but not > the end of the range we're checking.
+// At the same time the `packed_end` is irrelevant for the sorting and range searching, but used for the check.
+// This kind of search breaks, if `packed_end < packed_start`, so don't do that!
+#[derive(Eq, PartialEq, Ord, PartialOrd)]
+struct Entry {
+    alloc_id: AllocId,
+    packed_start: u64,
+    packed_end: u64,
 }
 
 /// Allocation accessors
@@ -417,10 +474,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Byte accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    fn get_bytes_unchecked(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
+    fn get_bytes_unchecked(&self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         if size == 0 {
             return Ok(&[]);
         }
+        self.check_align(ptr, align, size)?;
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset + size > allocation_size {
@@ -432,10 +490,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(&alloc.bytes[offset..offset + size as usize])
     }
 
-    fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &mut [u8]> {
+    fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
         if size == 0 {
             return Ok(&mut []);
         }
+        self.check_align(ptr, align, size)?;
         let alloc = self.get_mut(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset + size > allocation_size {
@@ -451,22 +510,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_align(ptr, align)?;
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
         self.check_defined(ptr, size)?;
-        self.get_bytes_unchecked(ptr, size)
+        self.get_bytes_unchecked(ptr, size, align)
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
         if size == 0 {
             return Ok(&mut []);
         }
-        self.check_align(ptr, align)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
-        self.get_bytes_unchecked_mut(ptr, size)
+        self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
 
@@ -501,7 +558,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
         self.check_relocation_edges(src, size)?;
 
-        let src_bytes = self.get_bytes_unchecked(src, size)?.as_ptr();
+        let src_bytes = self.get_bytes_unchecked(src, size, align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
@@ -558,7 +615,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let size = self.pointer_size();
         self.check_defined(ptr, size)?;
         let endianess = self.endianess();
-        let bytes = self.get_bytes_unchecked(ptr, size)?;
+        let bytes = self.get_bytes_unchecked(ptr, size, size)?;
         let offset = read_target_uint(endianess, bytes).unwrap();
         assert_eq!(offset as u64 as u128, offset);
         let offset = offset as u64;

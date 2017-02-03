@@ -443,6 +443,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
                         let offsets = variant.offsets.iter().map(|s| s.bytes());
+                        if variant.packed {
+                            let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                            self.memory.mark_packed(ptr, variant.stride().bytes());
+                        }
                         self.assign_fields(dest, offsets, operands)?;
                     }
 
@@ -460,6 +464,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u128_unchecked();
                             let discr_size = discr.size().bytes();
+                            if variants[variant].packed {
+                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                                self.memory.mark_packed(ptr, variants[variant].stride().bytes());
+                            }
 
                             self.assign_discr_and_fields(
                                 dest,
@@ -496,6 +504,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
+                            if nonnull.packed {
+                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                                self.memory.mark_packed(ptr, nonnull.stride().bytes());
+                            }
                             if nndiscr == variant as u64 {
                                 let offsets = nonnull.offsets.iter().map(|s| s.bytes());
                                 self.assign_fields(dest, offsets, operands)?;
