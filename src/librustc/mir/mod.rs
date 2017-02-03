@@ -446,9 +446,6 @@ pub struct Terminator<'tcx> {
     pub kind: TerminatorKind<'tcx>
 }
 
-/// For use in SwitchInt, for switching on bools.
-pub static BOOL_SWITCH_FALSE: Cow<'static, [ConstInt]> = Cow::Borrowed(&[ConstInt::Infer(0)]);
-
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
@@ -543,6 +540,17 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
+    pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
+                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::Infer(0)];
+        TerminatorKind::SwitchInt {
+            discr: cond,
+            switch_ty: tcx.types.bool,
+            values: From::from(BOOL_SWITCH_FALSE),
+            targets: vec![f, t],
+        }
+    }
+
     pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::TerminatorKind::*;
         match *self {

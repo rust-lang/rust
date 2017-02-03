@@ -842,13 +842,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             (true, false) => on_set,
             (true, true) => {
                 let flag = self.drop_flag(c.path).unwrap();
-                let boolty = self.tcx.types.bool;
-                self.new_block(c, is_cleanup, TerminatorKind::SwitchInt {
-                    discr: Operand::Consume(flag),
-                    switch_ty: boolty,
-                    values: BOOL_SWITCH_FALSE.clone(),
-                    targets: vec![on_unset, on_set],
-                })
+                let term = TerminatorKind::if_(self.tcx, Operand::Consume(flag), on_set, on_unset);
+                self.new_block(c, is_cleanup, term)
             }
         }
     }
