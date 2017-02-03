@@ -31,6 +31,7 @@ rustc_resolve = { path = "../librustc_resolve" }
 rustc_save_analysis = { path = "../librustc_save_analysis" }
 rustc_trans = { path = "../librustc_trans" }
 rustc_typeck = { path = "../librustc_typeck" }
+rustc_highlight = { path = "../librustc_highlight" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }

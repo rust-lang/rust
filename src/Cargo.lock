@@ -345,6 +345,7 @@ dependencies = [
  "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_highlight 0.0.0",
  "rustc_incremental 0.0.0",
  "rustc_lint 0.0.0",
  "rustc_llvm 0.0.0",
@@ -367,6 +368,15 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_highlight"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -559,6 +569,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_highlight 0.0.0",
  "rustc_lint 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_resolve 0.0.0",

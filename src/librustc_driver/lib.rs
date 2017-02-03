@@ -30,6 +30,7 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
+#![feature(rustc_highlight)]
 
 extern crate arena;
 extern crate getopts;
@@ -52,6 +53,7 @@ extern crate rustc_resolve;
 extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
+extern crate rustc_highlight;
 extern crate serialize;
 extern crate rustc_llvm as llvm;
 #[macro_use]
@@ -76,6 +78,7 @@ use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
+use rustc_highlight::highlight::render_to_stdout_with_highlighting;
 use rustc::util::common::time;
 
 use serialize::json::ToJson;
@@ -347,6 +350,43 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
+fn print_msg(text: &str) {
+    let mut code = String::new();
+    let mut in_code = false;
+    let mut code_is_rust = false;
+    for (i, line) in text.split('\n').enumerate() {
+        // Slice off the leading newline and print.
+        if i == 0 && line.len() == 0 {
+            continue;
+        }
+        if line.starts_with("```") {
+            if in_code {
+                if code_is_rust {
+                    println!("rust");
+                    render_to_stdout_with_highlighting(code);
+                } else {
+                    render_to_stdout_with_highlighting(code);
+                }
+                code = String::new();
+                code_is_rust = false;
+            } else {
+                if line.starts_with("```rust") {
+                    code_is_rust = true;
+                }
+            }
+            in_code = !in_code;
+            println!("```");
+        } else {
+            if in_code {
+                code.push_str(&line);
+                code.push_str("\n");
+            } else {
+                println!("{}", line);
+            }
+        }
+    }
+}
+
 fn handle_explain(code: &str,
                   descriptions: &errors::registry::Registry,
                   output: ErrorOutputType) {
@@ -357,14 +397,7 @@ fn handle_explain(code: &str,
     };
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
-            // Slice off the leading newline and print.
-            print!("{}", &(&description[1..]).split("\n").map(|x| {
-                format!("{}\n", if x.starts_with("```") {
-                    "```"
-                } else {
-                    x
-                })
-            }).collect::<String>());
+            print_msg(description);
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));

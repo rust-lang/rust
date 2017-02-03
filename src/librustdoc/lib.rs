@@ -27,6 +27,7 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(rustc_highlight)]
 
 extern crate arena;
 extern crate getopts;
@@ -40,6 +41,7 @@ extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_back;
 extern crate rustc_metadata;
+extern crate rustc_highlight;
 extern crate serialize;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
@@ -73,8 +75,8 @@ pub mod core;
 pub mod doctree;
 pub mod fold;
 pub mod html {
-    pub mod highlight;
-    pub mod escape;
+    pub use rustc_highlight::highlight;
+    pub use rustc_highlight::escape;
     pub mod item_type;
     pub mod format;
     pub mod layout;
