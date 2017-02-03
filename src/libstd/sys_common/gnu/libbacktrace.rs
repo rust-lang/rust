@@ -16,6 +16,7 @@ use sys_common::backtrace::{output, output_fileline};
 pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
              symaddr: *mut libc::c_void) -> io::Result<()> {
     use ffi::CStr;
+    use mem;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////
@@ -124,7 +125,21 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     unsafe fn init_state() -> *mut backtrace_state {
         static mut STATE: *mut backtrace_state = ptr::null_mut();
         if !STATE.is_null() { return STATE }
-        STATE = backtrace_create_state(ptr::null(), 0, error_cb,
+
+        let filename = match ::sys::backtrace::gnu::get_executable_filename() {
+            Ok((filename, file)) => {
+                // filename is purposely leaked here since libbacktrace requires
+                // it to stay allocated permanently, file is also leaked so that
+                // the file stays locked
+                let filename_ptr = filename.as_ptr();
+                mem::forget(filename);
+                mem::forget(file);
+                filename_ptr
+            },
+            Err(_) => ptr::null(),
+        };
+
+        STATE = backtrace_create_state(filename, 0, error_cb,
                                        ptr::null_mut());
         STATE
     }

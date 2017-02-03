@@ -144,7 +144,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
             }
             TyKind::TraitObject(ref bounds) => {
+                let mut any_lifetime_bounds = false;
+                for bound in bounds {
+                    if let RegionTyParamBound(ref lifetime) = *bound {
+                        if any_lifetime_bounds {
+                            span_err!(self.session, lifetime.span, E0226,
+                                      "only a single explicit lifetime bound is permitted");
+                            break;
+                        }
+                        any_lifetime_bounds = true;
+                    }
+                }
                 self.no_questions_in_bounds(bounds, "trait object types", false);
+            }
+            TyKind::ImplTrait(ref bounds) => {
+                if !bounds.iter()
+                          .any(|b| if let TraitTyParamBound(..) = *b { true } else { false }) {
+                    self.err_handler().span_err(ty.span, "at least one trait must be specified");
+                }
             }
             _ => {}
         }
@@ -283,6 +300,26 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_vis(self, vis)
+    }
+
+    fn visit_generics(&mut self, g: &'a Generics) {
+        let mut seen_default = None;
+        for ty_param in &g.ty_params {
+            if ty_param.default.is_some() {
+                seen_default = Some(ty_param.span);
+            } else if let Some(span) = seen_default {
+                self.err_handler()
+                    .span_err(span, "type parameters with a default must be trailing");
+                break
+            }
+        }
+        for predicate in &g.where_clause.predicates {
+            if let WherePredicate::EqPredicate(ref predicate) = *predicate {
+                self.err_handler().span_err(predicate.span, "equality constraints are not yet \
+                                                             supported in where clauses (#20041)");
+            }
+        }
+        visit::walk_generics(self, g)
     }
 }
 

@@ -301,7 +301,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_ty_param_bound(&mut self, bounds: &'v TyParamBound) {
         walk_ty_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: &'v TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
     fn visit_variant_data(&mut self,
@@ -421,7 +421,7 @@ pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V, lifetime_def: &'v 
 
 pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
                                   trait_ref: &'v PolyTraitRef,
-                                  _modifier: &'v TraitBoundModifier)
+                                  _modifier: TraitBoundModifier)
     where V: Visitor<'v>
 {
     walk_list!(visitor, visit_lifetime_def, &trait_ref.bound_lifetimes);
@@ -547,8 +547,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPtr(ref mutable_type) => {
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyRptr(ref opt_lifetime, ref mutable_type) => {
-            walk_list!(visitor, visit_lifetime, opt_lifetime);
+        TyRptr(ref lifetime, ref mutable_type) => {
+            visitor.visit_lifetime(lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
         TyNever => {},
@@ -566,8 +566,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_ty(ty);
             visitor.visit_nested_body(length)
         }
-        TyTraitObject(ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+        TyTraitObject(ref bounds, ref lifetime) => {
+            for bound in bounds {
+                visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
+            }
+            visitor.visit_lifetime(lifetime);
         }
         TyImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
@@ -695,7 +698,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
 
 pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v TyParamBound) {
     match *bound {
-        TraitTyParamBound(ref typ, ref modifier) => {
+        TraitTyParamBound(ref typ, modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
         }
         RegionTyParamBound(ref lifetime) => {

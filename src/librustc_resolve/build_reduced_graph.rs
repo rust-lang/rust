@@ -327,21 +327,26 @@ impl<'a> Resolver<'a> {
                 let def = Def::Struct(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
+                // Record field names for error reporting.
+                let mut ctor_vis = vis;
+                let field_names = struct_def.fields().iter().filter_map(|field| {
+                    let field_vis = self.resolve_visibility(&field.vis);
+                    if ctor_vis.is_at_least(field_vis, &*self) {
+                        ctor_vis = field_vis;
+                    }
+                    field.ident.map(|ident| ident.name)
+                }).collect();
+                let item_def_id = self.definitions.local_def_id(item.id);
+                self.insert_field_names(item_def_id, field_names);
+
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if !struct_def.is_struct() {
                     let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
                                                    CtorKind::from_ast(struct_def));
-                    self.define(parent, ident, ValueNS, (ctor_def, vis, sp, expansion));
+                    self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
+                    self.struct_constructors.insert(def.def_id(), (ctor_def, ctor_vis));
                 }
-
-                // Record field names for error reporting.
-                let field_names = struct_def.fields().iter().filter_map(|field| {
-                    self.resolve_visibility(&field.vis);
-                    field.ident.map(|ident| ident.name)
-                }).collect();
-                let item_def_id = self.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
             }
 
             ItemKind::Union(ref vdata, _) => {
@@ -434,9 +439,17 @@ impl<'a> Resolver<'a> {
             Def::Variant(..) | Def::TyAlias(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, Mark::root()));
             }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
-            Def::VariantCtor(..) | Def::StructCtor(..) => {
+            Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
+            }
+            Def::StructCtor(..) => {
+                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, Mark::root()));
+
+                if let Some(struct_def_id) =
+                        self.session.cstore.def_key(def_id).parent
+                            .map(|index| DefId { krate: def_id.krate, index: index }) {
+                    self.struct_constructors.insert(struct_def_id, (def, vis));
+                }
             }
             Def::Trait(..) => {
                 let module_kind = ModuleKind::Def(def, ident.name);

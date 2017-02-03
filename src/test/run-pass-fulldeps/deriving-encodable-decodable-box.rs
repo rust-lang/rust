@@ -24,7 +24,6 @@ struct A {
 }
 
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let obj = A { foo: Box::new([true, false]) };
     let s = json::encode(&obj).unwrap();
     let obj2: A = json::decode(&s).unwrap();

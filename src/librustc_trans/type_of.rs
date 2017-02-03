@@ -38,6 +38,13 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     debug!("sizing_type_of {:?}", t);
     let _recursion_lock = cx.enter_type_of(t);
 
+    let ptr_sizing_ty = |ty: Ty<'tcx>| {
+        if cx.shared().type_is_sized(ty) {
+            Type::i8p(cx)
+        } else {
+            Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, ty)], false)
+        }
+    };
     let llsizingty = match t.sty {
         _ if !cx.shared().type_is_sized(t) => {
             Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, t)], false)
@@ -50,14 +57,12 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyFloat(t) => Type::float_from_ty(cx, t),
         ty::TyNever => Type::nil(cx),
 
-        ty::TyBox(ty) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-            if cx.shared().type_is_sized(ty) {
-                Type::i8p(cx)
-            } else {
-                Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, ty)], false)
-            }
+            ptr_sizing_ty(ty)
+        }
+        ty::TyAdt(def, _) if def.is_box() => {
+            ptr_sizing_ty(t.boxed_ty())
         }
 
         ty::TyFnDef(..) => Type::nil(cx),
@@ -131,10 +136,12 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
 pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     match ty.sty {
-        ty::TyBox(t) |
         ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
         ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !ccx.shared().type_is_sized(t) => {
             in_memory_type_of(ccx, t).ptr_to()
+        }
+        ty::TyAdt(def, _) if def.is_box() => {
+            in_memory_type_of(ccx, ty.boxed_ty()).ptr_to()
         }
         _ => bug!("expected fat ptr ty but got {:?}", ty)
     }
@@ -214,6 +221,22 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         return llty;
     }
 
+    let ptr_ty = |ty: Ty<'tcx>| {
+        if !cx.shared().type_is_sized(ty) {
+            if let ty::TyStr = ty.sty {
+                // This means we get a nicer name in the output (str is always
+                // unsized).
+                cx.str_slice_type()
+            } else {
+                let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
+                let info_ty = unsized_info_ty(cx, ty);
+                Type::struct_(cx, &[ptr_ty, info_ty], false)
+            }
+        } else {
+            in_memory_type_of(cx, ty).ptr_to()
+        }
+    };
+
     let mut llty = match t.sty {
       ty::TyBool => Type::bool(cx),
       ty::TyChar => Type::char(cx),
@@ -227,22 +250,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           adt::incomplete_type_of(cx, t, "closure")
       }
 
-      ty::TyBox(ty) |
       ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
       ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-          if !cx.shared().type_is_sized(ty) {
-              if let ty::TyStr = ty.sty {
-                  // This means we get a nicer name in the output (str is always
-                  // unsized).
-                  cx.str_slice_type()
-              } else {
-                  let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let info_ty = unsized_info_ty(cx, ty);
-                  Type::struct_(cx, &[ptr_ty, info_ty], false)
-              }
-          } else {
-              in_memory_type_of(cx, ty).ptr_to()
-          }
+          ptr_ty(ty)
+      }
+      ty::TyAdt(def, _) if def.is_box() => {
+          ptr_ty(t.boxed_ty())
       }
 
       ty::TyArray(ty, size) => {
@@ -300,7 +313,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
-        ty::TyAdt(..) | ty::TyClosure(..) if !t.is_simd() => {
+        ty::TyAdt(..) | ty::TyClosure(..) if !t.is_simd() && !t.is_box() => {
             adt::finish_type_of(cx, t, &mut llty);
         }
         _ => ()

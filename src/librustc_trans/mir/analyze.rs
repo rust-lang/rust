@@ -30,7 +30,7 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
         let ty = mircx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
         if ty.is_scalar() ||
-            ty.is_unique() ||
+            ty.is_box() ||
             ty.is_region_ptr() ||
             ty.is_simd() ||
             common::type_is_zero_size(mircx.ccx, ty)

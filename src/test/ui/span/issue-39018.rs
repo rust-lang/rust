@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str::FromStr;
+pub fn main() {
+    let x = "Hello " + "World!";
 
-pub struct Foo<'a> {
-    field: &'a str,
+    // Make sure that the span outputs a warning
+    // for not having an implementation for std::ops::Add
+    // that won't output for the above string concatenation
+    let y = World::Hello + World::Goodbye;
 }
 
-impl<'a> Foo<'a> {
-    fn bar(path: &str) -> Result<Self, ()> {
-        Ok(Foo { field: path })
-    }
-}
-
-impl<'a> FromStr for Foo<'a> {
-    type Err = ();
-    fn from_str(path: &str) -> Result<Self, ()> {
-        Ok(Foo { field: path })
-    }
+enum World {
+    Hello,
+    Goodbye,
 }

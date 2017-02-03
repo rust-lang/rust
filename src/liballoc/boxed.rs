@@ -103,6 +103,7 @@ pub struct ExchangeHeapSingleton {
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
+#[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized>(Unique<T>);
 
@@ -289,6 +290,14 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
         unsafe { mem::transmute(b) }
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
+    fn drop(&mut self) {
+        // FIXME: Do nothing, drop is currently performed by compiler.
     }
 }
 

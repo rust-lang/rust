@@ -4,7 +4,7 @@ error: cannot borrow immutable borrowed content `*a` as mutable
 17 | pub fn foo<'a>(mut a: &'a String) {
    |                       ---------- use `&'a mut String` here to make mutable
 18 |     a.push_str("foo");
-   |     ^
+   |     ^ cannot borrow as mutable
 
 error: cannot borrow immutable borrowed content `*a` as mutable
   --> $DIR/mut-arg-hint.rs:13:9
@@ -12,7 +12,7 @@ error: cannot borrow immutable borrowed content `*a` as mutable
 12 |     fn foo(mut a: &String) {
    |                   ------- use `&mut String` here to make mutable
 13 |         a.push_str("bar");
-   |         ^
+   |         ^ cannot borrow as mutable
 
 error: cannot borrow immutable borrowed content `*a` as mutable
   --> $DIR/mut-arg-hint.rs:25:9
@@ -20,7 +20,7 @@ error: cannot borrow immutable borrowed content `*a` as mutable
 24 |     pub fn foo(mut a: &String) {
    |                       ------- use `&mut String` here to make mutable
 25 |         a.push_str("foo");
-   |         ^
+   |         ^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors
 

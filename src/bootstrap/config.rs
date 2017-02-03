@@ -78,6 +78,11 @@ pub struct Config {
     pub cargo: Option<PathBuf>,
     pub local_rebuild: bool,
 
+    // dist misc
+    pub dist_sign_folder: Option<PathBuf>,
+    pub dist_upload_addr: Option<String>,
+    pub dist_gpg_password_file: Option<PathBuf>,
+
     // libstd features
     pub debug_jemalloc: bool,
     pub use_jemalloc: bool,
@@ -123,6 +128,7 @@ struct TomlConfig {
     llvm: Option<Llvm>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
+    dist: Option<Dist>,
 }
 
 /// TOML representation of various global build decisions.
@@ -164,6 +170,13 @@ struct Llvm {
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
+}
+
+#[derive(RustcDecodable, Default, Clone)]
+struct Dist {
+    sign_folder: Option<String>,
+    gpg_password_file: Option<String>,
+    upload_addr: Option<String>,
 }
 
 #[derive(RustcDecodable)]
@@ -352,6 +365,12 @@ impl Config {
             }
         }
 
+        if let Some(ref t) = toml.dist {
+            config.dist_sign_folder = t.sign_folder.clone().map(PathBuf::from);
+            config.dist_gpg_password_file = t.gpg_password_file.clone().map(PathBuf::from);
+            config.dist_upload_addr = t.upload_addr.clone();
+        }
+
         return config
     }
 
@@ -497,7 +516,7 @@ impl Config {
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    target.jemalloc = Some(parse_configure_path(value));
+                    target.jemalloc = Some(parse_configure_path(value).join("libjemalloc_pic.a"));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();

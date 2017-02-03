@@ -17,9 +17,11 @@
 //! pointer to the same value in the heap. When the last [`Rc`] pointer to a
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
-//! Shared references in Rust disallow mutation by default, and `Rc` is no
-//! exception. If you need to mutate through an [`Rc`], use [`Cell`] or
-//! [`RefCell`].
+//! Shared references in Rust disallow mutation by default, and [`Rc`]
+//! is no exception: you cannot obtain a mutable reference to
+//! something inside an [`Rc`]. If you need mutability, put a [`Cell`]
+//! or [`RefCell`] inside the [`Rc`]; see [an example of mutability
+//! inside an Rc][mutability].
 //!
 //! [`Rc`] uses non-atomic reference counting. This means that overhead is very
 //! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
@@ -214,6 +216,7 @@
 //! [upgrade]: struct.Weak.html#method.upgrade
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
 //! [assoc]: ../../book/method-syntax.html#associated-functions
+//! [mutability]: ../../std/cell/index.html#introducing-mutability-inside-of-something-immutable
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

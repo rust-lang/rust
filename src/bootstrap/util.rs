@@ -20,8 +20,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
-use filetime::FileTime;
-
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
     if target.contains("windows") {
@@ -29,13 +27,6 @@ pub fn staticlib(name: &str, target: &str) -> String {
     } else {
         format!("lib{}.a", name)
     }
-}
-
-/// Returns the last-modified time for `path`, or zero if it doesn't exist.
-pub fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path).map(|f| {
-        FileTime::from_last_modification_time(&f)
-    }).unwrap_or(FileTime::zero())
 }
 
 /// Copies a file from `src` to `dst`, attempting to use hard links and then
@@ -130,34 +121,6 @@ pub fn add_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
         list.insert(0, path);
     }
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
-}
-
-/// Returns whether `dst` is up to date given that the file or files in `src`
-/// are used to generate it.
-///
-/// Uses last-modified time checks to verify this.
-pub fn up_to_date(src: &Path, dst: &Path) -> bool {
-    let threshold = mtime(dst);
-    let meta = match fs::metadata(src) {
-        Ok(meta) => meta,
-        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
-    };
-    if meta.is_dir() {
-        dir_up_to_date(src, &threshold)
-    } else {
-        FileTime::from_last_modification_time(&meta) <= threshold
-    }
-}
-
-fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
-    t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
-        let meta = t!(e.metadata());
-        if meta.is_dir() {
-            dir_up_to_date(&e.path(), threshold)
-        } else {
-            FileTime::from_last_modification_time(&meta) < *threshold
-        }
-    })
 }
 
 /// Returns the environment variable which the dynamic library lookup path

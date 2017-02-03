@@ -19,6 +19,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
+use middle::lang_items;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
@@ -231,7 +232,11 @@ pub struct TypeckTables<'tcx> {
     /// of the struct - this is needed because it is non-trivial to
     /// normalize while preserving regions. This table is used only in
     /// MIR construction and hence is not serialized to metadata.
-    pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
+    pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>,
+
+    /// Maps a cast expression to its kind. This is keyed on the
+    /// *from* expression of the cast, not the cast itself.
+    pub cast_kinds: NodeMap<ty::cast::CastKind>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -246,7 +251,8 @@ impl<'tcx> TypeckTables<'tcx> {
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),
             liberated_fn_sigs: NodeMap(),
-            fru_field_types: NodeMap()
+            fru_field_types: NodeMap(),
+            cast_kinds: NodeMap(),
         }
     }
 
@@ -533,10 +539,6 @@ pub struct GlobalCtxt<'tcx> {
     /// expression defining the closure.
     pub closure_kinds: RefCell<DepTrackingMap<maps::ClosureKinds<'tcx>>>,
 
-    /// Maps a cast expression to its kind. This is keyed on the
-    /// *from* expression of the cast, not the cast itself.
-    pub cast_kinds: RefCell<NodeMap<ty::cast::CastKind>>,
-
     /// Maps Fn items to a collection of fragment infos.
     ///
     /// The main goal is to identify data (each of which may be moved
@@ -792,7 +794,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             closure_tys: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             closure_kinds: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
@@ -1088,7 +1089,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            TyAdt, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
             TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
@@ -1336,7 +1337,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyBox(ty))
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        let adt_def = self.lookup_adt_def(def_id);
+        let substs = self.mk_substs(iter::once(Kind::from(ty)));
+        self.mk_ty(TyAdt(adt_def, substs))
     }
 
     pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {

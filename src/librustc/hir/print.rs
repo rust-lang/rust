@@ -26,6 +26,7 @@ use syntax_pos::{self, BytePos};
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
 
+use std::cell::Cell;
 use std::io::{self, Write, Read};
 
 pub enum AnnNode<'a> {
@@ -359,9 +360,9 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_opt_lifetime(&mut self, lifetime: &Option<hir::Lifetime>) -> io::Result<()> {
-        if let Some(l) = *lifetime {
-            self.print_lifetime(&l)?;
+    pub fn print_opt_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
+        if !lifetime.is_elided() {
+            self.print_lifetime(lifetime)?;
             self.nbsp()?;
         }
         Ok(())
@@ -415,8 +416,21 @@ impl<'a> State<'a> {
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
-            hir::TyTraitObject(ref bounds) => {
-                self.print_bounds("", &bounds[..])?;
+            hir::TyTraitObject(ref bounds, ref lifetime) => {
+                let mut first = true;
+                for bound in bounds {
+                    self.nbsp()?;
+                    if first {
+                        first = false;
+                    } else {
+                        self.word_space("+")?;
+                    }
+                    self.print_poly_trait_ref(bound)?;
+                }
+                if !lifetime.is_elided() {
+                    self.word_space("+")?;
+                    self.print_lifetime(lifetime)?;
+                }
             }
             hir::TyImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
@@ -1553,65 +1567,49 @@ impl<'a> State<'a> {
                              parameters: &hir::PathParameters,
                              colons_before_params: bool)
                              -> io::Result<()> {
-        if parameters.is_empty() {
-            let infer_types = match *parameters {
-                hir::AngleBracketedParameters(ref data) => data.infer_types,
-                hir::ParenthesizedParameters(_) => false
-            };
-
-            // FIXME(eddyb) See the comment below about infer_types.
-            if !(infer_types && false) {
-                return Ok(());
-            }
-        }
-
-        if colons_before_params {
-            word(&mut self.s, "::")?
-        }
-
         match *parameters {
             hir::AngleBracketedParameters(ref data) => {
-                word(&mut self.s, "<")?;
-
-                let mut comma = false;
-                for lifetime in &data.lifetimes {
-                    if comma {
-                        self.word_space(",")?
+                let start = if colons_before_params { "::<" } else { "<" };
+                let empty = Cell::new(true);
+                let start_or_comma = |this: &mut Self| {
+                    if empty.get() {
+                        empty.set(false);
+                        word(&mut this.s, start)
+                    } else {
+                        this.word_space(",")
                     }
-                    self.print_lifetime(lifetime)?;
-                    comma = true;
+                };
+
+                if !data.lifetimes.iter().all(|lt| lt.is_elided()) {
+                    for lifetime in &data.lifetimes {
+                        start_or_comma(self)?;
+                        self.print_lifetime(lifetime)?;
+                    }
                 }
 
                 if !data.types.is_empty() {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     self.commasep(Inconsistent, &data.types, |s, ty| s.print_type(&ty))?;
-                    comma = true;
                 }
 
                 // FIXME(eddyb) This would leak into error messages, e.g.:
                 // "non-exhaustive patterns: `Some::<..>(_)` not covered".
                 if data.infer_types && false {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     word(&mut self.s, "..")?;
-                    comma = true;
                 }
 
                 for binding in data.bindings.iter() {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     self.print_name(binding.name)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
                     self.print_type(&binding.ty)?;
-                    comma = true;
                 }
 
-                word(&mut self.s, ">")?
+                if !empty.get() {
+                    word(&mut self.s, ">")?
+                }
             }
 
             hir::ParenthesizedParameters(ref data) => {

@@ -156,7 +156,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyUint(..) |
             ty::TyFloat(..) |
             ty::TyAdt(..) |
-            ty::TyBox(..) |
             ty::TyStr |
             ty::TyError |
             ty::TyArray(..) |

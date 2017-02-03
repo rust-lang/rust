@@ -5,13 +5,13 @@ error: cannot borrow immutable borrowed content `*x` as mutable
    |                         ---- use `&mut Foo` here to make mutable
 18 |     x.borrowed();
 19 |     x.borrowed_mut(); //~ ERROR cannot borrow
-   |     ^
+   |     ^ cannot borrow as mutable
 
 error: cannot borrow immutable `Box` content `*x` as mutable
   --> $DIR/borrowck-object-mutability.rs:29:5
    |
 29 |     x.borrowed_mut(); //~ ERROR cannot borrow
-   |     ^
+   |     ^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 

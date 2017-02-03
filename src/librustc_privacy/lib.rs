@@ -27,7 +27,7 @@ extern crate syntax_pos;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
@@ -475,33 +475,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
                         let expr_field = expr_fields.iter().find(|f| f.name.node == field.name);
                         let span = if let Some(f) = expr_field { f.span } else { expr.span };
                         self.check_field(span, adt, field);
-                    }
-                }
-            }
-            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
-                if let Def::StructCtor(_, CtorKind::Fn) = path.def {
-                    let adt_def = self.tcx.expect_variant_def(path.def);
-                    let private_indexes = adt_def.fields.iter().enumerate().filter(|&(_, field)| {
-                        !field.vis.is_accessible_from(self.curitem, self.tcx)
-                    }).map(|(i, _)| i).collect::<Vec<_>>();
-
-                    if !private_indexes.is_empty() {
-                        let mut error = struct_span_err!(self.tcx.sess, expr.span, E0450,
-                                                         "cannot invoke tuple struct constructor \
-                                                          with private fields");
-                        error.span_label(expr.span,
-                                         &format!("cannot construct with a private field"));
-
-                        if let Some(node_id) = self.tcx.hir.as_local_node_id(adt_def.did) {
-                            let node = self.tcx.hir.find(node_id);
-                            if let Some(hir::map::NodeStructCtor(vdata)) = node {
-                                for i in private_indexes {
-                                    error.span_label(vdata.fields()[i].span,
-                                                     &format!("private field declared here"));
-                                }
-                            }
-                        }
-                        error.emit();
                     }
                 }
             }

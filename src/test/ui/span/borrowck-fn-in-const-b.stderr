@@ -4,7 +4,7 @@ error: cannot borrow immutable borrowed content `*x` as mutable
 16 |     fn broken(x: &Vec<String>) {
    |                  ------------ use `&mut Vec<String>` here to make mutable
 17 |         x.push(format!("this is broken"));
-   |         ^
+   |         ^ cannot borrow as mutable
 
 error: aborting due to previous error
 

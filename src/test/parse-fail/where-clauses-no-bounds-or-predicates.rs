@@ -10,13 +10,13 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
+// Empty predicate list is OK
 fn equal1<T>(_: &T, _: &T) -> bool where {
-//~^ ERROR a `where` clause must have at least one predicate in it
     true
 }
 
+// Empty bound list is OK
 fn equal2<T>(_: &T, _: &T) -> bool where T: {
-//~^ ERROR each predicate in a `where` clause must have at least one bound
     true
 }
 

@@ -1412,85 +1412,19 @@ fn main() {
 ```
 "##,
 
-E0106: r##"
-This error indicates that a lifetime is missing from a type. If it is an error
-inside a function signature, the problem may be with failing to adhere to the
-lifetime elision rules (see below).
-
-Here are some simple examples of where you'll run into this error:
-
-```compile_fail,E0106
-struct Foo { x: &bool }        // error
-struct Foo<'a> { x: &'a bool } // correct
-
-enum Bar { A(u8), B(&bool), }        // error
-enum Bar<'a> { A(u8), B(&'a bool), } // correct
-
-type MyStr = &str;        // error
-type MyStr<'a> = &'a str; // correct
-```
-
-Lifetime elision is a special, limited kind of inference for lifetimes in
-function signatures which allows you to leave out lifetimes in certain cases.
-For more background on lifetime elision see [the book][book-le].
-
-The lifetime elision rules require that any function signature with an elided
-output lifetime must either have
-
- - exactly one input lifetime
- - or, multiple input lifetimes, but the function must also be a method with a
-   `&self` or `&mut self` receiver
-
-In the first case, the output lifetime is inferred to be the same as the unique
-input lifetime. In the second case, the lifetime is instead inferred to be the
-same as the lifetime on `&self` or `&mut self`.
-
-Here are some examples of elision errors:
-
-```compile_fail,E0106
-// error, no input lifetimes
-fn foo() -> &str { }
-
-// error, `x` and `y` have distinct lifetimes inferred
-fn bar(x: &str, y: &str) -> &str { }
-
-// error, `y`'s lifetime is inferred to be distinct from `x`'s
-fn baz<'a>(x: &'a str, y: &str) -> &str { }
-```
-
-[book-le]: https://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
-"##,
-
 E0107: r##"
 This error means that an incorrect number of lifetime parameters were provided
-for a type (like a struct or enum) or trait.
-
-Some basic examples include:
+for a type (like a struct or enum) or trait:
 
 ```compile_fail,E0107
-struct Foo<'a>(&'a str);
+struct Foo<'a, 'b>(&'a str, &'b str);
 enum Bar { A, B, C }
 
 struct Baz<'a> {
-    foo: Foo,     // error: expected 1, found 0
+    foo: Foo<'a>, // error: expected 2, found 1
     bar: Bar<'a>, // error: expected 0, found 1
 }
 ```
-
-Here's an example that is currently an error, but may work in a future version
-of Rust:
-
-```compile_fail,E0107
-struct Foo<'a>(&'a str);
-
-trait Quux { }
-impl Quux for Foo { } // error: expected 1, found 0
-```
-
-Lifetime elision in implementation headers was part of the lifetime elision
-RFC. It is, however, [currently unimplemented][iss15872].
-
-[iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
 E0116: r##"
@@ -4162,7 +4096,6 @@ register_diagnostics! {
 //  E0222, // Error code E0045 (variadic function must have C calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
-    E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
     E0231, // only named substitution parameters are allowed

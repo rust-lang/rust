@@ -104,10 +104,6 @@ fn runtest(me: &str) {
 }
 
 fn main() {
-    if cfg!(windows) && cfg!(target_env = "gnu") {
-        return
-    }
-
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "fail" {
         foo();

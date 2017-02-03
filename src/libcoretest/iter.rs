@@ -700,7 +700,6 @@ fn test_collect() {
 
 #[test]
 fn test_all() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let v: Box<[isize]> = Box::new([1, 2, 3, 4, 5]);
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
@@ -710,7 +709,6 @@ fn test_all() {
 
 #[test]
 fn test_any() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let v: Box<[isize]> = Box::new([1, 2, 3, 4, 5]);
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));

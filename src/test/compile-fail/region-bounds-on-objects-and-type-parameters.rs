@@ -18,7 +18,7 @@ trait SomeTrait { }
 
 // Bounds on object types:
 
-struct Foo<'a,'b,'c> {
+struct Foo<'a,'b,'c> { //~ ERROR parameter `'b` is never used
     // All of these are ok, because we can derive exactly one bound:
     a: Box<IsStatic>,
     b: Box<Is<'static>>,
@@ -28,7 +28,9 @@ struct Foo<'a,'b,'c> {
     f: Box<SomeTrait>,   // OK, defaults to 'static due to RFC 599.
     g: Box<SomeTrait+'a>,
 
-    z: Box<Is<'a>+'b+'c>, //~ ERROR only a single explicit lifetime bound is permitted
+    z: Box<Is<'a>+'b+'c>,
+    //~^ ERROR only a single explicit lifetime bound is permitted
+    //~| ERROR lifetime bound not satisfied
 }
 
 fn test<

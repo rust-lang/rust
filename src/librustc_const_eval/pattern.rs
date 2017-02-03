@@ -215,7 +215,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             }
             PatternKind::Deref { ref subpattern } => {
                 match self.ty.sty {
-                    ty::TyBox(_) => write!(f, "box ")?,
+                    ty::TyAdt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::TyRef(_, mt) => {
                         write!(f, "&")?;
                         if mt.mutbl == hir::MutMutable {

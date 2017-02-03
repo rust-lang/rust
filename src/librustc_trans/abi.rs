@@ -429,7 +429,7 @@ impl FnType {
         if !type_is_fat_ptr(ccx, ret_ty) {
             // The `noalias` attribute on the return value is useful to a
             // function ptr caller.
-            if let ty::TyBox(_) = ret_ty.sty {
+            if ret_ty.is_box() {
                 // `Box` pointer return values never alias because ownership
                 // is transferred
                 ret.attrs.set(ArgAttribute::NoAlias);
@@ -438,9 +438,13 @@ impl FnType {
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
-                ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-                ty::TyBox(ty) => {
+                ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
                     let llty = type_of::sizing_type_of(ccx, ty);
+                    let llsz = llsize_of_alloc(ccx, llty);
+                    ret.attrs.set_dereferenceable(llsz);
+                }
+                ty::TyAdt(def, _) if def.is_box() => {
+                    let llty = type_of::sizing_type_of(ccx, ret_ty.boxed_ty());
                     let llsz = llsize_of_alloc(ccx, llty);
                     ret.attrs.set_dereferenceable(llsz);
                 }
@@ -453,9 +457,9 @@ impl FnType {
         // Handle safe Rust thin and fat pointers.
         let rust_ptr_attrs = |ty: Ty<'tcx>, arg: &mut ArgType| match ty.sty {
             // `Box` pointer parameters never alias because ownership is transferred
-            ty::TyBox(inner) => {
+            ty::TyAdt(def, _) if def.is_box() => {
                 arg.attrs.set(ArgAttribute::NoAlias);
-                Some(inner)
+                Some(ty.boxed_ty())
             }
 
             ty::TyRef(b, mt) => {

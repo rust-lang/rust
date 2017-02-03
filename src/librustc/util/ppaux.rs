@@ -16,7 +16,7 @@ use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyProjection, TyAnon};
-use ty::{TyBox, TyDynamic, TyInt, TyUint, TyInfer};
+use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use std::cell::Cell;
@@ -336,13 +336,12 @@ impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::RegionParameterDef<'tcx> {
+impl fmt::Debug for ty::RegionParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {:?}, {}, {:?})",
+        write!(f, "RegionParameterDef({}, {:?}, {})",
                self.name,
                self.def_id,
-               self.index,
-               self.bounds)
+               self.index)
     }
 }
 
@@ -520,16 +519,6 @@ impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
             self.free_substs,
             self.implicit_region_bound,
             self.caller_bounds)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::ObjectLifetimeDefault<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ty::ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
-            ty::ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
-            ty::ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
-        }
     }
 }
 
@@ -719,7 +708,6 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInt(t) => write!(f, "{}", t.ty_to_string()),
             TyUint(t) => write!(f, "{}", t.ty_to_string()),
             TyFloat(t) => write!(f, "{}", t.ty_to_string()),
-            TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {
                     hir::MutMutable => "mut",

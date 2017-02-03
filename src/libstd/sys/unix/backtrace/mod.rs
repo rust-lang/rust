@@ -89,3 +89,14 @@ pub use self::tracing::write;
 mod tracing;
 // symbol resolvers:
 mod printing;
+
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "emscripten")))]
+pub mod gnu {
+    use io;
+    use fs;
+    use libc::c_char;
+
+    pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
+        Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
+    }
+}

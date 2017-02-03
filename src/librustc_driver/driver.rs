@@ -741,15 +741,15 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
          "checking for inline asm in case the target doesn't support it",
          || no_asm::check_crate(sess, &krate));
 
-    time(sess.time_passes(),
+    time(time_passes,
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));
 
-    time(sess.time_passes(),
+    time(time_passes,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
-    time(sess.time_passes(), "name resolution", || -> CompileResult {
+    time(time_passes, "name resolution", || -> CompileResult {
         // Since import resolution will eventually happen in expansion,
         // don't perform `after_expand` until after import resolution.
         after_expand(&krate)?;
@@ -770,7 +770,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })?;
 
     // Lower ast -> hir.
-    let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
+    let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, &krate, &mut resolver);
 
         if sess.opts.debugging_opts.hir_stats {
@@ -780,7 +780,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
 
-    // Discard hygiene data, which isn't required past lowering to HIR.
+    // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
         syntax::ext::hygiene::reset_hygiene_data();
     }

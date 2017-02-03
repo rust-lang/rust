@@ -196,8 +196,6 @@ impl IpAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ipaddr_checker)]
-    ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
     /// fn main() {
@@ -206,7 +204,7 @@ impl IpAddr {
     ///                false);
     /// }
     /// ```
-    #[unstable(feature = "ipaddr_checker", issue = "36949")]
+    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
         match *self {
             IpAddr::V4(_) => true,
@@ -219,8 +217,6 @@ impl IpAddr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ipaddr_checker)]
-    ///
     /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     ///
     /// fn main() {
@@ -229,7 +225,7 @@ impl IpAddr {
     ///                true);
     /// }
     /// ```
-    #[unstable(feature = "ipaddr_checker", issue = "36949")]
+    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
         match *self {
             IpAddr::V4(_) => false,

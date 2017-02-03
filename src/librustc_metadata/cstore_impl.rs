@@ -17,6 +17,7 @@ use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind, ExternC
 use rustc::middle::cstore::{NativeLibrary, LinkMeta, LinkagePreference, LoadedMacro};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
+use rustc::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -108,6 +109,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_generics(def.index, tcx)
+    }
+
+    fn item_generics_own_param_counts(&self, def: DefId) -> (usize, usize) {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).generics_own_param_counts(def.index)
+    }
+
+    fn item_generics_object_lifetime_defaults(&self, def: DefId)
+                                              -> Vec<ObjectLifetimeDefault> {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).generics_object_lifetime_defaults(def.index)
     }
 
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>

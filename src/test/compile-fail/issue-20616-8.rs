@@ -40,7 +40,7 @@ type Type_5_<'a> = Type_1_<'a, ()>;
 //type Type_7 = Box<(),,>; // error: expected type, found `,`
 
 
-type Type_8<'a,,> = &'a (); //~ error: expected identifier, found `,`
+type Type_8<'a,,> = &'a (); //~ error: expected one of `>`, identifier, or lifetime, found `,`
 
 
 //type Type_9<T,,> = Box<T>; // error: expected identifier, found `,`

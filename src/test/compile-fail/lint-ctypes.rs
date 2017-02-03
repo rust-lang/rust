@@ -34,7 +34,7 @@ extern {
     pub fn ptr_type2(size: *const Foo); //~ ERROR: found struct without
     pub fn slice_type(p: &[u32]); //~ ERROR: found Rust slice type
     pub fn str_type(p: &str); //~ ERROR: found Rust type
-    pub fn box_type(p: Box<u32>); //~ ERROR found Rust type
+    pub fn box_type(p: Box<u32>); //~ ERROR found struct without
     pub fn char_type(p: char); //~ ERROR found Rust type
     pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
     pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
@@ -42,7 +42,7 @@ extern {
     pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
     pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
     pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
-    pub fn fn_contained(p: RustBadRet); //~ ERROR: found Rust type
+    pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
 
     pub fn good1(size: *const libc::c_int);
     pub fn good2(size: *const libc::c_uint);

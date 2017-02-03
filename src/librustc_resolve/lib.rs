@@ -45,7 +45,7 @@ use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet};
+use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
@@ -1131,6 +1131,10 @@ pub struct Resolver<'a> {
     warned_proc_macros: FxHashSet<Name>,
 
     potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
+
+    // This table maps struct IDs into struct constructor IDs,
+    // it's not used during normal resolution, only for better error reporting.
+    struct_constructors: DefIdMap<(Def, ty::Visibility)>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1310,6 +1314,7 @@ impl<'a> Resolver<'a> {
             proc_macro_enabled: features.proc_macro,
             warned_proc_macros: FxHashSet(),
             potentially_unused_imports: Vec::new(),
+            struct_constructors: DefIdMap(),
         }
     }
 
@@ -2205,6 +2210,15 @@ impl<'a> Resolver<'a> {
                         _ => {}
                     },
                     _ if ns == ValueNS && is_struct_like(def) => {
+                        if let Def::Struct(def_id) = def {
+                            if let Some((ctor_def, ctor_vis))
+                                    = this.struct_constructors.get(&def_id).cloned() {
+                                if is_expected(ctor_def) && !this.is_accessible(ctor_vis) {
+                                    err.span_label(span, &format!("constructor is not visible \
+                                                                   here due to private fields"));
+                                }
+                            }
+                        }
                         err.span_label(span, &format!("did you mean `{} {{ /* fields */ }}`?",
                                                        path_str));
                         return err;
@@ -2235,7 +2249,23 @@ impl<'a> Resolver<'a> {
                 if is_expected(resolution.base_def) || resolution.base_def == Def::Err {
                     resolution
                 } else {
-                    report_errors(self, Some(resolution.base_def))
+                    // Add a temporary hack to smooth the transition to new struct ctor
+                    // visibility rules. See #38932 for more details.
+                    let mut res = None;
+                    if let Def::Struct(def_id) = resolution.base_def {
+                        if let Some((ctor_def, ctor_vis))
+                                = self.struct_constructors.get(&def_id).cloned() {
+                            if is_expected(ctor_def) && self.is_accessible(ctor_vis) {
+                                let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
+                                self.session.add_lint(lint, id, span,
+                                    "private struct constructors are not usable through \
+                                     reexports in outer modules".to_string());
+                                res = Some(PathResolution::new(ctor_def));
+                            }
+                        }
+                    }
+
+                    res.unwrap_or_else(|| report_errors(self, Some(resolution.base_def)))
                 }
             }
             Some(resolution) if source.defer_to_typeck() => {

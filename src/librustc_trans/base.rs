@@ -227,13 +227,18 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 ) -> (ValueRef, ValueRef) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::TyBox(a), &ty::TyBox(b)) |
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
+            assert!(bcx.ccx.shared().type_is_sized(a));
+            let ptr_ty = type_of::in_memory_type_of(bcx.ccx, b).ptr_to();
+            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
+        }
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+            let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bcx.ccx.shared().type_is_sized(a));
             let ptr_ty = type_of::in_memory_type_of(bcx.ccx, b).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
@@ -249,25 +254,30 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                      src_ty: Ty<'tcx>,
                                      dst: ValueRef,
                                      dst_ty: Ty<'tcx>) {
+    let coerce_ptr = || {
+        let (base, info) = if common::type_is_fat_ptr(bcx.ccx, src_ty) {
+            // fat-ptr to fat-ptr unsize preserves the vtable
+            // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
+            // So we need to pointercast the base to ensure
+            // the types match up.
+            let (base, info) = load_fat_ptr(bcx, src, src_ty);
+            let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
+            let base = bcx.pointercast(base, llcast_ty);
+            (base, info)
+        } else {
+            let base = load_ty(bcx, src, src_ty);
+            unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+        };
+        store_fat_ptr(bcx, base, info, dst, dst_ty);
+    };
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::TyBox(..), &ty::TyBox(..)) |
         (&ty::TyRef(..), &ty::TyRef(..)) |
         (&ty::TyRef(..), &ty::TyRawPtr(..)) |
         (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
-            let (base, info) = if common::type_is_fat_ptr(bcx.ccx, src_ty) {
-                // fat-ptr to fat-ptr unsize preserves the vtable
-                // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
-                // So we need to pointercast the base to ensure
-                // the types match up.
-                let (base, info) = load_fat_ptr(bcx, src, src_ty);
-                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
-                let base = bcx.pointercast(base, llcast_ty);
-                (base, info)
-            } else {
-                let base = load_ty(bcx, src, src_ty);
-                unsize_thin_ptr(bcx, base, src_ty, dst_ty)
-            };
-            store_fat_ptr(bcx, base, info, dst, dst_ty);
+            coerce_ptr()
+        }
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
+            coerce_ptr()
         }
 
         (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
@@ -414,7 +424,7 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False)
-    } else if (t.is_region_ptr() || t.is_unique()) && !common::type_is_fat_ptr(ccx, t) {
+    } else if (t.is_region_ptr() || t.is_box()) && !common::type_is_fat_ptr(ccx, t) {
         b.load_nonnull(ptr)
     } else {
         b.load(ptr)
@@ -449,7 +459,7 @@ pub fn load_fat_ptr<'a, 'tcx>(
     b: &Builder<'a, 'tcx>, src: ValueRef, t: Ty<'tcx>
 ) -> (ValueRef, ValueRef) {
     let ptr = get_dataptr(b, src);
-    let ptr = if t.is_region_ptr() || t.is_unique() {
+    let ptr = if t.is_region_ptr() || t.is_box() {
         b.load_nonnull(ptr)
     } else {
         b.load(ptr)
