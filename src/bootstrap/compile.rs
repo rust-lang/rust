@@ -21,10 +21,10 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::output;
+use build_helper::{output, mtime};
 use filetime::FileTime;
 
-use util::{exe, libdir, mtime, is_dylib, copy};
+use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
 /// Build the standard library.

@@ -10,14 +10,15 @@
 
 #![deny(warnings)]
 
-extern crate gcc;
+#[macro_use]
 extern crate build_helper;
+extern crate gcc;
 
 use std::env;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::process::Command;
-
-use build_helper::run;
+use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
@@ -66,22 +67,17 @@ fn main() {
 }
 
 fn build_libbacktrace(host: &str, target: &str) {
-    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
-    let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let build_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let build_dir = PathBuf::from(build_dir).join("libbacktrace");
+    let _ = fs::create_dir_all(&build_dir);
 
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
-
-    let mut stack = src_dir.read_dir().unwrap()
-                           .map(|e| e.unwrap())
-                           .collect::<Vec<_>>();
-    while let Some(entry) = stack.pop() {
-        let path = entry.path();
-        if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-        } else {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
+    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
+    rerun_if_changed_anything_in_dir(&src_dir);
+    let timestamp = build_dir.join("rustbuild.timestamp");
+    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
+        return
     }
 
     let compiler = gcc::Config::new().get_compiler();
@@ -105,8 +101,11 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .env("AR", &ar)
                 .env("RANLIB", format!("{} s", ar.display()))
                 .env("CFLAGS", cflags));
+
     run(Command::new(build_helper::make(host))
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
                 .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
+
+    t!(File::create(&timestamp));
 }

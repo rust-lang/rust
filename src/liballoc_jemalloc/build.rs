@@ -10,22 +10,19 @@
 
 #![deny(warnings)]
 
+#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
 use std::env;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use build_helper::run;
+use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
     println!("cargo:rerun-if-changed=build.rs");
-
-    let target = env::var("TARGET").expect("TARGET was not set");
-    let host = env::var("HOST").expect("HOST was not set");
-    let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    let src_dir = env::current_dir().unwrap();
 
     // FIXME: This is a hack to support building targets that don't
     // support jemalloc alongside hosts that do. The jemalloc build is
@@ -35,6 +32,8 @@ fn main() {
     // that the feature set used by std is the same across all
     // targets, which means we have to build the alloc_jemalloc crate
     // for targets like emscripten, even if we don't use it.
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
        target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") ||
        target.contains("redox") {
@@ -57,6 +56,28 @@ fn main() {
         return;
     }
 
+    let build_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let build_dir = PathBuf::from(build_dir).join("jemalloc");
+    let _ = fs::create_dir_all(&build_dir);
+
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=static=jemalloc");
+    } else {
+        println!("cargo:rustc-link-lib=static=jemalloc_pic");
+    }
+    println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
+    if target.contains("android") {
+        println!("cargo:rustc-link-lib=gcc");
+    } else if !target.contains("windows") && !target.contains("musl") {
+        println!("cargo:rustc-link-lib=pthread");
+    }
+    let src_dir = env::current_dir().unwrap().join("../jemalloc");
+    rerun_if_changed_anything_in_dir(&src_dir);
+    let timestamp = build_dir.join("rustbuild.timestamp");
+    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
+        return
+    }
+
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
@@ -66,23 +87,8 @@ fn main() {
         .collect::<Vec<_>>()
         .join(" ");
 
-    let mut stack = src_dir.join("../jemalloc")
-        .read_dir()
-        .unwrap()
-        .map(|e| e.unwrap())
-        .filter(|e| &*e.file_name() != ".git")
-        .collect::<Vec<_>>();
-    while let Some(entry) = stack.pop() {
-        let path = entry.path();
-        if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-        } else {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
-    }
-
     let mut cmd = Command::new("sh");
-    cmd.arg(src_dir.join("../jemalloc/configure")
+    cmd.arg(src_dir.join("configure")
                    .to_str()
                    .unwrap()
                    .replace("C:\\", "/c/")
@@ -158,6 +164,7 @@ fn main() {
     }
 
     run(&mut cmd);
+
     let mut make = Command::new(build_helper::make(&host));
     make.current_dir(&build_dir)
         .arg("build_lib_static");
@@ -170,18 +177,6 @@ fn main() {
 
     run(&mut make);
 
-    if target.contains("windows") {
-        println!("cargo:rustc-link-lib=static=jemalloc");
-    } else {
-        println!("cargo:rustc-link-lib=static=jemalloc_pic");
-    }
-    println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
-    if target.contains("android") {
-        println!("cargo:rustc-link-lib=gcc");
-    } else if !target.contains("windows") && !target.contains("musl") {
-        println!("cargo:rustc-link-lib=pthread");
-    }
-
     // The pthread_atfork symbols is used by jemalloc on android but the really
     // old android we're building on doesn't have them defined, so just make
     // sure the symbols are available.
@@ -192,4 +187,6 @@ fn main() {
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");
     }
+
+    t!(File::create(&timestamp));
 }
