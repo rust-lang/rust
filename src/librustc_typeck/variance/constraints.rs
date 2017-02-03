@@ -154,7 +154,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.hir, param_id));
         match tcx.named_region_map.defs.get(&param_id) {
-            Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id)) => lifetime_decl_id,
+            Some(&rl::Region::EarlyBound(_, lifetime_decl_id)) => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),
 
             // The lookup should only fail when `param_id` is
@@ -329,7 +329,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::TyBox(typ) |
             ty::TyArray(typ, _) |
             ty::TySlice(typ) => {
                 self.add_constraints_from_ty(generics, typ, variance);

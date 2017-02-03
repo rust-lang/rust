@@ -240,6 +240,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(LEGACY_IMPORTS),
             reference: "issue #38260 <https://github.com/rust-lang/rust/issues/38260>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
+            reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
+        },
         ]);
 
     // Register renamed and removed lints

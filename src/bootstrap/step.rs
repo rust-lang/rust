@@ -513,6 +513,9 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-compiletest", "src/tools/compiletest")
          .dep(|s| s.name("libtest"))
          .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
+    rules.build("tool-build-manifest", "src/tools/build-manifest")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
 
     // ========================================================================
     // Documentation targets
@@ -632,6 +635,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|d| d.name("dist-docs"))
          .dep(|d| d.name("dist-cargo"))
          .run(move |s| dist::extended(build, s.stage, s.target));
+
+    rules.dist("dist-sign", "hash-and-sign")
+         .host(true)
+         .only_build(true)
+         .only_host_build(true)
+         .dep(move |s| s.name("tool-build-manifest").target(&build.config.build).stage(0))
+         .run(move |_| dist::hash_and_sign(build));
 
     rules.verify();
     return rules;

@@ -14,6 +14,7 @@ pub fn target() -> TargetResult {
     let mut base = super::windows_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
+    base.eliminate_frame_pointer = false; // Required for backtraces
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.

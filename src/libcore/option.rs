@@ -60,7 +60,7 @@
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of
-//! [`i32`]. Notice that in order to use the inner [`i32`] value first the
+//! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
 //! `check_optional` function needs to use pattern matching to
 //! determine whether the box has a value (i.e. it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
@@ -74,8 +74,8 @@
 //!
 //! fn check_optional(optional: &Option<Box<i32>>) {
 //!     match *optional {
-//!         Some(ref p) => println!("have value {}", p),
-//!         None => println!("have no value"),
+//!         Some(ref p) => println!("has value {}", p),
+//!         None => println!("has no value"),
 //!     }
 //! }
 //! ```

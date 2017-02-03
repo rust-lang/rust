@@ -60,8 +60,7 @@ pub fn bytes_to_bits(bytes: u64) -> u64 {
 #[inline]
 pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
                            -> &'a CrateDebugContext<'tcx> {
-    let debug_context: &'a CrateDebugContext<'tcx> = cx.dbg_cx().as_ref().unwrap();
-    debug_context
+    cx.dbg_cx().as_ref().unwrap()
 }
 
 #[inline]

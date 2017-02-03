@@ -2175,6 +2175,10 @@ actual:\n\
            .env("LLVM_COMPONENTS", &self.config.llvm_components)
            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags);
 
+        // We don't want RUSTFLAGS set from the outside to interfere with
+        // compiler flags set in the test cases:
+        cmd.env_remove("RUSTFLAGS");
+
         if self.config.target.contains("msvc") {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.

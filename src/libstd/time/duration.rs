@@ -154,14 +154,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(std::u64::MAX, 0)), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
@@ -194,14 +192,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
@@ -232,14 +228,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
     /// assert_eq!(Duration::new(std::u64::MAX - 1, 0).checked_mul(2), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
@@ -269,15 +263,13 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
     /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
     /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {

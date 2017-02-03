@@ -396,10 +396,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
         let struct_vis = &tcx.hir.expect_item(struct_id).vis;
+        let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
+        for field in &variant.fields {
+            if ctor_vis.is_at_least(field.vis, tcx) {
+                ctor_vis = field.vis;
+            }
+        }
 
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
-            visibility: self.lazy(&ty::Visibility::from_hir(struct_vis, struct_id, tcx)),
+            visibility: self.lazy(&ctor_vis),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -417,9 +423,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics<'tcx>> {
+    fn encode_generics(&mut self, def_id: DefId) -> Lazy<Generics<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(tcx.item_generics(def_id))
+        let g = tcx.item_generics(def_id);
+        let regions = self.lazy_seq_ref(&g.regions);
+        let types = self.lazy_seq_ref(&g.types);
+        let mut object_lifetime_defaults = LazySeq::empty();
+        if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+            if let Some(o) = tcx.named_region_map.object_lifetime_defaults.get(&id) {
+                object_lifetime_defaults = self.lazy_seq_ref(o);
+            }
+        }
+        self.lazy(&Generics {
+            parent: g.parent,
+            parent_regions: g.parent_regions,
+            parent_types: g.parent_types,
+            regions: regions,
+            types: types,
+            has_self: g.has_self,
+            object_lifetime_defaults: object_lifetime_defaults,
+        })
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {

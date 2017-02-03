@@ -35,6 +35,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
+    - env: IMAGE=x86_64-gnu-incremental
 
     # OSX builders
     - env: >
@@ -43,17 +44,9 @@ matrix:
         SRC=.
       os: osx
       osx_image: xcode8.2
-      before_script: &osx_before_script >
-        ulimit -c unlimited
       install: &osx_install_sccache >
         curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
           tar xJf - -C /usr/local/bin --strip-components=1
-      after_failure: &osx_after_failure >
-        echo 'bt all' > cmds;
-        for file in $(ls /cores); do
-          echo core file $file;
-          lldb -c /cores/$file `which ld` -b -s cmds;
-        done
 
     - env: >
         SCRIPT="./x.py test && ./x.py dist"
@@ -62,18 +55,14 @@ matrix:
         DEPLOY=1
       os: osx
       osx_image: xcode8.2
-      before_script: *osx_before_script
       install: *osx_install_sccache
-      after_failure: *osx_after_failure
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
       osx_image: xcode8.2
-      before_script: *osx_before_script
       install: *osx_install_sccache
-      after_failure: *osx_after_failure
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
@@ -81,9 +70,7 @@ matrix:
         DEPLOY=1
       os: osx
       osx_image: xcode8.2
-      before_script: *osx_before_script
       install: *osx_install_sccache
-      after_failure: *osx_after_failure
 
 env:
   global:
@@ -124,9 +111,11 @@ before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          cp build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
+          rm -rf build/dist/doc &&
+          cp -r build/dist/* deploy/$TRAVIS_COMMIT;
       else
-          cp obj/build/dist/*.tar.gz deploy/$TRAVIS_COMMIT;
+          rm -rf obj/build/dist/doc &&
+          cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
 
 deploy:

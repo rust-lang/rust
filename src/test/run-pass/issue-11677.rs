@@ -27,6 +27,5 @@ impl X<isize> for F {
 }
 
 fn main() {
-  // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
   S {f: Box::new(F), g: Box::new(F) };
 }

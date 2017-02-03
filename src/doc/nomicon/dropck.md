@@ -199,23 +199,41 @@ assert (unsafely) that a generic type's destructor is *guaranteed* to
 not access any expired data, even if its type gives it the capability
 to do so.
 
-That attribute is called `unsafe_destructor_blind_to_params`.
+That attribute is called `may_dangle` and was introduced in [RFC 1327]
+(https://github.com/rust-lang/rfcs/blob/master/text/1327-dropck-param-eyepatch.md).
 To deploy it on the Inspector example from above, we would write:
 
 ```rust,ignore
 struct Inspector<'a>(&'a u8, &'static str);
 
-impl<'a> Drop for Inspector<'a> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] 'a> Drop for Inspector<'a> {
     fn drop(&mut self) {
         println!("Inspector(_, {}) knows when *not* to inspect.", self.1);
     }
 }
 ```
 
-This attribute has the word `unsafe` in it because the compiler is not
-checking the implicit assertion that no potentially expired data
+Use of this attribute requires the `Drop` impl to be marked `unsafe` because the
+compiler is not checking the implicit assertion that no potentially expired data
 (e.g. `self.0` above) is accessed.
+
+The attribute can be applied to any number of lifetime and type parameters. In
+the following example, we assert that we access no data behind a reference of
+lifetime `'b` and that the only uses of `T` will be moves or drops, but omit
+the attribute from `'a` and `U`, because we do access data with that lifetime
+and that type:
+
+```rust,ignore
+use std::fmt::Display;
+
+struct Inspector<'a, 'b, T, U: Display>(&'a u8, &'b u8, T, U);
+
+unsafe impl<'a, #[may_dangle] 'b, #[may_dangle] T, U: Display> Drop for Inspector<'a, 'b, T, U> {
+    fn drop(&mut self) {
+        println!("Inspector({}, _, _, {})", self.0, self.3);
+    }
+}
+```
 
 It is sometimes obvious that no such access can occur, like the case above.
 However, when dealing with a generic type parameter, such access can
@@ -263,7 +281,7 @@ some other method invoked by the destructor, rather than being written
 directly within it.
 
 In all of the above cases where the `&'a u8` is accessed in the
-destructor, adding the `#[unsafe_destructor_blind_to_params]`
+destructor, adding the `#[may_dangle]`
 attribute makes the type vulnerable to misuse that the borrower
 checker will not catch, inviting havoc. It is better to avoid adding
 the attribute.

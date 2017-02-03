@@ -91,12 +91,6 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     ty::TyDynamic(ref data, ..) if data.principal().is_some() => {
                         self.check_def_id(item, data.principal().unwrap().def_id());
                     }
-                    ty::TyBox(..) => {
-                        match self.tcx.lang_items.require_owned_box() {
-                            Ok(trait_id) => self.check_def_id(item, trait_id),
-                            Err(msg) => self.tcx.sess.span_fatal(item.span, &msg),
-                        }
-                    }
                     ty::TyChar => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.char_impl(),
@@ -263,6 +257,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                             .span_label(item.span, &format!("impl doesn't use types inside crate"))
                             .note(&format!("the impl does not reference any types defined in \
                                             this crate"))
+                            .note("define and implement a trait or new type instead")
                             .emit();
                         return;
                     }
@@ -320,7 +315,6 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
                         ty::TyAdt(self_def, _) => Some(self_def.did),
-                        ty::TyBox(..) => self.tcx.lang_items.owned_box(),
                         _ => None,
                     };
 

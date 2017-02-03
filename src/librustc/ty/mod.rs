@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Variance::*;
-pub use self::DtorKind::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -118,21 +117,6 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
-}
-
-#[derive(Copy, Clone)]
-pub enum DtorKind {
-    NoDtor,
-    TraitDtor
-}
-
-impl DtorKind {
-    pub fn is_present(&self) -> bool {
-        match *self {
-            TraitDtor => true,
-            _ => false
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -514,7 +498,7 @@ pub enum BorrowKind {
 
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
-    /// implicit closure bindings. It is needed when you the closure
+    /// implicit closure bindings. It is needed when the closure
     /// is borrowing or mutating a mutable referent, e.g.:
     ///
     ///    let x: &mut isize = ...;
@@ -592,24 +576,6 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-/// Default region to use for the bound of objects that are
-/// supplied as the value for this type parameter. This is derived
-/// from `T:'a` annotations appearing in the type definition.  If
-/// this is `None`, then the default is inherited from the
-/// surrounding context. See RFC #599 for details.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum ObjectLifetimeDefault<'tcx> {
-    /// Require an explicit annotation. Occurs when multiple
-    /// `T:'a` constraints are found.
-    Ambiguous,
-
-    /// Use the base default, typically 'static, but in a fn body it is a fresh variable
-    BaseDefault,
-
-    /// Use the given region as the default.
-    Specific(&'tcx Region),
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef<'tcx> {
     pub name: Name,
@@ -617,7 +583,6 @@ pub struct TypeParameterDef<'tcx> {
     pub index: u32,
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `T`, asserts data behind the parameter
@@ -625,12 +590,11 @@ pub struct TypeParameterDef<'tcx> {
     pub pure_wrt_drop: bool,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct RegionParameterDef<'tcx> {
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
-    pub bounds: Vec<&'tcx ty::Region>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
@@ -638,7 +602,7 @@ pub struct RegionParameterDef<'tcx> {
     pub pure_wrt_drop: bool,
 }
 
-impl<'tcx> RegionParameterDef<'tcx> {
+impl RegionParameterDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
             index: self.index,
@@ -659,7 +623,7 @@ pub struct Generics<'tcx> {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
     pub parent_types: u32,
-    pub regions: Vec<RegionParameterDef<'tcx>>,
+    pub regions: Vec<RegionParameterDef>,
     pub types: Vec<TypeParameterDef<'tcx>>,
     pub has_self: bool,
 }
@@ -677,7 +641,7 @@ impl<'tcx> Generics<'tcx> {
         self.parent_count() + self.own_count()
     }
 
-    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef<'tcx> {
+    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
         &self.regions[param.index as usize - self.has_self as usize]
     }
 
@@ -1322,9 +1286,11 @@ bitflags! {
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
         const IS_UNION            = 1 << 6,
+        const IS_BOX              = 1 << 7,
     }
 }
 
+#[derive(Debug)]
 pub struct VariantDef {
     /// The variant's DefId. If this is a tuple-like struct,
     /// this is the DefId of the struct's ctor.
@@ -1335,6 +1301,7 @@ pub struct VariantDef {
     pub ctor_kind: CtorKind,
 }
 
+#[derive(Debug)]
 pub struct FieldDef {
     pub did: DefId,
     pub name: Name,
@@ -1393,6 +1360,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
+        }
+        if Some(did) == tcx.lang_items.owned_box() {
+            flags = flags | AdtFlags::IS_BOX;
         }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
@@ -1486,9 +1456,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
     }
 
+    /// Returns true if this is Box<T>.
+    #[inline]
+    pub fn is_box(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_BOX)
+    }
+
     /// Returns whether this type has a destructor.
     pub fn has_dtor(&self) -> bool {
-        self.dtor_kind().is_present()
+        self.destructor.get().is_some()
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -1549,13 +1525,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn set_destructor(&self, dtor: DefId) {
         self.destructor.set(Some(dtor));
-    }
-
-    pub fn dtor_kind(&self) -> DtorKind {
-        match self.destructor.get() {
-            Some(_) => TraitDtor,
-            None => NoDtor,
-        }
     }
 
     /// Returns a simpler type such that `Self: Sized` if and only
@@ -1659,7 +1628,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyClosure(..) | TyNever => {
                 vec![]
             }

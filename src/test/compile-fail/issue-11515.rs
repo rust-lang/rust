@@ -15,7 +15,6 @@ struct Test {
 }
 
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let closure: Box<Fn()+'static> = Box::new(|| ());
     let test = box Test { func: closure }; //~ ERROR mismatched types
 }

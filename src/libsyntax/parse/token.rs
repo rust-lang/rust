@@ -80,6 +80,28 @@ impl Lit {
     }
 }
 
+fn ident_can_begin_expr(ident: ast::Ident) -> bool {
+    let ident_token: Token = Ident(ident);
+
+    !ident_token.is_any_keyword() ||
+    ident_token.is_path_segment_keyword() ||
+    [
+        keywords::Box.name(),
+        keywords::Break.name(),
+        keywords::Continue.name(),
+        keywords::False.name(),
+        keywords::For.name(),
+        keywords::If.name(),
+        keywords::Loop.name(),
+        keywords::Match.name(),
+        keywords::Move.name(),
+        keywords::Return.name(),
+        keywords::True.name(),
+        keywords::Unsafe.name(),
+        keywords::While.name(),
+    ].contains(&ident.name)
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
@@ -163,7 +185,7 @@ impl Token {
     pub fn can_begin_expr(&self) -> bool {
         match *self {
             OpenDelim(..)               => true,
-            Ident(..)                   => true,
+            Ident(ident)                => ident_can_begin_expr(ident),
             Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
@@ -180,6 +202,29 @@ impl Token {
                 NtExpr(..) => true,
                 NtIdent(..) => true,
                 NtBlock(..) => true,
+                NtPath(..) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token can appear at the start of a type.
+    pub fn can_begin_type(&self) -> bool {
+        match *self {
+            OpenDelim(Paren)            => true, // tuple
+            OpenDelim(Bracket)          => true, // array
+            Ident(..)                   => true, // type name or keyword
+            Underscore                  => true, // placeholder
+            Not                         => true, // never
+            BinOp(Star)                 => true, // raw pointer
+            BinOp(And)                  => true, // reference
+            AndAnd                      => true, // double reference
+            Lt | BinOp(Shl)             => true, // associated path
+            ModSep                      => true, // global path
+            Interpolated(ref nt) => match **nt {
+                NtTy(..) => true,
+                NtIdent(..) => true,
                 NtPath(..) => true,
                 _ => false,
             },

@@ -391,11 +391,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
-            ty::TyBox(_) => {
-                if let Some(box_did) = self.tcx.lang_items.owned_box() {
-                    self.assemble_inherent_impl_candidates_for_type(box_did);
-                }
-            }
             ty::TyParam(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }

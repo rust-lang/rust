@@ -17,7 +17,7 @@
 //! expansion).
 //!
 //! ## Ownership
-//! TokenStreams are persistant data structures construced as ropes with reference
+//! TokenStreams are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a TokenStream
 //! (such as `slice`) produces an entirely new TokenStream from the borrowed reference to
 //! the original. This essentially coerces TokenStreams into 'views' of their subparts,

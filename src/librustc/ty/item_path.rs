@@ -314,8 +314,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyDynamic(data, ..) => data.principal().map(|p| p.def_id()),
 
         ty::TyArray(subty, _) |
-        ty::TySlice(subty) |
-        ty::TyBox(subty) => characteristic_def_id_of_type(subty),
+        ty::TySlice(subty) => characteristic_def_id_of_type(subty),
 
         ty::TyRawPtr(mt) |
         ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),

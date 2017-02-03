@@ -199,7 +199,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
 
 fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, infer_is_local: InferIsLocal)
                        -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(tcx, ty, infer_is_local) {
+    if ty_is_local_constructor(ty, infer_is_local) {
         vec![]
     } else if fundamental_ty(tcx, ty) {
         ty.walk_shallow()
@@ -219,13 +219,13 @@ fn is_type_parameter(ty: Ty) -> bool {
 }
 
 fn ty_is_local(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal) -> bool {
-    ty_is_local_constructor(tcx, ty, infer_is_local) ||
+    ty_is_local_constructor(ty, infer_is_local) ||
         fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, infer_is_local))
 }
 
 fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     match ty.sty {
-        ty::TyBox(..) | ty::TyRef(..) => true,
+        ty::TyRef(..) => true,
         ty::TyAdt(def, _) => def.is_fundamental(),
         ty::TyDynamic(ref data, ..) => {
             data.principal().map_or(false, |p| tcx.has_attr(p.def_id(), "fundamental"))
@@ -234,7 +234,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     }
 }
 
-fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> bool {
+fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal)-> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
@@ -263,11 +263,6 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
 
         ty::TyAdt(def, _) => {
             def.did.is_local()
-        }
-
-        ty::TyBox(_) => { // Box<T>
-            let krate = tcx.lang_items.owned_box().map(|d| d.krate);
-            krate == Some(LOCAL_CRATE)
         }
 
         ty::TyDynamic(ref tt, ..) => {

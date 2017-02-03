@@ -26,9 +26,9 @@ trait LazyToString {
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 }
 
-// Note that the following impl doesn't error, because the trait is invalid.
 impl LazyToString for String {
     fn lazy_to_string<'a>(&'a self) -> impl Fn() -> String {
+    //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
         || self.clone()
     }
 }

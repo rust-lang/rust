@@ -28,7 +28,8 @@ use cmake;
 use gcc;
 
 use Build;
-use util::{self, up_to_date};
+use util;
+use build_helper::up_to_date;
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {

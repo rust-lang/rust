@@ -323,7 +323,6 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyBox(_) |
                 ty::TyRawPtr(_) => {
                     // simple cases that are WF if their type args are WF
                 }

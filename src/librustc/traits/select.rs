@@ -1735,7 +1735,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
-            ty::TyChar | ty::TyBox(_) | ty::TyRef(..) |
+            ty::TyChar | ty::TyRef(..) |
             ty::TyArray(..) | ty::TyClosure(..) | ty::TyNever |
             ty::TyError => {
                 // safe for everything
@@ -1788,7 +1788,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(Vec::new()))
             }
 
-            ty::TyBox(_) | ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
+            ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
             ty::TyClosure(..) |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 Never
@@ -1863,10 +1863,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyInfer(ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}",
                      t);
-            }
-
-            ty::TyBox(referent_ty) => {  // Box<T>
-                vec![referent_ty]
             }
 
             ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |

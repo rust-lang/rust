@@ -77,6 +77,13 @@ pub mod svh;
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
+
+    /// Either "'a", referring to a named lifetime definition,
+    /// or "" (aka keywords::Invalid), for elision placeholders.
+    ///
+    /// HIR lowering inserts these placeholders in type paths that
+    /// refer to type definitions needing lifetime parameters,
+    /// `&T` and `&mut T`, and trait objects without `... + 'a`.
     pub name: Name,
 }
 
@@ -86,6 +93,12 @@ impl fmt::Debug for Lifetime {
                "lifetime({}: {})",
                self.id,
                print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
+    }
+}
+
+impl Lifetime {
+    pub fn is_elided(&self) -> bool {
+        self.name == keywords::Invalid.name()
     }
 }
 
@@ -165,30 +178,6 @@ impl PathParameters {
         })
     }
 
-    pub fn is_empty(&self) -> bool {
-        match *self {
-            AngleBracketedParameters(ref data) => data.is_empty(),
-
-            // Even if the user supplied no types, something like
-            // `X()` is equivalent to `X<(),()>`.
-            ParenthesizedParameters(..) => false,
-        }
-    }
-
-    pub fn has_lifetimes(&self) -> bool {
-        match *self {
-            AngleBracketedParameters(ref data) => !data.lifetimes.is_empty(),
-            ParenthesizedParameters(_) => false,
-        }
-    }
-
-    pub fn has_types(&self) -> bool {
-        match *self {
-            AngleBracketedParameters(ref data) => !data.types.is_empty(),
-            ParenthesizedParameters(..) => true,
-        }
-    }
-
     /// Returns the types that the user wrote. Note that these do not necessarily map to the type
     /// parameters in the parenthesized case.
     pub fn types(&self) -> HirVec<&P<Ty>> {
@@ -243,12 +232,6 @@ pub struct AngleBracketedParameterData {
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
-}
-
-impl AngleBracketedParameterData {
-    fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty()
-    }
 }
 
 /// A path like `Foo(A,B) -> C`
@@ -1208,7 +1191,7 @@ pub enum Ty_ {
     /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
-    TyRptr(Option<Lifetime>, MutTy),
+    TyRptr(Lifetime, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// The never type (`!`)
@@ -1222,7 +1205,7 @@ pub enum Ty_ {
     TyPath(QPath),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TyTraitObject(TyParamBounds),
+    TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     TyImplTrait(TyParamBounds),

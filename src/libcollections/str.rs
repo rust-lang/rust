@@ -1607,7 +1607,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(str_replacen)]
     /// let s = "foo foo 123 foo";
     /// assert_eq!("new new 123 foo", s.replacen("foo", "new", 2));
     /// assert_eq!("faa fao 123 foo", s.replacen('o', "a", 3));
@@ -1617,13 +1616,10 @@ impl str {
     /// When the pattern doesn't match:
     ///
     /// ```
-    /// # #![feature(str_replacen)]
     /// let s = "this is old";
     /// assert_eq!(s, s.replacen("cookie monster", "little lamb", 10));
     /// ```
-    #[unstable(feature = "str_replacen",
-               issue = "36436",
-               reason = "only need to replace first N matches")]
+    #[stable(feature = "str_replacen", since = "1.16.0")]
     pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
         // Hope to reduce the times of re-allocation
         let mut result = String::with_capacity(32);
@@ -1795,11 +1791,9 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(repeat_str)]
-    ///
     /// assert_eq!("abc".repeat(4), String::from("abcabcabcabc"));
     /// ```
-    #[unstable(feature = "repeat_str", issue = "37079")]
+    #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
         let mut s = String::with_capacity(self.len() * n);
         s.extend((0..n).map(|_| self));

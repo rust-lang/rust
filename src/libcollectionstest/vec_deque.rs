@@ -604,6 +604,25 @@ fn test_eq() {
 }
 
 #[test]
+fn test_partial_eq_array() {
+    let d = VecDeque::<char>::new();
+    assert!(d == []);
+
+    let mut d = VecDeque::new();
+    d.push_front('a');
+    assert!(d == ['a']);
+
+    let mut d = VecDeque::new();
+    d.push_back('a');
+    assert!(d == ['a']);
+
+    let mut d = VecDeque::new();
+    d.push_back('a');
+    d.push_back('b');
+    assert!(d == ['a', 'b']);
+}
+
+#[test]
 fn test_hash() {
     let mut x = VecDeque::new();
     let mut y = VecDeque::new();
