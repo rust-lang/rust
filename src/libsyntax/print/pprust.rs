@@ -29,8 +29,6 @@ use std_inject;
 use symbol::{Symbol, keywords};
 use tokenstream::{self, TokenTree};
 
-use rustc_i128::i128;
-
 use std::ascii;
 use std::io::{self, Write, Read};
 use std::iter;

@@ -11,4 +11,3 @@ crate-type = ["dylib"]
 [dependencies]
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
-rustc_i128 = { path = "../librustc_i128" }

@@ -65,8 +65,6 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice;
 
-use rustc_i128::u128;
-
 bitflags! {
     flags Restrictions: u8 {
         const RESTRICTION_STMT_EXPR         = 1 << 0,

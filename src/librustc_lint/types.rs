@@ -33,8 +33,6 @@ use syntax::codemap;
 
 use rustc::hir;
 
-use rustc_i128::{i128, u128};
-
 declare_lint! {
     UNUSED_COMPARISONS,
     Warn,

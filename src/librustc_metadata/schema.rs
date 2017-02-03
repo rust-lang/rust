@@ -28,8 +28,6 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
-use rustc_i128::u128;
-
 pub fn rustc_version() -> String {
     format!("rustc {}",
             option_env!("CFG_VERSION").unwrap_or("unknown version"))

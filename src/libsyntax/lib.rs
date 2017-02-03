@@ -33,6 +33,7 @@
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
+#![feature(i128_type)]
 
 extern crate serialize;
 #[macro_use] extern crate log;
@@ -41,8 +42,6 @@ extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
-
-extern crate rustc_i128;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
