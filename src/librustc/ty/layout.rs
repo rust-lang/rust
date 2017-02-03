@@ -382,25 +382,8 @@ impl Integer {
         }
     }
 
-    pub fn to_attr(&self, signed: bool) -> attr::IntType {
-        match (*self, signed) {
-            (I1, false) => attr::IntType::UnsignedInt(UintTy::U8),
-            (I8, false) => attr::IntType::UnsignedInt(UintTy::U8),
-            (I16, false) => attr::IntType::UnsignedInt(UintTy::U16),
-            (I32, false) => attr::IntType::UnsignedInt(UintTy::U32),
-            (I64, false) => attr::IntType::UnsignedInt(UintTy::U64),
-            (I128, false) => attr::IntType::UnsignedInt(UintTy::U128),
-            (I1, true) => attr::IntType::SignedInt(IntTy::I8),
-            (I8, true) => attr::IntType::SignedInt(IntTy::I8),
-            (I16, true) => attr::IntType::SignedInt(IntTy::I16),
-            (I32, true) => attr::IntType::SignedInt(IntTy::I32),
-            (I64, true) => attr::IntType::SignedInt(IntTy::I64),
-            (I128, true) => attr::IntType::SignedInt(IntTy::I128),
-        }
-    }
-
     /// Find the smallest Integer type which can represent the signed value.
-    pub fn fit_signed(x: i128) -> Integer {
+    pub fn fit_signed(x: i64) -> Integer {
         match x {
             -0x0000_0000_0000_0001...0x0000_0000_0000_0000 => I1,
             -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
@@ -412,7 +395,7 @@ impl Integer {
     }
 
     /// Find the smallest Integer type which can represent the unsigned value.
-    pub fn fit_unsigned(x: u128) -> Integer {
+    pub fn fit_unsigned(x: u64) -> Integer {
         match x {
             0...0x0000_0000_0000_0001 => I1,
             0...0x0000_0000_0000_00ff => I8,
@@ -453,13 +436,13 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, ty: Ty, repr: &ReprOptions, min: i128, max: i128)
+    fn repr_discr(tcx: TyCtxt, ty: Ty, repr: &ReprOptions, min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u64
         // which can fit all i64 values, so the result remains unaffected.
-        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
+        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u64, max as u64));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let mut min_from_extern = None;
@@ -487,6 +470,7 @@ impl Integer {
         }
 
         let at_least = min_from_extern.unwrap_or(min_default);
+
         // If there are no negative values, we can use the unsigned fit.
         if min >= 0 {
             (cmp::max(unsigned_fit, at_least), false)
@@ -1198,13 +1182,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                                                             i64::min_value(),
                                                             true);
                     for v in &def.variants {
-                        let x = match def.discr_ty {
-                            attr::IntType::SignedInt(IntTy::I128) |
-                            attr::IntType::UnsignedInt(UintTy::U128) =>
-                                bug!("128-bit discriminants not yet supported"),
-                            attr::IntType::SignedInt(_) => v.disr_val as i64,
-                            attr::IntType::UnsignedInt(_) => v.disr_val as u64 as i64,
-                        };
+                        let x = v.disr_val as i128 as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
@@ -1212,7 +1190,9 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     // FIXME: should handle i128? signed-value based impl is weird and hard to
                     // grok.
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, hints, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..],
+                                                              min,
+                                                              max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1330,6 +1310,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
                 let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
+
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
