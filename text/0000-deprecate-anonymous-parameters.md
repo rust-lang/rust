@@ -24,8 +24,8 @@ propose to remove this syntax.
 # Motivation
 [motivation]: #motivation
 
-Anonymous parameters are a [historic accident]. They do not pose any
-significant problems, but lead to a number of annoyances.
+Anonymous parameters are a [historic accident]. They cause a number of technical
+annoyances.
 
 1. Surprising pattern syntax in traits
 
@@ -55,6 +55,7 @@ significant problems, but lead to a number of annoyances.
         }
     }
     ```
+
 3. Inconsistency between method declarations in traits and in extern blocks
 
     ```Rust
@@ -79,12 +80,33 @@ significant problems, but lead to a number of annoyances.
 
 None of these issues is significant, but they exist.
 
+
+Even if we exclude these technical drawbacks, it can be argued that allowing to
+omit parameter names unnecessary complicates the language. It is unnecessary
+because it does not make Rust more expressive and does not provide noticeable
+ergonomic improvements. It is trivial to add parameter name, and only a small
+fraction of method declarations actually omits it.
+
+Another drawback of this syntax is its impact on the learning curve. One needs
+to have a C background to understand that `fn foo(T);` means a function with
+single parameter of type `T`. If one comes from dynamically typed language like
+Python or JavaScript, this `T` looks more like a parameter name.
+
+Anonymous parameters also cause inconsistencies between trait definitions and
+implementations. One way to write an implementation is to copy the method
+prototypes from the trait into the impl block. With anonymous parameters this
+leads to syntax errors.
+
+
 [historic accident]: https://github.com/rust-lang/rust/pull/29406#issuecomment-151859611
 [IntelliJ Rust]: https://github.com/intellij-rust/intellij-rust/commit/1bb65c47341a04aecef5fa6817e8b2b56bfc9abb#diff-66f3ba596f0ecf74a2942b3223789ab5R41
 
 
 # Detailed design
 [design]: #detailed-design
+
+
+## Backward compatibility
 
 Removing anonymous parameters from the language is formally a breaking change.
 The breakage can be trivially and automatically fixed by adding `_:` (suggested by @nagisa):
@@ -109,23 +131,53 @@ trait Display {
 }
 ```
 
-So the proposal is just to deprecate this syntax in the hope that the removal
-would become feasible and practical in the future. The hypothetical future may
-include:
+Of the 5560 packages from crates.io, 416 include at least one usage of
+an anonymous parameter ([full report]).
+
+[full report]: https://github.com/rust-lang/rfcs/pull/1685#issuecomment-238954434
+
+
+## Benefits of deprecation
+
+So the proposal is just to deprecate this syntax. Phasing the syntax out of
+usage will mostly solve the learning curve problems. The technical problems
+would not be solved until the actual removal becomes feasible and
+practical. This hypothetical future may include:
 
 * Rust 2.0 release.
-* A tool to automatically fix deprecation warnings.
+* A widely deployed tool to automatically fix deprecation warnings.
 * Storing crates on crates.io in "elaborated" syntax independent format.
 
 Enabling deprecation early makes potential future removal easier in practice.
 
 
+## Deprecation strategy
+
+There are two possible ways to deprecate this syntax:
+
+### Hard deprecation
+
+One option is to produce a warning for anonymous parameters. This is backwards
+compatible, but in practice will force crate authors to actively change their
+code to avoid the warnings, causing code churn.
+
+### Soft deprecation
+
+Another option is to clearly document this syntax as deprecated and add an
+allow-by-default lint, a clippy lint, and an IntelliJ Rust inspection, but do
+not produce compiler warnings by default. This will make the update process more
+gradual, but will delay the benefits of deprecation.
+
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
-* Deprecation will require code changes without bringing any immediate benefits.
-  Until the deprecation is turned into a hard error the underlying issues will
-  stay.
+* Hard deprecation will cause code churn.
+
+* Soft deprecation might not be as efficient at removing the syntax from usage.
+
+* The technical issues can not be solved nicely until the deprecation is turned
+  into a hard error.
 
 * It is not clear if it will ever be possible to remove this syntax entirely.
 
@@ -145,8 +197,4 @@ Enabling deprecation early makes potential future removal easier in practice.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* How often are anonymous parameters used in practice? There is a rough
-  estimate: Servo and its dependencies omit parameter names 34 times.
-
-* Is there a consensus that anonymous parameters are not a useful language
-  feature?
+* What deprecation strategy should be chosen?
