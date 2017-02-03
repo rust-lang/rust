@@ -228,6 +228,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
                 let (values, targets, ret) = if switch_ty.sty == ty::TyBool {
+                    static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::Infer(0)];
                     assert!(options.len() > 0 && options.len() <= 2);
                     let (true_bb, false_bb) = (self.cfg.start_new_block(),
                                                self.cfg.start_new_block());
@@ -236,7 +237,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         &ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
-                    (BOOL_SWITCH_FALSE.clone(), vec![false_bb, true_bb], ret)
+                    (From::from(BOOL_SWITCH_FALSE), vec![false_bb, true_bb], ret)
                 } else {
                     // The switch may be inexhaustive so we
                     // add a catch all block
@@ -323,12 +324,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, source_info, TerminatorKind::SwitchInt {
-                        discr: Operand::Consume(eq_result),
-                        switch_ty: self.hir.bool_ty(),
-                        values: BOOL_SWITCH_FALSE.clone(),
-                        targets: vec![fail, block],
-                    });
+                    self.cfg.terminate(eq_block, source_info,
+                                       TerminatorKind::if_(self.hir.tcx(),
+                                                           Operand::Consume(eq_result),
+                                                           block, fail));
                     vec![block, fail]
                 } else {
                     let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val);
@@ -372,12 +371,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // branch based on result
                 let (false_bb, true_bb) = (self.cfg.start_new_block(),
                                            self.cfg.start_new_block());
-                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-                    discr: Operand::Consume(result),
-                    switch_ty: self.hir.bool_ty(),
-                    values: BOOL_SWITCH_FALSE.clone(),
-                    targets: vec![false_bb, true_bb],
-                });
+                self.cfg.terminate(block, source_info,
+                                   TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                                                       true_bb, false_bb));
                 vec![true_bb, false_bb]
             }
         }
@@ -400,12 +396,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-            discr: Operand::Consume(result),
-            switch_ty: self.hir.bool_ty(),
-            values: BOOL_SWITCH_FALSE.clone(),
-            targets: vec![fail_block, target_block]
-        });
+        self.cfg.terminate(block, source_info,
+                           TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                                               target_block, fail_block));
         target_block
     }
 
