@@ -39,9 +39,7 @@ impl Foo {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn method_name2() { }
 }
@@ -60,16 +58,47 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn method_body() {
         println!("Hello, world!");
     }
 }
 
-// Change Method Privacy -----------------------------------------------------------
+
+// Change Method Body (inlined) ------------------------------------------------
+//
+// This should affect the method itself, but not the impl.
+#[cfg(cfail1)]
+impl Foo {
+    #[inline]
+    pub fn method_body_inlined() { }
+}
+
+#[cfg(not(cfail1))]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+impl Foo {
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    #[inline]
+    pub fn method_body_inlined() {
+        println!("Hello, world!");
+    }
+}
+
+
+// Change Method Privacy -------------------------------------------------------
 #[cfg(cfail1)]
 impl Foo {
     pub fn method_privacy() { }
@@ -142,13 +171,11 @@ impl Foo {
 impl Foo {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_method_to_impl1(&self) { }
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_method_to_impl2(&self) { }
 }
@@ -188,9 +215,13 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    // At the moment we explicitly ignore argument names in metadata, since they
+    // are not used in downstream crates (except in rustdoc)
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_method_parameter_name(&self, b: i64) { }
 }
@@ -252,9 +283,13 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    // At the moment we explicitly ignore argument names in metadata, since they
+    // are not used in downstream crates (except in rustdoc)
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_method_parameter_order(&self, b: i64, a: i64) { }
 }
@@ -465,7 +500,7 @@ impl Bar<u32> {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl<T> Bar<T> {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
@@ -486,7 +521,7 @@ impl Bar<u32> {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Bar<u64> {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
@@ -507,7 +542,7 @@ impl<T> Bar<T> {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl<T: 'static> Bar<T> {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
@@ -528,7 +563,7 @@ impl<T> Bar<T> {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl<T: Clone> Bar<T> {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
