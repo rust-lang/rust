@@ -672,12 +672,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-                discr: cond,
-                switch_ty: self.hir.bool_ty(),
-                values: BOOL_SWITCH_FALSE.clone(),
-                targets: vec![otherwise, arm_block],
-            });
+            self.cfg.terminate(block, source_info,
+                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
             Some(otherwise)
         } else {
             let source_info = self.source_info(candidate.span);
