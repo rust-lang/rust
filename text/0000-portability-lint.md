@@ -396,17 +396,9 @@ determination about how to set up the standard library.
 The "mainstream platform" will be expressed via a new primitive `cfg` pattern
 called `std`. This is the **default portability of all crates**, unless
 opted-out (see below on "subsetting `std`"). Likewise, most items in `std` will
-initially be exported at `std` portability level. These two facts together mean
-that existing uses of `std` will continue to work without issuing any warnings.
-
-The `std` portability will include several implications, e.g.:
-
-- `std` implies `any(windows, macos, linux)`
-- `std` implies `any(target_pointer_width = "32", target_pointer_width = "64")`
-
-and so on. That means, in particular, that a `match_cfg` expression that covers
-*all* of Windows, macOS and Linux will be considered to have "mainstream
-portability" automatically.
+*initially* be exported at `std` portability level (but see subsets
+below). These two facts together mean that existing uses of `std` will continue
+to work without issuing any warnings.
 
 ### Expanding `std`
 
@@ -424,7 +416,7 @@ impl File {
 ```
 
 and the portability of `as_raw_fd` will be `all(std, unix)`. Thus, any code
-using `as_raw_fd` will need to be in a `unix` context.
+using `as_raw_fd` will need to be in a `unix` context in particular.
 
 We can thus deprecate the `std::os` module in favor of these in-place
 APIs. Doing so leverages the fact that we're using a portability *lint*: these
@@ -433,42 +425,75 @@ generate new warnings, but this is considered an acceptable change. After all,
 lints on dependencies are automatically capped, and the lint will not prevent
 code from compiling--and can be silenced.
 
-Expanding to include new atomics, SIMD, and other desired extensions should
-amount to a straightforward use of `cfg`.
+For hardware features like additional atomics or SIMD, we can use the
+`target_feature` cfg key to label the APIs -- which has to be done anyway, but
+will also do the right thing for the lint.
+
+In short, for expansions there's basically nothing to do. You just add the API
+in its natural location, with its natural `cfg`, and everything works out.
 
 ### Subsetting `std`
 
-What about subsets of `std` (or `core`)? First of all, if you apply `cfg` to
-your *crate* definition, you opt out of the default `std` portability level in
-favor of the `cfg` you write. Doing so will deny access to many APIs in `std`.
+What about subsets of `std`?
 
-Over time, APIs within `std` and `core` will be labeled with new, more narrow
-portabilities. Let's take, for example, threading--which we wish to not provide
-on platforms like Emscripten. The `std` threading APIs might be revised to use
-`cfg(threads)`, rather than `cfg(std)`; at the same time, `std` would be set up
-to imply `threads`, so that no new warnings would be generated. To check for
-compatibility with Emscripten, you can opt out of the `std` scenario, and avoid
-opting into `threads` (or use `match_cfg` if you want to do so only optionally,
-for example to use optional parallelism).
+**What use case do we want to address?** Going back to the Portability Goals
+discussed earlier, the goal of subsetting `std` is mostly about helping people
+who want *maximum portability*. For this use case, you should opt out of the
+mainstream platform, and then *whitelist* the various features you need, thus
+giving you assistance in using the minimal set of assumptions needed.
 
-Similarly, `libcore` can be annotated with new `cfg`s, like `cfg(float)` for
-floating point support.
+**Opting out of the mainstream platform**. To opt out of the `std` platform, you
+can just apply a `cfg` to your *crate* definition. The assumptions of that `cfg`
+will form the baseline for the crate.
 
-Thus, library authors shooting for maximal portability should opt out of
-`cfg(std)`, and use `cfg` as little as possible. And over time, we can allow
-increasingly fine-grained subsets of `std` by introducing new `cfg` flags.
+**Carving up `std` into whitelistable features**. When we want to provide
+subsets of `std`, we can introduce a new set of target features, along the
+following lines:
 
-## Backwards compatibility and lint evolution
+- each integer size
+- each float size
+- each atomics size
+- allocation
+- OS facilities
+  - env
+  - fs
+  - net
+  - process
+  - thread
+  - rng
 
-The fact that the portability lint is a *lint* gives us a lot of
-flexibility. Take, for example, the assumption that `std` implies `any(windows,
-macos, linux)`. Conceivably, we may want to add more mainstream platforms in the
-future. Doing so may generate new warnings--particularly for people who had used
-`match_cfg` previously to exhaustively match against these cases. But (1) it's
-merely a new *warning*, which is fine to introduce, and can be silenced; (2)
-this is actually a highly desirable outcome if we ever did add a new mainstream
-platform, since existing code would get a heads-up that it may not longer be
-compatible with all mainstream platforms.
+**To introduce these features, we would change APIs in `std` from being marked as
+`#[cfg(std)]` to instead being labeled with the particular feature**, e.g.:
+
+```rust
+// previously: #[cfg(std)]
+#[cfg(target_feature = "thread")]
+mod thread;
+
+// previously: #[cfg(std)]
+#[cfg(target_feature = "fs")]
+mod fs;
+```
+
+and so on. We can then set up axioms such that `std` *implies* all of these
+features. That way existing code written at the default portability level will
+not produce warnings when using the standard library. And in general, we can
+carve out increasingly fine-grained subsets, setting up implications between the
+previous coarse-grained features and the new subsets.
+
+On the other side, library authors shooting for maximal portability should opt
+out of `cfg(std)`, and use `cfg` as little as possible, adding features to their
+whitelist only after deciding they're truly needed, or abstracting over them
+(such as using threading for parallelism only when it was available).
+
+## Proposed rollout
+
+The most pressing problem in `std` is the desire for expansion, rather than
+subsetting, so we should start there. The `cfg` needed for expansion is totally
+straightforward, and will allow us to gain experience with the lint.
+
+Later, we can start exploring subsets of `std`, which will likely require some
+more thoughtful design to find the right granularity.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -527,6 +552,14 @@ the scenarios that arise in practice.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
+### Extensions to `cfg` itself
+
+If we allow `cfg` to go beyond simple key-value pairs, for example to talk about
+ranges, we will need to accommodate that somehow in the lint. One plausible
+approach would be to use something more like SMT solving, which incorporates
+reasoning about things like ordering constraints in addition to basic SAT
+questions.
+
 ### External libraries
 
 It's not clear what the story should be for a library like `libc`, which
@@ -538,7 +571,29 @@ approach such cases before landing the RFC.
 To what extent does this proposal obviate the need for the `std` facade? Might
 it be possible to deprecate `libcore` in favor of the "subsetting `std`" approach?
 
+### Cargo features
+
+It's unclear whether, or how, to extend this approach to deal with Cargo
+features. In particular, features are namespaced per crate, so there's no way to
+use the `cfg` system today to talk about upstream features.
+
 # Appendix: possible extensions
+
+## Subsetting `std`
+
+
+cfgs:
+
+- each integer size
+- each float size
+- each atomics size
+- allocation
+- env
+- fs
+- net
+- process
+- thread
+- OS rng
 
 ## `match_cfg`
 
