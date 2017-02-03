@@ -16,7 +16,6 @@ use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
 use symbol::{Symbol, keywords};
-use rustc_i128::u128;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

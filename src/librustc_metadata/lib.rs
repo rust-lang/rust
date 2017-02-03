@@ -20,6 +20,7 @@
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(core_intrinsics)]
+#![feature(i128_type)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -44,7 +45,6 @@ extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_llvm;
-extern crate rustc_i128;
 
 mod diagnostics;
 

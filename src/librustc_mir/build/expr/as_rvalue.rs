@@ -15,7 +15,6 @@ use std;
 use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_i128::i128;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};

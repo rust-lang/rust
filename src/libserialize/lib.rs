@@ -30,13 +30,12 @@ Core encoding and decoding interfaces.
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core_intrinsics)]
+#![feature(i128_type)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
 
 extern crate collections;
-
-extern crate rustc_i128;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
 

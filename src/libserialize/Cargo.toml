@@ -7,6 +7,3 @@ version = "0.0.0"
 name = "serialize"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
-
-[dependencies]
-rustc_i128 = { path = "../librustc_i128" }

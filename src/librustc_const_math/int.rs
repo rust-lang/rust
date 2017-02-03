@@ -11,7 +11,6 @@
 use std::cmp::Ordering;
 use syntax::attr::IntType;
 use syntax::ast::{IntTy, UintTy};
-use rustc_i128::{i128, u128};
 
 use super::is::*;
 use super::us::*;
@@ -54,7 +53,6 @@ macro_rules! bounds {
 
 mod ubounds {
     #![allow(dead_code)]
-    use rustc_i128::{u128, i128};
     bounds!{u128: 0,
         i8 I8MIN I8MAX i16 I16MIN I16MAX i32 I32MIN I32MAX i64 I64MIN I64MAX i128 I128MIN I128MAX
         u8 U8MIN U8MAX u16 U16MIN U16MAX u32 U32MIN U32MAX u64 U64MIN U64MAX u128 U128MIN U128MAX
@@ -65,12 +63,6 @@ mod ubounds {
 
 mod ibounds {
     #![allow(dead_code)]
-    use rustc_i128::i128;
-    #[cfg(stage0)]
-    pub const U64MIN: i128 = 0;
-    #[cfg(stage0)]
-    pub const U64MAX: i128 = i128::max_value();
-    #[cfg(not(stage0))]
     bounds!(i128, u64 U64MIN U64MAX);
 
     pub const U128MIN: i128 = 0;
@@ -483,10 +475,7 @@ derive_binop!(BitAnd, bitand);
 derive_binop!(BitOr, bitor);
 derive_binop!(BitXor, bitxor);
 
-#[cfg(not(stage0))]
 const I128_MIN: i128 = ::std::i128::MIN;
-#[cfg(stage0)]
-const I128_MIN: i128 = ::std::i64::MIN;
 
 fn check_division(
     lhs: ConstInt,

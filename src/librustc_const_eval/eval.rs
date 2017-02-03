@@ -37,8 +37,6 @@ use std::cmp::Ordering;
 use rustc_const_math::*;
 use rustc_errors::DiagnosticBuilder;
 
-use rustc_i128::{i128, u128};
-
 macro_rules! math {
     ($e:expr, $op:expr) => {
         match $op {

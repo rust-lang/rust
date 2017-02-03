@@ -41,7 +41,6 @@ pub mod rt {
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP};
     pub use codemap::{dummy_spanned};
-    use rustc_i128::{u128};
 
     pub trait ToTokens {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree>;

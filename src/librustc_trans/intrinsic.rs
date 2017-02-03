@@ -33,8 +33,6 @@ use builder::Builder;
 use rustc::session::Session;
 use syntax_pos::Span;
 
-use rustc_i128::u128;
-
 use std::cmp::Ordering;
 use std::iter;
 

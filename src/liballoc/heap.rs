@@ -144,14 +144,6 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 }
 
 #[cfg(not(test))]
-#[cfg(stage0)]
-#[lang = "exchange_free"]
-#[inline]
-unsafe fn exchange_free(ptr: *mut u8, old_size: usize, align: usize) {
-    deallocate(ptr, old_size, align);
-}
-
-#[cfg(not(test))]
 #[lang = "box_free"]
 #[inline]
 unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
