@@ -61,6 +61,9 @@ dependencies = [
 [[package]]
 name = "build_helper"
 version = "0.1.0"
+dependencies = [
+ "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "cargotest"
@@ -594,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "std_shim"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "core 0.0.0",
  "std 0.0.0",
@@ -653,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "test_shim"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "test 0.0.0",
 ]
