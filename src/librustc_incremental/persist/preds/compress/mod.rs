@@ -89,7 +89,7 @@ impl<'q, N, I, O> GraphReduce<'q, N, I, O>
         // correspond to the indices from the input graph
         for i in 0..in_graph.len_nodes() {
             let k = unify.new_key(());
-            assert!(k == DagId::from_in_index(NodeIndex(i)));
+            assert!(k == DagId::from_input_index(NodeIndex(i)));
         }
 
         GraphReduce { in_graph, unify, is_input, is_output }
@@ -105,8 +105,8 @@ impl<'q, N, I, O> GraphReduce<'q, N, I, O>
     }
 
     fn mark_cycle(&mut self, in_node1: NodeIndex, in_node2: NodeIndex) {
-        let dag_id1 = DagId::from_in_index(in_node1);
-        let dag_id2 = DagId::from_in_index(in_node2);
+        let dag_id1 = DagId::from_input_index(in_node1);
+        let dag_id2 = DagId::from_input_index(in_node2);
         self.unify.union(dag_id1, dag_id2);
     }
 
@@ -114,8 +114,8 @@ impl<'q, N, I, O> GraphReduce<'q, N, I, O>
     /// be a no-op unless `in_node` participates in a cycle, in which
     /// case a distinct node *may* be returned.
     fn cycle_head(&mut self, in_node: NodeIndex) -> NodeIndex {
-        let i = DagId::from_in_index(in_node);
-        self.unify.find(i).as_in_index()
+        let i = DagId::from_input_index(in_node);
+        self.unify.find(i).as_input_index()
     }
 
     #[cfg(test)]

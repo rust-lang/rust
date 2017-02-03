@@ -7,11 +7,11 @@ pub struct DagId {
 }
 
 impl DagId {
-    pub fn from_in_index(n: NodeIndex) -> Self {
+    pub fn from_input_index(n: NodeIndex) -> Self {
         DagId { index: n.0 as u32 }
     }
 
-    pub fn as_in_index(&self) -> NodeIndex {
+    pub fn as_input_index(&self) -> NodeIndex {
         NodeIndex(self.index as usize)
     }
 }
