@@ -1,6 +1,7 @@
 # powerpc-unknown-linux-gnu configuration
 CROSS_PREFIX_powerpc-unknown-linux-gnu=powerpc-linux-gnu-
 CC_powerpc-unknown-linux-gnu=$(CC)
+LINK_powerpc-unknown-linux-gnu=cc
 CXX_powerpc-unknown-linux-gnu=$(CXX)
 CPP_powerpc-unknown-linux-gnu=$(CPP)
 AR_powerpc-unknown-linux-gnu=$(AR)
