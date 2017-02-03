@@ -11,7 +11,6 @@
 #![allow(overflowing_literals)]
 
 use std::{i64, f32, f64};
-use test;
 
 mod parse;
 mod rawfp;
@@ -143,60 +142,4 @@ fn borderline_overflow() {
     // At the time of this writing, this returns Err(..), but this is a bug that should be fixed.
     // It makes no sense to enshrine that in a test, the important part is that it doesn't panic.
     let _ = s.parse::<f64>();
-}
-
-#[bench]
-fn bench_0(b: &mut test::Bencher) {
-    b.iter(|| "0.0".parse::<f64>());
-}
-
-#[bench]
-fn bench_42(b: &mut test::Bencher) {
-    b.iter(|| "42".parse::<f64>());
-}
-
-#[bench]
-fn bench_huge_int(b: &mut test::Bencher) {
-    // 2^128 - 1
-    b.iter(|| "170141183460469231731687303715884105727".parse::<f64>());
-}
-
-#[bench]
-fn bench_short_decimal(b: &mut test::Bencher) {
-    b.iter(|| "1234.5678".parse::<f64>());
-}
-
-#[bench]
-fn bench_pi_long(b: &mut test::Bencher) {
-    b.iter(|| "3.14159265358979323846264338327950288".parse::<f64>());
-}
-
-#[bench]
-fn bench_pi_short(b: &mut test::Bencher) {
-    b.iter(|| "3.141592653589793".parse::<f64>())
-}
-
-#[bench]
-fn bench_1e150(b: &mut test::Bencher) {
-    b.iter(|| "1e150".parse::<f64>());
-}
-
-#[bench]
-fn bench_long_decimal_and_exp(b: &mut test::Bencher) {
-    b.iter(|| "727501488517303786137132964064381141071e-123".parse::<f64>());
-}
-
-#[bench]
-fn bench_min_subnormal(b: &mut test::Bencher) {
-    b.iter(|| "5e-324".parse::<f64>());
-}
-
-#[bench]
-fn bench_min_normal(b: &mut test::Bencher) {
-    b.iter(|| "2.2250738585072014e-308".parse::<f64>());
-}
-
-#[bench]
-fn bench_max(b: &mut test::Bencher) {
-    b.iter(|| "1.7976931348623157e308".parse::<f64>());
 }

@@ -8,26 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use test::Bencher;
 use core::ops::{Range, RangeFull, RangeFrom, RangeTo};
-
-// Overhead of dtors
-
-struct HasDtor {
-    _x: isize
-}
-
-impl Drop for HasDtor {
-    fn drop(&mut self) {
-    }
-}
-
-#[bench]
-fn alloc_obj_with_dtor(b: &mut Bencher) {
-    b.iter(|| {
-        HasDtor { _x : 10 };
-    })
-}
 
 // Test the Range structs without the syntactic sugar.
 
