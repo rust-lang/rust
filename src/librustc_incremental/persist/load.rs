@@ -152,6 +152,11 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let directory = DefIdDirectory::decode(&mut dep_graph_decoder)?;
     let serialized_dep_graph = SerializedDepGraph::decode(&mut dep_graph_decoder)?;
 
+    let edge_map: FxHashMap<_, _> = serialized_dep_graph.edges
+                                                        .into_iter()
+                                                        .map(|s| (s.source, s.targets))
+                                                        .collect();
+
     // Retrace the paths in the directory to find their current location (if any).
     let retraced = directory.retrace(tcx);
 
@@ -166,46 +171,48 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               incremental_hashes_map,
                                               &serialized_dep_graph.hashes,
                                               &retraced);
-    let dirty_raw_nodes = transitive_dirty_nodes(&serialized_dep_graph.edges, dirty_raw_nodes);
+    let dirty_raw_nodes = transitive_dirty_nodes(&edge_map, dirty_raw_nodes);
 
     // Recreate the edges in the graph that are still clean.
     let mut clean_work_products = FxHashSet();
     let mut dirty_work_products = FxHashSet(); // incomplete; just used to suppress debug output
-    for edge in &serialized_dep_graph.edges {
-        // If the target is dirty, skip the edge. If this is an edge
-        // that targets a work-product, we can print the blame
-        // information now.
-        if let Some(blame) = dirty_raw_nodes.get(&edge.1) {
-            if let DepNode::WorkProduct(ref wp) = edge.1 {
-                if tcx.sess.opts.debugging_opts.incremental_info {
-                    if dirty_work_products.insert(wp.clone()) {
-                        // It'd be nice to pretty-print these paths better than just
-                        // using the `Debug` impls, but wev.
-                        println!("incremental: module {:?} is dirty because {:?} \
-                                  changed or was removed",
-                                 wp,
-                                 blame.map_def(|&index| {
-                                     Some(directory.def_path_string(tcx, index))
-                                 }).unwrap());
+    for (source, targets) in &edge_map {
+        for target in targets {
+            // If the target is dirty, skip the edge. If this is an edge
+            // that targets a work-product, we can print the blame
+            // information now.
+            if let Some(blame) = dirty_raw_nodes.get(target) {
+                if let DepNode::WorkProduct(ref wp) = *target {
+                    if tcx.sess.opts.debugging_opts.incremental_info {
+                        if dirty_work_products.insert(wp.clone()) {
+                            // It'd be nice to pretty-print these paths better than just
+                            // using the `Debug` impls, but wev.
+                            println!("incremental: module {:?} is dirty because {:?} \
+                                      changed or was removed",
+                                     wp,
+                                     blame.map_def(|&index| {
+                                         Some(directory.def_path_string(tcx, index))
+                                     }).unwrap());
+                        }
                     }
                 }
+                continue;
             }
-            continue;
-        }
 
-        // If the source is dirty, the target will be dirty.
-        assert!(!dirty_raw_nodes.contains_key(&edge.0));
+            // If the source is dirty, the target will be dirty.
+            assert!(!dirty_raw_nodes.contains_key(source));
 
-        // Retrace the source -> target edges to def-ids and then
-        // create an edge in the graph. Retracing may yield none if
-        // some of the data happens to have been removed; this ought
-        // to be impossible unless it is dirty, so we can unwrap.
-        let source_node = retraced.map(&edge.0).unwrap();
-        let target_node = retraced.map(&edge.1).unwrap();
-        let _task = tcx.dep_graph.in_task(target_node);
-        tcx.dep_graph.read(source_node);
-        if let DepNode::WorkProduct(ref wp) = edge.1 {
-            clean_work_products.insert(wp.clone());
+            // Retrace the source -> target edges to def-ids and then
+            // create an edge in the graph. Retracing may yield none if
+            // some of the data happens to have been removed; this ought
+            // to be impossible unless it is dirty, so we can unwrap.
+            let source_node = retraced.map(source).unwrap();
+            let target_node = retraced.map(target).unwrap();
+            let _task = tcx.dep_graph.in_task(target_node);
+            tcx.dep_graph.read(source_node);
+            if let DepNode::WorkProduct(ref wp) = *target {
+                clean_work_products.insert(wp.clone());
+            }
         }
     }
 
@@ -268,16 +275,23 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     dirty_nodes
 }
 
-fn transitive_dirty_nodes(edges: &[SerializedEdge],
+fn transitive_dirty_nodes(edge_map: &FxHashMap<DepNode<DefPathIndex>, Vec<DepNode<DefPathIndex>>>,
                           mut dirty_nodes: DirtyNodes)
                           -> DirtyNodes
 {
-    let mut len = 0;
-    while len != dirty_nodes.len() {
-        len = dirty_nodes.len();
-        for edge in edges {
-            if let Some(n) = dirty_nodes.get(&edge.0).cloned() {
-                dirty_nodes.insert(edge.1.clone(), n);
+    let mut stack: Vec<(DepNode<DefPathIndex>, DepNode<DefPathIndex>)> = vec![];
+    stack.extend(dirty_nodes.iter().map(|(s, b)| (s.clone(), b.clone())));
+    while let Some((source, blame)) = stack.pop() {
+        // we know the source is dirty (because of the node `blame`)...
+        assert!(dirty_nodes.contains_key(&source));
+
+        // ...so we dirty all the targets (with the same blame)
+        if let Some(targets) = edge_map.get(&source) {
+            for target in targets {
+                if !dirty_nodes.contains_key(target) {
+                    dirty_nodes.insert(target.clone(), blame.clone());
+                    stack.push((target.clone(), blame.clone()));
+                }
             }
         }
     }
