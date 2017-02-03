@@ -2770,8 +2770,13 @@ shorthand for `field: field`.
 Example:
 
 ```
-let a = SomeStruct { field1, field2: expression, field3 };
-let b = SomeStruct { field1: field1, field2: expression, field3: field3 };
+# #![feature(field_init_shorthand)]
+# struct Point3d { x: i32, y: i32, z: i32 }
+# let x = 0;
+# let y_value = 0;
+# let z = 0;
+Point3d { x: x, y: y_value, z: z };
+Point3d { x, y: y_value, z };
 ```
 
 ### Block expressions
