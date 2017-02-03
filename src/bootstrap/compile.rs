@@ -52,15 +52,14 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
         features.push_str(" force_alloc_system");
     }
 
-    if compiler.stage != 0 && !build.system_llvm(target) {
+    if compiler.stage != 0 && build.config.sanitizers {
         // This variable is used by the sanitizer runtime crates, e.g.
         // rustc_lsan, to build the sanitizer runtime from C code
         // When this variable is missing, those crates won't compile the C code,
         // so we don't set this variable during stage0 where llvm-config is
         // missing
-        // We also don't build the runtimes when compiling against system llvm
-        // because some distributions ship llvm packages that have a directory
-        // layout different from the one that the runtime's build system expects
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
         cargo.env("LLVM_CONFIG", build.llvm_config(target));
     }
     cargo.arg("--features").arg(features)

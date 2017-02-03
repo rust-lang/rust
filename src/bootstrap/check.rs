@@ -236,6 +236,10 @@ pub fn compiletest(build: &Build,
     cmd.env("RUSTC_BOOTSTRAP", "1");
     build.add_rust_test_threads(&mut cmd);
 
+    if build.config.sanitizers {
+        cmd.env("SANITIZER_SUPPORT", "1");
+    }
+
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
     if target.contains("android") {
@@ -332,10 +336,7 @@ pub fn krate(build: &Build,
              krate: Option<&str>) {
     let (name, path, features, root) = match mode {
         Mode::Libstd => {
-            ("libstd",
-             "src/rustc/std_shim",
-             build.std_features(),
-             "std_shim")
+            ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
         }
         Mode::Libtest => {
             ("libtest", "src/rustc/test_shim", String::new(), "test_shim")
