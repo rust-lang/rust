@@ -23,7 +23,6 @@ use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
 use middle::lang_items;
 
-use rustc_const_math::ConstInt;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult};
 
 use std::cell::RefCell;
@@ -34,14 +33,10 @@ use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::Span;
 
-use rustc_i128::i128;
-
 use hir;
 
 pub trait IntTypeExt {
     fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-                           -> Option<Disr>;
     fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
 }
 
@@ -55,19 +50,6 @@ impl IntTypeExt for attr::IntType {
 
     fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
         0
-    }
-
-    /// None = overflow
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-    -> Option<Disr> {
-        if let Some(val) = val {
-            match *self {
-                SignedInt(it) => ConstInt::new_signed(val as i128, it, tcx.sess.target.int_type),
-                UnsignedInt(it) => ConstInt::new_unsigned(val, it, tcx.sess.target.uint_type),
-            }.and_then(|l| (l + ConstInt::Infer(1)).ok()).map(|v| v.to_u128_unchecked())
-        } else {
-            Some(self.initial_discriminant(tcx))
-        }
     }
 }
 

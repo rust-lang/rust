@@ -453,7 +453,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, hints: &[attr::ReprAttr], min: i128, max: i128)
+    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hints: &[attr::ReprAttr], min: i128, max: i128)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -488,10 +488,10 @@ impl Integer {
                 }
                 attr::ReprAny => {},
                 attr::ReprPacked => {
-                    bug!("Integer::repr_discr: found #[repr(packed)] on enum");
+                    bug!("Integer::repr_discr: found #[repr(packed)] on enum {}", ty);
                 }
                 attr::ReprSimd => {
-                    bug!("Integer::repr_discr: found #[repr(simd)] on enum");
+                    bug!("Integer::repr_discr: found #[repr(simd)] on enum {}", ty);
                 }
             }
         }
@@ -1236,8 +1236,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     // FIXME: should handle i128? signed-value based impl is weird and hard to
                     // grok.
-                    let discr = Integer::from_attr(&tcx.data_layout, def.discr_ty);
-                    let signed = def.discr_ty.is_signed();
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, hints, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1352,7 +1351,9 @@ impl<'a, 'gcx, 'tcx> Layout {
                 }
 
                 // The general case.
-                let min_ity = Integer::from_attr(&tcx.data_layout, def.discr_ty);
+                let discr_max = (variants.len() - 1) as i64;
+                assert!(discr_max >= 0);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
