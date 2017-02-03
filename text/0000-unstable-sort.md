@@ -1,0 +1,213 @@
+- Feature Name: unstable_sort
+- Start Date: 2017-02-03
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
+# Summary
+[summary]: #summary
+
+Add an unstable sort to libcore.
+
+# Motivation
+[motivation]: #motivation
+
+At the moment, the only sort function we have in libstd is `slice::sort`. It is stable,
+allocates additional memory, and is unavailable in `#![no_std]` environments.
+
+**Q: What is stability?**<br>
+A: A sort function is stable if it doesn't reorder equal elements. For example:
+```rust
+let mut orig = vec![(0, 5), (0, 4)];
+let mut v = orig.clone();
+
+// Stable sort preserves the original order of equal elements.
+v.sort_by_key(|p| p.0);
+assert!(orig == v); // OK!
+
+/// Unstable sort may or may not preserve the original order.
+v.unstable_sort_by_key(|p| p.0);
+assert!(orig == v); // MAY FAIL!
+```
+
+**Q: When is stability useful?**<br>
+A: Not very often. A typical example is sorting columns in interactive GUI tables.
+If you want to have rows sorted by column X while breaking ties by column Y, you
+first have to click on column Y and then click on column X.
+
+**Q: Can stable sort be performed using unstable sort?**<br>
+A: Yes. If we transform `[T]` into `[(T, usize)]` by pairing every element with it's
+index, then perform unstable sort, and finally remove indices, the result will be
+equivalent to stable sort.
+
+**Q: Why is `slice::sort` stable?**<br>
+A: Because stability is a good default. A programmer might call a sort function
+without checking in the documentation whether it is stable or unstable. It is very
+inutitive to assume stability, so having `slice::sort` perform unstable sorting might
+cause unpleasant surprises.
+
+**Q: Why does `slice::sort` allocate?**<br>
+A: It is possible to implement a non-allocating stable sort, but it would be
+considerably slower.
+
+**Q: Why is `slice::sort` not compatible with `#![no_std]`?**<br>
+A: Because it allocates additional memory.
+
+**Q: How much faster can unstable sort be?**<br>
+A: Sorting 64-bit integers using [pdqsort][stjepang-pdqsort] (an
+unstable sort implementation) is **40% faster** than using `slice::sort`.
+Detailed benchmarks are [here](https://github.com/stjepang/pdqsort#extensive-benchmarks).
+
+**Q: Can unstable sorting benefit from allocation?**<br>
+A: Generally, no. There is no fundamental property in computer science saying so,
+but this has always been true in practice. Zero-allocation and instability go
+hand in hand.
+
+Stable sorting, although a good default, is very rarely useful. Users much more often
+value higher performance, lower memory overhead, and compatibility with `#![no_std]`.
+
+Having a really performant, non-allocating sort function in libcore would cover these
+needs. At the moment, Rust is compromising on these highly regarded qualities for a
+systems programming language by not offering a built-in alternative.
+
+The API will consist of three functions that mirror the current sort in libstd:
+
+1. `core::slice::unstable_sort`
+2. `core::slice::unstable_sort_by`
+3. `core::slice::unstable_sort_by_key`
+
+By contrast, C++ has functions `std::sort` and `std::stable_sort`, where the
+defaults are set up the other way around.
+
+# Detailed design
+[design]: #detailed-design
+
+Let's see what kinds of unstable sort algorithms other languages most commonly use:
+
+* C: quicksort
+* C++: introsort
+* D: introsort
+* Swift: introsort
+* Go: introsort
+* Crystal: introsort
+* Java: dual-pivot quicksort
+
+The most popular sort is definitely introsort. Introsort is an implementation
+of quicksort that limits recursion depth. As soon as depth exceeds `2 * log(n)`,
+it switches to heapsort in order to guarantee `O(n log n)` worst-case. This
+method combines the best of both worlds: great average performance of
+quicksort with great worst-case performance of heapsort.
+
+Java (talking about `Arrays.sort`, not `Collections.sort`) uses dual-pivot
+quicksort. It is an improvement of quicksort that chooses two pivots for finer
+grained partitioning, offering better performance in practice.
+
+A very interesting improvement of introsort is [pattern-defeating quicksort][orlp-pdqsort],
+offering substantially better performance in common cases. One of the key
+tricks pdqsort uses is block partitioning described in paper [BlockQuicksort][blockquicksort].
+This algorithm still hasn't been built into in any programming language's
+standard library, but there are plans to include it into some C++ implementations.
+
+Block partitioning is incompatible with dual-pivot method, but offers much
+larger gains in performance. For all these reasons, unstable sort in libcore
+will be based on pdqsort. Proposed implementaton is available in
+[pdqsort][stjepang-pdqsort] crate.
+
+**Interface**
+
+```rust
+pub trait SliceExt {
+    type Item;
+
+    // ...
+
+    fn unstable_sort(&mut self)
+        where Self::Item: Ord;
+
+    fn unstable_sort_by<F>(&mut self, compare: F)
+        where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
+  
+    fn unstable_sort_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord;
+}
+```
+
+**Examples**
+
+```rust
+let mut v = [-5i32, 4, 1, -3, 2];
+
+v.unstable_sort();
+assert!(v == [-5, -3, 1, 2, 4]);
+
+v.unstable_sort_by(|a, b| b.cmp(a));
+assert!(v == [4, 2, 1, -3, -5]);
+
+v.unstable_sort_by_key(|k| k.abs());
+assert!(v == [1, 2, -3, 4, -5]);
+```
+
+In most cases it's sufficient to prepend `sort` with `unstable_` and
+instantly benefit from higher performance and lower memory use.
+
+**Q: Is `slice::sort` ever faster than pdqsort?**<br>
+A: Yes, there are a few cases where it is faster. For example, if the slice
+consists of several pre-sorted sequences concatenated one after another, then
+`slice::sort` will most probably be faster. But other than that, it should be
+generally slower than pdqsort.
+
+**Q: What about radix sort?**<br>
+A: Radix sort is usually blind to patterns in slices. It treats totally random
+and partially sorted the same way. It is probably possible to improve it
+by combining it with other techniques until it becomes a hybrid sort. Moreover,
+radix sort is incompatible with comparison-based sorting, which makes it
+an awkward choice for a general-purpose API. On top of all this, it's
+not even that much faster than pdqsort anyway.
+
+# How We Teach This
+[how-we-teach-this]: #how-we-teach-this
+
+Stability is a confusing and loaded term. Function `slice::unstable_sort` might be
+misunderstood as a function that has unstable API. That said, there is no
+less confusing alternative to "unstable sorting". Documentation should
+clearly state what "stable" and "unstable" mean.
+
+`slice::unstable_sort` will be mentioned in the documentation for `slice::sort`
+as a faster non-allocating alternative. The documentation for
+`slice::unstable_sort` must also clearly state that it guarantees no allocation.
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+The implementation of sort algorithms will grow bigger, and there will be more
+code to review.
+
+It might be surprising to discover cases where `slice::sort` is faster than
+`slice::unstable_sort`. However, these peculiarities can be explained in
+documentation.
+
+# Alternatives
+[alternatives]: #alternatives
+
+Unstable sorting is indistinguishable from stable sorting when sorting
+primitive integers. It's possible to specialize `slice::sort` to fall back
+to `slice::unstable_sort`. This would improve performance for primitive integers in
+most cases, but patching cases type by type with different algorithms makes
+performance more inconsistent and less predictable.
+
+Unstable sort guarantees no allocation. Instead of naming it `slice::unstable_sort`,
+it could also be named `slice::noalloc_sort` or `slice::noalloc_unstable_sort`.
+This may slightly improve clarity, but feels much more awkward.
+
+Unstable sort can also be provided as a standalone crate instead of
+within the standard library. However, every other systems programming language
+has a fast unstable sort in standard library, so why shouldn't Rust, too?
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+None.
+
+[orlp-pdqsort]: https://github.com/orlp/pdqsort
+[stjepang-pdqsort]: https://github.com/stjepang/pdqsort
+[blockquicksort]: http://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf 
