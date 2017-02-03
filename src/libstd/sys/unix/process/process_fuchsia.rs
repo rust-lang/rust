@@ -165,7 +165,7 @@ impl Process {
         Ok(ExitStatus::new(proc_info.rec.return_code))
     }
 
-    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         use default::Default;
         use sys::process::magenta::*;
 
@@ -179,7 +179,7 @@ impl Process {
             match status {
                 0 => { }, // Success
                 x if x == ERR_TIMED_OUT => {
-                    return Err(io::Error::from(io::ErrorKind::WouldBlock));
+                    return Ok(None);
                 },
                 _ => { panic!("Failed to wait on process handle: {}", status); },
             }
@@ -192,7 +192,7 @@ impl Process {
             return Err(io::Error::new(io::ErrorKind::InvalidData,
                                       "Failed to get exit status of process"));
         }
-        Ok(ExitStatus::new(proc_info.rec.return_code))
+        Ok(Some(ExitStatus::new(proc_info.rec.return_code)))
     }
 }
 
