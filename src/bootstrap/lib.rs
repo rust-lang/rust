@@ -717,10 +717,6 @@ impl Build {
         }
     }
 
-    fn system_llvm(&self, target: &str) -> bool {
-        self.config.target_config.get(target).map(|t| t.system_llvm).unwrap_or(false)
-    }
-
     /// Returns the path to `FileCheck` binary for the specified target
     fn llvm_filecheck(&self, target: &str) -> PathBuf {
         let target_config = self.config.target_config.get(target);

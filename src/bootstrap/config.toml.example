@@ -124,6 +124,9 @@
 # disabled by default.
 #extended = false
 
+# Build the sanitizer runtimes
+#sanitizers = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================

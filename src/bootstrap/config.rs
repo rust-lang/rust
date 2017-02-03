@@ -48,6 +48,7 @@ pub struct Config {
     pub target_config: HashMap<String, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
+    pub sanitizers: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -108,8 +109,6 @@ pub struct Config {
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
 pub struct Target {
-    // `true` if compiling against system LLVM or a pre-built LLVM
-    pub system_llvm: bool,
     pub llvm_config: Option<PathBuf>,
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
@@ -150,6 +149,7 @@ struct Build {
     python: Option<String>,
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
+    sanitizers: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -294,6 +294,7 @@ impl Config {
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
+        set(&mut config.sanitizers, build.sanitizers);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
@@ -437,6 +438,7 @@ impl Config {
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
+                ("SANITIZERS", self.sanitizers),
             }
 
             match key {
@@ -514,7 +516,6 @@ impl Config {
                                      .or_insert(Target::default());
                     let root = parse_configure_path(value);
                     target.llvm_config = Some(push_exe_path(root, &["bin", "llvm-config"]));
-                    target.system_llvm = true;
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
