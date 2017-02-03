@@ -668,9 +668,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-            ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-            ty::TyBox(ty) => !self.type_is_sized(ty),
+            ty::TyRawPtr(ref tam) |
+            ty::TyRef(_, ref tam) => !self.type_is_sized(tam.ty),
+            ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
             _ => false,
         }
     }
@@ -714,26 +714,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         Ok((offset, ty))
     }
+    fn get_fat_field(&self, pointee_ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
+        match (field_index, &self.tcx.struct_tail(pointee_ty).sty) {
+            (1, &ty::TyStr) |
+            (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
+            (1, &ty::TyDynamic(..)) |
+            (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.u8)),
+            _ => bug!("invalid fat pointee type: {}", pointee_ty),
+        }
+    }
 
     pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match ty.sty {
+            ty::TyAdt(adt_def, _) if adt_def.is_box() => self.get_fat_field(ty.boxed_ty(), field_index),
             ty::TyAdt(adt_def, substs) => {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
 
             ty::TyTuple(fields) => Ok(fields[field_index]),
 
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyBox(ty) => {
-                match (field_index, &self.tcx.struct_tail(ty).sty) {
-                    (1, &ty::TyStr) |
-                    (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
-                    (1, &ty::TyDynamic(..)) |
-                    (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.u8)),
-                    _ => bug!("invalid fat pointee type: {}", ty),
-                }
-            }
+            ty::TyRef(_, ref tam) |
+            ty::TyRawPtr(ref tam) => self.get_fat_field(tam.ty, field_index),
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
     }
@@ -1076,9 +1077,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyFnPtr(_) => PrimValKind::FnPtr,
 
-            ty::TyBox(ty) |
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if self.type_is_sized(ty) => PrimValKind::Ptr,
+            ty::TyRef(_, ref tam) |
+            ty::TyRawPtr(ref tam) if self.type_is_sized(tam.ty) => PrimValKind::Ptr,
+
+            ty::TyAdt(ref def, _) if def.is_box() => PrimValKind::Ptr,
 
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
@@ -1132,6 +1134,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    fn read_ptr(&mut self, ptr: Pointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        let p = self.memory.read_ptr(ptr)?;
+        if self.type_is_sized(pointee_ty) {
+            Ok(Value::ByVal(PrimVal::Ptr(p)))
+        } else {
+            trace!("reading fat pointer extra of type {}", pointee_ty);
+            let extra = ptr.offset(self.memory.pointer_size());
+            let extra = match self.tcx.struct_tail(pointee_ty).sty {
+                ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
+                ty::TySlice(..) |
+                ty::TyStr => PrimVal::from_u128(self.memory.read_usize(extra)? as u128),
+                _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
+            };
+            Ok(Value::ByValPair(PrimVal::Ptr(p), extra))
+        }
+    }
+
     fn try_read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
@@ -1175,26 +1194,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
             ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::Ptr)?,
-            ty::TyBox(ty) |
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-                let p = self.memory.read_ptr(ptr)?;
-                if self.type_is_sized(ty) {
-                    PrimVal::Ptr(p)
-                } else {
-                    trace!("reading fat pointer extra of type {}", ty);
-                    let extra = ptr.offset(self.memory.pointer_size());
-                    let extra = match self.tcx.struct_tail(ty).sty {
-                        ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
-                        ty::TySlice(..) |
-                        ty::TyStr => PrimVal::from_u128(self.memory.read_usize(extra)? as u128),
-                        _ => bug!("unsized primval ptr read from {:?}", ty),
-                    };
-                    return Ok(Some(Value::ByValPair(PrimVal::Ptr(p), extra)));
-                }
-            }
+            ty::TyRef(_, ref tam) |
+            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, tam.ty).map(Some),
 
-            ty::TyAdt(..) => {
+            ty::TyAdt(def, _) => {
+                if def.is_box() {
+                    return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
+                }
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
@@ -1230,6 +1236,45 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.frame().substs
     }
 
+    fn unsize_into_ptr(
+        &mut self,
+        src: Value,
+        src_ty: Ty<'tcx>,
+        dest: Lvalue<'tcx>,
+        dest_ty: Ty<'tcx>,
+        sty: Ty<'tcx>,
+        dty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, ()> {
+        // A<Struct> -> A<Trait> conversion
+        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
+
+        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
+            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+                let ptr = src.read_ptr(&self.memory)?;
+                let len = PrimVal::from_u128(length as u128);
+                let ptr = PrimVal::Ptr(ptr);
+                self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)
+            }
+            (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
+                // For now, upcasts are limited to changes in marker
+                // traits, and hence never actually require an actual
+                // change to the vtable.
+                self.write_value(src, dest, dest_ty)
+            },
+            (_, &ty::TyDynamic(ref data, _)) => {
+                let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
+                let trait_ref = self.tcx.erase_regions(&trait_ref);
+                let vtable = self.get_vtable(trait_ref)?;
+                let ptr = src.read_ptr(&self.memory)?;
+                let ptr = PrimVal::Ptr(ptr);
+                let extra = PrimVal::Ptr(vtable);
+                self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)
+            },
+
+            _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
+        }
+    }
+
     fn unsize_into(
         &mut self,
         src: Value,
@@ -1238,40 +1283,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match (&src_ty.sty, &dest_ty.sty) {
-            (&ty::TyBox(sty), &ty::TyBox(dty)) |
-            (&ty::TyRef(_, ty::TypeAndMut { ty: sty, .. }), &ty::TyRef(_, ty::TypeAndMut { ty: dty, .. })) |
-            (&ty::TyRef(_, ty::TypeAndMut { ty: sty, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: dty, .. })) |
-            (&ty::TyRawPtr(ty::TypeAndMut { ty: sty, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: dty, .. })) => {
-                // A<Struct> -> A<Trait> conversion
-                let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
-
-                match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-                    (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                        let ptr = src.read_ptr(&self.memory)?;
-                        let len = PrimVal::from_u128(length as u128);
-                        let ptr = PrimVal::Ptr(ptr);
-                        self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
-                    }
-                    (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
-                        // For now, upcasts are limited to changes in marker
-                        // traits, and hence never actually require an actual
-                        // change to the vtable.
-                        self.write_value(src, dest, dest_ty)?;
-                    },
-                    (_, &ty::TyDynamic(ref data, _)) => {
-                        let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
-                        let trait_ref = self.tcx.erase_regions(&trait_ref);
-                        let vtable = self.get_vtable(trait_ref)?;
-                        let ptr = src.read_ptr(&self.memory)?;
-                        let ptr = PrimVal::Ptr(ptr);
-                        let extra = PrimVal::Ptr(vtable);
-                        self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)?;
-                    },
-
-                    _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
-                }
-            }
+            (&ty::TyRef(_, ref s), &ty::TyRef(_, ref d)) |
+            (&ty::TyRef(_, ref s), &ty::TyRawPtr(ref d)) |
+            (&ty::TyRawPtr(ref s), &ty::TyRawPtr(ref d)) => self.unsize_into_ptr(src, src_ty, dest, dest_ty, s.ty, d.ty),
             (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+                if def_a.is_box() || def_b.is_box() {
+                    if !def_a.is_box() || !def_b.is_box() {
+                        panic!("invalid unsizing between {:?} -> {:?}", src_ty, dest_ty);
+                    }
+                    return self.unsize_into_ptr(src, src_ty, dest, dest_ty, src_ty.boxed_ty(), dest_ty.boxed_ty());
+                }
                 // FIXME(solson)
                 let dest = self.force_allocation(dest)?.to_ptr();
                 // unsizing of generic struct with pointer fields
@@ -1307,10 +1328,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }
                 }
+                Ok(())
             }
             _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}", src_ty, dest_ty),
         }
-        Ok(())
     }
 
     pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
