@@ -96,4 +96,12 @@ fn main() {
     a = -35;
     a = *&191;
     b = !false;
+
+    // possible missing comma in an array
+    let mut c = &[
+        -1, -2, -3 // <= no coma here
+        //~^ ERROR possibly missing a comma here
+        //~| NOTE to remove this lint, add a comma or write the expr in a single line
+        -4, -5, -6
+    ];
 }
