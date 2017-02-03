@@ -12,9 +12,10 @@
 
 fn main() {
     let foo =
-        match //~ NOTE did you mean to remove this `match` keyword?
+        match //~ GUESS
         Some(4).unwrap_or_else(5)
         ; //~ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
+        //~^ HELP did you mean to remove this `match` keyword?
 
     println!("{}", foo)
 }

@@ -25,9 +25,11 @@ fn main() {
     let e2 = Empty2(); //~ ERROR expected function, found `Empty2`
     let e4 = E::Empty4();
     //~^ ERROR `E::Empty4` is being called, but it is not a function
-    //~| HELP did you mean to write `E::Empty4`?
+    //~| HELP did you mean to write
+    //~| GUESS E::Empty4
     let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
     let xe4 = XE::XEmpty4();
     //~^ ERROR `XE::XEmpty4` is being called, but it is not a function
-    //~| HELP did you mean to write `XE::XEmpty4`?
+    //~| HELP did you mean to write
+    //~| GUESS XE::XEmpty4
 }

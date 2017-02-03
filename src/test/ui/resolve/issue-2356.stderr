@@ -8,28 +8,37 @@ error[E0425]: cannot find function `clone` in this scope
   --> $DIR/issue-2356.rs:35:5
    |
 35 |     clone();
-   |     ^^^^^ did you mean `self.clone(...)`?
+   |     ^^^^^
+   |
+help: did you intend to call a method of the same name?
+   |     self.clone();
 
 error[E0425]: cannot find function `default` in this scope
   --> $DIR/issue-2356.rs:43:5
    |
 43 |     default();
-   |     ^^^^^^^ did you mean `Self::default`?
+   |     ^^^^^^^
+   |
+help: did you mean an associated item of the same name?
+   |     Self::default();
 
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:52:5
    |
 52 |     whiskers -= other;
-   |     ^^^^^^^^
-   |     |
-   |     did you mean `self.whiskers`?
-   |     `self` value is only available in methods with `self` parameter
+   |     ^^^^^^^^ `self` value is only available in methods with `self` parameter
+   |
+help: did you intend to access a struct field?
+   |     self.whiskers -= other;
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:57:5
    |
 57 |     shave(4);
-   |     ^^^^^ did you mean `Self::shave`?
+   |     ^^^^^
+   |
+help: did you mean an associated item of the same name?
+   |     Self::shave(4);
 
 error[E0425]: cannot find function `purr` in this scope
   --> $DIR/issue-2356.rs:60:5
@@ -83,16 +92,19 @@ error[E0425]: cannot find value `whiskers` in this scope
    --> $DIR/issue-2356.rs:104:5
     |
 104 |     whiskers = 0;
-    |     ^^^^^^^^ did you mean `self.whiskers`?
+    |     ^^^^^^^^
+    |
+help: did you intend to access a struct field?
+    |     self.whiskers = 0;
 
 error[E0425]: cannot find value `whiskers` in this scope
    --> $DIR/issue-2356.rs:110:5
     |
 110 |     whiskers = 4;
-    |     ^^^^^^^^
-    |     |
-    |     did you mean `self.whiskers`?
-    |     `self` value is only available in methods with `self` parameter
+    |     ^^^^^^^^ `self` value is only available in methods with `self` parameter
+    |
+help: did you intend to access a struct field?
+    |     self.whiskers = 4;
 
 error[E0425]: cannot find function `purr_louder` in this scope
    --> $DIR/issue-2356.rs:115:5

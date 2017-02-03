@@ -82,9 +82,11 @@ fn escaping_borrow_of_fn_params_1() {
         //~^ ERROR E0373
         //~| NOTE `x` is borrowed here
         //~| NOTE may outlive borrowed value `x`
+        //~| GUESS move |t: bool|
         //~| ERROR E0373
         //~| NOTE `y` is borrowed here
         //~| NOTE may outlive borrowed value `y`
+        //~| GUESS move |t: bool|
         return Box::new(f);
     };
 
@@ -97,9 +99,11 @@ fn escaping_borrow_of_fn_params_2() {
         //~^ ERROR E0373
         //~| NOTE `x` is borrowed here
         //~| NOTE may outlive borrowed value `x`
+        //~| GUESS move |t: bool|
         //~| ERROR E0373
         //~| NOTE `y` is borrowed here
         //~| NOTE may outlive borrowed value `y`
+        //~| GUESS move |t: bool|
         Box::new(f)
     };
 
@@ -125,9 +129,11 @@ fn escaping_borrow_of_method_params_1() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             return Box::new(f);
         }
     }
@@ -143,9 +149,11 @@ fn escaping_borrow_of_method_params_2() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             Box::new(f)
         }
     }
@@ -175,9 +183,11 @@ fn escaping_borrow_of_trait_impl_params_1() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             return Box::new(f);
         }
     }
@@ -194,9 +204,11 @@ fn escaping_borrow_of_trait_impl_params_2() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             Box::new(f)
         }
     }
@@ -226,9 +238,11 @@ fn escaping_borrow_of_trait_default_params_1() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             return Box::new(f);
         }
     }
@@ -244,9 +258,11 @@ fn escaping_borrow_of_trait_default_params_2() {
             //~^ ERROR E0373
             //~| NOTE `x` is borrowed here
             //~| NOTE may outlive borrowed value `x`
+            //~| GUESS move |t: bool|
             //~| ERROR E0373
             //~| NOTE `y` is borrowed here
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |t: bool|
             Box::new(f)
         }
     }

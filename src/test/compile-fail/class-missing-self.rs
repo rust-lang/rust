@@ -17,6 +17,7 @@ impl cat {
     fn meow(&self) {
       println!("Meow");
       meows += 1; //~ ERROR cannot find value `meows` in this scope
+      //~^ GUESS self.meows
       sleep();     //~ ERROR cannot find function `sleep` in this scope
     }
 

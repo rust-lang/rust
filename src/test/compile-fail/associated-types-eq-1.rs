@@ -18,6 +18,8 @@ pub trait Foo {
 
 fn foo2<I: Foo>(x: I) {
     let _: A = x.boo(); //~ ERROR cannot find type `A` in this scope
+    //~^ GUESS I
+    // FIXME: should guess `I::A`
 }
 
 pub fn main() {}

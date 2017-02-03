@@ -16,6 +16,7 @@ fn nested() {
         |z| {
             //~^ ERROR E0373
             //~| NOTE may outlive borrowed value `y`
+            //~| GUESS move |z|
             if false { &y } else { z }
             //~^ NOTE `y` is borrowed here
         });

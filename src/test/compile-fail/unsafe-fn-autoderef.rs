@@ -27,6 +27,7 @@ fn f(p: *const Rec) -> isize {
     // instantiable and so forth).
 
     return p.f; //~ ERROR no field `f` on type `*const Rec`
+    //~| GUESS (*p).f
 }
 
 fn main() {

@@ -3089,7 +3089,9 @@ impl<'a> Parser<'a> {
                                                None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
-                e.span_note(match_span, "did you mean to remove this `match` keyword?");
+                e.guess(match_span,
+                        "did you mean to remove this `match` keyword?",
+                        String::new());
             }
             return Err(e)
         }

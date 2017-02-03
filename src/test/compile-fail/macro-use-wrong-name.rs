@@ -15,4 +15,5 @@ extern crate two_macros;
 
 pub fn main() {
     macro_two!();  //~ ERROR macro undefined
+    //~| GUESS macro_one!
 }

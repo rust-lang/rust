@@ -28,6 +28,7 @@ fn test_glob1() {
     use foo1::*;
 
     Bar();  //~ ERROR expected function, found trait `Bar`
+    //~^ GUESS Baz
 }
 
 // private type, public value
@@ -43,6 +44,7 @@ fn test_glob2() {
     use foo2::*;
 
     let _x: Box<Bar>;  //~ ERROR expected type, found function `Bar`
+    //~^ GUESS Baz
 }
 
 // neither public
@@ -58,7 +60,9 @@ fn test_glob3() {
     use foo3::*;
 
     Bar();  //~ ERROR cannot find function `Bar` in this scope
+    //~^ GUESS Baz
     let _x: Box<Bar>;  //~ ERROR cannot find type `Bar` in this scope
+    //~^ GUESS Baz
 }
 
 fn main() {

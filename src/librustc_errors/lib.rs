@@ -61,6 +61,13 @@ pub enum RenderSpan {
     /// of hypothetical source code, where each `String` is spliced
     /// into the lines in place of the code covered by each span.
     Suggestion(CodeSuggestion),
+
+    /// Guesses work just like suggestions, but there can be one or
+    /// multiple guesses that aren't guaranteed to be correct.
+    /// This allows updating `did you mean` style error messages
+    /// to automatically applicable suggestions, but notifying the
+    /// user that care must be taken when doing so.
+    Guesses(Vec<CodeSuggestion>),
 }
 
 #[derive(Clone, Debug, PartialEq)]

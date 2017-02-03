@@ -42,6 +42,7 @@ fn main() {
     match xe5 {
         XE::XEmpty5 => (),
         //~^ ERROR expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
+        //~| GUESS XE::XEmpty4
         _ => {},
     }
 }

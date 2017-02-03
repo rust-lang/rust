@@ -36,6 +36,9 @@ fn main() {
     import(); //~ ERROR: cannot find function `import` in this scope
 
     foo::<A>(); //~ ERROR: cannot find type `A` in this scope
+    //~^ GUESS B
     foo::<C>(); //~ ERROR: cannot find type `C` in this scope
+    //~^ GUESS B
     foo::<D>(); //~ ERROR: cannot find type `D` in this scope
+    //~^ GUESS B
 }

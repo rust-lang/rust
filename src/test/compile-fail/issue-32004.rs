@@ -19,6 +19,7 @@ fn main() {
     match Foo::Baz {
         Foo::Bar => {}
         //~^ ERROR expected unit struct/variant or constant, found tuple variant `Foo::Bar`
+        //~| GUESS Foo::Baz
         _ => {}
     }
 

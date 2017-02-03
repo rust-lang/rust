@@ -15,6 +15,8 @@
 #![feature(static_in_const)]
 #![feature(test)]
 #![feature(libc)]
+#![feature(field_init_shorthand)]
+#![feature(inclusive_range_syntax)]
 
 #![deny(warnings)]
 

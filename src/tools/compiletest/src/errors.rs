@@ -22,6 +22,7 @@ pub enum ErrorKind {
     Error,
     Note,
     Suggestion,
+    Guess,
     Warning,
 }
 
@@ -35,6 +36,7 @@ impl FromStr for ErrorKind {
             "ERROR" => Ok(ErrorKind::Error),
             "NOTE" => Ok(ErrorKind::Note),
             "SUGGESTION" => Ok(ErrorKind::Suggestion),
+            "GUESS" => Ok(ErrorKind::Guess),
             "WARN" => Ok(ErrorKind::Warning),
             "WARNING" => Ok(ErrorKind::Warning),
             _ => Err(()),
@@ -49,6 +51,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Error => write!(f, "error"),
             ErrorKind::Note => write!(f, "note"),
             ErrorKind::Suggestion => write!(f, "suggestion"),
+            ErrorKind::Guess => write!(f, "guess"),
             ErrorKind::Warning => write!(f, "warning"),
         }
     }

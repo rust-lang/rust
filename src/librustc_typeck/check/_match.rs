@@ -230,10 +230,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if is_arg {
                                     if let PatKind::Binding(..) = inner.node {
                                         if let Ok(snippet) = self.sess().codemap()
-                                                                        .span_to_snippet(pat.span)
+                                                                        .span_to_snippet(inner.span)
                                         {
                                             err.help(&format!("did you mean `{}: &{}`?",
-                                                              &snippet[1..],
+                                                              snippet,
                                                               expected));
                                         }
                                     }

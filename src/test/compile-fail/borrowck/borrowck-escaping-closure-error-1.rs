@@ -24,4 +24,5 @@ fn main() {
     //~^ ERROR E0373
     //~| NOTE `books` is borrowed here
     //~| NOTE may outlive borrowed value `books`
+    //~| GUESS move ||
 }

@@ -19,6 +19,7 @@ fn main() {
         foo : 5,
         bar : 42,
         //~^ ERROR struct `A` has no field named `bar`
-        //~| NOTE field does not exist - did you mean `car`?
+        //~| HELP field does not exist - did you mean
+        //~| GUESS car
     };
 }

@@ -210,7 +210,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut err = self.type_error_struct(call_expr.span, |_| {
                         format!("`{}` is being called, but it is not a function", path)
                     }, callee_ty);
-                    err.help(&format!("did you mean to write `{}`?", path));
+                    err.guess(call_expr.span, "did you mean to write", path);
                     err
                 } else {
                     self.type_error_struct(call_expr.span, |actual| {

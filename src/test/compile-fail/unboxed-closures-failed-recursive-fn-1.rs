@@ -35,6 +35,7 @@ fn b() {
 
     let f = |x: u32| -> u32 {
         //~^ ERROR closure may outlive the current function, but it borrows `factorial`
+        //~| GUESS move |x: u32| -> u32
         let g = factorial.as_ref().unwrap();
         if x == 0 {1} else {x * g(x-1)}
     };

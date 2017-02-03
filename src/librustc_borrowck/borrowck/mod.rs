@@ -1008,12 +1008,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .span_label(err.span,
                        &format!("may outlive borrowed value {}",
                                 cmt_path_or_string))
-            .span_suggestion(err.span,
-                             &format!("to force the closure to take ownership of {} \
-                                       (and any other referenced variables), \
-                                       use the `move` keyword, as shown:",
-                                       cmt_path_or_string),
-                             suggestion)
+            .guess(err.span,
+                   &format!("to force the closure to take ownership of {} \
+                             (and any other referenced variables), \
+                             use the `move` keyword, as shown:",
+                            cmt_path_or_string),
+                   suggestion)
             .emit();
     }
 

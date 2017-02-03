@@ -2,7 +2,10 @@ error: no field `baz` on type `Foo`
   --> $DIR/issue-36798.rs:17:7
    |
 17 |     f.baz;
-   |       ^^^ did you mean `bar`?
+   |       ^^^
+   |
+help: did you mean
+   |     f.bar;
 
 error: aborting due to previous error
 

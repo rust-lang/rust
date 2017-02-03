@@ -25,6 +25,12 @@ struct Diagnostic {
     spans: Vec<DiagnosticSpan>,
     children: Vec<Diagnostic>,
     rendered: Option<String>,
+    guesses: Vec<Guess>,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+struct Guess {
+    spans: Vec<DiagnosticSpan>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
@@ -37,6 +43,7 @@ struct DiagnosticSpan {
     is_primary: bool,
     label: Option<String>,
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
+    suggested_replacement: Option<String>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone)]
@@ -172,6 +179,21 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                 kind: Some(ErrorKind::Suggestion),
                 msg: line.to_string(),
             });
+        }
+    }
+
+    // If the message has guesses, register that.
+    for guess in &diagnostic.guesses {
+        for span in &guess.spans {
+            for line_num in span.line_start...span.line_end {
+                expected_errors.push(Error {
+                    line_num,
+                    kind: Some(ErrorKind::Guess),
+                    msg: span.suggested_replacement
+                        .clone()
+                        .expect("`guess` span without suggested_replacement"),
+                });
+            }
         }
     }
 

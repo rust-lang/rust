@@ -87,6 +87,16 @@ struct Diagnostic {
     /// `Some` for "suggestions", but eventually it will include all
     /// snippets.
     rendered: Option<String>,
+    /// A list of code snippets that could be used to replace the span,
+    /// but may contain wrong suggestions. The user needs to take care
+    /// to select the correct one or even ignore all of them.
+    guesses: Vec<Guess>,
+}
+
+#[derive(RustcEncodable)]
+struct Guess {
+    /// one or multiple spans to be replaced by this guess
+    spans: Vec<DiagnosticSpan>,
 }
 
 #[derive(RustcEncodable)]
@@ -161,22 +171,31 @@ impl Diagnostic {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).collect(),
             rendered: None,
+            guesses: Vec::new(),
         }
     }
 
     fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+        let SubDiagnosticParts {
+            spans, rendered, guesses,
+        } = DiagnosticSpan::from_render_span(db.render_span.as_ref(), &db.span, je);
         Diagnostic {
             message: db.message(),
             code: None,
             level: db.level.to_str(),
-            spans: db.render_span.as_ref()
-                     .map(|sp| DiagnosticSpan::from_render_span(sp, je))
-                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
+            spans,
             children: vec![],
-            rendered: db.render_span.as_ref()
-                                    .and_then(|rsp| je.render(rsp)),
+            rendered,
+            guesses,
         }
     }
+}
+
+#[derive(Default)]
+struct SubDiagnosticParts {
+    spans: Vec<DiagnosticSpan>,
+    rendered: Option<String>,
+    guesses: Vec<Guess>,
 }
 
 impl DiagnosticSpan {
@@ -279,12 +298,40 @@ impl DiagnosticSpan {
                       .collect()
     }
 
-    fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
-        match *rsp {
-            RenderSpan::FullSpan(ref msp) =>
-                DiagnosticSpan::from_multispan(msp, je),
-            RenderSpan::Suggestion(ref suggestion) =>
-                DiagnosticSpan::from_suggestion(suggestion, je),
+    fn from_guesses(guesses: &[CodeSuggestion], je: &JsonEmitter) -> Vec<Guess> {
+        guesses.iter()
+            .map(|guess| {
+                assert_eq!(guess.msp.span_labels().len(), guess.substitutes.len());
+                Guess {
+                    spans: DiagnosticSpan::from_suggestion(guess, je),
+                }
+            })
+            .collect()
+    }
+
+    fn from_render_span(rsp: Option<&RenderSpan>,
+                        alt_span: &MultiSpan,
+                        je: &JsonEmitter,
+                        ) -> SubDiagnosticParts {
+        use std::borrow::Borrow;
+        match rsp {
+            None => SubDiagnosticParts {
+                spans: DiagnosticSpan::from_multispan(alt_span, je),
+                .. Default::default()
+            },
+            Some(&RenderSpan::FullSpan(ref msp)) => SubDiagnosticParts {
+                spans: DiagnosticSpan::from_multispan(msp, je),
+                .. Default::default()
+            },
+            Some(&RenderSpan::Suggestion(ref suggestion)) => SubDiagnosticParts {
+                spans: DiagnosticSpan::from_suggestion(suggestion, je),
+                rendered: Some(suggestion.splice_lines(je.cm.borrow())),
+                .. Default::default()
+            },
+            Some(&RenderSpan::Guesses(ref guesses)) => SubDiagnosticParts {
+                guesses: DiagnosticSpan::from_guesses(guesses, je),
+                .. Default::default()
+            },
         }
     }
 }
@@ -338,19 +385,3 @@ impl DiagnosticCode {
         })
     }
 }
-
-impl JsonEmitter {
-    fn render(&self, render_span: &RenderSpan) -> Option<String> {
-        use std::borrow::Borrow;
-
-        match *render_span {
-            RenderSpan::FullSpan(_) => {
-                None
-            }
-            RenderSpan::Suggestion(ref suggestion) => {
-                Some(suggestion.splice_lines(self.cm.borrow()))
-            }
-        }
-    }
-}
-

@@ -27,9 +27,11 @@ type A = u32;
 
 fn main() {
     let _: <u8 as Tr>::N; //~ ERROR cannot find associated type `N` in trait `Tr`
+    //~^ GUESS Tr::Y
     let _: <u8 as E>::N; //~ ERROR cannot find associated type `N` in enum `E`
     let _: <u8 as A>::N; //~ ERROR cannot find associated type `N` in `A`
     <u8 as Tr>::N; //~ ERROR cannot find method or associated constant `N` in trait `Tr`
+    //~^ GUESS Tr::Y
     <u8 as E>::N; //~ ERROR cannot find method or associated constant `N` in enum `E`
     <u8 as A>::N; //~ ERROR cannot find method or associated constant `N` in `A`
     let _: <u8 as Tr>::Y; // OK
@@ -38,9 +40,11 @@ fn main() {
     <u8 as E>::Y; //~ ERROR expected method or associated constant, found unit variant `E::Y`
 
     let _: <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
+    //~^ GUESS Tr::Y
     let _: <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
     let _: <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
     <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
+    //~^ GUESS Tr::Y
     <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
     <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
     let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
@@ -60,7 +64,9 @@ fn main() {
     <u8 as E::Y>::NN; //~ ERROR failed to resolve. Not a module `Y`
 
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
+    //~^ GUESS Dr::X
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found method `Dr::Z`
+    //~^ GUESS Dr::X
     <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found for type `<u8 as Dr>::X`
 }

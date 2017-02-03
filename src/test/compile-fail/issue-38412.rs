@@ -11,7 +11,6 @@
 fn main() {
     let Box(a) = loop { };
     //~^ ERROR expected tuple struct/variant, found struct `Box`
-    //~| ERROR expected tuple struct/variant, found struct `Box`
 
     // (The below is a trick to allow compiler to infer a type for
     // variable `a` without attempting to ascribe a type to the

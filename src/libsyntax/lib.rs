@@ -33,6 +33,7 @@
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
+#![feature(field_init_shorthand)]
 
 extern crate serialize;
 #[macro_use] extern crate log;

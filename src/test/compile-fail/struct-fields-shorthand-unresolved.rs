@@ -20,5 +20,6 @@ fn main() {
     let foo = Foo {
         x,
         y //~ ERROR cannot find value `y` in this scope
+        //~^ GUESS x
     };
 }
