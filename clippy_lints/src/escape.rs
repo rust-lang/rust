@@ -40,16 +40,13 @@ declare_lint! {
 }
 
 fn is_non_trait_box(ty: ty::Ty) -> bool {
-    match ty.sty {
-        ty::TyBox(inner) => !inner.is_trait(),
-        _ => false,
-    }
+    ty.is_box() && !ty.boxed_ty().is_trait()
 }
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
     target: TargetDataLayout,
     too_large_for_stack: u64,
 }
@@ -204,16 +201,16 @@ impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
     fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
-        match ty.sty {
-            ty::TyBox(inner) => {
-                self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
-                    let size = layout.size(&self.target);
-                    size.bytes() > self.too_large_for_stack
-                } else {
-                    false
-                })
-            },
-            _ => false,
+        if ty.is_box() {
+            let inner = ty.boxed_ty();
+            self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
+                let size = layout.size(&self.target);
+                size.bytes() > self.too_large_for_stack
+            } else {
+                false
+            })
+        } else {
+            false
         }
     }
 }

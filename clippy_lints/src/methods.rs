@@ -951,8 +951,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
             ty::TySlice(_) => true,
             ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
             ty::TyArray(_, size) => size < 32,
-            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) |
-            ty::TyBox(inner) => may_slice(cx, inner),
+            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => may_slice(cx, inner),
             _ => false,
         }
     }
@@ -966,8 +965,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     } else {
         match ty.sty {
             ty::TySlice(_) => sugg::Sugg::hir_opt(cx, expr),
-            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) |
-            ty::TyBox(inner) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => {
                 if may_slice(cx, inner) {
                     sugg::Sugg::hir_opt(cx, expr)
                 } else {

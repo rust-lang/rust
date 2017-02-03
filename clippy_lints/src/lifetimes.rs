@@ -230,6 +230,9 @@ impl<'v, 't> RefVisitor<'v, 't> {
         if let Some(ref lt) = *lifetime {
             if &*lt.name.as_str() == "'static" {
                 self.lts.push(RefLt::Static);
+            } else if lt.is_elided() {
+                // TODO: investigate
+                self.lts.push(RefLt::Unnamed);
             } else {
                 self.lts.push(RefLt::Named(lt.name));
             }
@@ -275,7 +278,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.node {
-            TyRptr(None, _) => {
+            TyRptr(ref lt, _) if lt.is_elided() => {
                 self.record(&None);
             },
             TyPath(ref path) => {

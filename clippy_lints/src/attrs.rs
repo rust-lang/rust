@@ -181,7 +181,7 @@ fn is_relevant_trait(tcx: ty::TyCtxt, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::Tables, block: &Block) -> bool {
+fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
@@ -194,7 +194,7 @@ fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::Tables, block: &Block) -> boo
     block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
 }
 
-fn is_relevant_expr(tcx: ty::TyCtxt, tables: &ty::Tables, expr: &Expr) -> bool {
+fn is_relevant_expr(tcx: ty::TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(tcx, tables, block),
         ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),

@@ -702,13 +702,10 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
             // function types bring a lot of overhead
             TyBareFn(..) => (50 * self.nest, 1),
 
-            TyTraitObject(ref bounds) => {
-                let has_lifetimes = bounds.iter()
-                    .any(|bound| match *bound {
-                        TraitTyParamBound(ref poly_trait, ..) => !poly_trait.bound_lifetimes.is_empty(),
-                        RegionTyParamBound(..) => true,
-                    });
-                if has_lifetimes {
+            TyTraitObject(ref param_bounds, _) => {
+                let has_lifetime_parameters = param_bounds.iter()
+                    .any(|bound| !bound.bound_lifetimes.is_empty());
+                if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>
                     (50 * self.nest, 1)
                 } else {
