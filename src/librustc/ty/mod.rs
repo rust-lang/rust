@@ -1326,7 +1326,12 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
-    pub discr_ty: attr::IntType, // Type of the discriminant
+    /// Type of the discriminant
+    ///
+    /// Note, that this is the type specified in `repr()` or a default type of some sort, and might
+    /// not match the actual type that layout algorithm decides to use when translating this type
+    /// into LLVM. That being said, layout algorithm may not use a type larger than specified here.
+    pub discr_ty: attr::IntType,
     pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
