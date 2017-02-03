@@ -20,6 +20,9 @@
 //!             3 => cmp!($a, $b, u16, 0) && cmp!($a, $b, u8, 2),
 //!             4 => cmp!($a, $b, u32, 0),
 //!             ...
+//!         }
+//!     }}
+//! );
 //! ```
 //!
 //! The supported slice length can be set by changing the `OPT_LEN` variable.
