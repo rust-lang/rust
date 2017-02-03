@@ -66,6 +66,7 @@
 
 #![deny(warnings)]
 
+#[macro_use]
 extern crate build_helper;
 extern crate cmake;
 extern crate filetime;
@@ -83,24 +84,9 @@ use std::fs::{self, File};
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, output};
+use build_helper::{run_silent, output, mtime};
 
-use util::{exe, mtime, libdir, add_lib_path};
-
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
-}
+use util::{exe, libdir, add_lib_path};
 
 mod cc;
 mod channel;
@@ -482,7 +468,8 @@ impl Build {
         //
         // These variables are primarily all read by
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
-        cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
+        cargo.env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
+             .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
@@ -746,10 +733,15 @@ impl Build {
         }
     }
 
+    /// Directory for libraries built from C/C++ code and shared between stages.
+    fn native_dir(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("native")
+    }
+
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
     fn test_helpers_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("rust-test-helpers")
+        self.native_dir(target).join("rust-test-helpers")
     }
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic

@@ -22,7 +22,8 @@ use std::io::prelude::*;
 use std::process::Command;
 
 use {Build, Compiler, Mode};
-use util::{up_to_date, cp_r};
+use util::cp_r;
+use build_helper::up_to_date;
 
 /// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
 /// `name` into the `out` path.

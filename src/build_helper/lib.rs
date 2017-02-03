@@ -10,8 +10,29 @@
 
 #![deny(warnings)]
 
+extern crate filetime;
+
+use std::fs;
 use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
+
+use filetime::FileTime;
+
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The file/line of the panic
+/// * The expression that failed
+/// * The error itself
+///
+/// This is currently used judiciously throughout the build system rather than
+/// using a `Result` with `try!`, but this may change one day...
+#[macro_export]
+macro_rules! t {
+    ($e:expr) => (match $e {
+        Ok(e) => e,
+        Err(e) => panic!("{} failed with {}", stringify!($e), e),
+    })
+}
 
 pub fn run(cmd: &mut Command) {
     println!("running: {:?}", cmd);
@@ -86,6 +107,56 @@ pub fn output(cmd: &mut Command) -> String {
                output.status);
     }
     String::from_utf8(output.stdout).unwrap()
+}
+
+pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
+    let mut stack = dir.read_dir().unwrap()
+                       .map(|e| e.unwrap())
+                       .filter(|e| &*e.file_name() != ".git")
+                       .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
+}
+
+/// Returns the last-modified time for `path`, or zero if it doesn't exist.
+pub fn mtime(path: &Path) -> FileTime {
+    fs::metadata(path).map(|f| {
+        FileTime::from_last_modification_time(&f)
+    }).unwrap_or(FileTime::zero())
+}
+
+/// Returns whether `dst` is up to date given that the file or files in `src`
+/// are used to generate it.
+///
+/// Uses last-modified time checks to verify this.
+pub fn up_to_date(src: &Path, dst: &Path) -> bool {
+    let threshold = mtime(dst);
+    let meta = match fs::metadata(src) {
+        Ok(meta) => meta,
+        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+    };
+    if meta.is_dir() {
+        dir_up_to_date(src, &threshold)
+    } else {
+        FileTime::from_last_modification_time(&meta) <= threshold
+    }
+}
+
+fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
+    t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
+        let meta = t!(e.metadata());
+        if meta.is_dir() {
+            dir_up_to_date(&e.path(), threshold)
+        } else {
+            FileTime::from_last_modification_time(&meta) < *threshold
+        }
+    })
 }
 
 fn fail(s: &str) -> ! {
