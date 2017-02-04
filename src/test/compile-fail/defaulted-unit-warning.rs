@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+#![allow(unreachable_code)]
 #![deny(resolve_trait_on_defaulted_unit)]
 
 trait Deserialize: Sized {
@@ -28,6 +30,19 @@ fn doit() -> Result<(), String> {
         Err(e) => return Err(e),
     };
     Ok(())
+}
+
+trait ImplementedForUnitButNotNever {}
+
+impl ImplementedForUnitButNotNever for () {}
+
+fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
+
+fn smeg() {
+    let _x = return;
+    foo(_x);
+    //~^ ERROR code relies on type
+    //~| WARNING previously accepted
 }
 
 fn main() {
