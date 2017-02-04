@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.113 — 2017-02-04
+* Rustup to *rustc 1.16.0-nightly (eedaa94e3 2017-02-02)*
+* New lint: [`large_enum_variant`]
+* `explicit_into_iter_loop` provides suggestions
+
 ## 0.0.112 — 2017-01-27
 * Rustup to *rustc 1.16.0-nightly (df8debf6d 2017-01-25)*
 
