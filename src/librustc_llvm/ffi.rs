@@ -1363,14 +1363,14 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateBasicType(Builder: DIBuilderRef,
                                             Name: *const c_char,
                                             SizeInBits: u64,
-                                            AlignInBits: u64,
+                                            AlignInBits: u32,
                                             Encoding: c_uint)
                                             -> DIBasicType;
 
     pub fn LLVMRustDIBuilderCreatePointerType(Builder: DIBuilderRef,
                                               PointeeTy: DIType,
                                               SizeInBits: u64,
-                                              AlignInBits: u64,
+                                              AlignInBits: u32,
                                               Name: *const c_char)
                                               -> DIDerivedType;
 
@@ -1380,7 +1380,7 @@ extern "C" {
                                              File: DIFile,
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
-                                             AlignInBits: u64,
+                                             AlignInBits: u32,
                                              Flags: DIFlags,
                                              DerivedFrom: DIType,
                                              Elements: DIArray,
@@ -1395,7 +1395,7 @@ extern "C" {
                                              File: DIFile,
                                              LineNo: c_uint,
                                              SizeInBits: u64,
-                                             AlignInBits: u64,
+                                             AlignInBits: u32,
                                              OffsetInBits: u64,
                                              Flags: DIFlags,
                                              Ty: DIType)
@@ -1423,7 +1423,7 @@ extern "C" {
                                                  isLocalToUnit: bool,
                                                  Val: ValueRef,
                                                  Decl: DIDescriptor,
-                                                 AlignInBits: u64)
+                                                 AlignInBits: u32)
                                                  -> DIGlobalVariable;
 
     pub fn LLVMRustDIBuilderCreateVariable(Builder: DIBuilderRef,
@@ -1436,19 +1436,19 @@ extern "C" {
                                            AlwaysPreserve: bool,
                                            Flags: DIFlags,
                                            ArgNo: c_uint,
-                                           AlignInBits: u64)
+                                           AlignInBits: u32)
                                            -> DIVariable;
 
     pub fn LLVMRustDIBuilderCreateArrayType(Builder: DIBuilderRef,
                                             Size: u64,
-                                            AlignInBits: u64,
+                                            AlignInBits: u32,
                                             Ty: DIType,
                                             Subscripts: DIArray)
                                             -> DIType;
 
     pub fn LLVMRustDIBuilderCreateVectorType(Builder: DIBuilderRef,
                                              Size: u64,
-                                             AlignInBits: u64,
+                                             AlignInBits: u32,
                                              Ty: DIType,
                                              Subscripts: DIArray)
                                              -> DIType;
@@ -1483,7 +1483,7 @@ extern "C" {
                                                   File: DIFile,
                                                   LineNumber: c_uint,
                                                   SizeInBits: u64,
-                                                  AlignInBits: u64,
+                                                  AlignInBits: u32,
                                                   Elements: DIArray,
                                                   ClassType: DIType)
                                                   -> DIType;
@@ -1494,7 +1494,7 @@ extern "C" {
                                             File: DIFile,
                                             LineNumber: c_uint,
                                             SizeInBits: u64,
-                                            AlignInBits: u64,
+                                            AlignInBits: u32,
                                             Flags: DIFlags,
                                             Elements: DIArray,
                                             RunTimeLang: c_uint,

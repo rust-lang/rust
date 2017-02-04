@@ -299,7 +299,7 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
             bytes_to_bits(array_size_in_bytes),
-            bytes_to_bits(element_type_align),
+            bytes_to_bits(element_type_align) as u32,
             element_type_metadata,
             subscripts)
     };
@@ -730,7 +730,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             DIB(cx),
             name.as_ptr(),
             bytes_to_bits(size),
-            bytes_to_bits(align),
+            bytes_to_bits(align) as u32,
             encoding)
     };
 
@@ -750,7 +750,7 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             DIB(cx),
             pointee_type_metadata,
             bytes_to_bits(pointer_size),
-            bytes_to_bits(pointer_align),
+            bytes_to_bits(pointer_align) as u32,
             name.as_ptr())
     };
     return ptr_metadata;
@@ -1504,7 +1504,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         file_metadata,
                         UNKNOWN_LINE_NUMBER,
                         bytes_to_bits(discriminant_size),
-                        bytes_to_bits(discriminant_align),
+                        bytes_to_bits(discriminant_align) as u32,
                         create_DIArray(DIB(cx), &enumerators_metadata),
                         discriminant_base_type_metadata)
                 };
@@ -1546,7 +1546,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         file_metadata,
         UNKNOWN_LINE_NUMBER,
         bytes_to_bits(enum_type_size),
-        bytes_to_bits(enum_type_align),
+        bytes_to_bits(enum_type_align) as u32,
         DIFlags::FlagZero,
         ptr::null_mut(),
         0, // RuntimeLang
@@ -1648,7 +1648,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
                     bytes_to_bits(member_size),
-                    bytes_to_bits(member_align),
+                    bytes_to_bits(member_align) as u32,
                     bytes_to_bits(member_offset),
                     member_description.flags,
                     member_description.type_metadata)
@@ -1691,7 +1691,7 @@ fn create_struct_stub(cx: &CrateContext,
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(struct_size),
-            bytes_to_bits(struct_align),
+            bytes_to_bits(struct_align) as u32,
             DIFlags::FlagZero,
             ptr::null_mut(),
             empty_array,
@@ -1728,7 +1728,7 @@ fn create_union_stub(cx: &CrateContext,
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(union_size),
-            bytes_to_bits(union_align),
+            bytes_to_bits(union_align) as u32,
             DIFlags::FlagZero,
             empty_array,
             0, // RuntimeLang
@@ -1783,7 +1783,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     is_local_to_unit,
                                                     global,
                                                     ptr::null_mut(),
-                                                    global_align as u64,
+                                                    global_align as u32,
         );
     }
 }
