@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use super::*;
 
 #[test]
@@ -45,12 +55,17 @@ fn edge_order1() {
     let mut reduce = GraphReduce::new(&graph, |n| inputs.contains(n), |n| outputs.contains(n));
     Classify::new(&mut reduce).walk();
 
-    assert!(reduce.in_cycle(nodes("B"), nodes("C")));
-
-    assert!(!reduce.in_cycle(nodes("IN"), nodes("A")));
-    assert!(!reduce.in_cycle(nodes("IN"), nodes("B")));
-    assert!(!reduce.in_cycle(nodes("IN"), nodes("C")));
-    assert!(!reduce.in_cycle(nodes("IN"), nodes("OUT")));
+    // A, B, and C are mutually in a cycle, but IN/OUT are not participating.
+    let names = ["A", "B", "C", "IN", "OUT"];
+    let cycle_names = ["A", "B", "C"];
+    for &i in &names {
+        for &j in names.iter().filter(|&&j| j != i) {
+            let in_cycle = cycle_names.contains(&i) && cycle_names.contains(&j);
+            assert_eq!(reduce.in_cycle(nodes(i), nodes(j)), in_cycle,
+                       "cycle status for nodes {} and {} is incorrect",
+                       i, j);
+        }
+    }
 }
 
 /// Same as `edge_order1` but in reverse order so as to detect a failure
