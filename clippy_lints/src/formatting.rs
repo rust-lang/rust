@@ -47,7 +47,7 @@ declare_lint! {
 }
 
 /// **What it does:** Checks for possible missing comma in an array. It lints if
-/// an array element is a binary op and it lies on two lines.
+/// an array element is a binary operator expression and it lies on two lines.
 ///
 /// **Why is this bad?** This could lead to unexpected results.
 ///
