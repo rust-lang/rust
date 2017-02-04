@@ -12,6 +12,7 @@ use dep_graph::{DepNode, DepTrackingMapConfig};
 use hir::def_id::DefId;
 use mir;
 use ty::{self, Ty};
+use util::nodemap::DefIdSet;
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -49,3 +50,4 @@ dep_map_ty! { Mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>> }
 dep_map_ty! { ClosureKinds: ItemSignature(DefId) -> ty::ClosureKind }
 dep_map_ty! { ClosureTypes: ItemSignature(DefId) -> ty::ClosureTy<'tcx> }
 dep_map_ty! { TypeckTables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx> }
+dep_map_ty! { UsedTraitImports: UsedTraitImports(DefId) -> DefIdSet }

@@ -178,12 +178,10 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
             let item_def_id = self.tcx.hir.local_def_id(item_id);
-            let newly_added = self.tcx
+            self.tcx
                 .item_variance_map
                 .borrow_mut()
-                .insert(item_def_id, self.empty_variances.clone())
-                .is_none();
-            assert!(newly_added);
+                .insert(item_def_id, self.empty_variances.clone());
         }
     }
 

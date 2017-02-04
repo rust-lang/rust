@@ -102,7 +102,7 @@ use CrateCtxt;
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -179,6 +179,11 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // Obligations which will have to be checked at the end of
     // type-checking, after all functions have been inferred.
     deferred_obligations: RefCell<Vec<traits::DeferredObligation<'tcx>>>,
+
+    // a set of trait import def-ids that we use during method
+    // resolution; during writeback, this is written into
+    // `tcx.used_trait_imports` for this item def-id
+    used_trait_imports: RefCell<FxHashSet<DefId>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -513,6 +518,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_cast_checks: RefCell::new(Vec::new()),
             anon_types: RefCell::new(DefIdMap()),
             deferred_obligations: RefCell::new(Vec::new()),
+            used_trait_imports: RefCell::new(DefIdSet()),
         }
     }
 
@@ -1521,9 +1527,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if self.diverges.get() == Diverges::Always {
             self.diverges.set(Diverges::WarnedAlways);
 
-            self.tcx.sess.add_lint(lint::builtin::UNREACHABLE_CODE,
-                                   id, span,
-                                   format!("unreachable {}", kind));
+            self.tables.borrow_mut().lints.add_lint(
+                lint::builtin::UNREACHABLE_CODE,
+                id, span,
+                format!("unreachable {}", kind));
         }
     }
 

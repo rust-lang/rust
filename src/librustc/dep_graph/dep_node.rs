@@ -113,6 +113,7 @@ pub enum DepNode<D: Clone + Debug> {
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckTables(D),
+    UsedTraitImports(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -162,6 +163,7 @@ impl<D: Clone + Debug> DepNode<D> {
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
+            UsedTraitImports,
             TraitImpls,
             ReprHints,
         }
@@ -230,6 +232,7 @@ impl<D: Clone + Debug> DepNode<D> {
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
+            UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),

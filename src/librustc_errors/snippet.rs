@@ -204,7 +204,7 @@ pub struct StyledString {
     pub style: Style,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Style {
     HeaderMsg,
     FileNameStyle,

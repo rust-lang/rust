@@ -31,17 +31,19 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
+use hir;
+use hir::intravisit::FnKind;
 use std::hash;
 use std::ascii::AsciiExt;
 use syntax_pos::Span;
-use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
-use hir;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
                         raw_struct_lint, FutureIncompatibleInfo, EarlyLint, IntoEarlyLint};
+
+pub use lint::table::LintTable;
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -346,3 +348,4 @@ pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
 mod context;
+mod table;

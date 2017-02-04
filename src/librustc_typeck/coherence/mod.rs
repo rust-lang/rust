@@ -15,8 +15,9 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
+use dep_graph::DepTrackingMap;
 use hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc::ty::{self, maps, TyCtxt, TypeFoldable};
 use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
 use rustc::ty::{TyRef, TyAdt, TyDynamic, TyNever, TyTuple};
@@ -29,17 +30,19 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{Item, ItemImpl};
 use rustc::hir;
+use std::cell::RefMut;
 
 mod builtin;
 mod orphan;
 mod overlap;
 mod unsafety;
 
-struct CoherenceChecker<'a, 'tcx: 'a> {
+struct CoherenceCollect<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    inherent_impls: RefMut<'a, DepTrackingMap<maps::InherentImpls<'tcx>>>,
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceChecker<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCollect<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.check_implementation(item)
@@ -53,7 +56,17 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
+impl<'a, 'tcx> CoherenceCollect<'a, 'tcx> {
+    fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+        let inherent_impls = tcx.inherent_impls.borrow_mut();
+        let mut this = &mut CoherenceCollect { tcx, inherent_impls };
+
+        // Check implementations and traits. This populates the tables
+        // containing the inherent methods and extension methods. It also
+        // builds up the trait inheritance table.
+        tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl, this);
+    }
+
     // Returns the def ID of the base type, if there is one.
     fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
         match ty.sty {
@@ -75,14 +88,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    fn check(&mut self) {
-        // Check implementations and traits. This populates the tables
-        // containing the inherent methods and extension methods. It also
-        // builds up the trait inheritance table.
-        self.tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl, self);
-    }
-
-    fn check_implementation(&self, item: &Item) {
+    fn check_implementation(&mut self, item: &Item) {
         let tcx = self.tcx;
         let impl_did = tcx.hir.local_def_id(item.id);
         let self_type = tcx.item_type(impl_did);
@@ -119,8 +125,19 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        self.tcx.inherent_impls.borrow_mut().push(base_def_id, impl_def_id);
+    fn add_inherent_impl(&mut self, base_def_id: DefId, impl_def_id: DefId) {
+        // Subtle: it'd be better to collect these into a local map
+        // and then write the vector only once all items are known,
+        // but that leads to degenerate dep-graphs. The problem is
+        // that the write of that big vector winds up having reads
+        // from *all* impls in the krate, since we've lost the
+        // precision basically.  This would be ok in the firewall
+        // model so once we've made progess towards that we can modify
+        // the strategy here. In the meantime, using `push` is ok
+        // because we are doing this as a pre-pass before anyone
+        // actually reads from `inherent_impls` -- and we know this is
+        // true beacuse we hold the refcell lock.
+        self.inherent_impls.push(base_def_id, impl_def_id);
     }
 
     fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'tcx>, impl_def_id: DefId) {
@@ -160,8 +177,9 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
 }
 
 pub fn check_coherence(ccx: &CrateCtxt) {
+    CoherenceCollect::check(ccx.tcx);
+
     let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
-    CoherenceChecker { tcx: ccx.tcx }.check();
     unsafety::check(ccx.tcx);
     orphan::check(ccx.tcx);
     overlap::check(ccx.tcx);

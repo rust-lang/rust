@@ -634,7 +634,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.item_types.borrow_mut().insert(ty_f.did, tt);
 
     let def_id = ccx.tcx.hir.local_def_id(field.id);
-    ccx.tcx.item_types.borrow_mut().insert(def_id, tt);
+    assert_eq!(def_id, ty_f.did);
     ccx.tcx.generics.borrow_mut().insert(def_id, struct_generics);
     ccx.tcx.predicates.borrow_mut().insert(def_id, struct_predicates.clone());
 }
@@ -848,9 +848,10 @@ fn convert_trait_item(ccx: &CrateCtxt, trait_item: &hir::TraitItem) {
             let const_def_id = ccx.tcx.hir.local_def_id(trait_item.id);
             generics_of_def_id(ccx, const_def_id);
             let ty = ccx.icx(&trait_predicates).to_ty(&ty);
-            tcx.item_types.borrow_mut().insert(const_def_id, ty);
-            convert_associated_const(ccx, TraitContainer(trait_def_id),
-                                     trait_item.id, ty);
+            convert_associated_const(ccx,
+                                     TraitContainer(trait_def_id),
+                                     trait_item.id,
+                                     ty);
         }
 
         hir::TraitItemKind::Type(_, ref opt_ty) => {
@@ -884,9 +885,10 @@ fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
             let const_def_id = ccx.tcx.hir.local_def_id(impl_item.id);
             generics_of_def_id(ccx, const_def_id);
             let ty = ccx.icx(&impl_predicates).to_ty(&ty);
-            tcx.item_types.borrow_mut().insert(const_def_id, ty);
-            convert_associated_const(ccx, ImplContainer(impl_def_id),
-                                     impl_item.id, ty);
+            convert_associated_const(ccx,
+                                     ImplContainer(impl_def_id),
+                                     impl_item.id,
+                                     ty);
         }
 
         hir::ImplItemKind::Type(ref ty) => {
@@ -1283,9 +1285,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                                            items);
     trait_predicates.predicates.extend(assoc_predicates);
 
-    let prev_predicates = tcx.predicates.borrow_mut().insert(def_id, trait_predicates);
-    assert!(prev_predicates.is_none());
-
+    tcx.predicates.borrow_mut().insert(def_id, trait_predicates);
     return;
 
     fn predicates_for_associated_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -1592,9 +1592,7 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     };
 
     let predicates = ty_generic_predicates(ccx, generics, None, vec![], false);
-    let prev_predicates = ccx.tcx.predicates.borrow_mut().insert(def_id,
-                                                                 predicates.clone());
-    assert!(prev_predicates.is_none());
+    ccx.tcx.predicates.borrow_mut().insert(def_id, predicates.clone());
 
     predicates
 }
@@ -1617,8 +1615,7 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     };
 
     let predicates = ty_generic_predicates(ccx, generics, None, vec![], false);
-    let prev_predicates = ccx.tcx.predicates.borrow_mut().insert(def_id, predicates);
-    assert!(prev_predicates.is_none());
+    ccx.tcx.predicates.borrow_mut().insert(def_id, predicates);
 }
 
 // Is it marked with ?Sized

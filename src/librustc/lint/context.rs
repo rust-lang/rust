@@ -33,6 +33,7 @@ use lint::{Level, LevelSource, Lint, LintId, LintPass, LintSource};
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use util::nodemap::FxHashMap;
 
 use std::cmp;
@@ -82,7 +83,7 @@ pub struct LintStore {
 
 /// When you call `add_lint` on the session, you wind up storing one
 /// of these, which records a "potential lint" at a particular point.
-#[derive(PartialEq)]
+#[derive(PartialEq, RustcEncodable, RustcDecodable)]
 pub struct EarlyLint {
     /// what lint is this? (e.g., `dead_code`)
     pub id: LintId,
@@ -558,7 +559,7 @@ pub trait LintContext<'tcx>: Sized {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
-    fn early_lint(&self, early_lint: EarlyLint) {
+    fn early_lint(&self, early_lint: &EarlyLint) {
         let span = early_lint.diagnostic.span.primary_span().expect("early lint w/o primary span");
         let mut err = self.struct_span_lint(early_lint.id.lint,
                                             span,
@@ -773,11 +774,10 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     // Output any lints that were previously added to the session.
     fn visit_id(&mut self, id: ast::NodeId) {
-        if let Some(lints) = self.sess().lints.borrow_mut().remove(&id) {
-            debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
-            for early_lint in lints {
-                self.early_lint(early_lint);
-            }
+        let lints = self.sess().lints.borrow_mut().take(id);
+        for early_lint in lints.iter().chain(self.tables.lints.get(id)) {
+            debug!("LateContext::visit_id: id={:?} early_lint={:?}", id, early_lint);
+            self.early_lint(early_lint);
         }
     }
 
@@ -1232,7 +1232,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (id, v) in tcx.sess.lints.borrow().iter() {
+    if let Some((id, v)) = tcx.sess.lints.borrow().get_any() {
         for early_lint in v {
             span_bug!(early_lint.diagnostic.span.clone(),
                       "unprocessed lint {:?} at {}",
@@ -1250,10 +1250,9 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
         // Lints may be assigned to the whole crate.
-        if let Some(lints) = cx.sess.lints.borrow_mut().remove(&ast::CRATE_NODE_ID) {
-            for early_lint in lints {
-                cx.early_lint(early_lint);
-            }
+        let lints = cx.sess.lints.borrow_mut().take(ast::CRATE_NODE_ID);
+        for early_lint in lints {
+            cx.early_lint(&early_lint);
         }
 
         // since the root module isn't visited as an item (because it isn't an
@@ -1270,9 +1269,28 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (_, v) in sess.lints.borrow().iter() {
+    for (_, v) in sess.lints.borrow().get_any() {
         for early_lint in v {
             span_bug!(early_lint.diagnostic.span.clone(), "unprocessed lint {:?}", early_lint);
         }
+    }
+}
+
+impl Encodable for LintId {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(&self.lint.name.to_lowercase())
+    }
+}
+
+impl Decodable for LintId {
+    #[inline]
+    fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
+        let s = d.read_str()?;
+        ty::tls::with(|tcx| {
+            match tcx.sess.lint_store.borrow().find_lint(&s, tcx.sess, None) {
+                Ok(id) => Ok(id),
+                Err(_) => panic!("invalid lint-id `{}`", s),
+            }
+        })
     }
 }
