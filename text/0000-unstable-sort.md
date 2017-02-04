@@ -42,7 +42,7 @@ equivalent to stable sort.
 **Q: Why is `slice::sort` stable?**<br>
 A: Because stability is a good default. A programmer might call a sort function
 without checking in the documentation whether it is stable or unstable. It is very
-inutitive to assume stability, so having `slice::sort` perform unstable sorting might
+intuitive to assume stability, so having `slice::sort` perform unstable sorting might
 cause unpleasant surprises.
 
 **Q: Why does `slice::sort` allocate?**<br>
