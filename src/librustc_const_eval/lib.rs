@@ -30,6 +30,7 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(i128_type)]
+#![feature(ptr_eq)]
 
 extern crate arena;
 #[macro_use] extern crate syntax;
