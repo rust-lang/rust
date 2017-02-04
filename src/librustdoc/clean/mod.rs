@@ -521,17 +521,22 @@ impl<'a, I: IntoIterator<Item=&'a ast::NestedMetaItem>> NestedAttributesExt for 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Default)]
 pub struct Attributes {
     pub doc_strings: Vec<String>,
-    pub other_attrs: Vec<ast::Attribute>
+    pub other_attrs: Vec<ast::Attribute>,
+    pub span: Option<syntax_pos::Span>,
 }
 
 impl Attributes {
     pub fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
+        let mut sp = None;
         let other_attrs = attrs.iter().filter_map(|attr| {
             attr.with_desugared_doc(|attr| {
                 if let Some(value) = attr.value_str() {
                     if attr.check_name("doc") {
                         doc_strings.push(value.to_string());
+                        if sp.is_none() {
+                            sp = Some(attr.span);
+                        }
                         return None;
                     }
                 }
@@ -541,7 +546,8 @@ impl Attributes {
         }).collect();
         Attributes {
             doc_strings: doc_strings,
-            other_attrs: other_attrs
+            other_attrs: other_attrs,
+            span: sp,
         }
     }
 

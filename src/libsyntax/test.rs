@@ -195,7 +195,8 @@ impl fold::Folder for EntryPointCleaner {
                     let dead_code_str = Symbol::intern("dead_code");
                     let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
                     let allow_dead_code_item = attr::mk_list_item(allow_str, word_vec);
-                    let allow_dead_code = attr::mk_attr_outer(attr::mk_attr_id(),
+                    let allow_dead_code = attr::mk_attr_outer(DUMMY_SP,
+                                                              attr::mk_attr_id(),
                                                               allow_dead_code_item);
 
                     ast::Item {

@@ -154,8 +154,9 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     let mut collector = Collector::new(input.to_string(), cfgs, libs, externs,
-                                       true, opts, maybe_sysroot);
-    find_testable_code(&input_str, &mut collector);
+                                       true, opts, maybe_sysroot, "input".to_string(),
+                                       None);
+    find_testable_code(&input_str, &mut collector, 0);
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests);
     0

@@ -37,6 +37,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
+use syntax_pos::{BytePos, DUMMY_SP, Pos};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -79,7 +80,7 @@ pub fn run(input: &str,
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap, cstore.clone(),
+        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
@@ -96,13 +97,16 @@ pub fn run(input: &str,
         link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
     let opts = scrape_test_config(hir_forest.krate());
+    let filename = input_path.to_str().unwrap_or("").to_owned();
     let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
                                        externs,
                                        false,
                                        opts,
-                                       maybe_sysroot);
+                                       maybe_sysroot,
+                                       filename,
+                                       Some(codemap));
 
     {
         let dep_graph = DepGraph::new(false);
@@ -256,7 +260,9 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                         error_codes.retain(|err| !out.contains(err));
                     }
                 }
-                Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
+                Ok(()) if compile_fail => {
+                    panic!("test compiled while it wasn't supposed to")
+                }
                 _ => {}
             }
         }
@@ -302,7 +308,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
             if should_panic && out.status.success() {
                 panic!("test executable succeeded when it should have failed");
             } else if !should_panic && !out.status.success() {
-                panic!("test executable failed:\n{}\n{}",
+                panic!("test executable failed:\n{}\n{}\n",
                        str::from_utf8(&out.stdout).unwrap_or(""),
                        str::from_utf8(&out.stderr).unwrap_or(""));
             }
@@ -384,11 +390,15 @@ pub struct Collector {
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
+    filename: String,
+    start_line: usize,
+    codemap: Option<Rc<CodeMap>>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
-               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>) -> Collector {
+               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
+               filename: String, codemap: Option<Rc<CodeMap>>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -401,18 +411,17 @@ impl Collector {
             cratename: cratename,
             opts: opts,
             maybe_sysroot: maybe_sysroot,
+            filename: filename,
+            start_line: 0,
+            codemap: codemap,
         }
     }
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>) {
-        let name = if self.use_headers {
-            let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
-            format!("{}_{}", s, self.cnt)
-        } else {
-            format!("{}_{}", self.names.join("::"), self.cnt)
-        };
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
+                    line: usize) {
+        let name = format!("{} - line {}", self.filename, line);
         self.cnt += 1;
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -456,6 +465,19 @@ impl Collector {
         });
     }
 
+    pub fn get_line(&self) -> usize {
+        if let Some(ref codemap) = self.codemap{
+            let line = codemap.lookup_char_pos(BytePos(self.start_line as u32)).line;
+            if line > 0 { line - 1 } else { line }
+        } else {
+            self.start_line
+        }
+    }
+
+    pub fn set_line(&mut self, start_line: usize) {
+        self.start_line = start_line;
+    }
+
     pub fn register_header(&mut self, name: &str, level: u32) {
         if self.use_headers && level == 1 {
             // we use these headings as test names, so it's good if
@@ -496,7 +518,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
-            markdown::find_testable_code(doc, self.collector);
+            markdown::find_testable_code(doc, self.collector,
+                                         attrs.span.unwrap_or(DUMMY_SP).lo.to_usize());
         }
 
         nested(self);
