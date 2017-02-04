@@ -62,9 +62,16 @@ fn main() {
         "powisf2.c",
     ]);
 
+    let builtins_dir = Path::new("compiler-rt/lib/builtins");
     for src in sources.files.iter() {
-        cfg.file(Path::new("compiler-rt/lib/builtins").join(src));
+        cfg.file(builtins_dir.join(src));
     }
 
     cfg.compile("libcompiler-rt.a");
+
+    println!("cargo:rerun-if-changed=build.rs");
+
+    for source in sources.files.iter() {
+        println!("cargo:rerun-if-changed={}", builtins_dir.join(source).display());
+    }
 }
