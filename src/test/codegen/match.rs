@@ -21,7 +21,7 @@ pub enum E {
 #[no_mangle]
 pub fn exhaustive_match(e: E) {
 // CHECK: switch{{.*}}, label %[[OTHERWISE:[a-zA-Z0-9_]+]] [
-// CHECK-NEXT: i8 [[DISCR:[0-9]+]], label %[[TRUE:[a-zA-Z0-9_]+]]
+// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[TRUE:[a-zA-Z0-9_]+]]
 // CHECK-NEXT: ]
 // CHECK: [[TRUE]]:
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
