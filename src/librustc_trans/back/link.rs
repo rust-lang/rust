@@ -896,7 +896,7 @@ fn link_args(cmd: &mut Linker,
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
     add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess);
+    add_upstream_native_libraries(cmd, sess, crate_type);
 
     // # Telling the linker what we're doing
 
@@ -1213,7 +1213,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
+fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: config::CrateType) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1223,6 +1223,9 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
+    let formats = sess.dependency_formats.borrow();
+    let data = formats.get(&crate_type).unwrap();
+
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
         for lib in sess.cstore.native_libraries(cnum) {
@@ -1232,8 +1235,15 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
             match lib.kind {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-                NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-
+                NativeLibraryKind::NativeStaticNobundle => {
+                    // Link "static-nobundle" native libs only if the crate they originate from
+                    // is being linked statically to the current crate.  If it's linked dynamically
+                    // or is an rlib already included via some other dylib crate, the symbols from
+                    // native libs will have already been included in that dylib.
+                    if data[cnum.as_usize() - 1] == Linkage::Static {
+                        cmd.link_staticlib(&lib.name.as_str())
+                    }
+                },
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously

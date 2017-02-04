@@ -685,6 +685,9 @@ impl<'a> CrateLoader<'a> {
         for id in self.get_foreign_items_of_kind(cstore::NativeStatic) {
             self.cstore.add_statically_included_foreign_item(id);
         }
+        for id in self.get_foreign_items_of_kind(cstore::NativeStaticNobundle) {
+            self.cstore.add_statically_included_foreign_item(id);
+        }
     }
 
     fn register_dllimport_foreign_items(&mut self) {
