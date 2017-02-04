@@ -61,7 +61,7 @@ declare_lint! {
 /// ];
 /// ```
 declare_lint! {
-    pub POSSIBLE_MISSING_COMMA_IN_ARRAY_FORMATTING,
+    pub POSSIBLE_MISSING_COMMA,
     Warn,
     "possible missing comma in array"
 }
@@ -72,7 +72,7 @@ pub struct Formatting;
 
 impl LintPass for Formatting {
     fn get_lints(&self) -> LintArray {
-        lint_array![SUSPICIOUS_ASSIGNMENT_FORMATTING, SUSPICIOUS_ELSE_FORMATTING, POSSIBLE_MISSING_COMMA_IN_ARRAY_FORMATTING]
+        lint_array![SUSPICIOUS_ASSIGNMENT_FORMATTING, SUSPICIOUS_ELSE_FORMATTING, POSSIBLE_MISSING_COMMA]
     }
 }
 

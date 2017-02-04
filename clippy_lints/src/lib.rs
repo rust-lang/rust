@@ -380,7 +380,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         format::USELESS_FORMAT,
-        formatting::POSSIBLE_MISSING_COMMA_IN_ARRAY_FORMATTING,
+        formatting::POSSIBLE_MISSING_COMMA,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
