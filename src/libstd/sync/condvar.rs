@@ -36,7 +36,7 @@ impl WaitTimeoutResult {
 /// consumes no CPU time while waiting for an event to occur. Condition
 /// variables are typically associated with a boolean predicate (a condition)
 /// and a mutex. The predicate is always verified inside of the mutex before
-/// determining that thread must block.
+/// determining that a thread must block.
 ///
 /// Functions in this module will block the current **thread** of execution and
 /// are bindings to system-provided condition variables where possible. Note
