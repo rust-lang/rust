@@ -227,8 +227,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
-                let (values, targets, ret) = if switch_ty.sty == ty::TyBool {
-                    static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::Infer(0)];
+                let (ret, terminator) = if switch_ty.sty == ty::TyBool {
                     assert!(options.len() > 0 && options.len() <= 2);
                     let (true_bb, false_bb) = (self.cfg.start_new_block(),
                                                self.cfg.start_new_block());
@@ -237,7 +236,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         &ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
-                    (From::from(BOOL_SWITCH_FALSE), vec![false_bb, true_bb], ret)
+                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Consume(lvalue.clone()),
+                                              true_bb, false_bb))
                 } else {
                     // The switch may be inexhaustive so we
                     // add a catch all block
@@ -250,15 +250,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let values: Vec<_> = options.iter().map(|v|
                         v.to_const_int().expect("switching on integral")
                     ).collect();
-                    (From::from(values), targets.clone(), targets)
+                    (targets.clone(), TerminatorKind::SwitchInt {
+                        discr: Operand::Consume(lvalue.clone()),
+                        switch_ty: switch_ty,
+                        values: From::from(values),
+                        targets: targets,
+                    })
                 };
-
-                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-                    discr: Operand::Consume(lvalue.clone()),
-                    switch_ty: switch_ty,
-                    values: values,
-                    targets: targets.clone(),
-                });
+                self.cfg.terminate(block, source_info, terminator);
                 ret
             }
 
