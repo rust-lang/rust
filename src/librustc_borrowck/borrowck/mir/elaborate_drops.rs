@@ -620,47 +620,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.elaborated_drop_block(&inner_c)
     }
 
-    fn open_drop_for_variant<'a>(&mut self,
-                                 c: &DropCtxt<'a, 'tcx>,
-                                 drop_block: &mut Option<BasicBlock>,
-                                 adt: &'tcx ty::AdtDef,
-                                 substs: &'tcx Substs<'tcx>,
-                                 variant_index: usize)
-                                 -> (BasicBlock, bool)
-    {
-        let subpath = super::move_path_children_matching(
-            self.move_data(), c.path, |proj| match proj {
-                &Projection {
-                    elem: ProjectionElem::Downcast(_, idx), ..
-                } => idx == variant_index,
-                _ => false
-            });
-
-        if let Some(variant_path) = subpath {
-            let base_lv = c.lvalue.clone().elem(
-                ProjectionElem::Downcast(adt, variant_index)
-            );
-            let fields = self.move_paths_for_fields(
-                &base_lv,
-                variant_path,
-                &adt.variants[variant_index],
-                substs);
-            (self.drop_ladder(c, fields), true)
-        } else {
-            // variant not found - drop the entire enum
-            if let None = *drop_block {
-                *drop_block = Some(self.complete_drop(c, true));
-            }
-            (drop_block.unwrap(), false)
-        }
-    }
-
     fn open_drop_for_adt<'a>(&mut self, c: &DropCtxt<'a, 'tcx>,
                              adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
                              -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", c, adt, substs);
-
-        let mut drop_block = None;
 
         match adt.variants.len() {
             1 => {
@@ -676,17 +639,33 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 let mut values = Vec::with_capacity(adt.variants.len());
                 let mut blocks = Vec::with_capacity(adt.variants.len());
                 let mut otherwise = None;
-                for (idx, variant) in adt.variants.iter().enumerate() {
+                for (variant_index, variant) in adt.variants.iter().enumerate() {
                     let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
                                                       self.tcx.sess.target.uint_type,
                                                       self.tcx.sess.target.int_type).unwrap();
-                    let (blk, is_ladder) = self.open_drop_for_variant(c, &mut drop_block, adt,
-                                                                      substs, idx);
-                    if is_ladder {
+                    let subpath = super::move_path_children_matching(
+                        self.move_data(), c.path, |proj| match proj {
+                            &Projection {
+                                elem: ProjectionElem::Downcast(_, idx), ..
+                            } => idx == variant_index,
+                            _ => false
+                        });
+                    if let Some(variant_path) = subpath {
+                        let base_lv = c.lvalue.clone().elem(
+                            ProjectionElem::Downcast(adt, variant_index)
+                        );
+                        let fields = self.move_paths_for_fields(
+                            &base_lv,
+                            variant_path,
+                            &adt.variants[variant_index],
+                            substs);
                         values.push(discr);
-                        blocks.push(blk);
+                        blocks.push(self.drop_ladder(c, fields));
                     } else {
-                        otherwise = Some(blk)
+                        // variant not found - drop the entire enum
+                        if let None = otherwise {
+                            otherwise = Some(self.complete_drop(c, true));
+                        }
                     }
                 }
                 if let Some(block) = otherwise {
