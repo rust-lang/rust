@@ -66,7 +66,7 @@ pub struct Span {
 ///   the error, and would be rendered with `^^^`.
 /// - they can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, String)>,

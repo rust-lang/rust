@@ -363,6 +363,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
+ "serialize 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

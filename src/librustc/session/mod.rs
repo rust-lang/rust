@@ -20,7 +20,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
@@ -78,7 +78,7 @@ pub struct Session {
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<NodeMap<Vec<lint::EarlyLint>>>,
+    pub lints: RefCell<lint::LintTable>,
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
@@ -270,13 +270,14 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
+
     pub fn add_lint<S: Into<MultiSpan>>(&self,
                                         lint: &'static lint::Lint,
                                         id: ast::NodeId,
                                         sp: S,
                                         msg: String)
     {
-        self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
+        self.lints.borrow_mut().add_lint(lint, id, sp, msg);
     }
 
     pub fn add_lint_diagnostic<M>(&self,
@@ -285,17 +286,9 @@ impl Session {
                                   msg: M)
         where M: lint::IntoEarlyLint,
     {
-        let lint_id = lint::LintId::of(lint);
-        let mut lints = self.lints.borrow_mut();
-        let early_lint = msg.into_early_lint(lint_id);
-        if let Some(arr) = lints.get_mut(&id) {
-            if !arr.contains(&early_lint) {
-                arr.push(early_lint);
-            }
-            return;
-        }
-        lints.insert(id, vec![early_lint]);
+        self.lints.borrow_mut().add_lint_diagnostic(lint, id, msg);
     }
+
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
 
@@ -617,7 +610,7 @@ pub fn build_session_(sopts: config::Options,
         local_crate_source_file: local_crate_source_file,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
-        lints: RefCell::new(NodeMap()),
+        lints: RefCell::new(lint::LintTable::new()),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),

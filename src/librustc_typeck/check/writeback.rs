@@ -19,9 +19,10 @@ use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::infer::{InferCtxt, FixupError};
-use rustc::util::nodemap::DefIdMap;
+use rustc::util::nodemap::{DefIdMap, DefIdSet};
 
 use std::cell::Cell;
+use std::mem;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -52,9 +53,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_deferred_obligations(item_id);
         wbcx.visit_type_nodes();
         wbcx.visit_cast_types();
+        wbcx.visit_lints();
 
         let tables = self.tcx.alloc_tables(wbcx.tables);
         self.tcx.tables.borrow_mut().insert(item_def_id, tables);
+
+        let used_trait_imports = mem::replace(&mut *self.used_trait_imports.borrow_mut(),
+                                              DefIdSet());
+        debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
+        self.tcx.used_trait_imports.borrow_mut().insert(item_def_id, used_trait_imports);
     }
 }
 
@@ -299,6 +306,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         self.tables.cast_kinds.extend(
             self.fcx.tables.borrow().cast_kinds.iter().map(|(&key, &value)| (key, value)));
+    }
+
+    fn visit_lints(&mut self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        self.fcx.tables.borrow_mut().lints.transfer(&mut self.tables.lints);
     }
 
     fn visit_anon_types(&self) {
