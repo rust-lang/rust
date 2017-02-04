@@ -240,7 +240,7 @@ fn main() {
             sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
         }
     } else {
-        if !target.contains("freebsd") {
+        if !target.contains("freebsd") && !target.contains("netbsd") {
             sources.extend(&["gcc_personality_v0.c"]);
         }
 
