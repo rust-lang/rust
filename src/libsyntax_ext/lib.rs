@@ -24,7 +24,6 @@
 #![feature(staged_api)]
 
 extern crate fmt_macros;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate syntax;
@@ -51,12 +50,14 @@ pub mod proc_macro_impl;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, MultiModifier, NamedSyntaxExtension};
+use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
 use syntax::symbol::Symbol;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
                          enable_quotes: bool) {
+    deriving::register_builtin_derives(resolver);
+
     let mut register = |name, ext| {
         resolver.add_ext(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
     };
@@ -111,8 +112,6 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),
              NormalTT(Box::new(format::expand_format_args), None, true));
-
-    register(Symbol::intern("derive"), MultiModifier(Box::new(deriving::expand_derive)));
 
     for (name, ext) in user_exts {
         register(name, ext);
