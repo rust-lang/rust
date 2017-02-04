@@ -277,7 +277,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
         temporaries: Vec<Pointer>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
         // Subtract 1 because `local_decls` includes the ReturnPointer, but we don't store a local
@@ -305,7 +305,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx, ()> {
+    pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
@@ -369,7 +369,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         operands: J,
         discr_val: u128,
         discr_size: u64,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr();
 
@@ -390,7 +390,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         offsets: I,
         operands: J,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         // FIXME(solson)
         let dest = self.force_allocation(dest)?.to_ptr();
 
@@ -410,7 +410,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         lvalue: &mir::Lvalue<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         let dest = self.eval_lvalue(lvalue)?;
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty)?;
@@ -833,7 +833,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
     }
 
-    fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         let size = self.type_size(ty)?.expect("cannot copy from an unsized type");
         let align = self.type_align(ty)?;
         self.memory.copy(src, dest, size, align)?;
@@ -909,7 +909,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         val: PrimVal,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         match dest {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
@@ -937,7 +937,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         src_val: Value,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         match dest {
             Lvalue::Global(cid) => {
                 let dest = *self.globals.get_mut(&cid).expect("global should be cached");
@@ -977,7 +977,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         write_dest: F,
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         if let Value::ByRef(dest_ptr) = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         value: Value,
         dest: Pointer,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         match value {
             Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
             Value::ByVal(primval) => {
@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         b: PrimVal,
         ptr: Pointer,
         ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         assert_eq!(self.get_field_count(ty)?, 2);
         let field_0 = self.get_field_offset(ty, 0)?.bytes();
         let field_1 = self.get_field_offset(ty, 1)?.bytes();
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(kind)
     }
 
-    fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         match ty.sty {
             ty::TyBool if val.to_bytes()? > 1 => Err(EvalError::InvalidBool),
 
@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
         sty: Ty<'tcx>,
         dty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
 
@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         src_ty: Ty<'tcx>,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         match (&src_ty.sty, &dest_ty.sty) {
             (&ty::TyRef(_, ref s), &ty::TyRef(_, ref d)) |
             (&ty::TyRef(_, ref s), &ty::TyRawPtr(ref d)) |
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// Convenience function to ensure correct usage of globals and code-sharing with locals.
-    pub fn modify_global<F>(&mut self, cid: GlobalId<'tcx>, f: F) -> EvalResult<'tcx, ()>
+    pub fn modify_global<F>(&mut self, cid: GlobalId<'tcx>, f: F) -> EvalResult<'tcx>
         where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
         let mut val = *self.globals.get(&cid).expect("global not cached");
@@ -1389,7 +1389,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         frame: usize,
         local: mir::Local,
         f: F,
-    ) -> EvalResult<'tcx, ()>
+    ) -> EvalResult<'tcx>
         where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
         let val = self.stack[frame].get_local(local);

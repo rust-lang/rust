@@ -17,7 +17,7 @@ use lvalue::{Global, GlobalId, Lvalue};
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx, ()> {
+    pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
         self.steps_remaining = self.steps_remaining.saturating_sub(n);
         if self.steps_remaining > 0 {
             Ok(())
@@ -76,7 +76,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", stmt);
 
         use rustc::mir::StatementKind::*;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx, ()> {
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", terminator.kind);
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
@@ -164,7 +164,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Global(cid), cleanup, Vec::new())
         });
     }
-    fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
+    fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx>>(&mut self, f: F) {
         if let Ok(ref mut n) = *self.new_constants {
             *n += 1;
         } else {

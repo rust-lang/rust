@@ -27,7 +27,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
@@ -161,7 +161,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>, span: Span) -> EvalResult<'tcx, ()> {
+    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>, span: Span) -> EvalResult<'tcx> {
         // add them to the stack in reverse order, because the impl that needs to run the last
         // is the one that needs to be at the bottom of the stack
         for (drop_def_id, self_arg, substs) in drops.into_iter().rev() {
@@ -194,7 +194,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         use syntax::abi::Abi;
         match fn_ty.abi {
             Abi::RustIntrinsic => {
@@ -379,7 +379,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         args: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = attr::first_attr_value_str_by_name(&attrs, "link_name")
@@ -513,7 +513,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         })
     }
 
-    fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx, ()> {
+    fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx> {
         if let Some((last, last_ty)) = args.pop() {
             let last_layout = self.type_layout(last_ty)?;
             match (&last_ty.sty, last_layout) {
@@ -649,7 +649,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         lval: Lvalue<'tcx>,
         ty: Ty<'tcx>,
         drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
             return Ok(());
@@ -813,7 +813,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         mut fields: I,
         lval: Lvalue<'tcx>,
         drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
-    ) -> EvalResult<'tcx, ()>
+    ) -> EvalResult<'tcx>
         where I: Iterator<Item = (Ty<'tcx>, ty::layout::Size)>,
     {
         // FIXME: some aggregates may be represented by Value::ByValPair

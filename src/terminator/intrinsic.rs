@@ -20,7 +20,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         let arg_vals: EvalResult<Vec<Value>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();

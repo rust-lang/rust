@@ -258,7 +258,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     // TODO(solson): See comment on `reallocate`.
-    pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<'tcx, ()> {
+    pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<'tcx> {
         if ptr.points_to_zst() {
             return Ok(());
         }
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx, ()> {
+    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         // check whether the memory was marked as packed
         // we select all elements that have the correct alloc_id and are within
@@ -529,7 +529,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
+    pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx> {
         // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
@@ -552,7 +552,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64) -> EvalResult<'tcx, ()> {
+    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64) -> EvalResult<'tcx> {
         if size == 0 {
             return Ok(());
         }
@@ -599,13 +599,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_bytes(ptr, size, 1)
     }
 
-    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx, ()> {
+    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
         let bytes = self.get_bytes_mut(ptr, src.len() as u64, 1)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
-    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
         let bytes = self.get_bytes_mut(ptr, count, 1)?;
         for b in bytes { *b = val; }
         Ok(())
@@ -626,7 +626,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx, ()> {
+    pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx> {
         self.write_usize(dest, ptr.offset as u64)?;
         self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
@@ -637,7 +637,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         dest: Pointer,
         val: PrimVal,
         size: u64,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         match val {
             PrimVal::Ptr(ptr) => {
                 assert_eq!(size, self.pointer_size());
@@ -671,7 +671,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<'tcx, ()> {
+    pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<'tcx> {
         let align = self.layout.i1_align.abi();
         self.get_bytes_mut(ptr, 1, align)
             .map(|bytes| bytes[0] = b as u8)
@@ -693,7 +693,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_bytes(ptr, size, align).map(|b| read_target_int(self.endianess(), b).unwrap())
     }
 
-    pub fn write_int(&mut self, ptr: Pointer, n: i128, size: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_int(&mut self, ptr: Pointer, n: i128, size: u64) -> EvalResult<'tcx> {
         let align = self.int_align(size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size, align)?;
@@ -706,7 +706,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_bytes(ptr, size, align).map(|b| read_target_uint(self.endianess(), b).unwrap())
     }
 
-    pub fn write_uint(&mut self, ptr: Pointer, n: u128, size: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_uint(&mut self, ptr: Pointer, n: u128, size: u64) -> EvalResult<'tcx> {
         let align = self.int_align(size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size, align)?;
@@ -718,7 +718,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.read_int(ptr, self.pointer_size()).map(|i| i as i64)
     }
 
-    pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<'tcx, ()> {
+    pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<'tcx> {
         let size = self.pointer_size();
         self.write_int(ptr, n as i128, size)
     }
@@ -727,12 +727,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.read_uint(ptr, self.pointer_size()).map(|i| i as u64)
     }
 
-    pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
+    pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx> {
         let size = self.pointer_size();
         self.write_uint(ptr, n as u128, size)
     }
 
-    pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx, ()> {
+    pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx> {
         let endianess = self.endianess();
         let align = self.layout.f32_align.abi();
         let b = self.get_bytes_mut(ptr, 4, align)?;
@@ -740,7 +740,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn write_f64(&mut self, ptr: Pointer, f: f64) -> EvalResult<'tcx, ()> {
+    pub fn write_f64(&mut self, ptr: Pointer, f: f64) -> EvalResult<'tcx> {
         let endianess = self.endianess();
         let align = self.layout.f64_align.abi();
         let b = self.get_bytes_mut(ptr, 8, align)?;
@@ -769,7 +769,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(self.get(ptr.alloc_id)?.relocations.range(start..end))
     }
 
-    fn clear_relocations(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx, ()> {
+    fn clear_relocations(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
         // Find all relocations overlapping the given range.
         let keys: Vec<_> = self.relocations(ptr, size)?.map(|(&k, _)| k).collect();
         if keys.is_empty() { return Ok(()); }
@@ -793,7 +793,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    fn check_relocation_edges(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, ()> {
+    fn check_relocation_edges(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
         let overlapping_start = self.relocations(ptr, 0)?.count();
         let overlapping_end = self.relocations(ptr.offset(size), 0)?.count();
         if overlapping_start + overlapping_end != 0 {
@@ -802,7 +802,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: u64) -> EvalResult<'tcx, ()> {
+    fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: u64) -> EvalResult<'tcx> {
         let relocations: Vec<_> = self.relocations(src, size)?
             .map(|(&offset, &alloc_id)| {
                 // Update relocation offsets for the new positions in the destination allocation.
@@ -817,7 +817,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Undefined bytes
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     // FIXME(solson): This is a very naive, slow version.
-    fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: u64) -> EvalResult<'tcx, ()> {
+    fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: u64) -> EvalResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size as usize as u64, size);
         let mut v = Vec::with_capacity(size as usize);
@@ -831,7 +831,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    fn check_defined(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, ()> {
+    fn check_defined(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         if !alloc.undef_mask.is_range_defined(ptr.offset, ptr.offset + size) {
             return Err(EvalError::ReadUndefBytes);
@@ -839,9 +839,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn mark_definedness(&mut self, ptr: Pointer, size: u64, new_state: bool)
-        -> EvalResult<'tcx, ()>
-    {
+    pub fn mark_definedness(
+        &mut self,
+        ptr: Pointer,
+        size: u64,
+        new_state: bool
+    ) -> EvalResult<'tcx> {
         if size == 0 {
             return Ok(())
         }

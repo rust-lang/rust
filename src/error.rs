@@ -55,7 +55,7 @@ pub enum EvalError<'tcx> {
     Unreachable,
 }
 
-pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
+pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {

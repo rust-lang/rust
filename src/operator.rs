@@ -41,7 +41,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right: &mir::Operand<'tcx>,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
         let val = Value::ByValPair(val, PrimVal::from_bool(overflowed));
         self.write_value(val, dest, dest_ty)
