@@ -2626,8 +2626,8 @@ macro_rules! cross_sign_from_int_impl {
             type Err = TryFromIntError;
 
             fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
-                let max = <$signed as FromStrRadixHelper>::max_value() as u64;
-                if u as u64 > max {
+                let max = <$signed as FromStrRadixHelper>::max_value() as u128;
+                if u as u128 > max {
                     Err(TryFromIntError(()))
                 } else {
                     Ok(u as $signed)
@@ -2640,8 +2640,8 @@ macro_rules! cross_sign_from_int_impl {
             type Err = TryFromIntError;
 
             fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
-                let max = <$unsigned as FromStrRadixHelper>::max_value() as u64;
-                if u < 0 || u as u64 > max {
+                let max = <$unsigned as FromStrRadixHelper>::max_value() as u128;
+                if u < 0 || u as u128 > max {
                     Err(TryFromIntError(()))
                 } else {
                     Ok(u as $unsigned)
