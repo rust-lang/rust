@@ -949,6 +949,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     fn may_slice(cx: &LateContext, ty: ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
+            ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => may_slice(cx, inner),
@@ -965,6 +966,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     } else {
         match ty.sty {
             ty::TySlice(_) => sugg::Sugg::hir_opt(cx, expr),
+            ty::TyAdt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => sugg::Sugg::hir_opt(cx, expr),
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => {
                 if may_slice(cx, inner) {
                     sugg::Sugg::hir_opt(cx, expr)

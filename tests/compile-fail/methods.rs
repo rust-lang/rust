@@ -350,6 +350,7 @@ fn or_fun_call() {
 /// Checks implementation of `ITER_NTH` lint
 fn iter_nth() {
     let mut some_vec = vec![0, 1, 2, 3];
+    let mut boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
     let mut some_vec_deque: VecDeque<_> = some_vec.iter().cloned().collect();
 
     {
@@ -357,6 +358,8 @@ fn iter_nth() {
         let bad_vec = some_vec.iter().nth(3);
         //~^ERROR called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
         let bad_slice = &some_vec[..].iter().nth(3);
+        //~^ERROR called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
+        let bad_boxed_slice = boxed_slice.iter().nth(3);
         //~^ERROR called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
         let bad_vec_deque = some_vec_deque.iter().nth(3);
         //~^ERROR called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
@@ -414,6 +417,7 @@ impl GetFalsePositive {
 
 /// Checks implementation of `GET_UNWRAP` lint
 fn get_unwrap() {
+    let mut boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
     let mut some_slice = &mut [0, 1, 2, 3];
     let mut some_vec = vec![0, 1, 2, 3];
     let mut some_vecdeque: VecDeque<_> = some_vec.iter().cloned().collect();
@@ -422,6 +426,10 @@ fn get_unwrap() {
     let mut false_positive = GetFalsePositive { arr: [0, 1, 2] };
 
     { // Test `get().unwrap()`
+        let _ = boxed_slice.get(1).unwrap();
+        //~^ERROR called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+        //~|HELP try this
+        //~|SUGGESTION boxed_slice[1]
         let _ = some_slice.get(0).unwrap();
         //~^ERROR called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
         //~|HELP try this
@@ -447,6 +455,10 @@ fn get_unwrap() {
     }
 
     { // Test `get_mut().unwrap()`
+        *boxed_slice.get_mut(0).unwrap() = 1;
+        //~^ERROR called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
+        //~|HELP try this
+        //~|SUGGESTION &mut boxed_slice[0]
         *some_slice.get_mut(0).unwrap() = 1;
         //~^ERROR called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
         //~|HELP try this
