@@ -13,4 +13,4 @@
 # released on `$date`
 
 rustc: beta-2017-02-01
-cargo: bfee18f73287687c543bda8c35e4e33808792715
+cargo: 407edef22e894266eb562618cba5ca9757051946
