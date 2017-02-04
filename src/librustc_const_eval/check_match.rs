@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
 use _match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use _match::Usefulness::*;
 use _match::WitnessPreference::*;
@@ -302,10 +303,20 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
                             let span = first_pat.0.span;
-                            struct_span_err!(cx.tcx.sess, span, E0165,
-                                             "irrefutable while-let pattern")
-                                .span_label(span, &format!("irrefutable pattern"))
-                                .emit();
+
+                            // check which arm we're on.
+                            if ptr::eq(first_arm_pats, pats) {
+                                let mut diagnostic = Diagnostic::new(Level::Warning,
+                                                                     "unreachable pattern");
+                                diagnostic.set_span(pat.span);
+                                cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
+                                                                hir_pat.id, diagnostic);
+                            } else {
+                                struct_span_err!(cx.tcx.sess, span, E0165,
+                                                 "irrefutable while-let pattern")
+                                    .span_label(span, &format!("irrefutable pattern"))
+                                    .emit();
+                            }
                         },
 
                         hir::MatchSource::ForLoopDesugar |
