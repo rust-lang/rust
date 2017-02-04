@@ -1476,12 +1476,17 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             (Some(name), "dylib") => (name, cstore::NativeUnknown),
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
+            (Some(name), "static-nobundle") => (name, cstore::NativeStaticNobundle),
             (_, s) => {
                 early_error(error_format, &format!("unknown library kind `{}`, expected \
                                                   one of dylib, framework, or static",
                                                  s));
             }
         };
+        if kind == cstore::NativeStaticNobundle && !nightly_options::is_nightly_build() {
+            early_error(error_format, &format!("the library kind 'static-nobundle' is only \
+                                                accepted on the nightly compiler"));
+        }
         let mut name_parts = name.splitn(2, ':');
         let name = name_parts.next().unwrap();
         let new_name = name_parts.next();

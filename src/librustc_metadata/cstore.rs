@@ -32,7 +32,7 @@ use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
-pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
+pub use rustc::middle::cstore::NativeLibraryKind::*;
 pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
 
 // A map from external crate numbers (as decoded from some crate file) to

@@ -47,7 +47,7 @@ use rustc_back::target::Target;
 use hir;
 use rustc_back::PanicStrategy;
 
-pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
+pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
@@ -123,6 +123,7 @@ pub enum LinkagePreference {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
+    NativeStaticNobundle, // native static library, which doesn't get bundled into .rlibs
     NativeFramework, // OSX-specific
     NativeUnknown,   // default way to specify a dynamic library
 }
