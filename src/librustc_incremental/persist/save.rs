@@ -14,6 +14,7 @@ use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::graph::{NodeIndex, INCOMING};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::hash::Hash;
@@ -177,8 +178,10 @@ pub fn encode_dep_graph(preds: &Predecessors,
 
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
-    let mut edges = vec![];
-    for (&target, sources) in &preds.inputs {
+    let mut edges = FxHashMap();
+    for edge in preds.reduced_graph.all_edges() {
+        let source = *preds.reduced_graph.node_data(edge.source());
+        let target = *preds.reduced_graph.node_data(edge.target());
         match *target {
             DepNode::MetaData(ref def_id) => {
                 // Metadata *targets* are always local metadata nodes. We have
@@ -188,11 +191,10 @@ pub fn encode_dep_graph(preds: &Predecessors,
             }
             _ => (),
         }
+        debug!("serialize edge: {:?} -> {:?}", source, target);
+        let source = builder.map(source);
         let target = builder.map(target);
-        for &source in sources {
-            let source = builder.map(source);
-            edges.push((source, target.clone()));
-        }
+        edges.entry(source).or_insert(vec![]).push(target);
     }
 
     if tcx.sess.opts.debugging_opts.incremental_dump_hash {
@@ -202,6 +204,9 @@ pub fn encode_dep_graph(preds: &Predecessors,
     }
 
     // Create the serialized dep-graph.
+    let edges = edges.into_iter()
+                     .map(|(k, v)| SerializedEdgeSet { source: k, targets: v })
+                     .collect();
     let graph = SerializedDepGraph {
         edges: edges,
         hashes: preds.hashes
@@ -250,12 +255,10 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
 
     let mut def_id_hashes = FxHashMap();
 
-    for (&target, sources) in &preds.inputs {
-        let def_id = match *target {
-            DepNode::MetaData(def_id) => {
-                assert!(def_id.is_local());
-                def_id
-            }
+    for (index, target) in preds.reduced_graph.all_nodes().iter().enumerate() {
+        let index = NodeIndex(index);
+        let def_id = match *target.data {
+            DepNode::MetaData(def_id) if def_id.is_local() => def_id,
             _ => continue,
         };
 
@@ -281,13 +284,18 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         // is the det. hash of the def-path. This is convenient
         // because we can sort this to get a stable ordering across
         // compilations, even if the def-ids themselves have changed.
-        let mut hashes: Vec<(DepNode<u64>, Fingerprint)> = sources.iter()
-            .map(|dep_node| {
-                let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id))).unwrap();
-                let hash = preds.hashes[dep_node];
-                (hash_dep_node, hash)
-            })
-            .collect();
+        let mut hashes: Vec<(DepNode<u64>, Fingerprint)> =
+            preds.reduced_graph
+                 .depth_traverse(index, INCOMING)
+                 .map(|index| preds.reduced_graph.node_data(index))
+                 .filter(|dep_node| HashContext::is_hashable(dep_node))
+                 .map(|dep_node| {
+                     let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id)))
+                                                 .unwrap();
+                     let hash = preds.hashes[dep_node];
+                     (hash_dep_node, hash)
+                 })
+                 .collect();
 
         hashes.sort();
         let mut state = IchHasher::new();
@@ -298,9 +306,12 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
 
         if tcx.sess.opts.debugging_opts.incremental_dump_hash {
             println!("metadata hash for {:?} is {}", def_id, hash);
-            for dep_node in sources {
-                println!("metadata hash for {:?} depends on {:?} with hash {}",
-                         def_id, dep_node, preds.hashes[dep_node]);
+            for pred_index in preds.reduced_graph.depth_traverse(index, INCOMING) {
+                let dep_node = preds.reduced_graph.node_data(pred_index);
+                if HashContext::is_hashable(&dep_node) {
+                    println!("metadata hash for {:?} depends on {:?} with hash {}",
+                             def_id, dep_node, preds.hashes[dep_node]);
+                }
             }
         }
 
