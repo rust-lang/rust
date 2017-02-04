@@ -212,7 +212,7 @@ pub fn link_binary(sess: &Session,
                 remove(sess, &obj);
             }
         }
-        remove(sess, &outputs.with_extension("metadata.o"));
+        remove(sess, &outputs.with_extension(&get_metadata_extension()));
     }
 
     out_filenames
@@ -824,7 +824,7 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension("metadata.o"));
+        cmd.add_object(&outputs.with_extension(&get_metadata_extension()));
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -1244,4 +1244,8 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
     }
+}
+
+fn get_metadata_extension() -> String {
+    "metadata.".to_string() + OutputType::Object.extension()
 }
