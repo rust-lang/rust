@@ -32,18 +32,18 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_mac(&mut self, _mac: &Mac) {}
 }
 
-pub struct CustomDerive {
+pub struct ProcMacroDerive {
     inner: fn(TokenStream) -> TokenStream,
     attrs: Vec<ast::Name>,
 }
 
-impl CustomDerive {
-    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> CustomDerive {
-        CustomDerive { inner: inner, attrs: attrs }
+impl ProcMacroDerive {
+    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> ProcMacroDerive {
+        ProcMacroDerive { inner: inner, attrs: attrs }
     }
 }
 
-impl MultiItemModifier for CustomDerive {
+impl MultiItemModifier for ProcMacroDerive {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
@@ -54,7 +54,7 @@ impl MultiItemModifier for CustomDerive {
             Annotatable::Item(item) => item,
             Annotatable::ImplItem(_) |
             Annotatable::TraitItem(_) => {
-                ecx.span_err(span, "custom derive attributes may only be \
+                ecx.span_err(span, "proc-macro derives may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -63,7 +63,7 @@ impl MultiItemModifier for CustomDerive {
             ItemKind::Struct(..) |
             ItemKind::Enum(..) => {},
             _ => {
-                ecx.span_err(span, "custom derive attributes may only be \
+                ecx.span_err(span, "proc-macro derives may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -81,7 +81,7 @@ impl MultiItemModifier for CustomDerive {
         let stream = match res {
             Ok(stream) => stream,
             Err(e) => {
-                let msg = "custom derive attribute panicked";
+                let msg = "proc-macro derive panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
                 if let Some(s) = e.downcast_ref::<String>() {
                     err.help(&format!("message: {}", s));
@@ -100,7 +100,7 @@ impl MultiItemModifier for CustomDerive {
                 Ok(new_items) => new_items,
                 Err(_) => {
                     // FIXME: handle this better
-                    let msg = "custom derive produced unparseable tokens";
+                    let msg = "proc-macro derive produced unparseable tokens";
                     ecx.struct_span_fatal(span, msg).emit();
                     panic!(FatalError);
                 }
