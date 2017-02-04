@@ -58,7 +58,10 @@ declare!(___adddf3, __adddf3);
 declare!(___powisf2, __powisf2);
 declare!(___powidf2, __powidf2);
 
-#[cfg(all(not(windows), target_pointer_width="64"))]
+#[cfg(all(not(windows),
+          not(target_arch = "mips64"),
+          not(target_arch = "mips64el"),
+          target_pointer_width="64"))]
 pub mod int_128 {
     extern {
         fn __lshrti3();

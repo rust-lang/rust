@@ -105,7 +105,10 @@ mod tests {
 }
 
 #[cfg(test)]
-#[cfg(all(not(windows), target_pointer_width="64"))]
+#[cfg(all(not(windows),
+          not(target_arch = "mips64"),
+          not(target_arch = "mips64el"),
+          target_pointer_width="64"))]
 mod tests_i128 {
     use qc::{I128, U128};
 
