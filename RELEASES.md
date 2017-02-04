@@ -1,3 +1,11 @@
+Version 1.15.1 (2017-02-07)
+===========================
+
+* [Fix IntoIter::as_mut_slice's signature][39466]
+
+[39466]: https://github.com/rust-lang/rust/pull/39466
+
+
 Version 1.15.0 (2017-02-02)
 ===========================
 
