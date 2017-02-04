@@ -8,7 +8,6 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
-#![feature(repeat_str)]
 #![feature(conservative_impl_trait)]
 #![feature(collections_bound)]
 

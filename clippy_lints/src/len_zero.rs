@@ -93,7 +93,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
         if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self &&
             {
-                let did = cx.tcx.map.local_def_id(item.id.node_id);
+                let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 let impl_ty = cx.tcx.item_type(did);
                 impl_ty.fn_args().skip_binder().len() == 1
             }
@@ -120,7 +120,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
         if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self &&
             {
-                let did = cx.tcx.map.local_def_id(item.id.node_id);
+                let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 let impl_ty = cx.tcx.item_type(did);
                 impl_ty.fn_args().skip_binder().len() == 1
             }
@@ -141,7 +141,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
 
     if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
         if cx.access_levels.is_exported(i.id.node_id) {
-            let def_id = cx.tcx.map.local_def_id(item.id);
+            let def_id = cx.tcx.hir.local_def_id(item.id);
             let ty = cx.tcx.item_type(def_id);
 
             span_lint(cx,

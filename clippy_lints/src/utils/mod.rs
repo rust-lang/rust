@@ -362,8 +362,8 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 
 /// Get the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
-    let parent_id = cx.tcx.map.get_parent(expr.id);
-    match cx.tcx.map.find(parent_id) {
+    let parent_id = cx.tcx.hir.get_parent(expr.id);
+    match cx.tcx.hir.find(parent_id) {
         Some(Node::NodeItem(&Item { ref name, .. })) |
         Some(Node::NodeTraitItem(&TraitItem { ref name, .. })) |
         Some(Node::NodeImplItem(&ImplItem { ref name, .. })) => Some(*name),
@@ -458,7 +458,7 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
 
 /// Get a parent expressions if any – this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
-    let map = &cx.tcx.map;
+    let map = &cx.tcx.hir;
     let node_id: NodeId = e.id;
     let parent_id: NodeId = map.get_parent_node(node_id);
     if node_id == parent_id {
@@ -472,14 +472,14 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
 }
 
 pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
-    let map = &cx.tcx.map;
+    let map = &cx.tcx.hir;
     let enclosing_node = map.get_enclosing_scope(node)
         .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, eid), .. }) => {
-                match cx.tcx.map.body(eid).value.node {
+                match cx.tcx.hir.body(eid).value.node {
                     ExprBlock(ref block) => Some(block),
                     _ => None,
                 }
@@ -762,7 +762,7 @@ pub fn camel_case_from(s: &str) -> usize {
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::Ty<'tcx> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
-    let fn_def_id = cx.tcx.map.local_def_id(fn_item);
+    let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
     let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
     let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, fn_sig);
     fn_sig.output()

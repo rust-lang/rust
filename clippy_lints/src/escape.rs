@@ -40,16 +40,13 @@ declare_lint! {
 }
 
 fn is_non_trait_box(ty: ty::Ty) -> bool {
-    match ty.sty {
-        ty::TyBox(inner) => !inner.is_trait(),
-        _ => false,
-    }
+    ty.is_box() && !ty.boxed_ty().is_trait()
 }
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::Tables<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
     target: TargetDataLayout,
     too_large_for_stack: u64,
 }
@@ -89,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         for node in v.set {
             span_lint(cx,
                       BOXED_LOCAL,
-                      cx.tcx.map.span(node),
+                      cx.tcx.hir.span(node),
                       "local variable doesn't need to be boxed here");
         }
     }
@@ -108,7 +105,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
-        let map = &self.tcx.map;
+        let map = &self.tcx.hir;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
@@ -180,7 +177,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                         self.tables
                             .adjustments
                             .get(&self.tcx
-                                .map
+                                .hir
                                 .get_parent_node(borrow_id))
                             .map(|a| &a.kind) {
                         if autoderefs <= 1 {
@@ -204,16 +201,16 @@ impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
     fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
-        match ty.sty {
-            ty::TyBox(inner) => {
-                self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
-                    let size = layout.size(&self.target);
-                    size.bytes() > self.too_large_for_stack
-                } else {
-                    false
-                })
-            },
-            _ => false,
+        if ty.is_box() {
+            let inner = ty.boxed_ty();
+            self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
+                let size = layout.size(&self.target);
+                size.bytes() > self.too_large_for_stack
+            } else {
+                false
+            })
+        } else {
+            false
         }
     }
 }

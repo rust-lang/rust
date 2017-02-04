@@ -263,7 +263,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprRepeat(ref value, number_id) => {
                 if let Some(lcx) = self.lcx {
                     self.binop_apply(value,
-                                     &lcx.tcx.map.body(number_id).value,
+                                     &lcx.tcx.hir.body(number_id).value,
                                      |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
                 } else {
                     None

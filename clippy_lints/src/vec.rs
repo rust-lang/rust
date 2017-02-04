@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_let_chain!{[
             let Some((_, arg, _)) = higher::for_loop(expr),
             let Some(vec_args) = higher::vec_macro(cx, arg),
-            is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)), cx.tcx.map.get_parent(expr.id)),
+            is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)), cx.tcx.hir.get_parent(expr.id)),
         ], {
             // report the error around the `vec!` not inside `<std macros>:`
             let span = cx.sess().codemap().source_callsite(arg.span);

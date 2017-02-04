@@ -114,7 +114,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
                 self.eq_expr(le, re) &&
-                self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value)
+                self.eq_expr(&self.cx.tcx.hir.body(ll_id).value, &self.cx.tcx.hir.body(rl_id).value)
             },
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),
@@ -217,7 +217,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyArray(ref lt, ll_id), &TyArray(ref rt, rl_id)) => {
                 self.eq_ty(lt, rt) &&
-                self.eq_expr(&self.cx.tcx.map.body(ll_id).value, &self.cx.tcx.map.body(rl_id).value)
+                self.eq_expr(&self.cx.tcx.hir.body(ll_id).value, &self.cx.tcx.hir.body(rl_id).value)
             },
             (&TyPtr(ref l_mut), &TyPtr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
             (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
@@ -370,7 +370,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _, _, _) -> _ = ExprClosure;
                 c.hash(&mut self.s);
                 cap.hash(&mut self.s);
-                self.hash_expr(&self.cx.tcx.map.body(eid).value);
+                self.hash_expr(&self.cx.tcx.hir.body(eid).value);
             },
             ExprField(ref e, ref f) => {
                 let c: fn(_, _) -> _ = ExprField;
@@ -435,7 +435,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprRepeat;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
-                self.hash_expr(&self.cx.tcx.map.body(l_id).value);
+                self.hash_expr(&self.cx.tcx.hir.body(l_id).value);
             },
             ExprRet(ref e) => {
                 let c: fn(_) -> _ = ExprRet;

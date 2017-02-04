@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
-    let map = &cx.tcx.map;
+    let map = &cx.tcx.hir;
 
     // `fmt` method
     if let Some(NodeImplItem(item)) = map.find(map.get_parent(expr.id)) {

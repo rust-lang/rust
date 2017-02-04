@@ -143,12 +143,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             return; // useless if the trait doesn't exist
                                         };
                                         // check that we are not inside an `impl AssignOp` of this exact operation
-                                        let parent_fn = cx.tcx.map.get_parent(e.id);
-                                        let parent_impl = cx.tcx.map.get_parent(parent_fn);
+                                        let parent_fn = cx.tcx.hir.get_parent(e.id);
+                                        let parent_impl = cx.tcx.hir.get_parent(parent_fn);
                                         // the crate node is the only one that is not in the map
                                         if_let_chain!{[
                                             parent_impl != ast::CRATE_NODE_ID,
-                                            let hir::map::Node::NodeItem(item) = cx.tcx.map.get(parent_impl),
+                                            let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl),
                                             let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node,
                                             trait_ref.path.def.def_id() == trait_id
                                         ], { return; }}
