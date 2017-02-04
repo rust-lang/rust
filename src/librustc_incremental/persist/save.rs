@@ -290,7 +290,8 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                  .map(|index| preds.reduced_graph.node_data(index))
                  .filter(|dep_node| HashContext::is_hashable(dep_node))
                  .map(|dep_node| {
-                     let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id))).unwrap();
+                     let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id)))
+                                                 .unwrap();
                      let hash = preds.hashes[dep_node];
                      (hash_dep_node, hash)
                  })
