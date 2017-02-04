@@ -1,4 +1,3 @@
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
 use int::LargeInt;
 use int::Int;
 
@@ -14,14 +13,15 @@ macro_rules! mul {
             low &= lower_mask;
             t += (a.low() >> half_bits).wrapping_mul(b.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            let mut high = t >> half_bits;
+            let mut high = (t >> half_bits) as hty!($ty);
             t = low >> half_bits;
             low &= lower_mask;
             t += (b.low() >> half_bits).wrapping_mul(a.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            high += t >> half_bits;
-            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits);
-            high = high.wrapping_add(a.high().wrapping_mul(b.low()).wrapping_add(a.low().wrapping_mul(b.high())));
+            high += (t >> half_bits) as hty!($ty);
+            high += (a.low() >> half_bits).wrapping_mul(b.low() >> half_bits) as hty!($ty);
+            high = high.wrapping_add(a.high().wrapping_mul(b.low() as hty!($ty)))
+                       .wrapping_add((a.low() as hty!($ty)).wrapping_mul(b.high()));
             <$ty>::from_parts(low, high)
         }
     }
@@ -29,9 +29,13 @@ macro_rules! mul {
 
 macro_rules! mulo {
     ($intrinsic:ident: $ty:ty) => {
+        // Default is "C" ABI
+        mulo!($intrinsic: $ty, "C");
+    };
+    ($intrinsic:ident: $ty:ty, $abi:tt) => {
         /// Returns `a * b` and sets `*overflow = 1` if `a * b` overflows
         #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
+        pub extern $abi fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
             *overflow = 0;
             let result = a.wrapping_mul(b);
             if a == <$ty>::min_value() {
@@ -71,8 +75,15 @@ macro_rules! mulo {
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 mul!(__muldi3: u64);
 
+mul!(__multi3: i128);
+
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+mulo!(__muloti4: i128, "unadjusted");
+#[cfg(not(all(windows, target_pointer_width="64")))]
+mulo!(__muloti4: i128);
 
 #[cfg(test)]
 mod tests {
@@ -91,7 +102,7 @@ mod tests {
             let mut overflow = 2;
             let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return None
+                panic!("Invalid value {} for overflow", overflow);
             }
             Some((r, overflow))
         }
@@ -103,7 +114,34 @@ mod tests {
             let mut overflow = 2;
             let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return None
+                panic!("Invalid value {} for overflow", overflow);
+            }
+            Some((r, overflow))
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(not(windows),
+          not(target_arch = "mips64"),
+          not(target_arch = "mips64el"),
+          target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::I128;
+
+    check! {
+        fn __multi3(f: extern fn(i128, i128) -> i128, a: I128, b: I128)
+                    -> Option<i128> {
+            Some(f(a.0, b.0))
+        }
+        fn __muloti4(f: extern fn(i128, i128, &mut i32) -> i128,
+                     a: I128,
+                     b: I128) -> Option<(i128, i32)> {
+            let (a, b) = (a.0, b.0);
+            let mut overflow = 2;
+            let r = f(a, b, &mut overflow);
+            if overflow != 0 && overflow != 1 {
+                panic!("Invalid value {} for overflow", overflow);
             }
             Some((r, overflow))
         }

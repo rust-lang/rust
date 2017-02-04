@@ -96,171 +96,221 @@ pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
     q
 }
 
-/// Returns `n / d`
-#[cfg_attr(not(test), no_mangle)]
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
-    __udivmoddi4(n, d, None)
+macro_rules! div_mod_intrinsics {
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty) => {
+        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
+                            __udivmoddi4);
+    };
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr) => {
+        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
+                            $divmod_intr, $ty, |i|{ i });
+    };
+    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr,
+     $tyret:ty, $conv:expr) => {
+        /// Returns `n / d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn $udiv_intr(n: $ty, d: $ty) -> $tyret {
+            let r = $divmod_intr(n, d, None);
+            ($conv)(r)
+        }
+
+        /// Returns `n % d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn $umod_intr(a: $ty, b: $ty) -> $tyret {
+            use core::mem;
+
+            let mut rem = unsafe { mem::uninitialized() };
+            $divmod_intr(a, b, Some(&mut rem));
+            ($conv)(rem)
+        }
+    }
 }
 
-/// Returns `n % d`
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
-#[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __umoddi3(a: u64, b: u64) -> u64 {
-    use core::mem;
+div_mod_intrinsics!(__udivdi3, __umoddi3: u64);
 
-    let mut rem = unsafe { mem::uninitialized() };
-    __udivmoddi4(a, b, Some(&mut rem));
-    rem
+#[cfg(not(all(windows, target_pointer_width="64")))]
+div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod);
+
+#[cfg(all(windows, target_pointer_width="64"))]
+div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod, ::U64x2, ::conv);
+
+macro_rules! udivmod_inner {
+    ($n:expr, $d:expr, $rem:expr, $ty:ty) => {{
+        let (n, d, rem) = ($n, $d, $rem);
+        // NOTE X is unknown, K != 0
+        if n.high() == 0 {
+            if d.high() == 0 {
+                // 0 X
+                // ---
+                // 0 X
+
+                if let Some(rem) = rem {
+                    *rem = <$ty>::from(urem!(n.low(), d.low()));
+                }
+                return <$ty>::from(udiv!(n.low(), d.low()));
+            } else {
+                // 0 X
+                // ---
+                // K X
+                if let Some(rem) = rem {
+                    *rem = n;
+                }
+                return 0;
+            };
+        }
+
+        let mut sr;
+        let mut q;
+        let mut r;
+
+        if d.low() == 0 {
+            if d.high() == 0 {
+                // K X
+                // ---
+                // 0 0
+                // NOTE This should be unreachable in safe Rust because the program will panic before
+                // this intrinsic is called
+                unsafe {
+                    intrinsics::abort()
+                }
+            }
+
+            if n.low() == 0 {
+                // K 0
+                // ---
+                // K 0
+                if let Some(rem) = rem {
+                    *rem = <$ty>::from_parts(0, urem!(n.high(), d.high()));
+                }
+                return <$ty>::from(udiv!(n.high(), d.high()));
+            }
+
+            // K K
+            // ---
+            // K 0
+
+            if d.high().is_power_of_two() {
+                if let Some(rem) = rem {
+                    *rem = <$ty>::from_parts(n.low(), n.high() & (d.high() - 1));
+                }
+                return <$ty>::from(n.high() >> d.high().trailing_zeros());
+            }
+
+            sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
+
+            // D > N
+            if sr > <hty!($ty)>::bits() - 2 {
+                if let Some(rem) = rem {
+                    *rem = n;
+                }
+                return 0;
+            }
+
+            sr += 1;
+
+            // 1 <= sr <= <hty!($ty)>::bits() - 1
+            q = n << (<$ty>::bits() - sr);
+            r = n >> sr;
+        } else if d.high() == 0 {
+            // K X
+            // ---
+            // 0 K
+            if d.low().is_power_of_two() {
+                if let Some(rem) = rem {
+                    *rem = <$ty>::from(n.low() & (d.low() - 1));
+                }
+
+                if d.low() == 1 {
+                    return n;
+                } else {
+                    let sr = d.low().trailing_zeros();
+                    return n >> sr;
+                };
+            }
+
+            sr = 1 + <hty!($ty)>::bits() + d.low().leading_zeros() - n.high().leading_zeros();
+
+            // 2 <= sr <= u64::bits() - 1
+            q = n << (<$ty>::bits() - sr);
+            r = n >> sr;
+        } else {
+            // K X
+            // ---
+            // K K
+            sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
+
+            // D > N
+            if sr > <hty!($ty)>::bits() - 1 {
+                if let Some(rem) = rem {
+                    *rem = n;
+                }
+                return 0;
+            }
+
+            sr += 1;
+
+            // 1 <= sr <= <hty!($ty)>::bits()
+            q = n << (<$ty>::bits() - sr);
+            r = n >> sr;
+        }
+
+        // Not a special case
+        // q and r are initialized with
+        // q = n << (u64::bits() - sr)
+        // r = n >> sr
+        // 1 <= sr <= u64::bits() - 1
+        let mut carry = 0;
+
+        for _ in 0..sr {
+            // r:q = ((r:q) << 1) | carry
+            r = (r << 1) | (q >> (<$ty>::bits() - 1));
+            q = (q << 1) | carry as $ty;
+
+            // carry = 0
+            // if r >= d {
+            //     r -= d;
+            //     carry = 1;
+            // }
+            let s = (d.wrapping_sub(r).wrapping_sub(1)) as os_ty!($ty) >> (<$ty>::bits() - 1);
+            carry = (s & 1) as hty!($ty);
+            r -= d & s as $ty;
+        }
+
+        if let Some(rem) = rem {
+            *rem = r;
+        }
+        (q << 1) | carry as $ty
+    }}
 }
 
 /// Returns `n / d` and sets `*rem = n % d`
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
-    // NOTE X is unknown, K != 0
-    if n.high() == 0 {
-        if d.high() == 0 {
-            // 0 X
-            // ---
-            // 0 X
-
-            if let Some(rem) = rem {
-                *rem = u64::from(urem!(n.low(), d.low()));
-            }
-            return u64::from(udiv!(n.low(), d.low()));
-        } else {
-            // 0 X
-            // ---
-            // K X
-            if let Some(rem) = rem {
-                *rem = n;
-            }
-            return 0;
-        };
-    }
-
-    let mut sr;
-    let mut q;
-    let mut r;
-
-    if d.low() == 0 {
-        if d.high() == 0 {
-            // K X
-            // ---
-            // 0 0
-            // NOTE This should be unreachable in safe Rust because the program will panic before
-            // this intrinsic is called
-            unsafe {
-                intrinsics::abort()
-            }
-        }
-
-        if n.low() == 0 {
-            // K 0
-            // ---
-            // K 0
-            if let Some(rem) = rem {
-                *rem = u64::from_parts(0, urem!(n.high(), d.high()));
-            }
-            return u64::from(udiv!(n.high(), d.high()));
-        }
-
-        // K K
-        // ---
-        // K 0
-
-        if d.high().is_power_of_two() {
-            if let Some(rem) = rem {
-                *rem = u64::from_parts(n.low(), n.high() & (d.high() - 1));
-            }
-            return u64::from(n.high() >> d.high().trailing_zeros());
-        }
-
-        sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
-
-        // D > N
-        if sr > u32::bits() - 2 {
-            if let Some(rem) = rem {
-                *rem = n;
-            }
-            return 0;
-        }
-
-        sr += 1;
-
-        // 1 <= sr <= u32::bits() - 1
-        q = n << (u64::bits() - sr);
-        r = n >> sr;
-    } else if d.high() == 0 {
-        // K X
-        // ---
-        // 0 K
-        if d.low().is_power_of_two() {
-            if let Some(rem) = rem {
-                *rem = u64::from(n.low() & (d.low() - 1));
-            }
-
-            if d.low() == 1 {
-                return n;
-            } else {
-                let sr = d.low().trailing_zeros();
-                return n >> sr;
-            };
-        }
-
-        sr = 1 + u32::bits() + d.low().leading_zeros() - n.high().leading_zeros();
-
-        // 2 <= sr <= u64::bits() - 1
-        q = n << (u64::bits() - sr);
-        r = n >> sr;
-    } else {
-        // K X
-        // ---
-        // K K
-        sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
-
-        // D > N
-        if sr > u32::bits() - 1 {
-            if let Some(rem) = rem {
-                *rem = n;
-            }
-            return 0;
-        }
-
-        sr += 1;
-
-        // 1 <= sr <= u32::bits()
-        q = n << (u64::bits() - sr);
-        r = n >> sr;
-    }
-
-    // Not a special case
-    // q and r are initialized with
-    // q = n << (u64::bits() - sr)
-    // r = n >> sr
-    // 1 <= sr <= u64::bits() - 1
-    let mut carry = 0;
-
-    for _ in 0..sr {
-        // r:q = ((r:q) << 1) | carry
-        r = (r << 1) | (q >> (u64::bits() - 1));
-        q = (q << 1) | carry as u64;
-
-        // carry = 0
-        // if r >= d {
-        //     r -= d;
-        //     carry = 1;
-        // }
-        let s = (d.wrapping_sub(r).wrapping_sub(1)) as i64 >> (u64::bits() - 1);
-        carry = (s & 1) as u32;
-        r -= d & s as u64;
-    }
-
-    if let Some(rem) = rem {
-        *rem = r;
-    }
-    (q << 1) | carry as u64
+    udivmod_inner!(n, d, rem, u64)
 }
+
+macro_rules! udivmodti4 {
+    ($tyret:ty, $conv:expr) => {
+        /// Returns `n / d` and sets `*rem = n % d`
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> $tyret {
+            let r = u128_div_mod(n, d, rem);
+            ($conv)(r)
+        }
+    }
+}
+
+/// Returns `n / d` and sets `*rem = n % d`
+fn u128_div_mod(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
+    udivmod_inner!(n, d, rem, u128)
+}
+
+#[cfg(all(windows, target_pointer_width="64"))]
+udivmodti4!(::U64x2, ::conv);
+
+#[cfg(not(all(windows, target_pointer_width="64")))]
+udivmodti4!(u128, |i|{ i });
 
 #[cfg(test)]
 mod tests {
@@ -326,6 +376,54 @@ mod tests {
                 let mut r = 0;
                 let q = f(n, d, Some(&mut r));
                 Some((q, r))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(not(windows),
+          not(target_arch = "mips64"),
+          not(target_arch = "mips64el"),
+          target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::U128;
+
+    check! {
+        fn __udivti3(f: extern fn(u128, u128) -> u128,
+                     n: U128,
+                     d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+
+        fn __umodti3(f: extern fn(u128, u128) -> u128,
+                     n: U128,
+                     d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                Some(f(n, d))
+            }
+        }
+
+        fn __udivmodti4(f: extern fn(u128, u128, Option<&mut u128>) -> u128,
+                        n: U128,
+                        d: U128) -> Option<u128> {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                None
+            } else {
+                // FIXME fix the segfault when the remainder is requested
+                /*let mut r = 0;
+                let q = f(n, d, Some(&mut r));
+                Some((q, r))*/
+                Some(f(n, d, None))
             }
         }
     }

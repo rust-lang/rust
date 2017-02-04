@@ -1,4 +1,3 @@
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
 use int::{Int, LargeInt};
 
 macro_rules! ashl {
@@ -58,11 +57,17 @@ macro_rules! lshr {
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashl!(__ashldi3: u64);
 
+ashl!(__ashlti3: u128);
+
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashr!(__ashrdi3: i64);
 
+ashr!(__ashrti3: i128);
+
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 lshr!(__lshrdi3: u64);
+
+lshr!(__lshrti3: u128);
 
 #[cfg(test)]
 mod tests {
@@ -91,6 +96,45 @@ mod tests {
         fn __lshrdi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(not(windows),
+          not(target_arch = "mips64"),
+          not(target_arch = "mips64el"),
+          target_pointer_width="64"))]
+mod tests_i128 {
+    use qc::{I128, U128};
+
+    // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
+    check! {
+        fn __ashlti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+            let a = a.0;
+            if b >= 64 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+
+        fn __ashrti3(f: extern fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
+            let a = a.0;
+            if b >= 64 {
+                None
+            } else {
+                Some(f(a, b))
+            }
+        }
+
+        fn __lshrti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+            let a = a.0;
+            if b >= 128 {
                 None
             } else {
                 Some(f(a, b))

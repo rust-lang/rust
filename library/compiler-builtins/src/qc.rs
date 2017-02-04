@@ -144,6 +144,8 @@ macro_rules! arbitrary_large {
 
 arbitrary_large!(I64: i64);
 arbitrary_large!(U64: u64);
+arbitrary_large!(I128: i128);
+arbitrary_large!(U128: u128);
 
 macro_rules! arbitrary_float {
     ($TY:ident : $ty:ident) => {

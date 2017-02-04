@@ -150,7 +150,6 @@ fn main() {
                          "int_util.c",
                          "muldc3.c",
                          "muldf3.c",
-                         "muloti4.c",
                          "mulsc3.c",
                          "mulsf3.c",
                          "mulvdi3.c",
@@ -179,13 +178,10 @@ fn main() {
             sources.extend(&["absvti2.c",
                              "addtf3.c",
                              "addvti3.c",
-                             "ashlti3.c",
-                             "ashrti3.c",
                              "clzti2.c",
                              "cmpti2.c",
                              "ctzti2.c",
                              "divtf3.c",
-                             "divti3.c",
                              "ffsti2.c",
                              "fixdfti.c",
                              "fixsfti.c",
@@ -199,10 +195,7 @@ fn main() {
                              "floatuntidf.c",
                              "floatuntisf.c",
                              "floatuntixf.c",
-                             "lshrti3.c",
-                             "modti3.c",
                              "multf3.c",
-                             "multi3.c",
                              "mulvti3.c",
                              "negti2.c",
                              "negvti2.c",
@@ -212,10 +205,7 @@ fn main() {
                              "subtf3.c",
                              "subvti3.c",
                              "trampoline_setup.c",
-                             "ucmpti2.c",
-                             "udivmodti4.c",
-                             "udivti3.c",
-                             "umodti3.c"]);
+                             "ucmpti2.c"]);
         }
 
         if target_vendor == "apple" {
