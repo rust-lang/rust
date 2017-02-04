@@ -198,9 +198,9 @@ impl DefaultResizePolicy {
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// `HashMap::default`, `HashMap::with_hasher`, and
-/// `HashMap::with_capacity_and_hasher` methods. Many alternative algorithms
-/// are available on crates.io, such as the `fnv` crate.
+/// [`HashMap::default`], [`HashMap::with_hasher`], and
+/// [`HashMap::with_capacity_and_hasher`] methods. Many alternative algorithms
+/// are available on crates.io, such as the [`fnv`] crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -302,6 +302,10 @@ impl DefaultResizePolicy {
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`HashMap::default`]: #method.default
+/// [`HashMap::with_hasher`]: #method.with_hasher
+/// [`HashMap::with_capacity_and_hasher`]: #method.with_capacity_and_hasher
+/// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -680,7 +684,9 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// # Panics
     ///
-    /// Panics if the new allocation size overflows `usize`.
+    /// Panics if the new allocation size overflows [`usize`].
+    ///
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -1141,13 +1147,14 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Inserts a key-value pair into the map.
     ///
-    /// If the map did not have this key present, `None` is returned.
+    /// If the map did not have this key present, [`None`] is returned.
     ///
     /// If the map did have this key present, the value is updated, and the old
     /// value is returned. The key is not updated, though; this matters for
     /// types that can be `==` without being identical. See the [module-level
     /// documentation] for more.
     ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
     /// # Examples
