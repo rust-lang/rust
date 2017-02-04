@@ -819,7 +819,7 @@ fn walk_ty_skip_subtree() {
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
         let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
