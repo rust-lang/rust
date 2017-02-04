@@ -102,7 +102,7 @@ mod tests {
             let mut overflow = 2;
             let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return None
+                panic!("Invalid value {} for overflow", overflow);
             }
             Some((r, overflow))
         }
@@ -114,7 +114,7 @@ mod tests {
             let mut overflow = 2;
             let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return None
+                panic!("Invalid value {} for overflow", overflow);
             }
             Some((r, overflow))
         }
@@ -138,7 +138,7 @@ mod tests_i128 {
             let mut overflow = 2;
             let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return None
+                panic!("Invalid value {} for overflow", overflow);
             }
             Some((r, overflow))
         }
