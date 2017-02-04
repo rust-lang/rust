@@ -1866,6 +1866,22 @@ impl ToString for str {
     }
 }
 
+#[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
+impl<'a> ToString for Cow<'a, str> {
+    #[inline]
+    fn to_string(&self) -> String {
+        self[..].to_owned()
+    }
+}
+
+#[stable(feature = "string_to_string_specialization", since = "1.17.0")]
+impl ToString for String {
+    #[inline]
+    fn to_string(&self) -> String {
+        self.to_owned()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
     #[inline]
