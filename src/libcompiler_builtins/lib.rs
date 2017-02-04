@@ -544,8 +544,7 @@ pub mod reimpls {
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
-        // SNAP: replace this with !0u128
-        let negn :u128 = !0;
+        let negn = !0u128;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
@@ -579,8 +578,7 @@ pub mod reimpls {
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
-        // SNAP: replace this with !0u128
-        let negn :u128 = !0;
+        let negn = !0u128;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
