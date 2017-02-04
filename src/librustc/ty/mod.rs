@@ -71,8 +71,6 @@ pub use self::context::{Lift, TypeckTables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 
-use rustc_i128::u128;
-
 pub mod adjustment;
 pub mod cast;
 pub mod error;

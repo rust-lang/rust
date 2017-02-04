@@ -22,4 +22,3 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_i128 = { path = "../librustc_i128" }
