@@ -144,11 +144,24 @@ impl FileDesc {
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
-            cvt(libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC))?;
+            let new = previous | libc::FD_CLOEXEC;
+            if new != previous {
+                cvt(libc::fcntl(self.fd, libc::F_SETFD, new))?;
+            }
             Ok(())
         }
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        unsafe {
+            let v = nonblocking as c_int;
+            cvt(libc::ioctl(self.fd, libc::FIONBIO, &v))?;
+            Ok(())
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFL))?;
@@ -157,7 +170,9 @@ impl FileDesc {
             } else {
                 previous & !libc::O_NONBLOCK
             };
-            cvt(libc::fcntl(self.fd, libc::F_SETFL, new))?;
+            if new != previous {
+                cvt(libc::fcntl(self.fd, libc::F_SETFL, new))?;
+            }
             Ok(())
         }
     }
