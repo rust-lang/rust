@@ -98,7 +98,7 @@
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use alloc::boxed::Box;
-use core::cmp::Ordering::{self, Greater};
+use core::cmp::Ordering::{self, Less};
 use core::mem::size_of;
 use core::mem;
 use core::ptr;
@@ -1089,7 +1089,7 @@ impl<T> [T] {
     pub fn sort(&mut self)
         where T: Ord
     {
-        self.sort_by(|a, b| a.cmp(b))
+        merge_sort(self, |a, b| a.lt(b));
     }
 
     /// Sorts the slice using `f` to extract a key to compare elements by.
@@ -1119,7 +1119,7 @@ impl<T> [T] {
     pub fn sort_by_key<B, F>(&mut self, mut f: F)
         where F: FnMut(&T) -> B, B: Ord
     {
-        self.sort_by(|a, b| f(a).cmp(&f(b)))
+        merge_sort(self, |a, b| f(a).lt(&f(b)));
     }
 
     /// Sorts the slice using `compare` to compare elements.
@@ -1149,10 +1149,10 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn sort_by<F>(&mut self, compare: F)
+    pub fn sort_by<F>(&mut self, mut compare: F)
         where F: FnMut(&T, &T) -> Ordering
     {
-        merge_sort(self, compare)
+        merge_sort(self, |a, b| compare(a, b) == Less);
     }
 
     /// Copies the elements from `src` into `self`.
@@ -1355,10 +1355,10 @@ impl<T: Clone> ToOwned for [T] {
 /// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
 ///
 /// This is the integral subroutine of insertion sort.
-fn insert_head<T, F>(v: &mut [T], compare: &mut F)
-    where F: FnMut(&T, &T) -> Ordering
+fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
+    where F: FnMut(&T, &T) -> bool
 {
-    if v.len() >= 2 && compare(&v[0], &v[1]) == Greater {
+    if v.len() >= 2 && is_less(&v[1], &v[0]) {
         unsafe {
             // There are three ways to implement insertion here:
             //
@@ -1381,12 +1381,12 @@ fn insert_head<T, F>(v: &mut [T], compare: &mut F)
 
             // Intermediate state of the insertion process is always tracked by `hole`, which
             // serves two purposes:
-            // 1. Protects integrity of `v` from panics in `compare`.
+            // 1. Protects integrity of `v` from panics in `is_less`.
             // 2. Fills the remaining hole in `v` in the end.
             //
             // Panic safety:
             //
-            // If `compare` panics at any point during the process, `hole` will get dropped and
+            // If `is_less` panics at any point during the process, `hole` will get dropped and
             // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
             // initially held exactly once.
             let mut hole = InsertionHole {
@@ -1396,7 +1396,7 @@ fn insert_head<T, F>(v: &mut [T], compare: &mut F)
             ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
 
             for i in 2..v.len() {
-                if compare(&tmp.value, &v[i]) != Greater {
+                if !is_less(&v[i], &tmp.value) {
                     break;
                 }
                 ptr::copy_nonoverlapping(&v[i], &mut v[i - 1], 1);
@@ -1432,8 +1432,8 @@ fn insert_head<T, F>(v: &mut [T], compare: &mut F)
 ///
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
 /// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
-unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
-    where F: FnMut(&T, &T) -> Ordering
+unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
+    where F: FnMut(&T, &T) -> bool
 {
     let len = v.len();
     let v = v.as_mut_ptr();
@@ -1449,12 +1449,12 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
     // hole in `v`.
     //
     // Intermediate state of the process is always tracked by `hole`, which serves two purposes:
-    // 1. Protects integrity of `v` from panics in `compare`.
+    // 1. Protects integrity of `v` from panics in `is_less`.
     // 2. Fills the remaining hole in `v` if the longer run gets consumed first.
     //
     // Panic safety:
     //
-    // If `compare` panics at any point during the process, `hole` will get dropped and fill the
+    // If `is_less` panics at any point during the process, `hole` will get dropped and fill the
     // hole in `v` with the unconsumed range in `buf`, thus ensuring that `v` still holds every
     // object it initially held exactly once.
     let mut hole;
@@ -1476,7 +1476,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
         while *left < hole.end && right < v_end {
             // Consume the lesser side.
             // If equal, prefer the left run to maintain stability.
-            let to_copy = if compare(&**left, &*right) == Greater {
+            let to_copy = if is_less(&*right, &**left) {
                 get_and_increment(&mut right)
             } else {
                 get_and_increment(left)
@@ -1500,7 +1500,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
         while v < *left && buf < *right {
             // Consume the greater side.
             // If equal, prefer the right run to maintain stability.
-            let to_copy = if compare(&*left.offset(-1), &*right.offset(-1)) == Greater {
+            let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
                 decrement_and_get(left)
             } else {
                 decrement_and_get(right)
@@ -1550,8 +1550,8 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, compare: &mut F)
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is `O(n log n)` worst-case.
-fn merge_sort<T, F>(v: &mut [T], mut compare: F)
-    where F: FnMut(&T, &T) -> Ordering
+fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
+    where F: FnMut(&T, &T) -> bool
 {
     // Sorting has no meaningful behavior on zero-sized types.
     if size_of::<T>() == 0 {
@@ -1565,7 +1565,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
     //
     // Short runs are extended using insertion sort to span at least `min_run` elements, in order
     // to improve performance.
-    let (max_insertion, min_run) = if size_of::<T>() <= 16 {
+    let (max_insertion, min_run) = if size_of::<T>() <= 2 * mem::size_of::<usize>() {
         (64, 32)
     } else {
         (32, 16)
@@ -1577,7 +1577,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
     if len <= max_insertion {
         if len >= 2 {
             for i in (0..len-1).rev() {
-                insert_head(&mut v[i..], &mut compare);
+                insert_head(&mut v[i..], &mut is_less);
             }
         }
         return;
@@ -1585,7 +1585,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
 
     // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
     // shallow copies of the contents of `v` without risking the dtors running on copies if
-    // `compare` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
+    // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
     // which will always have length at most `len / 2`.
     let mut buf = Vec::with_capacity(len / 2);
 
@@ -1600,14 +1600,18 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
         let mut start = end - 1;
         if start > 0 {
             start -= 1;
-            if compare(&v[start], &v[start + 1]) == Greater {
-                while start > 0 && compare(&v[start - 1], &v[start]) == Greater {
-                    start -= 1;
-                }
-                v[start..end].reverse();
-            } else {
-                while start > 0 && compare(&v[start - 1], &v[start]) != Greater {
-                    start -= 1;
+            unsafe {
+                if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
+                    while start > 0 && is_less(v.get_unchecked(start),
+                                               v.get_unchecked(start - 1)) {
+                        start -= 1;
+                    }
+                    v[start..end].reverse();
+                } else {
+                    while start > 0 && !is_less(v.get_unchecked(start),
+                                                v.get_unchecked(start - 1)) {
+                        start -= 1;
+                    }
                 }
             }
         }
@@ -1616,7 +1620,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
         // merge sort on short sequences, so this significantly improves performance.
         while start > 0 && end - start < min_run {
             start -= 1;
-            insert_head(&mut v[start..end], &mut compare);
+            insert_head(&mut v[start..end], &mut is_less);
         }
 
         // Push this run onto the stack.
@@ -1632,7 +1636,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F)
             let right = runs[r];
             unsafe {
                 merge(&mut v[left.start .. right.start + right.len], left.len, buf.as_mut_ptr(),
-                      &mut compare);
+                      &mut is_less);
             }
             runs[r] = Run {
                 start: left.start,
