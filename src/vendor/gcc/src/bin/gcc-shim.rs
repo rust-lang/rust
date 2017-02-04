@@ -10,7 +10,7 @@ fn main() {
     for i in 0.. {
         let candidate = out_dir.join(format!("out{}", i));
         if candidate.exists() {
-            continue
+            continue;
         }
         let mut f = File::create(candidate).unwrap();
         for arg in env::args().skip(1) {
@@ -18,6 +18,6 @@ fn main() {
         }
 
         File::create(out_dir.join("libfoo.a")).unwrap();
-        break
+        break;
     }
 }
