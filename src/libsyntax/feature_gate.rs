@@ -323,6 +323,9 @@ declare_features! (
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
 
+    // Allows #[link(kind="static-nobundle"...]
+    (active, static_nobundle, "1.16.0", Some(37403)),
+
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
 );

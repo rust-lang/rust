@@ -111,6 +111,13 @@ fn register_native_lib(sess: &Session,
                                        GateIssue::Language,
                                        "is feature gated");
     }
+    if lib.kind == cstore::NativeStaticNobundle && !sess.features.borrow().static_nobundle {
+        feature_gate::emit_feature_err(&sess.parse_sess,
+                                       "static_nobundle",
+                                       span.unwrap(),
+                                       GateIssue::Language,
+                                       "kind=\"static-nobundle\" is feature gated");
+    }
     cstore.add_used_library(lib);
 }
 
@@ -688,6 +695,9 @@ impl<'a> CrateLoader<'a> {
         for id in self.get_foreign_items_of_kind(cstore::NativeStatic) {
             self.cstore.add_statically_included_foreign_item(id);
         }
+        for id in self.get_foreign_items_of_kind(cstore::NativeStaticNobundle) {
+            self.cstore.add_statically_included_foreign_item(id);
+        }
     }
 
     fn register_dllimport_foreign_items(&mut self) {
@@ -927,6 +937,7 @@ impl<'a> CrateLoader<'a> {
             }).and_then(|a| a.value_str()).map(Symbol::as_str);
             let kind = match kind.as_ref().map(|s| &s[..]) {
                 Some("static") => cstore::NativeStatic,
+                Some("static-nobundle") => cstore::NativeStaticNobundle,
                 Some("dylib") => cstore::NativeUnknown,
                 Some("framework") => cstore::NativeFramework,
                 Some(k) => {

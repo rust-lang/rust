@@ -450,6 +450,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
             for symbol in self.info.exports[&crate_type].iter() {
+                debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;
             }
             Ok(())
