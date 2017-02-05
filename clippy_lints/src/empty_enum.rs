@@ -6,7 +6,8 @@ use utils::span_lint_and_then;
 
 /// **What it does:** Checks for `enum`s with no variants.
 ///
-/// **Why is this bad?** Enum's with no variants should be replaced with `!`.
+/// **Why is this bad?** Enum's with no variants should be replaced with `!`, the uninhabited type,
+/// or a wrapper around it.
 ///
 /// **Known problems:** None.
 ///
