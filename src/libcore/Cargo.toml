@@ -13,7 +13,6 @@ bench = false
 name = "coretest"
 path = "../libcoretest/lib.rs"
 
-# FIXME: need to extract benchmarks to a separate crate
-#[[bench]]
-#name = "coretest"
-#path = "../libcoretest/lib.rs"
+[[bench]]
+name = "corebench"
+path = "../libcore/bench/lib.rs"
