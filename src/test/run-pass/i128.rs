@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-stage0
-// ignore-stage1
-
 // ignore-emscripten
 
 #![feature(i128_type, test)]
