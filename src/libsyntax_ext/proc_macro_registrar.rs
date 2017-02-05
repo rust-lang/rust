@@ -27,7 +27,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use deriving;
 
-struct CustomDerive {
+struct ProcMacroDerive {
     trait_name: ast::Name,
     function_name: Ident,
     span: Span,
@@ -40,7 +40,7 @@ struct AttrProcMacro {
 }
 
 struct CollectProcMacros<'a> {
-    derives: Vec<CustomDerive>,
+    derives: Vec<ProcMacroDerive>,
     attr_macros: Vec<AttrProcMacro>,
     in_root: bool,
     handler: &'a errors::Handler,
@@ -176,7 +176,7 @@ impl<'a> CollectProcMacros<'a> {
         };
 
         if self.in_root && item.vis == ast::Visibility::Public {
-            self.derives.push(CustomDerive {
+            self.derives.push(ProcMacroDerive {
                 span: item.span,
                 trait_name: trait_name,
                 function_name: item.ident,
@@ -319,7 +319,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          }
 //      }
 fn mk_registrar(cx: &mut ExtCtxt,
-                custom_derives: &[CustomDerive],
+                custom_derives: &[ProcMacroDerive],
                 custom_attrs: &[AttrProcMacro]) -> P<ast::Item> {
     let eid = cx.codemap().record_expansion(ExpnInfo {
         call_site: DUMMY_SP,

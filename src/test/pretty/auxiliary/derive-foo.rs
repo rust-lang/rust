@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-bad.rs
+// no-prefer-dynamic
 
-#[macro_use]
-extern crate derive_bad;
+#![crate_type = "proc-macro"]
 
-#[derive(
-    A
-)]
-//~^^ ERROR: proc-macro derive produced unparseable tokens
-struct A;
+extern crate proc_macro;
 
-fn main() {}
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Foo, attributes(Bar))]
+pub fn derive(input: TokenStream) -> TokenStream {
+    "".parse().unwrap()
+}
