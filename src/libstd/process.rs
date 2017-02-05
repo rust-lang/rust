@@ -959,10 +959,27 @@ impl Child {
 ///
 /// # Examples
 ///
-/// ```
-/// use std::process;
+/// Due to this function’s behavior regarding destructors, a conventional way
+/// to use the function is to extract the actual computation to another
+/// function and compute the exit code from its return value:
 ///
-/// process::exit(0);
+/// ```
+/// use std::io::{self, Write};
+///
+/// fn run_app() -> Result<(), ()> {
+///     // Application logic here
+///     Ok(())
+/// }
+///
+/// fn main() {
+///     ::std::process::exit(match run_app() {
+///        Ok(_) => 0,
+///        Err(err) => {
+///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            1
+///        }
+///     });
+/// }
 /// ```
 ///
 /// Due to [platform-specific behavior], the exit code for this example will be
