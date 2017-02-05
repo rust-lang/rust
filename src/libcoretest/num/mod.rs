@@ -366,3 +366,35 @@ test_impl_try_from_same_sign_err! { test_try_i32i16, i32, i16 }
 test_impl_try_from_same_sign_err! { test_try_i64i8, i64, i8 }
 test_impl_try_from_same_sign_err! { test_try_i64i16, i64, i16 }
 test_impl_try_from_same_sign_err! { test_try_i64i32, i64, i32 }
+
+macro_rules! test_impl_try_from_signed_to_unsigned_err {
+    ($fn_name:ident, $source:ty, $target:ty) => {
+        #[test]
+        fn $fn_name() {
+            let max = <$source>::max_value();
+            let min = <$source>::min_value();
+            let zero: $source = 0;
+            let t_max = <$target>::max_value();
+            let t_min = <$target>::min_value();
+            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
+            assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
+            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+                       zero as $target);
+            assert_eq!(<$target as TryFrom<$source>>::try_from(t_max as $source)
+                            .unwrap(),
+                       t_max as $target);
+            assert_eq!(<$target as TryFrom<$source>>::try_from(t_min as $source)
+                            .unwrap(),
+                       t_min as $target);
+        }
+    }
+}
+
+test_impl_try_from_signed_to_unsigned_err! { test_try_i16u8, i16, u8 }
+
+test_impl_try_from_signed_to_unsigned_err! { test_try_i32u8, i32, u8 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i32u16, i32, u16 }
+
+test_impl_try_from_signed_to_unsigned_err! { test_try_i64u8, i64, u8 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i64u16, i64, u16 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i64u32, i64, u32 }
