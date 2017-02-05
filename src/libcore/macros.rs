@@ -103,7 +103,7 @@ macro_rules! assert {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert_eq {
-    ($left:expr , $right:expr) => ({
+    ($left:expr, $right:expr) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -113,13 +113,13 @@ macro_rules! assert_eq {
             }
         }
     });
-    ($left:expr , $right:expr, $($arg:tt)*) => ({
+    ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!("assertion failed: `(left == right)` \
                            (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
-                           format_args!($($arg)*))
+                           format_args!($($arg)+))
                 }
             }
         }
@@ -146,7 +146,7 @@ macro_rules! assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.12.0")]
 macro_rules! assert_ne {
-    ($left:expr , $right:expr) => ({
+    ($left:expr, $right:expr) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -156,13 +156,13 @@ macro_rules! assert_ne {
             }
         }
     });
-    ($left:expr , $right:expr, $($arg:tt)*) => ({
+    ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
                     panic!("assertion failed: `(left != right)` \
                            (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
-                           format_args!($($arg)*))
+                           format_args!($($arg)+))
                 }
             }
         }
