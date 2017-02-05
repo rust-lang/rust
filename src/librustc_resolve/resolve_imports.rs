@@ -639,7 +639,19 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let names = resolutions.iter().filter_map(|(&(ref i, _), resolution)| {
                     if *i == ident { return None; } // Never suggest the same name
                     match *resolution.borrow() {
-                        NameResolution { binding: Some(_), .. } => Some(&i.name),
+                        NameResolution { binding: Some(name_binding), .. } => {
+                            match name_binding.kind {
+                                NameBindingKind::Import { binding, .. } => {
+                                    match binding.kind {
+                                        // Never suggest the name that has binding error
+                                        // i.e. the name that cannot be previously resolved
+                                        NameBindingKind::Def(Def::Err) => return None,
+                                        _ => Some(&i.name),
+                                    }
+                                },
+                                _ => Some(&i.name),
+                            }
+                        },
                         NameResolution { single_imports: SingleImports::None, .. } => None,
                         _ => Some(&i.name),
                     }
