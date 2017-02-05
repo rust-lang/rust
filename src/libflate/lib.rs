@@ -74,10 +74,6 @@ impl Drop for Bytes {
     }
 }
 
-#[link(name = "miniz", kind = "static")]
-#[cfg(not(cargobuild))]
-extern "C" {}
-
 extern "C" {
     /// Raw miniz compression function.
     fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,

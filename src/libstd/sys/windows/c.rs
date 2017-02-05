@@ -833,13 +833,6 @@ pub struct CONSOLE_READCONSOLE_CONTROL {
 }
 pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
 
-#[link(name = "ws2_32")]
-#[link(name = "userenv")]
-#[link(name = "shell32")]
-#[link(name = "advapi32")]
-#[cfg(not(cargobuild))]
-extern {}
-
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
