@@ -9,6 +9,7 @@ name = "rustc_msan"
 path = "lib.rs"
 
 [build-dependencies]
+build_helper = { path = "../build_helper" }
 cmake = "0.1.18"
 
 [dependencies]

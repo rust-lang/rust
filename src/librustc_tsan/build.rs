@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate build_helper;
 extern crate cmake;
 
 use std::path::PathBuf;
@@ -29,21 +30,9 @@ fn main() {
                  dst.join("build/lib/linux").display());
         println!("cargo:rustc-link-lib=static=clang_rt.tsan-x86_64");
 
-        let src_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-        let mut stack = src_dir.join("../compiler-rt")
-            .read_dir()
-            .unwrap()
-            .map(|e| e.unwrap())
-            .filter(|e| &*e.file_name() != ".git")
-            .collect::<Vec<_>>();
-        while let Some(entry) = stack.pop() {
-            let path = entry.path();
-            if entry.file_type().unwrap().is_dir() {
-                stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-            } else {
-                println!("cargo:rerun-if-changed={}", path.display());
-            }
-        }
+        build_helper::rerun_if_changed_anything_in_dir(&PathBuf::from(env::var("CARGO_MANIFEST_DIR")
+                .unwrap())
+            .join("../compiler-rt"));
     }
 
     println!("cargo:rerun-if-changed=build.rs");

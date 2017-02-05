@@ -273,6 +273,7 @@ name = "rustc_asan"
 version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
+ "build_helper 0.1.0",
  "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
@@ -415,6 +416,7 @@ name = "rustc_lsan"
 version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
+ "build_helper 0.1.0",
  "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
@@ -458,6 +460,7 @@ name = "rustc_msan"
 version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
+ "build_helper 0.1.0",
  "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
@@ -548,6 +551,7 @@ name = "rustc_tsan"
 version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
+ "build_helper 0.1.0",
  "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
