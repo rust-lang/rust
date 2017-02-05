@@ -167,6 +167,7 @@ pub const SYMLINK_FLAG_RELATIVE: DWORD = 0x00000001;
 pub const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
 
 pub const SYMBOLIC_LINK_FLAG_DIRECTORY: DWORD = 0x1;
+pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
 
 // Note that these are not actually HANDLEs, just values to pass to GetStdHandle
 pub const STD_INPUT_HANDLE: DWORD = -10i32 as DWORD;
