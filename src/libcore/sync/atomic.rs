@@ -1318,6 +1318,24 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     u64 AtomicU64 ATOMIC_U64_INIT
 }
+#[cfg(not(stage0))]
+#[cfg(target_has_atomic = "128")]
+atomic_int! {
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    i128 AtomicI128 ATOMIC_I128_INIT
+}
+#[cfg(not(stage0))]
+#[cfg(target_has_atomic = "128")]
+atomic_int! {
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    unstable(feature = "i128", issue = "35118"),
+    u128 AtomicU128 ATOMIC_U128_INIT
+}
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
