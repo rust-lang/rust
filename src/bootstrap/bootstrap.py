@@ -438,14 +438,14 @@ def main():
     rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
                               'CFG_ENABLE_VENDOR' in rb.config_mk
 
-    if 'SUDO_USER' in os.environ:
-        if os.environ['USER'] != os.environ['SUDO_USER']:
+    if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
+        if os.environ.get('USER') != os.environ['SUDO_USER']:
             rb.use_vendored_sources = True
             print('info: looks like you are running this command under `sudo`')
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo make intall`')
+            print('      before running a command like `sudo make install`')
 
     if rb.use_vendored_sources:
         if not os.path.exists('.cargo'):

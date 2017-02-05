@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-bad.rs
+use Foo;
 
-#[macro_use]
-extern crate derive_bad;
-
-#[derive(
-    A
-)]
-//~^^ ERROR: proc-macro derive produced unparseable tokens
-struct A;
+use Foo1;
 
 fn main() {}
