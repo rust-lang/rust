@@ -149,7 +149,7 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
     }
 }
 
-/// Implementation of the `POSSIBLE_MISSING_COMMA_IN_ARRAY_FORMATTING` lint for array
+/// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
 fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
     if let ast::ExprKind::Array(ref array) = expr.node {
         for element in array {
