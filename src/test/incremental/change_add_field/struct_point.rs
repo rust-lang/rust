@@ -18,7 +18,6 @@
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
-#![feature(static_in_const)]
 #![allow(dead_code)]
 
 // These are expected to require translation.

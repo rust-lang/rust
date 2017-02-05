@@ -238,8 +238,6 @@ enum Elide {
     FreshLateAnon(Cell<u32>),
     /// Always use this one lifetime.
     Exact(Region),
-    /// Like `Exact(Static)` but requires `#![feature(static_in_const)]`.
-    Static,
     /// Less or more than one lifetime were found, error on unspecified.
     Error(Vec<ElisionFailureInfo>)
 }
@@ -324,7 +322,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemConst(..) => {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision {
-                    elide: Elide::Static,
+                    elide: Elide::Exact(Region::Static),
                     s: ROOT_SCOPE
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
@@ -1307,16 +1305,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             return;
                         }
                         Elide::Exact(l) => l.shifted(late_depth),
-                        Elide::Static => {
-                            if !self.sess.features.borrow().static_in_const {
-                                self.sess
-                                    .struct_span_err(span,
-                                                     "this needs a `'static` lifetime or the \
-                                                      `static_in_const` feature, see #35897")
-                                    .emit();
-                            }
-                            Region::Static
-                        }
                         Elide::Error(ref e) => break Some(e)
                     };
                     for lifetime_ref in lifetime_refs {
