@@ -8,26 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Ident, Mac_, PatKind};
+use ast::{self, Block, Ident, Mac_, PatKind};
 use ast::{Name, MacStmtStyle, StmtKind, ItemKind};
-use ast;
-use ext::hygiene::Mark;
-use ext::placeholders::{placeholder, PlaceholderExpander};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
-use syntax_pos::{self, Span, ExpnId};
 use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
+use ext::derive::{find_derive_attr, derive_attr_trait};
+use ext::hygiene::Mark;
+use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use parse::{ParseSess, DirectoryOwnership, PResult, filemap_to_tts};
 use parse::parser::Parser;
 use parse::token;
+use parse::{ParseSess, DirectoryOwnership, PResult, filemap_to_tts};
 use print::pprust;
 use ptr::P;
 use std_inject;
+use symbol::Symbol;
 use symbol::keywords;
+use syntax_pos::{self, Span, ExpnId};
 use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -166,6 +167,10 @@ pub enum InvocationKind {
         attr: ast::Attribute,
         item: Annotatable,
     },
+    Derive {
+        attr: ast::Attribute,
+        item: Annotatable,
+    },
 }
 
 impl Invocation {
@@ -173,6 +178,7 @@ impl Invocation {
         match self.kind {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { ref attr, .. } => attr.span,
+            InvocationKind::Derive { ref attr, .. } => attr.span,
         }
     }
 }
@@ -249,6 +255,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let ident = Ident::with_empty_ctxt(attr.name());
                     let path = ast::Path::from_ident(attr.span, ident);
                     self.cx.resolver.resolve_macro(scope, &path, force)
+                }
+                InvocationKind::Derive { ref attr, .. } => {
+                    let titem = derive_attr_trait(self.cx, &attr).unwrap();
+                    let tname = titem.name().expect("Expected derive macro name");
+                    let ident = Ident::with_empty_ctxt(tname);
+                    let path = ast::Path::from_ident(attr.span, ident);
+                    self.cx.resolver.resolve_derive_macro(scope, &path, force)
                 }
             };
             let ext = match resolution {
@@ -330,6 +343,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext),
             InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext),
+            InvocationKind::Derive { .. } => self.expand_derive_invoc(invoc, ext),
         }
     }
 
@@ -370,7 +384,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
             }
-            SyntaxExtension::CustomDerive(_) => {
+            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", name));
                 kind.dummy(attr.span)
             }
@@ -440,7 +454,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 return kind.dummy(span);
             }
 
-            SyntaxExtension::CustomDerive(..) => {
+            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(path.span, &format!("`{}` is a derive mode", extname));
                 return kind.dummy(span);
             }
@@ -484,6 +498,71 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             mark: mark,
             expn_id: Some(self.cx.backtrace()),
         })
+    }
+
+    /// Expand a derive invocation. Returns the result of expansion.
+    fn expand_derive_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
+        let Invocation { expansion_kind: kind, .. } = invoc;
+        let (attr, item) = match invoc.kind {
+            InvocationKind::Derive { attr, item } => (attr, item),
+            _ => unreachable!(),
+        };
+
+        attr::mark_used(&attr);
+        let titem = derive_attr_trait(self.cx, &attr).unwrap();
+        let tname = ast::Ident::with_empty_ctxt(titem.name().unwrap());
+        let name = Symbol::intern(&format!("derive({})", tname));
+        let mitem = &attr.value;
+
+        self.cx.bt_push(ExpnInfo {
+            call_site: attr.span,
+            callee: NameAndSpan {
+                format: MacroAttribute(attr.name()),
+                span: Some(attr.span),
+                allow_internal_unstable: false,
+            }
+        });
+
+        match *ext {
+            SyntaxExtension::ProcMacroDerive(ref ext) => {
+                let span = Span {
+                    expn_id: self.cx.codemap().record_expansion(ExpnInfo {
+                        call_site: mitem.span,
+                        callee: NameAndSpan {
+                            format: MacroAttribute(Symbol::intern(&format!("derive({})", tname))),
+                            span: None,
+                            allow_internal_unstable: false,
+                        },
+                    }),
+                    ..mitem.span
+                };
+                return kind.expect_from_annotatables(ext.expand(self.cx, span, &mitem, item));
+            }
+            SyntaxExtension::BuiltinDerive(func) => {
+                let span = Span {
+                    expn_id: self.cx.codemap().record_expansion(ExpnInfo {
+                        call_site: titem.span,
+                        callee: NameAndSpan {
+                            format: MacroAttribute(name),
+                            span: None,
+                            allow_internal_unstable: true,
+                        },
+                    }),
+                    ..titem.span
+                };
+                let mut items = Vec::new();
+                func(self.cx, span, &mitem, &item, &mut |a| {
+                    items.push(a)
+                });
+                items.insert(0, item);
+                return kind.expect_from_annotatables(items);
+            }
+            _ => {
+                let msg = &format!("macro `{}` may not be used for derive attributes", name);
+                self.cx.span_err(attr.span, &msg);
+                kind.dummy(attr.span)
+            }
+        }
     }
 
     fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, name: Name, span: Span)
@@ -595,16 +674,31 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(&mut self, attr: ast::Attribute, item: Annotatable, kind: ExpansionKind)
                     -> Expansion {
-        self.collect(kind, InvocationKind::Attr { attr: attr, item: item })
+        let invoc_kind = if attr.name() == "derive" {
+            if kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems {
+                self.cx.span_err(attr.span, "`derive` can be only be applied to items");
+                return kind.expect_from_annotatables(::std::iter::once(item));
+            }
+            InvocationKind::Derive { attr: attr, item: item }
+        } else {
+            InvocationKind::Attr { attr: attr, item: item }
+        };
+
+        self.collect(kind, invoc_kind)
     }
 
     // If `item` is an attr invocation, remove and return the macro attribute.
     fn classify_item<T: HasAttrs>(&mut self, mut item: T) -> (T, Option<ast::Attribute>) {
         let mut attr = None;
+
         item = item.map_attrs(|mut attrs| {
-            attr = self.cx.resolver.find_attr_invoc(&mut attrs);
+            attr = self.cx.resolver.find_attr_invoc(&mut attrs).or_else(|| {
+                find_derive_attr(self.cx, &mut attrs)
+            });
+
             attrs
         });
+
         (item, attr)
     }
 

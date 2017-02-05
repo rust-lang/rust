@@ -16,5 +16,5 @@ fn main() {
     foo!(0); // Check that we report errors at macro definition, not expansion.
 
     let _: cfg!(foo) = (); //~ ERROR non-type macro in type position
-    derive!(); //~ ERROR `derive` can only be used in attributes
+    derive!(); //~ ERROR macro undefined: 'derive!'
 }
