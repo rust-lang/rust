@@ -588,7 +588,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   }
 #endif
 
+#if LLVM_VERSION_GE(4, 0)
+  return wrap(Builder->createGlobalVariableExpression(
+#else
   return wrap(Builder->createGlobalVariable(
+#endif
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
 #if LLVM_VERSION_GE(4, 0)
