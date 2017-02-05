@@ -381,7 +381,7 @@ declare_features! (
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
     (accepted, item_like_imports, "1.14.0", Some(35120)),
     // Allows using `Self` and associated types in struct expressions and patterns.
-    (accepted, more_struct_aliases, "1.14.0", Some(37544)),
+    (accepted, more_struct_aliases, "1.16.0", Some(37544)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
