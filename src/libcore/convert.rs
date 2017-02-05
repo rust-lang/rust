@@ -225,7 +225,7 @@ pub trait TryFrom<T>: Sized {
     type Err;
 
     /// Performs the conversion.
-    fn try_from(T) -> Result<Self, Self::Err>;
+    fn try_from(value: T) -> Result<Self, Self::Err>;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
