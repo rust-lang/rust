@@ -193,6 +193,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+    Warn,
+    "attempt to resolve a trait on an expression whose type cannot be inferred but which \
+     currently defaults to ()"
+}
+
+declare_lint! {
     pub SAFE_EXTERN_STATICS,
     Warn,
     "safe access to extern statics was erroneously allowed"
@@ -272,6 +279,7 @@ impl LintPass for HardwiredLints {
             SUPER_OR_SELF_IN_GLOBAL_PATH,
             HR_LIFETIME_IN_ASSOC_TYPE,
             LIFETIME_UNDERSCORE,
+            RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             EXTRA_REQUIREMENT_IN_IMPL,

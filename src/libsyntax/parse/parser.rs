@@ -1691,6 +1691,7 @@ impl<'a> Parser<'a> {
         }
 
         // Assemble the span.
+        // FIXME(#39450) This is bogus if part of the path is macro generated.
         let span = mk_sp(lo, self.prev_span.hi);
 
         // Assemble the result.

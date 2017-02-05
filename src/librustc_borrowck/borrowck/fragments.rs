@@ -423,7 +423,7 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
     };
 
     match parent_ty.sty {
-        ty::TyTuple(ref v) => {
+        ty::TyTuple(ref v, _) => {
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>

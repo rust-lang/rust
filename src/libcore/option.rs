@@ -633,6 +633,76 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
+    // Entry-like operations to insert if None and return a reference
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Inserts `v` into the option if it is `None`, then
+    /// returns a mutable reference to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_entry)]
+    ///
+    /// let mut x = None;
+    ///
+    /// {
+    ///     let y: &mut u32 = x.get_or_insert(5);
+    ///     assert_eq!(y, &5);
+    ///
+    ///     *y = 7;
+    /// }
+    ///
+    /// assert_eq!(x, Some(7));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_entry", issue = "39288")]
+    pub fn get_or_insert(&mut self, v: T) -> &mut T {
+        match *self {
+            None => *self = Some(v),
+            _ => (),
+        }
+
+        match *self {
+            Some(ref mut v) => v,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Inserts a value computed from `f` into the option if it is `None`, then
+    /// returns a mutable reference to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_entry)]
+    ///
+    /// let mut x = None;
+    ///
+    /// {
+    ///     let y: &mut u32 = x.get_or_insert_with(|| 5);
+    ///     assert_eq!(y, &5);
+    ///
+    ///     *y = 7;
+    /// }
+    ///
+    /// assert_eq!(x, Some(7));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_entry", issue = "39288")]
+    pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        match *self {
+            None => *self = Some(f()),
+            _ => (),
+        }
+
+        match *self {
+            Some(ref mut v) => v,
+            _ => unreachable!(),
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
     // Misc
     /////////////////////////////////////////////////////////////////////////
 

@@ -661,29 +661,29 @@ pub trait Product<A = Self>: Sized {
 
 // NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
-    (@impls $zero:expr, $one:expr, $($a:ty)*) => ($(
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
+        #[$attr]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
@@ -691,8 +691,12 @@ macro_rules! integer_sum_product {
         }
     )*);
     ($($a:ty)*) => (
-        integer_sum_product!(@impls 0, 1, $($a)+);
-        integer_sum_product!(@impls Wrapping(0), Wrapping(1), $(Wrapping<$a>)+);
+        integer_sum_product!(@impls 0, 1,
+                #[stable(feature = "iter_arith_traits", since = "1.12.0")],
+                $($a)+);
+        integer_sum_product!(@impls Wrapping(0), Wrapping(1),
+                #[stable(feature = "wrapping_iter_arith", since = "1.14.0")],
+                $(Wrapping<$a>)+);
     );
 }
 

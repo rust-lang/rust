@@ -296,6 +296,29 @@ impl TcpStream {
         self.0.write_timeout()
     }
 
+    /// Receives data on the socket from the remote adress to which it is
+    /// connected, without removing that data from the queue. On success,
+    /// returns the number of bytes peeked.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recv` system call.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(peek)]
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8000")
+    ///                        .expect("couldn't bind to address");
+    /// let mut buf = [0; 10];
+    /// let len = stream.peek(&mut buf).expect("peek failed");
+    /// ```
+    #[unstable(feature = "peek", issue = "38980")]
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
+
     /// Sets the value of the `TCP_NODELAY` option on this socket.
     ///
     /// If set, this option disables the Nagle algorithm. This means that
@@ -1405,5 +1428,36 @@ mod tests {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
             Err(e) => panic!("unexpected error {}", e),
         }
+    }
+
+    #[test]
+    fn peek() {
+        each_ip(&mut |addr| {
+            let (txdone, rxdone) = channel();
+
+            let srv = t!(TcpListener::bind(&addr));
+            let _t = thread::spawn(move|| {
+                let mut cl = t!(srv.accept()).0;
+                cl.write(&[1,3,3,7]).unwrap();
+                t!(rxdone.recv());
+            });
+
+            let mut c = t!(TcpStream::connect(&addr));
+            let mut b = [0; 10];
+            for _ in 1..3 {
+                let len = c.peek(&mut b).unwrap();
+                assert_eq!(len, 4);
+            }
+            let len = c.read(&mut b).unwrap();
+            assert_eq!(len, 4);
+
+            t!(c.set_nonblocking(true));
+            match c.peek(&mut b) {
+                Ok(_) => panic!("expected error"),
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
+                Err(e) => panic!("unexpected error {}", e),
+            }
+            t!(txdone.send(()));
+        })
     }
 }

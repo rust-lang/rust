@@ -99,7 +99,7 @@ pub struct LocalKey<T: 'static> {
     init: fn() -> T,
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("LocalKey { .. }")
@@ -332,7 +332,6 @@ pub mod os {
         marker: marker::PhantomData<Cell<T>>,
     }
 
-    #[stable(feature = "std_debug", since = "1.15.0")]
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             f.pad("Key { .. }")

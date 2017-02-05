@@ -14,9 +14,11 @@
 #![feature(asm)]
 #![feature(trace_macros, concat_idents)]
 
-#[derive(Default, //~ ERROR
-           Zero)] //~ ERROR
-enum CantDeriveThose {}
+#[derive(Zero)] //~ ERROR
+struct CantDeriveThis;
+
+#[derive(Default)] //~ ERROR
+enum OrDeriveThis {}
 
 fn main() {
     doesnt_exist!(); //~ ERROR
