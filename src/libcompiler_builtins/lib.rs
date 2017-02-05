@@ -652,17 +652,17 @@ pub mod reimpls {
         }
 
         #[export_name="__fixunssfti"]
-        pub extern "unadjusted" fn f32_as_u128(a: f32) -> u128 {
+        pub extern $unadj fn f32_as_u128(a: f32) -> u128 {
             float_as_unsigned!(a, f32, u128)
         }
 
         #[export_name="__fixdfti"]
-        pub extern "unadjusted" fn f64_as_i128(a: f64) -> i128 {
+        pub extern $unadj fn f64_as_i128(a: f64) -> i128 {
             float_as_signed!(a, f64, i128)
         }
 
         #[export_name="__fixsfti"]
-        pub extern "unadjusted" fn f32_as_i128(a: f32) -> i128 {
+        pub extern $unadj fn f32_as_i128(a: f32) -> i128 {
             float_as_signed!(a, f32, i128)
         }
 
