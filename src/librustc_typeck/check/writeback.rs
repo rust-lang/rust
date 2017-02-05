@@ -108,7 +108,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             };
             match *r {
                 ty::ReFree(ty::FreeRegion {
-                    bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..
+                    bound_region: ty::BoundRegion::BrNamed(def_id, name), ..
                 }) => {
                     let bound_region = gcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         index: i as u32,

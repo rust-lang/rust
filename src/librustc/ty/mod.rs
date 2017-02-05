@@ -606,6 +606,7 @@ pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
+    pub issue_32330: Option<ty::Issue32330>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
@@ -622,8 +623,7 @@ impl RegionParameterDef {
     }
 
     pub fn to_bound_region(&self) -> ty::BoundRegion {
-        // this is an early bound region, so unaffected by #32330
-        ty::BoundRegion::BrNamed(self.def_id, self.name, Issue32330::WontChange)
+        ty::BoundRegion::BrNamed(self.def_id, self.name)
     }
 }
 

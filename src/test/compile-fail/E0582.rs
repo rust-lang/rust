@@ -12,7 +12,6 @@
 // stopped compiling when #32330 is fixed.
 
 #![allow(dead_code, unused_variables)]
-#![deny(hr_lifetime_in_assoc_type)]
 
 use std::str::Chars;
 
@@ -31,16 +30,21 @@ fn mk_unexpected_char_err<'a>() -> Option<&'a i32> {
 
 fn foo<'a>(data: &mut Chars<'a>) {
     bar(mk_unexpected_char_err)
-    //~^ ERROR lifetime parameter `'a` declared on fn `mk_unexpected_char_err`
-    //~| WARNING hard error in a future release
 }
 
 fn bar<F>(t: F)
     // No type can satisfy this requirement, since `'a` does not
     // appear in any of the input types:
     where F: for<'a> Fn() -> Option<&'a i32>
-    //~^ ERROR associated type `Output` references lifetime `'a`, which does not
-    //~| WARNING hard error in a future release
+    //~^ ERROR E0582
+{
+}
+
+fn baz<F>(t: F)
+    // No type can satisfy this requirement, since `'a` does not
+    // appear in any of the input types:
+    where F: for<'a> Iterator<Item=&'a i32>
+    //~^ ERROR E0582
 {
 }
 

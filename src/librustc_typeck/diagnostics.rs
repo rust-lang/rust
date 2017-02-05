@@ -4056,6 +4056,74 @@ fn main() {
 ```
 "##,
 
+E0581: r##"
+In a `fn` type, a lifetime appears only in the return type,
+and not in the arguments types.
+
+Erroneous code example:
+
+```compile_fail,E0581
+fn main() {
+    // Here, `'a` appears only in the return type:
+    let x: for<'a> fn() -> &'a i32;
+}
+```
+
+To fix this issue, either use the lifetime in the arguments, or use
+`'static`. Example:
+
+```
+fn main() {
+    // Here, `'a` appears only in the return type:
+    let x: for<'a> fn(&'a i32) -> &'a i32;
+    let y: fn() -> &'static i32;
+}
+```
+
+Note: The examples above used to be (erroneously) accepted by the
+compiler, but this was since corrected. See [issue #33685] for more
+details.
+
+[issue #33685]: https://github.com/rust-lang/rust/issues/33685
+"##,
+
+    E0582: r##"
+A lifetime appears only in an associated-type binding,
+and not in the input types to the trait.
+
+Erroneous code example:
+
+```compile_fail,E0582
+fn bar<F>(t: F)
+    // No type can satisfy this requirement, since `'a` does not
+    // appear in any of the input types (here, `i32`):
+    where F: for<'a> Fn(i32) -> Option<&'a i32>
+{
+}
+
+fn main() { }
+```
+
+To fix this issue, either use the lifetime in the inputs, or use
+`'static`. Example:
+
+```
+fn bar<F, G>(t: F, u: G)
+    where F: for<'a> Fn(&'a i32) -> Option<&'a i32>,
+          G: Fn(i32) -> Option<&'static i32>,
+{
+}
+
+fn main() { }
+```
+
+Note: The examples above used to be (erroneously) accepted by the
+compiler, but this was since corrected. See [issue #33685] for more
+details.
+
+[issue #33685]: https://github.com/rust-lang/rust/issues/33685
+"##,
+
 }
 
 register_diagnostics! {

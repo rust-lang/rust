@@ -53,15 +53,5 @@ fn supply_F() {
     want_F(baz);
 }
 
-fn supply_G() {
-    want_G(foo);
-    want_G(bar);
-    want_G(baz);
-    //~^ ERROR mismatched types
-    //~| expected type `fn(&'cx S) -> &'static S`
-    //~| found type `fn(&S) -> &S {baz}`
-    //~| expected concrete lifetime, found bound lifetime parameter 'cx
-}
-
 pub fn main() {
 }
