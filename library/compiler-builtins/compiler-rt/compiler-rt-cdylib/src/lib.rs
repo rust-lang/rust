@@ -32,6 +32,14 @@ extern {
     fn __floatunsisf();
     fn __floatunsidf();
     fn __floatundidf();
+    fn __fixsfsi();
+    fn __fixsfdi();
+    fn __fixdfsi();
+    fn __fixdfdi();
+    fn __fixunssfsi();
+    fn __fixunssfdi();
+    fn __fixunsdfsi();
+    fn __fixunsdfdi();
 }
 
 macro_rules! declare {
@@ -73,6 +81,14 @@ declare!(___floatdidf, __floatdidf);
 declare!(___floatunsisf, __floatunsisf);
 declare!(___floatunsidf, __floatunsidf);
 declare!(___floatundidf, __floatundidf);
+declare!(___fixsfsi, __fixsfsi);
+declare!(___fixsfdi, __fixsfdi);
+declare!(___fixdfsi, __fixdfsi);
+declare!(___fixdfdi, __fixdfdi);
+declare!(___fixunssfsi, __fixunssfsi);
+declare!(___fixunssfdi, __fixunssfdi);
+declare!(___fixunsdfsi, __fixunsdfsi);
+declare!(___fixunsdfdi, __fixunsdfdi);
 
 #[cfg(all(not(windows),
           not(target_arch = "mips64"),

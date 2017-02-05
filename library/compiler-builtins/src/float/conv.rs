@@ -89,6 +89,73 @@ fp_convert!(__floatunsisf: u32, f32);
 fp_convert!(__floatunsidf: u32, f64);
 fp_convert!(__floatundidf: u64, f64);
 
+#[derive(PartialEq, Debug)]
+enum Sign {
+    Positive,
+    Negative
+}
+macro_rules! fp_fix {
+    ($intrinsic:ident: $fty:ty, $ity:ty) => {
+        pub extern "C" fn $intrinsic(f: $fty) -> $ity {
+            let fixint_min = <$ity>::min_value();
+            let fixint_max = <$ity>::max_value();
+            let fixint_bits = <$ity>::bits() as usize;
+            let fixint_unsigned = fixint_min == 0;
+
+            let sign_bit = <$fty>::sign_mask();
+            let significand_bits = <$fty>::significand_bits() as usize;
+            let exponent_bias = <$fty>::exponent_bias() as usize;
+            //let exponent_max = <$fty>::exponent_max() as usize;
+
+            // Break a into sign, exponent, significand
+            let a_rep = <$fty>::repr(f);
+            let a_abs = a_rep & !sign_bit;
+
+            // this is used to work around -1 not being available for unsigned
+            let sign = if (a_rep & sign_bit) == 0 { Sign::Positive } else { Sign::Negative };
+            let mut exponent = (a_abs >> significand_bits) as usize;
+            let significand = (a_abs & <$fty>::significand_mask()) | <$fty>::implicit_bit();
+
+            // if < 1 or unsigned & negative
+            if  exponent < exponent_bias ||
+                fixint_unsigned && sign == Sign::Negative {
+                return 0
+            }
+            exponent -= exponent_bias;
+
+            // If the value is infinity, saturate.
+            // If the value is too large for the integer type, 0.
+            if exponent >= (if fixint_unsigned {fixint_bits} else {fixint_bits -1}) {
+                return if sign == Sign::Positive {fixint_max} else {fixint_min}
+            }
+            // If 0 <= exponent < significand_bits, right shift to get the result.
+            // Otherwise, shift left.
+            // (sign - 1) will never overflow as negative signs are already returned as 0 for unsigned
+            let r = if exponent < significand_bits {
+                (significand >> (significand_bits - exponent)) as $ity
+            } else {
+                (significand as $ity) << (exponent - significand_bits)
+            };
+
+            if sign == Sign::Negative {
+                (!r).wrapping_add(1)
+            } else {
+                r
+            }
+        }
+    }
+}
+
+fp_fix!(__fixsfsi: f32, i32);
+fp_fix!(__fixsfdi: f32, i64);
+fp_fix!(__fixdfsi: f64, i32);
+fp_fix!(__fixdfdi: f64, i64);
+
+fp_fix!(__fixunssfsi: f32, u32);
+fp_fix!(__fixunssfdi: f32, u64);
+fp_fix!(__fixunsdfsi: f64, u32);
+fp_fix!(__fixunsdfdi: f64, u64);
+
 // NOTE(cfg) for some reason, on arm*-unknown-linux-gnueabihf, our implementation doesn't
 // match the output of its gcc_s or compiler-rt counterpart. Until we investigate further, we'll
 // just avoid testing against them on those targets. Do note that our implementation gives the
@@ -128,6 +195,48 @@ mod tests {
                     a: U64)
                     -> Option<F64> {
             Some(F64(f(a.0)))
+        }
+
+        fn __fixsfsi(f: extern fn(f32) -> i32,
+                    a: F32)
+                    -> Option<I32> {
+            Some(I32(f(a.0)))
+        }
+        fn __fixsfdi(f: extern fn(f32) -> i64,
+                    a: F32)
+                    -> Option<I64> {
+            Some(I64(f(a.0)))
+        }
+        fn __fixdfsi(f: extern fn(f64) -> i32,
+                    a: F64)
+                    -> Option<I32> {
+            Some(I32(f(a.0)))
+        }
+        fn __fixdfdi(f: extern fn(f64) -> i64,
+                    a: F64)
+                    -> Option<I64> {
+            Some(I64(f(a.0)))
+        }
+
+        fn __fixunssfsi(f: extern fn(f32) -> u32,
+                    a: F32)
+                    -> Option<U32> {
+            Some(U32(f(a.0)))
+        }
+        fn __fixunssfdi(f: extern fn(f32) -> u64,
+                    a: F32)
+                    -> Option<U64> {
+            Some(U64(f(a.0)))
+        }
+        fn __fixunsdfsi(f: extern fn(f64) -> u32,
+                    a: F64)
+                    -> Option<U32> {
+            Some(U32(f(a.0)))
+        }
+        fn __fixunsdfdi(f: extern fn(f64) -> u64,
+                    a: F64)
+                    -> Option<U64> {
+            Some(U64(f(a.0)))
         }
     }
 }
