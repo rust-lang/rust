@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)] //~ NOTE: lint level defined here
-use std::thread;
-//~^ ERROR: unused import
-//~| NOTE: #[deny(unused_imports)] implied by #[deny(warnings)]
-fn main() {}
+// compile-flags: -W bad-style
+
+fn main() {
+    let _InappropriateCamelCasing = true;
+}

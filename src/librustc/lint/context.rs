@@ -40,8 +40,10 @@ use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
 use std::fmt;
+use std::ops::Deref;
 use syntax::attr;
 use syntax::ast;
+use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
@@ -299,8 +301,9 @@ impl LintStore {
             check_lint_name_cmdline(sess, self,
                                     &lint_name[..], level);
 
+            let lint_flag_val = Symbol::intern(&lint_name);
             match self.find_lint(&lint_name[..], sess, None) {
-                Ok(lint_id) => self.set_level(lint_id, (level, CommandLine)),
+                Ok(lint_id) => self.set_level(lint_id, (level, CommandLine(lint_flag_val))),
                 Err(FindLintError::Removed) => { }
                 Err(_) => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
@@ -310,7 +313,7 @@ impl LintStore {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
-                                     self.set_level(*lint_id, (level, CommandLine)))
+                                     self.set_level(*lint_id, (level, CommandLine(lint_flag_val))))
                              .collect::<Vec<()>>();
                         }
                         None => {
@@ -446,41 +449,53 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                               -> DiagnosticBuilder<'a>
     where S: Into<MultiSpan>
 {
-    let (mut level, source) = lvlsrc;
+    let (level, source) = lvlsrc;
     if level == Allow {
         return sess.diagnostic().struct_dummy();
     }
 
     let name = lint.name_lower();
     let mut def = None;
-    let msg = match source {
-        Default => {
-            format!("{}, #[{}({})] on by default", msg,
-                    level.as_str(), name)
-        },
-        CommandLine => {
-            format!("{} [-{} {}]", msg,
-                    match level {
-                        Warn => 'W', Deny => 'D', Forbid => 'F',
-                        Allow => bug!()
-                    }, name.replace("_", "-"))
-        },
-        Node(src) => {
-            def = Some(src);
-            msg.to_string()
-        }
-    };
 
-    // For purposes of printing, we can treat forbid as deny.
-    if level == Forbid { level = Deny; }
+    // Except for possible note details, forbid behaves like deny.
+    let effective_level = if level == Forbid { Deny } else { level };
 
-    let mut err = match (level, span) {
+    let mut err = match (effective_level, span) {
         (Warn, Some(sp)) => sess.struct_span_warn(sp, &msg[..]),
         (Warn, None)     => sess.struct_warn(&msg[..]),
         (Deny, Some(sp)) => sess.struct_span_err(sp, &msg[..]),
         (Deny, None)     => sess.struct_err(&msg[..]),
         _ => bug!("impossible level in raw_emit_lint"),
     };
+
+    match source {
+        Default => {
+            err.note(&format!("#[{}({})] on by default", level.as_str(), name));
+        },
+        CommandLine(lint_flag_val) => {
+            let flag = match level {
+                Warn => "-W", Deny => "-D", Forbid => "-F",
+                Allow => bug!("earlier conditional return should handle Allow case")
+            };
+            let hyphen_case_lint_name = name.replace("_", "-");
+            if lint_flag_val.as_str().deref() == name {
+                err.note(&format!("requested on the command line with `{} {}`",
+                                  flag, hyphen_case_lint_name));
+            } else {
+                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
+                err.note(&format!("`{} {}` implied by `{} {}`",
+                                  flag, hyphen_case_lint_name, flag, hyphen_case_flag_val));
+            }
+        },
+        Node(lint_attr_name, src) => {
+            def = Some(src);
+            if lint_attr_name.as_str().deref() != name {
+                let level_str = level.as_str();
+                err.note(&format!("#[{}({})] implied by #[{}({})]",
+                                  level_str, name, level_str, lint_attr_name));
+            }
+        }
+    }
 
     // Check for future incompatibility lints and issue a stronger warning.
     if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
@@ -649,6 +664,8 @@ pub trait LintContext<'tcx>: Sized {
                 }
             };
 
+            let lint_attr_name = result.expect("lint attribute should be well-formed").0;
+
             for (lint_id, level, span) in v {
                 let (now, now_source) = self.lints().get_level_source(lint_id);
                 if now == Forbid && level != Forbid {
@@ -660,11 +677,11 @@ pub trait LintContext<'tcx>: Sized {
                     diag_builder.span_label(span, &format!("overruled by previous forbid"));
                     match now_source {
                         LintSource::Default => &mut diag_builder,
-                        LintSource::Node(forbid_source_span) => {
+                        LintSource::Node(_, forbid_source_span) => {
                             diag_builder.span_label(forbid_source_span,
                                                     &format!("`forbid` level set here"))
                         },
-                        LintSource::CommandLine => {
+                        LintSource::CommandLine(_) => {
                             diag_builder.note("`forbid` lint level was set on command line")
                         }
                     }.emit()
@@ -672,7 +689,7 @@ pub trait LintContext<'tcx>: Sized {
                     let src = self.lints().get_level_source(lint_id).1;
                     self.level_stack().push((lint_id, (now, src)));
                     pushed += 1;
-                    self.mut_lints().set_level(lint_id, (level, Node(span)));
+                    self.mut_lints().set_level(lint_id, (level, Node(lint_attr_name, span)));
                 }
             }
         }

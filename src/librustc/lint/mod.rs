@@ -38,6 +38,7 @@ use std::ascii::AsciiExt;
 use syntax_pos::Span;
 use syntax::visit as ast_visit;
 use syntax::ast;
+use syntax::symbol::Symbol;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
@@ -338,10 +339,10 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(Span),
+    Node(ast::Name, Span),
 
     /// Lint level was set by a command-line flag.
-    CommandLine,
+    CommandLine(Symbol),
 }
 
 pub type LevelSource = (Level, LintSource);

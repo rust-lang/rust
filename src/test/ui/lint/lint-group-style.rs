@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014–2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)] //~ NOTE: lint level defined here
-use std::thread;
-//~^ ERROR: unused import
-//~| NOTE: #[deny(unused_imports)] implied by #[deny(warnings)]
+#![deny(bad_style)]
+#![allow(dead_code)]
+
+fn CamelCase() {}
+
+#[allow(bad_style)]
+mod test {
+    fn CamelCase() {}
+
+    #[forbid(bad_style)]
+    mod bad {
+        fn CamelCase() {}
+
+        static bad: isize = 1;
+    }
+
+    mod warn {
+        #![warn(bad_style)]
+
+        fn CamelCase() {}
+
+        struct snake_case;
+    }
+}
+
 fn main() {}
