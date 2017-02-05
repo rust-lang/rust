@@ -41,6 +41,12 @@ fn main() {
         return;
     }
 
+    if target.contains("android") {
+        println!("cargo:rustc-link-lib=gcc");
+    } else if !target.contains("windows") && !target.contains("musl") {
+        println!("cargo:rustc-link-lib=pthread");
+    }
+
     if let Some(jemalloc) = env::var_os("JEMALLOC_OVERRIDE") {
         let jemalloc = PathBuf::from(jemalloc);
         println!("cargo:rustc-link-search=native={}",
@@ -66,11 +72,6 @@ fn main() {
         println!("cargo:rustc-link-lib=static=jemalloc_pic");
     }
     println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
-    if target.contains("android") {
-        println!("cargo:rustc-link-lib=gcc");
-    } else if !target.contains("windows") && !target.contains("musl") {
-        println!("cargo:rustc-link-lib=pthread");
-    }
     let src_dir = env::current_dir().unwrap().join("../jemalloc");
     rerun_if_changed_anything_in_dir(&src_dir);
     let timestamp = build_dir.join("rustbuild.timestamp");

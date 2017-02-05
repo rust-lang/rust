@@ -379,6 +379,8 @@ class RustBuild(object):
             ostype += 'eabihf'
         elif cputype == 'aarch64':
             cputype = 'aarch64'
+        elif cputype == 'arm64':
+            cputype = 'aarch64'
         elif cputype == 'mips':
             if sys.byteorder == 'big':
                 cputype = 'mips'

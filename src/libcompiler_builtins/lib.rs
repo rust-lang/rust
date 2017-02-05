@@ -544,8 +544,7 @@ pub mod reimpls {
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
-        // SNAP: replace this with !0u128
-        let negn :u128 = !0;
+        let negn = !0u128;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
@@ -579,8 +578,7 @@ pub mod reimpls {
         const MD1 : u32 = MANTISSA_DIGITS + 1;
         const MD2 : u32 = MANTISSA_DIGITS + 2;
 
-        // SNAP: replace this with !0u128
-        let negn :u128 = !0;
+        let negn = !0u128;
 
         if sd > MANTISSA_DIGITS {
             a = match sd {
@@ -652,17 +650,17 @@ pub mod reimpls {
         }
 
         #[export_name="__fixunssfti"]
-        pub extern "unadjusted" fn f32_as_u128(a: f32) -> u128 {
+        pub extern $unadj fn f32_as_u128(a: f32) -> u128 {
             float_as_unsigned!(a, f32, u128)
         }
 
         #[export_name="__fixdfti"]
-        pub extern "unadjusted" fn f64_as_i128(a: f64) -> i128 {
+        pub extern $unadj fn f64_as_i128(a: f64) -> i128 {
             float_as_signed!(a, f64, i128)
         }
 
         #[export_name="__fixsfti"]
-        pub extern "unadjusted" fn f32_as_i128(a: f32) -> i128 {
+        pub extern $unadj fn f32_as_i128(a: f32) -> i128 {
             float_as_signed!(a, f32, i128)
         }
 

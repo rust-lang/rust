@@ -155,13 +155,11 @@ impl ConstInt {
             (InferSigned(a @ 0...ibounds::U8MAX), U8(_)) => U8(a as u8),
             (InferSigned(a @ 0...ibounds::U16MAX), U16(_)) => U16(a as u16),
             (InferSigned(a @ 0...ibounds::U32MAX), U32(_)) => U32(a as u32),
-            // SNAP: replace with U64MAX
-            (InferSigned(a @ 0...ibounds::I64MAX), U64(_)) => U64(a as u64),
+            (InferSigned(a @ 0...ibounds::U64MAX), U64(_)) => U64(a as u64),
             (InferSigned(a @ 0...ibounds::I128MAX), U128(_)) => U128(a as u128),
             (InferSigned(a @ 0...ibounds::U16MAX), Usize(Us16(_))) => Usize(Us16(a as u16)),
             (InferSigned(a @ 0...ibounds::U32MAX), Usize(Us32(_))) => Usize(Us32(a as u32)),
-            // SNAP: replace with U64MAX
-            (InferSigned(a @ 0...ibounds::I64MAX), Usize(Us64(_))) => Usize(Us64(a as u64)),
+            (InferSigned(a @ 0...ibounds::U64MAX), Usize(Us64(_))) => Usize(Us64(a as u64)),
             (InferSigned(_), _) => return Err(ConstMathErr::NotInRange),
             _ => self, // already known types
         };

@@ -7,8 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(i128_type)]
 
-fn main() {
-    let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
-}
+mod flt2dec;
+mod dec2flt;

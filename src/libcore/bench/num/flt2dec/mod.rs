@@ -7,8 +7,18 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(i128_type)]
 
-fn main() {
-    let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
+mod strategy {
+    mod dragon;
+    mod grisu;
+}
+
+use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
+use core::num::flt2dec::MAX_SIG_DIGITS;
+
+pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
+    match decode(v).1 {
+        FullDecoded::Finite(decoded) => decoded,
+        full_decoded => panic!("expected finite, got {:?} instead", full_decoded)
+    }
 }

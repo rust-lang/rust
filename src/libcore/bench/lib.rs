@@ -7,8 +7,19 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(i128_type)]
 
-fn main() {
-    let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
-}
+#![deny(warnings)]
+
+#![feature(flt2dec)]
+#![feature(slice_patterns)]
+#![feature(test)]
+
+extern crate core;
+extern crate test;
+
+mod any;
+mod hash;
+mod iter;
+mod mem;
+mod num;
+mod ops;
