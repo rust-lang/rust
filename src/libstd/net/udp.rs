@@ -83,6 +83,30 @@ impl UdpSocket {
         self.0.recv_from(buf)
     }
 
+    /// Receives data from the socket, without removing it from the queue.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recvfrom` system call.
+    ///
+    /// On success, returns the number of bytes peeked and the address from
+    /// whence the data came.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(peek)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let mut buf = [0; 10];
+    /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
+    ///                                         .expect("Didn't receive data");
+    /// ```
+    #[unstable(feature = "peek", issue = "38980")]
+    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        self.0.peek_from(buf)
+    }
+
     /// Sends data on the socket to the given address. On success, returns the
     /// number of bytes written.
     ///
@@ -579,6 +603,37 @@ impl UdpSocket {
         self.0.recv(buf)
     }
 
+    /// Receives data on the socket from the remote adress to which it is
+    /// connected, without removing that data from the queue. On success,
+    /// returns the number of bytes peeked.
+    ///
+    /// Successive calls return the same data. This is accomplished by passing
+    /// `MSG_PEEK` as a flag to the underlying `recv` system call.
+    ///
+    /// # Errors
+    ///
+    /// This method will fail if the socket is not connected. The `connect` method
+    /// will connect this socket to a remote address.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(peek)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("127.0.0.1:8080").expect("connect function failed");
+    /// let mut buf = [0; 10];
+    /// match socket.peek(&mut buf) {
+    ///     Ok(received) => println!("received {} bytes", received),
+    ///     Err(e) => println!("peek function failed: {:?}", e),
+    /// }
+    /// ```
+    #[unstable(feature = "peek", issue = "38980")]
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
+
     /// Moves this UDP socket into or out of nonblocking mode.
     ///
     /// On Unix this corresponds to calling fcntl, and on Windows this
@@ -867,6 +922,48 @@ mod tests {
         let mut buf = [0; 11];
         t!(socket.recv(&mut buf));
         assert_eq!(b"hello world", &buf[..]);
+    }
+
+    #[test]
+    fn connect_send_peek_recv() {
+        each_ip(&mut |addr, _| {
+            let socket = t!(UdpSocket::bind(&addr));
+            t!(socket.connect(addr));
+
+            t!(socket.send(b"hello world"));
+
+            for _ in 1..3 {
+                let mut buf = [0; 11];
+                let size = t!(socket.peek(&mut buf));
+                assert_eq!(b"hello world", &buf[..]);
+                assert_eq!(size, 11);
+            }
+
+            let mut buf = [0; 11];
+            let size = t!(socket.recv(&mut buf));
+            assert_eq!(b"hello world", &buf[..]);
+            assert_eq!(size, 11);
+        })
+    }
+
+    #[test]
+    fn peek_from() {
+        each_ip(&mut |addr, _| {
+            let socket = t!(UdpSocket::bind(&addr));
+            t!(socket.send_to(b"hello world", &addr));
+
+            for _ in 1..3 {
+                let mut buf = [0; 11];
+                let (size, _) = t!(socket.peek_from(&mut buf));
+                assert_eq!(b"hello world", &buf[..]);
+                assert_eq!(size, 11);
+            }
+
+            let mut buf = [0; 11];
+            let (size, _) = t!(socket.recv_from(&mut buf));
+            assert_eq!(b"hello world", &buf[..]);
+            assert_eq!(size, 11);
+        })
     }
 
     #[test]

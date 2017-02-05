@@ -277,6 +277,7 @@
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(panic_unwind)]
+#![feature(peek)]
 #![feature(placement_in_syntax)]
 #![feature(prelude_import)]
 #![feature(pub_restricted)]
