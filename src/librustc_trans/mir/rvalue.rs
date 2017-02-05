@@ -402,7 +402,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                                              lhs.immediate(), rhs.immediate(),
                                                              lhs.ty);
                 let val_ty = op.ty(bcx.tcx(), lhs.ty, rhs.ty);
-                let operand_ty = bcx.tcx().intern_tup(&[val_ty, bcx.tcx().types.bool]);
+                let operand_ty = bcx.tcx().intern_tup(&[val_ty, bcx.tcx().types.bool], false);
                 let operand = OperandRef {
                     val: result,
                     ty: operand_ty

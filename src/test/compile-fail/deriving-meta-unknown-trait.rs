@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 #[derive(Eqr)]
-//~^ ERROR `#[derive]` for custom traits is not stable enough for use. It is deprecated and will be removed in v1.15 (see issue #29644)
+//~^ ERROR cannot find derive macro `Eqr` in this scope
 struct Foo;
 
 pub fn main() {}

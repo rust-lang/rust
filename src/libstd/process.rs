@@ -114,7 +114,7 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Child {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Child")
@@ -160,7 +160,7 @@ impl FromInner<AnonPipe> for ChildStdin {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdin { .. }")
@@ -201,7 +201,7 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdout {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdout { .. }")
@@ -242,7 +242,7 @@ impl FromInner<AnonPipe> for ChildStderr {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStderr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStderr { .. }")
@@ -696,7 +696,7 @@ impl FromInner<imp::Stdio> for Stdio {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdio {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Stdio { .. }")
@@ -959,10 +959,27 @@ impl Child {
 ///
 /// # Examples
 ///
-/// ```
-/// use std::process;
+/// Due to this function’s behavior regarding destructors, a conventional way
+/// to use the function is to extract the actual computation to another
+/// function and compute the exit code from its return value:
 ///
-/// process::exit(0);
+/// ```
+/// use std::io::{self, Write};
+///
+/// fn run_app() -> Result<(), ()> {
+///     // Application logic here
+///     Ok(())
+/// }
+///
+/// fn main() {
+///     ::std::process::exit(match run_app() {
+///        Ok(_) => 0,
+///        Err(err) => {
+///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            1
+///        }
+///     });
+/// }
 /// ```
 ///
 /// Due to [platform-specific behavior], the exit code for this example will be

@@ -87,7 +87,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "cxchg" | "cxchgweak" => (1, vec![tcx.mk_mut_ptr(param(ccx, 0)),
                                               param(ccx, 0),
                                               param(ccx, 0)],
-                                      tcx.intern_tup(&[param(ccx, 0), tcx.types.bool])),
+                                      tcx.intern_tup(&[param(ccx, 0), tcx.types.bool], false)),
             "load" => (1, vec![tcx.mk_imm_ptr(param(ccx, 0))],
                        param(ccx, 0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0)],
@@ -272,7 +272,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)],
-                tcx.intern_tup(&[param(ccx, 0), tcx.types.bool])),
+                tcx.intern_tup(&[param(ccx, 0), tcx.types.bool], false)),
 
             "unchecked_div" | "unchecked_rem" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
@@ -420,7 +420,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
 
     match *expected {
         Void => match t.sty {
-            ty::TyTuple(ref v) if v.is_empty() => {},
+            ty::TyTuple(ref v, _) if v.is_empty() => {},
             _ => simple_error(&format!("`{}`", t), "()"),
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
@@ -494,7 +494,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         }
         Aggregate(_flatten, ref expected_contents) => {
             match t.sty {
-                ty::TyTuple(contents) => {
+                ty::TyTuple(contents, _) => {
                     if contents.len() != expected_contents.len() {
                         simple_error(&format!("tuple with length {}", contents.len()),
                                      &format!("tuple with length {}", expected_contents.len()));

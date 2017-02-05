@@ -24,6 +24,7 @@ pub fn target() -> Result<Target, String> {
         linker_is_gnu: true,
         allow_asm: false,
         obj_is_bitcode: true,
+        is_like_emscripten: true,
         max_atomic_width: Some(32),
         post_link_args: vec!["-s".to_string(), "BINARYEN=1".to_string(),
                              "-s".to_string(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()],

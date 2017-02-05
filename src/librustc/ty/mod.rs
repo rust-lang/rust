@@ -197,6 +197,17 @@ impl AssociatedItem {
             AssociatedKind::Type => Def::AssociatedTy(self.def_id),
         }
     }
+
+    /// Tests whether the associated item admits a non-trivial implementation
+    /// for !
+    pub fn relevant_for_never<'tcx>(&self) -> bool {
+        match self.kind {
+            AssociatedKind::Const => true,
+            AssociatedKind::Type => true,
+            // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
+            AssociatedKind::Method => !self.method_has_self_argument,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable)]
@@ -1603,7 +1614,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             _ if tys.references_error() => tcx.types.err,
             0 => tcx.types.bool,
             1 => tys[0],
-            _ => tcx.intern_tup(&tys[..])
+            _ => tcx.intern_tup(&tys[..], false)
         };
 
         let old = tcx.adt_sized_constraint.borrow().get(&self.did).cloned();
@@ -1638,7 +1649,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![ty]
             }
 
-            TyTuple(ref tys) => {
+            TyTuple(ref tys, _) => {
                 match tys.last() {
                     None => vec![],
                     Some(ty) => self.sized_constraint_for_ty(tcx, stack, ty)
@@ -1652,7 +1663,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                        .subst(tcx, substs);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_ty);
-                if let ty::TyTuple(ref tys) = adt_ty.sty {
+                if let ty::TyTuple(ref tys, _) = adt_ty.sty {
                     tys.iter().flat_map(|ty| {
                         self.sized_constraint_for_ty(tcx, stack, ty)
                     }).collect()
@@ -2008,6 +2019,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.sess.cstore.impl_polarity(id)
         }
+    }
+
+    pub fn trait_relevant_for_never(self, did: DefId) -> bool {
+        self.associated_items(did).any(|item| {
+            item.relevant_for_never()
+        })
     }
 
     pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {

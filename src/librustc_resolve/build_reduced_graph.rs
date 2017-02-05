@@ -559,7 +559,7 @@ impl<'a> Resolver<'a> {
                       "an `extern crate` loading macros must be at the crate root");
         } else if !self.use_extern_macros && !used &&
                   self.session.cstore.dep_kind(module.def_id().unwrap().krate).macros_only() {
-            let msg = "custom derive crates and `#[no_link]` crates have no effect without \
+            let msg = "proc macro crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
             self.session.span_warn(item.span, msg);
             used = true; // Avoid the normal unused extern crate warning

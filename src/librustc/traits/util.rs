@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let arguments_tuple = match tuple_arguments {
             TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
             TupleArgumentsFlag::Yes =>
-                self.intern_tup(sig.skip_binder().inputs()),
+                self.intern_tup(sig.skip_binder().inputs(), false),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,

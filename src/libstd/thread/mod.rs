@@ -698,7 +698,7 @@ impl ThreadId {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[unstable(feature = "thread_id", issue = "21507")]
 impl fmt::Debug for ThreadId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ThreadId { .. }")
@@ -1002,7 +1002,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread { self.0.native.unwrap() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("JoinHandle { .. }")
