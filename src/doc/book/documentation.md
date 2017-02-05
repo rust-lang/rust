@@ -601,7 +601,7 @@ is documented, especially when you are working on a library. Rust allows you to
 to generate warnings or errors, when an item is missing documentation.
 To generate warnings you use `warn`:
 
-```rust
+```rust,ignore
 #![warn(missing_docs)]
 ```
 
@@ -631,7 +631,7 @@ struct Hidden;
 You can control a few aspects of the HTML that `rustdoc` generates through the
 `#![doc]` version of the attribute:
 
-```rust
+```rust,ignore
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://www.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/")]
