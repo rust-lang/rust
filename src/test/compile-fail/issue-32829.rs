@@ -8,10 +8,81 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: calls in statics are limited
+#![feature(const_fn)]
 
-static S : u64 = { { panic!("foo"); 0 } };
+const bad: u32 = {
+    {
+        5; //~ ERROR: blocks in constants are limited to items and tail expressions
+        0
+    }
+};
 
-fn main() {
-    println!("{:?}", S);
-}
+const bad_two: u32 = {
+    {
+        invalid();
+        //~^ ERROR: blocks in constants are limited to items and tail expressions
+        //~^^ ERROR: calls in constants are limited to constant functions, struct and enum
+        0
+    }
+};
+
+const bad_three: u32 = {
+    {
+        valid();
+        //~^ ERROR: blocks in constants are limited to items and tail expressions
+        0
+    }
+};
+
+static bad_four: u32 = {
+    {
+        5; //~ ERROR: blocks in statics are limited to items and tail expressions
+        0
+    }
+};
+
+static bad_five: u32 = {
+    {
+        invalid();
+        //~^ ERROR: blocks in statics are limited to items and tail expressions
+        //~^^ ERROR: calls in statics are limited to constant functions, struct and enum
+        0
+    }
+};
+
+static bad_six: u32 = {
+    {
+        valid();
+        //~^ ERROR: blocks in statics are limited to items and tail expressions
+        0
+    }
+};
+
+static mut bad_seven: u32 = {
+    {
+        5; //~ ERROR: blocks in statics are limited to items and tail expressions
+        0
+    }
+};
+
+static mut bad_eight: u32 = {
+    {
+        invalid();
+        //~^ ERROR: blocks in statics are limited to items and tail expressions
+        //~^^ ERROR: calls in statics are limited to constant functions, struct and enum
+        0
+    }
+};
+
+static mut bad_nine: u32 = {
+    {
+        valid();
+        //~^ ERROR: blocks in statics are limited to items and tail expressions
+        0
+    }
+};
+
+fn invalid() {}
+const fn valid() {}
+
+fn main() {}
