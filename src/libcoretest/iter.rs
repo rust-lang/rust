@@ -192,6 +192,12 @@ fn test_iterator_enumerate_count() {
 }
 
 #[test]
+fn test_iterator_filter_count() {
+    let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    assert_eq!(xs.iter().filter(|&&x| x % 2 == 0).count(), 5);
+}
+
+#[test]
 fn test_iterator_peekable() {
     let xs = vec![0, 1, 2, 3, 4, 5];
     let mut it = xs.iter().cloned().peekable();
