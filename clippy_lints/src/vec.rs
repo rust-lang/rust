@@ -81,9 +81,11 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
         },
     };
 
-    span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {
-        db.span_suggestion(span, "you can use a slice directly", snippet);
-    });
+    span_lint_and_then(cx,
+                       USELESS_VEC,
+                       span,
+                       "useless use of `vec!`",
+                       |db| { db.span_suggestion(span, "you can use a slice directly", snippet); });
 }
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).

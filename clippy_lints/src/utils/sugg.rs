@@ -258,8 +258,9 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence() ||
         (other.precedence() == op.precedence() &&
-         ((op != other && associativity(op) != dir) || (op == other && associativity(op) != Associativity::Both))) ||
-        is_shift(op) && is_arith(other) || is_shift(other) && is_arith(op)
+         ((op != other && associativity(op) != dir) ||
+          (op == other && associativity(op) != Associativity::Both))) || is_shift(op) && is_arith(other) ||
+        is_shift(other) && is_arith(op)
     }
 
     let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
