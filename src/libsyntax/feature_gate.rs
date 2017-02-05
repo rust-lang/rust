@@ -318,7 +318,7 @@ declare_features! (
     (active, abi_unadjusted, "1.16.0", None),
 
     // Macros 1.1
-    (active, proc_macro, "1.16.0", Some(35900)),
+    (active, proc_macro, "1.16.0", Some(38356)),
 
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
