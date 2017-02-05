@@ -73,7 +73,7 @@ pub enum c_void {
     #[doc(hidden)] __variant2,
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("c_void")

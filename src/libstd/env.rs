@@ -145,7 +145,7 @@ impl Iterator for Vars {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Vars { .. }")
@@ -159,7 +159,7 @@ impl Iterator for VarsOs {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("VarsOs { .. }")
@@ -382,7 +382,7 @@ impl<'a> Iterator for SplitPaths<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a> fmt::Debug for SplitPaths<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("SplitPaths { .. }")
@@ -665,7 +665,7 @@ impl DoubleEndedIterator for Args {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Args { .. }")
@@ -690,7 +690,7 @@ impl DoubleEndedIterator for ArgsOs {
     fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ArgsOs { .. }")

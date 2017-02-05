@@ -361,7 +361,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
@@ -370,7 +370,7 @@ impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")

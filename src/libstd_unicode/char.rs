@@ -131,7 +131,6 @@ impl Iterator for CaseMappingIter {
     }
 }
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
 impl fmt::Display for CaseMappingIter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -152,14 +151,14 @@ impl fmt::Display for CaseMappingIter {
     }
 }
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
+#[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for ToLowercase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
 }
 
-#[stable(feature = "char_struct_display", since = "1.17.0")]
+#[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for ToUppercase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
