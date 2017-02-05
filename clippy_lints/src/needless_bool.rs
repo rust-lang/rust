@@ -74,7 +74,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                                    NEEDLESS_BOOL,
                                    e.span,
                                    "this if-then-else expression returns a bool literal",
-                                   |db| { db.span_suggestion(e.span, "you can reduce it to", hint); });
+                                   |db| {
+                    db.span_suggestion(e.span, "you can reduce it to", hint);
+                });
             };
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (RetBool(true), RetBool(true)) |
@@ -121,7 +123,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against true are unnecessary",
-                                       |db| { db.span_suggestion(e.span, "try simplifying it as shown:", hint); });
+                                       |db| {
+                        db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                    });
                 },
                 (Other, Bool(true)) => {
                     let hint = snippet(cx, left_side.span, "..").into_owned();
@@ -129,7 +133,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against true are unnecessary",
-                                       |db| { db.span_suggestion(e.span, "try simplifying it as shown:", hint); });
+                                       |db| {
+                        db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                    });
                 },
                 (Bool(false), Other) => {
                     let hint = Sugg::hir(cx, right_side, "..");

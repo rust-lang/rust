@@ -36,12 +36,11 @@ impl LintPass for Precedence {
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
-            let span_sugg =
-                |expr: &Expr, sugg| {
-                    span_lint_and_then(cx, PRECEDENCE, expr.span, "operator precedence can trip the unwary", |db| {
-                        db.span_suggestion(expr.span, "consider parenthesizing your expression", sugg);
-                    });
-                };
+            let span_sugg = |expr: &Expr, sugg| {
+                span_lint_and_then(cx, PRECEDENCE, expr.span, "operator precedence can trip the unwary", |db| {
+                    db.span_suggestion(expr.span, "consider parenthesizing your expression", sugg);
+                });
+            };
 
             if !is_bit_op(op) {
                 return;

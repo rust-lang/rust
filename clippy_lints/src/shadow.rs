@@ -250,7 +250,9 @@ fn lint_shadow<'a, 'tcx: 'a>(
                                &format!("`{}` is shadowed by itself in `{}`",
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
-                               |db| { db.span_note(prev_span, "previous binding is here"); });
+                               |db| {
+                db.span_note(prev_span, "previous binding is here");
+            });
         } else if contains_self(cx, name, expr) {
             span_lint_and_then(cx,
                                SHADOW_REUSE,
@@ -280,7 +282,9 @@ fn lint_shadow<'a, 'tcx: 'a>(
                            SHADOW_UNRELATED,
                            span,
                            &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
-                           |db| { db.span_note(prev_span, "previous binding is here"); });
+                           |db| {
+            db.span_note(prev_span, "previous binding is here");
+        });
     }
 }
 

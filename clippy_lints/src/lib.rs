@@ -72,6 +72,7 @@ pub mod derive;
 pub mod doc;
 pub mod double_parens;
 pub mod drop_forget_ref;
+pub mod empty_enum;
 pub mod entry;
 pub mod enum_clike;
 pub mod enum_glob_use;
@@ -265,6 +266,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         max_single_char_names: conf.max_single_char_names,
     });
     reg.register_late_lint_pass(box drop_forget_ref::Pass);
+    reg.register_late_lint_pass(box empty_enum::EmptyEnum);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box types::InvalidUpcastComparisons);
     reg.register_late_lint_pass(box regex::Pass::default());
