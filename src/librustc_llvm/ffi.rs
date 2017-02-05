@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: Rename 'DIGlobalVariable' to 'DIGlobalVariableExpression'
+// once support for LLVM 3.9 is dropped.
+//
+// This method was changed in this LLVM patch:
+// https://reviews.llvm.org/D26769
+
 use debuginfo::{DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
                 DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
                 DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,

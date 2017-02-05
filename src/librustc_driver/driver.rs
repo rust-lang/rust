@@ -22,6 +22,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::util::common::time;
 use rustc::util::nodemap::{NodeSet, NodeMap};
+use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_incremental::ich::Fingerprint;
@@ -1084,10 +1085,9 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         // are going to build an executable
         if sess.opts.output_types.contains_key(&OutputType::Exe) {
             let f = outputs.path(OutputType::Object);
-            fs::copy(&f,
+            rename_or_copy_remove(&f,
                      f.with_file_name(format!("{}.0.o",
                                               f.file_stem().unwrap().to_string_lossy()))).unwrap();
-            fs::remove_file(f).unwrap();
         }
 
         // Remove assembly source, unless --save-temps was specified

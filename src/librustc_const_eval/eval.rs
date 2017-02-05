@@ -482,12 +482,9 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
                     return Ok(Integral(I64(i64::min_value())))
                 },
-                (&LitKind::Int(n, _), Some(&ty::TyInt(IntTy::I128))) |
-                (&LitKind::Int(n, Signed(IntTy::I128)), _) => {
-                    // SNAP: replace n in pattern with I128_OVERFLOW and remove this if.
-                    if n == I128_OVERFLOW {
-                        return Ok(Integral(I128(i128::min_value())))
-                    }
+                (&LitKind::Int(I128_OVERFLOW, _), Some(&ty::TyInt(IntTy::I128))) |
+                (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
+                    return Ok(Integral(I128(i128::min_value())))
                 },
                 (&LitKind::Int(n, _), Some(&ty::TyInt(IntTy::Is))) |
                 (&LitKind::Int(n, Signed(IntTy::Is)), _) => {

@@ -7,8 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(i128_type)]
 
-fn main() {
-    let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
+use core::any::*;
+use test::{Bencher, black_box};
+
+#[bench]
+fn bench_downcast_ref(b: &mut Bencher) {
+    b.iter(|| {
+        let mut x = 0;
+        let mut y = &mut x as &mut Any;
+        black_box(&mut y);
+        black_box(y.downcast_ref::<isize>() == Some(&0));
+    });
 }

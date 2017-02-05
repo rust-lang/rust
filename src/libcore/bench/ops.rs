@@ -7,8 +7,24 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(i128_type)]
 
-fn main() {
-    let _ = -0x8000_0000_0000_0000_0000_0000_0000_0000i128;
+use core::ops::*;
+use test::Bencher;
+
+// Overhead of dtors
+
+struct HasDtor {
+    _x: isize
+}
+
+impl Drop for HasDtor {
+    fn drop(&mut self) {
+    }
+}
+
+#[bench]
+fn alloc_obj_with_dtor(b: &mut Bencher) {
+    b.iter(|| {
+        HasDtor { _x : 10 };
+    })
 }
