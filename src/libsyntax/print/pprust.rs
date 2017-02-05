@@ -1476,6 +1476,9 @@ impl<'a> State<'a> {
                                             //  ^^^
                             (&parse::token::DocComment(..), _) => hardbreak(&mut self.s)?, // ///abc
                                                                                            // ^^^---
+                            (_, Some(&&TokenTree::Token(_, Token::Comma))) => { // abc(a, b);
+                                zerobreak(&mut self.s)?                         //     ^-
+                            },
                             (_, Some(&&TokenTree::Token(_, Token::Semi))) => {} // let a = 0;
                                                                                 //         ^-
                             (ref a, Some(&&TokenTree::Token(_, ref b))) if is_dot(a) &&
@@ -1485,10 +1488,14 @@ impl<'a> State<'a> {
                                                                            is_dot(b) => { // ... ..
                                 self.nbsp()?                                              // ^^^ --
                             }
-                            (&Token::Ident(_), Some(&&TokenTree::Token(_, Token::Not))) => {} // abc!
-                                                                                              // ^^^-
-                            (&Token::Literal(_, _), Some(&&TokenTree::Token(_, ref a))) // self.0 .0
-                                if is_dot(a) => {                                       //      ^ -
+                            (&Token::Ident(_), Some(&&TokenTree::Token(_, Token::Not))) => {
+                                // abc!
+                                // ^^^-
+                            }
+                            (&Token::Literal(_, _), Some(&&TokenTree::Token(_, ref a)))
+                                // self.0 .0
+                                //      ^ -
+                                if is_dot(a) => {
                                     self.nbsp()?
                             }
                             (_, Some(&&TokenTree::Delimited(_, ref delimed)))
@@ -1506,22 +1513,28 @@ impl<'a> State<'a> {
                         if delimed.tts.is_empty() { // {}
                                                     // ++
                             word(&mut self.s, "{}")?;
-                            space(&mut self.s)?;
+                            zerobreak(&mut self.s)?;
                         } else {
+                            word(&mut self.s, "{")?;
                             hardbreak(&mut self.s)?;
-                            self.head("")?;
-                            self.bopen()?;
+                            self.cbox(4)?;
                             space(&mut self.s)?;
 
                             self.print_tts(&delimed.tts)?;
 
-                            self.bclose(::ext::quote::rt::DUMMY_SP)?;
-                            if let Some(&&TokenTree::Token(_, Token::Semi)) = tts_iter.peek() {
-                                // {abc};
-                                // ^^^^^-
-                            } else {
-                                space(&mut self.s)?;
-                                hardbreak(&mut self.s)?;
+                            self.end()?;
+                            hardbreak(&mut self.s)?;
+                            word(&mut self.s, "}")?;
+
+                            match tts_iter.peek(){
+                                None => {},
+                                Some(&&TokenTree::Token(_, Token::Semi)) => { // {abc};
+                                                                              // ^^^^^-
+                                },
+                                _ => {
+                                    space(&mut self.s)?;
+                                    hardbreak(&mut self.s)?;
+                                }
                             }
                         }
                     } else {
@@ -3174,28 +3187,31 @@ mod tests {
     #[test]
     fn test_pretty_print_tokentrees() {
         use parse::parse_tts_from_source_str as parse_tts;
-        // ignore-tidy-linelength
-        let original = r#"fn main()
-{
+        let original = r#"fn main() {
+
     let program = "+ + * - /";
     let mut accumulator = 0;
     . .. ...;
     a.b;
     .. .a;
     a. ..;
-    for token in program.chars()
-    {
-        match token 
-        {
-            \'+\' => accumulator += 1 , \'-\' => accumulator -= 1 , \'*\' => accumulator *= 2 , \'/\' => accumulator /= 2 , _ => {}
+    for token in program.chars() {
+
+        match token {
+
+            '+' => accumulator += 1
+            , '-' => accumulator -= 1
+            , '*' => accumulator *= 2
+            , '/' => accumulator /= 2
+            , _ => {}
 
         }
-
     }
 
-    println!("The program \"{}\" calculates the value {}" , program , accumulator);
-}
-"#;
+    println!("The program \"{}\" calculates the value {}", program
+            , accumulator);
+
+}"#;
         let sess = ParseSess::new();
         let tts = parse_tts("<test>".to_string(), original.to_string(), &sess).unwrap();
         let pretty = tts_to_string(&*tts);
