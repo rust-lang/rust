@@ -74,7 +74,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::array(&llty, size)
         }
 
-        ty::TyTuple(ref tys) if tys.is_empty() => {
+        ty::TyTuple(ref tys, _) if tys.is_empty() => {
             Type::nil(cx)
         }
 
@@ -276,7 +276,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         let sig = cx.tcx().erase_late_bound_regions_and_normalize(&f.sig);
         FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
       }
-      ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
+      ty::TyTuple(ref tys, _) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {
           adt::type_of(cx, t)
       }

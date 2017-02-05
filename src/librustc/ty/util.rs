@@ -207,7 +207,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // Don't use `struct_variant`, this may be a univariant enum.
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
-            (&TyTuple(ref v), None) => v.get(i).cloned(),
+            (&TyTuple(ref v, _), None) => v.get(i).cloned(),
             _ => None
         }
     }
@@ -466,8 +466,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                     self.def_id(d);
                 }
             }
-            TyTuple(tys) => {
+            TyTuple(tys, defaulted) => {
                 self.hash(tys.len());
+                self.hash(defaulted);
             }
             TyParam(p) => {
                 self.hash(p.idx);
@@ -675,7 +676,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                                -> Representability {
             match ty.sty {
-                TyTuple(ref ts) => {
+                TyTuple(ref ts, _) => {
                     find_nonrepresentable(tcx, sp, seen, ts.iter().cloned())
                 }
                 // Fixed-length vectors.

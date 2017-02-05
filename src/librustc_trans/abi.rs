@@ -367,7 +367,7 @@ impl FnType {
             assert!(!sig.variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
-                ty::TyTuple(ref tupled_arguments) => {
+                ty::TyTuple(ref tupled_arguments, _) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     &tupled_arguments[..]
                 }

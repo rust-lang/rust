@@ -485,7 +485,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     };
     let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let tuple_input_ty = tcx.intern_tup(sig.inputs());
+    let tuple_input_ty = tcx.intern_tup(sig.inputs(), false);
     let sig = tcx.mk_fn_sig(
         [bare_fn_ty_maybe_ref, tuple_input_ty].iter().cloned(),
         sig.output(),

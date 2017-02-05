@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
         fn_ty.sig.0 = self.tcx.mk_fn_sig(
-            iter::once(self.tcx.intern_tup(fn_ty.sig.skip_binder().inputs())),
+            iter::once(self.tcx.intern_tup(fn_ty.sig.skip_binder().inputs(), false)),
             fn_ty.sig.skip_binder().output(),
             fn_ty.sig.variadic()
         );
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                arg_param_ty);
 
         let input_tys = match arg_param_ty.sty {
-            ty::TyTuple(tys) => tys.into_iter(),
+            ty::TyTuple(tys, _) => tys.into_iter(),
             _ => {
                 return None;
             }

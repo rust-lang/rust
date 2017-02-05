@@ -474,7 +474,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAdt(tid, substs) => ty::TyAdt(tid, substs.fold_with(folder)),
             ty::TyDynamic(ref trait_ty, ref region) =>
                 ty::TyDynamic(trait_ty.fold_with(folder), region.fold_with(folder)),
-            ty::TyTuple(ts) => ty::TyTuple(ts.fold_with(folder)),
+            ty::TyTuple(ts, defaulted) => ty::TyTuple(ts.fold_with(folder), defaulted),
             ty::TyFnDef(def_id, substs, f) => {
                 ty::TyFnDef(def_id,
                             substs.fold_with(folder),
@@ -511,7 +511,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAdt(_, substs) => substs.visit_with(visitor),
             ty::TyDynamic(ref trait_ty, ref reg) =>
                 trait_ty.visit_with(visitor) || reg.visit_with(visitor),
-            ty::TyTuple(ts) => ts.visit_with(visitor),
+            ty::TyTuple(ts, _) => ts.visit_with(visitor),
             ty::TyFnDef(_, substs, ref f) => {
                 substs.visit_with(visitor) || f.visit_with(visitor)
             }

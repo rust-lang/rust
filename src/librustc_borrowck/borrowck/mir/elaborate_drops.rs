@@ -713,7 +713,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx).collect();
                 self.open_drop_for_tuple(c, &tys)
             }
-            ty::TyTuple(tys) => {
+            ty::TyTuple(tys, _) => {
                 self.open_drop_for_tuple(c, tys)
             }
             ty::TyAdt(def, _) if def.is_box() => {
