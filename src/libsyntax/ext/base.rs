@@ -10,7 +10,7 @@
 
 pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
 
-use ast::{self, Attribute, Name, PatKind};
+use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
 use syntax_pos::{Span, ExpnId, NO_EXPANSION};
@@ -471,6 +471,9 @@ impl MacResult for DummyResult {
     }
 }
 
+pub type BuiltinDeriveFn =
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut FnMut(Annotatable));
+
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
@@ -507,7 +510,14 @@ pub enum SyntaxExtension {
     ///
     IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
 
-    CustomDerive(Box<MultiItemModifier>),
+    /// An attribute-like procedural macro. TokenStream -> TokenStream.
+    /// The input is the annotated item.
+    /// Allows generating code to implement a Trait for a given struct
+    /// or enum item.
+    ProcMacroDerive(Box<MultiItemModifier>),
+
+    /// An attribute-like procedural macro that derives a builtin trait.
+    BuiltinDerive(BuiltinDeriveFn),
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -526,6 +536,9 @@ pub trait Resolver {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
+                            -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -550,6 +563,13 @@ impl Resolver for DummyResolver {
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
+        Err(Determinacy::Determined)
+    }
+    fn resolve_builtin_macro(&mut self, _tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
+        Err(Determinacy::Determined)
+    }
+    fn resolve_derive_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
+                            -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
 }

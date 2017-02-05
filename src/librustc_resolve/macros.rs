@@ -250,6 +250,33 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         result
     }
+
+    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
+        match self.builtin_macros.get(&tname).cloned() {
+            Some(binding) => Ok(binding.get_macro(self)),
+            None => Err(Determinacy::Undetermined),
+        }
+    }
+
+    fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
+                            -> Result<Rc<SyntaxExtension>, Determinacy> {
+        let ast::Path { ref segments, span } = *path;
+        match self.resolve_macro(scope, path, false) {
+            Ok(ext) => match *ext {
+                SyntaxExtension::BuiltinDerive(..) |
+                SyntaxExtension::ProcMacroDerive(..) => Ok(ext),
+                _ => Err(Determinacy::Determined),
+            },
+            Err(Determinacy::Undetermined) if force => {
+                let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
+                let msg = format!("derive macro does not exist: '{}'", path[0].name);
+                let mut err = self.session.struct_span_err(span, &msg);
+                err.emit();
+                Err(Determinacy::Determined)
+            },
+            Err(err) => Err(err),
+        }
+    }
 }
 
 impl<'a> Resolver<'a> {
