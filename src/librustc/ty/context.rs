@@ -1384,23 +1384,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TySlice(ty))
     }
 
-    pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        self.mk_ty(TyTuple(self.intern_type_list(ts)))
+    pub fn intern_tup(self, ts: &[Ty<'tcx>], defaulted: bool) -> Ty<'tcx> {
+        self.mk_ty(TyTuple(self.intern_type_list(ts), defaulted))
     }
 
-    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| self.mk_ty(TyTuple(self.intern_type_list(ts))))
+    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I,
+                                                     defaulted: bool) -> I::Output {
+        iter.intern_with(|ts| self.mk_ty(TyTuple(self.intern_type_list(ts), defaulted)))
     }
 
     pub fn mk_nil(self) -> Ty<'tcx> {
-        self.intern_tup(&[])
+        self.intern_tup(&[], false)
     }
 
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
         if self.sess.features.borrow().never_type {
             self.types.never
         } else {
-            self.mk_nil()
+            self.intern_tup(&[], true)
         }
     }
 

@@ -220,6 +220,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #36892 <https://github.com/rust-lang/rust/issues/36892>",
         },
         FutureIncompatibleInfo {
+            id: LintId::of(RESOLVE_TRAIT_ON_DEFAULTED_UNIT),
+            reference: "issue #39216 <https://github.com/rust-lang/rust/issues/39216>",
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(SAFE_EXTERN_STATICS),
             reference: "issue #36247 <https://github.com/rust-lang/rust/issues/35112>",
         },

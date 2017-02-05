@@ -342,7 +342,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             PatKind::Tuple(ref subpatterns, ddpos) => {
                 let ty = self.tables.node_id_to_type(pat.id);
                 match ty.sty {
-                    ty::TyTuple(ref tys) => {
+                    ty::TyTuple(ref tys, _) => {
                         let subpatterns =
                             subpatterns.iter()
                                        .enumerate_and_adjust(tys.len(), ddpos)

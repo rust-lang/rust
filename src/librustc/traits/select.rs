@@ -52,6 +52,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
+use lint;
 use util::nodemap::FxHashMap;
 
 struct InferredObligationsSnapshotVecDelegate<'tcx> {
@@ -407,19 +408,62 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("select({:?})", obligation);
         assert!(!obligation.predicate.has_escaping_regions());
 
+        let tcx = self.tcx();
         let dep_node = obligation.predicate.dep_node();
-        let _task = self.tcx().dep_graph.in_task(dep_node);
+        let _task = tcx.dep_graph.in_task(dep_node);
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
-        match self.candidate_from_obligation(&stack)? {
-            None => Ok(None),
+        let ret = match self.candidate_from_obligation(&stack)? {
+            None => None,
             Some(candidate) => {
                 let mut candidate = self.confirm_candidate(obligation, candidate)?;
                 let inferred_obligations = (*self.inferred_obligations).into_iter().cloned();
                 candidate.nested_obligations_mut().extend(inferred_obligations);
-                Ok(Some(candidate))
+                Some(candidate)
             },
+        };
+
+        // Test whether this is a `()` which was produced by defaulting a
+        // diverging type variable with `!` disabled. If so, we may need
+        // to raise a warning.
+        if obligation.predicate.skip_binder().self_ty().is_defaulted_unit() {
+            let mut raise_warning = true;
+            // Don't raise a warning if the trait is implemented for ! and only
+            // permits a trivial implementation for !. This stops us warning
+            // about (for example) `(): Clone` becoming `!: Clone` because such
+            // a switch can't cause code to stop compiling or execute
+            // differently.
+            let mut never_obligation = obligation.clone();
+            let def_id = never_obligation.predicate.skip_binder().trait_ref.def_id;
+            never_obligation.predicate = never_obligation.predicate.map_bound(|mut trait_pred| {
+                // Swap out () with ! so we can check if the trait is impld for !
+                {
+                    let mut trait_ref = &mut trait_pred.trait_ref;
+                    let unit_substs = trait_ref.substs;
+                    let mut never_substs = Vec::with_capacity(unit_substs.len());
+                    never_substs.push(From::from(tcx.types.never));
+                    never_substs.extend(&unit_substs[1..]);
+                    trait_ref.substs = tcx.intern_substs(&never_substs);
+                }
+                trait_pred
+            });
+            if let Ok(Some(..)) = self.select(&never_obligation) {
+                if !tcx.trait_relevant_for_never(def_id) {
+                    // The trait is also implemented for ! and the resulting
+                    // implementation cannot actually be invoked in any way.
+                    raise_warning = false;
+                }
+            }
+
+            if raise_warning {
+                tcx.sess.add_lint(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+                                  obligation.cause.body_id,
+                                  obligation.cause.span,
+                                  format!("code relies on type inference rules which are likely \
+                                           to change"));
+            }
         }
+        Ok(ret)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1744,7 +1788,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) => Never,
 
-            ty::TyTuple(tys) => {
+            ty::TyTuple(tys, _) => {
                 Where(ty::Binder(tys.last().into_iter().cloned().collect()))
             }
 
@@ -1752,7 +1796,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(ty::Binder(match sized_crit.sty {
-                    ty::TyTuple(tys) => tys.to_vec().subst(self.tcx(), substs),
+                    ty::TyTuple(tys, _) => tys.to_vec().subst(self.tcx(), substs),
                     ty::TyBool => vec![],
                     _ => vec![sized_crit.subst(self.tcx(), substs)]
                 }))
@@ -1799,7 +1843,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(vec![element_ty]))
             }
 
-            ty::TyTuple(tys) => {
+            ty::TyTuple(tys, _) => {
                 // (*) binder moved here
                 Where(ty::Binder(tys.to_vec()))
             }
@@ -1874,7 +1918,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 vec![element_ty]
             }
 
-            ty::TyTuple(ref tys) => {
+            ty::TyTuple(ref tys, _) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
                 tys.to_vec()
             }

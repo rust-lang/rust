@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                 }
 
-                ty::TyTuple(ref tys) => {
+                ty::TyTuple(ref tys, _) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
                             self.require_sized(elem, traits::TupleElem);

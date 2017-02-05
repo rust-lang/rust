@@ -151,7 +151,7 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyTuple(ref ts) => {
+            &ty::TyTuple(ref ts, _) => {
                 self.add_tys(&ts[..]);
             }
 

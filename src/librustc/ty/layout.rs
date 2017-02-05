@@ -791,7 +791,7 @@ impl<'a, 'gcx, 'tcx> Struct {
                     Some(&variant.memory_index[..]))
             }
             // Can we use one of the fields in this tuple?
-            (&Univariant { ref variant, .. }, &ty::TyTuple(tys)) => {
+            (&Univariant { ref variant, .. }, &ty::TyTuple(tys, _)) => {
                 Struct::non_zero_field_paths(infcx, tys.iter().cloned(),
                     Some(&variant.memory_index[..]))
             }
@@ -1157,7 +1157,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: st, non_zero: false }
             }
 
-            ty::TyTuple(tys) => {
+            ty::TyTuple(tys, _) => {
                 // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked.
                 // See the univariant case below to learn how.
                 let st = Struct::new(dl,

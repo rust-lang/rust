@@ -48,7 +48,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::TyTuple(component_types) => {
+        ty::TyTuple(component_types, _) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
