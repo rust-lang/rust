@@ -163,7 +163,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(mir, tcx);
                 let rhs_ty = rhs.ty(mir, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                let ty = tcx.intern_tup(&[ty, tcx.types.bool]);
+                let ty = tcx.intern_tup(&[ty, tcx.types.bool], false);
                 Some(ty)
             }
             &Rvalue::UnaryOp(_, ref operand) => {
@@ -184,7 +184,8 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                     AggregateKind::Tuple => {
                         Some(tcx.mk_tup(
-                            ops.iter().map(|op| op.ty(mir, tcx))
+                            ops.iter().map(|op| op.ty(mir, tcx)),
+                            false
                         ))
                     }
                     AggregateKind::Adt(def, _, substs, _) => {

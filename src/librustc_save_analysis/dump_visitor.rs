@@ -1440,7 +1440,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             }.lower(self.tcx));
                         }
                     }
-                    ty::TyTuple(_) => {}
+                    ty::TyTuple(..) => {}
                     _ => span_bug!(ex.span,
                                    "Expected struct or tuple type, found {:?}",
                                    ty),

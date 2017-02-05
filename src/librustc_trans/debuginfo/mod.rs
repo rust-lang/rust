@@ -295,7 +295,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         signature.push(match sig.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
+            ty::TyTuple(ref tys, _) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
         });
 
@@ -311,7 +311,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         if abi == Abi::RustCall && !sig.inputs().is_empty() {
-            if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
+            if let ty::TyTuple(args, _) = sig.inputs()[sig.inputs().len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
                 }
