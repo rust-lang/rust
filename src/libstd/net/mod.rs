@@ -106,7 +106,10 @@ impl Iterator for LookupHost {
     fn next(&mut self) -> Option<SocketAddr> { self.0.next() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[unstable(feature = "lookup_host", reason = "unsure about the returned \
+                                              iterator and returning socket \
+                                              addresses",
+           issue = "27705")]
 impl fmt::Debug for LookupHost {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("LookupHost { .. }")

@@ -869,7 +869,7 @@ impl Metadata {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Metadata")
