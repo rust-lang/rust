@@ -75,7 +75,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
             ConstVal::Integral(I32(v)) => C_integral(Type::i32(ccx), v as u64, true),
             ConstVal::Integral(I64(v)) => C_integral(Type::i64(ccx), v as u64, true),
-            ConstVal::Integral(I128(v)) => C_big_integral(Type::i128(ccx), v as u128, true),
+            ConstVal::Integral(I128(v)) => C_big_integral(Type::i128(ccx), v as u128),
             ConstVal::Integral(Isize(v)) => {
                 let i = v.as_i64(ccx.tcx().sess.target.int_type);
                 C_integral(Type::int(ccx), i as u64, true)
@@ -84,7 +84,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(U16(v)) => C_integral(Type::i16(ccx), v as u64, false),
             ConstVal::Integral(U32(v)) => C_integral(Type::i32(ccx), v as u64, false),
             ConstVal::Integral(U64(v)) => C_integral(Type::i64(ccx), v, false),
-            ConstVal::Integral(U128(v)) => C_big_integral(Type::i128(ccx), v, false),
+            ConstVal::Integral(U128(v)) => C_big_integral(Type::i128(ccx), v),
             ConstVal::Integral(Usize(v)) => {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 C_integral(Type::int(ccx), u, false)
