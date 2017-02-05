@@ -261,7 +261,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val,
+            discr: variant.discr,
+            evaluated_discr: match variant.discr {
+                ty::VariantDiscr::Explicit(def_id) => {
+                    tcx.monomorphic_const_eval.borrow()[&def_id].clone().ok()
+                }
+                ty::VariantDiscr::Relative(_) => None
+            },
             struct_ctor: None,
         };
 
@@ -388,7 +394,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val,
+            discr: variant.discr,
+            evaluated_discr: None,
             struct_ctor: Some(def_id.index),
         };
 
@@ -644,8 +651,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemEnum(..) => EntryKind::Enum(self.lazy(&tcx.lookup_adt_def(def_id).discr_ty),
-                                                 get_repr_options(&tcx, def_id)),
+            hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
@@ -662,7 +668,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val,
+                    discr: variant.discr,
+                    evaluated_discr: None,
                     struct_ctor: struct_ctor,
                 }), repr_options)
             }
@@ -672,7 +679,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val,
+                    discr: variant.discr,
+                    evaluated_discr: None,
                     struct_ctor: None,
                 }), repr_options)
             }

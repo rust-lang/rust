@@ -20,6 +20,7 @@ use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
+use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -1181,8 +1182,12 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let (mut min, mut max, mut non_zero) = (i64::max_value(),
                                                             i64::min_value(),
                                                             true);
-                    for v in &def.variants {
-                        let x = v.disr_val as i128 as i64;
+                    for discr in def.discriminants(tcx) {
+                        let x = match discr.erase_type() {
+                            ConstInt::InferSigned(i) => i as i64,
+                            ConstInt::Infer(i) => i as u64 as i64,
+                            _ => bug!()
+                        };
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
@@ -1240,7 +1245,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
-                    if i as u128 != v.disr_val {
+                    if v.discr != ty::VariantDiscr::Relative(i) {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }
@@ -1348,7 +1353,9 @@ impl<'a, 'gcx, 'tcx> Layout {
                     return Err(LayoutError::SizeOverflow(ty));
                 }
 
-                let typeck_ity = Integer::from_attr(dl, def.discr_ty);
+                let repr_hints = tcx.lookup_repr_hints(def.did);
+                let repr_type = tcx.enum_repr_type(repr_hints.get(0));
+                let typeck_ity = Integer::from_attr(dl, repr_type);
                 if typeck_ity < min_ity {
                     // It is a bug if Layout decided on a greater discriminant size than typeck for
                     // some reason at this point (based on values discriminant can take on). Mostly

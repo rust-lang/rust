@@ -14,6 +14,7 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -227,7 +228,7 @@ pub enum EntryKind<'tcx> {
     ForeignMutStatic,
     ForeignMod,
     Type,
-    Enum(Lazy<attr::IntType>, ReprOptions),
+    Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData>),
     Struct(Lazy<VariantData>, ReprOptions),
@@ -264,7 +265,8 @@ pub struct FnData {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData {
     pub ctor_kind: CtorKind,
-    pub disr: u128,
+    pub discr: ty::VariantDiscr,
+    pub evaluated_discr: Option<ConstVal>,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.

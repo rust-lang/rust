@@ -515,7 +515,8 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_variant(&self,
                    item: &Entry<'tcx>,
-                   index: DefIndex)
+                   index: DefIndex,
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
                    -> (ty::VariantDef, Option<DefIndex>) {
         let data = match item.kind {
             EntryKind::Variant(data) |
@@ -523,6 +524,11 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Union(data, _) => data.decode(self),
             _ => bug!(),
         };
+
+        if let ty::VariantDiscr::Explicit(def_id) = data.discr {
+            let result = data.evaluated_discr.map_or(Err(()), Ok);
+            tcx.monomorphic_const_eval.borrow_mut().insert(def_id, result);
+        }
 
         (ty::VariantDef {
             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
@@ -535,7 +541,7 @@ impl<'a, 'tcx> CrateMetadata {
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
-            disr_val: data.disr,
+            discr: data.discr,
             ctor_kind: data.ctor_kind,
         }, data.struct_ctor)
     }
@@ -546,10 +552,10 @@ impl<'a, 'tcx> CrateMetadata {
                        -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
-        let (kind, ty) = match item.kind {
-            EntryKind::Enum(dt, _) => (ty::AdtKind::Enum, Some(dt.decode(self))),
-            EntryKind::Struct(_, _) => (ty::AdtKind::Struct, None),
-            EntryKind::Union(_, _) => (ty::AdtKind::Union, None),
+        let kind = match item.kind {
+            EntryKind::Enum(_) => ty::AdtKind::Enum,
+            EntryKind::Struct(_, _) => ty::AdtKind::Struct,
+            EntryKind::Union(_, _) => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
         let mut ctor_index = None;
@@ -557,24 +563,25 @@ impl<'a, 'tcx> CrateMetadata {
             item.children
                 .decode(self)
                 .map(|index| {
-                    let (variant, struct_ctor) = self.get_variant(&self.entry(index), index);
+                    let (variant, struct_ctor) =
+                        self.get_variant(&self.entry(index), index, tcx);
                     assert_eq!(struct_ctor, None);
                     variant
                 })
                 .collect()
         } else {
-            let (variant, struct_ctor) = self.get_variant(&item, item_id);
+            let (variant, struct_ctor) = self.get_variant(&item, item_id, tcx);
             ctor_index = struct_ctor;
             vec![variant]
         };
         let (kind, repr) = match item.kind {
-            EntryKind::Enum(_, repr) => (ty::AdtKind::Enum, repr),
+            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
             EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
             EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.alloc_adt_def(did, kind, ty, variants, repr);
+        let adt = tcx.alloc_adt_def(did, kind, variants, repr);
         if let Some(ctor_index) = ctor_index {
             // Make adt definition available through constructor id as well.
             tcx.adt_defs.borrow_mut().insert(self.local_def_id(ctor_index), adt);

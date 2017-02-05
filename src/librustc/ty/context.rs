@@ -507,6 +507,10 @@ pub struct GlobalCtxt<'tcx> {
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
+    /// Results of evaluating monomorphic constants embedded in
+    /// other items, such as enum variant explicit discriminants.
+    pub monomorphic_const_eval: RefCell<DepTrackingMap<maps::MonomorphicConstEval<'tcx>>>,
+
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -662,12 +666,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_adt_def(self,
                          did: DefId,
                          kind: AdtKind,
-                         discr_ty: Option<attr::IntType>,
                          variants: Vec<ty::VariantDef>,
                          repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
-        let discr_ty = discr_ty.unwrap_or(attr::UnsignedInt(ast::UintTy::U8));
-        let def = ty::AdtDef::new(self, did, kind, discr_ty, variants, repr);
+        let def = ty::AdtDef::new(self, did, kind, variants, repr);
         self.global_arenas.adt_def.alloc(def)
     }
 
@@ -783,6 +785,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             used_trait_imports: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
+            monomorphic_const_eval: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

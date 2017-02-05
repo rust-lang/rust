@@ -20,6 +20,7 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -27,6 +28,7 @@ use mir::Mir;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
+use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeSet, NodeMap, FxHashMap};
@@ -45,6 +47,7 @@ use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
+use rustc_const_math::ConstInt;
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 
@@ -95,8 +98,6 @@ mod context;
 mod flags;
 mod structural_impls;
 mod sty;
-
-pub type Disr = u128;
 
 // Data types
 
@@ -1309,9 +1310,22 @@ pub struct VariantDef {
     /// this is the DefId of the struct's ctor.
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
-    pub disr_val: Disr,
+    pub discr: VariantDiscr,
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub enum VariantDiscr {
+    /// Explicit value for this variant, i.e. `X = 123`.
+    /// The `DefId` corresponds to the embedded constant.
+    Explicit(DefId),
+
+    /// The previous variant's discriminant plus one.
+    /// For efficiency reasons, the distance from the
+    /// last `Explicit` discriminant is being stored,
+    /// or `0` for the first variant, if it has none.
+    Relative(usize),
 }
 
 #[derive(Debug)]
@@ -1327,12 +1341,6 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
-    /// Type of the discriminant
-    ///
-    /// Note, that this is the type specified in `repr()` or a default type of some sort, and might
-    /// not match the actual type that layout algorithm decides to use when translating this type
-    /// into LLVM. That being said, layout algorithm may not use a type larger than specified here.
-    pub discr_ty: attr::IntType,
     pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
@@ -1395,7 +1403,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
-           discr_ty: attr::IntType,
            variants: Vec<VariantDef>,
            repr: ReprOptions) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
@@ -1419,7 +1426,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         AdtDef {
             did: did,
-            discr_ty: discr_ty,
             variants: variants,
             flags: Cell::new(flags),
             destructor: Cell::new(None),
@@ -1575,6 +1581,28 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn set_destructor(&self, dtor: DefId) {
         self.destructor.set(Some(dtor));
+    }
+
+    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                         -> impl Iterator<Item=ConstInt> + 'a {
+        let repr_hints = tcx.lookup_repr_hints(self.did);
+        let repr_type = tcx.enum_repr_type(repr_hints.get(0));
+        let initial = repr_type.initial_discriminant(tcx.global_tcx());
+        let mut prev_discr = None::<ConstInt>;
+        self.variants.iter().map(move |v| {
+            let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
+            if let VariantDiscr::Explicit(expr_did) = v.discr {
+                match tcx.monomorphic_const_eval.borrow()[&expr_did] {
+                    Ok(ConstVal::Integral(v)) => {
+                        discr = v;
+                    }
+                    _ => {}
+                }
+            }
+            prev_discr = Some(discr);
+
+            discr
+        })
     }
 
     /// Returns a simpler type such that `Self: Sized` if and only

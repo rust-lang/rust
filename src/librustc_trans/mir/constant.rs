@@ -1001,7 +1001,7 @@ fn trans_const<'a, 'tcx>(
         layout::CEnum { discr: d, min, max, .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
-                    Disr::from(adt_def.variants[variant_index].disr_val)
+                    Disr::for_variant(ccx.tcx(), adt_def, variant_index)
                 },
                 _ => Disr(0),
             };
