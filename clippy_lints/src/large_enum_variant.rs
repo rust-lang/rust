@@ -67,7 +67,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                             }
                         })
                         .sum();
+
+                    use std::io::Write;
+                    let mut f = ::std::fs::File::create("log").unwrap();
+
+                    writeln!(f, "size, max size: {}, {}", size, self.maximum_variant_size_allowed).unwrap();
                     if size > self.maximum_variant_size_allowed {
+                        writeln!(f, "size > max").unwrap();
+                        // panic!("foo");
+
                         span_lint_and_then(cx,
                                            LARGE_ENUM_VARIANT,
                                            def.variants[i].span,
