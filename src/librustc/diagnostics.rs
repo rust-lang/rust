@@ -620,7 +620,7 @@ them yourself.
 You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
-```
+```ignore
 #![no_std]
 ```
 
