@@ -31,8 +31,9 @@ assert!(orig == v); // MAY FAIL!
 
 **Q: When is stability useful?**<br>
 A: Not very often. A typical example is sorting columns in interactive GUI tables.
-If you want to have rows sorted by column X while breaking ties by column Y, you
-first have to click on column Y and then click on column X.
+E.g. you want to have rows sorted by column X while breaking ties by column Y, so you
+first click on column Y and then click on column X. This is a rare case where stable
+sorting is important.
 
 **Q: Can stable sort be performed using unstable sort?**<br>
 A: Yes. If we transform `[T]` into `[(T, usize)]` by pairing every element with it's
@@ -57,7 +58,7 @@ A: Sorting 64-bit integers using [pdqsort][stjepang-pdqsort] (an
 unstable sort implementation) is **40% faster** than using `slice::sort`.
 Detailed benchmarks are [here](https://github.com/stjepang/pdqsort#extensive-benchmarks).
 
-**Q: Can unstable sorting benefit from allocation?**<br>
+**Q: Can unstable sort benefit from allocation?**<br>
 A: Generally, no. There is no fundamental property in computer science saying so,
 but this has always been true in practice. Zero-allocation and instability go
 hand in hand.
@@ -153,8 +154,11 @@ instantly benefit from higher performance and lower memory use.
 **Q: Is `slice::sort` ever faster than pdqsort?**<br>
 A: Yes, there are a few cases where it is faster. For example, if the slice
 consists of several pre-sorted sequences concatenated one after another, then
-`slice::sort` will most probably be faster. But other than that, it should be
-generally slower than pdqsort.
+`slice::sort` will most probably be faster. Another case is when using costly
+comparison functions, e.g. when sorting strings. `slice::sort` optimizes the
+number of comparisons very well, while pdqsort optimizes for fewer writes to
+memory at expense of slightly larger number of comparisons. But other than
+that, `slice::sort` should be generally slower than pdqsort.
 
 **Q: What about radix sort?**<br>
 A: Radix sort is usually blind to patterns in slices. It treats totally random
