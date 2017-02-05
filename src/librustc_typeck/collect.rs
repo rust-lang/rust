@@ -875,8 +875,36 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                         def: &'tcx ty::AdtDef,
                                         ty: Ty<'tcx>,
                                         variants: &[hir::Variant]) {
-    // fill the field types
+    let tcx = ccx.tcx;
+    let repr_hints = tcx.lookup_repr_hints(def.did);
+    let repr_type = tcx.enum_repr_type(repr_hints.get(0));
+    let initial = repr_type.initial_discriminant(tcx);
+    let mut prev_discr = None::<ConstInt>;
+
+    // fill the discriminant values and field types
     for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
+        let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
+        prev_discr = Some(if let Some(e) = variant.node.disr_expr {
+            let result = evaluate_disr_expr(ccx, repr_type, e);
+
+            let expr_did = tcx.hir.local_def_id(e.node_id);
+            tcx.monomorphic_const_eval.borrow_mut()
+               .insert(expr_did, result.map(ConstVal::Integral));
+
+            result.ok()
+        } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
+            Some(discr)
+        } else {
+            struct_span_err!(tcx.sess, variant.span, E0370,
+                             "enum discriminant overflowed")
+                .span_label(variant.span, &format!("overflowed on value after {}",
+                                                   prev_discr.unwrap()))
+                .note(&format!("explicitly set `{} = {}` if that is desired outcome",
+                               variant.node.name, wrapped_discr))
+                .emit();
+            None
+        }.unwrap_or(wrapped_discr));
+
         for (f, ty_f) in variant.node.data.fields().iter().zip(ty_variant.fields.iter()) {
             convert_field(ccx, f, ty_f)
         }
@@ -890,7 +918,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     did: DefId,
                                     name: ast::Name,
-                                    disr_val: ty::Disr,
+                                    discr: ty::VariantDiscr,
                                     def: &hir::VariantData)
                                     -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Name, Span> = FxHashMap();
@@ -918,7 +946,7 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ty::VariantDef {
         did: did,
         name: name,
-        disr_val: disr_val,
+        discr: discr,
         fields: fields,
         ctor_kind: CtorKind::from_hir(def),
     }
@@ -932,8 +960,9 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let did = ccx.tcx.hir.local_def_id(it.id);
     // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.hir.local_def_id(def.id())) } else { None };
-    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name, 0, def)];
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, None, variants,
+    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
+                                               ty::VariantDiscr::Relative(0), def)];
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, variants,
         ReprOptions::new(&ccx.tcx, did));
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
@@ -950,15 +979,16 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 -> &'tcx ty::AdtDef
 {
     let did = ccx.tcx.hir.local_def_id(it.id);
-    let variants = vec![convert_struct_variant(ccx, did, it.name, 0, def)];
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, None, variants,
-                                    ReprOptions::new(&ccx.tcx, did));
+    let variants = vec![convert_struct_variant(ccx, did, it.name,
+                                               ty::VariantDiscr::Relative(0), def)];
+
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants, ReprOptions::new(&ccx.tcx, did));
     ccx.tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }
 
 fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId)
-                      -> Option<ConstInt> {
+                      -> Result<ConstInt, ()> {
     let e = &ccx.tcx.hir.body(body).value;
     debug!("disr expr, checking {}", ccx.tcx.hir.node_to_pretty_string(e.id));
 
@@ -987,17 +1017,16 @@ fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId
                 (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
                 (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
                 (attr::UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) |
-                (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) =>
-                    Some(i),
+                (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Ok(i),
                 (_, i) => {
                     print_err(ConstVal::Integral(i));
-                    None
+                    Err(())
                 },
             }
         },
         Ok(cv) => {
             print_err(cv);
-            None
+            Err(())
         },
         // enum variant evaluation happens before the global constant check
         // so we need to report the real error
@@ -1005,7 +1034,7 @@ fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId
             let mut diag = report_const_eval_err(
                 ccx.tcx, &err, e.span, "enum discriminant");
             diag.emit();
-            None
+            Err(())
         }
     }
 }
@@ -1016,36 +1045,22 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               -> &'tcx ty::AdtDef
 {
     let tcx = ccx.tcx;
-    let did = tcx.hir.local_def_id(it.id);
-    let repr_hints = tcx.lookup_repr_hints(did);
-    let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-    let initial = ConstInt::new_inttype(repr_type.initial_discriminant(tcx), repr_type,
-                                        tcx.sess.target.uint_type, tcx.sess.target.int_type)
-        .unwrap();
-    let mut prev_disr = None::<ConstInt>;
+    let mut distance_from_explicit = 0;
     let variants = def.variants.iter().map(|v| {
-        let wrapped_disr = prev_disr.map_or(initial, |d| d.wrap_incr());
-        let disr = if let Some(e) = v.node.disr_expr {
-            // FIXME: i128 discriminants
-            evaluate_disr_expr(ccx, repr_type, e)
-        } else if let Some(disr) = prev_disr.map_or(Some(initial),
-                                                    |v| (v + ConstInt::Infer(1)).ok()) {
-            Some(disr)
-        } else {
-            struct_span_err!(tcx.sess, v.span, E0370,
-                             "enum discriminant overflowed")
-                .span_label(v.span, &format!("overflowed on value after {}", prev_disr.unwrap()))
-                .note(&format!("explicitly set `{} = {}` if that is desired outcome",
-                               v.node.name, wrapped_disr))
-                .emit();
-            None
-        }.unwrap_or(wrapped_disr);
-        prev_disr = Some(disr);
         let did = tcx.hir.local_def_id(v.node.data.id());
-        convert_struct_variant(ccx, did, v.node.name, disr.to_u128_unchecked(), &v.node.data)
+        let discr = if let Some(e) = v.node.disr_expr {
+            distance_from_explicit = 0;
+            ty::VariantDiscr::Explicit(tcx.hir.local_def_id(e.node_id))
+        } else {
+            ty::VariantDiscr::Relative(distance_from_explicit)
+        };
+        distance_from_explicit += 1;
+
+        convert_struct_variant(ccx, did, v.node.name, discr, &v.node.data)
     }).collect();
-    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, Some(repr_type), variants,
-                                ReprOptions::new(&ccx.tcx, did));
+
+    let did = tcx.hir.local_def_id(it.id);
+    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants, ReprOptions::new(&ccx.tcx, did));
     tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }

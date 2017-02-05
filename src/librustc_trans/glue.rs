@@ -521,11 +521,10 @@ fn drop_structural_ty<'a, 'tcx>(
                         let llswitch = cx.switch(lldiscrim_a, ret_void_cx.llbb(), n_variants);
                         let next_cx = cx.build_sibling_block("enum-iter-next");
 
-                        for (i, variant) in adt.variants.iter().enumerate() {
-                            let variant_cx_name = format!("enum-iter-variant-{}",
-                                &variant.disr_val.to_string());
+                        for (i, discr) in adt.discriminants(cx.tcx()).enumerate() {
+                            let variant_cx_name = format!("enum-iter-variant-{}", i);
                             let variant_cx = cx.build_sibling_block(&variant_cx_name);
-                            let case_val = adt::trans_case(&cx, t, Disr::from(variant.disr_val));
+                            let case_val = adt::trans_case(&cx, t, Disr::from(discr));
                             variant_cx.add_case(llswitch, case_val, variant_cx.llbb());
                             ptr.ty = LvalueTy::Downcast {
                                 adt_def: adt,

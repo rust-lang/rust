@@ -124,6 +124,7 @@ use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
 use rustc_const_eval::eval_length;
+use rustc_const_math::ConstInt;
 
 mod assoc;
 mod autoderef;
@@ -1323,14 +1324,12 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     let def_id = ccx.tcx.hir.local_def_id(id);
 
-    let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
-    let mut disr_vals: Vec<ty::Disr> = Vec::new();
-    for (v, variant) in vs.iter().zip(variants.iter()) {
-        let current_disr_val = variant.disr_val;
-
+    let def = ccx.tcx.lookup_adt_def(def_id);
+    let mut disr_vals: Vec<ConstInt> = Vec::new();
+    for (discr, v) in def.discriminants(ccx.tcx).zip(vs) {
         // Check for duplicate discriminant values
-        if let Some(i) = disr_vals.iter().position(|&x| x == current_disr_val) {
-            let variant_i_node_id = ccx.tcx.hir.as_local_node_id(variants[i].did).unwrap();
+        if let Some(i) = disr_vals.iter().position(|&x| x == discr) {
+            let variant_i_node_id = ccx.tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
             let variant_i = ccx.tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {
                 Some(expr) => ccx.tcx.hir.span(expr.node_id),
@@ -1346,7 +1345,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 .span_label(span , &format!("enum already has `{}`", disr_vals[i]))
                 .emit();
         }
-        disr_vals.push(current_disr_val);
+        disr_vals.push(discr);
     }
 
     check_representable(ccx.tcx, sp, def_id);

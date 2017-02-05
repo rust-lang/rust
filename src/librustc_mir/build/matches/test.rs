@@ -20,7 +20,7 @@ use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::{ConstVal, ConstInt};
+use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
@@ -191,11 +191,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let mut targets = Vec::with_capacity(used_variants + 1);
                 let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
-                for (idx, variant) in adt_def.variants.iter().enumerate() {
+                for (idx, discr) in adt_def.discriminants(tcx).enumerate() {
                     target_blocks.place_back() <- if variants.contains(idx) {
-                        let discr = ConstInt::new_inttype(variant.disr_val, adt_def.discr_ty,
-                                                          tcx.sess.target.uint_type,
-                                                          tcx.sess.target.int_type).unwrap();
                         values.push(discr);
                         *(targets.place_back() <- self.cfg.start_new_block())
                     } else {
@@ -212,7 +209,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
-                let discr_ty = adt_def.discr_ty.to_ty(tcx);
+                let repr_hints = tcx.lookup_repr_hints(adt_def.did);
+                let repr_type = tcx.enum_repr_type(repr_hints.get(0));
+                let discr_ty = repr_type.to_ty(tcx);
                 let discr = self.temp(discr_ty);
                 self.cfg.push_assign(block, source_info, &discr,
                                      Rvalue::Discriminant(lvalue.clone()));

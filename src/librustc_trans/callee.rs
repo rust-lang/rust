@@ -93,9 +93,9 @@ impl<'tcx> Callee<'tcx> {
 
         // FIXME(eddyb) Detect ADT constructors more efficiently.
         if let Some(adt_def) = fn_ty.fn_ret().skip_binder().ty_adt_def() {
-            if let Some(v) = adt_def.variants.iter().find(|v| def_id == v.did) {
+            if let Some(i) = adt_def.variants.iter().position(|v| def_id == v.did) {
                 return Callee {
-                    data: NamedTupleConstructor(Disr::from(v.disr_val)),
+                    data: NamedTupleConstructor(Disr::for_variant(tcx, adt_def, i)),
                     ty: fn_ty
                 };
             }

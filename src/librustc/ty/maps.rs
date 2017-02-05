@@ -10,6 +10,7 @@
 
 use dep_graph::{DepNode, DepTrackingMapConfig};
 use hir::def_id::DefId;
+use middle::const_val::ConstVal;
 use mir;
 use ty::{self, Ty};
 use util::nodemap::DefIdSet;
@@ -51,3 +52,4 @@ dep_map_ty! { ClosureKinds: ItemSignature(DefId) -> ty::ClosureKind }
 dep_map_ty! { ClosureTypes: ItemSignature(DefId) -> ty::ClosureTy<'tcx> }
 dep_map_ty! { TypeckTables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx> }
 dep_map_ty! { UsedTraitImports: UsedTraitImports(DefId) -> DefIdSet }
+dep_map_ty! { MonomorphicConstEval: MonomorphicConstEval(DefId) -> Result<ConstVal, ()> }

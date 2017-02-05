@@ -1465,10 +1465,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // <unknown>
     let file_metadata = unknown_file_metadata(cx);
 
-    let variants = &enum_type.ty_adt_def().unwrap().variants;
-    let enumerators_metadata: Vec<DIDescriptor> = variants
-        .iter()
-        .map(|v| {
+    let def = enum_type.ty_adt_def().unwrap();
+    let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx())
+        .zip(&def.variants)
+        .map(|(discr, v)| {
             let token = v.name.as_str();
             let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
@@ -1476,7 +1476,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     DIB(cx),
                     name.as_ptr(),
                     // FIXME: what if enumeration has i128 discriminant?
-                    v.disr_val as u64)
+                    discr.to_u128_unchecked() as u64)
             }
         })
         .collect();

@@ -106,9 +106,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
-                        let disr = Disr::from(adt_def.variants[variant_index].disr_val);
+                        let disr = Disr::for_variant(bcx.tcx(), adt_def, variant_index);
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
-                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, Disr::from(disr));
+                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, disr);
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
@@ -119,7 +119,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 val.ty = LvalueTy::Downcast {
                                     adt_def: adt_def,
                                     substs: self.monomorphize(&substs),
-                                    variant_index: disr.0 as usize,
+                                    variant_index: variant_index,
                                 };
                                 let (lldest_i, align) = val.trans_field_ptr(&bcx, field_index);
                                 self.store_operand(&bcx, lldest_i, align.to_align(), op);
