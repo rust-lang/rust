@@ -310,8 +310,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                     let mut diagnostic = Diagnostic::new(Level::Warning,
                                                                          "unreachable pattern");
                                     diagnostic.set_span(pat.span);
-                                    cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
-                                                                    hir_pat.id, diagnostic);
+                                    cx.tcx.sess.add_lint_diagnostic(
+                                            lint::builtin::UNREACHABLE_PATTERNS,
+                                            hir_pat.id, diagnostic);
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
