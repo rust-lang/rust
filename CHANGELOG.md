@@ -306,6 +306,7 @@ All notable changes to this project will be documented in this file.
 [`double_parens`]: https://github.com/Manishearth/rust-clippy/wiki#double_parens
 [`drop_ref`]: https://github.com/Manishearth/rust-clippy/wiki#drop_ref
 [`duplicate_underscore_argument`]: https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument
+[`empty_enum`]: https://github.com/Manishearth/rust-clippy/wiki#empty_enum
 [`empty_loop`]: https://github.com/Manishearth/rust-clippy/wiki#empty_loop
 [`enum_clike_unportable_variant`]: https://github.com/Manishearth/rust-clippy/wiki#enum_clike_unportable_variant
 [`enum_glob_use`]: https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use
