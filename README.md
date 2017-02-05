@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 184 lints included in this crate:
+There are 185 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -220,6 +220,7 @@ name                                                                            
 [double_parens](https://github.com/Manishearth/rust-clippy/wiki#double_parens)                                         | warn    | Warn on unnecessary double parentheses
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                                   | warn    | calls to `std::mem::drop` with a reference instead of an owned value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument)         | warn    | function arguments having names which only differ by an underscore
+[empty_enum](https://github.com/Manishearth/rust-clippy/wiki#empty_enum)                                               | allow   | enum with no variants
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                               | warn    | empty `loop {}`, which should block or sleep
 [enum_clike_unportable_variant](https://github.com/Manishearth/rust-clippy/wiki#enum_clike_unportable_variant)         | warn    | C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`
 [enum_glob_use](https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use)                                         | allow   | use items that import all variants of an enum

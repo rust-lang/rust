@@ -5,7 +5,9 @@
 
 use std::cmp::Ordering::*; //~ ERROR: don't use glob imports for enum variants
 
-enum Enum {}
+enum Enum {
+    _Foo,
+}
 
 use self::Enum::*; //~ ERROR: don't use glob imports for enum variants
 
