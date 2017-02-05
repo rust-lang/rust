@@ -330,6 +330,10 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
+    /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
+    /// Emscripten toolchain.
+    /// Defaults to false.
+    pub is_like_emscripten: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -428,6 +432,7 @@ impl Default for TargetOptions {
             is_like_solaris: false,
             is_like_windows: false,
             is_like_android: false,
+            is_like_emscripten: false,
             is_like_msvc: false,
             linker_is_gnu: false,
             allows_weak_linkage: true,
@@ -603,6 +608,7 @@ impl Target {
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
+        key!(is_like_emscripten, bool);
         key!(is_like_android, bool);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -767,6 +773,7 @@ impl ToJson for Target {
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
+        target_option_val!(is_like_emscripten);
         target_option_val!(is_like_android);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);

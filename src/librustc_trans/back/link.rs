@@ -29,6 +29,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
+use rustc_back::PanicStrategy;
 use rustc_incremental::IncrementalHashesMap;
 
 use std::ascii;
@@ -712,6 +713,11 @@ fn link_natively(sess: &Session,
     };
     for obj in pre_link_objects {
         cmd.arg(root.join(obj));
+    }
+
+    if sess.target.target.options.is_like_emscripten &&
+       sess.panic_strategy() == PanicStrategy::Abort {
+        cmd.args(&["-s", "DISABLE_EXCEPTION_CATCHING=1"]);
     }
 
     {
