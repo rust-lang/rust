@@ -31,7 +31,7 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
-use util::nodemap::{NodeMap, FxHashSet, FxHashMap, DefIdMap};
+use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
 use rustc_back::slice;
 
 use hir;
@@ -150,10 +150,14 @@ pub struct NamedRegionMap {
     // `Region` describing how that region is bound
     pub defs: NodeMap<Region>,
 
-    // the set of lifetime def ids that are late-bound; late-bound ids
-    // are named regions appearing in fn arguments that do not appear
-    // in where-clauses
-    pub late_bound: NodeMap<ty::Issue32330>,
+    // the set of lifetime def ids that are late-bound; a region can
+    // be late-bound if (a) it does NOT appear in a where-clause and
+    // (b) it DOES appear in the arguments.
+    pub late_bound: NodeSet,
+
+    // Contains the node-ids for lifetimes that were (incorrectly) categorized
+    // as late-bound, until #32330 was fixed.
+    pub issue_32330: NodeMap<ty::Issue32330>,
 
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
@@ -261,7 +265,8 @@ pub fn krate(sess: &Session,
     let krate = hir_map.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),
-        late_bound: NodeMap(),
+        late_bound: NodeSet(),
+        issue_32330: NodeMap(),
         object_lifetime_defaults: compute_object_lifetime_defaults(sess, hir_map),
     };
     sess.track_errors(|| {
@@ -840,7 +845,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         let lifetimes = generics.lifetimes.iter().map(|def| {
-            if self.map.late_bound.contains_key(&def.lifetime.id) {
+            if self.map.late_bound.contains(&def.lifetime.id) {
                 Region::late(def)
             } else {
                 Region::early(&mut index, def)
@@ -1610,22 +1615,26 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
         // just mark it so we can issue warnings.
         let constrained_by_input = constrained_by_input.regions.contains(&name);
         let appears_in_output = appears_in_output.regions.contains(&name);
-        let will_change = !constrained_by_input && appears_in_output;
-        let issue_32330 = if will_change {
-            ty::Issue32330::WillChange {
-                fn_def_id: fn_def_id,
-                region_name: name,
-            }
-        } else {
-            ty::Issue32330::WontChange
-        };
+        if !constrained_by_input && appears_in_output {
+            debug!("inserting issue_32330 entry for {:?}, {:?} on {:?}",
+                   lifetime.lifetime.id,
+                   name,
+                   fn_def_id);
+            map.issue_32330.insert(
+                lifetime.lifetime.id,
+                ty::Issue32330 {
+                    fn_def_id: fn_def_id,
+                    region_name: name,
+                });
+            continue;
+        }
 
         debug!("insert_late_bound_lifetimes: \
-                lifetime {:?} with id {:?} is late-bound ({:?}",
-               lifetime.lifetime.name, lifetime.lifetime.id, issue_32330);
+                lifetime {:?} with id {:?} is late-bound",
+               lifetime.lifetime.name, lifetime.lifetime.id);
 
-        let prev = map.late_bound.insert(lifetime.lifetime.id, issue_32330);
-        assert!(prev.is_none(), "visited lifetime {:?} twice", lifetime.lifetime.id);
+        let inserted = map.late_bound.insert(lifetime.lifetime.id);
+        assert!(inserted, "visited lifetime {:?} twice", lifetime.lifetime.id);
     }
 
     return;

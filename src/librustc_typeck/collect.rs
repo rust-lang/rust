@@ -1442,11 +1442,15 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
         let regions = early_lifetimes.iter().enumerate().map(|(i, l)| {
+            let issue_32330 = ccx.tcx.named_region_map.issue_32330
+                                                      .get(&l.lifetime.id)
+                                                      .cloned();
             ty::RegionParameterDef {
                 name: l.lifetime.name,
                 index: own_start + i as u32,
                 def_id: tcx.hir.local_def_id(l.lifetime.id),
                 pure_wrt_drop: l.pure_wrt_drop,
+                issue_32330: issue_32330,
             }
         }).collect::<Vec<_>>();
 
@@ -1675,7 +1679,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx, 'hir>(
     ast_generics
         .lifetimes
         .iter()
-        .filter(|l| !ccx.tcx.named_region_map.late_bound.contains_key(&l.lifetime.id))
+        .filter(|l| !ccx.tcx.named_region_map.late_bound.contains(&l.lifetime.id))
         .collect()
 }
 
