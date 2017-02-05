@@ -38,8 +38,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
             if adt.variants.is_empty() {
                 span_lint_and_then(cx, EMPTY_ENUM, item.span, "enum with no variants", |db| {
-                    db.span_help(item.span,
-                                 "consider using the uninhabited type `!` or a wrapper around it");
+                    db.span_help(item.span, "consider using the uninhabited type `!` or a wrapper around it");
                 });
             }
         }
