@@ -54,8 +54,8 @@ considerably slower.
 A: Because it allocates additional memory.
 
 **Q: How much faster can unstable sort be?**<br>
-A: Sorting 64-bit integers using [pdqsort][stjepang-pdqsort] (an
-unstable sort implementation) is **40% faster** than using `slice::sort`.
+A: Sorting 10M 64-bit integers using [pdqsort][stjepang-pdqsort] (an
+unstable sort implementation) is **45% faster** than using `slice::sort`.
 Detailed benchmarks are [here](https://github.com/stjepang/pdqsort#extensive-benchmarks).
 
 **Q: Can unstable sort benefit from allocation?**<br>
