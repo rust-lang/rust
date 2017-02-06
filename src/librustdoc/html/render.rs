@@ -2132,10 +2132,23 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <ul class='item-list' id='implementors-list'>
     ")?;
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
-        let mut implementor_count: FxHashMap<&str, usize> = FxHashMap();
+        // The DefId is for the first Type found with that name. The bool is
+        // if any Types with the same name but different DefId have been found.
+        let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap();
         for implementor in implementors {
-            if let clean::Type::ResolvedPath {ref path, ..} = implementor.impl_.for_ {
-                *implementor_count.entry(path.last_name()).or_insert(0) += 1;
+            match implementor.impl_.for_ {
+                clean::ResolvedPath { ref path, did, is_generic: false, .. } |
+                clean::BorrowedRef {
+                    type_: box clean::ResolvedPath { ref path, did, is_generic: false, .. },
+                    ..
+                } => {
+                    let &mut (prev_did, ref mut has_duplicates) =
+                        implementor_dups.entry(path.last_name()).or_insert((did, false));
+                    if prev_did != did {
+                        *has_duplicates = true;
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -2143,12 +2156,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             write!(w, "<li><code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
-            let use_absolute = if let clean::Type::ResolvedPath {
-                ref path, ..
-            } = implementor.impl_.for_ {
-                implementor_count[path.last_name()] > 1
-            } else {
-                false
+            let use_absolute = match implementor.impl_.for_ {
+                clean::ResolvedPath { ref path, is_generic: false, .. } |
+                clean::BorrowedRef {
+                    type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
+                    ..
+                } => implementor_dups[path.last_name()].1,
+                _ => false,
             };
             fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
             writeln!(w, "</code></li>")?;
