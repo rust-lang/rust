@@ -15,10 +15,9 @@ use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use adt;
 use builder::Builder;
-use common::{self, CrateContext, C_uint, C_undef};
+use common::{self, CrateContext, C_uint};
 use consts;
 use machine;
-use type_of::type_of;
 use type_of;
 use type_::Type;
 use value::Value;
@@ -414,47 +413,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         };
         debug!("trans_lvalue(lvalue={:?}) => {:?}", lvalue, result);
         result
-    }
-
-    // Perform an action using the given Lvalue.
-    // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
-    // is created first, then used as an operand to update the Lvalue.
-    //
-    // FIXME: this is only called from transmute; please remove it.
-    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &Builder<'a, 'tcx>,
-                                 lvalue: &mir::Lvalue<'tcx>, f: F) -> U
-    where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
-    {
-        if let mir::Lvalue::Local(index) = *lvalue {
-            match self.locals[index] {
-                LocalRef::Lvalue(lvalue) => f(self, lvalue),
-                LocalRef::Operand(None) => {
-                    let lvalue_ty = self.monomorphized_lvalue_ty(lvalue);
-                    assert!(!lvalue_ty.has_erasable_regions());
-                    let lvalue = LvalueRef::alloca(bcx, lvalue_ty, "lvalue_temp");
-                    let ret = f(self, lvalue);
-                    let op = self.trans_load(bcx, lvalue.llval, lvalue.alignment, lvalue_ty);
-                    self.locals[index] = LocalRef::Operand(Some(op));
-                    ret
-                }
-                LocalRef::Operand(Some(_)) => {
-                    // See comments in LocalRef::new_operand as to why
-                    // we always have Some in a ZST LocalRef::Operand.
-                    let ty = self.monomorphized_lvalue_ty(lvalue);
-                    if common::type_is_zero_size(bcx.ccx, ty) {
-                        // Pass an undef pointer as no stores can actually occur.
-                        let llptr = C_undef(type_of(bcx.ccx, ty).ptr_to());
-                        f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty),
-                                                     Alignment::AbiAligned))
-                    } else {
-                        bug!("Lvalue local already set");
-                    }
-                }
-            }
-        } else {
-            let lvalue = self.trans_lvalue(bcx, lvalue);
-            f(self, lvalue)
-        }
     }
 
     /// Adjust the bitwidth of an index since LLVM is less forgiving
