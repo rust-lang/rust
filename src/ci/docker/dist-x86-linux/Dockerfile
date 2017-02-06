@@ -63,6 +63,11 @@ RUN ./build-git.sh
 COPY build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
+# for sanitizers, we need kernel headers files newer than the ones CentOS ships
+# with so we install newer ones here
+COPY build-headers.sh /tmp/
+RUN ./build-headers.sh
+
 RUN curl -Lo /rustroot/dumb-init \
       https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
       chmod +x /rustroot/dumb-init
