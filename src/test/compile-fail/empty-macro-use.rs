@@ -14,5 +14,6 @@
 extern crate two_macros;
 
 pub fn main() {
-    macro_two!();  //~ ERROR macro undefined
+    macro_two!();
+    //~^ ERROR cannot find macro
 }
