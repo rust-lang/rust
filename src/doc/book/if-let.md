@@ -1,7 +1,8 @@
 % if let
 
-`if let` allows you to combine `if` and `let` together to reduce the overhead
-of certain kinds of pattern matches.
+`if let` permits [patterns][pattern] matching within the condition of an [if][if] statement.
+This allows us to reduce the overhead of certain kinds of [pattern][patterns] matches
+and express them in a more convenient way.  
 
 For example, let’s say we have some sort of `Option<T>`. We want to call a function
 on it if it’s `Some<T>`, but do nothing if it’s `None`. That looks like this:
@@ -80,3 +81,4 @@ while let Some(x) = v.pop() {
 ```
 
 [patterns]: patterns.html
+[if]: if.html
