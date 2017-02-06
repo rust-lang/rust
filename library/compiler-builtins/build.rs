@@ -181,12 +181,10 @@ fn main() {
 
         if target_os != "ios" {
             sources.extend(&["absvti2.c",
-                             "addtf3.c",
                              "addvti3.c",
                              "clzti2.c",
                              "cmpti2.c",
                              "ctzti2.c",
-                             "divtf3.c",
                              "ffsti2.c",
                              "fixdfti.c",
                              "fixsfti.c",
@@ -200,16 +198,12 @@ fn main() {
                              "floatuntidf.c",
                              "floatuntisf.c",
                              "floatuntixf.c",
-                             "multf3.c",
                              "mulvti3.c",
                              "negti2.c",
                              "negvti2.c",
                              "parityti2.c",
                              "popcountti2.c",
-                             "powitf2.c",
-                             "subtf3.c",
                              "subvti3.c",
-                             "trampoline_setup.c",
                              "ucmpti2.c"]);
         }
 
