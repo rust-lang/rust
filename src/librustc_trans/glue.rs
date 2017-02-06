@@ -494,10 +494,6 @@ fn drop_structural_ty<'a, 'tcx>(
                     layout::StructWrappedNullablePointer { .. } => {
                         let lldiscrim_a = adt::trans_get_discr(
                             &cx, t, ptr.llval, ptr.alignment, None, false);
-                        let tcx = cx.tcx();
-                        // FIXME: why are dropping an isize?
-                        drop_ty(&cx, LvalueRef::new_sized_ty(lldiscrim_a, tcx.types.isize,
-                                                             ptr.alignment));
 
                         // Create a fall-through basic block for the "else" case of
                         // the switch instruction we're about to generate. Note that
