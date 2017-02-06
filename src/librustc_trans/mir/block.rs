@@ -147,8 +147,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr = adt::trans_get_discr(&bcx, ty, discr_lvalue.llval, discr_lvalue.alignment,
-                                                 None, true);
+                let discr = adt::trans_get_discr(
+                    &bcx, ty, discr_lvalue.llval, discr_lvalue.alignment,
+                    None, true);
 
                 let mut bb_hist = FxHashMap();
                 for target in targets {
@@ -216,7 +217,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             llscratch
                         }
                         Ref(llval, align) => {
-                            assert_eq!(align, Alignment::AbiAligned, "return pointer is unaligned!");
+                            assert_eq!(align, Alignment::AbiAligned,
+                                       "return pointer is unaligned!");
                             llval
                         }
                     };
