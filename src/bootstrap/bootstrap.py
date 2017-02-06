@@ -89,7 +89,6 @@ def verify(path, sha_path, verbose):
                "    expected: {}".format(found, expected))
     return verified
 
-
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
     fname = os.path.basename(tarball).replace(".tar.gz", "")
@@ -173,6 +172,8 @@ class RustBuild(object):
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="rustc", verbose=self.verbose)
+            self.fix_executable(self.bin_root() + "/bin/rustc")
+            self.fix_executable(self.bin_root() + "/bin/rustdoc")
             with open(self.rustc_stamp(), 'w') as f:
                 f.write(self.stage0_rustc_date())
 
@@ -185,8 +186,62 @@ class RustBuild(object):
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
+            self.fix_executable(self.bin_root() + "/bin/cargo")
             with open(self.cargo_stamp(), 'w') as f:
                 f.write(self.stage0_cargo_rev())
+
+    def fix_executable(self, fname):
+        # If we're on NixOS we need to change the path to the dynamic loader
+
+        default_encoding = sys.getdefaultencoding()
+        try:
+            ostype = subprocess.check_output(['uname', '-s']).strip().decode(default_encoding)
+        except (subprocess.CalledProcessError, WindowsError):
+            return
+
+        if ostype != "Linux":
+            return
+
+        if not os.path.exists("/nix/store"):
+            return
+        if os.path.exists("/lib"):
+            return
+
+        # At this point we're pretty sure the user is running NixOS
+        print("Info: you seem to be running NixOS. Attempting to patch " + fname)
+
+        try:
+            interpreter = subprocess.check_output(["patchelf", "--print-interpreter", fname])
+            interpreter = interpreter.strip().decode(default_encoding)
+        except subprocess.CalledProcessError as e:
+            print("Warning: failed to call patchelf: %s" % e)
+            return
+
+        loader = interpreter.split("/")[-1]
+
+        try:
+            ldd_output = subprocess.check_output(['ldd', '/run/current-system/sw/bin/sh'])
+            ldd_output = ldd_output.strip().decode(default_encoding)
+        except subprocess.CalledProcessError as e:
+            print("Warning: unable to call ldd: %s" % e)
+            return
+
+        for line in ldd_output.splitlines():
+            libname = line.split()[0]
+            if libname.endswith(loader):
+                loader_path = libname[:len(libname) - len(loader)]
+                break
+        else:
+            print("Warning: unable to find the path to the dynamic linker")
+            return
+
+        correct_interpreter = loader_path + loader
+
+        try:
+            subprocess.check_output(["patchelf", "--set-interpreter", correct_interpreter, fname])
+        except subprocess.CalledProcessError as e:
+            print("Warning: failed to call patchelf: %s" % e)
+            return
 
     def stage0_cargo_rev(self):
         return self._cargo_rev
