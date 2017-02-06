@@ -158,12 +158,13 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     traits.retain(|titem| {
         let tword = titem.word().unwrap();
         let tname = tword.name();
+        let legacy_name = Symbol::intern(&format!("derive_{}", tname));
 
-        if is_builtin_trait(tname) || {
-            let derive_mode = ast::Path::from_ident(titem.span, ast::Ident::with_empty_ctxt(tname));
-            cx.resolver.resolve_macro(cx.current_expansion.mark, &derive_mode, false).map(|ext| {
-                if let SyntaxExtension::CustomDerive(_) = *ext { true } else { false }
-            }).unwrap_or(false)
+        // Skip macros that are builtin derives, and don't resolve as legacy derives.
+        if is_builtin_trait(tname) || !{
+            let derive_mode = ast::Path::from_ident(titem.span,
+                                                    ast::Ident::with_empty_ctxt(legacy_name));
+            cx.resolver.resolve_macro(cx.current_expansion.mark, &derive_mode, false).is_ok()
         } {
             return true;
         }
@@ -175,11 +176,10 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                            feature_gate::GateIssue::Language,
                                            feature_gate::EXPLAIN_CUSTOM_DERIVE);
         } else {
-            let name = Symbol::intern(&format!("derive_{}", tname));
-            if !cx.resolver.is_whitelisted_legacy_custom_derive(name) {
+            if !cx.resolver.is_whitelisted_legacy_custom_derive(legacy_name) {
                 cx.span_warn(titem.span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
             }
-            let mitem = cx.meta_word(titem.span, name);
+            let mitem = cx.meta_word(titem.span, legacy_name);
             new_attributes.push(cx.attribute(mitem.span, mitem));
         }
         false
@@ -222,7 +222,6 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     if let Some((i, titem)) = macros_11_derive {
         let tname = ast::Ident::with_empty_ctxt(titem.name().unwrap());
         let path = ast::Path::from_ident(titem.span, tname);
-        let ext = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).unwrap();
 
         traits.remove(i);
         if traits.len() > 0 {
@@ -248,11 +247,14 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             ..mitem.span
         };
 
-        if let SyntaxExtension::CustomDerive(ref ext) = *ext {
-            return ext.expand(cx, span, &mitem, item);
-        } else {
-            unreachable!()
+        if let Ok(ext) = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false) {
+            if let SyntaxExtension::CustomDerive(ref ext) = *ext {
+                return ext.expand(cx, span, &mitem, item);
+            }
         }
+
+        cx.span_err(span, &format!("cannot find derive macro `{}` in this scope", tname));
+        return vec![item];
     }
 
     // Ok, at this point we know that there are no old-style `#[derive_Foo]` nor
