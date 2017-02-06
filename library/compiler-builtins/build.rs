@@ -50,6 +50,12 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
+
+    // Emscripten's runtime includes all the builtins
+    if target.contains("emscripten") {
+        return;
+    }
+
     let Cfg { ref target_arch, ref target_os, ref target_env, ref target_vendor, .. } =
         Cfg::new(&target).unwrap_or_else(|e| {
             writeln!(io::stderr(), "{}", e).ok();
