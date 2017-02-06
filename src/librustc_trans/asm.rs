@@ -20,6 +20,8 @@ use builder::Builder;
 use rustc::hir;
 use rustc::ty::Ty;
 
+use mir::lvalue::Alignment;
+
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
@@ -38,7 +40,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     let mut indirect_outputs = vec![];
     for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
         let val = if out.is_rw || out.is_indirect {
-            Some(base::load_ty(bcx, val, ty))
+            Some(base::load_ty(bcx, val, Alignment::Packed, ty))
         } else {
             None
         };
