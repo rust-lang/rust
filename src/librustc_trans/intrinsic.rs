@@ -245,7 +245,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
             } else {
                 let val = if fn_ty.args[1].is_indirect() {
-                    bcx.load(llargs[1], None) // FIXME: this is incorrect
+                    bcx.load(llargs[1], None)
                 } else {
                     from_immediate(bcx, llargs[1])
                 };
