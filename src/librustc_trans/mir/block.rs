@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
-use rustc::ty::{self, layout};
+use rustc::ty::{self, layout, TypeFoldable};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
@@ -435,10 +435,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();
-                    self.with_lvalue_ref(&bcx, dest, |this, dest| {
-                        this.trans_transmute(&bcx, &args[0], dest);
-                    });
-
+                    self.trans_transmute(&bcx, &args[0], dest);
                     funclet_br(self, bcx, target);
                     return;
                 }
@@ -877,7 +874,34 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn trans_transmute(&mut self, bcx: &Builder<'a, 'tcx>,
-                       src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
+                       src: &mir::Operand<'tcx>,
+                       dst: &mir::Lvalue<'tcx>) {
+        if let mir::Lvalue::Local(index) = *dst {
+            match self.locals[index] {
+                LocalRef::Lvalue(lvalue) => self.trans_transmute_into(bcx, src, &lvalue),
+                LocalRef::Operand(None) => {
+                    let lvalue_ty = self.monomorphized_lvalue_ty(dst);
+                    assert!(!lvalue_ty.has_erasable_regions());
+                    let lvalue = LvalueRef::alloca(bcx, lvalue_ty, "transmute_temp");
+                    self.trans_transmute_into(bcx, src, &lvalue);
+                    let op = self.trans_load(bcx, lvalue.llval, lvalue.alignment, lvalue_ty);
+                    self.locals[index] = LocalRef::Operand(Some(op));
+                }
+                LocalRef::Operand(Some(_)) => {
+                    let ty = self.monomorphized_lvalue_ty(dst);
+                    assert!(common::type_is_zero_size(bcx.ccx, ty),
+                            "assigning to initialized SSAtemp");
+                }
+            }
+        } else {
+            let dst = self.trans_lvalue(bcx, dst);
+            self.trans_transmute_into(bcx, src, &dst);
+        }
+    }
+
+    fn trans_transmute_into(&mut self, bcx: &Builder<'a, 'tcx>,
+                            src: &mir::Operand<'tcx>,
+                            dst: &LvalueRef<'tcx>) {
         let mut val = self.trans_operand(bcx, src);
         if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
             let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.tcx()));
