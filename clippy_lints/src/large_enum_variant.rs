@@ -51,10 +51,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
             let ty = cx.tcx.item_type(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
 
-            let mut sizes = Vec::new();
-            let mut variants = Vec::new();
+            let mut smallest_variant: Option<(_, _)> = None;
+            let mut largest_variant: Option<(_, _)> = None;
 
-            for variant in &adt.variants {
+            for (i, variant) in adt.variants.iter().enumerate() {
                 let data_layout = TargetDataLayout::parse(cx.sess());
                 cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                     let size: u64 = variant.fields
@@ -72,17 +72,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                         })
                         .sum();
 
-                    sizes.push(size);
-                    variants.push(variant);
+                    let grouped = (size, (i, variant));
+
+                    update_if(&mut smallest_variant, grouped, |a, b| b.0 <= a.0);
+                    update_if(&mut largest_variant, grouped, |a, b| b.0 >= a.0);
                 });
             }
-
-            let mut grouped = sizes.into_iter().zip(variants.into_iter().enumerate()).collect::<Vec<_>>();
-
-            grouped.sort_by_key(|g| g.0);
-
-            let smallest_variant = grouped.first();
-            let largest_variant = grouped.last();
 
             if let (Some(smallest), Some(largest)) = (smallest_variant, largest_variant) {
                 let difference = largest.0 - smallest.0;
@@ -116,5 +111,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
             }
 
         }
+    }
+}
+
+fn update_if<T, F>(old: &mut Option<T>, new: T, f: F) where F: Fn(&T, &T) -> bool {
+    if let Some(ref mut val) = *old {
+        if f(val, &new) {
+            *val = new;
+        }
+    } else {
+        *old = Some(new);
     }
 }
