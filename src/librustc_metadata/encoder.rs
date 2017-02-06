@@ -20,7 +20,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
@@ -401,8 +401,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
+        let repr_options = get_repr_options(&tcx, adt_def_id);
+
         Entry {
-            kind: EntryKind::Struct(self.lazy(&data)),
+            kind: EntryKind::Struct(self.lazy(&data), repr_options),
             visibility: self.lazy(&ctor_vis),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
@@ -659,7 +661,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemEnum(..) => EntryKind::Enum,
+            hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
@@ -671,20 +673,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 } else {
                     None
                 };
+
+                let repr_options = get_repr_options(&tcx, def_id);
+
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u128_unchecked(),
                     struct_ctor: struct_ctor,
-                }))
+                }), repr_options)
             }
             hir::ItemUnion(..) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
+                let repr_options = get_repr_options(&tcx, def_id);
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u128_unchecked(),
                     struct_ctor: None,
-                }))
+                }), repr_options)
             }
             hir::ItemDefaultImpl(..) => {
                 let data = ImplData {
@@ -1418,4 +1424,12 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result[header + 3] = (pos >> 0) as u8;
 
     result
+}
+
+pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
+    let ty = tcx.item_type(did);
+    match ty.sty {
+        ty::TyAdt(ref def, _) => return def.repr,
+        _ => bug!("{} is not an ADT", ty),
+    }
 }

@@ -18,7 +18,7 @@ use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, ReprOptions};
 use rustc_back::PanicStrategy;
 
 use rustc_serialize as serialize;
@@ -228,11 +228,11 @@ pub enum EntryKind<'tcx> {
     ForeignMutStatic,
     ForeignMod,
     Type,
-    Enum,
+    Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>),
-    Union(Lazy<VariantData>),
+    Struct(Lazy<VariantData>, ReprOptions),
+    Union(Lazy<VariantData>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
