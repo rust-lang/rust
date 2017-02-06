@@ -36,7 +36,7 @@ pub fn get_virtual_method<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
            vtable_index, Value(llvtable));
 
-    bcx.load(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]))
+    bcx.load(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]), None)
 }
 
 /// Generate a shim function that allows an object type like `SomeTrait` to
