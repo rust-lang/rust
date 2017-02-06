@@ -37,7 +37,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax_pos::{BytePos, DUMMY_SP, Pos};
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -97,7 +97,6 @@ pub fn run(input: &str,
         link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
     let opts = scrape_test_config(hir_forest.krate());
-    let filename = input_path.to_str().unwrap_or("").to_owned();
     let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
@@ -105,7 +104,6 @@ pub fn run(input: &str,
                                        false,
                                        opts,
                                        maybe_sysroot,
-                                       filename,
                                        Some(codemap));
 
     {
@@ -391,15 +389,14 @@ pub struct Collector {
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
-    filename: String,
-    start_line: usize,
+    position: Span,
     codemap: Option<Rc<CodeMap>>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               filename: String, codemap: Option<Rc<CodeMap>>) -> Collector {
+               codemap: Option<Rc<CodeMap>>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -412,8 +409,7 @@ impl Collector {
             cratename: cratename,
             opts: opts,
             maybe_sysroot: maybe_sysroot,
-            filename: filename,
-            start_line: 0,
+            position: DUMMY_SP,
             codemap: codemap,
         }
     }
@@ -421,8 +417,8 @@ impl Collector {
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize) {
-        let name = format!("{} - line {}", self.filename, line);
+                    line: usize, filename: String) {
+        let name = format!("{} - line {}", filename, line);
         self.cnt += 1;
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -467,16 +463,25 @@ impl Collector {
     }
 
     pub fn get_line(&self) -> usize {
-        if let Some(ref codemap) = self.codemap{
-            let line = codemap.lookup_char_pos(BytePos(self.start_line as u32)).line;
+        if let Some(ref codemap) = self.codemap {
+            let line = self.position.lo.to_usize();
+            let line = codemap.lookup_char_pos(BytePos(line as u32)).line;
             if line > 0 { line - 1 } else { line }
         } else {
-            self.start_line
+            0
         }
     }
 
-    pub fn set_line(&mut self, start_line: usize) {
-        self.start_line = start_line;
+    pub fn set_position(&mut self, position: Span) {
+        self.position = position;
+    }
+
+    pub fn get_filename(&self) -> String {
+        if let Some(ref codemap) = self.codemap {
+            codemap.span_to_filename(self.position)
+        } else {
+            "<input>".to_owned()
+        }
     }
 
     pub fn register_header(&mut self, name: &str, level: u32) {
@@ -520,7 +525,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
             markdown::find_testable_code(doc, self.collector,
-                                         attrs.span.unwrap_or(DUMMY_SP).lo.to_usize());
+                                         attrs.span.unwrap_or(DUMMY_SP));
         }
 
         nested(self);
