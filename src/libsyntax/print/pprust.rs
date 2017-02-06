@@ -1476,8 +1476,10 @@ impl<'a> State<'a> {
                                             //  ^^^
                             (&parse::token::DocComment(..), _) => hardbreak(&mut self.s)?, // ///abc
                                                                                            // ^^^---
+                            (&Token::Comma, _) => {} // abc(a, b);
+                                                     //     ^-
                             (_, Some(&&TokenTree::Token(_, Token::Comma))) => { // abc(a, b);
-                                zerobreak(&mut self.s)?                         //     ^-
+                                zerobreak(&mut self.s)?                         //      ^ -
                             },
                             (_, Some(&&TokenTree::Token(_, Token::Semi))) => {} // let a = 0;
                                                                                 //         ^-
