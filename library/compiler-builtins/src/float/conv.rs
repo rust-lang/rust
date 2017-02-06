@@ -200,43 +200,67 @@ mod tests {
         fn __fixsfsi(f: extern fn(f32) -> i32,
                     a: F32)
                     -> Option<I32> {
-            Some(I32(f(a.0)))
+            if a.0 > (i32::max_value() as f32) ||
+               a.0 < (i32::min_value() as f32) || a.0.is_nan() {
+                   None
+           } else { Some(I32(f(a.0))) }
         }
         fn __fixsfdi(f: extern fn(f32) -> i64,
                     a: F32)
                     -> Option<I64> {
-            Some(I64(f(a.0)))
+            if a.0 > (i64::max_value() as f32) ||
+               a.0 < (i64::min_value() as f32) || a.0.is_nan() {
+                   None
+           } else { Some(I64(f(a.0))) }
         }
         fn __fixdfsi(f: extern fn(f64) -> i32,
                     a: F64)
                     -> Option<I32> {
-            Some(I32(f(a.0)))
+            if a.0 > (i32::max_value() as f64) ||
+               a.0 < (i32::min_value() as f64) || a.0.is_nan() {
+                   None
+           } else { Some(I32(f(a.0))) }
         }
         fn __fixdfdi(f: extern fn(f64) -> i64,
                     a: F64)
                     -> Option<I64> {
-            Some(I64(f(a.0)))
+            if a.0 > (i64::max_value() as f64) ||
+               a.0 < (i64::min_value() as f64) || a.0.is_nan() {
+                   None
+           } else { Some(I64(f(a.0))) }
         }
 
         fn __fixunssfsi(f: extern fn(f32) -> u32,
                     a: F32)
                     -> Option<U32> {
-            Some(U32(f(a.0)))
+            if a.0 > (u32::max_value() as f32) ||
+               a.0 < (u32::min_value() as f32) || a.0.is_nan() {
+                   None
+           } else { Some(U32(f(a.0))) }
         }
         fn __fixunssfdi(f: extern fn(f32) -> u64,
                     a: F32)
                     -> Option<U64> {
-            Some(U64(f(a.0)))
+            if a.0 > (u64::max_value() as f32) ||
+               a.0 < (u64::min_value() as f32) || a.0.is_nan() {
+                   None
+           } else { Some(U64(f(a.0))) }
         }
         fn __fixunsdfsi(f: extern fn(f64) -> u32,
                     a: F64)
                     -> Option<U32> {
-            Some(U32(f(a.0)))
+            if a.0 > (u32::max_value() as f64) ||
+               a.0 < (u32::min_value() as f64) || a.0.is_nan() {
+                   None
+           } else { Some(U32(f(a.0))) }
         }
         fn __fixunsdfdi(f: extern fn(f64) -> u64,
                     a: F64)
                     -> Option<U64> {
-            Some(U64(f(a.0)))
+            if a.0 <= (u64::max_value() as f64) ||
+               a.0 >= (u64::min_value() as f64) || a.0.is_nan() {
+                   None
+           } else { Some(U64(f(a.0))) }
         }
     }
 }
