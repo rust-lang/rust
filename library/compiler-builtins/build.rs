@@ -50,6 +50,12 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
+
+    // Emscripten's runtime includes all the builtins
+    if target.contains("emscripten") {
+        return;
+    }
+
     let Cfg { ref target_arch, ref target_os, ref target_env, ref target_vendor, .. } =
         Cfg::new(&target).unwrap_or_else(|e| {
             writeln!(io::stderr(), "{}", e).ok();
@@ -110,7 +116,6 @@ fn main() {
                          "addvdi3.c",
                          "addvsi3.c",
                          "apple_versioning.c",
-                         "clear_cache.c",
                          "clzdi2.c",
                          "clzsi2.c",
                          "cmpdi2.c",
@@ -176,12 +181,10 @@ fn main() {
 
         if target_os != "ios" {
             sources.extend(&["absvti2.c",
-                             "addtf3.c",
                              "addvti3.c",
                              "clzti2.c",
                              "cmpti2.c",
                              "ctzti2.c",
-                             "divtf3.c",
                              "ffsti2.c",
                              "fixdfti.c",
                              "fixsfti.c",
@@ -195,16 +198,12 @@ fn main() {
                              "floatuntidf.c",
                              "floatuntisf.c",
                              "floatuntixf.c",
-                             "multf3.c",
                              "mulvti3.c",
                              "negti2.c",
                              "negvti2.c",
                              "parityti2.c",
                              "popcountti2.c",
-                             "powitf2.c",
-                             "subtf3.c",
                              "subvti3.c",
-                             "trampoline_setup.c",
                              "ucmpti2.c"]);
         }
 
@@ -217,16 +216,12 @@ fn main() {
                              "atomic_thread_fence.c"]);
         }
 
-        if target_os != "windows" && target_os != "none" {
-            sources.extend(&["emutls.c"]);
-        }
-
         if target_env == "msvc" {
             if target_arch == "x86_64" {
                 sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
             }
         } else {
-            if target_os != "freebsd" {
+            if target_os != "freebsd" && target_os != "netbsd" {
                 sources.extend(&["gcc_personality_v0.c"]);
             }
 
