@@ -32,7 +32,7 @@ struct FooX { x: usize }
 
 #[cfg(rpass2)]
 fn main() {
-    let x: Arc<FooX> = Arc::new(Foo { x: 22 });
+    let x: Arc<FooX> = Arc::new(FooX { x: 22 });
     let y: Arc<FooX> = x;
 }
 
