@@ -1000,7 +1000,7 @@ $(foreach stage,$(STAGES), \
     $(eval $(call DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST_AND_GROUP,$(stage),$(target),$(host),$(group)))))))
 
 define DEF_CHECK_FOR_STAGE
-check-stage$(1): check-stage$(1)-H-$$(CFG_BUILD)
+check-stage$(1): check-stage$(1)-H-$$(CFG_BUILD) check-stage$(1)-docs
 check-stage$(1)-H-all: $$(foreach target,$$(CFG_TARGET), \
                            check-stage$(1)-H-$$(target))
 endef
