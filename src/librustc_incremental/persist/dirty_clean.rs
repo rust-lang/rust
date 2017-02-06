@@ -89,6 +89,9 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     intravisit::walk_crate(&mut all_attrs, krate);
 
+    // Note that we cannot use the existing "unused attribute"-infrastructure
+    // here, since that is running before trans. This is also the reason why
+    // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
     all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
 }
 
@@ -237,6 +240,9 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         intravisit::walk_crate(&mut all_attrs, krate);
 
+        // Note that we cannot use the existing "unused attribute"-infrastructure
+        // here, since that is running before trans. This is also the reason why
+        // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     });
 }
