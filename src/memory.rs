@@ -411,7 +411,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let mut allocs_seen = HashSet::new();
 
         while let Some(id) = allocs_to_print.pop_front() {
-            allocs_seen.insert(id);
             if id == ZST_ALLOC_ID || id == NEVER_ALLOC_ID { continue; }
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
             let prefix_len = msg.len();
@@ -433,7 +432,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
             for i in 0..(alloc.bytes.len() as u64) {
                 if let Some(&target_id) = alloc.relocations.get(&i) {
-                    if !allocs_seen.contains(&target_id) {
+                    if allocs_seen.insert(target_id) {
                         allocs_to_print.push_back(target_id);
                     }
                     relocations.push((i, target_id));

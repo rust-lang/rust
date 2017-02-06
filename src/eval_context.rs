@@ -200,7 +200,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Struct(_)    => unimplemented!(),
             Tuple(_)     => unimplemented!(),
             Function(_)  => unimplemented!(),
-            Array(_)  => unimplemented!(),
+            Array(_)     => unimplemented!(),
             Repeat(_, _) => unimplemented!(),
         };
 
