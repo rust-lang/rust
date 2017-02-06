@@ -223,10 +223,6 @@ fn main() {
                              "atomic_thread_fence.c"]);
         }
 
-        if target_os != "windows" && target_os != "none" {
-            sources.extend(&["emutls.c"]);
-        }
-
         if target_env == "msvc" {
             if target_arch == "x86_64" {
                 sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
