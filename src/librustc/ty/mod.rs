@@ -1327,7 +1327,8 @@ pub struct AdtDef {
     pub did: DefId,
     pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
-    flags: Cell<AdtFlags>
+    flags: Cell<AdtFlags>,
+    pub repr: ReprOptions,
 }
 
 impl PartialEq for AdtDef {
@@ -1356,11 +1357,38 @@ impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
+/// Represents the repr options provided by the user,
+#[derive(Copy, Clone, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
+pub struct ReprOptions {
+    pub c: bool,
+    pub packed: bool,
+    pub simd: bool,
+    pub int: Option<attr::IntType>,
+}
+
+impl ReprOptions {
+    pub fn new<'a, 'gcx, 'tcx>(tcx: &TyCtxt<'a, 'gcx, 'tcx>, did: DefId) -> ReprOptions {
+        let mut ret = ReprOptions::default();
+        let attrs = tcx.lookup_repr_hints(did);
+        for r in attrs.iter() {
+            match *r {
+                attr::ReprExtern => ret.c = true,
+                attr::ReprPacked => ret.packed = true,
+                attr::ReprSimd => ret.simd = true,
+                attr::ReprInt(i) => ret.int = Some(i),
+                attr::ReprAny => (),
+            }
+        }
+        ret
+    }
+}
+
 impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
-           variants: Vec<VariantDef>) -> Self {
+           variants: Vec<VariantDef>,
+           repr: ReprOptions) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
         if attr::contains_name(&attrs, "fundamental") {
@@ -1385,6 +1413,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             variants: variants,
             flags: Cell::new(flags),
             destructor: Cell::new(None),
+            repr: repr,
         }
     }
 
