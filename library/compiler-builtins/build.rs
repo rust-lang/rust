@@ -116,7 +116,6 @@ fn main() {
                          "addvdi3.c",
                          "addvsi3.c",
                          "apple_versioning.c",
-                         "clear_cache.c",
                          "clzdi2.c",
                          "clzsi2.c",
                          "cmpdi2.c",
