@@ -1,7 +1,7 @@
 % if let
 
-`if let` allows us to match [patterns][patterns] within the condition of an [if][if].
-As a consequence, we reduce the overhead of certain kinds of [pattern][patterns] matches
+`if let` permits [patterns][pattern] matching within the condition of an [if][if] statement.
+This allows us to reduce the overhead of certain kinds of [pattern][patterns] matches
 and express them in a more convenient way.  
 
 For example, let’s say we have some sort of `Option<T>`. We want to call a function
