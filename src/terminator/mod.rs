@@ -6,7 +6,7 @@ use rustc::ty::layout::{Layout, Size};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::{ast, attr};
+use syntax::{ast, attr, abi};
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty, is_inhabited};
@@ -313,6 +313,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )?;
 
                 let arg_locals = self.frame().mir.args_iter();
+                // FIXME: impl ExactSizeIterator and use args_locals.len()
+                // FIXME: last-use-in-cap-clause works by chance, insert some arguments and it will fail
+                // we currently write the first argument (unit) to the return field (unit)
+                //assert_eq!(self.frame().mir.args_iter().count(), args.len());
                 for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
                     let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                     self.write_value(arg_val, dest, arg_ty)?;
@@ -624,18 +628,31 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id) as u64;
-                if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
-                    let (self_ptr, vtable) = first_arg.expect_ptr_vtable_pair(&self.memory)?;
-                    *first_arg = Value::ByVal(PrimVal::Ptr(self_ptr));
-                    let idx = idx + 3;
-                    let offset = idx * self.memory.pointer_size();
-                    let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
-                    let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                    *first_ty = sig.inputs()[0];
-                    Ok((def_id, substs, Vec::new()))
-                } else {
-                    Err(EvalError::VtableForArgumentlessMethod)
+                if args.is_empty() {
+                    return Err(EvalError::VtableForArgumentlessMethod);
                 }
+                let (self_ptr, vtable) = args[0].0.expect_ptr_vtable_pair(&self.memory)?;
+                let idx = idx + 3;
+                let offset = idx * self.memory.pointer_size();
+                let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
+                let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                trace!("args: {:#?}", args);
+                trace!("sig: {:#?}", sig);
+                if abi != abi::Abi::RustCall && args.len() == 2 {
+                    if let ty::TyTuple(wrapped_args) = args[1].1.sty {
+                        assert_eq!(sig.inputs(), &wrapped_args[..]);
+                        // a function item turned into a closure trait object
+                        // the first arg is just there to give use the vtable
+                        args.remove(0);
+                        self.unpack_fn_args(args)?;
+                        return Ok((def_id, substs, Vec::new()));
+                    }
+                }
+                args[0] = (
+                    Value::ByVal(PrimVal::Ptr(self_ptr)),
+                    sig.inputs()[0],
+                );
+                Ok((def_id, substs, Vec::new()))
             },
             vtable => bug!("resolved vtable bad vtable {:?} in trans", vtable),
         }
