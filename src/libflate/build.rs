@@ -11,7 +11,6 @@
 extern crate gcc;
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
     gcc::Config::new()
         .file("../rt/miniz.c")
         .compile("libminiz.a");

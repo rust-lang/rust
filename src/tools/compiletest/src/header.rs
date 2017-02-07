@@ -25,6 +25,7 @@ use extract_gdb_version;
 pub struct EarlyProps {
     pub ignore: bool,
     pub should_fail: bool,
+    pub aux: Vec<String>,
 }
 
 impl EarlyProps {
@@ -32,6 +33,7 @@ impl EarlyProps {
         let mut props = EarlyProps {
             ignore: false,
             should_fail: false,
+            aux: Vec::new(),
         };
 
         iter_header(testfile,
@@ -49,6 +51,10 @@ impl EarlyProps {
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
                 ignore_llvm(config, ln);
+
+            if let Some(s) = parse_aux_build(ln) {
+                props.aux.push(s);
+            }
 
             props.should_fail = props.should_fail || parse_name_directive(ln, "should-fail");
         });
