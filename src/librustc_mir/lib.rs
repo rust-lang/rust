@@ -22,6 +22,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #![feature(associated_consts)]
 #![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(i128_type)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -50,6 +51,7 @@ pub mod callgraph;
 pub mod def_use;
 pub mod graphviz;
 mod hair;
+mod shim;
 pub mod mir_map;
 pub mod pretty;
 pub mod transform;

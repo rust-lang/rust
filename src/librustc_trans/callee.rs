@@ -22,7 +22,6 @@ use rustc::ty::subst::{Substs, Subst};
 use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
-use base;
 use builder::Builder;
 use common::{self, CrateContext};
 use cleanup::CleanupScope;
@@ -35,7 +34,6 @@ use meth;
 use monomorphize::Instance;
 use trans_item::TransItem;
 use type_of;
-use Disr;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::hir;
 use std::iter;
@@ -46,9 +44,6 @@ use mir::lvalue::Alignment;
 
 #[derive(Debug)]
 pub enum CalleeData {
-    /// Constructor for enum variant/tuple-like-struct.
-    NamedTupleConstructor(Disr),
-
     /// Function pointer.
     Fn(ValueRef),
 
@@ -87,16 +82,6 @@ impl<'tcx> Callee<'tcx> {
             if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                 return Callee {
                     data: Intrinsic,
-                    ty: fn_ty
-                };
-            }
-        }
-
-        // FIXME(eddyb) Detect ADT constructors more efficiently.
-        if let Some(adt_def) = fn_ty.fn_ret().skip_binder().ty_adt_def() {
-            if let Some(i) = adt_def.variants.iter().position(|v| def_id == v.did) {
-                return Callee {
-                    data: NamedTupleConstructor(Disr::for_variant(tcx, adt_def, i)),
                     ty: fn_ty
                 };
             }
@@ -185,24 +170,6 @@ impl<'tcx> Callee<'tcx> {
         match self.data {
             Fn(llfn) => llfn,
             Virtual(_) => meth::trans_object_shim(ccx, self),
-            NamedTupleConstructor(disr) => match self.ty.sty {
-                ty::TyFnDef(def_id, substs, _) => {
-                    let instance = Instance::new(def_id, substs);
-                    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
-                        return llfn;
-                    }
-
-                    let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
-                                                              TransItem::Fn(instance));
-                    assert!(!ccx.codegen_unit().contains_item(&TransItem::Fn(instance)));
-                    let lldecl = declare::define_internal_fn(ccx, &sym, self.ty);
-                    base::trans_ctor_shim(ccx, def_id, substs, disr, lldecl);
-                    ccx.instances().borrow_mut().insert(instance, lldecl);
-
-                    lldecl
-                }
-                _ => bug!("expected fn item type, found {}", self.ty)
-            },
             Intrinsic => bug!("intrinsic {} getting reified", self.ty)
         }
     }

@@ -26,6 +26,7 @@ use monomorphize::Instance;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::definitions::DefPathData;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
@@ -178,9 +179,14 @@ impl<'a, 'tcx> TransItem<'tcx> {
             llvm::SetUniqueComdat(ccx.llmod(), lldecl);
         }
 
-        if let ty::TyClosure(..) = mono_ty.sty {
-            // set an inline hint for all closures
-            attributes::inline(lldecl, attributes::InlineAttr::Hint);
+        debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
+        match ccx.tcx().def_key(instance.def).disambiguated_data.data {
+            DefPathData::StructCtor |
+            DefPathData::EnumVariant(..) |
+            DefPathData::ClosureExpr => {
+                attributes::inline(lldecl, attributes::InlineAttr::Hint);
+            }
+            _ => {}
         }
 
         attributes::from_fn_attrs(ccx, &attrs, lldecl);
@@ -252,8 +258,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         match *self {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
-                   (common::is_closure(tcx, instance.def) ||
-                    attr::requests_inline(&tcx.get_attrs(instance.def)[..])) {
+                    common::requests_inline(tcx, instance.def)
+                {
                     InstantiationMode::LocalCopy
                 } else {
                     InstantiationMode::GloballyShared

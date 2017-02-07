@@ -1264,10 +1264,17 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                                                     def_id,
                                                     ROOT_CODE_EXTENT)
             }
-            _ => {
+            Some(hir_map::NodeStructCtor(..)) |
+            Some(hir_map::NodeVariant(..)) => {
+                let def_id = tcx.hir.local_def_id(id);
+                tcx.construct_parameter_environment(tcx.hir.span(id),
+                                                    def_id,
+                                                    ROOT_CODE_EXTENT)
+            }
+            it => {
                 bug!("ParameterEnvironment::from_item(): \
-                      `{}` is not an item",
-                     tcx.hir.node_to_string(id))
+                      `{}` = {:?} is unsupported",
+                     tcx.hir.node_to_string(id), it)
             }
         }
     }
