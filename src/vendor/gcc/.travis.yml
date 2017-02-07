@@ -3,6 +3,13 @@ rust:
   - stable
   - beta
   - nightly
+matrix:
+  include:
+    # Minimum version supported
+    - rust: 1.6.0
+      install:
+      script: cargo build
+
 sudo: false
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then OS=unknown-linux-gnu; else OS=apple-darwin; fi
