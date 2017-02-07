@@ -25,7 +25,7 @@ v.sort_by_key(|p| p.0);
 assert!(orig == v); // OK!
 
 /// Unstable sort may or may not preserve the original order.
-v.unstable_sort_by_key(|p| p.0);
+v.sort_unstable_by_key(|p| p.0);
 assert!(orig == v); // MAY FAIL!
 ```
 
@@ -72,9 +72,9 @@ systems programming language by not offering a built-in alternative.
 
 The API will consist of three functions that mirror the current sort in libstd:
 
-1. `core::slice::unstable_sort`
-2. `core::slice::unstable_sort_by`
-3. `core::slice::unstable_sort_by_key`
+1. `core::slice::sort_unstable`
+2. `core::slice::sort_unstable_by`
+3. `core::slice::sort_unstable_by_key`
 
 By contrast, C++ has functions `std::sort` and `std::stable_sort`, where the
 defaults are set up the other way around.
@@ -121,13 +121,13 @@ pub trait SliceExt {
 
     // ...
 
-    fn unstable_sort(&mut self)
+    fn sort_unstable(&mut self)
         where Self::Item: Ord;
 
-    fn unstable_sort_by<F>(&mut self, compare: F)
+    fn sort_unstable_by<F>(&mut self, compare: F)
         where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
   
-    fn unstable_sort_by_key<B, F>(&mut self, mut f: F)
+    fn sort_unstable_by_key<B, F>(&mut self, mut f: F)
         where F: FnMut(&Self::Item) -> B,
               B: Ord;
 }
@@ -138,17 +138,17 @@ pub trait SliceExt {
 ```rust
 let mut v = [-5i32, 4, 1, -3, 2];
 
-v.unstable_sort();
+v.sort_unstable();
 assert!(v == [-5, -3, 1, 2, 4]);
 
-v.unstable_sort_by(|a, b| b.cmp(a));
+v.sort_unstable_by(|a, b| b.cmp(a));
 assert!(v == [4, 2, 1, -3, -5]);
 
-v.unstable_sort_by_key(|k| k.abs());
+v.sort_unstable_by_key(|k| k.abs());
 assert!(v == [1, 2, -3, 4, -5]);
 ```
 
-In most cases it's sufficient to prepend `sort` with `unstable_` and
+In most cases it's sufficient to append `_unstable` to `sort` and
 instantly benefit from higher performance and lower memory use.
 
 **Q: Is `slice::sort` ever faster than pdqsort?**<br>
@@ -171,14 +171,14 @@ not even that much faster than pdqsort anyway.
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-Stability is a confusing and loaded term. Function `slice::unstable_sort` might be
+Stability is a confusing and loaded term. Function `slice::sort_unstable` might be
 misunderstood as a function that has unstable API. That said, there is no
 less confusing alternative to "unstable sorting". Documentation should
 clearly state what "stable" and "unstable" mean.
 
-`slice::unstable_sort` will be mentioned in the documentation for `slice::sort`
+`slice::sort_unstable` will be mentioned in the documentation for `slice::sort`
 as a faster non-allocating alternative. The documentation for
-`slice::unstable_sort` must also clearly state that it guarantees no allocation.
+`slice::sort_unstable` must also clearly state that it guarantees no allocation.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -187,7 +187,7 @@ The implementation of sort algorithms will grow bigger, and there will be more
 code to review.
 
 It might be surprising to discover cases where `slice::sort` is faster than
-`slice::unstable_sort`. However, these peculiarities can be explained in
+`slice::sort_unstable`. However, these peculiarities can be explained in
 documentation.
 
 # Alternatives
@@ -195,12 +195,12 @@ documentation.
 
 Unstable sorting is indistinguishable from stable sorting when sorting
 primitive integers. It's possible to specialize `slice::sort` to fall back
-to `slice::unstable_sort`. This would improve performance for primitive integers in
+to `slice::sort_unstable`. This would improve performance for primitive integers in
 most cases, but patching cases type by type with different algorithms makes
 performance more inconsistent and less predictable.
 
-Unstable sort guarantees no allocation. Instead of naming it `slice::unstable_sort`,
-it could also be named `slice::noalloc_sort` or `slice::noalloc_unstable_sort`.
+Unstable sort guarantees no allocation. Instead of naming it `slice::sort_unstable`,
+it could also be named `slice::sort_noalloc` or `slice::sort_unstable_noalloc`.
 This may slightly improve clarity, but feels much more awkward.
 
 Unstable sort can also be provided as a standalone crate instead of
