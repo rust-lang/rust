@@ -147,6 +147,7 @@
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use mem;
+use intrinsics;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -665,7 +666,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            _ => unsafe { intrinsics::unreachable() }
         }
     }
 
@@ -698,7 +699,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            _ => unsafe { intrinsics::unreachable() }
         }
     }
 
