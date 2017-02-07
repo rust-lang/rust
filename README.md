@@ -305,6 +305,7 @@ name                                                                            
 [overflow_check_conditional](https://github.com/Manishearth/rust-clippy/wiki#overflow_check_conditional)               | warn    | overflow checks inspired by C which are likely to panic
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                           | warn    | missing parameters in `panic!` calls
 [partialeq_ne_impl](https://github.com/Manishearth/rust-clippy/wiki#partialeq_ne_impl)                                 | warn    | re-implementing `PartialEq::ne`
+[possible_missing_comma](https://github.com/Manishearth/rust-clippy/wiki#possible_missing_comma)                       | warn    | possible missing comma in array
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                               | warn    | operations where precedence may be unclear
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                           | allow   | printing on stdout
 [print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                               | warn    | using `print!()` with a format string that ends in a newline
