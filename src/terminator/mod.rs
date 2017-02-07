@@ -776,6 +776,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
                         }
                     },
+                    Layout::CEnum { .. } => return Ok(()),
                     _ => bug!("{:?} is not an adt layout", layout),
                 };
                 let tcx = self.tcx;
