@@ -161,6 +161,8 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             } else {
                 StackPopCleanup::None
             };
+            let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
+            trace!("pushing stack frame for global: {}", name);
             this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Global(cid), cleanup, Vec::new())
         });
     }
@@ -205,6 +207,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 self.try(|this| {
                     let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
                     this.ecx.globals.insert(cid, Global::uninitialized(ty));
+                    trace!("pushing stack frame for {:?}", index);
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,
