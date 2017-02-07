@@ -11,7 +11,7 @@
 extern crate toml;
 extern crate rustc_serialize;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -95,7 +95,6 @@ static MINGW: &'static [&'static str] = &[
     "x86_64-pc-windows-gnu",
 ];
 
-#[derive(RustcEncodable)]
 struct Manifest {
     manifest_version: String,
     date: String,
@@ -171,8 +170,18 @@ impl Builder {
         self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
-        let manifest = self.build_manifest();
-        let manifest = toml::encode(&manifest).to_string();
+        let Manifest { manifest_version, date, pkg } = self.build_manifest();
+
+        // Unfortunately we can't use derive(RustcEncodable) here because the
+        // version field is called `manifest-version`, not `manifest_version`.
+        // In lieu of that just create the table directly here with a `BTreeMap`
+        // and wrap it up in a `Value::Table`.
+        let mut manifest = BTreeMap::new();
+        manifest.insert("manifest-version".to_string(),
+                        toml::encode(&manifest_version));
+        manifest.insert("date".to_string(), toml::encode(&date));
+        manifest.insert("pkg".to_string(), toml::encode(&pkg));
+        let manifest = toml::Value::Table(manifest).to_string();
 
         let filename = format!("channel-rust-{}.toml", self.channel);
         self.write_manifest(&manifest, &filename);
