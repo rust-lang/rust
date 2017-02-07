@@ -1,4 +1,4 @@
-Version 1.15.1 (2017-02-07)
+Version 1.15.1 (2017-02-08)
 ===========================
 
 * [Fix IntoIter::as_mut_slice's signature][39466]
