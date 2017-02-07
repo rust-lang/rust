@@ -177,6 +177,7 @@ supported_targets! {
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
+    ("i686-unknown-netbsd", i686_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
