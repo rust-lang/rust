@@ -313,9 +313,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )?;
 
                 let arg_locals = self.frame().mir.args_iter();
-                // FIXME: impl ExactSizeIterator and use args_locals.len()
-                assert_eq!(arg_locals.size_hint().0, args.len());
-                assert_eq!(arg_locals.size_hint().1, Some(args.len()));
+                assert_eq!(self.frame().mir.arg_count, args.len());
                 for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
                     let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                     self.write_value(arg_val, dest, arg_ty)?;
