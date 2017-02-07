@@ -326,6 +326,7 @@ macro_rules! create_config {
 
 create_config! {
     verbose: bool, false, "Use verbose output";
+    disable_all_formatting: bool, false, "Don't reformat anything";
     skip_children: bool, false, "Don't reformat out of line modules";
     file_lines: FileLines, FileLines::all(),
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \

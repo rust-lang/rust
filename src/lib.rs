@@ -473,6 +473,9 @@ pub fn format_input<T: Write>(input: Input,
                               mut out: Option<&mut T>)
                               -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::new();
+    if config.disable_all_formatting {
+        return Ok((summary, FileMap::new(), FormatReport::new()));
+    }
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler =
