@@ -746,7 +746,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
 
-            ty::TyTuple(fields) => Ok(fields[field_index]),
+            ty::TyTuple(fields, _) => Ok(fields[field_index]),
 
             ty::TyRef(_, ref tam) |
             ty::TyRawPtr(ref tam) => self.get_fat_field(tam.ty, field_index),

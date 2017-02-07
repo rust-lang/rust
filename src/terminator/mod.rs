@@ -520,7 +520,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if let Some((last, last_ty)) = args.pop() {
             let last_layout = self.type_layout(last_ty)?;
             match (&last_ty.sty, last_layout) {
-                (&ty::TyTuple(fields),
+                (&ty::TyTuple(fields, _),
                  &Layout::Univariant { ref variant, .. }) => {
                     let offsets = variant.offsets.iter().map(|s| s.bytes());
                     let last_ptr = match last {
@@ -786,7 +786,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     drop,
                 )?;
             },
-            ty::TyTuple(fields) => {
+            ty::TyTuple(fields, _) => {
                 let offsets = match *self.type_layout(ty)? {
                     Layout::Univariant { ref variant, .. } => &variant.offsets,
                     _ => bug!("tuples must be univariant"),
