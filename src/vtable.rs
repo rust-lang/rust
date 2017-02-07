@@ -55,12 +55,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     vec![Some(self.memory.create_closure_ptr(self.tcx, closure_def_id, substs, closure_type))].into_iter()
                 }
 
+                // turn a function definition into a Fn trait object
                 traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, .. }) => {
                     match fn_ty.sty {
                         ty::TyFnDef(did, substs, bare_fn_ty) => {
-                            vec![Some(self.memory.create_fn_ptr(self.tcx, did, substs, bare_fn_ty))].into_iter()
+                            vec![Some(self.memory.create_fn_as_trait_glue(self.tcx, did, substs, bare_fn_ty))].into_iter()
                         },
-                        _ => bug!("bad VtableFnPointer fn_ty: {:?}", fn_ty),
+                        ty::TyFnPtr(bare_fn_ty) => {
+                            vec![Some(self.memory.create_fn_ptr_as_trait_glue(bare_fn_ty))].into_iter()
+                        },
+                        _ => bug!("bad VtableFnPointer fn_ty: {:#?}", fn_ty.sty),
                     }
                 }
 
@@ -94,7 +98,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
-                let fn_ptr = self.memory.create_fn_ptr(self.tcx, drop_def_id, substs, fn_ty);
+                let fn_ptr = self.memory.create_drop_glue(self.tcx, drop_def_id, substs, fn_ty);
                 self.memory.write_ptr(vtable, fn_ptr)?;
             }
         }

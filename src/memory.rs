@@ -94,12 +94,45 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-struct FunctionDefinition<'tcx> {
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+/// Identifies a specific monomorphized function
+pub struct FunctionDefinition<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
     pub abi: Abi,
     pub sig: &'tcx ty::FnSig<'tcx>,
+}
+
+/// Either a concrete function, or a glue function
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub enum Function<'tcx> {
+    /// A function or method created by compiling code
+    Concrete(FunctionDefinition<'tcx>),
+    /// Glue required to call a regular function through a Fn(Mut|Once) trait object
+    FnDefAsTraitObject(FunctionDefinition<'tcx>),
+    /// Glue required to call the actual drop impl's `drop` method.
+    /// Drop glue takes the `self` by value, while `Drop::drop` take `&mut self`
+    DropGlue(FunctionDefinition<'tcx>),
+    /// Glue required to treat the ptr part of a fat pointer
+    /// as a function pointer
+    FnPtrAsTraitObject(&'tcx ty::FnSig<'tcx>),
+    /// Glue for Closures
+    Closure(FunctionDefinition<'tcx>),
+}
+
+impl<'tcx> Function<'tcx> {
+    pub fn expect_concrete(self) -> EvalResult<'tcx, FunctionDefinition<'tcx>> {
+        match self {
+            Function::Concrete(fn_def) => Ok(fn_def),
+            other => Err(EvalError::ExpectedConcreteFunction(other)),
+        }
+    }
+    pub fn expect_drop_glue(self) -> EvalResult<'tcx, FunctionDefinition<'tcx>> {
+        match self {
+            Function::DropGlue(fn_def) => Ok(fn_def),
+            other => Err(EvalError::ExpectedDropGlue(other)),
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,9 +148,9 @@ pub struct Memory<'a, 'tcx> {
     memory_size: u64,
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
-    functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
+    functions: HashMap<AllocId, Function<'tcx>>,
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
-    function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
+    function_alloc_cache: HashMap<Function<'tcx>, AllocId>,
     next_id: AllocId,
     pub layout: &'a TargetDataLayout,
     /// List of memory regions containing packed structures
@@ -160,35 +193,61 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             abi: fn_ty.abi,
             sig: fn_ty.sig,
         });
-        self.create_fn_alloc(FunctionDefinition {
+        self.create_fn_alloc(Function::Closure(FunctionDefinition {
             def_id,
             substs: substs.substs,
             abi: fn_ty.abi,
             // FIXME: why doesn't this compile?
             //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
             sig: fn_ty.sig.skip_binder(),
-        })
+        }))
     }
 
-    pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
-        self.create_fn_alloc(FunctionDefinition {
+    pub fn create_fn_as_trait_glue(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::FnDefAsTraitObject(FunctionDefinition {
             def_id,
             substs,
             abi: fn_ty.abi,
             // FIXME: why doesn't this compile?
             //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
             sig: fn_ty.sig.skip_binder(),
-        })
+        }))
     }
 
-    fn create_fn_alloc(&mut self, def: FunctionDefinition<'tcx>) -> Pointer {
+    pub fn create_fn_ptr_as_trait_glue(&mut self, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::FnPtrAsTraitObject(fn_ty.sig.skip_binder()))
+    }
+
+    pub fn create_drop_glue(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::DropGlue(FunctionDefinition {
+            def_id,
+            substs,
+            abi: fn_ty.abi,
+            // FIXME: why doesn't this compile?
+            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
+            sig: fn_ty.sig.skip_binder(),
+        }))
+    }
+
+    pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::Concrete(FunctionDefinition {
+            def_id,
+            substs,
+            abi: fn_ty.abi,
+            // FIXME: why doesn't this compile?
+            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
+            sig: fn_ty.sig.skip_binder(),
+        }))
+    }
+
+    fn create_fn_alloc(&mut self, def: Function<'tcx>) -> Pointer {
         if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
             return Pointer::new(alloc_id, 0);
         }
         let id = self.next_id;
         debug!("creating fn ptr: {}", id);
         self.next_id.0 += 1;
-        self.functions.insert(id, def.clone());
+        self.functions.insert(id, def);
         self.function_alloc_cache.insert(def, id);
         Pointer::new(id, 0)
     }
@@ -381,15 +440,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, Abi, &'tcx ty::FnSig<'tcx>)> {
+    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, Function<'tcx>> {
         debug!("reading fn ptr: {}", id);
         match self.functions.get(&id) {
-            Some(&FunctionDefinition {
-                def_id,
-                substs,
-                abi,
-                sig,
-            }) => Ok((def_id, substs, abi, sig)),
+            Some(&fndef) => Ok(fndef),
             None => match self.alloc_map.get(&id) {
                 Some(_) => Err(EvalError::ExecuteMemory),
                 None => Err(EvalError::InvalidFunctionPointer),
@@ -418,14 +472,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
             let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
                 (Some(a), None) => a,
-                (None, Some(fn_def)) => {
-                    let name = ty::tls::with(|tcx| tcx.item_path_str(fn_def.def_id));
-                    let abi = if fn_def.abi == Abi::Rust {
-                        format!("")
-                    } else {
-                        format!("extern {} ", fn_def.abi)
-                    };
-                    trace!("{} function pointer: {}: {}{}", msg, name, abi, fn_def.sig);
+                (None, Some(&Function::Concrete(fn_def))) => {
+                    trace!("{} {}", msg, dump_fn_def(fn_def));
+                    continue;
+                },
+                (None, Some(&Function::DropGlue(fn_def))) => {
+                    trace!("{} drop glue for {}", msg, dump_fn_def(fn_def));
+                    continue;
+                },
+                (None, Some(&Function::FnDefAsTraitObject(fn_def))) => {
+                    trace!("{} fn as Fn glue for {}", msg, dump_fn_def(fn_def));
+                    continue;
+                },
+                (None, Some(&Function::FnPtrAsTraitObject(fn_def))) => {
+                    trace!("{} fn ptr as Fn glue (signature: {:?})", msg, fn_def);
+                    continue;
+                },
+                (None, Some(&Function::Closure(fn_def))) => {
+                    trace!("{} closure glue for {}", msg, dump_fn_def(fn_def));
                     continue;
                 },
                 (None, None) => {
@@ -474,6 +538,16 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
     }
+}
+
+fn dump_fn_def<'tcx>(fn_def: FunctionDefinition<'tcx>) -> String {
+    let name = ty::tls::with(|tcx| tcx.item_path_str(fn_def.def_id));
+    let abi = if fn_def.abi == Abi::Rust {
+        format!("")
+    } else {
+        format!("extern {} ", fn_def.abi)
+    };
+    format!("function pointer: {}: {}{}", name, abi, fn_def.sig)
 }
 
 /// Byte accessors
