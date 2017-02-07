@@ -3,7 +3,7 @@ use std::fmt;
 use rustc::mir;
 use rustc::ty::{BareFnTy, Ty, FnSig, layout};
 use syntax::abi::Abi;
-use memory::Pointer;
+use memory::{Pointer, Function};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -53,6 +53,9 @@ pub enum EvalError<'tcx> {
     DeallocatedFrozenMemory,
     Layout(layout::LayoutError<'tcx>),
     Unreachable,
+    ExpectedConcreteFunction(Function<'tcx>),
+    ExpectedDropGlue(Function<'tcx>),
+    ManuallyCalledDropGlue,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -125,6 +128,12 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "attempted to get length of a null terminated string, but no null found before end of allocation",
             EvalError::Unreachable =>
                 "entered unreachable code",
+            EvalError::ExpectedConcreteFunction(_) =>
+                "tried to use glue function as function",
+            EvalError::ExpectedDropGlue(_) =>
+                "tried to use non-drop-glue function as drop glue",
+            EvalError::ManuallyCalledDropGlue =>
+                "tried to manually invoke drop glue",
         }
     }
 

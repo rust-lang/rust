@@ -11,7 +11,7 @@ use syntax::{ast, attr, abi};
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, monomorphize_field_ty, is_inhabited};
 use lvalue::{Lvalue, LvalueExtra};
-use memory::Pointer;
+use memory::{Pointer, FunctionDefinition, Function};
 use value::PrimVal;
 use value::Value;
 
@@ -89,7 +89,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        let FunctionDefinition {def_id, substs, abi, sig} = self.memory.get_fn(fn_ptr.alloc_id)?.expect_concrete()?;
                         let bare_sig = self.tcx.erase_late_bound_regions_and_normalize(&bare_fn_ty.sig);
                         let bare_sig = self.tcx.erase_regions(&bare_sig);
                         // transmuting function pointers in miri is fine as long as the number of
@@ -314,9 +314,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let arg_locals = self.frame().mir.args_iter();
                 // FIXME: impl ExactSizeIterator and use args_locals.len()
-                // FIXME: last-use-in-cap-clause works by chance, insert some arguments and it will fail
-                // we currently write the first argument (unit) to the return field (unit)
-                //assert_eq!(self.frame().mir.args_iter().count(), args.len());
+                assert_eq!(arg_locals.size_hint().0, args.len());
+                assert_eq!(arg_locals.size_hint().1, Some(args.len()));
                 for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
                     let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                     self.write_value(arg_val, dest, arg_ty)?;
@@ -635,24 +634,42 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let idx = idx + 3;
                 let offset = idx * self.memory.pointer_size();
                 let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
-                let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
                 trace!("args: {:#?}", args);
-                trace!("sig: {:#?}", sig);
-                if abi != abi::Abi::RustCall && args.len() == 2 {
-                    if let ty::TyTuple(wrapped_args) = args[1].1.sty {
-                        assert_eq!(sig.inputs(), &wrapped_args[..]);
+                match self.memory.get_fn(fn_ptr.alloc_id)? {
+                    Function::FnDefAsTraitObject(fn_def) => {
+                        trace!("sig: {:#?}", fn_def.sig);
+                        assert!(fn_def.abi != abi::Abi::RustCall);
+                        assert_eq!(args.len(), 2);
                         // a function item turned into a closure trait object
                         // the first arg is just there to give use the vtable
                         args.remove(0);
                         self.unpack_fn_args(args)?;
-                        return Ok((def_id, substs, Vec::new()));
+                        Ok((fn_def.def_id, fn_def.substs, Vec::new()))
+                    },
+                    Function::DropGlue(_) => Err(EvalError::ManuallyCalledDropGlue),
+                    Function::Concrete(fn_def) => {
+                        trace!("sig: {:#?}", fn_def.sig);
+                        args[0] = (
+                            Value::ByVal(PrimVal::Ptr(self_ptr)),
+                            fn_def.sig.inputs()[0],
+                        );
+                        Ok((fn_def.def_id, fn_def.substs, Vec::new()))
+                    },
+                    Function::Closure(fn_def) => {
+                        self.unpack_fn_args(args)?;
+                        Ok((fn_def.def_id, fn_def.substs, Vec::new()))
+                    }
+                    Function::FnPtrAsTraitObject(sig) => {
+                        trace!("sig: {:#?}", sig);
+                        // the first argument was the fat ptr
+                        args.remove(0);
+                        self.unpack_fn_args(args)?;
+                        let fn_ptr = self.memory.read_ptr(self_ptr)?;
+                        let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?.expect_concrete()?;
+                        assert_eq!(sig, fn_def.sig);
+                        Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     }
                 }
-                args[0] = (
-                    Value::ByVal(PrimVal::Ptr(self_ptr)),
-                    sig.inputs()[0],
-                );
-                Ok((def_id, substs, Vec::new()))
             },
             vtable => bug!("resolved vtable bad vtable {:?} in trans", vtable),
         }
@@ -785,7 +802,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
-                    let (def_id, substs, _abi, sig) = self.memory.get_fn(drop_fn.alloc_id)?;
+                    let FunctionDefinition {def_id, substs, sig, ..} = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue()?;
                     let real_ty = sig.inputs()[0];
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
                     drop.push((def_id, Value::ByVal(PrimVal::Ptr(ptr)), substs));
