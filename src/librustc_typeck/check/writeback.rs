@@ -56,12 +56,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_lints();
 
         let tables = self.tcx.alloc_tables(wbcx.tables);
-        self.tcx.tables.borrow_mut().insert(item_def_id, tables);
+        self.tcx.maps.typeck_tables.borrow_mut().insert(item_def_id, tables);
 
         let used_trait_imports = mem::replace(&mut *self.used_trait_imports.borrow_mut(),
                                               DefIdSet());
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
-        self.tcx.used_trait_imports.borrow_mut().insert(item_def_id, used_trait_imports);
+        self.tcx.maps.used_trait_imports.borrow_mut().insert(item_def_id, used_trait_imports);
     }
 }
 
@@ -290,12 +290,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
             let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().closure_tys.borrow_mut().insert(def_id, closure_ty);
+            self.tcx().maps.closure_types.borrow_mut().insert(def_id, closure_ty);
         }
 
         for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
             let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().closure_kinds.borrow_mut().insert(def_id, closure_kind);
+            self.tcx().maps.closure_kinds.borrow_mut().insert(def_id, closure_kind);
         }
     }
 
@@ -361,7 +361,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            gcx.item_types.borrow_mut().insert(def_id, outside_ty);
+            gcx.maps.types.borrow_mut().insert(def_id, outside_ty);
         }
     }
 

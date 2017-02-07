@@ -483,7 +483,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // metadata if necessary.
         self.tcx.populate_inherent_implementations_for_type_if_necessary(def_id);
 
-        if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&def_id) {
+        if let Some(impl_infos) = self.tcx.maps.inherent_impls.borrow().get(&def_id) {
             for &impl_def_id in impl_infos.iter() {
                 self.assemble_inherent_impl_probe(impl_def_id);
             }

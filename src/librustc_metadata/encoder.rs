@@ -264,7 +264,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             discr: variant.discr,
             evaluated_discr: match variant.discr {
                 ty::VariantDiscr::Explicit(def_id) => {
-                    tcx.monomorphic_const_eval.borrow()[&def_id].clone().ok()
+                    tcx.maps.monomorphic_const_eval.borrow()[&def_id].clone().ok()
                 }
                 ty::VariantDiscr::Relative(_) => None
             },
@@ -604,12 +604,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
-        self.tcx.mir_map.borrow().get(&def_id).map(|mir| self.lazy(&*mir.borrow()))
+        self.tcx.maps.mir.borrow().get(&def_id).map(|mir| self.lazy(&*mir.borrow()))
     }
 
     // Encodes the inherent implementations of a structure, enumeration, or trait.
     fn encode_inherent_implementations(&mut self, def_id: DefId) -> LazySeq<DefIndex> {
-        match self.tcx.inherent_impls.borrow().get(&def_id) {
+        match self.tcx.maps.inherent_impls.borrow().get(&def_id) {
             None => LazySeq::empty(),
             Some(implementations) => {
                 self.lazy_seq(implementations.iter().map(|&def_id| {
@@ -711,7 +711,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = ImplData {
                     polarity: polarity,
                     parent_impl: parent,
-                    coerce_unsized_kind: tcx.custom_coerce_unsized_kinds
+                    coerce_unsized_kind: tcx.maps.custom_coerce_unsized_kinds
                         .borrow()
                         .get(&def_id)
                         .cloned(),
@@ -1096,7 +1096,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.closure_tys.borrow()[&def_id]),
+            ty: self.lazy(&tcx.maps.closure_types.borrow()[&def_id]),
         };
 
         Entry {

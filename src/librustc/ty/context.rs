@@ -10,7 +10,7 @@
 
 //! type context book-keeping
 
-use dep_graph::{DepGraph, DepTrackingMap};
+use dep_graph::DepGraph;
 use session::Session;
 use lint;
 use middle;
@@ -412,44 +412,9 @@ pub struct GlobalCtxt<'tcx> {
     // borrowck. (They are not used during trans, and hence are not
     // serialized or needed for cross-crate fns.)
     free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
-    // FIXME: jroesch make this a refcell
-
-    pub tables: RefCell<DepTrackingMap<maps::TypeckTables<'tcx>>>,
-
-    /// Maps from a trait item to the trait item "descriptor"
-    pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
-
-    /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub associated_item_def_ids: RefCell<DepTrackingMap<maps::AssociatedItemDefIds<'tcx>>>,
-
-    pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
-    pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
-    pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
-    pub adt_sized_constraint: RefCell<DepTrackingMap<maps::AdtSizedConstraint<'tcx>>>,
-
-    /// Maps from the def-id of an item (trait/struct/enum/fn) to its
-    /// associated generics and predicates.
-    pub generics: RefCell<DepTrackingMap<maps::Generics<'tcx>>>,
-    pub predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
-
-    /// Maps from the def-id of a trait to the list of
-    /// super-predicates. This is a subset of the full list of
-    /// predicates. We store these in a separate map because we must
-    /// evaluate them even during type conversion, often before the
-    /// full predicates are available (note that supertraits have
-    /// additional acyclicity requirements).
-    pub super_predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
     pub hir: hir_map::Map<'tcx>,
-
-    /// Maps from the def-id of a function/method or const/static
-    /// to its MIR. Mutation is done at an item granularity to
-    /// allow MIR optimization passes to function and still
-    /// access cross-crate MIR (e.g. inlining or const eval).
-    ///
-    /// Note that cross-crate MIR appears to be always borrowed
-    /// (in the `RefCell` sense) to prevent accidental mutation.
-    pub mir_map: RefCell<DepTrackingMap<maps::Mir<'tcx>>>,
+    pub maps: maps::Maps<'tcx>,
 
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
@@ -457,9 +422,6 @@ pub struct GlobalCtxt<'tcx> {
     pub freevars: RefCell<FreevarMap>,
 
     pub maybe_unused_trait_imports: NodeSet,
-
-    // Records the type of every item.
-    pub item_types: RefCell<DepTrackingMap<maps::Types<'tcx>>>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -474,17 +436,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub lang_items: middle::lang_items::LanguageItems,
 
-    /// Maps from def-id of a type or region parameter to its
-    /// (inferred) variance.
-    pub item_variance_map: RefCell<DepTrackingMap<maps::ItemVariances<'tcx>>>,
-
     /// True if the variance has been computed yet; false otherwise.
     pub variance_computed: Cell<bool>,
-
-    /// Maps a DefId of a type to a list of its inherent impls.
-    /// Contains implementations of methods that are inherent to a type.
-    /// Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DepTrackingMap<maps::InherentImpls<'tcx>>>,
 
     /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     /// present in this set can be warned about.
@@ -495,10 +448,6 @@ pub struct GlobalCtxt<'tcx> {
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
 
-    /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports.
-    pub used_trait_imports: RefCell<DepTrackingMap<maps::UsedTraitImports<'tcx>>>,
-
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
     pub populated_external_types: RefCell<DefIdSet>,
@@ -506,10 +455,6 @@ pub struct GlobalCtxt<'tcx> {
     /// The set of external primitive types whose implementations have been read.
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
-
-    /// Results of evaluating monomorphic constants embedded in
-    /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: RefCell<DepTrackingMap<maps::MonomorphicConstEval<'tcx>>>,
 
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
@@ -529,22 +474,8 @@ pub struct GlobalCtxt<'tcx> {
     /// (i.e., no type or lifetime parameters).
     pub fulfilled_predicates: RefCell<traits::GlobalFulfilledPredicates<'tcx>>,
 
-    /// Caches the representation hints for struct definitions.
-    repr_hint_cache: RefCell<DepTrackingMap<maps::ReprHints<'tcx>>>,
-
     /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
     pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
-
-    /// Caches CoerceUnsized kinds for impls on custom types.
-    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
-
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_tys: RefCell<DepTrackingMap<maps::ClosureTypes<'tcx>>>,
-
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_kinds: RefCell<DepTrackingMap<maps::ClosureKinds<'tcx>>>,
 
     /// Maps Fn items to a collection of fragment infos.
     ///
@@ -754,46 +685,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             named_region_map: named_region_map,
             region_maps: region_maps,
             free_region_maps: RefCell::new(FxHashMap()),
-            item_variance_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             variance_computed: Cell::new(false),
             sess: s,
             trait_map: resolutions.trait_map,
-            tables: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            adt_sized_constraint: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            generics: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir: hir,
-            mir_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            maps: maps::Maps::new(dep_graph),
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
-            item_types: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FxHashMap()),
             tc_cache: RefCell::new(FxHashMap()),
-            associated_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            associated_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
             lang_items: lang_items,
-            inherent_impls: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
-            used_trait_imports: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
-            monomorphic_const_eval: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            repr_hint_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
-            custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
-            closure_tys: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            closure_kinds: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
@@ -1541,7 +1453,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Obtain the representation annotation for a struct definition.
     pub fn lookup_repr_hints(self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-        self.repr_hint_cache.memoize(did, || {
+        self.maps.repr_hints.memoize(did, || {
             Rc::new(self.get_attrs(did).iter().flat_map(|meta| {
                 attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
             }).collect())

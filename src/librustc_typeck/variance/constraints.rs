@@ -13,12 +13,10 @@
 //! The second pass over the AST determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
-use dep_graph::DepTrackingMapConfig;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::ItemVariances;
 use rustc::hir::map as hir_map;
 use syntax::ast;
 use rustc::hir;
@@ -27,6 +25,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use super::terms::*;
 use super::terms::VarianceTerm::*;
 use super::xform::*;
+
+use dep_graph::DepNode::ItemSignature as VarianceDepNode;
 
 pub struct ConstraintContext<'a, 'tcx: 'a> {
     pub terms_cx: TermsContext<'a, 'tcx>,
@@ -65,8 +65,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
-                                      &mut constraint_cx);
+    tcx.visit_all_item_likes_in_krate(VarianceDepNode, &mut constraint_cx);
 
     constraint_cx
 }
@@ -291,7 +290,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // This edge is actually implied by the call to
         // `lookup_trait_def`, but I'm trying to be future-proof. See
         // README.md for a discussion on dep-graph management.
-        self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+        self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
         self.add_constraints_from_substs(generics,
                                          trait_ref.def_id,
@@ -350,7 +349,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // This edge is actually implied by the call to
                 // `lookup_trait_def`, but I'm trying to be future-proof. See
                 // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
+                self.tcx().dep_graph.read(VarianceDepNode(def.did));
 
                 self.add_constraints_from_substs(generics,
                                                  def.did,
@@ -367,7 +366,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // This edge is actually implied by the call to
                 // `lookup_trait_def`, but I'm trying to be future-proof. See
                 // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+                self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
                 self.add_constraints_from_substs(generics,
                                                  trait_ref.def_id,

@@ -478,7 +478,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         if let Some(impl_list) =
-                self.tcx.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
+                self.tcx.maps.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
             for &impl_did in impl_list.iter() {
                 for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
                     if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {

@@ -1209,7 +1209,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                 ast_ty.span);
                     let predicates = bounds.predicates(tcx, ty);
                     let predicates = tcx.lift_to_global(&predicates).unwrap();
-                    tcx.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
+                    tcx.maps.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
                         parent: None,
                         predicates: predicates
                     });

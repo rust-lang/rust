@@ -28,7 +28,7 @@ impl Disr {
                     explicit_index -= distance;
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
-                    match tcx.monomorphic_const_eval.borrow()[&expr_did] {
+                    match tcx.maps.monomorphic_const_eval.borrow()[&expr_did] {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = Disr::from(v);
                             break;

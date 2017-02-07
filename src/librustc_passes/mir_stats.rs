@@ -44,7 +44,7 @@ pub fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
     // For debugging instrumentation like this, we don't need to worry
     // about maintaining the dep graph.
     let _ignore = tcx.dep_graph.in_ignore();
-    let mir_map = tcx.mir_map.borrow();
+    let mir_map = tcx.maps.mir.borrow();
     for def_id in mir_map.keys() {
         let mir = mir_map.get(&def_id).unwrap();
         collector.visit_mir(&mir.borrow());

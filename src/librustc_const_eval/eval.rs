@@ -58,7 +58,7 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         return variant.node.disr_expr.map(|e| {
                             let def_id = tcx.hir.body_owner_def_id(e);
                             (&tcx.hir.body(e).value,
-                             tcx.tables.borrow().get(&def_id).cloned())
+                             tcx.maps.typeck_tables.borrow().get(&def_id).cloned())
                         });
                     }
                 }
@@ -89,7 +89,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 node: hir::ImplItemKind::Const(ref ty, body), ..
             })) => {
                 Some((&tcx.hir.body(body).value,
-                      tcx.tables.borrow().get(&def_id).cloned(),
+                      tcx.maps.typeck_tables.borrow().get(&def_id).cloned(),
                       tcx.ast_ty_to_prim_ty(ty)))
             }
             Some(hir_map::NodeTraitItem(ti)) => match ti.node {
@@ -102,7 +102,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let trait_id = tcx.hir.local_def_id(trait_id);
                         let default_value = default.map(|body| {
                             (&tcx.hir.body(body).value,
-                             tcx.tables.borrow().get(&def_id).cloned(),
+                             tcx.maps.typeck_tables.borrow().get(&def_id).cloned(),
                              tcx.ast_ty_to_prim_ty(ty))
                         });
                         resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
@@ -156,7 +156,7 @@ fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         FnLikeNode::from_node(tcx.hir.get(node_id)).and_then(|fn_like| {
             if fn_like.constness() == hir::Constness::Const {
                 Some((tcx.hir.body(fn_like.body()),
-                      tcx.tables.borrow().get(&def_id).cloned()))
+                      tcx.maps.typeck_tables.borrow().get(&def_id).cloned()))
             } else {
                 None
             }
@@ -231,7 +231,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
         let def_id = tcx.hir.body_owner_def_id(body);
         ConstContext {
             tcx: tcx,
-            tables: tcx.tables.borrow().get(&def_id).cloned(),
+            tables: tcx.maps.typeck_tables.borrow().get(&def_id).cloned(),
             fn_args: None
         }
     }

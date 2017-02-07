@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepNode, DepTrackingMapConfig};
+use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::DefId;
 use middle::const_val::ConstVal;
-use mir;
 use ty::{self, Ty};
 use util::nodemap::DefIdSet;
 
@@ -20,36 +19,101 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use syntax::attr;
 
-macro_rules! dep_map_ty {
-    ($ty_name:ident : $node_name:ident ($key:ty) -> $value:ty) => {
-        pub struct $ty_name<'tcx> {
+macro_rules! define_maps {
+    ($($(#[$attr:meta])* pub $field:ident: $node_name:ident($key:ty) -> $value:ty),*) => {
+        pub struct Maps<'tcx> {
+            $($(#[$attr])* pub $field: RefCell<DepTrackingMap<$field<'tcx>>>),*
+        }
+
+        impl<'tcx> Maps<'tcx> {
+            pub fn new(dep_graph: DepGraph) -> Self {
+                Maps {
+                    $($field: RefCell::new(DepTrackingMap::new(dep_graph.clone()))),*
+                }
+            }
+        }
+
+        $(#[allow(bad_style)]
+        pub struct $field<'tcx> {
             data: PhantomData<&'tcx ()>
         }
 
-        impl<'tcx> DepTrackingMapConfig for $ty_name<'tcx> {
+        impl<'tcx> DepTrackingMapConfig for $field<'tcx> {
             type Key = $key;
             type Value = $value;
             fn to_dep_node(key: &$key) -> DepNode<DefId> { DepNode::$node_name(*key) }
-        }
+        })*
     }
 }
 
-dep_map_ty! { AssociatedItems: AssociatedItems(DefId) -> ty::AssociatedItem }
-dep_map_ty! { Types: ItemSignature(DefId) -> Ty<'tcx> }
-dep_map_ty! { Generics: ItemSignature(DefId) -> &'tcx ty::Generics }
-dep_map_ty! { Predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
-dep_map_ty! { SuperPredicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
-dep_map_ty! { AssociatedItemDefIds: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>> }
-dep_map_ty! { ImplTraitRefs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>> }
-dep_map_ty! { TraitDefs: ItemSignature(DefId) -> &'tcx ty::TraitDef }
-dep_map_ty! { AdtDefs: ItemSignature(DefId) -> &'tcx ty::AdtDef }
-dep_map_ty! { AdtSizedConstraint: SizedConstraint(DefId) -> Ty<'tcx> }
-dep_map_ty! { ItemVariances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>> }
-dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Vec<DefId> }
-dep_map_ty! { ReprHints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>> }
-dep_map_ty! { Mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>> }
-dep_map_ty! { ClosureKinds: ItemSignature(DefId) -> ty::ClosureKind }
-dep_map_ty! { ClosureTypes: ItemSignature(DefId) -> ty::ClosureTy<'tcx> }
-dep_map_ty! { TypeckTables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx> }
-dep_map_ty! { UsedTraitImports: UsedTraitImports(DefId) -> DefIdSet }
-dep_map_ty! { MonomorphicConstEval: MonomorphicConstEval(DefId) -> Result<ConstVal, ()> }
+define_maps! {
+    /// Maps from a trait item to the trait item "descriptor"
+    pub associated_items: AssociatedItems(DefId) -> ty::AssociatedItem,
+
+    /// Records the type of every item.
+    pub types: ItemSignature(DefId) -> Ty<'tcx>,
+
+    /// Maps from the def-id of an item (trait/struct/enum/fn) to its
+    /// associated generics and predicates.
+    pub generics: ItemSignature(DefId) -> &'tcx ty::Generics,
+    pub predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// Maps from the def-id of a trait to the list of
+    /// super-predicates. This is a subset of the full list of
+    /// predicates. We store these in a separate map because we must
+    /// evaluate them even during type conversion, often before the
+    /// full predicates are available (note that supertraits have
+    /// additional acyclicity requirements).
+    pub super_predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// Maps from an impl/trait def-id to a list of the def-ids of its items
+    pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
+
+    pub impl_trait_refs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
+    pub trait_defs: ItemSignature(DefId) -> &'tcx ty::TraitDef,
+    pub adt_defs: ItemSignature(DefId) -> &'tcx ty::AdtDef,
+    pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
+
+    /// Maps from def-id of a type or region parameter to its
+    /// (inferred) variance.
+    pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
+
+    /// Maps a DefId of a type to a list of its inherent impls.
+    /// Contains implementations of methods that are inherent to a type.
+    /// Methods in these implementations don't need to be exported.
+    pub inherent_impls: InherentImpls(DefId) -> Vec<DefId>,
+
+    /// Caches the representation hints for struct definitions.
+    pub repr_hints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>>,
+
+    /// Maps from the def-id of a function/method or const/static
+    /// to its MIR. Mutation is done at an item granularity to
+    /// allow MIR optimization passes to function and still
+    /// access cross-crate MIR (e.g. inlining or const eval).
+    ///
+    /// Note that cross-crate MIR appears to be always borrowed
+    /// (in the `RefCell` sense) to prevent accidental mutation.
+    pub mir: Mir(DefId) -> &'tcx RefCell<::mir::Mir<'tcx>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_kinds: ItemSignature(DefId) -> ty::ClosureKind,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_types: ItemSignature(DefId) -> ty::ClosureTy<'tcx>,
+
+    /// Caches CoerceUnsized kinds for impls on custom types.
+    pub custom_coerce_unsized_kinds: ItemSignature(DefId)
+        -> ty::adjustment::CustomCoerceUnsized,
+
+    pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
+
+    /// Set of trait imports actually used in the method resolution.
+    /// This is used for warning unused imports.
+    pub used_trait_imports: UsedTraitImports(DefId) -> DefIdSet,
+
+    /// Results of evaluating monomorphic constants embedded in
+    /// other items, such as enum variant explicit discriminants.
+    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal, ()>
+}

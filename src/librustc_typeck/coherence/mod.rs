@@ -39,7 +39,7 @@ mod unsafety;
 
 struct CoherenceCollect<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    inherent_impls: RefMut<'a, DepTrackingMap<maps::InherentImpls<'tcx>>>,
+    inherent_impls: RefMut<'a, DepTrackingMap<maps::inherent_impls<'tcx>>>,
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCollect<'a, 'tcx> {
@@ -58,7 +58,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCollect<'a, 'tcx> {
 
 impl<'a, 'tcx> CoherenceCollect<'a, 'tcx> {
     fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-        let inherent_impls = tcx.inherent_impls.borrow_mut();
+        let inherent_impls = tcx.maps.inherent_impls.borrow_mut();
         let mut this = &mut CoherenceCollect { tcx, inherent_impls };
 
         // Check implementations and traits. This populates the tables
