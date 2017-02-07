@@ -13,7 +13,6 @@
 // Code relating to drop glue.
 
 use std;
-use std::ptr;
 use std::iter;
 
 use llvm;
@@ -41,6 +40,7 @@ use Disr;
 use builder::Builder;
 
 use syntax_pos::DUMMY_SP;
+use mir::lvalue::Alignment;
 
 pub fn trans_exchange_free_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) {
     let content_ty = ptr.ty.to_ty(bcx.tcx());
@@ -199,9 +199,9 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
 
     let value = get_param(llfn, 0);
     let ptr = if ccx.shared().type_is_sized(t) {
-        LvalueRef::new_sized_ty(value, t)
+        LvalueRef::new_sized_ty(value, t, Alignment::AbiAligned)
     } else {
-        LvalueRef::new_unsized_ty(value, get_param(llfn, 1), t)
+        LvalueRef::new_unsized_ty(value, get_param(llfn, 1), t, Alignment::AbiAligned)
     };
 
     let skip_dtor = match g {
@@ -216,11 +216,13 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             assert!(!skip_dtor);
             let content_ty = t.boxed_ty();
             let ptr = if !bcx.ccx.shared().type_is_sized(content_ty) {
-                let llbox = bcx.load(get_dataptr(&bcx, ptr.llval));
-                let info = bcx.load(get_meta(&bcx, ptr.llval));
-                LvalueRef::new_unsized_ty(llbox, info, content_ty)
+                let llbox = bcx.load(get_dataptr(&bcx, ptr.llval), None);
+                let info = bcx.load(get_meta(&bcx, ptr.llval), None);
+                LvalueRef::new_unsized_ty(llbox, info, content_ty, Alignment::AbiAligned)
             } else {
-                LvalueRef::new_sized_ty(bcx.load(ptr.llval), content_ty)
+                LvalueRef::new_sized_ty(
+                    bcx.load(ptr.llval, None),
+                    content_ty, Alignment::AbiAligned)
             };
             drop_ty(&bcx, ptr);
             trans_exchange_free_ty(&bcx, ptr);
@@ -231,7 +233,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
             assert!(!skip_dtor);
-            let dtor = bcx.load(ptr.llextra);
+            let dtor = bcx.load(ptr.llextra, None);
             bcx.call(dtor, &[ptr.llval], None);
             bcx
         }
@@ -384,7 +386,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let info = bcx.pointercast(info, Type::int(bcx.ccx).ptr_to());
             let size_ptr = bcx.gepi(info, &[1]);
             let align_ptr = bcx.gepi(info, &[2]);
-            (bcx.load(size_ptr), bcx.load(align_ptr))
+            (bcx.load(size_ptr, None), bcx.load(align_ptr, None))
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(bcx.tcx());
@@ -416,8 +418,8 @@ fn drop_structural_ty<'a, 'tcx>(
         let tcx = cx.tcx();
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
-            let field_ptr = av.trans_field_ptr(&cx, i);
-            drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg));
+            let (field_ptr, align) = av.trans_field_ptr(&cx, i);
+            drop_ty(&cx, LvalueRef::new_sized_ty(field_ptr, arg, align));
         }
     }
 
@@ -426,8 +428,8 @@ fn drop_structural_ty<'a, 'tcx>(
     match t.sty {
         ty::TyClosure(def_id, substs) => {
             for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
-                let llupvar = ptr.trans_field_ptr(&cx, i);
-                drop_ty(&cx, LvalueRef::new_sized_ty(llupvar, upvar_ty));
+                let (llupvar, align) = ptr.trans_field_ptr(&cx, i);
+                drop_ty(&cx, LvalueRef::new_sized_ty(llupvar, upvar_ty, align));
             }
         }
         ty::TyArray(_, n) => {
@@ -435,29 +437,29 @@ fn drop_structural_ty<'a, 'tcx>(
             let len = C_uint(cx.ccx, n);
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, base, unit_ty, len,
-                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty)));
+                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty, ptr.alignment)));
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(cx.tcx());
             cx = tvec::slice_for_each(&cx, ptr.llval, unit_ty, ptr.llextra,
-                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty)));
+                |bb, vv| drop_ty(bb, LvalueRef::new_sized_ty(vv, unit_ty, ptr.alignment)));
         }
         ty::TyTuple(ref args, _) => {
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = ptr.trans_field_ptr(&cx, i);
-                drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg));
+                let (llfld_a, align) = ptr.trans_field_ptr(&cx, i);
+                drop_ty(&cx, LvalueRef::new_sized_ty(llfld_a, *arg, align));
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
                 for (i, field) in adt.variants[0].fields.iter().enumerate() {
                     let field_ty = monomorphize::field_ty(cx.tcx(), substs, field);
-                    let mut field_ptr = ptr.clone();
-                    field_ptr.llval = ptr.trans_field_ptr(&cx, i);
-                    field_ptr.ty = LvalueTy::from_ty(field_ty);
-                    if cx.ccx.shared().type_is_sized(field_ty) {
-                        field_ptr.llextra = ptr::null_mut();
-                    }
+                    let (llval, align) = ptr.trans_field_ptr(&cx, i);
+                    let field_ptr = if cx.ccx.shared().type_is_sized(field_ty) {
+                        LvalueRef::new_sized_ty(llval, field_ty, align)
+                    } else {
+                        LvalueRef::new_unsized_ty(llval, ptr.llextra, field_ty, align)
+                    };
                     drop_ty(&cx, field_ptr);
                 }
             }
@@ -490,9 +492,8 @@ fn drop_structural_ty<'a, 'tcx>(
                     layout::General { .. } |
                     layout::RawNullablePointer { .. } |
                     layout::StructWrappedNullablePointer { .. } => {
-                        let lldiscrim_a = adt::trans_get_discr(&cx, t, ptr.llval, None, false);
-                        let tcx = cx.tcx();
-                        drop_ty(&cx, LvalueRef::new_sized_ty(lldiscrim_a, tcx.types.isize));
+                        let lldiscrim_a = adt::trans_get_discr(
+                            &cx, t, ptr.llval, ptr.alignment, None, false);
 
                         // Create a fall-through basic block for the "else" case of
                         // the switch instruction we're about to generate. Note that

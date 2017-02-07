@@ -10,6 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::Ty;
+use rustc::ty::layout::Layout;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -23,6 +24,7 @@ use type_::Type;
 use std::fmt;
 
 use super::{MirContext, LocalRef};
+use super::lvalue::Alignment;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -31,7 +33,7 @@ use super::{MirContext, LocalRef};
 pub enum OperandValue {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    Ref(ValueRef),
+    Ref(ValueRef, Alignment),
     /// A single LLVM value.
     Immediate(ValueRef),
     /// A pair of immediate LLVM values. Used by fat pointers too.
@@ -58,9 +60,9 @@ pub struct OperandRef<'tcx> {
 impl<'tcx> fmt::Debug for OperandRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.val {
-            OperandValue::Ref(r) => {
-                write!(f, "OperandRef(Ref({:?}) @ {:?})",
-                       Value(r), self.ty)
+            OperandValue::Ref(r, align) => {
+                write!(f, "OperandRef(Ref({:?}, {:?}) @ {:?})",
+                       Value(r), align, self.ty)
             }
             OperandValue::Immediate(i) => {
                 write!(f, "OperandRef(Immediate({:?}) @ {:?})",
@@ -137,27 +139,33 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_load(&mut self,
                       bcx: &Builder<'a, 'tcx>,
                       llval: ValueRef,
+                      align: Alignment,
                       ty: Ty<'tcx>)
                       -> OperandRef<'tcx>
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
         let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
-            let (lldata, llextra) = base::load_fat_ptr(bcx, llval, ty);
+            let (lldata, llextra) = base::load_fat_ptr(bcx, llval, align, ty);
             OperandValue::Pair(lldata, llextra)
         } else if common::type_is_imm_pair(bcx.ccx, ty) {
+            let f_align = match *bcx.ccx.layout_of(ty) {
+                Layout::Univariant { ref variant, .. } =>
+                    Alignment::from_packed(variant.packed) | align,
+                _ => align
+            };
             let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx, ty).unwrap();
             let a_ptr = bcx.struct_gep(llval, 0);
             let b_ptr = bcx.struct_gep(llval, 1);
 
             OperandValue::Pair(
-                base::load_ty(bcx, a_ptr, a_ty),
-                base::load_ty(bcx, b_ptr, b_ty)
+                base::load_ty(bcx, a_ptr, f_align, a_ty),
+                base::load_ty(bcx, b_ptr, f_align, b_ty)
             )
         } else if common::type_is_immediate(bcx.ccx, ty) {
-            OperandValue::Immediate(base::load_ty(bcx, llval, ty))
+            OperandValue::Immediate(base::load_ty(bcx, llval, align, ty))
         } else {
-            OperandValue::Ref(llval)
+            OperandValue::Ref(llval, align)
         };
 
         OperandRef { val: val, ty: ty }
@@ -212,7 +220,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // out from their home
         let tr_lvalue = self.trans_lvalue(bcx, lvalue);
         let ty = tr_lvalue.ty.to_ty(bcx.tcx());
-        self.trans_load(bcx, tr_lvalue.llval, ty)
+        self.trans_load(bcx, tr_lvalue.llval, tr_lvalue.alignment, ty)
     }
 
     pub fn trans_operand(&mut self,
@@ -230,9 +238,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Operand::Constant(ref constant) => {
                 let val = self.trans_constant(bcx, constant);
                 let operand = val.to_operand(bcx.ccx);
-                if let OperandValue::Ref(ptr) = operand.val {
+                if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
-                    self.trans_load(bcx, ptr, operand.ty)
+                    self.trans_load(bcx, ptr, align, operand.ty)
                 } else {
                     operand
                 }
@@ -243,8 +251,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn store_operand(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          lldest: ValueRef,
-                         operand: OperandRef<'tcx>,
-                         align: Option<u32>) {
+                         align: Option<u32>,
+                         operand: OperandRef<'tcx>) {
         debug!("store_operand: operand={:?}, align={:?}", operand, align);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -252,7 +260,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return;
         }
         match operand.val {
-            OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty, align),
+            OperandValue::Ref(r, Alignment::Packed) =>
+                base::memcpy_ty(bcx, lldest, r, operand.ty, Some(1)),
+            OperandValue::Ref(r, Alignment::AbiAligned) =>
+                base::memcpy_ty(bcx, lldest, r, operand.ty, align),
             OperandValue::Immediate(s) => {
                 bcx.store(base::from_immediate(bcx, s), lldest, align);
             }

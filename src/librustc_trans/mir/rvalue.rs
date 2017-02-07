@@ -33,7 +33,7 @@ use Disr;
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
-use super::lvalue::{LvalueRef};
+use super::lvalue::LvalueRef;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
@@ -50,7 +50,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                let tr_operand = self.trans_operand(&bcx, operand);
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-               self.store_operand(&bcx, dest.llval, tr_operand, None);
+               self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), tr_operand);
                bcx
            }
 
@@ -61,7 +61,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(&bcx, dest.llval, temp, None);
+                    self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
                     return bcx;
                 }
 
@@ -81,13 +81,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
-                        let lltemp = bcx.alloca_ty(operand.ty, "__unsize_temp");
-                        base::store_ty(&bcx, llval, lltemp, operand.ty);
-                        lltemp
+                        let scratch = LvalueRef::alloca(&bcx, operand.ty, "__unsize_temp");
+                        base::store_ty(&bcx, llval, scratch.llval, scratch.alignment, operand.ty);
+                        scratch
                     }
-                    OperandValue::Ref(llref) => llref
+                    OperandValue::Ref(llref, align) => {
+                        LvalueRef::new_sized_ty(llref, operand.ty, align)
+                    }
                 };
-                base::coerce_unsized_into(&bcx, llref, operand.ty, dest.llval, cast_ty);
+                base::coerce_unsized_into(&bcx, &llref, &dest);
                 bcx
             }
 
@@ -97,7 +99,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
-                    self.store_operand(bcx, llslot, tr_elem, None);
+                    self.store_operand(bcx, llslot, dest.alignment.to_align(), tr_elem);
                 })
             }
 
@@ -111,15 +113,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let mut val = LvalueRef::new_sized(dest.llval, dest.ty);
+                                let mut val = LvalueRef::new_sized(
+                                    dest.llval, dest.ty, dest.alignment);
                                 let field_index = active_field_index.unwrap_or(i);
                                 val.ty = LvalueTy::Downcast {
                                     adt_def: adt_def,
                                     substs: self.monomorphize(&substs),
                                     variant_index: disr.0 as usize,
                                 };
-                                let lldest_i = val.trans_field_ptr(&bcx, field_index);
-                                self.store_operand(&bcx, lldest_i, op, None);
+                                let (lldest_i, align) = val.trans_field_ptr(&bcx, field_index);
+                                self.store_operand(&bcx, lldest_i, align.to_align(), op);
                             }
                         }
                     },
@@ -131,6 +134,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         } else {
                             None
                         };
+                        let alignment = dest.alignment;
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
@@ -144,7 +148,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     i
                                 };
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
-                                self.store_operand(&bcx, dest, op, None);
+                                self.store_operand(&bcx, dest, alignment.to_align(), op);
                             }
                         }
                     }
@@ -169,7 +173,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(&bcx, dest.llval, temp, None);
+                self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
                 bcx
             }
         }
@@ -228,7 +232,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     operand.ty, cast_ty);
                                 OperandValue::Pair(lldata, llextra)
                             }
-                            OperandValue::Ref(_) => {
+                            OperandValue::Ref(..) => {
                                 bug!("by-ref operand {:?} in trans_rvalue_operand",
                                      operand);
                             }
