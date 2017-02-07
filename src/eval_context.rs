@@ -1432,7 +1432,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
     ecx.push_stack_frame(
         def_id,
-        mir.span,
+        DUMMY_SP,
         mir,
         tcx.intern_substs(&[]),
         Lvalue::from_ptr(Pointer::zst_ptr()),
