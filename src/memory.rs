@@ -420,7 +420,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 (Some(a), None) => a,
                 (None, Some(fn_def)) => {
                     let name = ty::tls::with(|tcx| tcx.item_path_str(fn_def.def_id));
-                    trace!("{} function pointer: {}: {}", msg, name, fn_def.sig);
+                    let abi = if fn_def.abi == Abi::Rust {
+                        format!("")
+                    } else {
+                        format!("extern {} ", fn_def.abi)
+                    };
+                    trace!("{} function pointer: {}: {}{}", msg, name, abi, fn_def.sig);
                     continue;
                 },
                 (None, None) => {
