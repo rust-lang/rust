@@ -34,10 +34,8 @@ use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
 use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
-use rustc::ty::subst::Substs;
-use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
@@ -47,9 +45,8 @@ use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
-use abi::{self, FnType};
+use abi;
 use mir::lvalue::LvalueRef;
-use adt;
 use attributes;
 use builder::Builder;
 use callee::{Callee};
@@ -65,7 +62,7 @@ use context::{SharedCrateContext, CrateContextList};
 use debuginfo;
 use declare;
 use machine;
-use machine::{llalign_of_min, llsize_of};
+use machine::llsize_of;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -76,7 +73,6 @@ use trans_item::{TransItem, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
-use Disr;
 use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use libc::c_uint;
@@ -615,72 +611,6 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
-pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 def_id: DefId,
-                                 substs: &'tcx Substs<'tcx>,
-                                 disr: Disr,
-                                 llfn: ValueRef) {
-    attributes::inline(llfn, attributes::InlineAttr::Hint);
-    attributes::set_frame_pointer_elimination(ccx, llfn);
-
-    let ctor_ty = common::def_ty(ccx.shared(), def_id, substs);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
-    let fn_ty = FnType::new(ccx, sig, &[]);
-
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
-    if !fn_ty.ret.is_ignore() {
-        // But if there are no nested returns, we skip the indirection
-        // and have a single retslot
-        let dest = if fn_ty.ret.is_indirect() {
-            get_param(llfn, 0)
-        } else {
-            // We create an alloca to hold a pointer of type `ret.original_ty`
-            // which will hold the pointer to the right alloca which has the
-            // final ret value
-            bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
-        };
-        // Can return unsized value
-        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output(), Alignment::AbiAligned);
-        dest_val.ty = LvalueTy::Downcast {
-            adt_def: sig.output().ty_adt_def().unwrap(),
-            substs: substs,
-            variant_index: disr.0 as usize,
-        };
-        let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
-        let mut arg_idx = 0;
-        for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let (lldestptr, _) = dest_val.trans_field_ptr(&bcx, i);
-            let arg = &fn_ty.args[arg_idx];
-            arg_idx += 1;
-            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &fn_ty.args[arg_idx];
-                arg_idx += 1;
-                arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));
-                meta.store_fn_arg(&bcx, &mut llarg_idx, get_meta(&bcx, lldestptr));
-            } else {
-                arg.store_fn_arg(&bcx, &mut llarg_idx, lldestptr);
-            }
-        }
-        adt::trans_set_discr(&bcx, sig.output(), dest, disr);
-
-        if fn_ty.ret.is_indirect() {
-            bcx.ret_void();
-            return;
-        }
-
-        if let Some(cast_ty) = fn_ty.ret.cast {
-            bcx.ret(bcx.load(
-                bcx.pointercast(dest, cast_ty.ptr_to()),
-                Some(llalign_of_min(ccx, fn_ty.ret.ty))
-            ));
-        } else {
-            bcx.ret(bcx.load(dest, None))
-        }
-    } else {
-        bcx.ret_void();
-    }
-}
-
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
@@ -721,7 +651,7 @@ pub fn set_link_section(ccx: &CrateContext,
 }
 
 /// Create the `main` function which will initialise the rust runtime and call
-/// users’ main function.
+/// users main function.
 pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {

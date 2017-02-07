@@ -37,6 +37,7 @@ use libc::{c_uint, c_char};
 use std::iter;
 
 use syntax::ast;
+use syntax::attr;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
@@ -601,8 +602,13 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
-    tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+pub fn requests_inline(tcx: TyCtxt, def_id: DefId) -> bool {
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::StructCtor |
+        DefPathData::EnumVariant(..) |
+        DefPathData::ClosureExpr => true,
+        _ => attr::requests_inline(&tcx.get_attrs(def_id)[..]),
+    }
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.

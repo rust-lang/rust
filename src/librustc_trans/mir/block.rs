@@ -16,7 +16,7 @@ use rustc::ty::{self, layout, TypeFoldable};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use base::{self, Lifetime};
-use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
+use callee::{Callee, CalleeData, Fn, Intrinsic, Virtual};
 use builder::Builder;
 use common::{self, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
@@ -491,10 +491,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let fn_ptr = match callee.data {
-                    NamedTupleConstructor(_) => {
-                        // FIXME translate this like mir::Rvalue::Aggregate.
-                        callee.reify(bcx.ccx)
-                    }
                     Intrinsic => {
                         use intrinsic::trans_intrinsic_call;
 

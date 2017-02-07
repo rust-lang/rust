@@ -293,7 +293,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None,
+            mir: self.encode_mir(def_id),
         }
     }
 
@@ -426,7 +426,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None,
+            mir: self.encode_mir(def_id),
         }
     }
 
