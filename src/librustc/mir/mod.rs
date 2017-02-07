@@ -63,7 +63,7 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-// Do not implement clone for Mir, its easy to do so accidently and its kind of expensive.
+// Do not implement clone for Mir, which can be accidently done and kind of expensive.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
