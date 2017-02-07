@@ -48,6 +48,13 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
+/// The LLVM module name containing crate-metadata. This includes a `.` on
+/// purpose, so it cannot clash with the name of a user-defined module.
+pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
+/// The name of the crate-metadata object file the compiler generates. Must
+/// match up with `METADATA_MODULE_NAME`.
+pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
+
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
 // Bytes    Data
@@ -213,7 +220,7 @@ pub fn link_binary(sess: &Session,
                 remove(sess, &obj);
             }
         }
-        remove(sess, &outputs.with_extension("metadata.o"));
+        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
     }
 
     out_filenames
@@ -832,7 +839,7 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension("metadata.o"));
+        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
     }
 
     // Try to strip as much out of the generated object by removing unused
