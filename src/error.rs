@@ -49,8 +49,8 @@ pub enum EvalError<'tcx> {
     AssumptionNotHeld,
     InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
-    ReallocatedFrozenMemory,
-    DeallocatedFrozenMemory,
+    ReallocatedStaticMemory,
+    DeallocatedStaticMemory,
     Layout(layout::LayoutError<'tcx>),
     Unreachable,
     ExpectedConcreteFunction(Function<'tcx>),
@@ -118,9 +118,9 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "cannot evaluate inline assembly",
             EvalError::TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
-            EvalError::ReallocatedFrozenMemory =>
+            EvalError::ReallocatedStaticMemory =>
                 "tried to reallocate frozen memory",
-            EvalError::DeallocatedFrozenMemory =>
+            EvalError::DeallocatedStaticMemory =>
                 "tried to deallocate frozen memory",
             EvalError::Layout(_) =>
                 "rustc layout computation failed",

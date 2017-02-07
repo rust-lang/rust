@@ -156,11 +156,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
-            let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
-                StackPopCleanup::Freeze
-            } else {
-                StackPopCleanup::None
-            };
+            let cleanup = StackPopCleanup::MarkStatic(!immutable || mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe());
             this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Global(cid), cleanup, Vec::new())
         });
     }
@@ -210,7 +206,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                                               mir,
                                               this.substs,
                                               Lvalue::Global(cid),
-                                              StackPopCleanup::Freeze,
+                                              StackPopCleanup::MarkStatic(false),
                                               Vec::new())
                 });
             }

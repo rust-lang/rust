@@ -38,9 +38,19 @@ pub struct Allocation {
     /// The alignment of the allocation to detect unaligned reads.
     pub align: u64,
     /// Whether the allocation may be modified.
-    /// Use the `freeze` method of `Memory` to ensure that an error occurs, if the memory of this
+    /// Use the `mark_static` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified in the future.
-    pub immutable: bool,
+    pub static_kind: StaticKind,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum StaticKind {
+    /// may be deallocated without breaking miri's invariants
+    NotStatic,
+    /// may be modified, but never deallocated
+    Mutable,
+    /// may neither be modified nor deallocated
+    Immutable,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -272,7 +282,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align,
-            immutable: false,
+            static_kind: StaticKind::NotStatic,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -290,8 +300,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.points_to_zst() {
             return self.allocate(new_size, align);
         }
-        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable).ok() == Some(true) {
-            return Err(EvalError::ReallocatedFrozenMemory);
+        if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
+            return Err(EvalError::ReallocatedStaticMemory);
         }
 
         let size = self.get(ptr.alloc_id)?.bytes.len() as u64;
@@ -325,8 +335,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
-        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable).ok() == Some(true) {
-            return Err(EvalError::DeallocatedFrozenMemory);
+        if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
+            return Err(EvalError::DeallocatedStaticMemory);
         }
 
         if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
@@ -430,8 +440,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
-            Some(ref alloc) if alloc.immutable => Err(EvalError::ModifiedConstantMemory),
-            Some(alloc) => Ok(alloc),
+            Some(alloc) => match alloc.static_kind {
+                StaticKind::Mutable |
+                StaticKind::NotStatic => Ok(alloc),
+                StaticKind::Immutable => Err(EvalError::ModifiedConstantMemory),
+            },
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
                 None if id == NEVER_ALLOC_ID || id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
@@ -514,7 +527,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 }
             }
 
-            let immutable = if alloc.immutable { " (immutable)" } else { "" };
+            let immutable = match alloc.static_kind {
+                StaticKind::Mutable => "(static mut)",
+                StaticKind::Immutable => "(immutable)",
+                StaticKind::NotStatic => "",
+            };
             trace!("{}({} bytes){}", msg, alloc.bytes.len(), immutable);
 
             if !relocations.is_empty() {
@@ -607,15 +624,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx> {
+    /// mark an allocation as static, either mutable or not
+    pub fn mark_static(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
         // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
-            Some(ref mut alloc) if !alloc.immutable => {
-                alloc.immutable = true;
+            Some(&mut Allocation { ref mut relocations, static_kind: ref mut kind @ StaticKind::NotStatic, .. }) => {
+                *kind = if mutable {
+                    StaticKind::Mutable
+                } else {
+                    StaticKind::Immutable
+                };
                 // take out the relocations vector to free the borrow on self, so we can call
                 // freeze recursively
-                mem::replace(&mut alloc.relocations, Default::default())
+                mem::replace(relocations, Default::default())
             },
             None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => return Ok(()),
             None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
@@ -623,7 +645,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            self.freeze(alloc)?;
+            self.mark_static(alloc, mutable)?;
         }
         // put back the relocations
         self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;

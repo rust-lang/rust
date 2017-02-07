@@ -100,9 +100,11 @@ pub struct Frame<'tcx> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// The stackframe existed to compute the initial value of a static/constant, make sure it
-    /// isn't modifyable afterwards. The allocation of the result is frozen iff it's an
-    /// actual allocation. `PrimVal`s are unmodifyable anyway.
-    Freeze,
+    /// isn't modifyable afterwards in case of constants.
+    /// In case of `static mut`, mark the memory to ensure it's never marked as immutable through
+    /// references or deallocated
+    /// The bool decides whether the value is mutable (true) or not (false)
+    MarkStatic(bool),
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
@@ -170,7 +172,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
-        self.memory.freeze(ptr.alloc_id)?;
+        self.memory.mark_static(ptr.alloc_id, false)?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
 
@@ -194,7 +196,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate(bs.len() as u64, 1)?;
                 self.memory.write_bytes(ptr, bs)?;
-                self.memory.freeze(ptr.alloc_id)?;
+                self.memory.mark_static(ptr.alloc_id, false)?;
                 PrimVal::Ptr(ptr)
             }
 
@@ -310,25 +312,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
-            StackPopCleanup::Freeze => if let Lvalue::Global(id) = frame.return_lvalue {
+            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
                 let global_value = self.globals.get_mut(&id)
-                    .expect("global should have been cached (freeze)");
+                    .expect("global should have been cached (freeze/static)");
                 match global_value.value {
-                    Value::ByRef(ptr) => self.memory.freeze(ptr.alloc_id)?,
+                    Value::ByRef(ptr) => self.memory.mark_static(ptr.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
-                        self.memory.freeze(ptr.alloc_id)?;
+                        self.memory.mark_static(ptr.alloc_id, mutable)?;
                     },
                     Value::ByValPair(val1, val2) => {
                         if let PrimVal::Ptr(ptr) = val1 {
-                            self.memory.freeze(ptr.alloc_id)?;
+                            self.memory.mark_static(ptr.alloc_id, mutable)?;
                         }
                         if let PrimVal::Ptr(ptr) = val2 {
-                            self.memory.freeze(ptr.alloc_id)?;
+                            self.memory.mark_static(ptr.alloc_id, mutable)?;
                         }
                     },
                 }
                 assert!(global_value.mutable);
-                global_value.mutable = false;
+                global_value.mutable = mutable;
             } else {
                 bug!("StackPopCleanup::Freeze on: {:?}", frame.return_lvalue);
             },
@@ -345,7 +347,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // by a constant. We could alternatively check whether the alloc_id is frozen
                     // before calling deallocate, but this is much simpler and is probably the
                     // rare case.
-                    Ok(()) | Err(EvalError::DeallocatedFrozenMemory) => {},
+                    Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
                     other => return other,
                 }
             }
@@ -868,9 +870,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.substs)?;
                         self.write_value_to_ptr(global_val.value, ptr, global_val.ty)?;
-                        if !global_val.mutable {
-                            self.memory.freeze(ptr.alloc_id)?;
-                        }
+                        self.memory.mark_static(ptr.alloc_id, global_val.mutable)?;
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
                             value: Value::ByRef(ptr),
