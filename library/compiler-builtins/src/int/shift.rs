@@ -4,6 +4,8 @@ macro_rules! ashl {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a << b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
@@ -21,6 +23,8 @@ macro_rules! ashr {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {

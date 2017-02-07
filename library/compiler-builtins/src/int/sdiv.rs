@@ -42,7 +42,8 @@ macro_rules! mod_ {
 macro_rules! divmod {
     ($intrinsic:ident, $div:ident: $ty:ty) => {
         /// Returns `a / b` and sets `*rem = n % d`
-        #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty, rem: &mut $ty) -> $ty {
             #[cfg(all(feature = "c", any(target_arch = "x86")))]
             extern {

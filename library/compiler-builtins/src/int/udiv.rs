@@ -3,7 +3,8 @@ use int::{Int, LargeInt};
 
 /// Returns `n / d`
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
-#[cfg_attr(not(test), no_mangle)]
+#[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+#[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
 pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
     // Special cases
     if d == 0 {

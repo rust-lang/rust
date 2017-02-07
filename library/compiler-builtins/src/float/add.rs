@@ -7,7 +7,8 @@ macro_rules! add {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a + b`
         #[allow(unused_parens)]
-        #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let one = Wrapping(1 as <$ty as Float>::Int);
             let zero = Wrapping(0 as <$ty as Float>::Int);

@@ -62,44 +62,44 @@ pub unsafe fn __aeabi_ldivmod() {
 
 // TODO: These aeabi_* functions should be defined as aliases
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_dadd(a: f64, b: f64) -> f64 {
+pub extern "aapcs" fn __aeabi_dadd(a: f64, b: f64) -> f64 {
     ::float::add::__adddf3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_fadd(a: f32, b: f32) -> f32 {
+pub extern "aapcs" fn __aeabi_fadd(a: f32, b: f32) -> f32 {
     ::float::add::__addsf3(a, b)
 }
 
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_idiv(a: i32, b: i32) -> i32 {
+pub extern "aapcs" fn __aeabi_idiv(a: i32, b: i32) -> i32 {
     ::int::sdiv::__divsi3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_lasr(a: i64, b: u32) -> i64 {
+pub extern "aapcs" fn __aeabi_lasr(a: i64, b: u32) -> i64 {
     ::int::shift::__ashrdi3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_llsl(a: u64, b: u32) -> u64 {
+pub extern "aapcs" fn __aeabi_llsl(a: u64, b: u32) -> u64 {
     ::int::shift::__ashldi3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_llsr(a: u64, b: u32) -> u64 {
+pub extern "aapcs" fn __aeabi_llsr(a: u64, b: u32) -> u64 {
     ::int::shift::__lshrdi3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_lmul(a: u64, b: u64) -> u64 {
+pub extern "aapcs" fn __aeabi_lmul(a: u64, b: u64) -> u64 {
     ::int::mul::__muldi3(a, b)
 }
 
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
+pub extern "aapcs" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
     ::int::udiv::__udivsi3(a, b)
 }
 
@@ -113,55 +113,55 @@ extern "C" {
 // FIXME: The `*4` and `*8` variants should be defined as aliases.
 
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
     memcpy(dest, src, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, n: usize) {
     memcpy(dest, src, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memcpy8(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memcpy8(dest: *mut u8, src: *const u8, n: usize) {
     memcpy(dest, src, n);
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
     memmove(dest, src, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memmove4(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memmove4(dest: *mut u8, src: *const u8, n: usize) {
     memmove(dest, src, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memmove8(dest: *mut u8, src: *const u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memmove8(dest: *mut u8, src: *const u8, n: usize) {
     memmove(dest, src, n);
 }
 
 // Note the different argument order
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
+pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
     memset(dest, c, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memset4(dest: *mut u8, n: usize, c: i32) {
+pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, n: usize, c: i32) {
     memset(dest, c, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memset8(dest: *mut u8, n: usize, c: i32) {
+pub unsafe extern "aapcs" fn __aeabi_memset8(dest: *mut u8, n: usize, c: i32) {
     memset(dest, c, n);
 }
 
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memclr(dest: *mut u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memclr(dest: *mut u8, n: usize) {
     memset(dest, 0, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memclr4(dest: *mut u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memclr4(dest: *mut u8, n: usize) {
     memset(dest, 0, n);
 }
 #[cfg_attr(not(test), no_mangle)]
-pub unsafe extern "C" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
+pub unsafe extern "aapcs" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
     memset(dest, 0, n);
 }
 

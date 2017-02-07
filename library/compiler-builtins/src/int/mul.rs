@@ -4,7 +4,8 @@ use int::Int;
 macro_rules! mul {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a * b`
-        #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let half_bits = <$ty>::bits() / 4;
             let lower_mask = !0 >> half_bits;

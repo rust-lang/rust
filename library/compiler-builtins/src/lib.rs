@@ -28,6 +28,10 @@
 // NOTE cfg(all(feature = "c", ..)) indicate that compiler-rt provides an arch optimized
 // implementation of that intrinsic and we'll prefer to use that
 
+// NOTE(aapcs, aeabi, arm) ARM targets use intrinsics named __aeabi_* instead of the intrinsics
+// that follow "x86 naming convention" (e.g. addsf3). Those aeabi intrinsics must adhere to the
+// AAPCS calling convention (`extern "aapcs"`) because that's how LLVM will call them.
+
 // TODO(rust-lang/rust#37029) use e.g. checked_div(_).unwrap_or_else(|| abort())
 macro_rules! udiv {
     ($a:expr, $b:expr) => {
