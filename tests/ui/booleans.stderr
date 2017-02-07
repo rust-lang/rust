@@ -1,0 +1,160 @@
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:12:13
+   |
+12 |     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
+   |             ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/booleans.rs:3:26
+   |
+3  | #![deny(nonminimal_bool, logic_bug)]
+   |                          ^^^^^^^^^
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:12:18
+   |
+12 |     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
+   |                  ^
+help: it would look like the following
+   |     let _ = a; //~ ERROR this boolean expression contains a logic bug
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:17:13
+   |
+17 |     let _ = !true; //~ ERROR this boolean expression can be simplified
+   |             ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/booleans.rs:3:9
+   |
+3  | #![deny(nonminimal_bool, logic_bug)]
+   |         ^^^^^^^^^^^^^^^
+help: try
+   |     let _ = false; //~ ERROR this boolean expression can be simplified
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:20:13
+   |
+20 |     let _ = !false; //~ ERROR this boolean expression can be simplified
+   |             ^^^^^^
+   |
+help: try
+   |     let _ = true; //~ ERROR this boolean expression can be simplified
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:23:13
+   |
+23 |     let _ = !!a; //~ ERROR this boolean expression can be simplified
+   |             ^^^
+   |
+help: try
+   |     let _ = a; //~ ERROR this boolean expression can be simplified
+
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:27:13
+   |
+27 |     let _ = false && a; //~ ERROR this boolean expression contains a logic bug
+   |             ^^^^^^^^^^
+   |
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:27:22
+   |
+27 |     let _ = false && a; //~ ERROR this boolean expression contains a logic bug
+   |                      ^
+help: it would look like the following
+   |     let _ = false; //~ ERROR this boolean expression contains a logic bug
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:32:13
+   |
+32 |     let _ = false || a; //~ ERROR this boolean expression can be simplified
+   |             ^^^^^^^^^^
+   |
+help: try
+   |     let _ = a; //~ ERROR this boolean expression can be simplified
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:43:13
+   |
+43 |     let _ = !(!a && b); //~ ERROR this boolean expression can be simplified
+   |             ^^^^^^^^^^
+   |
+help: try
+   |     let _ = !b || a; //~ ERROR this boolean expression can be simplified
+
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:55:13
+   |
+55 |     let _ = a == b && a != b;
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:55:13
+   |
+55 |     let _ = a == b && a != b;
+   |             ^^^^^^
+help: it would look like the following
+   |     let _ = false;
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:60:13
+   |
+60 |     let _ = a == b && c == 5 && a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = a == b && c == 5;
+help: try
+   |     let _ = !(c != 5 || a != b);
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:66:13
+   |
+66 |     let _ = a == b && c == 5 && b == a;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = a == b && c == 5;
+help: try
+   |     let _ = !(c != 5 || a != b);
+
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:72:13
+   |
+72 |     let _ = a < b && a >= b;
+   |             ^^^^^^^^^^^^^^^
+   |
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:72:13
+   |
+72 |     let _ = a < b && a >= b;
+   |             ^^^^^
+help: it would look like the following
+   |     let _ = false;
+
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:77:13
+   |
+77 |     let _ = a > b && a <= b;
+   |             ^^^^^^^^^^^^^^^
+   |
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:77:13
+   |
+77 |     let _ = a > b && a <= b;
+   |             ^^^^^
+help: it would look like the following
+   |     let _ = false;
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:84:13
+   |
+84 |     let _ = a != b || !(a != b || c == d);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = c != d || a != b;
+help: try
+   |     let _ = !(a == b && c == d);
+
+error: aborting due to 13 previous errors
+

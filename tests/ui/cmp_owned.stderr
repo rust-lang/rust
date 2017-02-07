@@ -1,0 +1,32 @@
+error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
+ --> $DIR/cmp_owned.rs:8:14
+  |
+8 |         x != "foo".to_string();
+  |              ^^^^^^^^^^^^^^^^^
+  |
+note: lint level defined here
+ --> $DIR/cmp_owned.rs:4:8
+  |
+4 | #[deny(cmp_owned)]
+  |        ^^^^^^^^^
+
+error: this creates an owned instance just for comparison. Consider using `"foo" != x` to compare without allocation
+  --> $DIR/cmp_owned.rs:11:9
+   |
+11 |         "foo".to_string() != x;
+   |         ^^^^^^^^^^^^^^^^^
+
+error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
+  --> $DIR/cmp_owned.rs:19:10
+   |
+19 |     x != "foo".to_owned(); //~ERROR this creates an owned instance
+   |          ^^^^^^^^^^^^^^^^
+
+error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
+  --> $DIR/cmp_owned.rs:24:10
+   |
+24 |     x != String::from("foo"); //~ERROR this creates an owned instance
+   |          ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

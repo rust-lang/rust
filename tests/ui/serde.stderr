@@ -1,0 +1,20 @@
+error: you should not implement `visit_string` without also implementing `visit_str`
+  --> $DIR/serde.rs:39:5
+   |
+39 |       fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
+   |  _____^ starting here...
+40 | |     //~^ ERROR you should not implement `visit_string` without also implementing `visit_str`
+41 | |         where E: serde::de::Error,
+42 | |     {
+43 | |         unimplemented!()
+44 | |     }
+   | |_____^ ...ending here
+   |
+note: lint level defined here
+  --> $DIR/serde.rs:3:9
+   |
+3  | #![deny(serde_api_misuse)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

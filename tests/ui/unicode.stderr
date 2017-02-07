@@ -1,0 +1,40 @@
+error: zero-width space detected
+ --> $DIR/unicode.rs:6:12
+  |
+6 |     print!("Here >​< is a ZWS, and ​another");
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: #[deny(zero_width_space)] on by default
+  = help: Consider replacing the string with:
+          ""Here >/u{200B}< is a ZWS, and /u{200B}another""
+
+error: non-nfc unicode sequence detected
+  --> $DIR/unicode.rs:13:12
+   |
+13 |     print!("̀àh?"); //~ERROR non-nfc unicode sequence detected
+   |            ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unicode.rs:11:8
+   |
+11 | #[deny(unicode_not_nfc)]
+   |        ^^^^^^^^^^^^^^^
+   = help: Consider replacing the string with:
+           ""̀àh?""
+
+error: literal non-ASCII character detected
+  --> $DIR/unicode.rs:19:12
+   |
+19 |     print!("Üben!"); //~ERROR literal non-ASCII character detected
+   |            ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unicode.rs:17:8
+   |
+17 | #[deny(non_ascii_literal)]
+   |        ^^^^^^^^^^^^^^^^^
+   = help: Consider replacing the string with:
+           ""/u{dc}ben!""
+
+error: aborting due to 3 previous errors
+

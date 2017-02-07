@@ -1,0 +1,55 @@
+error: `ref` directly on a function argument is ignored. Consider using a reference type instead.
+ --> $DIR/toplevel_ref_arg.rs:7:15
+  |
+7 | fn the_answer(ref mut x: u8) {  //~ ERROR `ref` directly on a function argument is ignored
+  |               ^^^^^^^^^
+  |
+  = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
+note: lint level defined here
+ --> $DIR/toplevel_ref_arg.rs:4:9
+  |
+4 | #![deny(clippy)]
+  |         ^^^^^^
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:18:7
+   |
+18 |   let ref x = 1;
+   |       ^^^^^
+   |
+   = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
+help: try
+   |   let x = &1;
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:23:7
+   |
+23 |   let ref y: (&_, u8) = (&1, 2);
+   |       ^^^^^
+   |
+   = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
+help: try
+   |   let y: &(&_, u8) = &(&1, 2);
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:28:7
+   |
+28 |   let ref z = 1 + 2;
+   |       ^^^^^
+   |
+   = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
+help: try
+   |   let z = &(1 + 2);
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:33:7
+   |
+33 |   let ref mut z = 1 + 2;
+   |       ^^^^^^^^^
+   |
+   = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
+help: try
+   |   let z = &mut (1 + 2);
+
+error: aborting due to 5 previous errors
+

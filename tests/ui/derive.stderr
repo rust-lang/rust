@@ -1,0 +1,103 @@
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive.rs:18:10
+   |
+18 | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: #[deny(derive_hash_xor_eq)] implied by #[deny(warnings)]
+note: lint level defined here
+  --> $DIR/derive.rs:6:9
+   |
+6  | #![deny(warnings)]
+   |         ^^^^^^^^
+note: `PartialEq` implemented here
+  --> $DIR/derive.rs:22:1
+   |
+22 |   impl PartialEq for Bar {
+   |  _^ starting here...
+23 | |     fn eq(&self, _: &Bar) -> bool { true }
+24 | | }
+   | |_^ ...ending here
+
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive.rs:26:10
+   |
+26 | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: #[deny(derive_hash_xor_eq)] implied by #[deny(warnings)]
+note: `PartialEq` implemented here
+  --> $DIR/derive.rs:30:1
+   |
+30 |   impl PartialEq<Baz> for Baz {
+   |  _^ starting here...
+31 | |     fn eq(&self, _: &Baz) -> bool { true }
+32 | | }
+   | |_^ ...ending here
+
+error: you are implementing `Hash` explicitly but have derived `PartialEq`
+  --> $DIR/derive.rs:37:1
+   |
+37 |   impl Hash for Bah {
+   |  _^ starting here...
+38 | | //~^ ERROR you are implementing `Hash` explicitly but have derived `PartialEq`
+39 | |     fn hash<H: Hasher>(&self, _: &mut H) {}
+40 | | }
+   | |_^ ...ending here
+   |
+   = note: #[deny(derive_hash_xor_eq)] implied by #[deny(warnings)]
+note: `PartialEq` implemented here
+  --> $DIR/derive.rs:34:10
+   |
+34 | #[derive(PartialEq)]
+   |          ^^^^^^^^^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:45:1
+   |
+45 |   impl Clone for Qux {
+   |  _^ starting here...
+46 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+47 | |     fn clone(&self) -> Self { Qux }
+48 | | }
+   | |_^ ...ending here
+   |
+   = note: #[deny(expl_impl_clone_on_copy)] implied by #[deny(warnings)]
+note: lint level defined here
+  --> $DIR/derive.rs:6:9
+   |
+6  | #![deny(warnings)]
+   |         ^^^^^^^^
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:45:1
+   |
+45 |   impl Clone for Qux {
+   |  _^ starting here...
+46 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+47 | |     fn clone(&self) -> Self { Qux }
+48 | | }
+   | |_^ ...ending here
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:70:1
+   |
+70 |   impl<'a> Clone for Lt<'a> {
+   |  _^ starting here...
+71 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+72 | |     fn clone(&self) -> Self { unimplemented!() }
+73 | | }
+   | |_^ ...ending here
+   |
+   = note: #[deny(expl_impl_clone_on_copy)] implied by #[deny(warnings)]
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:70:1
+   |
+70 |   impl<'a> Clone for Lt<'a> {
+   |  _^ starting here...
+71 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+72 | |     fn clone(&self) -> Self { unimplemented!() }
+73 | | }
+   | |_^ ...ending here
+
+error: aborting due to 5 previous errors
+

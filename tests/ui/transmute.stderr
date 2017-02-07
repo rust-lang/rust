@@ -1,0 +1,225 @@
+error: transmute from a type (`&'a T`) to itself
+  --> $DIR/transmute.rs:22:20
+   |
+22 |     let _: &'a T = core::intrinsics::transmute(t);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/transmute.rs:20:8
+   |
+20 | #[deny(useless_transmute)]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: transmute from a reference to a pointer
+  --> $DIR/transmute.rs:27:23
+   |
+27 |     let _: *const T = core::intrinsics::transmute(t);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: *const T = t as *const T;
+
+error: transmute from a reference to a pointer
+  --> $DIR/transmute.rs:32:21
+   |
+32 |     let _: *mut T = core::intrinsics::transmute(t);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: *mut T = t as *const T as *mut T;
+
+error: transmute from a reference to a pointer
+  --> $DIR/transmute.rs:37:23
+   |
+37 |     let _: *const U = core::intrinsics::transmute(t);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: *const U = t as *const T as *const U;
+
+error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
+  --> $DIR/transmute.rs:45:17
+   |
+45 |     let _: &T = std::mem::transmute(p);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/transmute.rs:43:8
+   |
+43 | #[deny(transmute_ptr_to_ref)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+help: try
+   |     let _: &T = &*p;
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+  --> $DIR/transmute.rs:51:21
+   |
+51 |     let _: &mut T = std::mem::transmute(m);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &mut T = &mut *m;
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
+  --> $DIR/transmute.rs:57:17
+   |
+57 |     let _: &T = std::mem::transmute(m);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &T = &*m;
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+  --> $DIR/transmute.rs:63:21
+   |
+63 |     let _: &mut T = std::mem::transmute(p as *mut T);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &mut T = &mut *(p as *mut T);
+
+error: transmute from a pointer type (`*const U`) to a reference type (`&T`)
+  --> $DIR/transmute.rs:69:17
+   |
+69 |     let _: &T = std::mem::transmute(o);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &T = &*(o as *const T);
+
+error: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
+  --> $DIR/transmute.rs:75:21
+   |
+75 |     let _: &mut T = std::mem::transmute(om);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &mut T = &mut *(om as *mut T);
+
+error: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
+  --> $DIR/transmute.rs:81:17
+   |
+81 |     let _: &T = std::mem::transmute(om);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _: &T = &*(om as *const T);
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, u8>`)
+  --> $DIR/transmute.rs:95:32
+   |
+95 |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/transmute.rs:88:8
+   |
+88 | #[deny(transmute_ptr_to_ref)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+help: try
+   |     let _: &Foo<u8> = unsafe { &*(raw as *const Foo<_>) };
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, &u8>`)
+   --> $DIR/transmute.rs:100:33
+    |
+100 |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: try
+    |     let _: &Foo<&u8> = unsafe { &*(raw as *const Foo<&_>) };
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
+   --> $DIR/transmute.rs:107:14
+    |
+107 |     unsafe { std::mem::transmute::<_, Bar>(raw) };
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: try
+    |     unsafe { &*(raw as *const u8) };
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+   --> $DIR/transmute.rs:116:27
+    |
+116 |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: lint level defined here
+   --> $DIR/transmute.rs:113:8
+    |
+113 | #[deny(useless_transmute)]
+    |        ^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+   --> $DIR/transmute.rs:119:27
+    |
+119 |         let _: Vec<i32> = core::mem::transmute(my_vec());
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+   --> $DIR/transmute.rs:122:27
+    |
+122 |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+   --> $DIR/transmute.rs:125:27
+    |
+125 |         let _: Vec<i32> = std::mem::transmute(my_vec());
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+   --> $DIR/transmute.rs:128:27
+    |
+128 |         let _: Vec<i32> = my_transmute(my_vec());
+    |                           ^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from an integer to a pointer
+   --> $DIR/transmute.rs:137:31
+    |
+137 |         let _: *const usize = std::mem::transmute(5_isize);
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: try
+    |         let _: *const usize = 5_isize as *const usize;
+
+error: transmute from an integer to a pointer
+   --> $DIR/transmute.rs:143:31
+    |
+143 |         let _: *const usize = std::mem::transmute(1+1usize);
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: try
+    |         let _: *const usize = (1+1usize) as *const usize;
+
+error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
+   --> $DIR/transmute.rs:160:24
+    |
+160 |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: lint level defined here
+   --> $DIR/transmute.rs:153:8
+    |
+153 | #[deny(crosspointer_transmute)]
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
+   --> $DIR/transmute.rs:163:24
+    |
+163 |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
+   --> $DIR/transmute.rs:166:31
+    |
+166 |         let _: *const Usize = core::intrinsics::transmute(my_int());
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
+   --> $DIR/transmute.rs:169:29
+    |
+169 |         let _: *mut Usize = core::intrinsics::transmute(my_int());
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
+

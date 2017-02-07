@@ -1,0 +1,111 @@
+error: this function has too many arguments (8/7)
+  --> $DIR/functions.rs:11:1
+   |
+11 |   fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {
+   |  _^ starting here...
+12 | |     //~^ ERROR: this function has too many arguments (8/7)
+13 | | }
+   | |_^ ...ending here
+   |
+   = note: #[deny(too_many_arguments)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> $DIR/functions.rs:4:9
+   |
+4  | #![deny(clippy)]
+   |         ^^^^^^
+
+error: this function has too many arguments (8/7)
+  --> $DIR/functions.rs:20:5
+   |
+20 |     fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(too_many_arguments)] implied by #[deny(clippy)]
+
+error: this function has too many arguments (8/7)
+  --> $DIR/functions.rs:30:5
+   |
+30 |     fn bad_method(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(too_many_arguments)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:40:34
+   |
+40 |         println!("{}", unsafe { *p });
+   |                                  ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> $DIR/functions.rs:4:9
+   |
+4  | #![deny(clippy)]
+   |         ^^^^^^
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:42:35
+   |
+42 |         println!("{:?}", unsafe { p.as_ref() });
+   |                                   ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:44:33
+   |
+44 |         unsafe { std::ptr::read(p) };
+   |                                 ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:56:30
+   |
+56 |     println!("{}", unsafe { *p });
+   |                              ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:58:31
+   |
+58 |     println!("{:?}", unsafe { p.as_ref() });
+   |                               ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:60:29
+   |
+60 |     unsafe { std::ptr::read(p) };
+   |                             ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:70:34
+   |
+70 |         println!("{}", unsafe { *p });
+   |                                  ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:72:35
+   |
+72 |         println!("{:?}", unsafe { p.as_ref() });
+   |                                   ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: this public function dereferences a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:74:33
+   |
+74 |         unsafe { std::ptr::read(p) };
+   |                                 ^
+   |
+   = note: #[deny(not_unsafe_ptr_arg_deref)] implied by #[deny(clippy)]
+
+error: aborting due to 12 previous errors
+

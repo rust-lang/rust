@@ -1,0 +1,20 @@
+error: this let-binding has unit value. Consider omitting `let _x =`
+  --> $DIR/let_unit.rs:14:5
+   |
+14 |     let _x = println!("x");  //~ERROR this let-binding has unit value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/let_unit.rs:4:9
+   |
+4  | #![deny(let_unit_value)]
+   |         ^^^^^^^^^^^^^^
+
+error: this let-binding has unit value. Consider omitting `let _a =`
+  --> $DIR/let_unit.rs:18:9
+   |
+18 |         let _a = ();  //~ERROR this let-binding has unit value
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

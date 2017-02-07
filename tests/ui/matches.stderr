@@ -1,0 +1,392 @@
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:26:5
+   |
+26 |       match ExprNode::Butterflies {
+   |  _____^ starting here...
+27 | |         //~^ ERROR you seem to be trying to use match
+28 | |         //~| HELP try
+29 | |         //~| SUGGESTION if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }
+30 | |         ExprNode::ExprAddrOf => Some(&NODE),
+31 | |         _ => { let x = 5; None },
+32 | |     }
+   | |_____^ ...ending here
+   |
+note: lint level defined here
+  --> $DIR/matches.rs:7:9
+   |
+7  | #![deny(single_match_else)]
+   |         ^^^^^^^^^^^^^^^^^
+help: try this
+   |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:38:5
+   |
+38 |       match x {
+   |  _____^ starting here...
+39 | |         //~^ ERROR you seem to be trying to use match
+40 | |         //~| HELP try
+41 | |         //~| SUGGESTION if let Some(y) = x { println!("{:?}", y); };
+42 | |         Some(y) => { println!("{:?}", y); }
+43 | |         _ => ()
+44 | |     };
+   | |_____^ ...ending here
+   |
+   = note: #[deny(single_match)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> $DIR/matches.rs:5:9
+   |
+5  | #![deny(clippy)]
+   |         ^^^^^^
+help: try this
+   |     if let Some(y) = x { println!("{:?}", y); };
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:47:5
+   |
+47 |       match z {
+   |  _____^ starting here...
+48 | |         //~^ ERROR you seem to be trying to use match
+49 | |         //~| HELP try
+50 | |         //~| SUGGESTION if let (2...3, 7...9) = z { dummy() };
+51 | |         (2...3, 7...9) => dummy(),
+52 | |         _ => {}
+53 | |     };
+   | |_____^ ...ending here
+   |
+   = note: #[deny(single_match)] implied by #[deny(clippy)]
+help: try this
+   |     if let (2...3, 7...9) = z { dummy() };
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:72:5
+   |
+72 |       match x {
+   |  _____^ starting here...
+73 | |         //~^ ERROR you seem to be trying to use match
+74 | |         //~| HELP try
+75 | |         //~| SUGGESTION if let Some(y) = x { dummy() };
+76 | |         Some(y) => dummy(),
+77 | |         None => ()
+78 | |     };
+   | |_____^ ...ending here
+   |
+   = note: #[deny(single_match)] implied by #[deny(clippy)]
+help: try this
+   |     if let Some(y) = x { dummy() };
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:80:5
+   |
+80 |       match y {
+   |  _____^ starting here...
+81 | |         //~^ ERROR you seem to be trying to use match
+82 | |         //~| HELP try
+83 | |         //~| SUGGESTION if let Ok(y) = y { dummy() };
+84 | |         Ok(y) => dummy(),
+85 | |         Err(..) => ()
+86 | |     };
+   | |_____^ ...ending here
+   |
+   = note: #[deny(single_match)] implied by #[deny(clippy)]
+help: try this
+   |     if let Ok(y) = y { dummy() };
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:90:5
+   |
+90 |       match c {
+   |  _____^ starting here...
+91 | |         //~^ ERROR you seem to be trying to use match
+92 | |         //~| HELP try
+93 | |         //~| SUGGESTION if let Cow::Borrowed(..) = c { dummy() };
+94 | |         Cow::Borrowed(..) => dummy(),
+95 | |         Cow::Owned(..) => (),
+96 | |     };
+   | |_____^ ...ending here
+   |
+   = note: #[deny(single_match)] implied by #[deny(clippy)]
+help: try this
+   |     if let Cow::Borrowed(..) = c { dummy() };
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:114:5
+    |
+114 |       match test {
+    |  _____^ starting here...
+115 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+116 | |     //~| HELP consider
+117 | |     //~| SUGGESTION if test { 0 } else { 42 };
+118 | |         true => 0,
+119 | |         false => 42,
+120 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/matches.rs:5:9
+    |
+5   | #![deny(clippy)]
+    |         ^^^^^^
+help: consider using an if/else expression
+    |     if test { 0 } else { 42 };
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:123:5
+    |
+123 |       match option == 1 {
+    |  _____^ starting here...
+124 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+125 | |     //~| HELP consider
+126 | |     //~| SUGGESTION if option == 1 { 1 } else { 0 };
+127 | |         true => 1,
+128 | |         false => 0,
+129 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+help: consider using an if/else expression
+    |     if option == 1 { 1 } else { 0 };
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:131:5
+    |
+131 |       match test {
+    |  _____^ starting here...
+132 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+133 | |     //~| HELP consider
+134 | |     //~| SUGGESTION if !test { println!("Noooo!"); };
+135 | |         true => (),
+136 | |         false => { println!("Noooo!"); }
+137 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+help: consider using an if/else expression
+    |     if !test { println!("Noooo!"); };
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:139:5
+    |
+139 |       match test {
+    |  _____^ starting here...
+140 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+141 | |     //~| HELP consider
+142 | |     //~| SUGGESTION if !test { println!("Noooo!"); };
+143 | |         false => { println!("Noooo!"); }
+144 | |         _ => (),
+145 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+help: consider using an if/else expression
+    |     if !test { println!("Noooo!"); };
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:147:5
+    |
+147 |       match test && test {
+    |  _____^ starting here...
+148 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+149 | |     //~| HELP consider
+150 | |     //~| SUGGESTION if !(test && test) { println!("Noooo!"); };
+151 | |     //~| ERROR equal expressions as operands
+152 | |         false => { println!("Noooo!"); }
+153 | |         _ => (),
+154 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+help: consider using an if/else expression
+    |     if !(test && test) { println!("Noooo!"); };
+
+error: equal expressions as operands to `&&`
+   --> $DIR/matches.rs:147:11
+    |
+147 |     match test && test {
+    |           ^^^^^^^^^^^^
+    |
+    = note: #[deny(eq_op)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/matches.rs:5:9
+    |
+5   | #![deny(clippy)]
+    |         ^^^^^^
+
+error: you seem to be trying to match on a boolean expression
+   --> $DIR/matches.rs:156:5
+    |
+156 |       match test {
+    |  _____^ starting here...
+157 | |     //~^ ERROR you seem to be trying to match on a boolean expression
+158 | |     //~| HELP consider
+159 | |     //~| SUGGESTION if test { println!("Yes!"); } else { println!("Noooo!"); };
+160 | |         false => { println!("Noooo!"); }
+161 | |         true => { println!("Yes!"); }
+162 | |     };
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_bool)] implied by #[deny(clippy)]
+help: consider using an if/else expression
+    |     if test { println!("Yes!"); } else { println!("Noooo!"); };
+
+error: you don't need to add `&` to all patterns
+   --> $DIR/matches.rs:175:9
+    |
+175 |           match v {
+    |  _________^ starting here...
+176 | |             //~^ERROR add `&` to all patterns
+177 | |             //~|HELP instead of
+178 | |             //~|SUGGESTION match *v { .. }
+179 | |             &Some(v) => println!("{:?}", v),
+180 | |             &None => println!("none"),
+181 | |         }
+    | |_________^ ...ending here
+    |
+    = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/matches.rs:5:9
+    |
+5   | #![deny(clippy)]
+    |         ^^^^^^
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |         match *v { .. }
+
+error: you don't need to add `&` to all patterns
+   --> $DIR/matches.rs:188:5
+    |
+188 |       match tup {
+    |  _____^ starting here...
+189 | |         //~^ERROR add `&` to all patterns
+190 | |         //~|HELP instead of
+191 | |         //~|SUGGESTION match *tup { .. }
+192 | |         &(v, 1) => println!("{}", v),
+193 | |         _ => println!("none"),
+194 | |     }
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |     match *tup { .. }
+
+error: you don't need to add `&` to both the expression and the patterns
+   --> $DIR/matches.rs:197:5
+    |
+197 |       match &w {
+    |  _____^ starting here...
+198 | |         //~^ERROR add `&` to both
+199 | |         //~|HELP try
+200 | |         //~|SUGGESTION match w { .. }
+201 | |         &Some(v) => println!("{:?}", v),
+202 | |         &None => println!("none"),
+203 | |     }
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
+help: try
+    |     match w { .. }
+
+error: you don't need to add `&` to all patterns
+   --> $DIR/matches.rs:211:5
+    |
+211 |       if let &None = a {
+    |  _____^ starting here...
+212 | |         //~^ERROR add `&` to all patterns
+213 | |         //~|HELP instead of
+214 | |         //~|SUGGESTION if let .. = *a { .. }
+215 | |         println!("none");
+216 | |     }
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |     if let .. = *a { .. }
+
+error: you don't need to add `&` to both the expression and the patterns
+   --> $DIR/matches.rs:219:5
+    |
+219 |       if let &None = &b {
+    |  _____^ starting here...
+220 | |         //~^ERROR add `&` to both
+221 | |         //~|HELP try
+222 | |         //~|SUGGESTION if let .. = b { .. }
+223 | |         println!("none");
+224 | |     }
+    | |_____^ ...ending here
+    |
+    = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
+help: try
+    |     if let .. = b { .. }
+
+error: some ranges overlap
+   --> $DIR/matches.rs:231:9
+    |
+231 |         0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
+    |         ^^^^^^^^
+    |
+    = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/matches.rs:5:9
+    |
+5   | #![deny(clippy)]
+    |         ^^^^^^
+note: overlaps with this
+   --> $DIR/matches.rs:232:9
+    |
+232 |         0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+    |         ^^^^^^^^
+
+error: some ranges overlap
+   --> $DIR/matches.rs:237:9
+    |
+237 |         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+    |         ^^^^^^^
+    |
+    = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
+note: overlaps with this
+   --> $DIR/matches.rs:239:9
+    |
+239 |         FOO ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+    |         ^^^^^^^^^^
+
+error: some ranges overlap
+   --> $DIR/matches.rs:245:9
+    |
+245 |         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+    |         ^^^^^^^
+    |
+    = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
+note: overlaps with this
+   --> $DIR/matches.rs:244:9
+    |
+244 |         2 => println!("2"), //~NOTE overlaps with this
+    |         ^
+
+error: some ranges overlap
+   --> $DIR/matches.rs:251:9
+    |
+251 |         0 ... 2 => println!("0 ... 2"), //~ERROR: some ranges overlap
+    |         ^^^^^^^
+    |
+    = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
+note: overlaps with this
+   --> $DIR/matches.rs:250:9
+    |
+250 |         2 => println!("2"), //~NOTE overlaps with this
+    |         ^
+
+error: some ranges overlap
+   --> $DIR/matches.rs:274:9
+    |
+274 |         0 .. 11 => println!("0 .. 11"), //~ERROR: some ranges overlap
+    |         ^^^^^^^
+    |
+    = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
+note: overlaps with this
+   --> $DIR/matches.rs:275:9
+    |
+275 |         0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+    |         ^^^^^^^^
+
+error: aborting due to 23 previous errors
+

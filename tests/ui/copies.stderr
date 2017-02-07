@@ -1,0 +1,409 @@
+error: this `if` has identical blocks
+  --> $DIR/copies.rs:40:10
+   |
+40 |       else { //~ERROR this `if` has identical blocks
+   |  __________^ starting here...
+41 | |         Foo { bar: 42 };
+42 | |         0..10;
+43 | |         ..;
+44 | |         0..;
+45 | |         ..10;
+46 | |         0...10;
+47 | |         foo();
+48 | |     }
+   | |_____^ ...ending here
+   |
+note: lint level defined here
+  --> $DIR/copies.rs:27:8
+   |
+27 | #[deny(if_same_then_else)]
+   |        ^^^^^^^^^^^^^^^^^
+note: same as this
+  --> $DIR/copies.rs:30:13
+   |
+30 |     if true {
+   |             ^
+
+error: this `match` has identical arm bodies
+  --> $DIR/copies.rs:91:14
+   |
+91 |           _ => { //~ERROR this `match` has identical arm bodies
+   |  ______________^ starting here...
+92 | |             foo();
+93 | |             let mut a = 42 + [23].len() as i32;
+94 | |             if true {
+95 | |                 a += 7;
+96 | |             }
+97 | |             a = -31-a;
+98 | |             a
+99 | |         }
+   | |_________^ ...ending here
+   |
+note: lint level defined here
+  --> $DIR/copies.rs:28:8
+   |
+28 | #[deny(match_same_arms)]
+   |        ^^^^^^^^^^^^^^^
+note: same as this
+  --> $DIR/copies.rs:80:15
+   |
+80 |         42 => {
+   |               ^
+note: `42` has the same arm body as the `_` wildcard, consider removing it`
+  --> $DIR/copies.rs:80:15
+   |
+80 |         42 => {
+   |               ^
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:107:14
+    |
+107 |         _ => 0, //~ERROR this `match` has identical arm bodies
+    |              ^
+    |
+note: same as this
+   --> $DIR/copies.rs:103:19
+    |
+103 |         Abc::A => 0,
+    |                   ^
+note: `Abc::A` has the same arm body as the `_` wildcard, consider removing it`
+   --> $DIR/copies.rs:103:19
+    |
+103 |         Abc::A => 0,
+    |                   ^
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:118:10
+    |
+118 |       else { //~ERROR this `if` has identical blocks
+    |  __________^ starting here...
+119 | |         42
+120 | |     };
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:114:21
+    |
+114 |       let _ = if true {
+    |  _____________________^ starting here...
+115 | |         //~^NOTE same as this
+116 | |         42
+117 | |     }
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:133:10
+    |
+133 |     else { //~ERROR this `if` has identical blocks
+    |          ^
+    |
+note: same as this
+   --> $DIR/copies.rs:122:13
+    |
+122 |     if true {
+    |             ^
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:156:10
+    |
+156 |     else { //~ERROR this `if` has identical blocks
+    |          ^
+    |
+note: same as this
+   --> $DIR/copies.rs:144:13
+    |
+144 |     if true {
+    |             ^
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:180:19
+    |
+180 |       else if foo() { //~ERROR this `if` has identical blocks
+    |  ___________________^ starting here...
+181 | |         let _ = match 42 {
+182 | |             42 => 1,
+183 | |             a if a > 0 => 2,
+184 | |             10...15 => 3,
+185 | |             _ => 4,
+186 | |         };
+187 | |     }
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:168:13
+    |
+168 |       if true {
+    |  _____________^ starting here...
+169 | |         //~^NOTE same as this
+170 | |         let _ = match 42 {
+171 | |             42 => 1,
+172 | |             a if a > 0 => 2,
+173 | |             10...15 => 3,
+174 | |             _ => 4,
+175 | |         };
+176 | |     }
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:193:10
+    |
+193 |       else { //~ERROR this `if` has identical blocks
+    |  __________^ starting here...
+194 | |         if let Some(a) = Some(42) {}
+195 | |     }
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:189:13
+    |
+189 |       if true {
+    |  _____________^ starting here...
+190 | |         //~^NOTE same as this
+191 | |         if let Some(a) = Some(42) {}
+192 | |     }
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:201:10
+    |
+201 |       else { //~ERROR this `if` has identical blocks
+    |  __________^ starting here...
+202 | |         if let (1, .., 3) = (1, 2, 3) {}
+203 | |     }
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:197:13
+    |
+197 |       if true {
+    |  _____________^ starting here...
+198 | |         //~^NOTE same as this
+199 | |         if let (1, .., 3) = (1, 2, 3) {}
+200 | |     }
+    | |_____^ ...ending here
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:258:15
+    |
+258 |         51 => foo(), //~ERROR this `match` has identical arm bodies
+    |               ^^^^^
+    |
+note: same as this
+   --> $DIR/copies.rs:255:15
+    |
+255 |         42 => foo(),
+    |               ^^^^^
+note: consider refactoring into `42 | 51`
+   --> $DIR/copies.rs:255:15
+    |
+255 |         42 => foo(),
+    |               ^^^^^
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:266:17
+    |
+266 |         None => 24, //~ERROR this `match` has identical arm bodies
+    |                 ^^
+    |
+note: same as this
+   --> $DIR/copies.rs:263:20
+    |
+263 |         Some(_) => 24,
+    |                    ^^
+note: consider refactoring into `Some(_) | None`
+   --> $DIR/copies.rs:263:20
+    |
+263 |         Some(_) => 24,
+    |                    ^^
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:290:28
+    |
+290 |         (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+    |                            ^^^^^^
+    |
+note: same as this
+   --> $DIR/copies.rs:287:28
+    |
+287 |         (Some(a), None) => bar(a),
+    |                            ^^^^^^
+note: consider refactoring into `(Some(a), None) | (None, Some(a))`
+   --> $DIR/copies.rs:287:28
+    |
+287 |         (Some(a), None) => bar(a),
+    |                            ^^^^^^
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:298:26
+    |
+298 |         (.., Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+    |                          ^^^^^^
+    |
+note: same as this
+   --> $DIR/copies.rs:295:26
+    |
+295 |         (Some(a), ..) => bar(a),
+    |                          ^^^^^^
+note: consider refactoring into `(Some(a), ..) | (.., Some(a))`
+   --> $DIR/copies.rs:295:26
+    |
+295 |         (Some(a), ..) => bar(a),
+    |                          ^^^^^^
+
+error: this `match` has identical arm bodies
+   --> $DIR/copies.rs:306:20
+    |
+306 |         (.., 3) => 42, //~ERROR this `match` has identical arm bodies
+    |                    ^^
+    |
+note: same as this
+   --> $DIR/copies.rs:303:23
+    |
+303 |         (1, .., 3) => 42,
+    |                       ^^
+note: consider refactoring into `(1, .., 3) | (.., 3)`
+   --> $DIR/copies.rs:303:23
+    |
+303 |         (1, .., 3) => 42,
+    |                       ^^
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:313:12
+    |
+313 |       } else { //~ERROR this `if` has identical blocks
+    |  ____________^ starting here...
+314 | |         0.0
+315 | |     };
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:310:21
+    |
+310 |       let _ = if true {
+    |  _____________________^ starting here...
+311 | |         //~^NOTE same as this
+312 | |         0.0
+313 | |     } else { //~ERROR this `if` has identical blocks
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:320:12
+    |
+320 |       } else { //~ERROR this `if` has identical blocks
+    |  ____________^ starting here...
+321 | |         -0.0
+322 | |     };
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:317:21
+    |
+317 |       let _ = if true {
+    |  _____________________^ starting here...
+318 | |         //~^NOTE same as this
+319 | |         -0.0
+320 | |     } else { //~ERROR this `if` has identical blocks
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:341:12
+    |
+341 |       } else { //~ERROR this `if` has identical blocks
+    |  ____________^ starting here...
+342 | |         std::f32::NAN
+343 | |     };
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:338:21
+    |
+338 |       let _ = if true {
+    |  _____________________^ starting here...
+339 | |         //~^NOTE same as this
+340 | |         std::f32::NAN
+341 | |     } else { //~ERROR this `if` has identical blocks
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:360:10
+    |
+360 |       else { //~ERROR this `if` has identical blocks
+    |  __________^ starting here...
+361 | |         try!(Ok("foo"));
+362 | |     }
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:356:13
+    |
+356 |       if true {
+    |  _____________^ starting here...
+357 | |         //~^NOTE same as this
+358 | |         try!(Ok("foo"));
+359 | |     }
+    | |_____^ ...ending here
+
+error: this `if` has identical blocks
+   --> $DIR/copies.rs:373:10
+    |
+373 |       else { //~ERROR this `if` has identical blocks
+    |  __________^ starting here...
+374 | |         let foo = "";
+375 | |         return Ok(&foo[0..]);
+376 | |     }
+    | |_____^ ...ending here
+    |
+note: same as this
+   --> $DIR/copies.rs:364:13
+    |
+364 |       if true {
+    |  _____________^ starting here...
+365 | |         //~^NOTE same as this
+366 | |         let foo = "";
+367 | |         return Ok(&foo[0..]);
+368 | |     }
+    | |_____^ ...ending here
+
+error: this `if` has the same condition as a previous if
+   --> $DIR/copies.rs:388:13
+    |
+388 |     else if b { //~ERROR this `if` has the same condition as a previous if
+    |             ^
+    |
+note: lint level defined here
+   --> $DIR/copies.rs:379:8
+    |
+379 | #[deny(ifs_same_cond)]
+    |        ^^^^^^^^^^^^^
+note: same as this
+   --> $DIR/copies.rs:385:8
+    |
+385 |     if b {
+    |        ^
+
+error: this `if` has the same condition as a previous if
+   --> $DIR/copies.rs:394:13
+    |
+394 |     else if a == 1 { //~ERROR this `if` has the same condition as a previous if
+    |             ^^^^^^
+    |
+note: same as this
+   --> $DIR/copies.rs:391:8
+    |
+391 |     if a == 1 {
+    |        ^^^^^^
+
+error: this `if` has the same condition as a previous if
+   --> $DIR/copies.rs:402:13
+    |
+402 |     else if 2*a == 1 { //~ERROR this `if` has the same condition as a previous if
+    |             ^^^^^^^^
+    |
+note: same as this
+   --> $DIR/copies.rs:397:8
+    |
+397 |     if 2*a == 1 {
+    |        ^^^^^^^^
+
+error: aborting due to 22 previous errors
+

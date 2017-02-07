@@ -197,7 +197,7 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tables.pat_ty(&local.pat).sty;
         match *bindtype {
-            ty::TyTuple(slice) if slice.is_empty() => {
+            ty::TyTuple(slice, _) if slice.is_empty() => {
                 if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
                     return;
                 }
@@ -268,7 +268,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
             if op.is_comparison() {
                 let sty = &cx.tables.expr_ty(left).sty;
                 match *sty {
-                    ty::TyTuple(slice) if slice.is_empty() => {
+                    ty::TyTuple(slice, _) if slice.is_empty() => {
                         let result = match op {
                             BiEq | BiLe | BiGe => "true",
                             _ => "false",
