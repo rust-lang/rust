@@ -19,6 +19,7 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
+use core::fmt;
 use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
@@ -120,6 +121,13 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
     encoder: Utf16Encoder<Chars<'a>>,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a> fmt::Debug for EncodeUtf16<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("EncodeUtf16 { .. }")
+    }
 }
 
 #[stable(feature = "encode_utf16", since = "1.8.0")]
