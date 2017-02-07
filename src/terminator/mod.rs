@@ -205,6 +205,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => return Err(EvalError::Unreachable),
                 };
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
+                self.dump_local(ret);
                 Ok(())
             }
 
@@ -212,6 +213,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
+                self.dump_local(ret);
                 self.goto_block(target);
                 Ok(())
             }
