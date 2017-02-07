@@ -314,7 +314,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
                 let global_value = self.globals.get_mut(&id)
-                    .expect("global should have been cached (freeze/static)");
+                    .expect("global should have been cached (static)");
                 match global_value.value {
                     Value::ByRef(ptr) => self.memory.mark_static(ptr.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
@@ -332,7 +332,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 assert!(global_value.mutable);
                 global_value.mutable = mutable;
             } else {
-                bug!("StackPopCleanup::Freeze on: {:?}", frame.return_lvalue);
+                bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_lvalue);
             },
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
@@ -343,10 +343,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("deallocating local");
                 self.memory.dump_alloc(ptr.alloc_id);
                 match self.memory.deallocate(ptr) {
-                    // Any frozen memory means that it belongs to a constant or something referenced
-                    // by a constant. We could alternatively check whether the alloc_id is frozen
-                    // before calling deallocate, but this is much simpler and is probably the
-                    // rare case.
+                    // We could alternatively check whether the alloc_id is static before calling
+                    // deallocate, but this is much simpler and is probably the rare case.
                     Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
                     other => return other,
                 }

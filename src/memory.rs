@@ -39,7 +39,7 @@ pub struct Allocation {
     pub align: u64,
     /// Whether the allocation may be modified.
     /// Use the `mark_static` method of `Memory` to ensure that an error occurs, if the memory of this
-    /// allocation is modified in the future.
+    /// allocation is modified or deallocated in the future.
     pub static_kind: StaticKind,
 }
 
@@ -626,7 +626,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// mark an allocation as static, either mutable or not
     pub fn mark_static(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
-        // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
+        // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
             Some(&mut Allocation { ref mut relocations, static_kind: ref mut kind @ StaticKind::NotStatic, .. }) => {
@@ -636,7 +636,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     StaticKind::Immutable
                 };
                 // take out the relocations vector to free the borrow on self, so we can call
-                // freeze recursively
+                // mark recursively
                 mem::replace(relocations, Default::default())
             },
             None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => return Ok(()),

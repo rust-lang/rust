@@ -119,9 +119,9 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
             EvalError::ReallocatedStaticMemory =>
-                "tried to reallocate frozen memory",
+                "tried to reallocate static memory",
             EvalError::DeallocatedStaticMemory =>
-                "tried to deallocate frozen memory",
+                "tried to deallocate static memory",
             EvalError::Layout(_) =>
                 "rustc layout computation failed",
             EvalError::UnterminatedCString(_) =>
