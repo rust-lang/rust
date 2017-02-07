@@ -1,5 +1,6 @@
 use std::cell::Ref;
 use std::collections::HashMap;
+use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
@@ -1347,27 +1348,33 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
-        let mut allocs = Vec::new();
-
         if let Lvalue::Local { frame, local } = lvalue {
+            let mut allocs = Vec::new();
+            let mut msg = format!("{:?}", local);
+            let last_frame = self.stack.len() - 1;
+            if frame != last_frame {
+                write!(msg, " ({} frames up)", last_frame - frame).unwrap();
+            }
+            write!(msg, ":").unwrap();
+
             match self.stack[frame].get_local(local) {
                 Value::ByRef(ptr) => {
-                    trace!("frame[{}] {:?}:", frame, local);
                     allocs.push(ptr.alloc_id);
                 }
                 Value::ByVal(val) => {
-                    trace!("frame[{}] {:?}: {:?}", frame, local, val);
+                    write!(msg, " {:?}", val).unwrap();
                     if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
                 }
                 Value::ByValPair(val1, val2) => {
-                    trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, val1, val2);
+                    write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                     if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
                     if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
                 }
             }
-        }
 
-        self.memory.dump_allocs(allocs);
+            trace!("{}", msg);
+            self.memory.dump_allocs(allocs);
+        }
     }
 
     /// Convenience function to ensure correct usage of globals and code-sharing with locals.
