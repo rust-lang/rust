@@ -2,11 +2,11 @@ use int::LargeInt;
 use int::Int;
 
 macro_rules! mul {
-    ($intrinsic:ident: $ty:ty) => {
+    ($(#[$attr:meta])+ |
+     $abi:tt, $intrinsic:ident: $ty:ty) => {
         /// Returns `a * b`
-        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
+        $(#[$attr])+
+        pub extern $abi fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let half_bits = <$ty>::bits() / 4;
             let lower_mask = !0 >> half_bits;
             let mut low = (a.low() & lower_mask).wrapping_mul(b.low() & lower_mask);
@@ -74,9 +74,17 @@ macro_rules! mulo {
 }
 
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
-mul!(__muldi3: u64);
+mul!(#[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+     #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
+     | "C", __muldi3: u64);
 
-mul!(__multi3: i128);
+#[cfg(not(target_arch = "arm"))]
+mul!(#[cfg_attr(not(test), no_mangle)]
+     | "C", __multi3: i128);
+
+#[cfg(target_arch = "arm")]
+mul!(#[cfg_attr(not(test), no_mangle)]
+     | "aapcs", __multi3: i128);
 
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);

@@ -4,12 +4,11 @@ use core::num::Wrapping;
 use float::Float;
 
 macro_rules! add {
-    ($intrinsic:ident: $ty:ty) => {
+    ($abi:tt, $intrinsic:ident: $ty:ty) => {
         /// Returns `a + b`
         #[allow(unused_parens)]
-        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-        pub extern fn $intrinsic(a: $ty, b: $ty) -> $ty {
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern $abi fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let one = Wrapping(1 as <$ty as Float>::Int);
             let zero = Wrapping(0 as <$ty as Float>::Int);
 
@@ -182,8 +181,17 @@ macro_rules! add {
     }
 }
 
-add!(__addsf3: f32);
-add!(__adddf3: f64);
+#[cfg(target_arch = "arm")]
+add!("aapcs", __addsf3: f32);
+
+#[cfg(not(target_arch = "arm"))]
+add!("C", __addsf3: f32);
+
+#[cfg(target_arch = "arm")]
+add!("aapcs", __adddf3: f64);
+
+#[cfg(not(target_arch = "arm"))]
+add!("C", __adddf3: f64);
 
 // NOTE(cfg) for some reason, on arm*-unknown-linux-gnueabi*, our implementation doesn't
 // match the output of its gcc_s or compiler-rt counterpart. Until we investigate further, we'll

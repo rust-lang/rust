@@ -40,11 +40,10 @@ macro_rules! mod_ {
 }
 
 macro_rules! divmod {
-    ($intrinsic:ident, $div:ident: $ty:ty) => {
+    ($abi:tt, $intrinsic:ident, $div:ident: $ty:ty) => {
         /// Returns `a / b` and sets `*rem = n % d`
-        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty, rem: &mut $ty) -> $ty {
+        #[cfg_attr(not(test), no_mangle)]
+        pub extern $abi fn $intrinsic(a: $ty, b: $ty, rem: &mut $ty) -> $ty {
             #[cfg(all(feature = "c", any(target_arch = "x86")))]
             extern {
                 fn $div(a: $ty, b: $ty) -> $ty;
@@ -87,9 +86,13 @@ mod_!(__modti3: i128, u128);
 mod_!(__modti3: i128, u128, ::U64x2, ::sconv);
 
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
-divmod!(__divmodsi4, __divsi3: i32);
+divmod!("C", __divmodsi4, __divsi3: i32);
 
-divmod!(__divmoddi4, __divdi3: i64);
+#[cfg(target_arch = "arm")]
+divmod!("aapcs", __divmoddi4, __divdi3: i64);
+
+#[cfg(not(target_arch = "arm"))]
+divmod!("C", __divmoddi4, __divdi3: i64);
 
 #[cfg(test)]
 mod tests {

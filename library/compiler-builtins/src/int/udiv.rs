@@ -80,15 +80,15 @@ pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
-    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
     extern "C" {
         fn __udivsi3(n: u32, d: u32) -> u32;
     }
 
     let q = match () {
-        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
         () => unsafe { __udivsi3(n, d) },
-        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
+        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
         () => __udivsi3(n, d),
     };
     if let Some(rem) = rem {
