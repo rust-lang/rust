@@ -341,7 +341,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
         if let Some(kind) = kind {
-            tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
+            tcx.maps.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
         }
     });
 }

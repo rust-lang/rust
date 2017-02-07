@@ -996,11 +996,13 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 } else {
                     match ppm {
                         PpmMir => {
-                            write_mir_pretty(tcx, tcx.mir_map.borrow().keys().into_iter(), &mut out)
+                            write_mir_pretty(tcx,
+                                             tcx.maps.mir.borrow().keys().into_iter(),
+                                             &mut out)
                         }
                         PpmMirCFG => {
                             write_mir_graphviz(tcx,
-                                               tcx.mir_map.borrow().keys().into_iter(),
+                                               tcx.maps.mir.borrow().keys().into_iter(),
                                                &mut out)
                         }
                         _ => unreachable!(),

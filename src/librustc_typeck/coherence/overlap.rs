@@ -79,7 +79,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn check_for_overlapping_inherent_impls(&self, ty_def_id: DefId) {
         let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapInherentCheck(ty_def_id));
 
-        let inherent_impls = self.tcx.inherent_impls.borrow();
+        let inherent_impls = self.tcx.maps.inherent_impls.borrow();
         let impls = match inherent_impls.get(&ty_def_id) {
             Some(impls) => impls,
             None => return,

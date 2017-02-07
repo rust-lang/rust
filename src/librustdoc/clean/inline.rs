@@ -238,7 +238,7 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
 
-    if let Some(i) = tcx.inherent_impls.borrow().get(&did) {
+    if let Some(i) = tcx.maps.inherent_impls.borrow().get(&did) {
         for &did in i.iter() {
             build_impl(cx, did, &mut impls);
         }
