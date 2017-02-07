@@ -80,10 +80,12 @@ macro_rules! int_arithmetic {
             I16 => overflow!($int_op, l as i16, r as i16),
             I32 => overflow!($int_op, l as i32, r as i32),
             I64 => overflow!($int_op, l as i64, r as i64),
+            I128 => overflow!($int_op, l as i128, r as i128),
             U8  => overflow!($int_op, l as u8,  r as u8),
             U16 => overflow!($int_op, l as u16, r as u16),
             U32 => overflow!($int_op, l as u32, r as u32),
             U64 => overflow!($int_op, l as u64, r as u64),
+            U128 => overflow!($int_op, l as u128, r as u128),
             _ => bug!("int_arithmetic should only be called on int primvals"),
         }
     })
@@ -98,10 +100,12 @@ macro_rules! int_shift {
             I16 => overflow!($int_op, l as i16, r),
             I32 => overflow!($int_op, l as i32, r),
             I64 => overflow!($int_op, l as i64, r),
+            I128 => overflow!($int_op, l as i128, r),
             U8  => overflow!($int_op, l as u8,  r),
             U16 => overflow!($int_op, l as u16, r),
             U32 => overflow!($int_op, l as u32, r),
             U64 => overflow!($int_op, l as u64, r),
+            U128 => overflow!($int_op, l as u128, r),
             _ => bug!("int_shift should only be called on int primvals"),
         }
     })
