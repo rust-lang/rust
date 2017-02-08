@@ -350,7 +350,8 @@ impl Builder {
     fn hash(&self, path: &Path) -> String {
         let sha = t!(Command::new("shasum")
                         .arg("-a").arg("256")
-                        .arg(path)
+                        .arg(path.file_name().unwrap())
+                        .current_dir(path.parent().unwrap())
                         .output());
         assert!(sha.status.success());
 
