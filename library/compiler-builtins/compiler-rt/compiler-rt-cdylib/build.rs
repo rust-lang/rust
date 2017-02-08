@@ -60,6 +60,8 @@ fn main() {
         "addsf3.c",
         "powidf2.c",
         "powisf2.c",
+        "subdf3.c",
+        "subsf3.c",
         // 128 bit integers
         "lshrti3.c",
         "modti3.c",

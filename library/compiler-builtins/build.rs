@@ -170,8 +170,6 @@ fn main() {
                          "popcountdi2.c",
                          "popcountsi2.c",
                          "powixf2.c",
-                         "subdf3.c",
-                         "subsf3.c",
                          "subvdi3.c",
                          "subvsi3.c",
                          "truncdfhf2.c",

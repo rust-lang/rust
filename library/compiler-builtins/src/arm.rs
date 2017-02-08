@@ -60,7 +60,6 @@ pub unsafe fn __aeabi_ldivmod() {
     intrinsics::unreachable();
 }
 
-// TODO: These aeabi_* functions should be defined as aliases
 #[cfg_attr(not(test), no_mangle)]
 pub extern "aapcs" fn __aeabi_dadd(a: f64, b: f64) -> f64 {
     ::float::add::__adddf3(a, b)
@@ -69,6 +68,16 @@ pub extern "aapcs" fn __aeabi_dadd(a: f64, b: f64) -> f64 {
 #[cfg_attr(not(test), no_mangle)]
 pub extern "aapcs" fn __aeabi_fadd(a: f32, b: f32) -> f32 {
     ::float::add::__addsf3(a, b)
+}
+
+#[cfg_attr(not(test), no_mangle)]
+pub extern "aapcs" fn __aeabi_dsub(a: f64, b: f64) -> f64 {
+    ::float::sub::__subdf3(a, b)
+}
+
+#[cfg_attr(not(test), no_mangle)]
+pub extern "aapcs" fn __aeabi_fsub(a: f32, b: f32) -> f32 {
+    ::float::sub::__subsf3(a, b)
 }
 
 #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
@@ -103,6 +112,7 @@ pub extern "aapcs" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
     ::int::udiv::__udivsi3(a, b)
 }
 
+// TODO: These aeabi_* functions should be defined as aliases
 #[cfg(not(feature = "mem"))]
 extern "C" {
     fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
