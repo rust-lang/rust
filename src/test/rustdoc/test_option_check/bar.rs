@@ -11,18 +11,9 @@
 // compile-flags: --test
 // check-test-line-numbers-match
 
-pub mod bar;
-
-/// This is a Foo;
+/// This looks like another awesome test!
 ///
 /// ```
-/// println!("baaaaaar");
+/// println!("foo?");
 /// ```
-pub struct Foo;
-
-/// This is a Bar;
-///
-/// ```
-/// println!("fooooo");
-/// ```
-pub struct Bar;
+pub fn foooo() {}

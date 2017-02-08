@@ -12,8 +12,6 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::collections::vec_deque::Drain;
 
-use test;
-
 use self::Taggy::*;
 use self::Taggypar::*;
 
@@ -122,51 +120,6 @@ fn test_index_out_of_bounds() {
         deq.push_front(i);
     }
     deq[3];
-}
-
-#[bench]
-fn bench_new(b: &mut test::Bencher) {
-    b.iter(|| {
-        let ring: VecDeque<i32> = VecDeque::new();
-        test::black_box(ring);
-    })
-}
-
-#[bench]
-fn bench_grow_1025(b: &mut test::Bencher) {
-    b.iter(|| {
-        let mut deq = VecDeque::new();
-        for i in 0..1025 {
-            deq.push_front(i);
-        }
-        test::black_box(deq);
-    })
-}
-
-#[bench]
-fn bench_iter_1000(b: &mut test::Bencher) {
-    let ring: VecDeque<_> = (0..1000).collect();
-
-    b.iter(|| {
-        let mut sum = 0;
-        for &i in &ring {
-            sum += i;
-        }
-        test::black_box(sum);
-    })
-}
-
-#[bench]
-fn bench_mut_iter_1000(b: &mut test::Bencher) {
-    let mut ring: VecDeque<_> = (0..1000).collect();
-
-    b.iter(|| {
-        let mut sum = 0;
-        for i in &mut ring {
-            sum += *i;
-        }
-        test::black_box(sum);
-    })
 }
 
 #[derive(Clone, PartialEq, Debug)]

@@ -24,6 +24,7 @@ use Build;
 pub fn clean(build: &Build) {
     rm_rf(build, "tmp".as_ref());
     rm_rf(build, &build.out.join("tmp"));
+    rm_rf(build, &build.out.join("dist"));
 
     for host in build.config.host.iter() {
         let entries = match build.out.join(host).read_dir() {

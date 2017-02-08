@@ -176,44 +176,30 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Recreate the edges in the graph that are still clean.
     let mut clean_work_products = FxHashSet();
     let mut dirty_work_products = FxHashSet(); // incomplete; just used to suppress debug output
+    let mut extra_edges = vec![];
     for (source, targets) in &edge_map {
         for target in targets {
-            // If the target is dirty, skip the edge. If this is an edge
-            // that targets a work-product, we can print the blame
-            // information now.
-            if let Some(blame) = dirty_raw_nodes.get(target) {
-                if let DepNode::WorkProduct(ref wp) = *target {
-                    if tcx.sess.opts.debugging_opts.incremental_info {
-                        if dirty_work_products.insert(wp.clone()) {
-                            // It'd be nice to pretty-print these paths better than just
-                            // using the `Debug` impls, but wev.
-                            println!("incremental: module {:?} is dirty because {:?} \
-                                      changed or was removed",
-                                     wp,
-                                     blame.map_def(|&index| {
-                                         Some(directory.def_path_string(tcx, index))
-                                     }).unwrap());
-                        }
-                    }
-                }
-                continue;
-            }
-
-            // If the source is dirty, the target will be dirty.
-            assert!(!dirty_raw_nodes.contains_key(source));
-
-            // Retrace the source -> target edges to def-ids and then
-            // create an edge in the graph. Retracing may yield none if
-            // some of the data happens to have been removed; this ought
-            // to be impossible unless it is dirty, so we can unwrap.
-            let source_node = retraced.map(source).unwrap();
-            let target_node = retraced.map(target).unwrap();
-            let _task = tcx.dep_graph.in_task(target_node);
-            tcx.dep_graph.read(source_node);
-            if let DepNode::WorkProduct(ref wp) = *target {
-                clean_work_products.insert(wp.clone());
-            }
+            process_edges(tcx, source, target, &edge_map, &directory, &retraced, &dirty_raw_nodes,
+                          &mut clean_work_products, &mut dirty_work_products, &mut extra_edges);
         }
+    }
+
+    // Subtle. Sometimes we have intermediate nodes that we can't recreate in the new graph.
+    // This is pretty unusual but it arises in a scenario like this:
+    //
+    //     Hir(X) -> Foo(Y) -> Bar
+    //
+    // Note that the `Hir(Y)` is not an input to `Foo(Y)` -- this
+    // almost never happens, but can happen in some obscure
+    // scenarios. In that case, if `Y` is removed, then we can't
+    // recreate `Foo(Y)` (the def-id `Y` no longer exists); what we do
+    // then is to push the edge `Hir(X) -> Bar` onto `extra_edges`
+    // (along with any other targets of `Foo(Y)`). We will then add
+    // the edge from `Hir(X)` to `Bar` (or, if `Bar` itself cannot be
+    // recreated, to the targets of `Bar`).
+    while let Some((source, target)) = extra_edges.pop() {
+        process_edges(tcx, source, target, &edge_map, &directory, &retraced, &dirty_raw_nodes,
+                      &mut clean_work_products, &mut dirty_work_products, &mut extra_edges);
     }
 
     // Add in work-products that are still clean, and delete those that are
@@ -391,5 +377,68 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     debug!("load_prev_metadata_hashes() - successfully loaded {} hashes",
            serialized_hashes.index_map.len());
+}
+
+fn process_edges<'a, 'tcx, 'edges>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    source: &'edges DepNode<DefPathIndex>,
+    target: &'edges DepNode<DefPathIndex>,
+    edges: &'edges FxHashMap<DepNode<DefPathIndex>, Vec<DepNode<DefPathIndex>>>,
+    directory: &DefIdDirectory,
+    retraced: &RetracedDefIdDirectory,
+    dirty_raw_nodes: &DirtyNodes,
+    clean_work_products: &mut FxHashSet<Arc<WorkProductId>>,
+    dirty_work_products: &mut FxHashSet<Arc<WorkProductId>>,
+    extra_edges: &mut Vec<(&'edges DepNode<DefPathIndex>, &'edges DepNode<DefPathIndex>)>)
+{
+    // If the target is dirty, skip the edge. If this is an edge
+    // that targets a work-product, we can print the blame
+    // information now.
+    if let Some(blame) = dirty_raw_nodes.get(target) {
+        if let DepNode::WorkProduct(ref wp) = *target {
+            if tcx.sess.opts.debugging_opts.incremental_info {
+                if dirty_work_products.insert(wp.clone()) {
+                    // It'd be nice to pretty-print these paths better than just
+                    // using the `Debug` impls, but wev.
+                    println!("incremental: module {:?} is dirty because {:?} \
+                              changed or was removed",
+                             wp,
+                             blame.map_def(|&index| {
+                                 Some(directory.def_path_string(tcx, index))
+                             }).unwrap());
+                }
+            }
+        }
+        return;
+    }
+
+    // If the source is dirty, the target will be dirty.
+    assert!(!dirty_raw_nodes.contains_key(source));
+
+    // Retrace the source -> target edges to def-ids and then create
+    // an edge in the graph. Retracing may yield none if some of the
+    // data happens to have been removed.
+    if let Some(source_node) = retraced.map(source) {
+        if let Some(target_node) = retraced.map(target) {
+            let _task = tcx.dep_graph.in_task(target_node);
+            tcx.dep_graph.read(source_node);
+            if let DepNode::WorkProduct(ref wp) = *target {
+                clean_work_products.insert(wp.clone());
+            }
+        } else {
+            // As discussed in `decode_dep_graph` above, sometimes the
+            // target cannot be recreated again, in which case we add
+            // edges to go from `source` to the targets of `target`.
+            extra_edges.extend(
+                edges[target].iter().map(|t| (source, t)));
+        }
+    } else {
+        // It's also possible that the source can't be created! But we
+        // can ignore such cases, because (a) if `source` is a HIR
+        // node, it would be considered dirty; and (b) in other cases,
+        // there must be some input to this node that is clean, and so
+        // we'll re-create the edges over in the case where target is
+        // undefined.
+    }
 }
 

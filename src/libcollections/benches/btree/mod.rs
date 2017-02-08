@@ -8,21 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-// check-test-line-numbers-match
-
-pub mod bar;
-
-/// This is a Foo;
-///
-/// ```
-/// println!("baaaaaar");
-/// ```
-pub struct Foo;
-
-/// This is a Bar;
-///
-/// ```
-/// println!("fooooo");
-/// ```
-pub struct Bar;
+mod map;

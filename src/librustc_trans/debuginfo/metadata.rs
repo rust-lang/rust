@@ -1783,7 +1783,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     is_local_to_unit,
                                                     global,
                                                     ptr::null_mut(),
-                                                    global_align as u64,
+                                                    global_align,
         );
     }
 }
