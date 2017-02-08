@@ -117,6 +117,30 @@ fn main() {
 }
 ```
 
+Initialization of a data structure (struct, enum, union) can be simplified if
+fields of the data structure are initialized with variables which has same
+names as the fields.
+
+```
+#![feature(field_init_shorthand)]
+
+#[derive(Debug)]
+struct Person<'a> {
+    name: &'a str,
+    age: u8
+}
+
+fn main() {
+    // Create struct with field init shorthand
+    let name = "Peter";
+    let age = 27;
+    let peter = Person { name, age };
+
+    // Print debug struct
+    println!("{:?}", peter);
+}
+```
+
 # Update syntax
 
 A `struct` can include `..` to indicate that you want to use a copy of some
